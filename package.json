@@ -1,0 +1,33 @@
+{
+  "name": "nixie",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A personal assistant platform",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zgeoff/nixie.git"
+  },
+  "type": "module",
+  "scripts": {
+    "audit": "bun audit",
+    "check": "bun run format:check && bun run lint && bun run prose",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint --report-unused-disable-directives-severity error",
+    "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
+    "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md docs .claude/skills/project-docs-writing"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.3",
+    "@stylistic/eslint-plugin": "5.10.0",
+    "@zgeoff/oxlint-config": "0.1.0",
+    "lefthook": "2.1.14",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "bun@1.4.2"
+}
