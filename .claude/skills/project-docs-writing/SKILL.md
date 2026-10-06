@@ -19,7 +19,3 @@ Load the shared `docs-writing` skill first. Where the two skills disagree, this 
 - a date in the file name or the header
 
 Every other rule of `docs-writing` applies to working docs: Sentences, Words, Structure, Stance, and Formatting and links.
-
-## Research notes
-
-A `*-notes/` directory under `docs/research/` holds the condensed evidence behind one research doc: terse notes per subject, with source links and unverified claims marked. No `docs-writing` rule applies to research notes. The research doc that cites them carries the prose.
