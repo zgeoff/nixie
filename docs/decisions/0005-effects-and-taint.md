@@ -48,9 +48,11 @@ The target is 0 approval prompts. Every prompt records which of 4 causes produce
 3. **Outside steering.** A tainted main thread wants to send or act towards a new destination.
 4. **The always-ask set** above.
 
-Only causes 3 and 4 may prompt. A prompt from cause 1 or 2 is a defect. Phase 3 tests this with
-scripted scenarios, such as finding something on the web, triaging an inbox, and booking a table,
-which report every prompt with its cause.
+Only causes 3 and 4 may prompt. A prompt from cause 1 or 2 is a defect. With auto-mode on, an action
+that no rule covers goes to auto-mode instead of the owner, and cause 3 first denies with a reason,
+such as "write a draft instead", before it prompts; [0008](./0008-auto-mode.md) covers both. Phase 3
+tests this with scripted scenarios, such as finding something on the web, triaging an inbox, and
+booking a table, which report every prompt with its cause.
 
 ## Order of work
 

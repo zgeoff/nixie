@@ -16,6 +16,10 @@ An approval resolves one proposal from [0002](./0002-approvals.md), and nixie re
   learns that it lapsed.
 - **Delegation only narrows.** A subtask never holds wider permissions than the task that started
   it, and the record keeps the chain of tasks.
+- **Consent in the owner's message.** When the owner's last direct message asks for an action on a
+  target named verbatim, that message can carry consent. A separate model checks it, as auto-mode
+  checks it under [0008](./0008-auto-mode.md). Naming a target alone is not consent, and injected
+  content cannot reach the owner's message.
 - **Approval from another device.** The owner gets a push with the structured details of the action
   and approves with a button bound to that one proposal. nixie checks that the answer came from the
   owner's identity on that channel. Track 2.5 covers which channels carry it.

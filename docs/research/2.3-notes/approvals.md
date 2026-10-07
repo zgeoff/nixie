@@ -10,10 +10,12 @@ expiry, and consumes it atomically once ([RFC 9396](https://www.rfc-editor.org/r
 [AP2 specification](https://ap2-protocol.org/ap2/specification/);
 [OpenAI Agents SDK HITL](https://openai.github.io/openai-agents-js/guides/human-in-the-loop/)).
 Coding CLIs turn "always" into a rule the owner can read, and agent frameworks keep no durable
-"always". Owner friction is the weak point. Shipping products cut prompts with LLM classifiers,
-which nixie cannot use as its decision point. Deterministic precedent for low friction is thin:
-digest approvals have no shipping precedent, and only one product proposes rules from approvals.
-[Policy models](policy-models.md) covers the decision point that asks for these approvals.
+"always". Owner friction is the weak point. Shipping products cut prompts with LLM classifiers as
+their main gate, which nixie's deterministic layers rule out; a classifier can still decide what
+those layers leave open, as [decision 0008](../../decisions/0008-auto-mode.md) records.
+Deterministic precedent for low friction is thin: digest approvals have no shipping precedent, and
+only one product proposes rules from approvals. [Policy models](policy-models.md) covers the
+decision point that asks for these approvals.
 
 ## Durable grants
 
@@ -209,8 +211,9 @@ Cursor Auto-review
 [Cursor run modes](https://cursor.com/docs/agent/security/run-modes.md)). All 3 are models. The full
 auto mode pipeline has a 17% false-negative rate on real overeager actions
 ([Anthropic engineering](https://www.anthropic.com/engineering/claude-code-auto-mode)), and Cursor
-calls its reviewer "not a security boundary". Under nixie's first principle, none of the reviewers
-can be the decision point. At most, one could add an extra layer that only ever tightens a decision.
+calls its reviewer "not a security boundary". None of the reviewers can be nixie's main gate. One
+can decide what nixie's deterministic layers leave open, as
+[decision 0008](../../decisions/0008-auto-mode.md) records for auto-mode.
 
 ### Learned rules with owner confirmation
 
@@ -283,10 +286,12 @@ patterns:
 
 ## Friction trade-off
 
-nixie trades prompt volume for determinism. Products that feel frictionless get there with LLM
-classifiers: Claude Code auto mode is the default from v2.1.283
-([Claude Code permission modes](https://code.claude.com/docs/en/permission-modes)). nixie gives that
-lever up, so its friction budget has to come from structure:
+Products that feel frictionless get there with LLM classifiers as the main gate: Claude Code auto
+mode is the default from v2.1.283
+([Claude Code permission modes](https://code.claude.com/docs/en/permission-modes)). nixie keeps its
+deterministic layers final and uses a classifier only where they leave an action open, as
+[decision 0008](../../decisions/0008-auto-mode.md) records. Structure carries the rest of the
+friction budget:
 
 - sandboxing, which cut prompts by 84% at Anthropic
   ([Anthropic engineering](https://www.anthropic.com/engineering/claude-code-sandboxing))
