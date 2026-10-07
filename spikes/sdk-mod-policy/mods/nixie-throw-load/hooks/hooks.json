@@ -1,0 +1,4 @@
+{
+  "description": "The nixie-throw-load hooks module",
+  "modules": ["./register.js"]
+}

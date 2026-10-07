@@ -1,0 +1,4 @@
+{
+  "description": "The nixie-busy-loop hooks module",
+  "modules": ["./register.js"]
+}

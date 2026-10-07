@@ -1,0 +1,10 @@
+{
+  "name": "spike-imp-broker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "mock": "bun mock.ts",
+    "spike": "bash run.sh"
+  }
+}

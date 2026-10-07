@@ -1,0 +1,4 @@
+Run each of these three shell commands with the Bash tool, one tool call per command, one after another (never in parallel). After each one, quote the tool result exactly. Do not retry or change any command.
+1. echo first MARK_DENY
+2. echo second MARK_BLOCK
+3. echo third MARK_DENY

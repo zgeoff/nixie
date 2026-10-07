@@ -1,0 +1,5 @@
+{
+  "name": "nixie-throw-load",
+  "version": "0.0.0",
+  "description": "Spike: a policy mod whose module throws at load"
+}

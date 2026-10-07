@@ -1,0 +1,5 @@
+{
+  "name": "nixie-hold-poll",
+  "version": "0.0.0",
+  "description": "Spike: a tool.call hook that holds a call across repeated long-polls"
+}

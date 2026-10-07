@@ -16,7 +16,7 @@
     "format:check": "oxfmt --check .",
     "lint": "oxlint --report-unused-disable-directives-severity error",
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
-    "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md docs .claude/skills/project-docs-writing"
+    "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md docs .claude/skills/project-docs-writing spikes/README.md spikes/*/README.md"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",

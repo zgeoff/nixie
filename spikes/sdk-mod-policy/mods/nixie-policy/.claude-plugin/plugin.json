@@ -1,0 +1,5 @@
+{
+  "name": "nixie-policy",
+  "version": "0.0.0",
+  "description": "Spike: a policy mod that guards tool calls"
+}
