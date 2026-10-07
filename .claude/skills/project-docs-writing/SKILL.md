@@ -11,9 +11,9 @@ Load the shared `docs-writing` skill first. Where the two skills disagree, this 
 
 ## Working docs
 
-`docs/brainstorm/`, `docs/research/`, and `docs/design/` hold working docs: the record of deciding
-what nixie is. The Selection rules of `docs-writing` that demand the final state do not apply there.
-A working doc may hold:
+`docs/brainstorm/`, `docs/research/`, `docs/design/`, and `docs/decisions/` hold working docs: the
+record of deciding what nixie is. The Selection rules of `docs-writing` that demand the final state
+do not apply there. A working doc may hold:
 
 - open questions and the options under each one, with hedged modals for options that are still open
 - findings with their sources, including how a finding was checked
