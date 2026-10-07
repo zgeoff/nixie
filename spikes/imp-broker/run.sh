@@ -21,13 +21,18 @@ api=nixie-spike-api
 auth=nixie-spike-auth
 upstreams=$IMP_DEV_DATA/broker-test-upstreams.json
 mock_pid=
+# cleanup removes only what this run created, and restores an upstreams file it replaced
+made_box= made_api= made_auth= wrote_upstreams=
+upstreams_backup=$SPIKE_WORK/broker-test-upstreams.backup.json
 
 cleanup() {
-  imp rm "$box" >/dev/null 2>&1 || true
-  imp secret rm "$api" >/dev/null 2>&1 || true
-  imp secret rm "$auth" >/dev/null 2>&1 || true
-  rm -f "$upstreams"
-  [ -n "$mock_pid" ] && kill "$mock_pid" 2>/dev/null || true
+  [ -n "$made_box" ] && { imp rm "$box" >/dev/null 2>&1 || true; }
+  [ -n "$made_api" ] && { imp secret rm "$api" >/dev/null 2>&1 || true; }
+  [ -n "$made_auth" ] && { imp secret rm "$auth" >/dev/null 2>&1 || true; }
+  if [ -n "$wrote_upstreams" ]; then
+    if [ -f "$upstreams_backup" ]; then mv "$upstreams_backup" "$upstreams"; else rm -f "$upstreams"; fi
+  fi
+  [ -n "$mock_pid" ] && { kill "$mock_pid" 2>/dev/null || true; }
 }
 trap cleanup EXIT
 
@@ -59,16 +64,22 @@ until [ -f "$SPIKE_WORK/upstreams.json" ]; do
   kill -0 "$mock_pid" 2>/dev/null || { cat "$SPIKE_WORK/mock.log"; exit 1; }
   sleep 0.2
 done
+rm -f "$upstreams_backup"
+[ -f "$upstreams" ] && cp "$upstreams" "$upstreams_backup"
+wrote_upstreams=1
 cp "$SPIKE_WORK/upstreams.json" "$upstreams"
 head -1 "$SPIKE_WORK/mock.log"
 
 step "create $box, install curl while open, then set policy none, secrets, grants"
 imp new "$box" --memory 1g >/dev/null
+made_box=1
 in_box "apt-get update -qq && apt-get install -y -qq curl >/dev/null 2>&1"
 imp policy "$box" none
 fetch_token | imp secret add "$api" --kind custom --hosts api.nixie-spike.test >/dev/null
+made_api=1
 echo "${mock_client#*:}" | imp secret add "$auth" --kind custom --hosts auth.nixie-spike.test \
   --scheme basic --user nixie-spike-client >/dev/null
+made_auth=1
 imp grant "$box" "$api"
 imp grant "$box" "$auth"
 imp policy "$box"
