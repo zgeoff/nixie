@@ -11,10 +11,12 @@ approvals or budgets. Rules from [0004](./0004-rule-engine.md) match on those ef
 always ask the owner, and no rule lifts them:
 
 - spending money
-- changing approvals or rules
-- changing budgets
+- widening approvals or rules: adding or loosening an allow rule, or removing a deny rule
+- raising a budget
 
-Every other effect, deletion and sending to a new recipient included, follows the owner's rules.
+A change that only narrows, such as deleting a stale allow rule or lowering a budget, applies at
+once. nixie records it, and the owner can undo it. Every other effect, deletion and sending to a new
+recipient included, follows the owner's rules.
 
 A task that reads untrusted content carries a taint label for the rest of the task. A tainted task
 asks the owner only before it sends or acts towards a destination it has no standing permission for.
