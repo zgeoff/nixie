@@ -618,8 +618,8 @@ is subtle bugs in leases and wake-ups. If that cost proves too high, these are t
 1. Does `tool_use_id` stay the same after a crash and resume, not only after a defer and resume?
    Test it by killing the subprocess mid-tool, resuming, and comparing the IDs. The recommended
    design does not depend on the answer, because nixie creates its own proposal IDs.
-2. How often does Claude make parallel tool calls in nixie's workloads? The answer sets how much the
-   `defer` path matters.
+2. How often does the model make parallel tool calls in nixie's workloads? The answer sets how much
+   the `defer` path matters.
 3. Does the Agent SDK run under Bun with nixie's full feature set: in-process MCP tools, hooks, and
    `streamInput`? The SDK spike settles this.
 4. Should the event log use Postgres or SQLite? Kysely's core SQLite dialect expects a

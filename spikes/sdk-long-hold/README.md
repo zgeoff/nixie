@@ -57,7 +57,7 @@ env -u ANTHROPIC_API_KEY bun --env-file=../../.env resume.ts <session_id> "What 
   the call runs.
 - `defer` works through the SDK, and the deferred call resumes in a new process with `resume`. The
   result carries `stop_reason: "tool_deferred"` and `deferred_tool_use`.
-- A mod hold does not survive the end of the process. On resume, Claude reads a synthetic result
+- A mod hold does not survive the end of the process. On resume, the model reads a synthetic result
   that marks the outcome as unknown.
 - `defer` does not refuse a parallel batch in this build. Both calls defer, the result names only
   the last one, and the other call's `tool_use` never gets a result.
@@ -75,7 +75,7 @@ command runs:
 ```
 
 With a `.catch` handler, the same timeout denies the call. `next.error.kind` is `timeout` and
-`next.error.message` is `undefined`, so Claude reads
+`next.error.message` is `undefined`, so the model reads
 `nixie policy failed (timeout: undefined), so the command did not run.`
 
 ### Mod hold: one long-poll
@@ -99,7 +99,7 @@ min.
 each request stays under the fetch cap, and the hook stops once the owner refuses. The hook also has
 a `.catch` handler that denies on failure.
 
-| Owner answers after | Polls | Claude reads                                                   |
+| Owner answers after | Polls | The model reads                                                |
 | ------------------- | ----- | -------------------------------------------------------------- |
 | 30 s                | 2     | `the owner refused this command after 30004 ms and 2 polls.`   |
 | 2 min               | 6     | `the owner refused this command after 120004 ms and 6 polls.`  |
@@ -134,13 +134,13 @@ process ends at once:
 ```
 
 A new process with `resume: <session_id>` fires `PreToolUse` again for the same `tool_use_id`.
-Returning `defer` again ends that process the same way. Returning `allow` runs the command, and
-Claude finishes the turn. Returning `deny` gives Claude an error result, and the turn goes on.
+Returning `defer` again ends that process the same way. Returning `allow` runs the command, and The
+model finishes the turn. Returning `deny` gives the model an error result, and the turn goes on.
 
 Pass a streaming prompt that sends nothing and stays open until the first result. Two other prompt
 shapes break the resume:
 
-- `prompt: ''` sends an empty user message after the deferred call resolves, so Claude starts a
+- `prompt: ''` sends an empty user message after the deferred call resolves, so the model starts a
   second turn and makes a new tool call.
 - An input stream that ends at once closes the channel that carries hook callbacks. Claude Code
   resolves the deferred call without the hook, as
@@ -152,8 +152,8 @@ Defer leaves nothing in memory, so the end of the process is part of the design.
 ### Defer a parallel batch
 
 The hooks docs say `defer` works only for a single tool call, and that in a batch Claude Code
-ignores it with a warning and runs the tools. In two runs of this build, Claude makes both calls in
-one API message, and both defer:
+ignores it with a warning and runs the tools. In two runs of this build, the model makes both calls
+in one API message, and both defer:
 
 ```text
 2.7s tool_use toolu_…pVLZ {"command":"echo batch-one-ran"}
@@ -166,9 +166,9 @@ one API message, and both defer:
 
 The debug log has no warning. On resume with `allow`, only the second call runs. The transcript
 keeps the first `tool_use` with no `tool_result`, Claude Code adds
-`Continue from where you left off.`, and Claude issues the first command again under a new id. An
+`Continue from where you left off.`, and the model issues the first command again under a new id. An
 adapter that defers a batch sees only its last call in `deferred_tool_use`. The other calls run only
-if Claude issues them again after the resume, each with a new id and a new `PreToolUse` check.
+if the model issues them again after the resume, each with a new id and a new `PreToolUse` check.
 
 ## Untested
 

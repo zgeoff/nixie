@@ -80,9 +80,9 @@ decision `{"decision":"allow","rule":"Bash"}`.
 
 An answer must match the tool's output type from
 `.claude-plugin/types/claude-code-tools/index.d.ts`. For Bash, that type is
-`{ stdout, stderr, interrupted }`. A plain string fails closed: Claude reads an `is_error` result,
-and the tool does not run. The mods docs list a result of the wrong shape among the failures that
-skip a hook, so this case behaves differently from the docs.
+`{ stdout, stderr, interrupted }`. A plain string fails closed: the model reads an `is_error`
+result, and the tool does not run. The mods docs list a result of the wrong shape among the failures
+that skip a hook, so this case behaves differently from the docs.
 
 A `tool.check` deny reaches the SDK stream as a `permission_denied` system message, which the
 adapter can log. A `tool.call` deny reaches the stream only as the tool result.
@@ -110,7 +110,7 @@ triggers the failure, and a second call that a working policy denies.
   - Debug log: `hooks worker: no answer to a heartbeat ...`, then
     `nixie-busy-loop was unloaded: it crashed the hooks worker`
 
-The `.catch` handler receives `next.error.kind` and `next.error.message`, so Claude reads
+The `.catch` handler receives `next.error.kind` and `next.error.message`, so the model reads
 `nixie policy failed (throw: nixie-throw-hook-catch: hook failed), so the command did not run.`
 
 A `.catch` handler does not help the busy loop. Claude Code unloads the whole mod, so the handler
@@ -149,13 +149,13 @@ a `/nixie-alive` command with `immediate: true` and reads the command list:
 This gives the adapter three checks, in order of when they fire:
 
 - At start: stop the session when `init.slash_commands` lacks the mod's command. This catches a
-  module that throws at load before Claude makes any tool call.
+  module that throws at load before the model makes any tool call.
 - Mid-session: treat a `commands_changed` message without the command as an unloaded policy, and
   call `interrupt()` or `close()`. The message arrives about 6 s after the hook starts, 0.2 s before
   the wedged call's result, so the adapter learns of the unload only as that call runs.
 - On demand: send `/nixie-alive` when `slash_commands` lists it. Claude Code runs a local command
-  without a model call. Sent after the unload, the text goes to Claude as a plain prompt instead, so
-  check the command list first.
+  without a model call. Sent after the unload, the text goes to the model as a plain prompt instead,
+  so check the command list first.
 
 `reloadPlugins()` loads the mod again after an unload and restores the command. `getHooksListing()`
 returns no events in these runs. Its type describes the listing that the `/hooks` menu shows, which
