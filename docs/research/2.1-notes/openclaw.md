@@ -158,7 +158,7 @@ OpenClaw has no hard spending stop; the only cap is LiteLLM `max_budget`.
   RCE. A claim of 135k to 220k exposed instances conflicts with these counts.
 - OpenClaw closes attack chains that rely on prompt injection alone as by design.
 
-## What nixie borrows
+## Worth borrowing
 
 - memory provenance columns that the model cannot write
 - durable approvals bound to the exact request, with no free-text consent
@@ -167,7 +167,7 @@ OpenClaw has no hard spending stop; the only cap is LiteLLM `max_budget`.
 - steering semantics with synthetic skipped results
 - an owner install-policy hook that fails closed
 
-## What nixie avoids
+## Worth avoiding
 
 - an LLM in the policy path
 - taint tracking used only for memory

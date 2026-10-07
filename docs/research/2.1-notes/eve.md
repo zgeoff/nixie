@@ -121,7 +121,7 @@ A sandbox provider implements `prepare`, `start`, and `resume`, and returns a ha
 - CLI telemetry is on by default.
 - On Vercel, trace export to Vercel is on by default.
 
-## What nixie borrows
+## Worth borrowing
 
 - steer and queue semantics
 - approvals as durable request and resolution events, with a responder policy
@@ -131,7 +131,7 @@ A sandbox provider implements `prepare`, `start`, and `resume`, and returns a ha
 - the channel identity rules
 - continuation prompts at session limits
 
-## What nixie avoids
+## Worth avoiding
 
 - defaults that fail open
 - an LLM classifier as a gate

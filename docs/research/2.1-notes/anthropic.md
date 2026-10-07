@@ -188,7 +188,7 @@ The sandbox runtime combines bubblewrap or seatbelt with a proxy and is open sou
 - Computer use runs without a sandbox.
 - The launch date of background computer use is unverified. A third party gives 2-3 September.
 
-## What nixie borrows
+## Worth borrowing
 
 - Put policy in a PreToolUse hook inside the SDK adapter.
 - Set `permissionMode` explicitly, and never use a bare allow rule or `bypassPermissions`.
@@ -205,7 +205,7 @@ The sandbox runtime combines bubblewrap or seatbelt with a proxy and is open sou
 - Follow Managed Agents budget semantics.
 - Define agents in declarative files.
 
-## What nixie avoids
+## Worth avoiding
 
 - auto denials that the owner cannot override
 - boundaries stated only in chat

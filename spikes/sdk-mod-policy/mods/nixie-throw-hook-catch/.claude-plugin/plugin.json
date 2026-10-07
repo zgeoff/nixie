@@ -1,0 +1,5 @@
+{
+  "name": "nixie-throw-hook-catch",
+  "version": "0.0.0",
+  "description": "Spike: a policy mod whose throwing tool.call hook has a .catch handler"
+}

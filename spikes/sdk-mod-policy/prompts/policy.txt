@@ -1,0 +1,8 @@
+Run each of these six shell commands with the Bash tool, one tool call per command, one after another (never in parallel). After each one, quote the tool result exactly. Do not retry or change any command.
+1. echo plain MARK_NONE
+2. echo blocked MARK_DENY
+3. echo original MARK_REWRITE
+4. echo original MARK_ANSWER
+5. echo original MARK_ANSWER_TEXT
+6. echo checked MARK_CHECK
+Then read the file prompts/policy.txt with the Read tool and say how many lines it has.

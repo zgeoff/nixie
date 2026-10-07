@@ -251,7 +251,7 @@ The 3 projects differ on these attributes:
 | Decision log     | none                   | AuditEnvelope          | unwired hash chain          |
 | Voice            | SMS and voice by skill | none                   | full-duplex                 |
 
-### What nixie borrows
+### Worth borrowing
 
 - typed effects plus an unoverridable always-ask set: `Financial`, `ModifyApproval`, and
   `ModifyBudget`
@@ -265,7 +265,7 @@ The 3 projects differ on these attributes:
 - a `BudgetExhausted` check before each model call
 - an approver channel that fails closed
 
-### What nixie avoids
+### Worth avoiding
 
 - opt-in security, or security that silently falls back; nixie refuses to start instead
 - approvals that are deleted or held only in memory
