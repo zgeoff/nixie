@@ -38,9 +38,9 @@ and the broker kept the owner's token out of the sandbox.
   output.
 - On the host, nixie passes a neutral working directory, because the system prompt carries the
   host's working directory even with every built-in tool off.
-- In an imp, an allow entry admits a whole address, so the spike's imp reached imp's management API
-  on the host. The sandboxed placement needs a port-level allow entry in imp, or nixie's endpoint on
-  an address that serves nothing else.
+- In imp 0.38.1, an allow entry admits a whole address, so the spike's imp reached imp's management
+  API on the host. The sandboxed placement needs port-level allow entries, a candidate change to
+  imp, or nixie's endpoint on an address that serves nothing else.
 - In an imp, nixie passes the broker's proxy and CA variables to the SDK by name, and puts its own
   endpoint on `NO_PROXY`.
 - How nixie starts a coding session stays open: its own imp session, or a tool such as atc.

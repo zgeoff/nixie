@@ -27,5 +27,5 @@ tools hold the credentials on the host, so such an imp loses no capability, only
 ## Consequences
 
 - An API that such code needs becomes a nixie tool.
-- A method and path filter for imp's broker goes to imp as its own issue, because it narrows grants
+- A method and path filter for imp's broker is a candidate change to imp, because it narrows grants
   for untainted work too.
