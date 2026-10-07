@@ -96,7 +96,7 @@ from 5 to 10 tasks.
 No first-party source links Steinberger or OpenClaw to Dots. OpenAI shut Operator on 2025-08-31 and
 Atlas on 2026-08-09, according to Wikipedia.
 
-## What nixie copies
+## What nixie borrows
 
 - A fail-closed reviewer: when the reviewer reaches no decision, the action goes to the owner.
 - Proactive research that is read-only.

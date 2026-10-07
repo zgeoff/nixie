@@ -143,7 +143,7 @@ Portal applies a monthly cap.
 - The CSA note was AI-assisted and is unreviewed.
 - The iron-proxy egress proxy is opt-in and works only with Docker.
 
-## What nixie copies
+## What nixie borrows
 
 - an append-only mutation ledger with actor, hashes, and rollback, extended to policy and approvals
 - hard memory caps, staged memory writes by default, and an owner-facing timeline

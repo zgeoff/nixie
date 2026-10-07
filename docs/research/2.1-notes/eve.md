@@ -3,10 +3,10 @@
 Report: 2.1.3
 
 eve is a durable agent framework that runs on Nitro and the `@workflow/*` protocol. nixie does not
-adopt eve as its skeleton, but copies its contracts: turn steering, approvals as durable events, the
-event stream, and the memory, sandbox, and channel provider contracts. eve releases fast and carries
-open durability bugs, and several of its defaults fail open. The sources for these findings are in
-the agent report.
+adopt eve as its skeleton, but borrows its contracts: turn steering, approvals as durable events,
+the event stream, and the memory, sandbox, and channel provider contracts. eve releases fast and
+carries open durability bugs, and several of its defaults fail open. The sources for these findings
+are in the agent report.
 
 ## Where it runs
 
@@ -121,7 +121,7 @@ A sandbox provider implements `prepare`, `start`, and `resume`, and returns a ha
 - CLI telemetry is on by default.
 - On Vercel, trace export to Vercel is on by default.
 
-## What nixie copies
+## What nixie borrows
 
 - steer and queue semantics
 - approvals as durable request and resolution events, with a responder policy

@@ -251,7 +251,7 @@ The 3 projects differ on these attributes:
 | Decision log     | none                   | AuditEnvelope          | unwired hash chain          |
 | Voice            | SMS and voice by skill | none                   | full-duplex                 |
 
-### What nixie copies
+### What nixie borrows
 
 - typed effects plus an unoverridable always-ask set: `Financial`, `ModifyApproval`, and
   `ModifyBudget`

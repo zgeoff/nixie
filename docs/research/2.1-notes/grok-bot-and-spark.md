@@ -62,7 +62,7 @@ No Grok Bot CVE exists. An adjacent finding hit grok.com: Adversa reported "Cryp
 Injection" on 2026-06-03, and it was reproducible on 2026-08-19. The docs say: "Do not use separate
 Bots as a security boundary".
 
-### What nixie copies
+### What nixie borrows
 
 - Masked secrets, plus owner takeover for secret entry.
 - An owner message that preempts the current turn.
@@ -124,7 +124,7 @@ The adjacent findings come from Gemini, not Spark. In 2025, Nassi et al. showed 
 calendar-invite injection that led to memory poisoning, exfiltration, and smart-home control.
 Rehberger showed memory corruption through delayed tool invocation.
 
-### What nixie copies
+### What nixie borrows
 
 - Hard caps that skip work rather than queue it, with the skip shown to the owner.
 - A step dashboard.
