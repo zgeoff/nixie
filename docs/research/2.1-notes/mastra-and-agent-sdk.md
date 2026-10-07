@@ -101,7 +101,7 @@ Telemetry goes to PostHog at `us.posthog.com` with a hardcoded key and geoip tur
 counts, hashed host and path, OS, versions, and token totals. Only `MASTRA_TELEMETRY_DISABLED` turns
 telemetry off, and Mastra ignores `DO_NOT_TRACK`.
 
-### What nixie borrows
+### Worth borrowing
 
 - the send, queue, cancel, and abort vocabulary
 - threadless and threaded schedules
@@ -208,7 +208,7 @@ About 33 GitHub Security Advisories (GHSAs) appeared between June 2025 and Octob
 
 The lesson is that in-runtime rule matching is defence in depth only.
 
-### What nixie borrows
+### Worth borrowing
 
 - Route PreToolUse to an external policy engine, with `permissionMode` set to `dontAsk` and
   `settingSources` set to `[]`.
@@ -218,7 +218,7 @@ The lesson is that in-runtime rule matching is defence in depth only.
 - Point SessionStore at the owner's Postgres and alert on `mirror_error`.
 - Run an egress proxy with credential injection.
 
-### What nixie avoids
+### Worth avoiding
 
 - `maxBudgetUsd` as a stop
 - permission rules as the boundary

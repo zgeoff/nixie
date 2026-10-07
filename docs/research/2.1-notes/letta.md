@@ -120,7 +120,7 @@ The CVEs below belong to the retired server, except the LettaBot entry:
 Memory poisoning research includes InjecMEM, MemoryGraft, and MemGhost. A Hacker News discussion
 covers the same risk as "context poisoning".
 
-## What nixie borrows
+## Worth borrowing
 
 - Memory as a git repository of markdown files with frontmatter, mirrored to a remote the owner
   controls.
@@ -132,7 +132,7 @@ covers the same risk as "context poisoning".
 - Checkpoints at the tool boundary, and a rule never to re-execute an unrecorded call; nixie adds
   idempotency keys to that rule.
 
-## What nixie avoids
+## Worth avoiding
 
 - An unrestricted default permission mode.
 - No egress isolation.

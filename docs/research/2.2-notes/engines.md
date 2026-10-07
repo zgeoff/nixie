@@ -7,9 +7,10 @@ for nixie handles only the outer loop: timers, waits for an outside signal, step
 once, and deploys while tasks are parked for days. The test that separates the engines is whether an
 engine parks a task on an approval for days without holding a process. The comparison covers
 Temporal, Restate, DBOS, Inngest, Trigger.dev, Hatchet, and the newer contenders from 2025–2026, and
-no engine has a Claude Agent SDK integration. nixie builds the durable layer on its own event log
-with Kysely and Postgres, as explicit state machines, and borrows the semantics of Absurd,
-OpenWorkflow, and DBOS. Restate and DBOS are the fallbacks if the hand-rolled layer costs too much.
+no engine has a Claude Agent SDK integration. The research recommends building the durable layer on
+nixie's own event log with Kysely and Postgres, as explicit state machines, borrowing the semantics
+of Absurd, OpenWorkflow, and DBOS. It ranks Restate and DBOS as fallbacks if the hand-rolled layer
+costs too much.
 
 All versions and dates were checked on 2026-10-07, against the cited page or the GitHub API.
 "Unverified" marks a claim from general knowledge, and "inferred" marks a conclusion that no source
@@ -594,7 +595,7 @@ is subtle bugs in leases and wake-ups. If that cost proves too high, these are t
 - OpenWorkflow is worth a spike if a library with SQLite and CI-tested Bun matters more than
   maturity.
 
-## What nixie borrows
+## Worth borrowing
 
 - explicit state machines with one row per `(task_id, step_key)`, borrowed from the semantics of
   Absurd, OpenWorkflow, and DBOS
@@ -604,7 +605,7 @@ is subtle bugs in leases and wake-ups. If that cost proves too high, these are t
 - proposal IDs that nixie creates as the idempotency key for outside actions
 - Restate and DBOS as fallbacks if the hand-rolled layer costs too much
 
-## What nixie avoids
+## Worth avoiding
 
 - adopting an engine now, with a second log of record beside nixie's event log
 - replayed workflow code that a deploy can break while a task is parked

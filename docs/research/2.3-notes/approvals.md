@@ -293,7 +293,7 @@ lever up, so its friction budget has to come from structure:
 - tasks that produce drafts instead of sends
 - rules the owner confirms once
 
-## What nixie borrows
+## Worth borrowing
 
 - an approval record shaped like RAR `authorization_details`, bound to an AP2-style action hash,
   with a short expiry and atomic single use
@@ -308,7 +308,7 @@ lever up, so its friction budget has to come from structure:
 - rule suggestions from approvals, confirmed by the owner and checked for widening
 - risk-tiered defaults, batched parallel calls, and confirmation at intermediate points
 
-## What nixie avoids
+## Worth avoiding
 
 - rules that match command text by prefix or regex, which allow approval laundering
 - session grants that cover a tool "with any options"

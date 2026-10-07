@@ -373,7 +373,7 @@ in Cedar's Lean tooling, which the notes did not verify in-process. The taint la
 to adopt. nixie would own a port of research code whose original authors call it a research artifact
 ([CaMeL repo](https://github.com/google-research/camel-prompt-injection)).
 
-## What nixie borrows
+## Worth borrowing
 
 - Cedar in-process, with policies stored as a map from owner-visible rule name to policy text
 - schema validation of every policy edit, against a schema generated from the tool registry, as
@@ -386,7 +386,7 @@ to adopt. nixie would own a port of research code whose original authors call it
 - the Progent policy-update check: narrowing applies automatically, and widening needs approval
 - stable rule IDs for the effect gate and the taint rule, in the same record as Cedar's
 
-## What nixie avoids
+## Worth avoiding
 
 - MCP tool annotations as a source of effects
 - LLM reviewers and detectors in the decision point
