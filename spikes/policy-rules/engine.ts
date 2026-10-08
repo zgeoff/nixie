@@ -35,8 +35,7 @@ export interface ToolDecl {
 export type Check =
   | { arg: string; op: 'eq'; value: string | number | boolean }
   | { arg: string; op: 'in'; values: (string | number)[] }
-  | { arg: string; op: 'matches'; pattern: string }
-  | { arg: string; op: 'max'; value: number };
+  | { arg: string; op: 'matches'; pattern: string };
 
 export interface Lift {
   perAction: number;
@@ -161,9 +160,6 @@ function isCheckMet(check: Check, args: Record<string, unknown>, all: boolean): 
       }
       case 'matches': {
         return typeof value === 'string' && isGlobMatch(check.pattern, value);
-      }
-      case 'max': {
-        return typeof value === 'number' && value <= check.value;
       }
       default: {
         return false;
@@ -517,15 +513,6 @@ function isImplied(strong: Check, weak: Check): boolean {
       return (
         strongValues !== undefined &&
         strongValues.every((value) => typeof value === 'string' && isGlobMatch(weak.pattern, value))
-      );
-    }
-    case 'max': {
-      if (strong.op === 'max') {
-        return strong.value <= weak.value;
-      }
-      return (
-        strongValues !== undefined &&
-        strongValues.every((value) => typeof value === 'number' && value <= weak.value)
       );
     }
     default: {

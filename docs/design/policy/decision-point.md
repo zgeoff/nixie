@@ -124,6 +124,10 @@ destination in the first build, and the outbound URL check from 0015 is a later 
 2. A checker model confirms that the owner asked for this action. It sees the owner's message, with
    its pasted spans marked, and the action as structured fields, and never any tool output.
 
+A call with no destination, such as turning on a light, passes the code check with nothing to
+compare, so its consent rests on the checker alone. The checker still sees only the owner's message
+and the structured action, so injected content cannot reach it.
+
 Consent satisfies stage 5 and allows a call at stage 8. It never overrides a deny rule, the
 always-ask set or an owner's ask rule. A checker that refuses, is unsure, or cannot be reached
 counts as no consent. Which component runs the checker is a decision for the owner below.
@@ -241,7 +245,9 @@ policy docs assume the recommendation.
    - Recommendation: nixie's own checker. Without it, every direct request that no rule covers asks
      until auto-mode is on, and those prompts are defects by the measure in 0005.
    - Trade-off: a second checker model to build and measure, and one model call on each direct
-     request that no rule covers.
+     request that no rule covers. The design also reads 0006 as letting consent cover an action with
+     no destination on the checker's word alone; the owner can instead limit consent to actions with
+     a destination named word for word, and such requests then ask.
 2. **The cause of a prompt from the owner's own ask rule.** The 5 causes in 0005 have no place for a
    prompt that a rule the owner wrote asked for, such as "ask before deleting for good".
    - Options: record a sixth cause, the owner's ask rule, counted apart from the 0-prompt target; or

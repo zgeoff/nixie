@@ -15,7 +15,7 @@ const CONTEXTS: ContextKind[] = ['conversation', 'task', 'job'],
     ],
     'mail.reply': [{ to: ['sender@example.org'] }, { to: ['stranger@example.net'] }],
     'calendar.invite': [{ attendees: ['partner@example.com'] }, { attendees: ['new@example.net'] }],
-    'booking.reserve': [{ venue: 'venue:dishoom-kings-cross' }],
+    'booking.reserve': [{ venue: 'venue:copper-pot-riverside' }],
     'shop.buy': [
       { merchant: 'shop.example', amount: 12 },
       { merchant: 'shop.example', amount: 30 },

@@ -41,9 +41,11 @@ bounds.
   the [decision point](./decision-point.md#the-pipeline) passes a call only when its amount is at
   most the cap and the budget has room for it. A lift with no budget is invalid, so "spend freely"
   cannot be written.
-- **Only `spend` can be lifted in the first build.** A lift on `policy_widen` would let nixie widen
-  its own rules, and a lift on `budget_raise` is the same as a higher budget, so neither shape is
-  needed yet. A deployment that wants one gets it as a later design, under the same 3 guards.
+- **The first build ships the shape for `spend`.** Every effect in the always-ask set can be lifted,
+  as 0023 requires. A lift on `policy_widen` or `budget_raise` takes a count per period as its
+  budget, such as "nixie may add 2 allow rules a week for read-only tools", under the same 3 guards,
+  and its form is designed when an owner first asks for one. Such a lift can never create another
+  lift.
 - **Creating or widening a lift is always-ask,** with the lifting class from
   [approvals](./approvals.md#risk-class), and the passkey check once
   [0012](../../decisions/0012-high-risk-approvals.md) lands. Lowering its cap or removing it

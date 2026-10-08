@@ -147,14 +147,14 @@ const SCENARIOS: Scenario[] = [
         call: {
           tool: 'search.web',
           args: {},
-          ...buildTalk('book a table for 2 at dishoom on friday at 7'),
+          ...buildTalk('book a table for 2 at the copper pot on friday at 7'),
         },
       },
       {
         call: {
           tool: 'booking.reserve',
-          args: { venue: 'venue:dishoom-kings-cross' },
-          ...buildTalk('book a table for 2 at dishoom on friday at 7'),
+          args: { venue: 'venue:copper-pot-riverside' },
+          ...buildTalk('book a table for 2 at the copper pot on friday at 7'),
         },
         fromSearch: true,
         expectPrompt: 'outside_steering',

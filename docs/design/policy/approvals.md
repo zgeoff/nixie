@@ -135,7 +135,3 @@ item alone.
 A gap group with a proposed rule shows its pending items together with the proposal, so the owner
 can approve the items and accept the rule in one visit. Memory proposals from
 [0011](../../decisions/0011-memory-writes.md) join the routine items.
-
-The client sends a content-free push when the first item joins an empty sheet, and then at most one
-push per hour while items wait, by default, which the owner can change. **Why:** proposals queue
-while the owner is away, and one push per item would bring back the friction the sheet removes.
