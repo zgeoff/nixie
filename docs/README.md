@@ -47,6 +47,8 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   untrusted, and taint applies to jobs and workers in stages
 - [0016: nixie's own interfaces](./decisions/0016-own-interfaces.md) — channel adapter, trigger
   source, connector and credential store, with tools from MCP
+- [0017: Outside MCP servers](./decisions/0017-mcp-proxy.md) — every MCP server outside nixie's code
+  goes through a proxy, the owner's own included
 
 ## Research
 
