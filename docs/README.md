@@ -8,6 +8,7 @@
     <a href="./principles.md">Principles</a> •
     <a href="./scope.md">Scope</a> •
     <a href="./design/open-items.md">Open items</a> •
+    <a href="#design">Design</a> •
     <a href="#decisions">Decisions</a> •
     <a href="#research">Research</a> •
     <a href="#brainstorm">Brainstorm</a> •
@@ -28,6 +29,20 @@
 `design/` holds designs for what is not built yet, and `architecture/` will hold what is built. Both
 use the same topics as the decisions below.
 
+## Design
+
+Designs for what is not built yet, grouped by the same topics as the decisions. Each design links
+the decisions it rests on.
+
+### Core
+
+- [The event log and records](./design/core/event-log.md) — what a record holds, append-only
+  semantics, the projections behind the live view and the task board, export and retention
+- [Tasks](./design/core/tasks.md) — tasks as state machines with leases and an inbox, waits, routing
+  from the conversation, job runs, workers in imps, and crash recovery
+- [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
+  approval consumption, reconciliation per connector, and unknown outcomes for the owner
+
 ## Decisions
 
 What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
@@ -47,6 +62,12 @@ The runtime, the durable layer, and how the main thread and tasks share work.
   on a durable queue, and an unknown outcome is retried only with an idempotency key or a check
 - [0025: The database and the topology](./decisions/0025-database-and-topology.md) — one SQLite
   database with nixie's own dialect, and a modular monolith of workspace packages
+- [0026: Where workers and the conversation run](./decisions/0026-where-workers-and-the-conversation-run.md)
+  — an imp per worker with the whole worker inside, the conversation in a long-lived imp, and the
+  model credential as the one grant
+- [0027: Tasks and outside actions](./decisions/0027-tasks-and-outside-actions.md) — state tables
+  beside the log, the conversation as a task, pause, stop and close, catch-up runs, and unknown
+  outcomes in the digest
 
 ### Policy
 
@@ -212,3 +233,5 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   Gmail's restricted scope, and token refresh past 7 days
 - [Worker start inside an imp](../spikes/imp-worker-start/) — imp create and wake, and the SDK's
   first token inside an imp against the host
+- [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
+  `forkSession` drop a turn that never committed

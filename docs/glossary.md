@@ -12,6 +12,7 @@ whatever it settles.
 | job                | A definition: a schedule, instructions and a tool list. Each run of a job is a task        |
 | trigger            | What starts a task without the owner, such as a schedule, a webhook or a new email         |
 | tool               | Anything the model can call. Every outside action goes through one                         |
+| outside action     | An action with side effects outside nixie, run as an entry on a durable queue              |
 | effect             | What a tool declares it does, such as read, send or spend                                  |
 | rule               | An allow, ask or deny, matched on the tool, its effects and the context                    |
 | always-ask set     | Spending money, widening rules or approvals, and raising a budget                          |

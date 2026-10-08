@@ -24,9 +24,10 @@ after the first build.
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
 - **How a sandboxed session reaches nixie's endpoint.** In imp 0.38.1, an allow entry admits a whole
   address, so a sandboxed session that reaches nixie's tools on the host reaches imp's management
-  API too ([0003](../decisions/0003-sdk-placement.md)). The options are port-level allow entries in
-  imp, an imp network or granted hostname, or nixie's endpoint on an address that serves nothing
-  else.
+  API too ([0003](../decisions/0003-sdk-placement.md)). Every worker and the conversation run in an
+  imp under [0026](../decisions/0026-where-workers-and-the-conversation-run.md), so the first build
+  needs the answer. The options are port-level allow entries in imp, an imp network or granted
+  hostname, or nixie's endpoint on an address that serves nothing else.
 - **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
   `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
   whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
@@ -93,10 +94,13 @@ after the first build.
 - **Main-thread routing and the task board.** The main thread routes each owner message to a task
   and names where it sent it, from a live task board of every task's status
   ([0018](../decisions/0018-main-thread-and-tasks.md)). Routing quality is on the critical path,
-  because a misrouted message fails quietly.
+  because a misrouted message fails quietly. [Tasks](./core/tasks.md#routing-from-the-conversation)
+  proposes the routing tools and records.
 - **The live view.** The live view shows running and finished tasks and what each did and why, as a
   projection of the event log that the task board reads too
-  ([0018](../decisions/0018-main-thread-and-tasks.md)).
+  ([0018](../decisions/0018-main-thread-and-tasks.md)). The
+  [event log design](./core/event-log.md#the-live-view-and-the-task-board) proposes how both read
+  it.
 - **Grants with expiries.** Authority granted for a period, such as "full authority to build and
   ship today", is a rule with an expiry, and widening a rule always asks
   ([0018](../decisions/0018-main-thread-and-tasks.md)). Phase 3 designs how the owner grants, sees
@@ -114,29 +118,19 @@ after the first build.
   destination comes from search results, the signal for typed workers under
   [0014](../decisions/0014-search.md).
 - **The durable layer.** nixie owns leases, durable timers, retries, wake-ups and a run viewer, each
-  with crash tests ([0001](../decisions/0001-durable-layer.md)). The design decides whether the
-  runner buffers an approval that arrives before its wait registers, and the crash tests confirm
-  that a resumed turn never repeats an outside action that ran. The estimate of 800 to 1,500 lines
-  is untested.
-- **Proposal expiry.** An unanswered proposal lapses after a set time under
-  [0006](../decisions/0006-approval-record.md), and Phase 3 picks the time and how the task learns
-  of the lapse.
+  with crash tests ([0001](../decisions/0001-durable-layer.md)), and [tasks](./core/tasks.md)
+  designs them. The crash tests confirm that a resumed turn never repeats an outside action that
+  ran, and the estimate of 800 to 1,500 lines is untested.
 - **Budgets and the spending stop.** Raising a budget is in the always-ask set from
   [0005](../decisions/0005-effects-and-taint.md), and no decision sets where nixie enforces a
   budget. The research recommends a hard spending stop in a proxy in front of the model, not in the
   SDK ([2.1 landscape](../research/2.1-landscape.md#recommendation-for-22)).
 - **Rule identity and snapshot hashing.** Snapshots under
   [0013](../decisions/0013-definition-versioning.md) need a canonical form for persona and job
-  definitions written as markdown, and a retention period that weighs replay against erasure. A
-  rule's ID stays fixed across edits or each edit mints a new one, and the last-fired record in
-  [0006](../decisions/0006-approval-record.md) needs a fixed ID.
-- **Erasable fields and keys.** Crypto-shredding from [0010](../decisions/0010-memory-store.md) can
-  cover other personal fields in the event log, such as message bodies and a contact's details.
-  Phase 3 picks which fields get their own key, and where the owner's backup key lives so that a
-  restore works when the host is lost.
-- **Memory recall and consolidation.** Phase 3 decides whether a record that recalled memory stamps
-  the version of each item it read, so a replay sees what the model saw, and when consolidation runs
-  as a proposal under [0011](../decisions/0011-memory-writes.md).
+  definitions written as markdown. A rule's ID stays fixed across edits or each edit mints a new
+  one, and the last-fired record in [0006](../decisions/0006-approval-record.md) needs a fixed ID.
+- **Memory consolidation.** Phase 3 decides when consolidation runs as a proposal under
+  [0011](../decisions/0011-memory-writes.md).
 - **Upgrades on the host.** A merged upgrade reaches the host by a webhook, a poll from the host, or
   the owner running one command, and a poll needs no inbound route
   ([0020](../decisions/0020-deployment.md)). The seeding conflict view and the export of runtime
@@ -147,8 +141,6 @@ after the first build.
 - **The coding agent adapter and running code.** Design the adapter interface from
   [0022](../decisions/0022-coding-and-code-execution.md), with atc as the first adapter, and the
   tool that runs code in a disposable imp with no grants, which comes early.
-- **Export beyond memory.** [0010](../decisions/0010-memory-store.md) exports memory. Exporting the
-  event log and conversations in the same way, so the owner can take everything, is still to design.
 
 ## Later stages
 
@@ -206,3 +198,11 @@ design. Until imp does, nixie designs around the current behaviour.
 - **A fuller audit.** The broker records method, host, path, status and sizes for each credentialed
   request, and no refused request. An audit with refused requests lets the broker's log feed nixie's
   record under [0007](../decisions/0007-grants-and-taint.md).
+- **A warm template.** A template taken after a warm-up turn, with entropy and identity reseeded on
+  restore, would let a new worker skip the 2 s of cold reads that the
+  [imp worker spike](../../spikes/imp-worker-start/README.md) measured. imp forks are disk-only by
+  design, because a memory fork duplicates entropy and IDs, so the reseed is what makes a memory
+  template safe ([tasks](./core/tasks.md#workers)).
+- **Page cache kept across sleep.** For imps marked long-lived, keeping the guest's page cache in
+  the snapshot would let a woken imp skip cold reads. It costs larger snapshots, a slightly slower
+  sleep and more pressure on host memory, and its benefit is unmeasured.
