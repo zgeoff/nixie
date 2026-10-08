@@ -205,3 +205,5 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   and inside an imp
 - [Model choice for chat, memory and tools](../spikes/model-eval/) — persona, invented memory, tool
   honesty, cost and latency per model
+- [A personal Google OAuth client](../spikes/google-oauth/) — an unverified client in production,
+  Gmail's restricted scope, and token refresh past 7 days
