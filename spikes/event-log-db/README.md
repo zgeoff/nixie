@@ -200,6 +200,10 @@ fsync on commit, and a power loss can drop the last commits, though a process cr
 it. The multi-second tails come from SQLite's busy handler, which backs off while 4 processes fight
 for the write lock.
 
+A run of awaited `bun:sqlite` transactions on the main thread never yields to timers. In a separate
+run, the serial burst of 500 held a 5 ms timer back for 44 ms, the length of the whole burst, where
+the Worker dialect held it back for 0.1 ms.
+
 ### Operations
 
 | Measure, 1,000,000 events           | SQLite                                       | Postgres                          |

@@ -1,7 +1,7 @@
 /* oxlint-disable no-await-in-loop -- kills happen in sequence, with a pause between each */
 // Child processes for correctness.ts: worker pools that it kills and pauses, and the counters each
 // process prints when it exits.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import type { Subprocess } from 'bun';
 import type { ClaimMode } from './core.ts';
 import type { Store } from './db.ts';
@@ -121,9 +121,18 @@ async function runKills(pool: Pool, kills: number): Promise<void> {
   }
 }
 
+function isStopped(pid: number): boolean {
+  const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+  return stat.slice(stat.lastIndexOf(')') + 2).startsWith('T');
+}
+
+// Waits until the worker has stopped itself (Linux /proc), then for its lease to expire.
 async function sendContinue(pool: Pool, paused: Proc | undefined): Promise<void> {
   if (!paused) {
     return;
+  }
+  while (!isStopped(paused.proc.pid)) {
+    await Bun.sleep(50);
   }
   await Bun.sleep(LEASE_MS * 2);
   paused.proc.kill('SIGCONT');

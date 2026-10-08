@@ -7,7 +7,7 @@ image=postgres:18.6
 rm -rf results && mkdir -p results
 
 docker run -d --name nixie-spike-pg -e POSTGRES_USER=spike -e POSTGRES_PASSWORD=spike \
-  -e POSTGRES_DB=spike -p 55432:5432 -v nixie-spike-pgdata:/var/lib/postgresql "$image" > /dev/null
+  -e POSTGRES_DB=spike -p 127.0.0.1:55432:5432 -v nixie-spike-pgdata:/var/lib/postgresql "$image" > /dev/null
 cleanup() {
   docker rm -f nixie-spike-pg nixie-spike-litestream > /dev/null 2>&1 || true
   docker volume rm nixie-spike-pgdata > /dev/null 2>&1 || true

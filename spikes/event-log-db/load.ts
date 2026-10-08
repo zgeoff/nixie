@@ -62,6 +62,9 @@ async function withLag(fn: () => Promise<Summary>): Promise<Summary> {
       lag.expected = t + 5;
     }, 5),
     summary = await fn();
+
+  // A synchronous bun:sqlite burst starves the timer until fn returns; yield so it records that block.
+  await Bun.sleep(20);
   clearInterval(poll);
   return { ...summary, maxLagMs: Number(lag.max.toFixed(1)) };
 }
