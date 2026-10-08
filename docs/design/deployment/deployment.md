@@ -81,12 +81,12 @@ The imp images follow the consequence in 0026, a minimal base with only what one
 | Image        | Holds                                                        | Runs                                    |
 | ------------ | ------------------------------------------------------------ | --------------------------------------- |
 | Conversation | Bun, nixie's turn runner, the SDK with the glibc Claude Code | The long-lived conversation imp         |
-| Worker       | The same as the conversation image                           | One imp per worker run                  |
+| Worker       | The conversation image plus the code runtimes                | One imp per worker run                  |
 | Code         | The language runtimes the code tool offers, and no SDK       | Code in a disposable imp with no grants |
 
-The conversation and worker images start as one image built twice under 2 names, so each can change
-without touching the other. The code image belongs to the design of the code tool under
-[0022](../../decisions/0022-coding-and-code-execution.md), which picks its runtimes.
+The worker image adds the code runtimes, because the code tool called from a worker runs in that
+worker's own imp. The code tool under [0022](../../decisions/0022-coding-and-code-execution.md)
+picks the runtimes, in the connectors design.
 
 imp boots any OCI image, and impd adds an image from a public registry reference in about 6 to 10 s
 ([imp images](https://github.com/zgeoff/imp/blob/v0.40.2/docs/guides/images.md)). nixie adds each
@@ -202,8 +202,9 @@ The same images run on Kubernetes, managed by the owner's Pulumi program in an i
 apart from the definitions repo, under 0020. The program pins the nixie image by digest, as the
 Compose file does. The shape follows from one SQLite writer:
 
-- one replica, in a StatefulSet with a `ReadWriteOnce` volume and the `Recreate` update strategy, so
-  2 pods never open the database at once
+- one replica, in a StatefulSet with a `ReadWriteOnce` volume and the default `RollingUpdate`
+  strategy, which stops the one pod before it starts its replacement, so 2 pods never open the
+  database at once
 - the sops file and the host key as a Kubernetes Secret mounted read-only, decrypted by nixie at
   start as on Compose
 - impd on each node that runs nixie, outside the cluster or as a privileged pod with `/dev/kvm`

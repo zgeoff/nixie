@@ -140,16 +140,17 @@ check "a plain container restart decrypts again and comes back healthy" test "$(
 decrypt_ms=$(docker logs "$container" 2>&1 | jq -r 'select(.decryptMs) | .decryptMs' | tail -1)
 
 echo "== memory items, forget, backups"
+ids=()
 for text in alpha bravo charlie; do
-  curl -fsS -X POST --data "$text" "http://127.0.0.1:$NIXIE_PORT/memory" > /dev/null
+  ids+=("$(curl -fsS -X POST --data "$text" "http://127.0.0.1:$NIXIE_PORT/memory" | jq -r .id)")
 done
-wrapped2=$(curl -fsS "http://127.0.0.1:$NIXIE_PORT/debug-wrapped/2" | jq -r .wrappedHex)
+wrapped2=$(curl -fsS "http://127.0.0.1:$NIXIE_PORT/debug-wrapped/${ids[1]}" | jq -r .wrappedHex)
 run_app() { compose exec -T nixie bun app.ts "$@" 2>> "$work/app-stderr.log" | tee -a "$work/app-stdout.log"; }
 started=$(date +%s%N)
 run_app backup split > /dev/null
 backup_ms=$(ms_since "$started")
 run_app backup naive > /dev/null
-curl -fsS -X POST "http://127.0.0.1:$NIXIE_PORT/forget/2" > /dev/null
+curl -fsS -X POST "http://127.0.0.1:$NIXIE_PORT/forget/${ids[1]}" > /dev/null
 check "item 2 reads as forgotten in the live store" \
   test "$(curl -fsS "http://127.0.0.1:$NIXIE_PORT/memory" | jq -c '[.[] | .text]')" = '["alpha",null,"charlie"]'
 key_bytes_gone() {
@@ -204,7 +205,7 @@ check "build 2 is healthy at schema 2" test "$(health | jq -r '"\(.build) \(.sch
 pre_migration=$(ls "$work/host/data/backups"/pre-migration-1-to-2-*.db 2> /dev/null | head -1)
 check "build 2 took a database backup before it migrated" test -n "$pre_migration"
 curl -fsS -X POST --data delta "http://127.0.0.1:$NIXIE_PORT/memory" > /dev/null
-curl -fsS -X POST "http://127.0.0.1:$NIXIE_PORT/forget/3" > /dev/null
+curl -fsS -X POST "http://127.0.0.1:$NIXIE_PORT/forget/${ids[2]}" > /dev/null
 
 git -C "$repo" revert --no-edit HEAD > /dev/null
 if compose up -d --wait > /dev/null 2>&1; then reverted_up=0; else reverted_up=1; fi
@@ -220,6 +221,11 @@ rollback_ms=$(ms_since "$started")
 check "after the restore, build 1 is healthy at schema 1" test "$(health | jq -r '"\(.build) \(.schema)"')" = "1 1"
 check "the rollback lost item 4, written after the upgrade, and item 3 stays forgotten" \
   test "$(curl -fsS "http://127.0.0.1:$NIXIE_PORT/memory" | jq -c '[.[] | .text]')" = '["alpha",null,null]'
+write_after_rollback() {
+  curl -fsS -X POST --data foxtrot "http://127.0.0.1:$NIXIE_PORT/memory" > /dev/null &&
+    test "$(curl -fsS "http://127.0.0.1:$NIXIE_PORT/memory" | jq -r '.[3].text')" = foxtrot
+}
+check "a write after the rollback succeeds, with no ID reused from the discarded span" write_after_rollback
 run_app restore keys latest /data/check-stale-keys > /dev/null
 check "a key store copy from before the forget would bring item 3 back (never restore it on rollback)" \
   test "$(run_app read /data/nixie.db /data/check-stale-keys/keys.db | jq -r '.[2].text')" = charlie

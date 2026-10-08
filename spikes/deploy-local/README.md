@@ -4,7 +4,7 @@ This spike runs the Compose deployment from [decision 0020](../../docs/decisions
 on one machine with local containers only: a stand-in nixie image pinned by digest from a local
 registry, secrets encrypted with sops and age, backups to local restic repos, a restore on a clean
 host directory from the owner's recovery key alone, and an upgrade rolled back as a revert plus a
-restore. All 21 checks passed. A tmpfs volume does not carry decrypted secrets from one container to
+restore. All 22 checks passed. A tmpfs volume does not carry decrypted secrets from one container to
 another, so the stand-in decrypts inside its own process. The key store needs its own restic repo
 that keeps one snapshot, or forgetting does not reach the backups.
 
@@ -32,11 +32,11 @@ that keeps one snapshot, or forgetting does not reach the backups.
 ## Setup
 
 [`app.ts`](./app.ts) stands in for nixie. It stores memory items encrypted with AES-GCM, a key per
-item, and keeps each key wrapped with AES-KW by the deployment key in a separate `keys.db` with
-`secure_delete` on. It decrypts the sops file at start by running `sops decrypt` and keeps the
-plaintext in memory. Build 1 reads and writes schema 1. Build 2 renames the memory table and adds a
-column, taking a `VACUUM INTO` copy of the database first, so build 1 cannot read a database build 2
-migrated, and refuses to start on it with exit code 78. Its commands:
+item under a random ID, and keeps each key wrapped with AES-KW by the deployment key in a separate
+`keys.db` with `secure_delete` on. It decrypts the sops file at start by running `sops decrypt` and
+keeps the plaintext in memory. Build 1 reads and writes schema 1. Build 2 renames the memory table
+and adds a column, taking a `VACUUM INTO` copy of the database first, so build 1 cannot read a
+database build 2 migrated, and refuses to start on it with exit code 78. Its commands:
 
 | Command                           | Does                                                          |
 | --------------------------------- | ------------------------------------------------------------- |
@@ -96,6 +96,7 @@ PASS the reverted pin alone does not start: build 1 refuses schema 2
 PASS build 1 says why it refused
 PASS after the restore, build 1 is healthy at schema 1
 PASS the rollback lost item 4, written after the upgrade, and item 3 stays forgotten
+PASS a write after the rollback succeeds, with no ID reused from the discarded span
 PASS a key store copy from before the forget would bring item 3 back (never restore it on rollback)
 ```
 
@@ -153,6 +154,11 @@ before migrating. `git revert` alone left nixie down, because build 1 refused sc
 why. Restoring the pre-migration copy brought build 1 back healthy, and lost the item written after
 the upgrade. An item forgotten after the upgrade stayed forgotten, because the rollback kept the
 live key store, while the key store's backup from before that forget would have brought it back.
+
+A first version keyed items by row number. After the rollback, the restored database handed the next
+item the row number of the item written after the upgrade, whose key the live key store still held,
+and the write failed on the key store's unique key. With random IDs, a write after the rollback
+succeeded.
 
 ## Untested
 

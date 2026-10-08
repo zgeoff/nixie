@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
 
 interface MemoryRow {
   ct: Uint8Array;
-  id: number;
+  id: string;
   iv: Uint8Array;
 }
 
@@ -26,7 +26,7 @@ interface Secrets {
 }
 
 interface Item {
-  id: number;
+  id: string;
   text: string | null;
 }
 
@@ -80,7 +80,7 @@ function loadKeyStore(path: string): Database {
   keys.run('PRAGMA journal_mode = WAL');
   keys.run('PRAGMA synchronous = FULL');
   keys.run('PRAGMA secure_delete = ON');
-  keys.run('CREATE TABLE IF NOT EXISTS keys (item_id INTEGER PRIMARY KEY, wrapped BLOB NOT NULL)');
+  keys.run('CREATE TABLE IF NOT EXISTS keys (item_id TEXT PRIMARY KEY, wrapped BLOB NOT NULL)');
   return keys;
 }
 
@@ -112,7 +112,7 @@ function applyMigrations(db: Database): number {
     process.exit(78);
   }
   if (current === 0) {
-    db.run('CREATE TABLE memory (id INTEGER PRIMARY KEY, iv BLOB NOT NULL, ct BLOB NOT NULL)');
+    db.run('CREATE TABLE memory (id TEXT PRIMARY KEY, iv BLOB NOT NULL, ct BLOB NOT NULL)');
     db.run('PRAGMA user_version = 1');
   }
   if (current >= 1 && current < schemaOfBuild) {
@@ -133,7 +133,7 @@ async function createItem(
   keys: Database,
   kek: CryptoKey,
   text: string,
-): Promise<number> {
+): Promise<string> {
   const algorithm = { length: 256, name: 'AES-GCM' },
     iv = crypto.getRandomValues(new Uint8Array(12)),
     plain = new TextEncoder().encode(text);
@@ -143,8 +143,8 @@ async function createItem(
   const ct = new Uint8Array(sealed),
     wrapped = new Uint8Array(wrappedKey);
   const row = db
-    .query(`INSERT INTO ${memoryTable} (iv, ct) VALUES ($iv, $ct) RETURNING id`)
-    .get({ ct, iv }) as { id: number };
+    .query(`INSERT INTO ${memoryTable} (id, iv, ct) VALUES ($id, $iv, $ct) RETURNING id`)
+    .get({ ct, id: crypto.randomUUID(), iv }) as { id: string };
   keys
     .query('INSERT INTO keys (item_id, wrapped) VALUES ($id, $wrapped)')
     .run({ id: row.id, wrapped });
@@ -158,7 +158,7 @@ async function readItems(
   table: string,
 ): Promise<Item[]> {
   const out: Item[] = [],
-    rows = db.query(`SELECT id, iv, ct FROM ${table} ORDER BY id`).all() as MemoryRow[],
+    rows = db.query(`SELECT id, iv, ct FROM ${table} ORDER BY rowid`).all() as MemoryRow[],
     lookup = keys.query('SELECT wrapped FROM keys WHERE item_id = $id');
   for (const row of rows) {
     const key = lookup.get({ id: row.id }) as KeyRow | null;
@@ -181,7 +181,7 @@ async function readItems(
   return out;
 }
 
-function removeKey(keys: Database, id: number): boolean {
+function removeKey(keys: Database, id: string): boolean {
   const result = keys.query('DELETE FROM keys WHERE item_id = $id').run({ id });
   keys.run('PRAGMA wal_checkpoint(TRUNCATE)');
   return result.changes === 1;
@@ -227,12 +227,12 @@ async function runServer(): Promise<void> {
         return Response.json(items);
       }
       if (parts[0] === 'forget' && request.method === 'POST') {
-        return Response.json({ forgotten: removeKey(keys, Number(parts[1])) });
+        return Response.json({ forgotten: removeKey(keys, parts[1] ?? '') });
       }
       if (parts[0] === 'debug-wrapped') {
         const key = keys
           .query('SELECT wrapped FROM keys WHERE item_id = $id')
-          .get({ id: Number(parts[1]) }) as KeyRow | null;
+          .get({ id: parts[1] ?? '' }) as KeyRow | null;
         const wrappedHex = key ? Buffer.from(key.wrapped).toString('hex') : null;
         return Response.json({ wrappedHex });
       }

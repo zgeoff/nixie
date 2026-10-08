@@ -43,10 +43,12 @@ covers the manual route. A webhook can trigger the same script later without cha
 
 The deploy script runs these stages:
 
-1. `git fetch`, and stop when the deployment repo has no new commit.
-2. `docker compose pull`, so the old version keeps running while the new image downloads.
-3. `docker compose up -d --wait`, which stops the old container and starts the new one.
-4. On failure, report to the heartbeat service from
+1. `git fetch`, and stop when the deployment branch has no new commit.
+2. `git merge --ff-only` to the fetched commit, so the Compose file on disk holds the new pin. A
+   checkout that cannot fast-forward stops the script.
+3. `docker compose pull`, so the old version keeps running while the new image downloads.
+4. `docker compose up -d --wait`, which stops the old container and starts the new one.
+5. On failure, report to the heartbeat service from
    [deployment](./deployment.md#health-and-monitoring) and leave the failed state for the owner.
 
 The script never rolls back on its own. **Why:** a rollback is a revert in the repo, and a host that
@@ -108,6 +110,13 @@ The deploy spike ran these steps: build 1 refused build 2's schema, came back he
 schema after the restore, and lost the item written after the upgrade. An item forgotten after the
 upgrade stayed forgotten, because the rollback kept the live key store.
 
+The live key store then holds keys for items and records that the restored database lacks. Every ID
+that keys the key store is therefore random, such as a UUID, never a row number the database hands
+out. **Why:** with row numbers, the restored database handed the next item an ID whose key the
+discarded span left behind, and the write failed on the key store's unique key. With random IDs, the
+spike wrote an item after the rollback with no clash. The keys left behind stay until the owner
+removes the set-aside database, and then nixie deletes them.
+
 The restored database lacks every record written since the upgrade, including outside actions that
 ran then. `nixie rollback` reads the set-aside database before it starts nixie, and writes a record
 for each outside action in that span, with its outcome, into the restored log. The client lists
@@ -121,5 +130,6 @@ columns, so the older build reads it.
 ## Kubernetes
 
 On Kubernetes, the owner's Pulumi program changes the digest, and a rollback reverts it in the
-infrastructure repo. The StatefulSet's `Recreate` strategy gives the same stop, copy and migrate
-stages, and the restore runs as a one-off pod with the data volume mounted.
+infrastructure repo. The one-replica StatefulSet stops the old pod before it starts the new one,
+which gives the same stop, copy and migrate stages, and the restore runs as a one-off pod with the
+data volume mounted.
