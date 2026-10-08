@@ -21,8 +21,7 @@ owner answers when they choose, singly or through the digest sheet from
   adding protection.
 - A memory write is reversible, unlike a send. A wrong memory from a clean thread, such as the model
   misreading the owner, is visible and can be undone.
-- Consolidation changes many items the owner already knows, so the owner sees the diff before it
-  applies.
+- Consolidation changes many items the owner knows, so the owner sees the diff before it applies.
 
 ## Alternatives
 
