@@ -160,13 +160,15 @@ JSON alone does not make a result clean. A schema with a `summary: string` field
 in a typed wrapper, and a search result's snippet is page text. Decision 0005's return-type rule can
 apply field by field, by the schema's types:
 
-| Schema field                                         | Taint                                      |
-| ---------------------------------------------------- | ------------------------------------------ |
-| boolean, number, integer, `enum`, `const`            | Clean                                      |
-| string with `format` `date-time`, `uri`, `email`     | Clean once the value parses as that format |
-| string with a short `maxLength` and a `pattern`      | Clean once the value matches               |
-| any other string                                     | Taints                                     |
-| no `outputSchema`, or a result that fails validation | Taints                                     |
+| Schema field                                         | Taint                                     |
+| ---------------------------------------------------- | ----------------------------------------- |
+| boolean, number, integer                             | Clean                                     |
+| `enum` or `const` whose values the owner reviewed    | Clean                                     |
+| string with `format` `date-time`                     | Clean once nixie parses it as a date      |
+| string with `format` `uri` or `email`                | Taints: the path or local part holds text |
+| string with a `maxLength` and a `pattern`            | Taints: `^.{1,80}$` admits an instruction |
+| any other string                                     | Taints                                    |
+| no `outputSchema`, or a result that fails validation | Taints                                    |
 
 The schema comes from the same untrusted server, which can change it. A server can also change a
 tool's description after the owner approved it, a pattern that threat catalogues call a rug pull
@@ -262,9 +264,10 @@ that reads untrusted content belongs inside an imp with no grants.
 - **Proxy third-party MCP servers through a pinning wrapper.** The owner adds a server, nixie
   records each tool's hashed description and schemas, the owner declares effects, and a changed hash
   asks again. The trade-off is a review step for every server update.
-- **Judge taint by the output schema's field types.** Booleans, enums, numbers and strings with a
-  checked format stay clean; any other string taints. The cost is that most third-party tools, which
-  return free text, taint until someone writes a typed wrapper.
+- **Judge taint by the output schema's field types.** Booleans, numbers, enums whose values the
+  owner reviewed, and dates that nixie parses stay clean. Any other string taints, URLs and
+  patterned strings included, because each can hold an instruction. The cost is that most
+  third-party tools, which return free text, taint until someone writes a typed wrapper.
 - **Use the v2 TypeScript SDK client in `auto` mode.** It reaches servers of both eras. The cost is
   following a fast-moving v2 line.
 - **Keep connectors for the owner's own accounts as nixie code, not as MCP servers.** The owner's

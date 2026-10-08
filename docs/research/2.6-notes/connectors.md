@@ -269,9 +269,9 @@ Sources: [Brave API](https://brave.com/search/api/),
 [SerpAPI pricing](https://serpapi.com/pricing), [SerpAPI legal](https://serpapi.com/legal)
 [2026-08-27], [SearXNG search API](https://docs.searxng.org/dev/search_api.html).
 
-SearXNG is the only option that keeps queries on the owner's host, but it is a metasearch engine
-that aggregates results from up to 261 search services ([SearXNG docs](https://docs.searxng.org/)).
-It sends each query on to the services it aggregates, from the host's address, so those services see
+SearXNG is the only option that runs on the owner's host, but it is a metasearch engine that
+aggregates results from up to 261 search services ([SearXNG docs](https://docs.searxng.org/)). It
+sends each query on to the services it aggregates, from the host's address, so those services see
 the queries without an account attached. Its JSON output is off by default; the owner adds `json` to
 `search.formats` in `settings.yml`, or the API returns 403. Kagi's terms come closest among hosted
 providers, and Exa's are the furthest, since it trains on query data.

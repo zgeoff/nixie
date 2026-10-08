@@ -283,7 +283,9 @@ but it describes itself as "experimental" ([tsidp](https://github.com/tailscale/
   is a container runtime, which the host runs for imp in any case.
 - **sops with age as the default for secrets, and an `exec` resolver for 1Password and others.**
   sops keeps every secret on the owner's hosts and in the repo's history. The cost is key handling:
-  losing the age key loses the secrets, and rotating a leaked key means re-encrypting every file.
+  losing the age key loses the secrets. A leaked key also decrypts every earlier commit, so recovery
+  means rotating or revoking every secret the repo ever held, not only re-encrypting the current
+  files.
 - **Upgrades through a dependency bot's pull request, with a database backup before every
   migration.** An upgrade is a merge, and a rollback is a revert plus a restore. The cost is that a
   rollback loses data written after the upgrade.
