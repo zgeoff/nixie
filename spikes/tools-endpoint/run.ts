@@ -1,6 +1,6 @@
 // oxlint-disable one-var, sort-vars, max-statements, no-await-in-loop, unicorn/prefer-add-event-listener -- spike code: runs happen one after another, and the transport tap must replace the MCP SDK on-handlers
 // Runs the Agent SDK with every built-in tool off against a local Messages API mock, with nixie's
-// tools served in-process and over HTTP, and records what reaches the model and the MCP server.
+// tools served in-process, over HTTP from a v1 server and over HTTP from a v2 server, and records what reaches the model and the MCP server.
 // No real credential: the SDK gets a dummy API key and a fresh HOME, and nothing else from the env.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -8,9 +8,8 @@ import { join } from 'node:path';
 import type { McpServerConfig, Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { mcpLog, startHttpEndpoint, startHttpEndpointV2 } from './endpoints.ts';
 import type { MockRequest } from './mock.ts';
 import { startMock } from './mock.ts';
 import { registerTools } from './tools.ts';
@@ -20,15 +19,7 @@ interface Case {
   tool: string;
 }
 
-interface McpLog {
-  direction: 'in' | 'out';
-  header?: string | null;
-  message: unknown;
-  via: string;
-}
-
 const resultsDir = join(import.meta.dir, 'results'),
-  mcpLog: McpLog[] = [],
   cases: Case[] = [
     { input: { url: 'https://shop.example/item' }, tool: 'price_text' },
     { input: { url: 'https://shop.example/item' }, tool: 'price_bare' },
@@ -58,36 +49,6 @@ function setupTap(transport: Transport, via: string): void {
   transport.send = async (message, options) => {
     mcpLog.push({ direction: 'out', message, via });
     await send(message, options);
-  };
-}
-
-function startHttpEndpoint(): { stop: () => void; url: string } {
-  const server = Bun.serve({
-    async fetch(request) {
-      const body = request.method === 'POST' ? await request.clone().text() : '';
-      mcpLog.push({
-        direction: 'in',
-        header: request.headers.get('mcp-protocol-version'),
-        message: body ? (JSON.parse(body) as unknown) : `${request.method} (no body)`,
-        via: 'http',
-      });
-      const mcp = new McpServer({ name: 'nixie', version: '0.0.0' }),
-        transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
-      registerTools(mcp);
-      await mcp.connect(transport);
-      const response = await transport.handleRequest(request),
-        text = await response.clone().text();
-      mcpLog.push({ direction: 'out', message: text.slice(0, 2000), via: 'http' });
-      return response;
-    },
-    hostname: '127.0.0.1',
-    port: 0,
-  });
-  return {
-    stop() {
-      void server.stop(true);
-    },
-    url: `http://127.0.0.1:${server.port}/mcp`,
   };
 }
 
@@ -212,9 +173,11 @@ async function runSpike(): Promise<void> {
   mkdirSync(resultsDir);
   const mock = startMock(),
     http = startHttpEndpoint(),
+    httpV2 = startHttpEndpointV2(),
     placements: [string, () => Record<string, McpServerConfig>][] = [
       ['in-process', () => ({ nixie: buildInProcess() })],
       ['http', () => ({ nixie: { alwaysLoad: true, type: 'http', url: http.url } })],
+      ['http-v2', () => ({ nixie: { alwaysLoad: true, type: 'http', url: httpV2.url } })],
     ];
   try {
     for (const [placement, servers] of placements) {
@@ -246,6 +209,7 @@ async function runSpike(): Promise<void> {
     write('in-process-probe.json', probe);
   } finally {
     http.stop();
+    httpV2.stop();
     mock.stop();
   }
 }

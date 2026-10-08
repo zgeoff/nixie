@@ -217,15 +217,15 @@ the connector docs assume the recommendation.
    - Options: the v1 package `@modelcontextprotocol/sdk`, which implements revisions up to
      2025-11-25 and is what the Agent SDK depends on; or the v2 packages, which implement 2026-07-28
      and fall back to older servers in `auto` mode.
-   - Recommendation: the v2 packages for nixie's own code: the tool endpoint and the proxy's client
+   - Recommendation: the v2 packages for nixie's own code: the tool endpoint, and the proxy's client
      in `auto` mode. In the [MCP proxy spike](../../../spikes/mcp-proxy-pin/README.md), the v2
      client reached both a 2026-07-28 server and a 2025-11-25 server, and checked structured results
-     by default. Claude Code 2.1.293 asks an HTTP server for 2026-07-28 first, in the
-     [tools endpoint spike](../../../spikes/tools-endpoint/README.md), so a v2 endpoint meets it on
-     the newer revision.
+     by default. In the [tools endpoint spike](../../../spikes/tools-endpoint/README.md), Claude
+     Code 2.1.293 agreed 2026-07-28 with a v2 endpoint, and the model saw the same tools and results
+     as with v1.
    - Trade-off: the SDK keeps its own v1 package for the in-process route, so the codebase carries
-     both lines, and the v2 line moves fast. Claude Code against a server that accepts 2026-07-28 is
-     untested, and the v1 package for the endpoint is the fallback if that fails.
+     both lines, and the v2 line moves fast. On 2026-07-28, a relay that buffers the subscription
+     stream stalls every run start, so the relay must stream.
 5. **A container sandbox adapter.** [0016](../../decisions/0016-own-interfaces.md) allows one, with
    a weaker boundary than a microVM.
    - Options: build imp only, and keep the interface open; or build a container adapter in the first

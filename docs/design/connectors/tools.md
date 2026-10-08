@@ -114,10 +114,20 @@ in the placement spike, a failed MCP server still ended the run as `success`, an
 a tool's output. The tools endpoint spike saw the same with an unreachable server: the init message
 reported it as `failed`, and the run ended as `success`.
 
-Claude Code 2.1.293 first asks an HTTP MCP server for revision 2026-07-28 with `server/discover`,
+Claude Code 2.1.293 asks an HTTP MCP server for revision 2026-07-28 with `server/discover` first,
 and falls back to `initialize` at 2025-11-25 when the server refuses, as the tools endpoint spike
-found. The in-process server speaks 2025-11-25 only, because the SDK builds it on the v1 MCP
-package.
+found. Against a server on the v2 MCP package, it used 2026-07-28 for every request, the tool calls
+completed, and the model saw the same tools and results as with the v1 package. The in-process
+server speaks 2025-11-25 only, because the SDK builds it on the v1 package.
+
+On 2026-07-28, the CLI opens a `subscriptions/listen` stream and waits for its acknowledgement
+before it lists the tools. A relay that buffers a streamed response therefore stalls the start of
+every run, by 25 s in the spike, so nixie's relay for the reverse forward passes each chunk on as it
+arrives.
+
+Every `tools/call` carries the model's tool-use ID in `_meta`, as `claudecode/toolUseId`, on both
+routes. The endpoint writes it on the tool call's record, which joins the call to the turn that made
+it.
 
 ## The in-process route
 

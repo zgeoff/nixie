@@ -1,9 +1,20 @@
 // oxlint-disable one-var, sort-vars -- spike code, grouped for reading rather than sorted
 // nixie-style tools for the spike. Each one carries nixie's own declaration in `_meta` and MCP
-// annotations, so the run shows which of them reach the model. One server shape serves both the
-// in-process transport and the HTTP endpoint.
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+// annotations, so the run shows which of them reach the model. One registration serves the v1
+// server, in-process and over HTTP, and the v2 server, which takes the same raw zod shapes.
 import { z } from 'zod';
+
+interface ToolConfig {
+  _meta: Record<string, unknown>;
+  annotations?: Record<string, unknown>;
+  description: string;
+  inputSchema: Record<string, z.ZodType>;
+  outputSchema?: Record<string, z.ZodType>;
+}
+
+export interface ToolHost {
+  registerTool: (name: string, config: ToolConfig, callback: () => unknown) => unknown;
+}
 
 export const nixieMeta = {
   'nixie/content': { price: 'outside', seller: 'outside' },
@@ -19,7 +30,7 @@ const priceOutput = {
   priceInput = { url: z.string().describe('The product page URL') },
   annotations = { openWorldHint: true, readOnlyHint: true, title: 'Look up a price' };
 
-export function registerTools(server: McpServer): void {
+export function registerTools(server: ToolHost): void {
   server.registerTool(
     'price_text',
     {

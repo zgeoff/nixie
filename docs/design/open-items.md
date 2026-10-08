@@ -78,7 +78,8 @@ after the first build.
   with the imp on egress `none` and the model credential as its one grant. Measure the time a tool
   call adds against the bridge-address route from the
   [imp worker spike](../../spikes/imp-worker-start/), check that impd's API is unreachable, and
-  sleep and wake the imp to confirm the forward reopens. It settles the route that the
+  sleep and wake the imp to confirm the forward reopens, and confirm that the relay passes the MCP
+  subscription stream on without buffering. It settles the route that the
   [sandbox adapter](./connectors/sandbox-adapter.md#the-route-to-nixies-tools) recommends.
 - **An OAuth redirect to a tailnet hostname** (about 1 hour): add an HTTPS redirect URI on a tailnet
   hostname to a Google web client and to a Microsoft app registration, and complete a consent with
