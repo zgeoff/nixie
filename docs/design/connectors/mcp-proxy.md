@@ -57,7 +57,25 @@ tool's current input schema. The proxy stops such a tool even on a trusted serve
 decision point would read the wrong argument as the destination. The owner allows a changed tool in
 the client, which shows the old and new form side by side, and allowing it pins the new hash.
 
-TODO-spike-mcp-results
+The [MCP proxy spike](../../../spikes/mcp-proxy-pin/README.md) ran this rule over a local server on
+the v2 MCP packages:
+
+- A changed description, a renamed destination argument and a change to annotations alone each
+  stopped the tool on an untrusted server.
+- A new tool stayed hidden on both kinds of server, and a removed tool was dropped with its pin, so
+  a tool that returns later counts as new.
+- On a trusted server, the renamed destination argument applied with a notice, and the tool still
+  stopped, because its declaration named the old argument. The proxy therefore checks every
+  declaration against the schema on every listing, not only when a hash changes.
+
+No hash catches a server that changes what a tool does without changing its listing. Pinning guards
+what the model reads and what the decision point matches on, and the effect declaration, which
+assumes the worst for an outside tool, guards the rest.
+
+The proxy connects with the v2 client in `auto` mode, which negotiated 2026-07-28 with a v2 server
+and fell back to 2025-11-25 with a v1 server in the spike. The client defaults to the older mode, so
+the proxy sets `auto` explicitly. Over stdio, `auto` probes with a short-lived extra process, so a
+server over stdio starts twice on each connect.
 
 ## Effect declarations
 
@@ -78,8 +96,10 @@ as atc does, lets the declaration name it.
 A call to a proxied tool runs the same steps as any of nixie's tools, from
 [tools](./tools.md#a-tool-definition), and then calls the server's tool with the unprefixed name.
 Every field of the result is outside content. The proxy checks `structuredContent` against the
-pinned output schema, and a result that fails the check reaches the model as an error. Taint by
-output field, which the endorsed types of the
+pinned output schema, and a result that fails the check reaches the model as an error. The v2 client
+checks results by default, against the server's latest listing rather than the pinned one, so the
+proxy turns the client's check off and runs its own. In the spike, the proxy's check refused a
+result whose number field held a string. Taint by output field, which the endorsed types of the
 [decision point](../policy/decision-point.md#taint-in-the-first-build) would allow, waits for taint
 per job run under [0015](../../decisions/0015-taint-scope.md).
 
@@ -87,7 +107,8 @@ A server that needs the owner's input returns an input request, under the 2026-0
 `input_required` task status under the tasks extension. The proxy renders the request to the owner
 in the client, outside the model, ends the turn, and retries the call with the owner's answer as its
 own step. **Why:** the request's text is untrusted content that can ask the owner for anything, and
-rendering it outside the model keeps it out of the conversation.
+rendering it outside the model keeps it out of the conversation. The v2 client answers input
+requests itself unless the proxy sets `inputRequired: { autoFulfill: false }`, so the proxy sets it.
 
 The proxy declares no sampling, roots or logging capability, which the 2026-07-28 revision
 deprecates, so a server cannot ask nixie's model for anything.

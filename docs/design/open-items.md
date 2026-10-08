@@ -165,10 +165,10 @@ after the first build.
 - **The passkey check for high-risk approvals.** The first build approves everything with a tap, and
   a passkey check for the always-ask set follows as an early addition
   ([0012](../decisions/0012-high-risk-approvals.md)).
-- **The MCP proxy.** It arrives with the first outside MCP server
-  ([0017](../decisions/0017-mcp-proxy.md)). It needs to know which MCP revision the SDK's in-process
-  server speaks, whether it passes structured output through, and how long a server keeps an input
-  request valid for a retry. Judging taint by output field waits for taint per job run.
+- **The MCP proxy.** It arrives with the first outside MCP server, the atc adapter
+  ([0017](../decisions/0017-mcp-proxy.md)), and [the proxy design](./connectors/mcp-proxy.md) covers
+  it. How long a server keeps an input request valid for a retry is still unknown, and judging taint
+  by output field waits for taint per job run.
 - **Outside agents in the live view.** Entities that nixie starts but that run under their own
   rules, such as coding sessions started through atc, show in the live view labelled as outside
   nixie. It is a low priority, while managing atc sessions is a high priority for v1 or v2
@@ -199,7 +199,9 @@ design. Until imp does, nixie designs around the current behaviour.
   imp as a credential backend, nixie's credential store refreshes tokens on the host and pushes each
   new value into imp ([0016](../decisions/0016-own-interfaces.md)).
 - **Port-level allow entries.** They let a sandboxed session reach nixie's endpoint on the host
-  without reaching imp's management API ([0003](../decisions/0003-sdk-placement.md)).
+  without reaching imp's management API ([0003](../decisions/0003-sdk-placement.md)). The
+  [sandbox adapter](./connectors/sandbox-adapter.md#the-route-to-nixies-tools) needs them only if a
+  reverse forward fails its spike.
 - **A fuller audit.** The broker records method, host, path, status and sizes for each credentialed
   request, and no refused request. An audit with refused requests lets the broker's log feed nixie's
   record under [0007](../decisions/0007-grants-and-taint.md).

@@ -90,8 +90,8 @@ unknown outcome under it.
 ## The atc adapter
 
 atc manages many coding sessions under its own rules, and nixie reaches it as an outside MCP server
-through the [MCP proxy](./mcp-proxy.md), under 0022. atc is therefore the server that brings the
-proxy into the first build that has it, under [0017](../../decisions/0017-mcp-proxy.md).
+through the [MCP proxy](./mcp-proxy.md), under 0022. The proxy arrives with the first outside server
+under [0017](../../decisions/0017-mcp-proxy.md), so it arrives with the atc adapter.
 
 The atc adapter maps the interface onto atc's MCP tools, which the proxy pins by hash with effects
 the owner declares:

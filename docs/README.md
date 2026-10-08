@@ -239,5 +239,11 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   Gmail's restricted scope, and token refresh past 7 days
 - [Worker start inside an imp](../spikes/imp-worker-start/) — imp create and wake, and the SDK's
   first token inside an imp against the host
+- [Serving nixie's tools](../spikes/tools-endpoint/) — the tool list, the MCP revision and the
+  result the model receives, against a local stand-in for the model API
+- [A pinning MCP proxy](../spikes/mcp-proxy-pin/) — hash pinning, effect declarations and output
+  checks on the v2 MCP packages
+- [A definitions source](../spikes/definitions-source/) — one content hash for the same definitions
+  from a repo and a local path
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
