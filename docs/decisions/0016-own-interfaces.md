@@ -24,6 +24,19 @@ first 2 leave room for them, and the first real connector settles their final sh
 [0020](./0020-deployment.md) adds a fifth interface, the definitions source adapter, which Phase 3
 sketches with them.
 
+A sixth interface, the **sandbox adapter**, runs anything that executes a model loop or code over
+untrusted content in its own sandbox: workers, and sessions on the built-in coding adapter from
+[0022](./0022-coding-and-code-execution.md). It covers:
+
+- the lifecycle: create, wake, sleep and destroy
+- network policy: deny by default, with a route back to nixie's tools on the host
+- credential injection that the sandbox's code never sees, which the grant rules in
+  [0007](./0007-grants-and-taint.md) depend on
+- running code and returning its results
+
+imp is the reference sandbox adapter. An adapter for containers is valid, and its sandbox shares the
+host's kernel, so its boundary is weaker than a microVM's. Choosing it is the owner's risk stance.
+
 ## Credential backends
 
 The credential store sits in front of one or more backends. imp's credential broker is one backend,
