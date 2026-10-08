@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines, max-lines-per-function, max-statements, max-params, no-nested-ternary, one-var, sort-vars, no-map-spread, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable max-lines, max-lines-per-function, max-statements, one-var, sort-vars, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
 // Question 4: how many prompts do scripted scenarios raise against the starter
 // rule set with auto-mode off, and from which causes? Each scenario is a fixed
 // sequence of tool calls; no model runs.

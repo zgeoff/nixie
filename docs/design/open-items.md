@@ -2,8 +2,8 @@
 
 Phase 3, the design phase, has the voice stack and the model per job undecided, and the Google
 refresh on day 8 still to run. The design work ahead covers the terminology pass, the channel
-adapter and trigger source, main-thread routing and grants with expiries, and the stages agreed for
-after the first build.
+adapter and trigger source, main-thread routing, the open policy decisions, and the stages agreed
+for after the first build.
 
 ## Deferred decisions
 
@@ -32,6 +32,12 @@ after the first build.
   `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
   whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
   under [0001](../decisions/0001-durable-layer.md).
+- **The policy decisions.** The
+  [policy decision point](./policy/decision-point.md#decisions-for-the-owner) ends with 6 choices
+  for the owner: the consent checker, a cause for prompts from the owner's own ask rules, where the
+  hard spending stop sits, bulk approval of always-ask items, the rule file format, and the starter
+  rule set's posture. Each has a recommendation, and the policy docs assume it until the owner
+  decides.
 
 ## Spikes to run
 
@@ -55,10 +61,11 @@ after the first build.
   secrets encrypted with sops and age, and a dependency bot. Merge a version bump and roll it back
   with a database restore, to confirm that an upgrade is a merge and a rollback is a revert plus a
   restore under [0020](../decisions/0020-deployment.md).
-- **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against nixie's scripted
-  scenarios and measure the bar from [0008](../decisions/0008-auto-mode.md): catastrophic actions
-  allowed per stage, harmless denials per action, consent credited, and escalations per task. nixie
-  switches auto-mode on only when it meets that bar.
+- **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against the scripted scenarios
+  in the [policy rules spike](../../spikes/policy-rules/README.md), with a model making the calls,
+  and measure the bar from [0008](../decisions/0008-auto-mode.md): catastrophic actions allowed per
+  stage, harmless denials per action, consent credited, and escalations per task. nixie switches
+  auto-mode on only when it meets that bar.
 - **Owner messages into a running task** (about half a day): test a `now` message while the model
   writes text, a `now` message during a tool that cannot move to the background,
   `shouldQuery: false`, and `interrupt()` with queued messages. The answers shape how routing from
@@ -77,6 +84,15 @@ after the first build.
   scopes with a personal Microsoft account in a free Azure directory, and read iCloud mail, events
   and contacts with one app-specific password. Run them when a connector for either provider is
   next, under [0019](../decisions/0019-connector-authorization.md).
+- **Model requests through a counting proxy** (about half a day, on an imp host): route the model
+  requests of a worker imp from imp's broker through a proxy on the host that counts tokens and
+  refuses requests once a budget is spent. It checks the hard spending stop that the
+  [budgets design](./policy/budgets.md#the-hard-spending-stop) recommends, and needs a check that
+  the broker can forward to a host proxy without opening the guest a second route.
+- **The consent checker on real messages** (about half a day, with model calls): run a checker model
+  over owner messages the owner writes, each paired with an action that the message does or does not
+  ask for, and measure how often it credits consent wrongly or misses it. It firms up the consent
+  stage in the [decision point](./policy/decision-point.md#destination-limits).
 
 ## Phase 3 design tasks
 
@@ -101,34 +117,13 @@ after the first build.
   ([0018](../decisions/0018-main-thread-and-tasks.md)). The
   [event log design](./core/event-log.md#the-live-view-and-the-task-board) proposes how both read
   it.
-- **Grants with expiries.** Authority granted for a period, such as "full authority to build and
-  ship today", is a rule with an expiry, and widening a rule always asks
-  ([0018](../decisions/0018-main-thread-and-tasks.md)). Phase 3 designs how the owner grants, sees
-  and ends such a rule.
 - **Compaction controls and the pinned core.** [0024](../decisions/0024-memory-in-context.md) runs
   the conversation on the SDK's session and compaction. Phase 3 checks which compaction controls the
   SDK offers, and how large the pinned core can grow before the prompt pays for it.
-- **The starter rule set and the digest sheet.** How restrictive nixie feels depends on the starter
-  rules and the "no match means ask" default from [0004](../decisions/0004-rule-engine.md). The
-  digest sheet's layout and grouping from [0006](../decisions/0006-approval-record.md) are designed
-  together with them.
-- **The scripted prompt scenarios.** Scenarios such as finding something on the web, triaging an
-  inbox and booking a table report every prompt with its cause, so the 0-prompt target from
-  [0005](../decisions/0005-effects-and-taint.md) can fail a test. They count the prompts where a
-  destination comes from search results, the signal for typed workers under
-  [0014](../decisions/0014-search.md).
 - **The durable layer.** nixie owns leases, durable timers, retries, wake-ups and a run viewer, each
   with crash tests ([0001](../decisions/0001-durable-layer.md)), and [tasks](./core/tasks.md)
   designs them. The crash tests confirm that a resumed turn never repeats an outside action that
   ran, and the estimate of 800 to 1,500 lines is untested.
-- **Budgets and the spending stop.** Raising a budget is in the always-ask set from
-  [0005](../decisions/0005-effects-and-taint.md), and no decision sets where nixie enforces a
-  budget. The research recommends a hard spending stop in a proxy in front of the model, not in the
-  SDK ([2.1 landscape](../research/2.1-landscape.md#recommendation-for-22)).
-- **Rule identity and snapshot hashing.** Snapshots under
-  [0013](../decisions/0013-definition-versioning.md) need a canonical form for persona and job
-  definitions written as markdown. A rule's ID stays fixed across edits or each edit mints a new
-  one, and the last-fired record in [0006](../decisions/0006-approval-record.md) needs a fixed ID.
 - **Memory consolidation.** Phase 3 decides when consolidation runs as a proposal under
   [0011](../decisions/0011-memory-writes.md).
 - **Upgrades on the host.** A merged upgrade reaches the host by a webhook, a poll from the host, or

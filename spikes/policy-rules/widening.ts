@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines, max-lines-per-function, max-statements, max-params, no-nested-ternary, one-var, sort-vars, no-map-spread, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable no-nested-ternary, sort-vars -- a throwaway spike keeps each question in one readable pass */
 // Question 3: can code tell whether a rule edit widens access, with fixed
 // checks only, and does it ever call a widening a narrowing?
 import type { EditKind, Rule } from './engine.ts';

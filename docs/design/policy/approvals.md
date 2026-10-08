@@ -1,0 +1,141 @@
+# Proposals and approvals
+
+- Status: Proposed
+- Decisions: [0002](../../decisions/0002-approvals.md),
+  [0006](../../decisions/0006-approval-record.md), [0011](../../decisions/0011-memory-writes.md),
+  [0012](../../decisions/0012-high-risk-approvals.md),
+  [0021](../../decisions/0021-outside-action-outcomes.md),
+  [0023](../../decisions/0023-lifting-always-ask.md),
+  [0027](../../decisions/0027-tasks-and-outside-actions.md)
+
+When the [decision point](./decision-point.md) asks, the tool creates a proposal and the turn ends,
+under [0002](../../decisions/0002-approvals.md). The owner answers a proposal with a checked action
+in the client, never with a chat message. An approval holds the hash of one exact action and runs it
+once, under [0006](../../decisions/0006-approval-record.md). Proposals that wait for the owner
+gather on one digest sheet, where the owner answers all, some or none. This doc covers the data and
+the rules; the channels design covers how the client presents them. Everything in this doc beyond
+the decisions it links is a proposal.
+
+## The proposal
+
+A proposal is a row in the proposals projection of the
+[event log](../core/event-log.md#projections), and each change to it is a record. It holds:
+
+| Field          | Holds                                                                    |
+| -------------- | ------------------------------------------------------------------------ |
+| ID             | The action ID, which is also the outside action's ID and idempotency key |
+| Action         | The canonical action: tool, arguments, destinations and declared effects |
+| Action hash    | SHA-256 over the canonical action                                        |
+| Sentence       | The action rendered from the tool's template and the structured fields   |
+| Risk class     | Routine, always-ask, or lifting                                          |
+| Cause          | The prompt cause from the decision point                                 |
+| Deciding rule  | The rule ID and revision, or none                                        |
+| Proposed rule  | For a gap, the rule that would remove it, as data and a sentence         |
+| Task           | The task that proposed it, with its delegation chain                     |
+| Proposer       | The owner, or nixie from a task, for a rule or a lift under 0023         |
+| Created, lapse | When it was created, and when it lapses                                  |
+| Status         | Pending, approved, rejected, withdrawn, lapsed or consumed               |
+
+The canonical action serialises the same way as the snapshot form in
+[rules](./rules.md#the-snapshot-hash): sorted keys, no whitespace, NFC strings. The hash covers the
+tool, every argument and every destination, so one changed word in an email body makes a different
+action, and the model makes a new proposal, as 0006 requires.
+
+The sentence comes from a template the tool declares, filled from the structured fields, and the
+client shows the fields beside it. The model writes none of it. **Why:** a prompt that a model wrote
+from untrusted content could steer the owner's answer, and the owner should judge the action, not
+the model's account of it.
+
+A proposal lapses after 72 hours by default, which [tasks](../core/tasks.md#waits) sets with the
+lapse timer. The model can withdraw a proposal and post a new one, such as after the owner says
+"make it 8:30", because the conversation never waits on a proposal.
+
+### Risk class
+
+Policy computes each proposal's risk class from its declared effects, and the client renders the 3
+classes distinctly, as [0023](../../decisions/0023-lifting-always-ask.md) requires:
+
+- **Routine:** no effect in the always-ask set.
+- **Always-ask:** an effect in the always-ask set, a grant, a proposed rule, or a known contact.
+- **Lifting:** the action creates or widens a lifting rule.
+
+An always-ask or lifting approval asks for the passkey check from
+[0012](../../decisions/0012-high-risk-approvals.md) once that check exists, and a tap until then.
+
+## The approval
+
+The owner's answer is a checked action in the client: the client sends the proposal ID and the
+action hash it displayed, and nixie accepts the answer only when the hash matches the proposal's
+current hash and the answer came from the owner's identity on that channel. **Why:** a proposal can
+return to pending under the same ID with a new hash, such as when a rule narrows before an attempt,
+so a stale screen must not approve a different action.
+
+The approval record holds the proposal ID, the action hash, the answer, the channel and device, the
+check used (a tap or a passkey), and the "always allow" choice. nixie consumes the approval in the
+transaction that queues the action, which
+[outside actions](../core/outside-actions.md#consuming-the-approval) covers, and every retry of that
+action runs under the same approval.
+
+A rejection is a record that the task reads in its next turn, with the owner's optional reason. A
+task never proposes the same action hash again after a rejection in the same run, and the tool
+returns the earlier rejection instead.
+
+### Delegation
+
+A task or worker never holds wider permissions than the thread that started it, under 0006. The
+decision point enforces it at its scope stage, and each proposal keeps the chain from the record's
+parent field, so the owner sees which task, started by which message, proposed the action.
+
+### Always allow
+
+A routine proposal from cause 3 or cause 5 offers "always allow" next to "approve once". The choice
+shows the rule it would create before the owner saves it: the tool, the destinations of this action,
+and an `eq` check for each argument the tool does not declare as free-text content. The owner can
+loosen or tighten the rule in the same form. The rule has no expiry, under 0006, and creating it is
+a widening, so the approval takes the always-ask class and its check. **Why:** the owner sees
+exactly what the rule allows before it exists, and a free-text field such as an email body never
+pins a rule to one message.
+
+A prompt from the owner's ask rule offers "change this rule" instead, because an allow rule cannot
+override an ask rule under [rules](./rules.md#evaluation-order). A prompt from the always-ask set
+offers a lifting rule only for `spend`, with the caps the owner fills in.
+
+## Consent in the owner's message
+
+A direct request can run with no proposal when the owner's own message carries consent, under 0006.
+The [decision point](./decision-point.md#destination-limits) owns the 2 checks: the destination
+named word for word in typed text, and a checker model that confirms the request. A consented action
+gets an ordinary decision record with no approval.
+
+## The digest sheet
+
+The digest sheet lists every item that waits for the owner, and each item stays bound to its own
+action hash, under 0006. Policy owns what the sheet holds and in what order; the client lays it out.
+
+The sheet holds 4 kinds of item, in this order:
+
+1. **Unconfirmed outcomes:** outside actions whose outcome is unknown and that reconciliation could
+   not settle, grouped first under [0027](../../decisions/0027-tasks-and-outside-actions.md). Each
+   offers "it happened", "retry" and "drop", as
+   [outside actions](../core/outside-actions.md#unknown-outcomes-and-the-owner) covers.
+2. **Lifting items:** proposals that create or widen a lifting rule.
+3. **Always-ask items:** spending, raising a budget, grants, proposed rules and known contacts.
+4. **Routine items,** grouped by task, oldest first within each task.
+
+**Why:** an unknown outcome may be a fault that changes how the owner answers the rest, and the
+items with the most risk come before the routine ones that the owner can sweep.
+
+"Approve all" covers the routine items only, and each always-ask or lifting item takes its own
+approval, with the passkey check once 0012 lands. That split is the recommendation in a
+[decision for the owner](./decision-point.md#decisions-for-the-owner). The owner can approve, reject
+or leave each item; an item left alone keeps waiting until it lapses. Approving many items is one
+record per item, each with its own action hash, so a digest approval is the same as approving each
+item alone.
+
+A gap group with a proposed rule shows its pending items together with the proposal, so the owner
+can approve the items and accept the rule in one visit. Memory proposals from
+[0011](../../decisions/0011-memory-writes.md) join the routine items.
+
+The client sends a content-free push when the first item joins an empty sheet, and then at most one
+push per hour while items wait, by default, which the owner can change. **Why:** proposals queue
+while the owner is away, and one push per item would bring back the friction the sheet removes.

@@ -43,6 +43,19 @@ the decisions it rests on.
 - [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
   approval consumption, reconciliation per connector, and unknown outcomes for the owner
 
+### Policy
+
+- [Policy design index](./design/policy/README.md) — the 4 policy docs and the spike behind them
+- [The policy decision point](./design/policy/decision-point.md) — the pipeline, effects, the
+  always-ask set, destination limits and consent, taint in the first build, auto-mode, prompt causes
+  and the scripted scenarios, with the policy decisions for the owner
+- [Rules](./design/policy/rules.md) — the rule format, evaluation order, rule identity, the snapshot
+  hash, the widening check, proposed rules, grants with expiries and the starter rule set
+- [Proposals and approvals](./design/policy/approvals.md) — the proposal and its action hash, risk
+  classes, the approval record, "always allow" and the digest sheet
+- [Budgets, lifts and the spending stop](./design/policy/budgets.md) — budgets, lifting rules,
+  limits on model cost and the hard spending stop
+
 ## Decisions
 
 What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
@@ -235,3 +248,5 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   first token inside an imp against the host
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
+- [The rule engine and prompt scenarios](../spikes/policy-rules/) — one decision per call whatever
+  the rule order, a stable snapshot hash, a conservative widening check, and prompts by cause

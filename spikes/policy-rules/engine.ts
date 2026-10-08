@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines, max-lines-per-function, max-statements, max-params, no-nested-ternary, one-var, sort-vars, no-map-spread, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable max-lines, max-statements, max-params, no-nested-ternary, one-var, sort-vars -- a throwaway spike keeps each question in one readable pass */
 // A throwaway prototype of nixie's rule engine: rule format, the decision
 // pipeline, canonical hashing and the widening check. Not product code.
 import { createHash } from 'node:crypto';

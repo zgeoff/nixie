@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines, max-lines-per-function, max-statements, max-params, no-nested-ternary, one-var, sort-vars, no-map-spread, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable max-lines-per-function, max-statements, one-var, sort-vars, no-map-spread -- a throwaway spike keeps each question in one readable pass */
 // Question 2: is the snapshot hash stable across reordered but equivalent
 // definitions, and does every real change move it?
 import type { Definitions, Rule } from './engine.ts';

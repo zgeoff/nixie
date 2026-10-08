@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines, max-lines-per-function, max-statements, max-params, no-nested-ternary, one-var, sort-vars, no-map-spread, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable max-statements, one-var, sort-vars -- a throwaway spike keeps each question in one readable pass */
 // Question 1: does every sample call get exactly one decision, the same one
 // whatever the rule order, and which calls fall through to "no rule matched"?
 import type { Call, ContextKind, Decision, Ledger, Rule } from './engine.ts';
