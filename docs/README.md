@@ -139,3 +139,5 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
 - [imp credential broker grants](../spikes/imp-broker/) — what a grant can and cannot limit
 - [Where `query()` runs](../spikes/sdk-placement/) — the SDK on the host with only nixie's tools,
   and inside an imp
+- [Model choice for chat, memory and tools](../spikes/model-eval/) — persona, invented memory, tool
+  honesty, cost and latency per model
