@@ -122,7 +122,8 @@ is essential but not in the first build, and its stack is deferred.
 
 nixie takes tools from MCP and defines 4 interfaces of its own: a channel adapter, a trigger source,
 a connector and a credential store, which can use several backends, imp's broker among them
-([0016](./decisions/0016-own-interfaces.md)). An imp that reads untrusted content gets no credential
+([0016](./decisions/0016-own-interfaces.md)). Sandboxed work runs through a sixth interface, the
+sandbox adapter, with imp as its reference. An imp that reads untrusted content gets no credential
 grant ([0007](./decisions/0007-grants-and-taint.md)).
 
 nixie runs code for general work in a disposable imp with no credential grants. It is not a coding

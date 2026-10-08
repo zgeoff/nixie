@@ -32,4 +32,5 @@ whatever it settles.
 | live view          | The full view of the system, including finished tasks and what each did                    |
 | event log          | nixie's record of everything it does                                                       |
 | record             | One entry in the event log                                                                 |
+| sandbox adapter    | How nixie runs sandboxed work, with imp as the reference and containers as an alternative  |
 | imp                | A sandboxed microVM, from the imp project, that runs workers and coding sessions           |

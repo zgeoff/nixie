@@ -95,7 +95,7 @@ Nixie's interfaces, outside MCP servers, credentials and search.
   untrusted content
 - [0014: Search](./decisions/0014-search.md) — Kagi, with full results in the conversation
 - [0016: nixie's own interfaces](./decisions/0016-own-interfaces.md) — channel adapter, trigger
-  source, connector and credential store, with tools from MCP
+  source, connector, credential store, definitions source and sandbox adapter, with tools from MCP
 - [0017: Outside MCP servers](./decisions/0017-mcp-proxy.md) — every MCP server outside nixie's code
   goes through a proxy, the owner's own included
 - [0019: Connector authorization](./decisions/0019-connector-authorization.md) — each owner
