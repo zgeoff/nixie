@@ -34,6 +34,8 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   the deterministic layers leave open, and nixie runs fully without it
 - [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
   conversation, approvals and voice, and chat apps carry content-free pushes
+- [0010: The memory store](./decisions/0010-memory-store.md) — memory as rows in nixie's database, a
+  UI and a raw recall tool, and forgetting by crypto-shredding
 
 ## Research
 
