@@ -8,11 +8,12 @@
   [0027](../../decisions/0027-tasks-and-outside-actions.md)
 
 A trigger source starts work without the owner: a schedule, a poll of an outside service, or a
-webhook. Each event it delivers becomes one record in the event log with the source's cursor, in the
-same transaction that starts the task run or wakes the task waiting on it, so a restart resumes
-without missing or repeating an event, under [0016](../../decisions/0016-own-interfaces.md). The
-first build needs schedules, and it polls every outside service rather than taking pushes from it.
-Everything in this doc beyond the decisions it links is a proposal.
+webhook. Each event it delivers becomes one record in the event log, and the records of one batch
+commit in one transaction with the source's cursor and with the task runs they start or the waiting
+tasks they wake, so a restart resumes without missing or repeating an event, under
+[0016](../../decisions/0016-own-interfaces.md). The first build needs schedules, and it polls every
+outside service rather than taking pushes from it. Everything in this doc beyond the decisions it
+links is a proposal.
 
 ## The interface
 
@@ -29,32 +30,40 @@ interface TriggerSource<Cursor> {
 
 interface TriggerContext<Cursor> {
   cursor: Cursor | null; // the last cursor nixie committed for this source
-  deliver(event: TriggerEvent<Cursor>): Promise<'delivered' | 'duplicate'>;
+  deliver(batch: TriggerBatch<Cursor>): Promise<{ delivered: number; duplicates: number }>;
   reportHealth(health: SourceHealth): Promise<void>;
   signal: AbortSignal;
 }
 
-interface TriggerEvent<Cursor> {
+interface TriggerBatch<Cursor> {
+  cursor: Cursor; // the cursor that covers every event in the batch
+  events: TriggerEvent[];
+}
+
+interface TriggerEvent {
   dedupeKey: string; // unique per source, such as a message ID or a scheduled time
-  cursor: Cursor; // the cursor to commit with this event
   occurredAt: string;
   scheduledFor?: string; // set by a schedule
-  target: { job: string } | { task: string; wait: string };
   payload: unknown; // outside content, encrypted like any record payload
 }
 ```
 
-`deliver` runs one transaction that:
+A source delivers a batch: every event that one poll, one webhook request or one fire produced, with
+the one cursor that covers them all. `deliver` runs the whole batch in one transaction that:
 
-1. inserts the event's dedupe key into a table keyed by source and dedupe key, and returns
-   `duplicate` without writing anything else when the key exists
-2. writes a `trigger_fired` record with the source, the cursor, the times and the payload
-3. starts a task run for the job, or puts the record in the waiting task's inbox
-4. stores the cursor on the source's row
+1. for each event, inserts its dedupe key into a table keyed by source and dedupe key, and skips the
+   event when the key exists
+2. writes a `trigger_fired` record for each new event, with the source, the times and the payload
+3. finds every target that matches each new event, and delivers the record to each one: a new run
+   for each matching job, and the inbox of each task with a matching wait
+4. stores the batch's cursor on the source's row
 
-**Why:** a source can deliver the same event twice, such as a poll that overlaps the last one or a
-provider that retries a webhook, and the dedupe key turns that into one record. The cursor commits
-with the record, so a crash between 2 events loses neither.
+**Why:** a calendar sync token or a mail history ID covers a set of changes, so committing it with
+the first event would skip the rest after a crash, and one transaction per batch commits the cursor
+only with every event it covers. A source can also deliver the same event twice, such as a poll that
+overlaps the last one or a provider that retries a webhook, and the dedupe key turns that into one
+record. The source never names a target; nixie's core matches each event against every job filter
+and every registered wait, so one email that a job wants and a waiting task wants reaches both.
 
 A source that reads outside content marks its payload as outside content in the record's source of
 content field, and every job run starts untrusted in the first build, under
@@ -62,18 +71,18 @@ content field, and every job run starts untrusted in the first build, under
 
 ## Targets
 
-An event either starts a run of a job or wakes a task that waits on it. A job run is a new task with
-the job's definition pinned, as [tasks](../core/tasks.md#job-runs) describes. A waiting task, such
-as one that waits for a reply to an email it sent, registers a wait with the source and a match on
-the event, and the event lands in that task's inbox. **Why:** "tell me when they reply" is a task
-that waits, not a new job, and the same source serves both.
+An event starts a run of each job whose filter matches it and wakes each task that waits on it. A
+job run is a new task with the job's definition pinned, as [tasks](../core/tasks.md#job-runs)
+describes. A waiting task, such as one that waits for a reply to an email it sent, registers a wait
+with the source and a match on the event, and the event lands in that task's inbox. **Why:** "tell
+me when they reply" is a task that waits, not a new job, and the same source serves both.
 
 ## Schedules
 
 The schedule source fires each job's schedule from the job definitions. Its cursor is the time up to
 which it has handled every fire. It keeps the next fire of each job as a durable timer row from
 [tasks](../core/tasks.md#waits), so a fire survives a restart like any other timer, and its dedupe
-key is the job ID with the scheduled time.
+key is the job ID with the scheduled time. A fire's event matches only the job whose schedule fired.
 
 On start, the source lists each job's fires between its cursor and now, and applies the catch-up
 rule from [0027](../../decisions/0027-tasks-and-outside-actions.md): one catch-up run when the

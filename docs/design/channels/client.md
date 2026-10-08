@@ -114,8 +114,9 @@ The client labels every span of a message with how it arrived. The
 
 - The source comes from `InputEvent.inputType`. `insertFromPaste` is pasted, `insertFromDrop` is
   dropped, typing, composition and autocorrect are typed, and every other input type is unknown.
-- The caret read on `beforeinput` anchors each edit, so the spans stay right when the owner types
-  inside a paste, deletes across one or pastes over a selection.
+- The selection and the direction of a delete, read on `beforeinput`, pin each edit, so the spans
+  stay right when the owner types inside a paste, deletes next to one or pastes over a selection.
+  Comparing the text before and after alone can leave a pasted character labelled typed.
 - Undo and redo restore text as unknown, because the event does not say where the text came from.
 
 Chromium and Firefox both passed every step of the spike. The same span logic runs in React Native

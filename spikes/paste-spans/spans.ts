@@ -1,6 +1,6 @@
 /* oxlint-disable one-var, max-statements -- the span arithmetic reads better one value per statement */
 // Tracks which spans of a message the owner typed and which arrived another way. The core works on
-// 2 strings and a caret, so the web client and a React Native text input can share it.
+// 2 strings and the selection, so the web client and a React Native text input can share it.
 export type SpanSource = 'dropped' | 'pasted' | 'typed' | 'unknown';
 
 export interface Span {
@@ -15,9 +15,15 @@ export interface Edit {
   removed: number;
 }
 
-function countPrefix(before: string, after: string): number {
+export interface Selection {
+  backward: boolean;
+  end: number;
+  start: number;
+}
+
+function countPrefix(before: string, after: string, limit: number): number {
   let length = 0;
-  while (length < before.length && length < after.length && before[length] === after[length]) {
+  while (length < limit && before[length] === after[length]) {
     length += 1;
   }
   return length;
@@ -34,12 +40,22 @@ function countSuffix(before: string, after: string, limit: number): number {
   return length;
 }
 
-// The caret before the edit anchors it: without the caret, an insert next to repeated text is
-// ambiguous, and a pasted character could be labelled typed.
-export function findEdit(before: string, after: string, caret?: number): Edit {
-  const prefix = Math.min(countPrefix(before, after), caret ?? Number.POSITIVE_INFINITY);
-  const limit = Math.min(before.length, after.length) - prefix;
-  const suffix = countSuffix(before, after, limit);
+// The edit starts at or before the selection's start and ends at or after its end. A backward
+// delete ends at the caret, so its suffix is fixed first.
+export function findEdit(before: string, after: string, selection?: Selection): Edit {
+  const shorter = Math.min(before.length, after.length);
+  const prefixBound = Math.min(shorter, selection?.start ?? shorter);
+  const selectionTail = before.length - (selection?.end ?? 0);
+  const suffixBound = Math.min(shorter, selectionTail);
+  let prefix = 0;
+  let suffix = 0;
+  if (selection?.backward) {
+    suffix = countSuffix(before, after, suffixBound);
+    prefix = countPrefix(before, after, Math.min(prefixBound, shorter - suffix));
+  } else {
+    prefix = countPrefix(before, after, prefixBound);
+    suffix = countSuffix(before, after, Math.min(suffixBound, shorter - prefix));
+  }
   return {
     at: prefix,
     inserted: after.length - prefix - suffix,

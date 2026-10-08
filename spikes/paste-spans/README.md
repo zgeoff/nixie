@@ -23,10 +23,10 @@ bun browser.ts
 ```
 
 - [spans.ts](./spans.ts) holds the span logic. It takes the text before and after an edit, plus the
-  caret before the edit, finds the edit, shifts and splits the existing spans, and labels the
+  selection before the edit, finds the edit, shifts and splits the existing spans, and labels the
   inserted text with a source: `typed`, `pasted`, `dropped` or `unknown`.
-- [page.ts](./page.ts) runs in the page. It reads the caret on `beforeinput` and the source from
-  `InputEvent.inputType` on `input`.
+- [page.ts](./page.ts) runs in the page. It reads the selection and the edit direction on
+  `beforeinput`, and the source from `InputEvent.inputType` on `input`.
 - [browser.ts](./browser.ts) drives a textarea with real key presses and a real clipboard copy and
   paste.
 
@@ -53,11 +53,18 @@ chromium
 - **Fail closed.** Every input type outside the typed list becomes `unknown`, so evidence under 0011
   needs an affirmative `typed`. Undoing the delete of a paste brings the text back as `unknown`, not
   as `typed`.
-- **The caret anchors each edit.** Comparing the 2 strings alone is ambiguous next to repeated text:
-  pasting `ba` into `a|b` gives `abab`, and a plain diff labels the pasted `b` as typed. The unit
-  tests show the case, and reading the caret on `beforeinput` resolves it.
-- **The logic is small and portable.** It needs 2 strings and a caret, so a React Native input can
-  share it with a different source for each edit.
+- **The selection pins each edit.** Comparing the 2 strings alone is ambiguous next to repeated
+  text, and each ambiguity can leave a pasted character labelled typed:
+  - pasting `ba` into `a|b` gives `abab`, and a plain diff labels the pasted `b` as typed
+  - pasting `bat` over a selected, typed `cat` gives a plain diff that labels only `b` as pasted
+  - a backspace between a typed `a` and a pasted `a` gives a plain diff that removes the pasted one
+
+  The unit tests cover all 3. The edit starts at or before the selection's start and ends at or
+  after its end, and a backward delete ends at the caret, so reading the selection and the direction
+  of a delete on `beforeinput` resolves each one.
+
+- **The logic is small and portable.** It needs 2 strings and the selection, so a React Native input
+  can share it with a different source for each edit.
 
 ### React Native
 
