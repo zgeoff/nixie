@@ -208,3 +208,5 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   honesty, cost and latency per model
 - [A personal Google OAuth client](../spikes/google-oauth/) — an unverified client in production,
   Gmail's restricted scope, and token refresh past 7 days
+- [Worker start inside an imp](../spikes/imp-worker-start/) — imp create and wake, and the SDK's
+  first token inside an imp against the host
