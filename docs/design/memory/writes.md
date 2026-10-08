@@ -17,8 +17,8 @@ always a proposal. Everything in this doc beyond the decisions it links is a pro
 
 ## Who writes
 
-2 paths call the memory tools, as the first
-[decision for the owner](./store.md#decisions-for-the-owner) recommends:
+2 paths call the memory tools, as the owner decision on who writes memory in
+[the store](./store.md#decisions-for-the-owner) recommends:
 
 - **The conversation and tasks** call `memory.remember` and `memory.retire` during a turn, such as
   when the owner says "remember that I'm vegetarian now".
@@ -67,6 +67,10 @@ The checks run in the tool, not in the decision point's pipeline. The decision p
 the call may run, and the `note` effect is allowed by the starter rules; the gate decides whether
 the change it makes needs review. A rule the owner writes can still ask for or deny
 `memory.remember`, and then the decision point's answer applies before the gate runs.
+
+A write that asks to pin its item always becomes a proposal, whatever the checks say. The owner pins
+directly in the client. **Why:** a pinned item rides in the system prompt of every turn of every
+task, so model-chosen text gets there only with the owner's approval.
 
 ### The quote check
 
@@ -171,9 +175,10 @@ transaction that records the approval, under 0010. An approval of a proposal who
 the version it revises fails as stale, and the client offers the proposal against the current
 version.
 
-A memory proposal lapses after 14 days by default, which the owner can change for the `note` effect
-as for any effect. **Why:** a fact rarely goes stale in 72 hours, the default for actions, and an
-owner who sweeps memory weekly should not lose a week's facts.
+A memory proposal lapses after 14 days by default, set on the memory tools rather than on the `note`
+effect they share with other tools, and the owner can change it. **Why:** a fact rarely goes stale
+in 72 hours, the default for actions, and an owner who sweeps memory weekly should not lose a week's
+facts.
 
 A task run proposes at most 10 memory writes by default, and the tool returns an error past that
 limit. **Why:** an injected instruction that makes a task propose memory in bulk would otherwise
@@ -186,9 +191,9 @@ memory proposals with its other proposals.
 
 A write that applied at once reaches the owner as a notice, under 0011. The notice is a record in
 the thread that made the write, which the client renders as a compact line under nixie's reply, such
-as "Remembered: dentist is Dr Okafor", with undo, as the fourth
-[decision for the owner](./store.md#decisions-for-the-owner) recommends. A write from a task appears
-in that task's thread and in the conversation's next report from it.
+as "Remembered: dentist is Dr Okafor", with undo, as the owner decision on notices in
+[the store](./store.md#decisions-for-the-owner) recommends. A write from a task appears in that
+task's thread and in the conversation's next report from it.
 
 Undo is a checked action. It adds a version with the text before the write, or retires the item when
 the write created it, so undo itself is recorded and can be undone. Purge, the one-tap removal from

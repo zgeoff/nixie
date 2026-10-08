@@ -10,8 +10,8 @@
 
 The conversation runs on the Agent SDK's session and compaction, under
 [0024](../../decisions/0024-memory-in-context.md). nixie places memory in it 3 ways: a small pinned
-core in the system prompt, a few items retrieved for each turn and placed in the newest turn, and
-the recall tool the model calls when it needs more. Retrieval searches memory items and past
+core in the system prompt, a few items retrieved for each turn and placed in the newest turn, and 2
+recall tools the model calls when it needs more. Retrieval searches memory items and past
 conversation in the event log, with keyword ranking, from an index held in memory. A compaction
 summary stays in the session and never becomes memory. The SDK's own transcript is a cache that the
 event log supersedes. Everything in this doc beyond the decisions it links is a proposal.
@@ -26,11 +26,14 @@ Each turn's prompt runs from the most stable part to the least, so the prompt ca
 3. **The newest turn:** the task's inbox records, the task board for the conversation, and the
    retrieved items.
 
-nixie runs the SDK with `settingSources: []` and with the SDK's own memory switched off:
-`autoMemoryEnabled: false` and `autoDreamEnabled: false`. **Why:** the SDK version 0.3.293 that the
-spikes use ships an auto-memory directory, a recall supervisor that puts its files into turns, and a
-background consolidation, which together would make a second memory store with no provenance and no
-review. A test asserts that every `query()` nixie starts sets both flags.
+nixie runs the SDK with `settingSources: []`, so no settings file on disk applies, and passes its
+own settings through the `settings` option of `query()`, which loads them into the SDK's flag layer.
+The SDK's own memory is switched off there: `autoMemoryEnabled: false` and
+`autoDreamEnabled: false`. **Why:** the SDK version 0.3.293 that the spikes use ships an auto-memory
+directory, a recall supervisor that puts its files into turns, and a background consolidation, which
+together would make a second memory store with no provenance and no review. A test asserts that
+every `query()` nixie starts passes both flags. The compaction settings below and
+`cleanupPeriodDays` go through the same option.
 
 ## The pinned core
 
