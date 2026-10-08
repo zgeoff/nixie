@@ -32,7 +32,6 @@ routing and grants with expiries, and the stages agreed for after the first buil
   API too ([0003](../decisions/0003-sdk-placement.md)). The options are port-level allow entries in
   imp, an imp network or granted hostname, or nixie's endpoint on an address that serves nothing
   else.
-
 - **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
   `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
   whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
