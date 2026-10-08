@@ -8,7 +8,14 @@
 
 nixie's own client holds the conversation, the approvals and voice. Chat apps such as Telegram carry
 only a push notice with no content, such as "nixie has 3 things for you", and a link that opens the
-client. The first client can be minimal. The owner wants to explore React Native for it.
+client. The first client can be minimal.
+
+The client runs on 2 platforms:
+
+- a web client for a desktop browser
+- a React Native app built with Expo, Android first, sideloaded during development
+
+A desktop app may follow later, and nothing plans for it now.
 
 ## Why
 
@@ -34,9 +41,9 @@ client. The first client can be minimal. The owner wants to explore React Native
 
 ## Consequences
 
-- nixie builds and maintains a client. A native app needs the Apple Developer Program, and
-  TestFlight builds expire after 90 days. A native app can also use CallKit for calls with the
-  screen locked.
+- nixie builds and maintains a web client and a native app. Android first means sideloading needs no
+  developer account. An iOS build later needs the Apple Developer Program, and TestFlight builds
+  expire after 90 days. On iOS, the native app can use CallKit for calls with the screen locked.
 - Telegram, or another chat app, as a full channel stays possible later as an opt-in for a context
   where the owner accepts the storage.
 - The approval page and the voice client from the 2.5 research live inside this client.
