@@ -76,6 +76,8 @@ The memory store, which writes skip review, and definition versioning.
   owner's own quote applies at once with undo, and every other write is a proposal
 - [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
   every record, with rules applying at once and persona and jobs fixed per task
+- [0024: How memory reaches the model](./decisions/0024-memory-in-context.md) — the SDK's session
+  and compaction, with retrieval over memory and the event log, keyword search first
 
 ### Channels
 

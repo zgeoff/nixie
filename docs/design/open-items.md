@@ -118,14 +118,9 @@ routing and grants with expiries, and the stages agreed for after the first buil
   ship today", is a rule with an expiry, and widening a rule always asks
   ([0018](../decisions/0018-main-thread-and-tasks.md)). Phase 3 designs how the owner grants, sees
   and ends such a rule.
-- **Compaction controls and the route from memory to the model.** No decision records how memory
-  reaches the model. The research recommends the Agent SDK's session and compaction for the
-  conversation, retrieval over memory and the event log, and a compaction summary that never becomes
-  memory, since the model writes it from an untrusted conversation
-  ([memory research](../research/2.4-2.6-data-channels-connectors.md#memory)). Phase 3 settles the
-  route against the memory store from [0010](../decisions/0010-memory-store.md), checks which
-  compaction controls the SDK offers, and how large core memory can grow before the prompt pays for
-  it.
+- **Compaction controls and the pinned core.** [0024](../decisions/0024-memory-in-context.md) runs
+  the conversation on the SDK's session and compaction. Phase 3 checks which compaction controls the
+  SDK offers, and how large the pinned core can grow before the prompt pays for it.
 - **The starter rule set and the digest sheet.** How restrictive nixie feels depends on the starter
   rules and the "no match means ask" default from [0004](../decisions/0004-rule-engine.md). The
   digest sheet's layout and grouping from [0006](../decisions/0006-approval-record.md) are designed

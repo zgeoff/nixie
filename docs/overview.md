@@ -108,7 +108,8 @@ at once, and persona and job definitions stay fixed for a task's life
 ([0013](./decisions/0013-definition-versioning.md)).
 
 The conversation runs on the Agent SDK's session and compaction. nixie adds retrieval over memory
-and over the event log, starting with keyword search, and a compaction summary never becomes memory.
+and over the event log, starting with keyword search, and a compaction summary never becomes memory
+([0024](./decisions/0024-memory-in-context.md)).
 
 ## Channels
 
