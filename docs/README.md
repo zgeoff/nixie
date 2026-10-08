@@ -32,6 +32,8 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   untrusted content
 - [0008: auto-mode decides the grey zone](./decisions/0008-auto-mode.md) — auto-mode decides what
   the deterministic layers leave open, and nixie runs fully without it
+- [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
+  conversation, approvals and voice, and chat apps carry content-free pushes
 
 ## Research
 
