@@ -53,6 +53,8 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   through the main thread, which routes work to tasks and shares a live view
 - [0019: Connector authorization](./decisions/0019-connector-authorization.md) — each owner
   registers their own OAuth clients, and the Google spike runs early
+- [0020: Deployment and definitions](./decisions/0020-deployment.md) — definitions in their own repo
+  seed the database, and running nixie lives with the deployment
 
 ## Research
 
