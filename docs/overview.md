@@ -76,7 +76,8 @@ spending money, widening rules or approvals, and raising a budget. A bounded rul
 creating one always asks, and such approvals look distinct in the client
 ([0023](./decisions/0023-lifting-always-ask.md)). A change that only narrows applies at once with a
 record and undo ([0005](./decisions/0005-effects-and-taint.md)). The target is 0 prompts, and every
-prompt records its cause.
+prompt records its cause. A prompt because no rule matched counts as a gap in the rules, and nixie
+proposes the rule that would close it.
 
 The conversation is always treated as untrusted, because it reads outside content within minutes. A
 send to a destination that neither the owner nor a rule named asks first. Taint tracking applies to
