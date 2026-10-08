@@ -22,12 +22,12 @@ after the first build.
   different models for chat, memory writing, tool calls and long background reasoning, with low
   reasoning effort for chat, because effort sets cost and latency more than any other setting. No
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
-- **How a sandboxed session reaches nixie's endpoint.** In imp 0.38.1, an allow entry admits a whole
-  address, so a sandboxed session that reaches nixie's tools on the host reaches imp's management
-  API too ([0003](../decisions/0003-sdk-placement.md)). Every worker and the conversation run in an
-  imp under [0026](../decisions/0026-where-workers-and-the-conversation-run.md), so the first build
-  needs the answer. The options are port-level allow entries in imp, an imp network or granted
-  hostname, or nixie's endpoint on an address that serves nothing else.
+- **How a sandboxed session reaches nixie's endpoint.** In imp 0.40.2, an allow entry admits a whole
+  address, so an imp allowed to reach nixie's tools on the host reaches imp's management API too
+  ([0003](../decisions/0003-sdk-placement.md)). The
+  [sandbox adapter](./connectors/sandbox-adapter.md#the-route-to-nixies-tools) recommends a reverse
+  forward from the imp's loopback over the guest agent's vsock, which needs no allow entry, and the
+  first decision in [connectors](./connectors/connector.md#decisions-for-the-owner) asks the owner.
 - **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
   `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
   whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
@@ -73,6 +73,17 @@ after the first build.
 - **Model choice on real use** (about 1 day): repeat the model-eval memory and tool tasks on a real
   conversation history, real services and a long context, with more than 2 samples per cell and
   direct API calls. It firms up the model-per-job split above.
+- **Tools through a reverse forward** (about half a day, on a dev instance of imp): run a worker
+  turn whose SDK reaches nixie's tools at a loopback port that a reverse forward relays to the host,
+  with the imp on egress `none` and the model credential as its one grant. Measure the time a tool
+  call adds against the bridge-address route from the
+  [imp worker spike](../../spikes/imp-worker-start/), check that impd's API is unreachable, and
+  sleep and wake the imp to confirm the forward reopens. It settles the route that the
+  [sandbox adapter](./connectors/sandbox-adapter.md#the-route-to-nixies-tools) recommends.
+- **An OAuth redirect to a tailnet hostname** (about 1 hour): add an HTTPS redirect URI on a tailnet
+  hostname to a Google web client and to a Microsoft app registration, and complete a consent with
+  each. It shows whether setup can redirect to the client itself, under the third decision in
+  [connectors](./connectors/connector.md#decisions-for-the-owner).
 - **Microsoft Graph and iCloud** (about half a day and about 2 hours): consent to mail and calendar
   scopes with a personal Microsoft account in a free Azure directory, and read iCloud mail, events
   and contacts with one app-specific password. Run them when a connector for either provider is
@@ -87,10 +98,6 @@ after the first build.
   schedules, so Phase 3 designs both interfaces from [0016](../decisions/0016-own-interfaces.md)
   completely. The trigger source records a cursor per source in the event log, and the design
   decides which connectors need push at all.
-- **Rough sketches of the connector, the credential store and the definitions source.**
-  [0016](../decisions/0016-own-interfaces.md) and [0020](../decisions/0020-deployment.md) ask for
-  sketches that check the channel adapter and the trigger source leave room for them. The credential
-  store's backend interface is open, and the first real connector settles the final shapes.
 - **Main-thread routing and the task board.** The main thread routes each owner message to a task
   and names where it sent it, from a live task board of every task's status
   ([0018](../decisions/0018-main-thread-and-tasks.md)). Routing quality is on the critical path,
@@ -131,16 +138,14 @@ after the first build.
   one, and the last-fired record in [0006](../decisions/0006-approval-record.md) needs a fixed ID.
 - **Memory consolidation.** Phase 3 decides when consolidation runs as a proposal under
   [0011](../decisions/0011-memory-writes.md).
+- **A budget for paid tool calls.** A search on Kagi costs about $0.012
+  ([0014](../decisions/0014-search.md)), and the budgets in the policy design count `spend` tools
+  and model cost only. A budget kind for tool calls that cost money without the `spend` effect would
+  let the owner cap search and similar services.
 - **Upgrades on the host.** A merged upgrade reaches the host by a webhook, a poll from the host, or
   the owner running one command, and a poll needs no inbound route
   ([0020](../decisions/0020-deployment.md)). The seeding conflict view and the export of runtime
   rules as a pull request are part of the same design.
-- **Connector setup.** Each owner registers their own OAuth client with each provider, so the setup
-  guide and the client walk the owner through it
-  ([0019](../decisions/0019-connector-authorization.md)).
-- **The coding agent adapter and running code.** Design the adapter interface from
-  [0022](../decisions/0022-coding-and-code-execution.md), with atc as the first adapter, and the
-  tool that runs code in a disposable imp with no grants, which comes early.
 
 ## Later stages
 

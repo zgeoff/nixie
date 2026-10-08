@@ -43,6 +43,12 @@ the decisions it rests on.
 - [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
   approval consumption, reconciliation per connector, and unknown outcomes for the owner
 
+### Connectors
+
+- [Connectors design](./design/connectors/README.md) — the connector interface and setup, the
+  credential store, serving nixie's tools, the sandbox adapter, the definitions source, the MCP
+  proxy, and running code and coding sessions
+
 ## Decisions
 
 What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
