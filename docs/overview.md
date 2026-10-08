@@ -72,9 +72,11 @@ proposal and ends the turn, and an approval is a checked action in the client, n
 
 Rules in nixie's own format allow, ask or deny each tool call, and no matching rule means ask
 ([0004](./decisions/0004-rule-engine.md)). Every tool declares its effects. 3 effects always ask:
-spending money, widening rules or approvals, and raising a budget. A change that only narrows
-applies at once with a record and undo ([0005](./decisions/0005-effects-and-taint.md)). The target
-is 0 prompts, and every prompt records its cause.
+spending money, widening rules or approvals, and raising a budget. A bounded rule can lift them,
+creating one always asks, and such approvals look distinct in the client
+([0023](./decisions/0023-lifting-always-ask.md)). A change that only narrows applies at once with a
+record and undo ([0005](./decisions/0005-effects-and-taint.md)). The target is 0 prompts, and every
+prompt records its cause.
 
 The conversation is always treated as untrusted, because it reads outside content within minutes. A
 send to a destination that neither the owner nor a rule named asks first. Taint tracking applies to

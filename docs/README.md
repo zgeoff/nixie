@@ -63,6 +63,8 @@ Rules, effects, taint, approvals and auto-mode.
   always-ask set, and a tap for everything else
 - [0015: Where taint applies](./decisions/0015-taint-scope.md) — the conversation is always
   untrusted, and taint applies to jobs and workers in stages
+- [0023: Lifting the always-ask set](./decisions/0023-lifting-always-ask.md) — a bounded rule can
+  lift it, creating one always asks, and such approvals look distinct
 
 ### Memory
 

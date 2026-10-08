@@ -1,8 +1,8 @@
 # 0005: Effects, taint and prompts
 
 - Date: 2026-10-07
-- Status: decided, amended by [0008](./0008-auto-mode.md), [0014](./0014-search.md) and
-  [0015](./0015-taint-scope.md)
+- Status: decided, amended by [0008](./0008-auto-mode.md), [0014](./0014-search.md),
+  [0015](./0015-taint-scope.md) and [0023](./0023-lifting-always-ask.md)
 - Research: [policy model notes](../research/2.3-notes/policy-models.md),
   [approval notes](../research/2.3-notes/approvals.md),
   [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#policy-layers)
@@ -11,7 +11,7 @@
 
 Every nixie tool declares its effects, such as read, write, send, spend, or a change to rules,
 approvals or budgets. Rules from [0004](./0004-rule-engine.md) match on those effects. 3 effects
-always ask the owner, and no rule lifts them:
+always ask the owner unless a bounded rule from [0023](./0023-lifting-always-ask.md) lifts them:
 
 - spending money
 - widening approvals or rules: adding or loosening an allow rule, or removing a deny rule
