@@ -117,31 +117,19 @@ after the first build.
   destination comes from search results, the signal for typed workers under
   [0014](../decisions/0014-search.md).
 - **The durable layer.** nixie owns leases, durable timers, retries, wake-ups and a run viewer, each
-  with crash tests ([0001](../decisions/0001-durable-layer.md)). The design decides whether the
-  runner buffers an approval that arrives before its wait registers, and the crash tests confirm
-  that a resumed turn never repeats an outside action that ran. The estimate of 800 to 1,500 lines
-  is untested. [Tasks](./core/tasks.md) proposes the leases, timers and inbox, and the inbox buffers
-  an early approval.
-- **Proposal expiry.** An unanswered proposal lapses after a set time under
-  [0006](../decisions/0006-approval-record.md), and Phase 3 picks the time and how the task learns
-  of the lapse. [Tasks](./core/tasks.md#waits) proposes a lapse timer that writes to the task's
-  inbox, and leaves the time open.
+  with crash tests ([0001](../decisions/0001-durable-layer.md)), and [tasks](./core/tasks.md)
+  designs them. The crash tests confirm that a resumed turn never repeats an outside action that
+  ran, and the estimate of 800 to 1,500 lines is untested.
 - **Budgets and the spending stop.** Raising a budget is in the always-ask set from
   [0005](../decisions/0005-effects-and-taint.md), and no decision sets where nixie enforces a
   budget. The research recommends a hard spending stop in a proxy in front of the model, not in the
   SDK ([2.1 landscape](../research/2.1-landscape.md#recommendation-for-22)).
 - **Rule identity and snapshot hashing.** Snapshots under
   [0013](../decisions/0013-definition-versioning.md) need a canonical form for persona and job
-  definitions written as markdown, and a retention period that weighs replay against erasure. A
-  rule's ID stays fixed across edits or each edit mints a new one, and the last-fired record in
-  [0006](../decisions/0006-approval-record.md) needs a fixed ID.
-- **Erasable fields and keys.** Crypto-shredding from [0010](../decisions/0010-memory-store.md) can
-  cover other personal fields in the event log, such as message bodies and a contact's details.
-  Phase 3 picks which fields get their own key, and where the owner's backup key lives so that a
-  restore works when the host is lost.
-- **Memory recall and consolidation.** Phase 3 decides whether a record that recalled memory stamps
-  the version of each item it read, so a replay sees what the model saw, and when consolidation runs
-  as a proposal under [0011](../decisions/0011-memory-writes.md).
+  definitions written as markdown. A rule's ID stays fixed across edits or each edit mints a new
+  one, and the last-fired record in [0006](../decisions/0006-approval-record.md) needs a fixed ID.
+- **Memory consolidation.** Phase 3 decides when consolidation runs as a proposal under
+  [0011](../decisions/0011-memory-writes.md).
 - **Upgrades on the host.** A merged upgrade reaches the host by a webhook, a poll from the host, or
   the owner running one command, and a poll needs no inbound route
   ([0020](../decisions/0020-deployment.md)). The seeding conflict view and the export of runtime
@@ -152,9 +140,6 @@ after the first build.
 - **The coding agent adapter and running code.** Design the adapter interface from
   [0022](../decisions/0022-coding-and-code-execution.md), with atc as the first adapter, and the
   tool that runs code in a disposable imp with no grants, which comes early.
-- **Export beyond memory.** [0010](../decisions/0010-memory-store.md) exports memory. Exporting the
-  event log and conversations in the same way, so the owner can take everything, is still to design.
-  The [event log design](./core/event-log.md#memory-history-and-export) proposes a SQLite file.
 
 ## Later stages
 

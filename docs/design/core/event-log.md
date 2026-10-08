@@ -53,10 +53,39 @@ nixie only appends to the log. A correction is a new record that points at the r
 such as an owner's resolution of an unknown outcome pointing at the action's record. No code path
 updates or deletes a record.
 
-Crypto-shredding is the one way a record's content leaves. Erasable fields in a payload, such as a
-message body or a contact's details, are encrypted with their own key, and forgetting deletes the
-key under [0010](../../decisions/0010-memory-store.md). The record stays with its envelope, and a
-replay shows a gap where the payload was. Which fields get their own key is open.
+Crypto-shredding is the one way a record's content leaves. Erasable fields are encrypted, and
+forgetting deletes their key, as [0010](../../decisions/0010-memory-store.md) does for memory items.
+The record stays with its envelope, and a replay shows a gap where the payload was.
+
+## Erasable fields and keys
+
+Memory items have a key per item under [0010](../../decisions/0010-memory-store.md). Records follow
+the same pattern with 2 kinds of key:
+
+- **A key per record** encrypts every free-text field in its payload: the owner's message text, the
+  model's text, tool arguments, tool results and worker transcripts. Forgetting one message or one
+  tool result deletes one key, and nothing else in the log changes.
+- **A key per contact** encrypts a person's details, such as a name, an address or a phone number,
+  in a contacts table. A record refers to the contact by ID and never copies the details, so
+  forgetting a person deletes one key and clears them from every structured field at once.
+
+The envelope stays in plain text: IDs, kinds, times, rule IDs, outcomes, hashes, the source of
+content and declared effects. **Why:** the envelope holds no personal content, and the projections,
+the task board and replay need it without a decryption per row.
+
+A free-text field can still mention a contact by name. Forgetting the contact clears the structured
+fields, and the client offers to forget each record whose text matches the contact's details, which
+the owner confirms.
+
+The keys live in a key table in the same database, each one wrapped by a deployment key. The
+deployment key is a deployment secret, kept outside the database and its backups with the other
+secrets under [0020](../../decisions/0020-deployment.md). A restore therefore needs both the
+database backup and the deployment key, which the
+[backup and restore spike](../open-items.md#spikes-to-run) checks.
+
+The database's own full-text index covers only the envelope. Free text is erasable, and a persisted
+index would keep its words after the key is gone, so full-text search over message content runs on
+an index held in memory, as [memory history and export](#memory-history-and-export) describes.
 
 ## Projections
 
@@ -95,7 +124,9 @@ Following by sequence needs a sequence that orders records by commit, and here t
 - **Postgres** hands out identity values when a transaction asks for them, not when it commits. A
   transaction that takes sequence 101 and commits after the one that took 102 is invisible to a
   reader that has already moved past 102. nixie serialises appends with a transaction-level advisory
-  lock, so values are taken and committed in order, at the cost of one append at a time. The
+  lock, so values are taken and committed in order, at the cost of one append at a time. **Why:** a
+  reader that tails by transaction snapshot allows parallel appends, but an assistant for one owner
+  gains nothing from them, and that reader is harder to get right. The
   [event log spike](../open-items.md#spikes-to-run) measures whether one append at a time keeps up
   with one owner's load.
 
@@ -115,55 +146,51 @@ changed to.
 Retrieval over past conversation searches the log, under
 [0024](../../decisions/0024-memory-in-context.md), with keyword search first. A persisted full-text
 index, FTS5 on SQLite or `tsvector` on Postgres, keeps the words of an erasable field after its key
-is deleted, in the live database and in every backup. Erasable fields therefore stay out of any
-persisted index: nixie searches them through an index held in memory and built from the payloads it
-can still decrypt, or by decrypting and scanning. Envelope fields and payload fields that are not
-erasable can use the database's own full-text index. The
-[retrieval spike](../open-items.md#spikes-to-run) decides whether ranked search pays off.
+is deleted, in the live database and in every backup. nixie therefore builds its search index for
+free text in memory at start, from the payloads it can still decrypt, and updates it on each append;
+forgetting a record removes its entries. **Why:** the index never reaches a backup, and its size
+follows the log's free text, which the [retrieval spike](../open-items.md#spikes-to-run) measures
+along with whether ranked search pays off.
 
-Memory export is a tool and a button under [0010](../../decisions/0010-memory-store.md). The design
-proposes that the event log exports the same way: a SQLite file holding the records with decrypted
-payloads, which the
-[storage notes](../../research/2.4-notes/data-and-storage.md#weighing-the-evidence) favour because
-any SQLite reader opens it. A shredded payload stays a gap in the export. Creating an export carries
-its own declared effect, as memory export does.
+A record that recalls memory lists each memory item it read with the item's version. **Why:** the
+history table keeps every version, so a replay shows what the model saw at the cost of a few IDs per
+record.
+
+Memory export is a tool and a button under [0010](../../decisions/0010-memory-store.md). The event
+log exports the same way, as a SQLite file holding the records with decrypted payloads, subject to
+the [export format decision](#decisions-for-the-owner). A shredded payload stays a gap in the
+export. Creating an export carries its own declared effect, as memory export does.
 
 ## Retention
 
-The log keeps every record for the life of the deployment by default. The records are small next to
-an SDK transcript, and the principle "Nothing is hidden" asks that "why did nixie do this?" has an
-answer months later. The owner's erasure route is crypto-shredding, which removes content and keeps
-the fact that something happened.
+Retention expires content by shredding keys, so the log stays append-only. The defaults below are
+settings the owner can change per kind of record:
 
-Two stores sit beside the log and need their own rules. Definition snapshots are kept while any
-record points at them, so a replay always finds its definitions. The SDK transcript under
-`CLAUDE_CONFIG_DIR` is either a store the owner can read and export or a cache that the log
-supersedes, which is a [deferred decision](../open-items.md#deferred-decisions).
+| Kind                                   | Default                           | Why                                                        |
+| -------------------------------------- | --------------------------------- | ---------------------------------------------------------- |
+| Envelopes                              | Kept for the deployment's life    | They hold no personal content and explain every action     |
+| Owner messages and the model's replies | Kept for the deployment's life    | Retrieval over past conversation reads them under 0024     |
+| Tool results and worker transcripts    | Payload expires after 1 year      | They are the bulk of the log, and a year covers any review |
+| Definition snapshots                   | Kept while a record points at one | A replay always finds its definitions                      |
 
-## Options for the owner
+An expired payload reads as expired in the live view and in an export, next to its envelope. The SDK
+transcript under `CLAUDE_CONFIG_DIR` is either a store the owner can read and export or a cache that
+the log supersedes, which stays a [deferred decision](../open-items.md#deferred-decisions).
 
-- **The database.** SQLite keeps the log as one file in the process, which is also its export and
-  its backup, and `bun:sqlite` blocks the event loop during a long query. Postgres covers a second
-  host, wakes readers with LISTEN and NOTIFY, and has the maintained Kysely driver on Bun
-  ([storage notes](../../research/2.4-notes/data-and-storage.md#the-drivers-on-bun)). The design
-  above works on either. The recommendation is to let the
-  [event log spike](../open-items.md#spikes-to-run) and the topology decision settle it, because
-  whether nixie ever runs on a second host decides most of the trade-off.
-- **Projections beside the log, or the log alone.** The design keeps projection tables written in
-  the same transaction. A log-only design folds state on read, which removes any risk of the two
-  disagreeing but makes every claim and board read pay for a fold. The recommendation is projection
-  tables with the rebuild test.
-- **The export format.** A SQLite file opens anywhere and keeps the schema, while JSON lines read in
-  any text tool and diff well. The recommendation is the SQLite file, with JSON lines as a later
-  addition if the owner wants to read it by hand.
+## Decisions for the owner
 
-## Open questions
-
-- Which payload fields get their own key and where the owner's backup key lives, carried over from
-  [open items](../open-items.md#phase-3-design-tasks). The answer also sets how much of the log the
-  database's own full-text index can cover.
-- Whether the owner can set a retention period for records, and for which kinds, given that the
-  default keeps everything.
-- Whether a record that recalled memory stamps the version of each item it read.
-- Whether Postgres serialises appends with an advisory lock, as proposed, or tails by transaction
-  snapshot instead, which allows parallel appends at the cost of a more complex reader.
+- **SQLite or Postgres.** SQLite keeps the log as one file in the process, which is also its export
+  and its backup, but `bun:sqlite` blocks the event loop during a long query, and a second host
+  needs a layer that is not ready. Postgres covers a second host, wakes readers with LISTEN and
+  NOTIFY, and has the maintained Kysely driver on Bun, at the cost of a service to run and upgrade
+  ([storage notes](../../research/2.4-notes/data-and-storage.md#weighing-the-evidence)). The design
+  works on either. The recommendation is Postgres if nixie may ever run on a second host, and SQLite
+  otherwise, with the [event log spike](../open-items.md#spikes-to-run) as the check.
+- **State tables beside the log, or state rebuilt from the log.** State tables written in the same
+  transaction make a claim or a board read one indexed query, and a rebuild test catches any drift.
+  Rebuilding state from the log on every read removes any chance of the two disagreeing, but every
+  claim and board read pays for a fold. The recommendation is state tables beside the log.
+- **The export format.** A SQLite file opens in any SQLite reader and keeps the schema, and the
+  Library of Congress lists SQLite as a preferred format for datasets. JSON lines read in any text
+  tool and diff well, but lose the schema and the links between tables. The recommendation is the
+  SQLite file.

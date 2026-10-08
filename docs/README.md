@@ -227,3 +227,5 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   Gmail's restricted scope, and token refresh past 7 days
 - [Worker start inside an imp](../spikes/imp-worker-start/) — imp create and wake, and the SDK's
   first token inside an imp against the host
+- [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
+  `forkSession` drop a turn that never committed

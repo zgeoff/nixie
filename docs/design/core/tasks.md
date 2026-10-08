@@ -52,9 +52,11 @@ next state and the moved inbox cursor in one transaction. A second commit for th
 the key, so a step never commits twice.
 
 A runner claims a task with a lease: it sets itself as holder, an expiry, and a lease generation one
-higher than the last. The runner extends the lease while the step runs. Every write the step makes
-checks the generation, so a runner whose lease expired and passed to another cannot commit. The
-claim differs by database:
+higher than the last. A lease lasts 60 s by default, and the runner renews it every 20 s while the
+step runs. **Why:** a turn takes seconds to minutes, renewing at a third of the lease survives 2
+missed renewals, and a dead runner frees its task within a minute. Every write the step makes checks
+the generation, so a runner whose lease expired and passed to another cannot commit. The claim
+differs by database:
 
 - **Postgres:** `SELECT … FOR UPDATE SKIP LOCKED` picks a ready task that no other runner is
   claiming.
@@ -76,9 +78,11 @@ buffers an approval that arrives before its wait registers, which the durable la
 [open items](../open-items.md#phase-3-design-tasks) asks about.
 
 **Lapses.** Each proposal gets a timer at creation for the lapse that
-[0006](../../decisions/0006-approval-record.md) requires. When the timer fires, nixie records the
-lapse, closes the proposal and puts the lapse record in the task's inbox, so the task's next turn
-learns of it. The lapse time itself is open.
+[0006](../../decisions/0006-approval-record.md) requires. A proposal lapses after 72 hours by
+default, and the owner can set another time per effect. **Why:** 72 hours spans a weekend away, and
+an action approved later than that, such as a reply, is likely stale, while the model can propose it
+again. When the timer fires, nixie records the lapse, closes the proposal and puts the lapse record
+in the task's inbox, so the task's next turn learns of it.
 
 **Timers.** A durable timer is a row with a due time and the record to write when it fires. A
 sweeper fires every due timer in a transaction that writes the record and removes the timer. A timer
@@ -94,8 +98,8 @@ at once ([2.2 and 2.3 landscape](../../research/2.2-2.3-core-and-policy.md#owner
 ## Routing from the conversation
 
 The design runs the conversation as a task that never ends, an
-[owner option](#options-for-the-owner), and the owner's messages land in its inbox by default. A
-message the owner sends while a task is open in the client goes straight to that task.
+[decision for the owner](#decisions-for-the-owner), and the owner's messages land in its inbox by
+default. A message the owner sends while a task is open in the client goes straight to that task.
 
 The conversation's turn receives the task board in its newest turn, after the stable part of the
 prompt, so the prompt cache holds under [0024](../../decisions/0024-memory-in-context.md). Routing
@@ -116,7 +120,8 @@ fields under [0015](../../decisions/0015-taint-scope.md). The schedule is a trig
 the job's definition version pinned for the task's life, under
 [0013](../../decisions/0013-definition-versioning.md). The run can call only the tools on the job's
 list, and the first build treats every run as untrusted. A fire missed while nixie was down is
-recorded as skipped or late.
+recorded as skipped or late, and what nixie does with it is a
+[decision for the owner](#decisions-for-the-owner).
 
 ## Workers
 
@@ -129,6 +134,13 @@ Each worker run gets its own imp, which starts in about 350 ms, under
 nixie's tools, where the destination limits apply. The worker holds a subset of its caller's tools,
 so delegation only narrows. Its transcript and sources become records whose parent is the tool call.
 The imp is destroyed when the tool call returns.
+
+A worker run stops at 10 min of wall time, 25 model turns or $1 of model cost by default, whichever
+comes first, and the owner can set other limits per tool. The runner reads the cost from the SDK's
+result for each turn. **Why:** a worker answers one narrow question, such as a price from a page, so
+a run past these limits is looping, and the caller gets an error it can act on instead of a silent
+spend. These limits sit inside the wider budgets and spending stop, which
+[open items](../open-items.md#phase-3-design-tasks) leave to their own design.
 
 A worker is not durable. If the step dies, the worker's imp is destroyed with it, and a rerun of the
 step starts a new worker. An outside action the worker caused runs through the outside action queue,
@@ -148,45 +160,50 @@ A crash stops the steps in flight, and a restart resumes every task from the log
 Resuming the SDK session alone would carry the interrupted turn's partial work. The
 [defer and hold spike](../../../spikes/sdk-long-hold/README.md) found that a resumed session keeps
 everything the dead turn wrote, with a synthetic "outcome unknown" result for a dangling tool call.
-The inbox cursor did not move, so the rerun would also deliver inbox records the model already read
-in the partial turn.
+The [resume-at spike](../../../spikes/sdk-resume-at/README.md) found that an aborted turn leaves its
+prompt in the session, so a plain resume answers from the turn that never committed. The inbox
+cursor did not move either, so the rerun would deliver inbox records twice.
 
-Each step commit therefore records the ID of the last SDK session message the turn wrote, as the
-task's session boundary. The rerun branches the session at that boundary, which drops the partial
-turn, and gives the model the unread inbox plus a record that lists each outside action the
-interrupted turn started, with its outcome. The model reads which actions ran, so it has no reason
-to call them again. When it does call one again, the tool finds the existing action by its action
-hash within the task and returns that action's outcome instead of queuing a second one. Crash tests
-at each point confirm that a resumed turn never repeats an outside action that ran.
+Each step commit therefore records the session's last chain entry as the task's session boundary.
+The rerun calls `query()` with `resume`, `resumeSessionAt` set to that boundary and
+`forkSession: true`, which drops everything after the boundary and writes to a new session ID that
+nixie records on the task. On `@anthropic-ai/claude-agent-sdk` 0.3.293, the resume-at spike showed
+that this drops both a completed later turn and an aborted one, and leaves the original session
+intact. The SDK's docs require the boundary to be the kept turn's last chain entry, not its last
+assistant message, when that turn ends in a tool call, so nixie records the last entry of every
+turn.
 
-## Options for the owner
+The rerun gives the model the unread inbox plus a record that lists each outside action the
+interrupted step started, with its outcome. The model reads which actions ran, so it has no reason
+to call them again. When it does call one again, the tool matches it by action hash against 2 sets:
+actions that the interrupted step started, and actions in the task that are still pending or
+unknown. A match returns the existing action's outcome instead of queuing a second one. An action
+that finished in an earlier committed step is outside both sets, so the model can repeat it on
+purpose. Crash tests at each point confirm that a resumed turn never repeats an outside action that
+ran.
 
-- **The database.** The claim and the wake-up differ as shown under steps and leases, and the
-  [event log doc](./event-log.md#options-for-the-owner) holds the trade-off.
-- **Where a worker's model runs.** The SDK can run inside the worker's imp and reach nixie's tools
-  over HTTP MCP, which puts the whole worker behind the imp boundary but inherits the open question
-  of how a sandboxed session reaches nixie's endpoint without reaching imp's management API
-  ([0003](../../decisions/0003-sdk-placement.md)). Or the worker's loop runs on the host with only
-  nixie's tools, and the imp holds the code and fetches the worker runs. The recommendation is the
-  host loop for the first build, because it needs no endpoint exposure, with the imp for everything
-  the worker executes.
-- **The conversation as a task.** Running the conversation on the task machinery gives it leases, an
-  inbox and crash recovery for free, at the cost of a special case in the board, which hides it. A
-  separate loop keeps the task model pure and duplicates that machinery. The recommendation is the
-  conversation as a task.
+## Decisions for the owner
 
-## Open questions
+The database choice and its effect on claims and wake-ups are in the
+[event log design](./event-log.md#decisions-for-the-owner).
 
-- How long a proposal stays open before it lapses, carried over from
-  [open items](../open-items.md#phase-3-design-tasks).
-- Whether a job fire missed while nixie was down runs once on restart, runs for every missed fire,
-  or only reports, and whether that is set per job.
-- How long a lease lasts and how often the runner extends it, which the crash tests tune.
-- What stopping a task does to its open proposals and its queued outside actions: withdraw and
-  cancel, or leave them for the owner.
-- What limits a worker's time and cost, which joins the open question of budgets and the spending
-  stop.
-- How long the action-hash lookup reaches back, so that a deliberate repeat of the same action later
-  in a task is not mistaken for a retry.
-- Whether the Agent SDK can branch a session at a given message, or nixie rebuilds the session from
-  the log after a crash, which a spike checks before the crash tests.
+- **Whether the conversation runs as a task.** As a task, the conversation gets leases, an inbox and
+  crash recovery from the same code, and the board hides it as a special case. A separate loop keeps
+  the task model free of that special case, but duplicates the durable machinery for the one thread
+  that matters most. The recommendation is the conversation as a task.
+- **Whether a worker's model loop runs inside its imp or on the host.** Inside the imp, the whole
+  worker sits behind the sandbox, but its tool calls reach nixie's endpoint over HTTP MCP, which
+  inherits the open question of reaching that endpoint without reaching imp's management API
+  ([0003](../../decisions/0003-sdk-placement.md)). On the host, the loop has only nixie's tools, as
+  assistant work does under 0003, and the imp holds the code and fetches the worker runs. The
+  recommendation is the host loop for the first build, because it needs no endpoint exposure.
+- **What stopping a task does to its pending proposals and queued outside actions.** Withdrawing the
+  proposals and cancelling every action that has not started an attempt leaves nothing acting for a
+  task the owner ended, and an attempt in flight finishes and records its outcome. Leaving them for
+  the owner keeps work the owner may still want, at the cost of proposals from a stopped task. The
+  recommendation is to withdraw and cancel, with the stop confirmation listing what it withdraws.
+- **What happens to schedule runs missed while nixie was down.** Running every missed fire floods
+  the owner after an outage, and skipping them all loses a morning report that is still useful an
+  hour late. Running one catch-up when the latest missed fire is within half the job's interval, and
+  otherwise skipping with a report, keeps the useful case. The recommendation is that catch-up rule
+  as the default, with a setting per job.

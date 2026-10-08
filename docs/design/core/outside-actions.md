@@ -15,7 +15,8 @@ outcomes and never sets them. Everything in this doc beyond the decisions it lin
 
 [0021](../../decisions/0021-outside-action-outcomes.md) calls each queue entry a job. This doc calls
 it an outside action, because a job is a definition with a schedule under
-[0015](../../decisions/0015-taint-scope.md), and the terminology pass settles the word.
+[0015](../../decisions/0015-taint-scope.md), and the word itself is a
+[decision for the owner](#decisions-for-the-owner).
 
 ## From tool call to queue
 
@@ -30,10 +31,12 @@ The action ID serves as the proposal ID, the queue entry's key and the idempoten
 action keeps one identity from the tool call to the provider. Each action also holds the action hash
 from [0006](../../decisions/0006-approval-record.md): the tool, its arguments and its destination.
 
-An allowed call waits for its outcome inside the turn for a short bound, and returns the outcome
-when it arrives in time. Otherwise the tool returns "queued as <id>", the turn goes on, and the
-outcome reaches the task's inbox as a record, which the task's next turn reads. An approved proposal
-always reports through the inbox, because its turn ended when the proposal was made.
+An allowed call waits for its outcome inside the turn for up to 10 s by default, and returns the
+outcome when it arrives in time. **Why:** a provider call that will succeed usually returns within
+that time, and a longer wait holds the turn and the owner's reply behind it. Otherwise the tool
+returns "queued as <id>", the turn goes on, and the outcome reaches the task's inbox as a record,
+which the task's next turn reads. An approved proposal always reports through the inbox, because its
+turn ended when the proposal was made.
 
 ## Consuming the approval
 
@@ -48,6 +51,20 @@ Every attempt of that action, retries included, runs under the one consumed appr
 repeats the approved action under the same ID; it is not a second use. An owner's choice to retry an
 unknown action is a new checked action in the client, recorded with its own record, so it authorises
 that retry on its own.
+
+## Policy before each attempt
+
+Rule changes reach running work at once under [0013](../../decisions/0013-definition-versioning.md),
+so a queued action runs through nixie's deterministic layers again before every attempt: the rules,
+the always-ask set and the destination limits. A rule that narrowed after the approval applies to
+the action:
+
+- **Deny** fails the action with the rule's ID, and the reason goes to the task's inbox.
+- **Ask, on an action with an approval,** goes ahead, because the approval answered that ask. One
+  exception: an action that newly falls in the always-ask set needs an approval of that class, so it
+  returns to a proposal under the same ID.
+- **Ask, on an action that a rule allowed,** returns the action to a proposal under the same ID.
+- **Allow** goes ahead.
 
 ## Attempts and outcomes
 
@@ -75,22 +92,31 @@ nixie marks the action unknown, as step 3 of [crash recovery](./tasks.md#crash-r
 request that failed before it left the host, such as a refused connection, guarantees no effect, and
 the connector reports it as a retryable refusal.
 
+Retries follow one default schedule, which a connector can override per action: up to 5 attempts in
+all, waiting 30 s, 2 min, 8 min and 30 min between them, or longer when the provider names a retry
+time. **Why:** the schedule rides out a rate limit or a short outage within about 40 min, and an
+action still failing after that needs the owner more than another attempt. A retryable refusal on
+the last attempt makes the action `failed`.
+
 ## Reconciliation per connector
 
 Each connector declares, per action, what it can do after an unknown outcome, as
 [0021](../../decisions/0021-outside-action-outcomes.md) requires:
 
 - **Idempotency key.** The provider honours a key, and the declaration names where the key goes and
-  how long the provider keeps it. nixie retries with the same key while the provider still keeps it,
-  and treats an expired key as no key.
+  how long the provider keeps it. nixie retries with the same key on the retry schedule while the
+  provider still keeps it, and treats an expired key as no key.
 - **Check.** A read-only call that shows whether the action happened, such as a search of the Sent
   folder for the message ID that nixie set from the action ID. The declaration names the call and
-  how long to wait before trusting a negative answer, since a provider can show a new item late.
+  how long to wait before trusting a negative answer, 60 s by default, since a provider can show a
+  new item late.
 - **Neither.** The action goes to the owner.
 
 A check returns found, not found, or inconclusive. Found makes the action done, with the check's
-answer as evidence. Not found returns the action to pending for a retry. Inconclusive sends it to
-the owner. Each check and its answer is a record.
+answer as evidence. Not found returns the action to pending for a retry. An action whose attempts
+end unknown 3 times goes to the owner, whatever the checks say. **Why:** 3 unknown outcomes in a row
+point at a provider fault that another retry will not clear. Inconclusive sends it to the owner.
+Each check and its answer is a record.
 
 A tool from an outside MCP server declares nothing by default, because nixie's rules cannot see
 inside the server under [0017](../../decisions/0017-mcp-proxy.md). An interrupted call to such a
@@ -127,26 +153,31 @@ The client sends a content-free push for the item, as for any proposal under
 until the owner answers, as [0021](../../decisions/0021-outside-action-outcomes.md) requires, and
 the task's open waits include it. A task can carry on with other work while it waits.
 
-## Options for the owner
+## Runner pools
 
-- **The database.** The queue uses the same claim and wake-up as tasks, and the
-  [event log doc](./event-log.md#options-for-the-owner) holds the trade-off. Neither database
-  changes the outcomes or the reconciliation.
-- **One queue for tasks and outside actions, or 2.** One table and one runner pool keep a single
-  claim path and a single crash test suite. Separate pools let outside actions run when every task
-  runner is busy with a long turn, and let the owner limit concurrent sends apart from concurrent
-  turns. The recommendation is one claim mechanism with separate pools.
+Tasks and outside actions share one claim mechanism and run in separate pools. By default, 3 task
+steps and 4 outside actions run at once, and the owner can change both. **Why:** one claim path
+means one set of crash tests, while separate pools let a send go out when every task runner is busy
+with a long turn, and let the owner limit concurrent sends apart from concurrent turns. The task
+step limit is the limit on concurrent work that the [scope](../../scope.md) asks for in tier 2.
 
-## Open questions
+## Decisions for the owner
 
-- How long an allowed call waits in its turn before it returns "queued as <id>".
-- How many retries an idempotency key allows, and how far apart.
-- Whether a rule that narrows after an approval, such as a new deny rule, stops a queued action that
-  the approval already authorised. Rules apply at once under
-  [0013](../../decisions/0013-definition-versioning.md), and the design proposes a check of deny
-  rules and the always-ask set before the first attempt.
-- Whether unknown items join the digest sheet from [0006](../../decisions/0006-approval-record.md)
-  next to proposals.
-- Whether the owner's retry of an unknown action in the always-ask set takes the passkey check from
-  [0012](../../decisions/0012-high-risk-approvals.md), as the original approval would.
-- Which word replaces "job" for a queue entry, in the terminology pass.
+The database choice is in the [event log design](./event-log.md#decisions-for-the-owner), and it
+changes neither the outcomes nor the reconciliation.
+
+- **The word for a queue entry.** [0021](../../decisions/0021-outside-action-outcomes.md) calls it a
+  job, which collides with a job as a definition with a schedule under
+  [0015](../../decisions/0015-taint-scope.md). "Outside action", as this design uses, names what it
+  is, and "send" or "effect" are shorter but narrower. The recommendation is "outside action", with
+  0021's wording updated to match.
+- **Whether unconfirmed outcomes join the digest sheet.** In the digest sheet from
+  [0006](../../decisions/0006-approval-record.md), the owner settles every waiting item in one pass,
+  which is where queued items gather while the owner is away. Kept apart, an unknown outcome stands
+  out as a possible fault rather than one more approval. The recommendation is to include them in
+  the digest sheet, in their own group at the top.
+- **Whether retrying a payment needs the passkey.** A retry of an unknown payment can charge twice,
+  so it carries the same risk as the first approval, which takes the passkey check under
+  [0012](../../decisions/0012-high-risk-approvals.md). Asking for the passkey adds a step to a rare
+  event, and skipping it lets anyone holding the owner's unlocked phone trigger a second charge. The
+  recommendation is the passkey for every retry in the always-ask set, once 0012 lands.
