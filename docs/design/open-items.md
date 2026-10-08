@@ -169,6 +169,8 @@ routing and grants with expiries, and the stages agreed for after the first buil
 - **The coding agent adapter and running code.** Design the adapter interface from
   [0022](../decisions/0022-coding-and-code-execution.md), with atc as the first adapter, and the
   tool that runs code in a disposable imp with no grants, which comes early.
+- **Export beyond memory.** [0010](../decisions/0010-memory-store.md) exports memory. Exporting the
+  event log and conversations in the same way, so the owner can take everything, is still to design.
 
 ## Later stages
 

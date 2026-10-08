@@ -23,6 +23,14 @@ The owner sees memory in 2 ways:
 Forgetting is crypto-shredding. nixie encrypts each memory item with its own key, and forgetting
 deletes the key, so the item becomes unreadable in the live database and in every backup at once.
 
+## Export
+
+The owner can export all memory to a plain, documented format, such as JSON or markdown files, with
+provenance and history included. Export is a tool and a button in the client, and it writes to a
+place the owner chooses. An export holds decrypted data, so creating one is an action with its own
+declared effect under the owner's rules, and nixie cannot send an export to an outside destination
+on its own. A forgotten item cannot be exported, because its key is gone.
+
 ## Why
 
 - Transparency for the owner means a UI to inspect and manage memory, and an agent that answers

@@ -93,8 +93,9 @@ always-ask set gain a passkey check after the first build
 ## Memory
 
 Memory is rows in nixie's database, with provenance the model cannot write and a history table. The
-owner manages it in the client, and a raw recall tool returns stored items, not paraphrase.
-Forgetting is crypto-shredding, with a key per item ([0010](./decisions/0010-memory-store.md)).
+owner manages it in the client, and a raw recall tool returns stored items, not paraphrase. The
+owner can export all of it to a plain format. Forgetting is crypto-shredding, with a key per item
+([0010](./decisions/0010-memory-store.md)).
 
 A memory applies at once, with notice and undo, only when an exact quote from the owner's message
 backs it, the quote is text the owner typed rather than pasted, its destination-like tokens appear
