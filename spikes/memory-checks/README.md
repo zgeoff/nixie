@@ -23,12 +23,12 @@ bun test
 ```
 
 - [checks.ts](./checks.ts) holds the 2 checks and the quoted-block finder.
-- [cases.ts](./cases.ts) holds 26 owner messages, each with its spans and a candidate memory write,
+- [cases.ts](./cases.ts) holds 31 owner messages, each with its spans and a candidate memory write,
   and the expected verdict.
 
 ## Answer
 
-Code decides both checks with a few rules, and all 26 cases gave the expected verdict:
+Code decides both checks with a few rules, and all 31 cases gave the expected verdict:
 
 ```text
 ok  a plain typed statement: pass  tokens=[]
@@ -61,25 +61,34 @@ ok  a question passes the code checks: pass  tokens=[]
 ok  inline quotation marks pass the code checks: pass  tokens=[062-000 1234 5678]
       checker must judge: The owner quotes someone else inside a statement; inline quotation marks are left to it.
 ok  a name in quotation marks inside a statement: pass  tokens=[]
+ok  a quote that ends inside a letter whose accent was pasted: fail  the quote is not in the message
+ok  digits from 2 numbers in the quote never join: fail  the phone 1234567890 is not in the quote
+ok  a URL scheme the owner never typed: fail  the url http://example.com/login is not in the quote
+ok  a URL that holds an email address the quote has: fail  the url https://user@example.com/evil is not in the quote
+ok  a domain that is a suffix of the one in the quote: fail  the domain ample.com is not in the quote
 
-26 of 26 cases as expected
+31 of 31 cases as expected
 ```
 
 - **Matching.** Both strings are compared in NFC, with each run of whitespace collapsed to one
   space, and nothing else is relaxed. NFC composes only within a grapheme, so the check normalises
   the message one grapheme at a time and keeps each grapheme's original offset, which maps a match
-  back onto the spans. A quote passes when any one of its occurrences lies wholly in `typed` spans,
-  so a pasted copy elsewhere in the message never hides a typed one.
+  back onto the spans. A match must start and end on grapheme boundaries. A quote passes when any
+  one of its occurrences lies wholly in `typed` spans, so a pasted copy elsewhere in the message
+  never hides a typed one.
 - **Fail closed.** A quote that touches a pasted, dropped, unknown or dictated character fails, even
   by one combining accent. A token split between a typed and a pasted span fails the same way.
 - **Quoted blocks.** Blockquote lines, code fences and everything below a reply or forward header
   never count. Inline quotation marks are left to the checker model, because owners quote names and
   titles inside their own statements, as the last case shows.
 - **Tokens.** Emails, URLs, handles, phone numbers, IBAN-style account numbers and bare domains are
-  found in the memory and must appear in the quote. Phone and account numbers compare by digits, so
-  separators may differ but a country code the owner never typed fails. Emails, handles, domains and
-  a URL's scheme and host compare without case; a URL's path keeps its case. A lookalike letter from
-  another script fails, and an invisible format character in the memory or the quote fails at once.
+  found in the memory and must appear in the quote. Phone and account numbers compare by digits with
+  each number in the quote on its own, so separators may differ, but a country code the owner never
+  typed fails and digits from 2 numbers never join. Emails, handles, domains and a URL's scheme and
+  host compare without case, a URL's scheme must match, and its path keeps its case. A URL is found
+  before an email inside it, and a bare domain must equal a host in the quote. A lookalike letter
+  from another script fails, and an invisible format character in the memory or the quote fails at
+  once.
 - **The checker is needed.** A negation, a question and a quotation of someone else all pass both
   code checks. The code checks bound which destinations a memory can name; only the checker can tell
   whether the owner asserted it.

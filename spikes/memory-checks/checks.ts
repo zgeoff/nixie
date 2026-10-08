@@ -27,16 +27,21 @@ export type Verdict =
 const INVISIBLE = /\p{Cf}/u;
 
 // Text normalised for matching: NFC, and each run of whitespace collapsed to one space. `map[i]`
-// is the offset in the original text of normalised character i, so a match maps back to spans.
+// and `ends[i]` are the start and end offsets in the original text of the grapheme that holds
+// normalised unit i, and `starts` holds each normalised index where a grapheme begins.
 interface Normalised {
+  ends: number[];
   map: number[];
+  starts: Set<number>;
   text: string;
 }
 
 const GRAPHEMES = new Intl.Segmenter('en', { granularity: 'grapheme' });
 
 export function normalizeText(text: string): Normalised {
+  const ends: number[] = [];
   const map: number[] = [];
+  const starts = new Set<number>();
   let out = '';
   let inSpace = false;
 
@@ -45,18 +50,22 @@ export function normalizeText(text: string): Normalised {
   for (const part of GRAPHEMES.segment(text)) {
     if (/^\s+$/u.test(part.segment)) {
       if (!inSpace) {
+        starts.add(out.length);
         out += ' ';
         map.push(part.index);
+        ends.push(part.index + part.segment.length);
       }
       inSpace = true;
     } else {
       const nfc = part.segment.normalize('NFC');
+      starts.add(out.length);
       out += nfc;
       map.push(...Array.from({ length: nfc.length }, () => part.index));
+      ends.push(...Array.from({ length: nfc.length }, () => part.index + part.segment.length));
       inSpace = false;
     }
   }
-  return { map, text: out };
+  return { ends, map, starts, text: out };
 }
 
 // Block-level quoted regions that never count as evidence: blockquote lines, fenced code, and
@@ -127,8 +136,14 @@ export function checkQuote(message: OwnerMessage, quote: string): Verdict {
   while (from !== -1) {
     found = true;
     const start = text.map[from] ?? 0;
-    const end = text.map[from + needle.length] ?? message.text.length;
-    if (isTypedRange(message, start, end) && !isInBlock(blocks, start, end)) {
+    const end = text.ends[from + needle.length - 1] ?? message.text.length;
+    const after = from + needle.length;
+
+    // A match must begin and end on grapheme boundaries, so a quote never ends inside a letter
+    // whose combining mark arrived another way.
+    const onBoundaries =
+      text.starts.has(from) && (after === text.text.length || text.starts.has(after));
+    if (onBoundaries && isTypedRange(message, start, end) && !isInBlock(blocks, start, end)) {
       return { ok: true, quoteAt: start, tokens: [] };
     }
     from = text.text.indexOf(needle, from + 1);
@@ -150,8 +165,8 @@ interface Token {
 
 const TRAILING = /[.,;:!?)\]}'"’”]+$/u;
 const PATTERNS: { kind: Token['kind']; pattern: RegExp }[] = [
-  { kind: 'email', pattern: /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu },
   { kind: 'url', pattern: /\b(?:https?:\/\/|www\.)[^\s<>"]+/giu },
+  { kind: 'email', pattern: /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu },
   { kind: 'handle', pattern: /(?<![\p{L}\p{N}._%+-])@[\p{L}\p{N}_.]{2,}/gu },
   { kind: 'account', pattern: /\b[A-Z]{2}\d{2}(?:\s?[A-Z\d]{4}){2,7}(?:\s?[A-Z\d]{1,4})?\b/gu },
   { kind: 'phone', pattern: /\+?\d[\d\s().-]{5,}\d/gu },
@@ -169,8 +184,11 @@ function deriveKey(kind: Token['kind'], raw: string): string {
   if (kind === 'url') {
     // The scheme and host compare without case; the path keeps its case.
     const match = /^(?<scheme>https?:\/\/)?(?<host>[^/]+)(?<path>.*)$/iu.exec(cleaned);
+    const scheme = match?.groups?.scheme ?? '';
     const host = match?.groups?.host ?? '';
-    return match ? `${host.toLowerCase()}${match.groups?.path ?? ''}` : cleaned;
+    return match
+      ? `${scheme.toLowerCase()}${host.toLowerCase()}${match.groups?.path ?? ''}`
+      : cleaned;
   }
   return cleaned.toLowerCase();
 }
@@ -199,26 +217,43 @@ export function findTokens(text: string): Token[] {
   return tokens;
 }
 
+function isNumberKind(kind: Token['kind']): boolean {
+  return kind === 'phone' || kind === 'account';
+}
+
+function getHost(token: Token): string {
+  if (token.kind === 'email') {
+    return token.key.slice(token.key.indexOf('@') + 1);
+  }
+  if (token.kind === 'url') {
+    return token.key.replace(/^https?:\/\//u, '').split('/')[0] ?? '';
+  }
+  return token.key;
+}
+
 // Check 2: every destination-like token in the memory appears in the quote, compared by kind:
 // digits only for phone and account numbers, without case for emails, handles, domains and hosts.
 export function checkTokens(memory: string, quote: string): Verdict {
   if (INVISIBLE.test(memory)) {
     return { ok: false, reason: 'the memory holds an invisible character' };
   }
-  const inQuote = new Set(findTokens(quote).map((token) => `${token.kind}:${token.key}`));
+  const quoteTokens = findTokens(quote);
+  const inQuote = new Set(quoteTokens.map((token) => `${token.kind}:${token.key}`));
 
-  // A phone or account number may be written with other separators in the quote.
-  const quoteDigits = quote.replaceAll(/[^\d+]/gu, '');
+  // A phone or account number compares with each number in the quote on its own, so digits from
+  // separate numbers never join into one.
+  const quoteNumbers = new Set(
+    quoteTokens.filter((token) => isNumberKind(token.kind)).map((token) => token.key),
+  );
+
+  // A bare domain compares with each host in the quote: a domain, an email's domain or a URL's host.
+  const quoteHosts = new Set(quoteTokens.map((token) => getHost(token)));
   const tokens = findTokens(memory);
   for (const token of tokens) {
-    const isNumber = token.kind === 'phone' || token.kind === 'account';
-
-    // A domain alone may sit inside an email or URL in the quote.
-    const isDomainInQuote = token.kind === 'domain' && quote.toLowerCase().includes(token.key);
     const present =
       inQuote.has(`${token.kind}:${token.key}`) ||
-      (isNumber && quoteDigits.includes(token.key)) ||
-      isDomainInQuote;
+      (isNumberKind(token.kind) && quoteNumbers.has(token.key)) ||
+      (token.kind === 'domain' && quoteHosts.has(token.key));
     if (!present) {
       return { ok: false, reason: `the ${token.kind} ${token.raw} is not in the quote` };
     }

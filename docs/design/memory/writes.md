@@ -75,13 +75,13 @@ task, so model-chosen text gets there only with the owner's approval.
 ### The quote check
 
 The [checks spike](../../../spikes/memory-checks/README.md) wrote the quote check and the token
-check as code and ran them over 26 sample messages, and every case gave the expected verdict. The
+check as code and ran them over 31 sample messages, and every case gave the expected verdict. The
 rules it settled:
 
 - **Matching.** The quote and the message compare in Unicode NFC, with each run of whitespace
   collapsed to one space, and nothing else relaxed: case, punctuation and spelling must match. The
-  message is normalised one grapheme at a time, so a match maps back onto the spans the client
-  recorded.
+  message is normalised one grapheme at a time, and a match starts and ends on grapheme boundaries,
+  so it maps back onto the spans the client recorded.
 - **Typed text only.** A match passes when every character of it lies in a span the client labelled
   `typed`, as the [client design](../channels/client.md#paste-spans) records spans. A pasted,
   dropped or unknown character fails it, even a single combining accent, and so does a quote that
@@ -102,14 +102,14 @@ can mishear a name or a number.
 
 Code finds the destination-like tokens in the memory text and requires each one in the quote:
 
-| Token          | Compared                                                       |
-| -------------- | -------------------------------------------------------------- |
-| Email address  | Without case                                                   |
-| URL            | Scheme and host without case, path exactly                     |
-| Bare domain    | Without case, anywhere in the quote                            |
-| Handle         | Without case                                                   |
-| Phone number   | Digits only, so separators may differ and nothing may be added |
-| Account number | IBAN-style letters and digits, spaces dropped                  |
+| Token          | Compared                                                                    |
+| -------------- | --------------------------------------------------------------------------- |
+| Email address  | Without case                                                                |
+| URL            | Scheme and host without case, path exactly, found before an email inside it |
+| Bare domain    | Without case, equal to a host in the quote                                  |
+| Handle         | Without case                                                                |
+| Phone number   | Digits only, against each number in the quote on its own                    |
+| Account number | IBAN-style letters and digits, spaces dropped                               |
 
 A country code the owner never typed fails the phone comparison, and a lookalike letter from another
 script fails every comparison. **Why:** the token check stops the most harmful poisoned memory, one

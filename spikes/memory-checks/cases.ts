@@ -252,4 +252,37 @@ export const CASES: Case[] = [
       quote: 'My wife is "Sam" to everyone, Samantha on paper',
     },
   },
+  {
+    expect: false,
+    message: buildMessage(['typed', 'call Rene'], ['pasted', '́ about it']),
+    name: 'a quote that ends inside a letter whose accent was pasted',
+    write: { memory: 'Call Rene about it.', quote: 'call Rene' },
+  },
+  {
+    expect: false,
+    message: buildTyped('Account 1234567 and PIN 890'),
+    name: 'digits from 2 numbers in the quote never join',
+    write: { memory: "The owner's phone is 1234567890.", quote: 'Account 1234567 and PIN 890' },
+  },
+  {
+    expect: false,
+    message: buildTyped('the portal is https://example.com/login'),
+    name: 'a URL scheme the owner never typed',
+    write: {
+      memory: 'The portal is http://example.com/login.',
+      quote: 'https://example.com/login',
+    },
+  },
+  {
+    expect: false,
+    message: buildTyped('Email user@example.com'),
+    name: 'a URL that holds an email address the quote has',
+    write: { memory: 'Log in at https://user@example.com/evil.', quote: 'Email user@example.com' },
+  },
+  {
+    expect: false,
+    message: buildTyped('my site is example.com'),
+    name: 'a domain that is a suffix of the one in the quote',
+    write: { memory: "The owner's site is ample.com.", quote: 'my site is example.com' },
+  },
 ];
