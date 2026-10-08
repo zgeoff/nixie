@@ -49,6 +49,8 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   source, connector and credential store, with tools from MCP
 - [0017: Outside MCP servers](./decisions/0017-mcp-proxy.md) — every MCP server outside nixie's code
   goes through a proxy, the owner's own included
+- [0018: The main thread and tasks](./decisions/0018-main-thread-and-tasks.md) — the owner works
+  through the main thread, which routes work to tasks and shares a live view
 
 ## Research
 
