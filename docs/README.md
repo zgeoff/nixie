@@ -38,6 +38,10 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   UI and a raw recall tool, and forgetting by crypto-shredding
 - [0011: Which memory writes skip review](./decisions/0011-memory-writes.md) — writes from a clean
   main thread apply at once with undo, and every proposal is asynchronous
+- [0012: High-risk approvals](./decisions/0012-high-risk-approvals.md) — a passkey check for the
+  always-ask set, and a tap for everything else
+- [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
+  every record, with rules applying at once and persona and jobs fixed per task
 
 ## Research
 
