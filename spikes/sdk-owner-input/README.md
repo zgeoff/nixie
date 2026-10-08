@@ -117,9 +117,25 @@ WebSearch.
 
 ## Untested
 
-- A `now` message while the model writes text with no tool running. The SDK docs say Claude Code
-  interrupts the turn in that case.
-- A `now` message during a tool that cannot move to the background, such as Edit.
-- A message with no `priority` field. The SDK docs give it the behavior of `next`.
-- `shouldQuery: false`, which appends a message without starting a turn.
-- `interrupt()` and its receipt of queued messages.
+[cases.ts](./cases.ts) holds a script for each case below, and none of them has run yet. Run each
+command from this directory:
+
+```bash
+env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts text
+env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts text --human
+env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts slow-tool
+env -u ANTHROPIC_API_KEY bun --env-file=../../.env owner.ts none --step 20
+env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts defer
+env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts interrupt
+```
+
+- A `now` message while the model writes text with no tool running (`text`). The SDK docs say Claude
+  Code interrupts the turn in that case.
+- A `now` message with a `human` origin during a tool that cannot move to the background
+  (`slow-tool`, an in-process tool that sleeps 20 s). The SDK types name only WebFetch and WebSearch
+  as tools that step aside for a user message.
+- A message with no `priority` field (`owner.ts none`). The SDK docs give it the behavior of `next`.
+- `shouldQuery: false` (`defer`). The SDK types say such a message joins the transcript without
+  starting a turn and merges into the next message that does.
+- `interrupt()` with a queued owner message (`interrupt`). The SDK types say `interrupt()` returns
+  the stamped messages that will still run.
