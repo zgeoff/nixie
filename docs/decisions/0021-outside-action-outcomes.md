@@ -1,7 +1,7 @@
 # 0021: Outside action outcomes
 
 - Date: 2026-10-08
-- Status: decided
+- Status: decided, amended by [0027](./0027-tasks-and-outside-actions.md)
 - Amends: [0006](./0006-approval-record.md)
 - Research: [engine notes](../research/2.2-notes/engines.md),
   [Hermes notes](../research/2.1-notes/hermes.md#restart-behaviour)

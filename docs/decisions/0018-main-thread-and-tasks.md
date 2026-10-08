@@ -1,7 +1,7 @@
 # 0018: The main thread and tasks
 
 - Date: 2026-10-08
-- Status: decided
+- Status: decided, amended by [0027](./0027-tasks-and-outside-actions.md)
 - Research: [2.1 landscape](../research/2.1-landscape.md),
   [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md)
 

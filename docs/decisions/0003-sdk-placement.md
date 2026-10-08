@@ -1,7 +1,8 @@
 # 0003: Where the Agent SDK runs
 
 - Date: 2026-10-07
-- Status: decided, amended by [0022](./0022-coding-and-code-execution.md)
+- Status: decided, amended by [0022](./0022-coding-and-code-execution.md) and
+  [0026](./0026-where-workers-and-the-conversation-run.md)
 - Research: [placement spike](../../spikes/sdk-placement/),
   [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#open-questions)
 

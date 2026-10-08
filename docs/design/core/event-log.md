@@ -6,7 +6,8 @@
   [0013](../../decisions/0013-definition-versioning.md),
   [0015](../../decisions/0015-taint-scope.md),
   [0018](../../decisions/0018-main-thread-and-tasks.md),
-  [0025](../../decisions/0025-database-and-topology.md)
+  [0025](../../decisions/0025-database-and-topology.md),
+  [0027](../../decisions/0027-tasks-and-outside-actions.md)
 
 The event log is nixie's one log of record. Every owner message, model turn, tool call, policy
 decision, proposal, approval and outside action outcome becomes a record in it, and no record is
@@ -108,8 +109,10 @@ serve the core:
 - **The task board:** one row per task with its status, last update and what it waits on, which
   [0018](../../decisions/0018-main-thread-and-tasks.md) requires.
 
-Every projection can be dropped and rebuilt by folding the log from the first record. A rebuild test
-in CI folds a recorded log and compares the result with the live tables.
+The projections are state tables beside the log, under
+[0027](../../decisions/0027-tasks-and-outside-actions.md). Every projection can be dropped and
+rebuilt by folding the log from the first record. A rebuild test in CI folds a recorded log and
+compares the result with the live tables.
 
 ## The live view and the task board
 
@@ -177,10 +180,3 @@ settings the owner can change per kind of record:
 An expired payload reads as expired in the live view and in an export, next to its envelope. The SDK
 transcript under `CLAUDE_CONFIG_DIR` is either a store the owner can read and export or a cache that
 the log supersedes, which stays a [deferred decision](../open-items.md#deferred-decisions).
-
-## Decisions for the owner
-
-- **State tables beside the log, or state rebuilt from the log.** State tables written in the same
-  transaction make a claim or a board read one indexed query, and a rebuild test catches any drift.
-  Rebuilding state from the log on every read removes any chance of the two disagreeing, but every
-  claim and board read pays for a fold. The recommendation is state tables beside the log.

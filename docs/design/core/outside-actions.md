@@ -4,7 +4,8 @@
 - Decisions: [0002](../../decisions/0002-approvals.md),
   [0006](../../decisions/0006-approval-record.md),
   [0021](../../decisions/0021-outside-action-outcomes.md),
-  [0025](../../decisions/0025-database-and-topology.md)
+  [0025](../../decisions/0025-database-and-topology.md),
+  [0027](../../decisions/0027-tasks-and-outside-actions.md)
 
 An outside action with side effects, such as sending an email or making a payment, runs as an entry
 on a durable queue in the [event log](./event-log.md), with one of 4 outcomes: pending, done, failed
@@ -14,10 +15,9 @@ action becomes unknown. An unknown action is retried only with an idempotency ke
 honours or after a check that it did not happen, and otherwise goes to the owner. The model reads
 outcomes and never sets them. Everything in this doc beyond the decisions it links is a proposal.
 
-[0021](../../decisions/0021-outside-action-outcomes.md) calls each queue entry a job. This doc calls
-it an outside action, because a job is a definition with a schedule under
-[0015](../../decisions/0015-taint-scope.md), and the word itself is a
-[decision for the owner](#decisions-for-the-owner).
+[0021](../../decisions/0021-outside-action-outcomes.md) calls each queue entry a job.
+[0027](../../decisions/0027-tasks-and-outside-actions.md) names it an outside action, because a job
+is a definition with a schedule under [0015](../../decisions/0015-taint-scope.md).
 
 ## From tool call to queue
 
@@ -152,10 +152,14 @@ answer, and 3 choices:
   duplicate the action.
 - **Drop:** nixie marks the action failed.
 
-The client sends a content-free push for the item, as for any proposal under
-[0009](../../decisions/0009-first-channel.md). The item shows in the live view and on the task board
-until the owner answers, as [0021](../../decisions/0021-outside-action-outcomes.md) requires, and
-the task's open waits include it. A task can carry on with other work while it waits.
+The item joins the digest sheet from [0006](../../decisions/0006-approval-record.md), grouped first,
+under [0027](../../decisions/0027-tasks-and-outside-actions.md). Retrying a payment whose outcome is
+unknown asks for the passkey check from [0012](../../decisions/0012-high-risk-approvals.md) once
+that check exists, as the first approval would. The client sends a content-free push for the item,
+as for any proposal under [0009](../../decisions/0009-first-channel.md). The item shows in the live
+view and on the task board until the owner answers, as
+[0021](../../decisions/0021-outside-action-outcomes.md) requires, and the task's open waits include
+it. A task can carry on with other work while it waits.
 
 ## Runner pools
 
@@ -164,21 +168,3 @@ steps and 4 outside actions run at once, and the owner can change both. **Why:**
 means one set of crash tests, while separate pools let a send go out when every task runner is busy
 with a long turn, and let the owner limit concurrent sends apart from concurrent turns. The task
 step limit is the limit on concurrent work that the [scope](../../scope.md) asks for in tier 2.
-
-## Decisions for the owner
-
-- **The word for a queue entry.** [0021](../../decisions/0021-outside-action-outcomes.md) calls it a
-  job, which collides with a job as a definition with a schedule under
-  [0015](../../decisions/0015-taint-scope.md). "Outside action", as this design uses, names what it
-  is, and "send" or "effect" are shorter but narrower. The recommendation is "outside action", with
-  0021's wording updated to match.
-- **Whether unconfirmed outcomes join the digest sheet.** In the digest sheet from
-  [0006](../../decisions/0006-approval-record.md), the owner settles every waiting item in one pass,
-  which is where queued items gather while the owner is away. Kept apart, an unknown outcome stands
-  out as a possible fault rather than one more approval. The recommendation is to include them in
-  the digest sheet, in their own group at the top.
-- **Whether retrying a payment needs the passkey.** A retry of an unknown payment can charge twice,
-  so it carries the same risk as the first approval, which takes the passkey check under
-  [0012](../../decisions/0012-high-risk-approvals.md). Asking for the passkey adds a step to a rare
-  event, and skipping it lets anyone holding the owner's unlocked phone trigger a second charge. The
-  recommendation is the passkey for every retry in the always-ask set, once 0012 lands.

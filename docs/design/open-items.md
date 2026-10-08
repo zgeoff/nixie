@@ -24,9 +24,10 @@ after the first build.
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
 - **How a sandboxed session reaches nixie's endpoint.** In imp 0.38.1, an allow entry admits a whole
   address, so a sandboxed session that reaches nixie's tools on the host reaches imp's management
-  API too ([0003](../decisions/0003-sdk-placement.md)). The options are port-level allow entries in
-  imp, an imp network or granted hostname, or nixie's endpoint on an address that serves nothing
-  else.
+  API too ([0003](../decisions/0003-sdk-placement.md)). Every worker and the conversation run in an
+  imp under [0026](../decisions/0026-where-workers-and-the-conversation-run.md), so the first build
+  needs the answer. The options are port-level allow entries in imp, an imp network or granted
+  hostname, or nixie's endpoint on an address that serves nothing else.
 - **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
   `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
   whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it

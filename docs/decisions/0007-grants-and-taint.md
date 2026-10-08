@@ -1,8 +1,9 @@
 # 0007: Credential grants for imps that read untrusted content
 
 - Date: 2026-10-07
-- Status: decided, amended by [0015](./0015-taint-scope.md) and
-  [0022](./0022-coding-and-code-execution.md)
+- Status: decided, amended by [0015](./0015-taint-scope.md),
+  [0022](./0022-coding-and-code-execution.md) and
+  [0026](./0026-where-workers-and-the-conversation-run.md)
 - Research: [imp broker spike](../../spikes/imp-broker/),
   [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#the-imp-credential-broker)
 

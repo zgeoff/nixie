@@ -31,8 +31,8 @@ use the same topics as the decisions below.
 
 ## Design
 
-Proposed designs for what is not built yet, grouped by the same topics as the decisions. Each design
-lists the choices it leaves to the owner and the questions it raises.
+Designs for what is not built yet, grouped by the same topics as the decisions. Each design links
+the decisions it rests on.
 
 ### Core
 
@@ -62,6 +62,12 @@ The runtime, the durable layer, and how the main thread and tasks share work.
   on a durable queue, and an unknown outcome is retried only with an idempotency key or a check
 - [0025: The database and the topology](./decisions/0025-database-and-topology.md) — one SQLite
   database with nixie's own dialect, and a modular monolith of workspace packages
+- [0026: Where workers and the conversation run](./decisions/0026-where-workers-and-the-conversation-run.md)
+  — an imp per worker with the whole worker inside, the conversation in a long-lived imp, and the
+  model credential as the one grant
+- [0027: Tasks and outside actions](./decisions/0027-tasks-and-outside-actions.md) — state tables
+  beside the log, the conversation as a task, pause, stop and close, catch-up runs, and unknown
+  outcomes in the digest
 
 ### Policy
 

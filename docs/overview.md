@@ -50,9 +50,12 @@ running inside a durable execution engine ([0001](./decisions/0001-durable-layer
 in one SQLite database, and nixie is a modular monolith of workspace packages
 ([0025](./decisions/0025-database-and-topology.md)).
 
-The model runs one turn at a time through the Agent SDK, and nixie owns the loop around it.
-Assistant work runs on the host with only nixie's tools; sessions on the built-in coding adapter run
-inside an imp and reach nixie's tools over MCP ([0003](./decisions/0003-sdk-placement.md)).
+The model runs one turn at a time through the Agent SDK, and nixie owns the loop around it. Anything
+that runs a model loop over untrusted content runs in an imp, and nixie's tools stay on the host.
+Each worker gets its own imp with the whole worker inside it, the conversation lives in a long-lived
+imp that stays awake, and sessions on the built-in coding adapter run inside an imp
+([0003](./decisions/0003-sdk-placement.md),
+[0026](./decisions/0026-where-workers-and-the-conversation-run.md)).
 
 The owner talks to the main thread. The main thread routes work to tasks, which are durable side
 threads with their own context and tools, and tasks start workers, which are disposable jobs behind
@@ -60,10 +63,15 @@ a tool call. The main thread names where it sent each message and works from a l
 live view of the whole system reads the same data, so the owner can inspect any task and step in
 ([0018](./decisions/0018-main-thread-and-tasks.md)).
 
-An outside action with side effects runs as a job on a durable queue with an explicit outcome. A job
-whose outcome is unknown after a crash is retried only with an idempotency key or after a check that
-it did not happen, and otherwise goes to the owner
+An outside action with side effects runs on a durable queue with an explicit outcome. An outside
+action whose outcome is unknown after a crash is retried only with an idempotency key or after a
+check that it did not happen, and otherwise goes to the owner
 ([0021](./decisions/0021-outside-action-outcomes.md)).
+
+The conversation is itself a task, which never closes. The owner can pause a task in place, stop its
+run and restart it later, or close it for good, and every run knows when it was meant to start and
+whether it is a catch-up. Task state lives in tables beside the log, checked against it by a rebuild
+([0027](./decisions/0027-tasks-and-outside-actions.md)).
 
 ## Policy
 
@@ -125,7 +133,9 @@ nixie takes tools from MCP and defines 4 interfaces of its own: a channel adapte
 a connector and a credential store, which can use several backends, imp's broker among them
 ([0016](./decisions/0016-own-interfaces.md)). Sandboxed work runs through a sixth interface, the
 sandbox adapter, with imp as its reference. An imp that reads untrusted content gets no credential
-grant ([0007](./decisions/0007-grants-and-taint.md)).
+grant beyond the model API's own, which the broker injects so the guest sees only a placeholder
+([0007](./decisions/0007-grants-and-taint.md),
+[0026](./decisions/0026-where-workers-and-the-conversation-run.md)).
 
 nixie runs code for general work in a disposable imp with no credential grants. It is not a coding
 agent; it steers coding agents through a coding agent adapter, with atc first and a built-in

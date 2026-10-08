@@ -5,7 +5,9 @@
   [0002](../../decisions/0002-approvals.md), [0005](../../decisions/0005-effects-and-taint.md),
   [0015](../../decisions/0015-taint-scope.md), [0016](../../decisions/0016-own-interfaces.md),
   [0018](../../decisions/0018-main-thread-and-tasks.md),
-  [0025](../../decisions/0025-database-and-topology.md)
+  [0025](../../decisions/0025-database-and-topology.md),
+  [0026](../../decisions/0026-where-workers-and-the-conversation-run.md),
+  [0027](../../decisions/0027-tasks-and-outside-actions.md)
 
 A task is durable work with its own context, such as "keep the backlog moving today", and nixie runs
 each one as an explicit state machine over the [event log](./event-log.md), under
@@ -45,7 +47,9 @@ the same holds for every proposal).
 
 ## Pause, stop and close
 
-The owner controls a task with 3 actions, each a checked action in the client with its own record:
+The owner controls a task with 3 actions under
+[0027](../../decisions/0027-tasks-and-outside-actions.md), each a checked action in the client with
+its own record:
 
 - **Pause** freezes the task in place after the current step commits. Its proposals keep waiting,
   its queued outside actions hold, and no runner claims it. Resume returns it to `ready` or
@@ -110,9 +114,12 @@ at once ([2.2 and 2.3 landscape](../../research/2.2-2.3-core-and-policy.md#owner
 
 ## Routing from the conversation
 
-The design runs the conversation as a task that never ends, which is a
-[decision for the owner](#decisions-for-the-owner), and the owner's messages land in its inbox by
-default. A message the owner sends while a task is open in the client goes straight to that task.
+The conversation is a task under [0027](../../decisions/0027-tasks-and-outside-actions.md): it runs
+on the same state machine, leases, crash recovery and live view, flagged as the conversation, and it
+never closes. It lives in a long-lived imp that stays awake, under
+[0026](../../decisions/0026-where-workers-and-the-conversation-run.md). The owner's messages land in
+its inbox by default. A message the owner sends while a task is open in the client goes straight to
+that task.
 
 The conversation's turn receives the task board in its newest turn, after the stable part of the
 prompt, so the prompt cache holds under [0024](../../decisions/0024-memory-in-context.md). Routing
@@ -134,9 +141,10 @@ the job's definition version pinned for the task's life, under
 [0013](../../decisions/0013-definition-versioning.md). The run can call only the tools on the job's
 list, and the first build treats every run as untrusted.
 
-Every run gets its trigger details in its context: when it was scheduled, when it started, whether
-it is a catch-up, and which fires were skipped. **Why:** a morning report that starts at 10:40
-instead of 7:00 can say so, and the model never guesses the time it was meant to run.
+Every run gets its trigger details in its context, under
+[0027](../../decisions/0027-tasks-and-outside-actions.md): when it was scheduled, when it started,
+whether it is a catch-up, and which fires were skipped. **Why:** a morning report that starts at
+10:40 instead of 7:00 can say so, and the model never guesses the time it was meant to run.
 
 A fire missed while nixie was down gets one catch-up run when the latest missed fire is within half
 the job's interval, and otherwise nixie skips it and reports the skip. The owner can set another
@@ -148,16 +156,17 @@ them all loses a report that is still useful an hour late.
 A worker is disposable work behind one tool call, such as "read this page and return the price". It
 runs inside the calling step, has no conversation, and returns a result to its caller.
 
-Each worker run gets its own imp, and the whole worker runs inside it: the model loop through the
-Agent SDK and any code it runs. nixie creates and destroys the imp through the sandbox adapter from
-[0016](../../decisions/0016-own-interfaces.md), with imp as the reference adapter. The imp's one
-credential grant is the model credential, which the broker injects on the model provider's host, so
-the guest holds only a placeholder. Data sent on that grant reaches only the owner's own model
-account, which every turn reaches anyway, so the grant opens no new exit under
-[0007](../../decisions/0007-grants-and-taint.md). The worker reaches anything else outside through
-nixie's tools on the host, where the destination limits apply. The worker holds a subset of its
-caller's tools, so delegation only narrows. Its transcript and sources become records whose parent
-is the tool call, and the imp is destroyed when the tool call returns.
+Each worker run gets its own imp under
+[0026](../../decisions/0026-where-workers-and-the-conversation-run.md), and the whole worker runs
+inside it: the model loop through the Agent SDK and any code it runs. nixie creates and destroys the
+imp through the sandbox adapter from [0016](../../decisions/0016-own-interfaces.md), with imp as the
+reference adapter. The imp's one credential grant is the model credential, which the broker injects
+on the model provider's host, so the guest holds only a placeholder. That grant is limited to the
+model API's host, and 0026 amends [0007](../../decisions/0007-grants-and-taint.md) to allow it. The
+worker reaches anything else outside through nixie's tools on the host, where the destination limits
+apply. The worker holds a subset of its caller's tools, so delegation only narrows. Its transcript
+and sources become records whose parent is the tool call, and the imp is destroyed when the tool
+call returns.
 
 The [imp worker spike](../../../spikes/imp-worker-start/README.md) measured the cost of that
 placement:
@@ -224,17 +233,3 @@ succeeds. A match returns the existing action's outcome instead of queuing a sec
 that finished in an earlier committed step is outside both sets, so the model can repeat it on
 purpose. Crash tests at each point confirm that a resumed turn never repeats an outside action that
 ran.
-
-## Decisions for the owner
-
-- **Whether the conversation runs as a task.** As a task, the conversation gets leases, an inbox and
-  crash recovery from the same code, and the board hides it as a special case. A separate loop keeps
-  the task model free of that special case, but duplicates the durable machinery for the one thread
-  that matters most. The recommendation is the conversation as a task.
-- **Whether the conversation lives in a long-lived imp.** On the host, as
-  [0003](../../decisions/0003-sdk-placement.md) places assistant work, the conversation's SDK
-  process has only nixie's tools, so every action it takes passes nixie's policy, and it needs no
-  sandbox plumbing. In a long-lived imp, the conversation sits behind the same boundary as workers,
-  and a warm imp's turn is as fast as the host's, at the cost of an imp held for the deployment's
-  life, a wake of about 363 ms after each sleep, and an amendment to 0003. The recommendation is the
-  host, because the conversation's process holds no tool of its own for a sandbox to contain.

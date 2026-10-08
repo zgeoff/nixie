@@ -1,7 +1,8 @@
 # 0001: The durable layer
 
 - Date: 2026-10-07
-- Status: decided, amended by [0025](./0025-database-and-topology.md)
+- Status: decided, amended by [0025](./0025-database-and-topology.md) and
+  [0027](./0027-tasks-and-outside-actions.md)
 - Research: [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#durable-execution),
   [engine notes](../research/2.2-notes/engines.md)
 
