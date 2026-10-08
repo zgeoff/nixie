@@ -43,6 +43,8 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
 - [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
   every record, with rules applying at once and persona and jobs fixed per task
 - [0014: Search](./decisions/0014-search.md) — Kagi, with full results that taint the main thread
+- [0015: Where taint applies](./decisions/0015-taint-scope.md) — the conversation is always
+  untrusted, and taint applies to jobs and workers in stages
 
 ## Research
 
