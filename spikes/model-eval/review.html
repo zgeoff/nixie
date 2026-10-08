@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Persona review</title>
+    <style>
+      :root {
+        --bg: #f7f7f5;
+        --card: #ffffff;
+        --text: #1d1d1b;
+        --muted: #6b6b66;
+        --line: #deded8;
+        --accent: #3b5bdb;
+        --good: #2b8a3e;
+        --bad: #c92a2a;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #161615;
+          --card: #1f1f1d;
+          --text: #ecece8;
+          --muted: #9a9a93;
+          --line: #34342f;
+          --accent: #748ffc;
+          --good: #51cf66;
+          --bad: #ff6b6b;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        padding: 10px 16px;
+        background: var(--card);
+        border-bottom: 1px solid var(--line);
+      }
+      header h1 {
+        font-size: 16px;
+        margin: 0 8px 0 0;
+      }
+      select,
+      button,
+      input {
+        font: inherit;
+        color: inherit;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 4px 8px;
+      }
+      button {
+        cursor: pointer;
+      }
+      .progress {
+        color: var(--muted);
+        margin-left: auto;
+      }
+      main {
+        padding: 16px;
+      }
+      section {
+        margin-bottom: 32px;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 4px;
+      }
+      .prompt {
+        color: var(--muted);
+        margin: 0 0 12px;
+        font-style: italic;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 110px repeat(var(--models), minmax(260px, 1fr));
+        gap: 8px;
+        overflow-x: auto;
+      }
+      .head {
+        font-weight: 600;
+        color: var(--muted);
+        padding: 4px;
+      }
+      .persona {
+        font-weight: 600;
+        padding: 8px 4px;
+      }
+      .cell {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 0;
+      }
+      .cell.rated {
+        border-color: var(--accent);
+      }
+      .reply {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 360px;
+        overflow-y: auto;
+      }
+      .reply.error {
+        color: var(--bad);
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .scores {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        border-top: 1px solid var(--line);
+        padding-top: 8px;
+        font-size: 12px;
+      }
+      .scores span {
+        color: var(--muted);
+        margin-right: 2px;
+      }
+      .scores button {
+        padding: 1px 7px;
+      }
+      .scores button.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .scores input {
+        flex: 1 1 100%;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Persona review</h1>
+      <span class="meta">__RUN__</span>
+      <label
+        >Prompt
+        <select id="prompt"></select
+      ></label>
+      <label
+        >Persona
+        <select id="persona"></select
+      ></label>
+      <button id="export">Export scores</button>
+      <span class="progress" id="progress"></span>
+    </header>
+    <main id="main"></main>
+    <script>
+      const rows = __DATA__;
+      const run = '__RUN__';
+      // One store for every page: a cell key (model|persona|prompt) is unique across runs.
+      const storeKey = 'persona-review';
+      const uniq = (key) => [...new Set(rows.map((row) => row[key]))];
+      const models = uniq('model');
+      const personas = uniq('persona');
+      const prompts = uniq('prompt');
+      const scales = [
+        { key: 'character', label: 'In character', values: ['1', '2', '3', '4', '5'] },
+        { key: 'task', label: 'Did the task', values: ['yes', 'part', 'no'] },
+        { key: 'breaks', label: 'Broke character', values: ['right', 'wrong', 'n/a'] },
+      ];
+      let scores = {};
+      try {
+        // Merge scores saved by older pages, which used one store per run.
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('persona-review:'))
+            Object.assign(scores, JSON.parse(localStorage.getItem(key)));
+        }
+        Object.assign(scores, JSON.parse(localStorage.getItem(storeKey) ?? '{}'));
+      } catch {}
+      const save = () => {
+        try {
+          localStorage.setItem(storeKey, JSON.stringify(scores));
+        } catch {}
+        updateProgress();
+      };
+      const keyOf = (row) => `${row.model}|${row.persona}|${row.prompt}`;
+      const el = (tag, props = {}, children = []) => {
+        const node = Object.assign(document.createElement(tag), props);
+        node.append(...children);
+        return node;
+      };
+
+      function fillSelect(id, values) {
+        const select = document.getElementById(id);
+        select.append(el('option', { value: '', textContent: 'all' }));
+        for (const value of values) select.append(el('option', { value, textContent: value }));
+        select.addEventListener('change', render);
+      }
+
+      function updateProgress() {
+        const rated = rows.filter((row) => scores[keyOf(row)]?.character).length;
+        document.getElementById('progress').textContent = `${rated} / ${rows.length} rated`;
+      }
+
+      function buildScores(row, cell) {
+        const key = keyOf(row);
+        const entry = (scores[key] ??= {});
+        const box = el('div', { className: 'scores' });
+        for (const scale of scales) {
+          box.append(el('span', { textContent: scale.label }));
+          for (const value of scale.values) {
+            const button = el('button', {
+              textContent: value,
+              className: entry[scale.key] === value ? 'on' : '',
+            });
+            button.addEventListener('click', () => {
+              entry[scale.key] = entry[scale.key] === value ? undefined : value;
+              save();
+              for (const sibling of box.querySelectorAll(`[data-scale="${scale.key}"]`)) {
+                sibling.classList.toggle('on', entry[scale.key] === sibling.textContent);
+              }
+              cell.classList.toggle('rated', Boolean(entry.character));
+            });
+            button.dataset.scale = scale.key;
+            box.append(button);
+          }
+        }
+        const note = el('input', { placeholder: 'note', value: entry.note ?? '' });
+        note.addEventListener('change', () => {
+          entry.note = note.value;
+          save();
+        });
+        box.append(note);
+        return box;
+      }
+
+      function buildCell(row) {
+        if (!row) return el('div', { className: 'cell meta', textContent: '(no result)' });
+        const cell = el('div', {
+          className: scores[keyOf(row)]?.character ? 'cell rated' : 'cell',
+        });
+        const text = row.error ? `ERROR: ${row.error}` : row.reply;
+        const meta = `${(row.durationMs / 1000).toFixed(1)} s · ${row.outputTokens ?? '?'} out tokens`;
+        cell.append(
+          el('div', { className: row.error ? 'reply error' : 'reply', textContent: text }),
+          el('div', { className: 'meta', textContent: meta }),
+          buildScores(row, cell),
+        );
+        return cell;
+      }
+
+      function render() {
+        const promptFilter = document.getElementById('prompt').value;
+        const personaFilter = document.getElementById('persona').value;
+        const main = document.getElementById('main');
+        main.replaceChildren();
+        for (const prompt of prompts.filter((p) => !promptFilter || p === promptFilter)) {
+          const sample = rows.find((row) => row.prompt === prompt);
+          const grid = el('div', { className: 'grid' });
+          grid.style.setProperty('--models', models.length);
+          grid.append(
+            el('div'),
+            ...models.map((model) => el('div', { className: 'head', textContent: model })),
+          );
+          for (const persona of personas.filter((p) => !personaFilter || p === personaFilter)) {
+            grid.append(el('div', { className: 'persona', textContent: persona }));
+            for (const model of models) {
+              grid.append(
+                buildCell(
+                  rows.find(
+                    (row) =>
+                      row.prompt === prompt && row.persona === persona && row.model === model,
+                  ),
+                ),
+              );
+            }
+          }
+          main.append(
+            el('section', {}, [
+              el('h2', { textContent: prompt }),
+              el('p', { className: 'prompt', textContent: sample?.promptText ?? '' }),
+              grid,
+            ]),
+          );
+        }
+      }
+
+      document.getElementById('export').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify({ run, scores }, null, 2)], {
+          type: 'application/json',
+        });
+        const link = el('a', { href: URL.createObjectURL(blob), download: 'scores.json' });
+        link.click();
+      });
+      fillSelect('prompt', prompts);
+      fillSelect('persona', personas);
+      updateProgress();
+      render();
+    </script>
+  </body>
+</html>
