@@ -1,0 +1,34 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "spike-event-log-db",
+      "dependencies": {
+        "kysely": "0.29.6",
+        "kysely-bun-worker": "2.0.1",
+        "kysely-postgres-js": "5.0.1",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.2",
+      },
+    },
+  },
+  "packages": {
+    "@types/bun": ["@types/bun@1.4.2", "", { "dependencies": { "bun-types": "1.4.2" } }, "sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ=="],
+
+    "@types/node": ["@types/node@26.6.4", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-ldVPDCzj7fsaGZrLB0NuHuTvJcsNasysBAqMolr/cgxrLd1xbqxIr3XJiPnHHJUCxj5sNF1vnRj9aWnrVh5Jcg=="],
+
+    "bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
+
+    "kysely": ["kysely@0.29.6", "", {}, "sha512-hHaB8C/rfzDDtr/t8YZwxAuPJTT0zHyaPoVzcXwDYhYNAgH/4sIfVhi/XLLIY+bL/FqaIJnjATDbi8ObSELmxg=="],
+
+    "kysely-bun-worker": ["kysely-bun-worker@2.0.1", "", { "dependencies": { "kysely-generic-sqlite": "2.0.1" }, "peerDependencies": { "bun-types": ">=1.1.14", "kysely": ">=0.29" } }, "sha512-OI+1h7KqcrCgo805N2LiMgm+974BlUxscUUVjkqL0gLEMAIwqlb0hMw76v4rHdBAllRsHzFNtN/hoVBuIJTTQQ=="],
+
+    "kysely-generic-sqlite": ["kysely-generic-sqlite@2.0.1", "", { "peerDependencies": { "kysely": ">=0.29" } }, "sha512-Hu1G1pgFD7yUWHb1PyySeC+rP7lB0AasWniZ5qM5oGHRvs7AVc7w6B9k5FbLFmzBgp305wO55cEsqHmGm95gCg=="],
+
+    "kysely-postgres-js": ["kysely-postgres-js@5.0.1", "", { "peerDependencies": { "kysely": ">= 0.29.0 < 1", "postgres": "^3.4.0" }, "optionalPeers": ["postgres"] }, "sha512-3qY2qzXJszS35CMuknpon79CE5G7MfcTMoIQHuFmGsaQQ2rau3rwx7eNaRJkO9nhli8yQedQroBZ/VehzNJy4w=="],
+
+    "undici-types": ["undici-types@8.9.0", "", {}, "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg=="],
+  }
+}
