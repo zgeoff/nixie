@@ -1,0 +1,9 @@
+{
+  "name": "spike-memory-checks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "1.4.2"
+  }
+}

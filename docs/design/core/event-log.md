@@ -177,6 +177,7 @@ settings the owner can change per kind of record:
 | Tool results and worker transcripts    | Payload expires after 1 year      | They are the bulk of the log, and a year covers any review |
 | Definition snapshots                   | Kept while a record points at one | A replay always finds its definitions                      |
 
-An expired payload reads as expired in the live view and in an export, next to its envelope. The SDK
-transcript under `CLAUDE_CONFIG_DIR` is either a store the owner can read and export or a cache that
-the log supersedes, which stays a [deferred decision](../open-items.md#deferred-decisions).
+An expired payload reads as expired in the live view and in an export, next to its envelope. The
+[memory in context design](../memory/context.md#the-sdk-transcript) proposes treating the SDK
+transcript under `CLAUDE_CONFIG_DIR` as a cache that the log supersedes, which is a decision for the
+owner.

@@ -43,6 +43,16 @@ the decisions it rests on.
 - [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
   approval consumption, reconciliation per connector, and unknown outcomes for the owner
 
+### Memory
+
+- [The memory store](./design/memory/store.md) — items and their history table, provenance, a key
+  per item and forgetting, the recall tool, the memory view and export, with the memory decisions
+  for the owner
+- [Memory writes](./design/memory/writes.md) — who writes memory, the quote, token and checker
+  checks, memory proposals, notices and undo, and consolidation
+- [Memory in context](./design/memory/context.md) — the prompt, the pinned core, retrieval over
+  memory and past messages, compaction, and the SDK transcript as a cache
+
 ## Decisions
 
 What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
@@ -235,3 +245,11 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   first token inside an imp against the host
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
+- [Retrieval on nixie-shaped memory](../spikes/memory-retrieval/) — keyword search, BM25 and local
+  embeddings over synthetic memory, and where they part
+- [Crypto-shredding memory items](../spikes/memory-shred/) — a key per item against backups, the key
+  store's freed pages, and a persisted full-text index
+- [The memory write checks](../spikes/memory-checks/) — the quote check and the token check as code
+  over sample messages, and what still needs the checker
+- [A pinned memory core](../spikes/sdk-pinned-core/) — when a changed system prompt reaches a
+  resumed session, written and not yet run

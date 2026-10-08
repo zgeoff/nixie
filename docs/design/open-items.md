@@ -2,8 +2,8 @@
 
 Phase 3, the design phase, has the voice stack and the model per job undecided, and the Google
 refresh on day 8 still to run. The design work ahead covers the terminology pass, the channel
-adapter and trigger source, main-thread routing and grants with expiries, and the stages agreed for
-after the first build.
+adapter and trigger source, main-thread routing and grants with expiries, the open memory decisions,
+and the stages agreed for after the first build.
 
 ## Deferred decisions
 
@@ -28,10 +28,10 @@ after the first build.
   imp under [0026](../decisions/0026-where-workers-and-the-conversation-run.md), so the first build
   needs the answer. The options are port-level allow entries in imp, an imp network or granted
   hostname, or nixie's endpoint on an address that serves nothing else.
-- **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
-  `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
-  whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
-  under [0001](../decisions/0001-durable-layer.md).
+- **The memory decisions.** The [memory store design](./memory/store.md#decisions-for-the-owner)
+  ends with 4 choices for the owner: who writes memory, whether the SDK transcript is a cache or a
+  store, whether "forget" in chat destroys an item, and how the owner learns of a write that applied
+  at once. Each has a recommendation, and the memory docs assume it until the owner decides.
 
 ## Spikes to run
 
@@ -39,18 +39,34 @@ after the first build.
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
   holding Gmail's restricted scope; day 8 shows whether its token outlives testing mode's 7-day
   limit ([0019](../decisions/0019-connector-authorization.md)).
-- **Retrieval on nixie-shaped memory** (about 1 day): compare keyword search, full-text search with
-  BM25 ranking, and full-text search with vectors over a few hundred memory items, with questions
-  the owner writes. It tests whether embeddings help at personal scale over the rows from
-  [0010](../decisions/0010-memory-store.md). The research recommends keyword search first, and no
-  decision records the route from memory to the model
-  ([memory research](../research/2.4-2.6-data-channels-connectors.md#memory)).
+- **Retrieval on the owner's questions** (about half a day, with model calls): rerun the
+  [retrieval spike](../../spikes/memory-retrieval/README.md) with questions the owner writes about
+  memory items the owner recognises, and with recall keywords from a model that has not seen the
+  items. On synthetic data, words alone found about a fifth of paraphrased questions and a local
+  embedding model about two thirds; this run decides whether embeddings join the index under
+  [0024](../decisions/0024-memory-in-context.md).
+- **The pinned core in the system prompt** (minutes, with model calls): run the
+  [pinned core spike](../../spikes/sdk-pinned-core/README.md), which is written and stopped on the
+  subscription's weekly limit. It shows whether `snapshot: false` lets a changed pinned core reach a
+  resumed session, and what a change costs the prompt cache.
+- **The memory checker on real messages** (about half a day, with model calls): run the checker
+  model from [memory writes](./memory/writes.md#the-checker) over owner messages the owner writes,
+  each paired with memories they do and do not assert, including negations, questions and quoted
+  remarks, and measure how often it confirms wrongly or misses. It can share a run with the consent
+  checker, which uses the same implementation.
+- **A resume after compaction** (about 2 hours, with model calls): compact a session after a step's
+  recorded boundary, crash the next step, and resume at the boundary with `resumeSessionAt`. The
+  [resume-at spike](../../spikes/sdk-resume-at/README.md) left it untested, and
+  [memory in context](./memory/context.md#compaction) depends on it.
 - **A memory poisoning run** (about half a day): replay poisoned emails through a worker, and
   confirm that every memory write they cause reaches the owner as a proposal with untrusted
   provenance under [0011](../decisions/0011-memory-writes.md).
 - **Backup and restore** (about half a day): restore a database dump or a SQLite copy to a clean
   host with restic, from an age key held on a passkey or a paper key. It checks that the per-item
-  keys from [0010](../decisions/0010-memory-store.md) survive a lost host.
+  keys from [0010](../decisions/0010-memory-store.md) survive a lost host. The
+  [shredding spike](../../spikes/memory-shred/README.md) checked forgetting against backups on one
+  host; Litestream replication of the key store, which would keep a deleted key for its own
+  retention, is part of this run.
 - **A deployment on a throwaway host** (about half a day): a Compose file that pins an image,
   secrets encrypted with sops and age, and a dependency bot. Merge a version bump and roll it back
   with a database restore, to confirm that an upgrade is a merge and a rollback is a revert plus a
@@ -105,9 +121,6 @@ after the first build.
   ship today", is a rule with an expiry, and widening a rule always asks
   ([0018](../decisions/0018-main-thread-and-tasks.md)). Phase 3 designs how the owner grants, sees
   and ends such a rule.
-- **Compaction controls and the pinned core.** [0024](../decisions/0024-memory-in-context.md) runs
-  the conversation on the SDK's session and compaction. Phase 3 checks which compaction controls the
-  SDK offers, and how large the pinned core can grow before the prompt pays for it.
 - **The starter rule set and the digest sheet.** How restrictive nixie feels depends on the starter
   rules and the "no match means ask" default from [0004](../decisions/0004-rule-engine.md). The
   digest sheet's layout and grouping from [0006](../decisions/0006-approval-record.md) are designed
@@ -129,8 +142,6 @@ after the first build.
   [0013](../decisions/0013-definition-versioning.md) need a canonical form for persona and job
   definitions written as markdown. A rule's ID stays fixed across edits or each edit mints a new
   one, and the last-fired record in [0006](../decisions/0006-approval-record.md) needs a fixed ID.
-- **Memory consolidation.** Phase 3 decides when consolidation runs as a proposal under
-  [0011](../decisions/0011-memory-writes.md).
 - **Upgrades on the host.** A merged upgrade reaches the host by a webhook, a poll from the host, or
   the owner running one command, and a poll needs no inbound route
   ([0020](../decisions/0020-deployment.md)). The seeding conflict view and the export of runtime
