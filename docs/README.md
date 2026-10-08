@@ -8,6 +8,7 @@
     <a href="./principles.md">Principles</a> •
     <a href="./scope.md">Scope</a> •
     <a href="./design/open-items.md">Open items</a> •
+    <a href="#design">Design</a> •
     <a href="#decisions">Decisions</a> •
     <a href="#research">Research</a> •
     <a href="#brainstorm">Brainstorm</a> •
@@ -27,6 +28,20 @@
 
 `design/` holds designs for what is not built yet, and `architecture/` will hold what is built. Both
 use the same topics as the decisions below.
+
+## Design
+
+Proposed designs for what is not built yet, grouped by the same topics as the decisions. Each design
+lists the choices it leaves to the owner and the questions it raises.
+
+### Core
+
+- [The event log and records](./design/core/event-log.md) — what a record holds, append-only
+  semantics, the projections behind the live view and the task board, export and retention
+- [Tasks](./design/core/tasks.md) — tasks as state machines with leases and an inbox, waits, routing
+  from the conversation, job runs, workers in imps, and crash recovery
+- [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
+  approval consumption, reconciliation per connector, and unknown outcomes for the owner
 
 ## Decisions
 

@@ -93,10 +93,13 @@ after the first build.
 - **Main-thread routing and the task board.** The main thread routes each owner message to a task
   and names where it sent it, from a live task board of every task's status
   ([0018](../decisions/0018-main-thread-and-tasks.md)). Routing quality is on the critical path,
-  because a misrouted message fails quietly.
+  because a misrouted message fails quietly. [Tasks](./core/tasks.md#routing-from-the-conversation)
+  proposes the routing tools and records.
 - **The live view.** The live view shows running and finished tasks and what each did and why, as a
   projection of the event log that the task board reads too
-  ([0018](../decisions/0018-main-thread-and-tasks.md)).
+  ([0018](../decisions/0018-main-thread-and-tasks.md)). The
+  [event log design](./core/event-log.md#the-live-view-and-the-task-board) proposes how both read
+  it.
 - **Grants with expiries.** Authority granted for a period, such as "full authority to build and
   ship today", is a rule with an expiry, and widening a rule always asks
   ([0018](../decisions/0018-main-thread-and-tasks.md)). Phase 3 designs how the owner grants, sees
@@ -117,10 +120,12 @@ after the first build.
   with crash tests ([0001](../decisions/0001-durable-layer.md)). The design decides whether the
   runner buffers an approval that arrives before its wait registers, and the crash tests confirm
   that a resumed turn never repeats an outside action that ran. The estimate of 800 to 1,500 lines
-  is untested.
+  is untested. [Tasks](./core/tasks.md) proposes the leases, timers and inbox, and the inbox buffers
+  an early approval.
 - **Proposal expiry.** An unanswered proposal lapses after a set time under
   [0006](../decisions/0006-approval-record.md), and Phase 3 picks the time and how the task learns
-  of the lapse.
+  of the lapse. [Tasks](./core/tasks.md#waits) proposes a lapse timer that writes to the task's
+  inbox, and leaves the time open.
 - **Budgets and the spending stop.** Raising a budget is in the always-ask set from
   [0005](../decisions/0005-effects-and-taint.md), and no decision sets where nixie enforces a
   budget. The research recommends a hard spending stop in a proxy in front of the model, not in the
@@ -149,6 +154,7 @@ after the first build.
   tool that runs code in a disposable imp with no grants, which comes early.
 - **Export beyond memory.** [0010](../decisions/0010-memory-store.md) exports memory. Exporting the
   event log and conversations in the same way, so the owner can take everything, is still to design.
+  The [event log design](./core/event-log.md#memory-history-and-export) proposes a SQLite file.
 
 ## Later stages
 
