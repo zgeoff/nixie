@@ -17,6 +17,9 @@ The client runs on 2 platforms:
 
 A desktop app may follow later, and nothing plans for it now.
 
+The web client comes first, with pushes through a chat notifier such as Telegram, and the Android
+app follows in tier 2 of the [scope](../scope.md).
+
 ## Why
 
 - **Storage stays home.** The model provider processes each turn, which nixie cannot avoid without a
