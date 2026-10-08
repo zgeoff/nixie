@@ -1,0 +1,5 @@
+[
+  { "id": "m1", "fact": "Owner lives in London.", "source": "owner_said" },
+  { "id": "m2", "fact": "Owner has a sister called Ana.", "source": "owner_said" },
+  { "id": "m3", "fact": "Owner prefers short, direct messages.", "source": "owner_said" }
+]

@@ -1,0 +1,12 @@
+{
+  "example": {
+    "baseUrl": "https://gateway.example.com/anthropic",
+    "authTokenCommand": "<command_that_prints_the_key>",
+    "model": "example-model",
+    "env": {
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL": "example-model",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL": "example-model",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL": "example-model"
+    }
+  }
+}
