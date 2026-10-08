@@ -77,10 +77,12 @@ off. Git ignores `results/`.
 
 ## Results
 
-Each cell holds the median and the 90th percentile, in ms. The model run took 10 samples per model,
-tool count and mode, 480 turns in all, and every turn ended in `success`. The host is shared with
-other work: the last sample of the run ran under a load average above 30, so the bench ran that
-sample again at a load average of 4 to 22, and the tables use the second run.
+Each cell holds the median and the 90th percentile, in ms. The runs behind these tables started the
+clock just after `query()` and `WarmQuery.query()` returned, so the `cold`, `fresh` and `startup`
+rows leave out 1 to 6 ms of synchronous SDK setup that `bench.ts` counts. The model run took 10
+samples per model, tool count and mode, 480 turns in all, and every turn ended in `success`. The
+host is shared with other work: the last sample of the run ran under a load average above 30, so the
+bench ran that sample again at a load average of 4 to 22, and the tables use the second run.
 
 ### The SDK's own time
 

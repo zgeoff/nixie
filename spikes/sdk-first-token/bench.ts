@@ -43,19 +43,20 @@ function readFlag(name: string): string | undefined {
   return index === -1 ? undefined : process.argv[index + 1];
 }
 
-async function readOne(q: Query, t0: number): Promise<Turn> {
+// Starts the clock, then calls open(), so the SDK's own setup counts toward the turn.
+async function readOne(open: () => Query): Promise<Turn> {
+  const clockStart = performance.now(),
+    session = open();
   try {
-    return await readTurn(q[Symbol.asyncIterator](), () => t0, { text: '' });
+    return await readTurn(session[Symbol.asyncIterator](), () => clockStart, { text: '' });
   } finally {
-    q.close();
+    session.close();
   }
 }
 
 function runResume(options: Options, sessionId: string | undefined): Promise<Turn> {
-  const t0 = performance.now();
-  return readOne(
+  return readOne(() =>
     query({ options: { ...options, resume: sessionId }, prompt: prompts[1] ?? '' }),
-    t0,
   );
 }
 
@@ -66,7 +67,7 @@ function runColdResume(model: string, withTools: boolean, mode: Mode): Promise<T
 }
 
 async function runSession(options: Options, resume: boolean): Promise<Turn[]> {
-  const first = await readOne(query({ options, prompt: prompts[0] ?? '' }), performance.now());
+  const first = await readOne(() => query({ options, prompt: prompts[0] ?? '' }));
   return resume ? [await runResume(options, first.sessionId)] : [first];
 }
 
@@ -132,7 +133,7 @@ async function runStream(model: string, withTools: boolean): Promise<Turn[]> {
 async function runStartup(model: string, withTools: boolean): Promise<Turn[]> {
   const warm = await startup({ options: buildOptions(model, withTools) });
   await Bun.sleep(500);
-  return [await readOne(warm.query(prompts[0] ?? ''), performance.now())];
+  return [await readOne(() => warm.query(prompts[0] ?? ''))];
 }
 
 async function waitClaim(spare: SpareProcess): Promise<void> {
@@ -145,10 +146,8 @@ async function waitClaim(spare: SpareProcess): Promise<void> {
 
 // The clock starts at claim(), which binds the spare to a folder and sends the prompt.
 async function runClaim(spare: SpareProcess, options: ClaimTarget): Promise<Turn[]> {
-  const claimStart = performance.now(),
-    claimed = spare.claim({ options, prompt: prompts[0] ?? '' }),
-    refusal = waitClaim(spare),
-    turn = await readOne(claimed, claimStart);
+  const refusal = waitClaim(spare),
+    turn = await readOne(() => spare.claim({ options, prompt: prompts[0] ?? '' }));
   await refusal;
   return [turn];
 }
