@@ -36,6 +36,8 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   conversation, approvals and voice, and chat apps carry content-free pushes
 - [0010: The memory store](./decisions/0010-memory-store.md) — memory as rows in nixie's database, a
   UI and a raw recall tool, and forgetting by crypto-shredding
+- [0011: Which memory writes skip review](./decisions/0011-memory-writes.md) — writes from a clean
+  main thread apply at once with undo, and every proposal is asynchronous
 
 ## Research
 
