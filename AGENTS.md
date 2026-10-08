@@ -25,3 +25,9 @@ The structure grows by these rules:
 3. A component gets its own subfolder once it has more than one doc.
 4. A topic splits when its docs stop referring to each other.
 5. A new or split topic updates the topic list in the docs index, and the decision groups follow it.
+
+## Choices that need the owner
+
+The owner decides architecture, framework, library and technology choices, along with naming and
+anything about how nixie feels to use. A design doc lists the options with a recommendation and
+leaves the choice open. A decision record exists only for what the owner agreed.

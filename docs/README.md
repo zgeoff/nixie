@@ -21,6 +21,7 @@
 - [Overview](./overview.md) — what nixie is, why it exists, and the current design in brief
 - [Principles](./principles.md) — the rules every job and deployment holds to
 - [Scope](./scope.md) — requirements and non-goals
+- [Glossary](./glossary.md) — the tentative terms the docs use
 - [Open items](./design/open-items.md) — deferred decisions, spikes to run, design tasks and later
   stages
 
