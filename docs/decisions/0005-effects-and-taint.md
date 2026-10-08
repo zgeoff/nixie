@@ -102,6 +102,10 @@ first loosens the risk stance for that context or adds a rule.
 - Search is one of nixie's own tools against a search API the owner picks, because model-side web
   search exists only with some providers. The provider receives the owner's queries.
 - Typed workers need a typed output per capability, and 0015 makes them a later stage.
-- How quickly an imp worker starts decides whether each worker run gets its own container.
+- Each worker run gets its own imp. A new imp starts in about 350 ms end to end, and a sleeping imp
+  wakes in 50 to 150 ms
+  ([imp boot templates](https://github.com/zgeoff/imp/blob/main/docs/architecture/boot-templates.md),
+  [imp sleep and wake](https://github.com/zgeoff/imp/blob/main/docs/architecture/sleep-and-wake.md),
+  2026-10-04).
 - A known contact's compromised account can steer nixie into sends to that contact with no prompt,
   because the owner chose to trust that contact.
