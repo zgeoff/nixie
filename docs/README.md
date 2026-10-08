@@ -32,6 +32,29 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   untrusted content
 - [0008: auto-mode decides the grey zone](./decisions/0008-auto-mode.md) — auto-mode decides what
   the deterministic layers leave open, and nixie runs fully without it
+- [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
+  conversation, approvals and voice, and chat apps carry content-free pushes
+- [0010: The memory store](./decisions/0010-memory-store.md) — memory as rows in nixie's database, a
+  UI and a raw recall tool, and forgetting by crypto-shredding
+- [0011: Which memory writes skip review](./decisions/0011-memory-writes.md) — writes from a clean
+  main thread apply at once with undo, and every proposal is asynchronous
+- [0012: High-risk approvals](./decisions/0012-high-risk-approvals.md) — a passkey check for the
+  always-ask set, and a tap for everything else
+- [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
+  every record, with rules applying at once and persona and jobs fixed per task
+- [0014: Search](./decisions/0014-search.md) — Kagi, with full results that taint the main thread
+- [0015: Where taint applies](./decisions/0015-taint-scope.md) — the conversation is always
+  untrusted, and taint applies to jobs and workers in stages
+- [0016: nixie's own interfaces](./decisions/0016-own-interfaces.md) — channel adapter, trigger
+  source, connector and credential store, with tools from MCP
+- [0017: Outside MCP servers](./decisions/0017-mcp-proxy.md) — every MCP server outside nixie's code
+  goes through a proxy, the owner's own included
+- [0018: The main thread and tasks](./decisions/0018-main-thread-and-tasks.md) — the owner works
+  through the main thread, which routes work to tasks and shares a live view
+- [0019: Connector authorization](./decisions/0019-connector-authorization.md) — each owner
+  registers their own OAuth clients, and the Google spike runs early
+- [0020: Deployment and definitions](./decisions/0020-deployment.md) — definitions in their own repo
+  seed the database, and running nixie lives with the deployment
 
 ## Research
 
@@ -73,10 +96,31 @@ evidence and sources.
   - [Approvals and owner friction](./research/2.3-notes/approvals.md) — how products and standards
     store, bind and replay approvals, and how they cut prompts
 
-### Still to come
+### 2.4 to 2.6 Data, channels and connectors
 
-Tracks 2.4 memory and data, 2.5 channels and voice, and 2.6 connectors and deployment, as the
-[research brief](./brainstorm/1.6-research-brief.md) sets out.
+- [Landscape](./research/2.4-2.6-data-channels-connectors.md) — memory, where data lives, chat
+  channels, voice, MCP, connector authorization, and deployment, with the tensions between them
+- Memory and data notes:
+  - [Memory models](./research/2.4-notes/memory-models.md) — files in git, structured stores, graphs
+    and vector retrieval, and memory poisoning
+  - [Where personal data lives](./research/2.4-notes/data-and-storage.md) — the owner's host,
+    encrypted backups, export, and Postgres or SQLite for the event log
+  - [Versioning persona, jobs and policy](./research/2.4-notes/definition-versioning.md) — a
+    snapshot hash on every record, for replay
+- Channels and voice notes:
+  - [Chat channels](./research/2.5-notes/channels.md) — owner identity, approval buttons and privacy
+    across Telegram, Matrix, WhatsApp, Signal, iMessage and others
+  - [Realtime voice stacks](./research/2.5-notes/voice.md) — pipelines, speech-to-speech APIs and
+    local options, and who holds the conversation
+  - [Voice transports](./research/2.5-notes/transports.md) — web clients, voice notes, native apps
+    and phone lines
+- Connectors and deployment notes:
+  - [MCP and nixie's own interfaces](./research/2.6-notes/mcp.md) — the current MCP spec, a proxy
+    for third-party servers, and taint by output field
+  - [Connector authorization and search providers](./research/2.6-notes/connectors.md) — Google,
+    Microsoft, Apple and IMAP setup, and model-agnostic search
+  - [Deployment repo and infrastructure](./research/2.6-notes/deployment.md) — the private repo,
+    images, secrets, upgrades and network access
 
 ## Brainstorm
 
@@ -105,3 +149,5 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
 - [imp credential broker grants](../spikes/imp-broker/) — what a grant can and cannot limit
 - [Where `query()` runs](../spikes/sdk-placement/) — the SDK on the host with only nixie's tools,
   and inside an imp
+- [Model choice for chat, memory and tools](../spikes/model-eval/) — persona, invented memory, tool
+  honesty, cost and latency per model
