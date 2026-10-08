@@ -45,6 +45,8 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
 - [0014: Search](./decisions/0014-search.md) — Kagi, with full results that taint the main thread
 - [0015: Where taint applies](./decisions/0015-taint-scope.md) — the conversation is always
   untrusted, and taint applies to jobs and workers in stages
+- [0016: nixie's own interfaces](./decisions/0016-own-interfaces.md) — channel adapter, trigger
+  source, connector and credential store, with tools from MCP
 
 ## Research
 
