@@ -29,8 +29,9 @@ transcript and sources.
 
 A tool's return type decides its effect on the main thread:
 
-- **Typed results,** such as a search API's JSON, a list of URLs, a date, or a yes or no, leave the
-  main thread clean. Injected instructions cannot ride along in them.
+- **Typed results,** such as a date, a number or a yes or no, leave the main thread clean. Injected
+  instructions cannot ride along in them. A search API's JSON is not one of them:
+  [0014](./0014-search.md) corrects the example this record first gave.
 - **Free text** from outside, such as a summary of a page or an email body, marks the main thread as
   tainted for the rest of its task.
 

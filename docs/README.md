@@ -42,6 +42,7 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   always-ask set, and a tap for everything else
 - [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
   every record, with rules applying at once and persona and jobs fixed per task
+- [0014: Search](./decisions/0014-search.md) — Kagi, with full results that taint the main thread
 
 ## Research
 
