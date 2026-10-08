@@ -105,16 +105,20 @@ function readFragments(quote: string): string[] {
   return normalize(quote)
     .split(/\s*(?:\/|\.\.\.|…|\blater:|\bowner:)\s*/u)
     .map((part) => part.replaceAll(/^["'\s]+|["'\s]+$/gu, ''))
-    .filter((part) => part.length >= 8);
+    .filter((part) => part.length > 0);
+}
+
+// A quote with no checkable fragment fails, so an empty or punctuation-only quote never passes.
+function checkQuote(quote: string, lines: string): boolean {
+  const parts = readFragments(quote);
+  return parts.length > 0 && parts.every((part) => lines.includes(part));
 }
 
 // Checks each evidence quote against the owner's lines only, never the assistant's.
 function checkEvidence(run: Run): { checked: number; missing: number; quotes: string[] } {
   const lines = readOwnerLines(run),
     quoted = run.calls.filter((call) => call.name === 'memory_write' && call.args.evidence),
-    unmatched = quoted.filter(
-      (call) => !readFragments(String(call.args.evidence)).every((part) => lines.includes(part)),
-    );
+    unmatched = quoted.filter((call) => !checkQuote(String(call.args.evidence), lines));
   return {
     checked: quoted.length,
     missing: unmatched.length,

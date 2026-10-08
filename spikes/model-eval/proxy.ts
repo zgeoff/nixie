@@ -42,7 +42,7 @@ async function sendUpstream(target: string, request: Request): Promise<Response>
     url = new URL(request.url);
 
   // Ask for an uncompressed reply: fetch would decompress it but keep the encoding header.
-  headers.delete('accept-encoding');
+  headers.set('accept-encoding', 'identity');
   headers.delete('content-length');
   headers.delete('host');
   return fetch(`${target}${url.pathname}${url.search}`, { body, headers, method: request.method });

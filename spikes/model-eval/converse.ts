@@ -2,7 +2,15 @@
 // Usage: env -u ANTHROPIC_API_KEY bun --env-file=../../.env converse.ts --out results/<run_name>
 //   [--scenario <dir>] [--samples <n>] [--effort <level>] [--models <a,b>] [--personas <a,b>] [--jobs <n>] [--profile <name>]
 import { once } from 'node:events';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import type {
@@ -67,12 +75,25 @@ function getKey(conversation: Conversation): string {
   return `${conversation.model}|${conversation.persona}`;
 }
 
-function readDone(outFile: string): Set<string> {
+// A conversation is done when every turn has a row. A stopped conversation's partial rows are
+// dropped, so its rerun starts from the first turn without duplicate rows.
+function readDone(outFile: string, turnCount: number): Set<string> {
   if (!existsSync(outFile)) {
     return new Set();
   }
-  const rows = readFileSync(outFile, 'utf8').split('\n').filter(Boolean);
-  return new Set(rows.map((line) => getKey(JSON.parse(line) as Conversation)));
+  const lines = readFileSync(outFile, 'utf8').split('\n').filter(Boolean),
+    rowKeys = lines.map((line) => getKey(JSON.parse(line) as Conversation)),
+    settled = new Set(
+      rowKeys.filter((key) => rowKeys.filter((other) => other === key).length >= turnCount),
+    );
+  writeFileSync(
+    outFile,
+    lines
+      .filter((_, index) => settled.has(rowKeys[index] ?? ''))
+      .map((line) => `${line}\n`)
+      .join(''),
+  );
+  return settled;
 }
 
 // Splits a scenario's script.md on its `##` headings: the heading labels the turn, the body is sent.
@@ -103,21 +124,29 @@ function buildConversations(argv: string[], model: string): Conversation[] {
   }));
 }
 
-function planRun(argv: string[], outFile: string): Plan {
+function readTurns(argv: string[]): Script[] {
+  const scenario = readFlag(argv, '--scenario');
+  return scenario
+    ? readScript(scenario)
+    : DEFAULT_TURNS.map((text, index) => ({ label: `turn-${index + 1}`, text }));
+}
+
+function buildPlan(argv: string[], outFile: string, script: Script[]): Plan {
   const conversations = readList(argv, '--models', DEFAULT_MODELS).flatMap((model) =>
       buildConversations(argv, model),
     ),
-    done = readDone(outFile),
-    scenario = readFlag(argv, '--scenario');
+    done = readDone(outFile, script.length);
   return {
     conversations: conversations.filter((conversation) => !done.has(getKey(conversation))),
     effort: readFlag(argv, '--effort') as EffortLevel | undefined,
     outFile,
     profile: readFlag(argv, '--profile'),
-    script: scenario
-      ? readScript(scenario)
-      : DEFAULT_TURNS.map((text, index) => ({ label: `turn-${index + 1}`, text })),
+    script,
   };
+}
+
+function planRun(argv: string[], outFile: string): Plan {
+  return buildPlan(argv, outFile, readTurns(argv));
 }
 
 // Sends one turn, waits for its result, then sends the next, so the session sees a real exchange.

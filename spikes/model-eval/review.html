@@ -200,7 +200,18 @@
         } catch {}
         updateProgress();
       };
-      const keyOf = (row) => `${row.model}|${row.persona}|${row.prompt}`;
+      // A hash of the reply keeps two runs of the same cell apart while one reply keeps one score.
+      const hashOf = (text) => {
+        let hash = 0;
+        for (const char of text) hash = (Math.imul(hash, 31) + char.codePointAt(0)) | 0;
+        return (hash >>> 0).toString(36);
+      };
+      const keyOf = (row) => `${row.model}|${row.persona}|${row.prompt}|${hashOf(row.reply ?? '')}`;
+      // Scores saved before the reply hash used the cell key alone.
+      for (const row of rows) {
+        const legacy = `${row.model}|${row.persona}|${row.prompt}`;
+        if (scores[legacy] && !scores[keyOf(row)]) scores[keyOf(row)] = scores[legacy];
+      }
       const el = (tag, props = {}, children = []) => {
         const node = Object.assign(document.createElement(tag), props);
         node.append(...children);
