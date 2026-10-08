@@ -1,9 +1,13 @@
 <div align="center">
   <h1>nixie documentation</h1>
 
-  <p>The record of deciding what nixie is: brainstorm, research, and the decisions they led to.</p>
+  <p>What nixie is, what binds it, what has been decided, and what is still open.</p>
 
   <p>
+    <a href="./overview.md">Overview</a> •
+    <a href="./principles.md">Principles</a> •
+    <a href="./scope.md">Scope</a> •
+    <a href="./design/open-items.md">Open items</a> •
     <a href="#decisions">Decisions</a> •
     <a href="#research">Research</a> •
     <a href="#brainstorm">Brainstorm</a> •
@@ -12,54 +16,98 @@
   </p>
 </div>
 
+## Start here
+
+- [Overview](./overview.md) — what nixie is, why it exists, and the current design in brief
+- [Principles](./principles.md) — the rules every job and deployment holds to
+- [Scope](./scope.md) — requirements and non-goals
+- [Open items](./design/open-items.md) — deferred decisions, spikes to run, design tasks and later
+  stages
+
+`design/` holds designs for what is not built yet, and `architecture/` will hold what is built. Both
+use the same topics as the decisions below.
+
 ## Decisions
 
-What nixie has settled, each with its reasons, the alternatives, and the research behind it.
+What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
+are stable IDs in the order the decisions were made; a later record can amend an earlier one.
+
+### Core
+
+The runtime, the durable layer, and how the main thread and tasks share work.
 
 - [0001: The durable layer](./decisions/0001-durable-layer.md) — nixie's own event log, with each
   long task as a state machine, instead of a durable execution engine
-- [0002: Outside actions and approvals](./decisions/0002-approvals.md) — every outside action runs
-  through nixie's tools, and an action that needs approval becomes a proposal that ends the turn
 - [0003: Where the Agent SDK runs](./decisions/0003-sdk-placement.md) — on the host with only
   nixie's tools for assistant work, and inside an imp for coding work
+- [0018: The main thread and tasks](./decisions/0018-main-thread-and-tasks.md) — the owner works
+  through the main thread, which routes work to tasks and shares a live view
+- [0021: Outside action outcomes](./decisions/0021-outside-action-outcomes.md) — outside actions run
+  on a durable queue, and an unknown outcome is retried only with an idempotency key or a check
+
+### Policy
+
+Rules, effects, taint, approvals and auto-mode.
+
+- [0002: Outside actions and approvals](./decisions/0002-approvals.md) — every outside action runs
+  through nixie's tools, and an action that needs approval becomes a proposal that ends the turn
 - [0004: The rule engine](./decisions/0004-rule-engine.md) — nixie's own rule format with fixed
   checks, and "no rule matched" means ask
 - [0005: Effects, taint and prompts](./decisions/0005-effects-and-taint.md) — declared tool effects,
   the always-ask set, the tool as the boundary, and the 0-prompt target
 - [0006: The approval record](./decisions/0006-approval-record.md) — approvals bound to one action
   and used once, "always allow" as a rule, and digest approvals
-- [0007: Credential grants](./decisions/0007-grants-and-taint.md) — no grant for an imp that reads
-  untrusted content
 - [0008: auto-mode decides the grey zone](./decisions/0008-auto-mode.md) — auto-mode decides what
   the deterministic layers leave open, and nixie runs fully without it
-- [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
-  conversation, approvals and voice, and chat apps carry content-free pushes
-- [0010: The memory store](./decisions/0010-memory-store.md) — memory as rows in nixie's database, a
-  UI and a raw recall tool, and forgetting by crypto-shredding
-- [0011: Which memory writes skip review](./decisions/0011-memory-writes.md) — writes from a clean
-  main thread apply at once with undo, and every proposal is asynchronous
 - [0012: High-risk approvals](./decisions/0012-high-risk-approvals.md) — a passkey check for the
   always-ask set, and a tap for everything else
-- [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
-  every record, with rules applying at once and persona and jobs fixed per task
-- [0014: Search](./decisions/0014-search.md) — Kagi, with full results that taint the main thread
 - [0015: Where taint applies](./decisions/0015-taint-scope.md) — the conversation is always
   untrusted, and taint applies to jobs and workers in stages
+
+### Memory
+
+The memory store, which writes skip review, and definition versioning.
+
+- [0010: The memory store](./decisions/0010-memory-store.md) — memory as rows in nixie's database, a
+  UI and a raw recall tool, and forgetting by crypto-shredding
+- [0011: Which memory writes skip review](./decisions/0011-memory-writes.md) — a write backed by the
+  owner's own quote applies at once with undo, and every other write is a proposal
+- [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
+  every record, with rules applying at once and persona and jobs fixed per task
+
+### Channels
+
+Clients, push and voice.
+
+- [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
+  conversation, approvals and voice, and chat apps carry content-free pushes
+
+### Connectors
+
+Nixie's interfaces, outside MCP servers, credentials and search.
+
+- [0007: Credential grants](./decisions/0007-grants-and-taint.md) — no grant for an imp that reads
+  untrusted content
+- [0014: Search](./decisions/0014-search.md) — Kagi, with full results in the conversation
 - [0016: nixie's own interfaces](./decisions/0016-own-interfaces.md) — channel adapter, trigger
   source, connector and credential store, with tools from MCP
 - [0017: Outside MCP servers](./decisions/0017-mcp-proxy.md) — every MCP server outside nixie's code
   goes through a proxy, the owner's own included
-- [0018: The main thread and tasks](./decisions/0018-main-thread-and-tasks.md) — the owner works
-  through the main thread, which routes work to tasks and shares a live view
 - [0019: Connector authorization](./decisions/0019-connector-authorization.md) — each owner
   registers their own OAuth clients, and the Google spike runs early
+
+### Deployment
+
+Definitions and deployment models.
+
 - [0020: Deployment and definitions](./decisions/0020-deployment.md) — definitions in their own repo
   seed the database, and running nixie lives with the deployment
 
 ## Research
 
-Phase 2. Each track has a landscape doc with its findings and recommendations, and notes with the
-evidence and sources.
+Phase 2, kept for its evidence until it is archived. Where a decision exists, it supersedes the
+research recommendation. Each track has a landscape doc with its findings and recommendations, and
+notes with the evidence and sources.
 
 ### 2.1 Landscape and architecture models
 
@@ -124,7 +172,7 @@ evidence and sources.
 
 ## Brainstorm
 
-Phase 1: what nixie is for and what binds it.
+Phase 1, kept until it is archived. The principles and scope above replace it.
 
 - [Why nixie](./brainstorm/1.1-why.md) — the problem, and what full control means
 - [Jobs](./brainstorm/1.2-jobs.md) — the kinds of job a deployment defines

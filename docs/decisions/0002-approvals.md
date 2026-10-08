@@ -1,7 +1,7 @@
 # 0002: Outside actions and approvals
 
 - Date: 2026-10-07
-- Status: decided
+- Status: decided, amended by [0017](./0017-mcp-proxy.md)
 - Research: [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#owner-approvals),
   [engine notes](../research/2.2-notes/engines.md#recommendation),
   [defer and hold spike](../../spikes/sdk-long-hold/)
@@ -37,14 +37,18 @@ nixie's record. It fits the event log from [0001](./0001-durable-layer.md).
 ## Alternatives
 
 - **A hold in the mod.** The model sees the result in the same turn, but the session blocks until
-  the owner answers. A restart loses the call as "outcome unknown". Waits past 30 s rely on
-  hook-time accounting that no doc states, and the mod can fail open.
+  the owner answers. A restart loses the call as "outcome unknown". A hook has 10 s of its own time
+  and one `$.http.fetch` aborts at 30 s, so longer waits rely on hook-time accounting that no doc
+  states. The mod can fail open.
 - **`defer` and resume.** It survives a restart, but the session blocks until the owner answers. In
-  the spikes it lost calls from a parallel batch, which the SDK docs describe differently.
+  the spikes it lost calls from a parallel batch. The hooks docs state instead that `defer` "only
+  works when Claude makes a single tool call in the turn" and is ignored with a warning otherwise
+  ([hooks docs](https://code.claude.com/docs/en/hooks#defer-a-tool-call-for-later), 2026-10-07).
 
 ## Consequences
 
-- Third-party MCP tools that can need approval reach the model through nixie's tools, not directly.
+- Every outside MCP server reaches the model through nixie's proxy, never directly, under
+  [0017](./0017-mcp-proxy.md).
 - A task that waits on approval continues in a later turn, and the event log and the SDK session
   carry its plan across.
 - A built-in SDK action that needs approval becomes one of nixie's own tools.

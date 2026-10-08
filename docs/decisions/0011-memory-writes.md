@@ -7,11 +7,14 @@
 
 A memory write applies at once, and the owner sees it and can undo it, only when all 3 checks pass:
 
-1. Its quote appears word for word in the owner's message as nixie recorded it.
+1. Its quote appears word for word in text the owner typed, in a message as nixie recorded it. The
+   client records which spans of a message the owner pasted, and a pasted span or a quoted block
+   never counts as evidence.
 2. Every destination-like token in the memory, such as an email address, URL, phone number, handle
    or account number, appears word for word in that quote. Code runs this check.
-3. A separate checker model, which sees only the quote and the memory and never the conversation,
-   confirms that the quote supports the memory.
+3. A separate checker model confirms that the owner asserted the memory. It sees the owner's whole
+   message, with the quote and the pasted spans marked, and the memory, and never the rest of the
+   conversation, so it can tell a statement from a question, a negation or a quotation.
 
 Every other memory write is a proposal, including a write the checker rejects, is unsure about or
 cannot reach. The memory reads as text the model wrote, with the owner's quote kept as its evidence.
@@ -48,11 +51,14 @@ owner answers when they choose, singly or through the digest sheet from
   digest, against the 0-prompt target.
 - **Only writes the owner asks for apply at once,** as the research recommended. Facts the owner
   states in passing would each need approval.
-- **Writes from a clean main thread apply at once.** This was the first version of this decision.
-  The conversation is never clean under 0015, so it would make every write a proposal.
+- **Writes from a clean main thread apply at once.** The conversation is never clean under 0015, so
+  it would make every write a proposal.
 - **Store the owner's quote itself as the memory.** It needs no checker model, and stored memories
   read as raw quotes rather than natural text.
 - **The quote check alone.** It lets a steered model attach an unrelated quote to a poisoned memory.
+- **A checker that sees only the quote.** A quote in the owner's message is not always something the
+  owner asserted: the owner may paste a scam email and ask about it, quote someone, or negate a
+  fact. Without the whole message, the checker cannot tell.
 
 ## Consequences
 

@@ -1,7 +1,7 @@
 # 0016: nixie's own interfaces
 
 - Date: 2026-10-08
-- Status: decided
+- Status: decided, amended by [0020](./0020-deployment.md)
 - Research: [MCP notes](../research/2.6-notes/mcp.md#triggers-channels-and-brokering),
   [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
 
@@ -21,6 +21,8 @@ for them:
 Phase 3 designs the channel adapter and the trigger source in full, because the first build needs a
 client and schedules. It sketches the connector and the credential store roughly, to check that the
 first 2 leave room for them, and the first real connector settles their final shape.
+[0020](./0020-deployment.md) adds a fifth interface, the definitions source adapter, which Phase 3
+sketches with them.
 
 ## Credential backends
 
@@ -31,8 +33,9 @@ backend interface is open.
 
 ## Why
 
-- MCP covers tools well. Its events are an open proposal, and it has no interface for chat channels
-  or for brokering a host's own credentials.
+- MCP covers tools well. Its events are an open proposal, SEP-3415, opened on 2026-10-05
+  ([PR 3415](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/3415), 2026-10-08).
+  MCP has no interface for chat channels or for brokering a host's own credentials.
 - The channel adapter and the trigger source carry the first build, so their design pays off at
   once.
 - A rough sketch of the other 2 can expose a constraint on the first 2 early, while their final

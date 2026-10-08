@@ -16,9 +16,10 @@ migration.
 A conversation reads outside content within minutes, and no system examined clears taint once that
 content is in a model's context. A flag on the conversation would be on nearly all the time and
 would tell nixie nothing. The destination limits from 0005 therefore apply to every send that starts
-from the conversation, and auto-mode from [0008](./0008-auto-mode.md) decides the grey cases.
-Consent in the owner's own message, under [0006](./0006-approval-record.md), still lets a direct
-request run with no prompt.
+from the conversation. With auto-mode from [0008](./0008-auto-mode.md) on, such a send first gets a
+deny with a reason, such as "write a draft instead", and auto-mode never allows a destination the
+limits hold back. Consent in the owner's own message, under [0006](./0006-approval-record.md), still
+lets a direct request run with no prompt.
 
 ## Jobs
 
@@ -55,9 +56,11 @@ The first build includes 3 hooks for those stages:
 ## Typed results
 
 In every research system examined, a typed value derived from untrusted data keeps its untrusted
-label. A system may choose to accept low-information types, which FIDES calls endorsement. The clean
-return types in 0005, such as dates, numbers and yes or no answers, are clean because nixie's policy
-endorses those types, not because the values are clean.
+label. In FIDES, a boolean drawn from untrusted data keeps its untrusted label next to its type
+([FIDES v2](https://arxiv.org/html/2505.23643v2), 2025-09-03). A system may choose to accept
+low-information types, which FIDES calls endorsement. The clean return types in 0005, such as dates,
+numbers and yes or no answers, are clean because nixie's policy endorses those types, not because
+the values are clean.
 
 ## Why
 
@@ -73,20 +76,23 @@ endorses those types, not because the values are clean.
 ## Alternatives
 
 - **Keep the taint flag on the conversation.** It is nearly always on, and nothing clears it.
-- **Clear taint at the owner's next message,** as OpenClaw does for memory. The outside content is
-  still in the model's context after the owner speaks, so the reset is not sound.
-- **Keep the planner clean,** as CaMeL does. CaMeL completed fewer tasks than an undefended agent,
-  used more tokens, and supports no multi-turn conversation.
+- **Clear taint at the owner's next message,** as OpenClaw does for memory
+  ([openclaw](https://github.com/openclaw/openclaw), 2026-10-08). The outside content is still in
+  the model's context after the owner speaks, so the reset is not sound.
+- **Keep the planner clean,** as CaMeL does. CaMeL solves 77% of AgentDojo tasks against 84%
+  undefended, at about 2.8 times the tokens on the median task, and its evaluation covers no
+  multi-turn conversation ([CaMeL v2](https://arxiv.org/abs/2503.18813), 2025-06-24).
 - **Clean a job through the owner's approval.** No shipping product cleans an artifact this way, and
-  people approve almost every prompt they see.
+  Claude Code users approve 93% of permission prompts
+  ([Anthropic](https://www.anthropic.com/engineering/claude-code-auto-mode), 2026-03-25).
 
 ## Consequences
 
 - A job that sends free text to an allowed destination, such as a reply to a sender, can leak
   whatever its tools reach. The tool list limits that, and the owner sees the list at sign-off.
-- Cause 1 in 0005's prompt causes, a direct request, now means that the owner asked for the action
-  in a direct message, since the conversation is never clean.
+- Cause 1 in 0005's prompt causes, a direct request, means that the owner asked for the action in a
+  direct message, since the conversation is never clean.
 - [0011](./0011-memory-writes.md) applies a memory write at once only when an exact quote from the
-  owner's own message backs it and a checker model confirms the quote supports it.
-- [0014](./0014-search.md) no longer needs a search to mark the conversation, because the
-  conversation is always untrusted.
+  owner's own message backs it and a checker model confirms the owner asserted it.
+- A search under [0014](./0014-search.md) marks nothing, because the conversation is always
+  untrusted.

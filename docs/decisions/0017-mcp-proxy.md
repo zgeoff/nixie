@@ -32,8 +32,9 @@ system. Any owner may point it at any server.
 
 ## Why
 
-- Authorship does not make a server's behaviour visible to nixie's rules, and the MCP spec treats
-  annotations from untrusted servers as untrusted.
+- Authorship does not make a server's behaviour visible to nixie's rules. The MCP spec states that
+  "clients **MUST** consider tool annotations to be untrusted unless they come from trusted servers"
+  ([MCP tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools), 2026-10-08).
 - Hash pinning stops a server from swapping a tool's description after the owner reviewed it. For
   the owner's own servers, a blocked upgrade costs more than it protects, so a notice is enough.
 - The rule engine from [0004](./0004-rule-engine.md) needs declared effects to decide anything, so
