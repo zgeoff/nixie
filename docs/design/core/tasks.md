@@ -145,12 +145,19 @@ A crash stops the steps in flight, and a restart resumes every task from the log
 4. Fires every timer that fell due while it was down.
 5. Destroys every imp that belongs to a step that no longer runs.
 
-The rerun of an interrupted turn resumes the SDK session at the last completed turn and adds a
-record that lists each outside action the interrupted turn started, with its outcome. The model
-reads which actions ran, so it has no reason to call them again. When it does call one again, the
-tool finds the existing action by its action hash within the task and returns that action's outcome
-instead of queuing a second one. Crash tests at each point confirm that a resumed turn never repeats
-an outside action that ran.
+Resuming the SDK session alone would carry the interrupted turn's partial work. The
+[defer and hold spike](../../../spikes/sdk-long-hold/README.md) found that a resumed session keeps
+everything the dead turn wrote, with a synthetic "outcome unknown" result for a dangling tool call.
+The inbox cursor did not move, so the rerun would also deliver inbox records the model already read
+in the partial turn.
+
+Each step commit therefore records the ID of the last SDK session message the turn wrote, as the
+task's session boundary. The rerun branches the session at that boundary, which drops the partial
+turn, and gives the model the unread inbox plus a record that lists each outside action the
+interrupted turn started, with its outcome. The model reads which actions ran, so it has no reason
+to call them again. When it does call one again, the tool finds the existing action by its action
+hash within the task and returns that action's outcome instead of queuing a second one. Crash tests
+at each point confirm that a resumed turn never repeats an outside action that ran.
 
 ## Options for the owner
 
@@ -181,3 +188,5 @@ an outside action that ran.
   stop.
 - How long the action-hash lookup reaches back, so that a deliberate repeat of the same action later
   in a task is not mistaken for a retry.
+- Whether the Agent SDK can branch a session at a given message, or nixie rebuilds the session from
+  the log after a crash, which a spike checks before the crash tests.

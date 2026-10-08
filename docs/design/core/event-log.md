@@ -113,8 +113,12 @@ commit in one transaction. The log holds why a memory changed, and the history t
 changed to.
 
 Retrieval over past conversation searches the log, under
-[0024](../../decisions/0024-memory-in-context.md). Keyword search over message payloads comes first.
-SQLite offers FTS5 and Postgres offers `tsvector`, and the
+[0024](../../decisions/0024-memory-in-context.md), with keyword search first. A persisted full-text
+index, FTS5 on SQLite or `tsvector` on Postgres, keeps the words of an erasable field after its key
+is deleted, in the live database and in every backup. Erasable fields therefore stay out of any
+persisted index: nixie searches them through an index held in memory and built from the payloads it
+can still decrypt, or by decrypting and scanning. Envelope fields and payload fields that are not
+erasable can use the database's own full-text index. The
 [retrieval spike](../open-items.md#spikes-to-run) decides whether ranked search pays off.
 
 Memory export is a tool and a button under [0010](../../decisions/0010-memory-store.md). The design
@@ -155,8 +159,9 @@ supersedes, which is a [deferred decision](../open-items.md#deferred-decisions).
 
 ## Open questions
 
-- Which payload fields get their own key, and where the owner's backup key lives, carried over from
-  [open items](../open-items.md#phase-3-design-tasks).
+- Which payload fields get their own key and where the owner's backup key lives, carried over from
+  [open items](../open-items.md#phase-3-design-tasks). The answer also sets how much of the log the
+  database's own full-text index can cover.
 - Whether the owner can set a retention period for records, and for which kinds, given that the
   default keeps everything.
 - Whether a record that recalled memory stamps the version of each item it read.
