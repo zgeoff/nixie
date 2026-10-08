@@ -66,7 +66,9 @@ around `imp` CLI calls and the arrival of `turn.ts`'s lines. Guest-side times co
 5. It copies impd's own timing lines into `results/impd.log`, prints the summary, and checks every
    file it wrote for the token's value.
 
-A trap removes every `nixie-spike-*` imp, the template, the secret and the MCP server on exit.
+The script refuses to start when an imp, image or secret with one of its names exists. A trap
+removes the imps, the template and the secret it made, and stops the MCP server, on exit. Each run
+empties `results/` first, so a summary never mixes runs.
 
 ## Run it
 

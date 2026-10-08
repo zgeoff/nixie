@@ -27,11 +27,24 @@ mcp_host=172.17.0.1
 mcp_port=8791
 made_secret= made_template= serve_pid=
 
-# cleanup removes every nixie-spike-* imp (bench.ts names its own that way), then the rest
+# Every imp name this run can create: bench.ts names its own nixie-spike-c<n> and nixie-spike-e<n>.
+ours=("$golden" "$box")
+for index in $(seq 0 $((samples - 1))); do ours+=("nixie-spike-c$index" "nixie-spike-e$index"); done
+
+# Refuse to start when any of those names, the template or the secret exists already, so cleanup
+# removes only what this run made.
+existing=$(imp ls --json | jq -r '.[].name')
+for name in "${ours[@]}"; do
+  if grep -qx "$name" <<< "$existing"; then echo "run.sh: imp $name exists; remove it first" >&2; exit 1; fi
+done
+if imp image ls | grep -q "^$template "; then echo "run.sh: image $template exists" >&2; exit 1; fi
+if imp secret ls | grep -q "^$secret "; then echo "run.sh: secret $secret exists" >&2; exit 1; fi
+
 cleanup() {
   [ -n "$serve_pid" ] && { kill "$serve_pid" 2>/dev/null || true; }
-  for name in $(imp ls --json 2>/dev/null | jq -r '.[].name' | grep '^nixie-spike-' || true); do
-    imp rm "$name" >/dev/null 2>&1 || true
+  existing=$(imp ls --json 2>/dev/null | jq -r '.[].name' || true)
+  for name in "${ours[@]}"; do
+    if grep -qx "$name" <<< "$existing"; then imp rm "$name" >/dev/null 2>&1 || true; fi
   done
   [ -n "$made_template" ] && { imp template rm "$template" >/dev/null 2>&1 || true; }
   [ -n "$made_secret" ] && { imp secret rm "$secret" >/dev/null 2>&1 || true; }
@@ -47,7 +60,10 @@ imp info | head -3
 uname -r
 bun --version
 imp ls
+# Each run starts from an empty results/, so a summary never mixes runs.
+rm -rf "$here/results"
 mkdir -p "$SPIKE_WORK/home" "$here/results"
+started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 step "prepare $golden: ca-certificates, Bun, the spike package"
 imp new "$golden" --image ubuntu --memory 2g >/dev/null
@@ -110,7 +126,7 @@ step "summary"
 
 step "impd's own timing of each create, restore and wake"
 if [ -n "${IMP_DEV_NAME:-}" ]; then
-  docker logs "$IMP_DEV_NAME" 2>&1 | grep -E 'nixie-spike-' | grep -E 'created in|restored|booted|woke|slept' \
+  docker logs --since "$started" "$IMP_DEV_NAME" 2>&1 | grep -E 'nixie-spike-' | grep -E 'created in|restored|booted|woke|slept' \
     > "$here/results/impd.log" || true
   wc -l < "$here/results/impd.log"
 fi
