@@ -21,10 +21,12 @@ runtime with the ID of the approval that created it, under [0013](./0013-definit
 - **A seeded rule that changes in the repo** updates in the database at the next seed, unless it was
   edited at runtime. A runtime edit marks it overridden, and the conflict shows in the client for
   the owner to resolve.
-- **A rule deleted from the repo** is removed at the next seed. Removing a rule only narrows, so it
-  applies at once with a record, under [0005](./0005-effects-and-taint.md).
-- **A repo change that widens a rule** applies only after the owner confirms it in the client.
-  Widening is in the always-ask set, and merging a pull request is not an approval.
+- **A rule deleted from the repo** is removed at the next seed. Removing an allow rule only narrows,
+  so it applies at once with a record, under [0005](./0005-effects-and-taint.md). Removing a deny
+  rule widens, so it follows the next case.
+- **A repo change that widens the rules,** such as a looser allow rule or a removed deny rule,
+  applies only after the owner confirms it in the client. Widening is in the always-ask set, and
+  merging a pull request is not an approval.
 
 nixie can export runtime rules to the definitions repo as a pull request. Once the owner merges it,
 the next seed marks those rules as seeded.
