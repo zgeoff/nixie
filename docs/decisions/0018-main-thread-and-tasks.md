@@ -63,8 +63,9 @@ see the same state.
   names where it sent it.
 - The main thread and tasks report asynchronously, so the main thread never blocks on a task.
 - An integration may start entities that nixie supervises but that run under their own rules, such
-  as coding agent sessions started through atc. The live view would show them, labelled as outside
-  nixie. Neither v0 nor v1 needs this, and it stays a note for later.
+  as coding agent sessions started through atc. Managing atc sessions is a high priority for v1 or
+  v2. Showing such entities in the live view as an extension of nixie, labelled as outside nixie, is
+  a low priority.
 - Authority granted in the conversation for a period, such as "full authority to build and ship
   today", is a rule with an expiry. Widening a rule is in the always-ask set from
   [0005](./0005-effects-and-taint.md), and Phase 3 designs grants with expiries.

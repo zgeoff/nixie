@@ -51,6 +51,8 @@ What nixie has settled, each with its reasons, the alternatives, and the researc
   goes through a proxy, the owner's own included
 - [0018: The main thread and tasks](./decisions/0018-main-thread-and-tasks.md) — the owner works
   through the main thread, which routes work to tasks and shares a live view
+- [0019: Connector authorization](./decisions/0019-connector-authorization.md) — each owner
+  registers their own OAuth clients, and the Google spike runs early
 
 ## Research
 

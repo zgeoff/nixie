@@ -1,0 +1,38 @@
+# 0019: Connector authorization
+
+- Date: 2026-10-08
+- Status: decided
+- Research: [connector notes](../research/2.6-notes/connectors.md),
+  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
+
+Each owner registers their own OAuth clients with each provider, and nixie ships no central OAuth
+app. The credential store from [0016](./0016-own-interfaces.md) holds each owner's clients and
+tokens.
+
+The Google personal-use spike from the connector notes runs early, before Phase 3 designs the
+connector interface. It registers an unverified production client with Gmail, Calendar and Drive
+scopes, and refreshes its token over 8 days.
+
+## Why
+
+- nixie is self-hosted. A central app would put the project between every owner and their data, and
+  Google would require a security assessment for it.
+- Google's personal-use exception, for fewer than 100 users, lets an unverified app in production
+  run with no review, while testing mode forces a fresh consent every 7 days.
+- Third parties report that Google blocks unverified apps from restricted scopes such as full Gmail
+  access, and no Google page confirms it. Reading the owner's email is a core job, so the connector
+  design waits on the answer.
+
+## Alternatives
+
+- **A central nixie OAuth app.** Setup is easier for an owner, and the project becomes a processor
+  of every owner's data.
+- **IMAP with an app password.** It needs no OAuth client, gives cruder access, and Google can turn
+  app passwords off for some accounts. It is the fallback if Google blocks the restricted scopes.
+
+## Consequences
+
+- Setting up a connector includes registering a client with the provider, so the setup guide and the
+  client walk the owner through it.
+- Microsoft Graph needs a free Azure account. iCloud works only with an app-specific password, and
+  its Reminders and Notes have no third-party route.
