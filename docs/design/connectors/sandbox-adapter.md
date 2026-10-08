@@ -113,7 +113,8 @@ The reverse forward has 4 limits that the design accepts:
 - A sleep ends the forward, and the adapter opens it again after the wake. The conversation imp
   stays awake in the first version, and a worker imp never sleeps.
 - A forward relays at most 64 connections at a time, and each counts towards the imp's 256 open
-  tunnels. A turn makes one MCP request per tool call, so a run stays far below it.
+  tunnels. A run holds one open stream for the MCP session and opens one connection per tool call,
+  so it stays far below the limit.
 - Opening a forward needs a token with `exec` scope on the imp, which the adapter holds already for
   `exec`.
 - The relay adds a hop through impd for every tool call, and its latency is unmeasured. The
@@ -146,11 +147,12 @@ process's cgroup 5 s later by default, through `kill_grace_ms`
 nixie builds a purpose-built image per kind of work, under
 [0026](../../decisions/0026-where-workers-and-the-conversation-run.md):
 
-| Image  | Holds                                                         | Used by                         |
-| ------ | ------------------------------------------------------------- | ------------------------------- |
-| Agent  | A minimal base, Bun, and the SDK with its Claude Code build   | The conversation and workers    |
-| Code   | A minimal base and the runtimes the code tool offers          | The code tool                   |
-| Coding | The agent image plus git and the toolchains the owner chooses | Built-in coding sessions, later |
+| Image        | Holds                                                       | Used by                         |
+| ------------ | ----------------------------------------------------------- | ------------------------------- |
+| Conversation | A minimal base, Bun, and the SDK with its Claude Code build | The conversation                |
+| Code         | A minimal base and the runtimes the code tool offers        | The code tool, outside workers  |
+| Worker       | The conversation image plus the code runtimes               | Workers                         |
+| Coding       | The conversation image plus git and the owner's toolchains  | Built-in coding sessions, later |
 
 The deployment pins each image by digest, and an upgrade of nixie that changes an image builds and
 pins the new one. **Why:** an image is code that runs over untrusted content, so it upgrades with

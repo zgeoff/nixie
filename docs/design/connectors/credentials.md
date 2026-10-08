@@ -5,6 +5,7 @@
   [0010](../../decisions/0010-memory-store.md), [0016](../../decisions/0016-own-interfaces.md),
   [0019](../../decisions/0019-connector-authorization.md),
   [0020](../../decisions/0020-deployment.md),
+  [0022](../../decisions/0022-coding-and-code-execution.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md)
 
 The credential store holds every credential nixie uses: the owner's OAuth clients and their tokens,

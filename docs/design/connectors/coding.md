@@ -1,8 +1,9 @@
 # Running code and coding sessions
 
 - Status: Proposed
-- Decisions: [0007](../../decisions/0007-grants-and-taint.md),
-  [0017](../../decisions/0017-mcp-proxy.md), [0018](../../decisions/0018-main-thread-and-tasks.md),
+- Decisions: [0003](../../decisions/0003-sdk-placement.md),
+  [0007](../../decisions/0007-grants-and-taint.md), [0017](../../decisions/0017-mcp-proxy.md),
+  [0018](../../decisions/0018-main-thread-and-tasks.md),
   [0022](../../decisions/0022-coding-and-code-execution.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md)
 
@@ -28,7 +29,8 @@ Where the code runs depends on the caller:
   runs, under [0026](../../decisions/0026-where-workers-and-the-conversation-run.md). The worker imp
   is disposable and serves one tool call, so a second imp would add a start-up and isolate nothing
   the worker does not hold already. That imp holds the model credential as its one grant, so code
-  there can reach the model API's host and nothing else.
+  there can reach the model API's host and nothing else. The worker image carries the code runtimes
+  for this reason, as the [sandbox adapter](./sandbox-adapter.md#images) lists.
 
 The tool still runs on the host in both cases: the model calls it through nixie's tools, the policy
 decision point decides it, and the [sandbox adapter](./sandbox-adapter.md#running-a-command) runs
@@ -122,7 +124,9 @@ follows the coding placement from [0003](../../decisions/0003-sdk-placement.md):
 Claude Code's built-in tools inside the imp, and reaches nixie's tools on the host through the
 [route](./sandbox-adapter.md#the-route-to-nixies-tools) every imp uses.
 
-The session's grants follow the owner's risk stance for the coding context: none by default, and the
+The session holds the model credential, because Claude Code runs inside the imp, as every model loop
+does under [0026](../../decisions/0026-where-workers-and-the-conversation-run.md). Beyond it, the
+session's grants follow the owner's risk stance for the coding context: none by default, and the
 owner's rules may allow grants for that context, such as a git host and a package registry. Setting
 such a rule is a widening, so it asks once, under 0022. The imp's egress allows the hosts its grants
 name plus the hosts the owner's rule lists, such as a package registry's mirror, and nothing else.

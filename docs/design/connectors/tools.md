@@ -124,6 +124,6 @@ package.
 `createSdkMcpServer` serves the same tool definitions inside the process that runs `query()`, with
 no network at all, and the placement spike ran a 4-step task through it under Bun. After
 [0026](../../decisions/0026-where-workers-and-the-conversation-run.md), no production model loop
-runs on the host, so nixie uses the in-process route for the scripted scenarios and tests that run
-`query()` against nixie's tools without an imp. Both routes serve one set of definitions, so a test
-on the in-process route exercises the same handlers as production.
+with nixie's tools runs on the host, so nixie uses the in-process route for the scripted scenarios
+and tests that run `query()` against nixie's tools without an imp. Both routes serve one set of
+definitions, so a test on the in-process route exercises the same handlers as production.

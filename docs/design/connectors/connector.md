@@ -4,7 +4,11 @@
 - Decisions: [0005](../../decisions/0005-effects-and-taint.md),
   [0014](../../decisions/0014-search.md), [0016](../../decisions/0016-own-interfaces.md),
   [0019](../../decisions/0019-connector-authorization.md),
-  [0021](../../decisions/0021-outside-action-outcomes.md)
+  [0020](../../decisions/0020-deployment.md),
+  [0021](../../decisions/0021-outside-action-outcomes.md),
+  [0022](../../decisions/0022-coding-and-code-execution.md),
+  [0025](../../decisions/0025-database-and-topology.md),
+  [0026](../../decisions/0026-where-workers-and-the-conversation-run.md)
 
 A connector is nixie's code for one outside service, such as Gmail or a search API. It gives nixie
 typed tools with declared effects, the polls a trigger source runs against the service, the
@@ -230,12 +234,14 @@ the connector docs assume the recommendation.
      credential, because containers have no broker, and only an owner without KVM needs it.
    - Trade-off: an owner whose host cannot run imp, such as a VPS without nested virtualisation,
      cannot run nixie until the container adapter exists.
-6. **The runtimes in the code image.** The code tool runs code for general work, such as processing
-   a file or crunching data, under [0022](../../decisions/0022-coding-and-code-execution.md).
+6. **The code runtimes.** The code tool runs code for general work, such as processing a file or
+   crunching data, under [0022](../../decisions/0022-coding-and-code-execution.md). The code image
+   and the worker image carry the same runtimes, because a worker runs its code in its own imp.
    - Options: Bun only; Bun and Python 3 with a fixed set of data libraries, such as pandas; or a
      general image with package installs at run time.
    - Recommendation: Bun and Python 3 with a fixed set of data libraries. Models write data work in
-     Python most readily, and the code imp has no egress, so it cannot install a package at run
-     time.
-   - Trade-off: a larger image to build and keep current, and a library outside the set is
-     unavailable until the owner adds it to the image.
+     Python most readily, and a code imp has no egress, so it cannot install a package at run time.
+   - Trade-off: larger images to build and keep current, and a larger worker image reads more from a
+     cold disk at start, which the warm page cache from
+     [0026](../../decisions/0026-where-workers-and-the-conversation-run.md) offsets. A library
+     outside the set is unavailable until the owner adds it to the images.
