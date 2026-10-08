@@ -73,10 +73,31 @@ evidence and sources.
   - [Approvals and owner friction](./research/2.3-notes/approvals.md) — how products and standards
     store, bind and replay approvals, and how they cut prompts
 
-### Still to come
+### 2.4 to 2.6 Data, channels and connectors
 
-Tracks 2.4 memory and data, 2.5 channels and voice, and 2.6 connectors and deployment, as the
-[research brief](./brainstorm/1.6-research-brief.md) sets out.
+- [Landscape](./research/2.4-2.6-data-channels-connectors.md) — memory, where data lives, chat
+  channels, voice, MCP, connector authorization, and deployment, with the tensions between them
+- Memory and data notes:
+  - [Memory models](./research/2.4-notes/memory-models.md) — files in git, structured stores, graphs
+    and vector retrieval, and memory poisoning
+  - [Where personal data lives](./research/2.4-notes/data-and-storage.md) — the owner's host,
+    encrypted backups, export, and Postgres or SQLite for the event log
+  - [Versioning persona, jobs and policy](./research/2.4-notes/definition-versioning.md) — a
+    snapshot hash on every record, for replay
+- Channels and voice notes:
+  - [Chat channels](./research/2.5-notes/channels.md) — owner identity, approval buttons and privacy
+    across Telegram, Matrix, WhatsApp, Signal, iMessage and others
+  - [Realtime voice stacks](./research/2.5-notes/voice.md) — pipelines, speech-to-speech APIs and
+    local options, and who holds the conversation
+  - [Voice transports](./research/2.5-notes/transports.md) — web clients, voice notes, native apps
+    and phone lines
+- Connectors and deployment notes:
+  - [MCP and nixie's own interfaces](./research/2.6-notes/mcp.md) — the current MCP spec, a proxy
+    for third-party servers, and taint by output field
+  - [Connector authorization and search providers](./research/2.6-notes/connectors.md) — Google,
+    Microsoft, Apple and IMAP setup, and model-agnostic search
+  - [Deployment repo and infrastructure](./research/2.6-notes/deployment.md) — the private repo,
+    images, secrets, upgrades and network access
 
 ## Brainstorm
 
