@@ -46,8 +46,9 @@ Conversation is not a kind of job. Every job runs through it.
 ## Core
 
 nixie keeps its own event log, and each long task is an explicit state machine over it, instead of
-running inside a durable execution engine ([0001](./decisions/0001-durable-layer.md)). The database
-behind the log, and how the system splits into modules, are deferred to Phase 3.
+running inside a durable execution engine ([0001](./decisions/0001-durable-layer.md)). The log lives
+in one SQLite database, and nixie is a modular monolith of workspace packages
+([0025](./decisions/0025-database-and-topology.md)).
 
 The model runs one turn at a time through the Agent SDK, and nixie owns the loop around it.
 Assistant work runs on the host with only nixie's tools; sessions on the built-in coding adapter run

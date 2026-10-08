@@ -45,6 +45,8 @@ The runtime, the durable layer, and how the main thread and tasks share work.
   through the main thread, which routes work to tasks and shares a live view
 - [0021: Outside action outcomes](./decisions/0021-outside-action-outcomes.md) — outside actions run
   on a durable queue, and an unknown outcome is retried only with an idempotency key or a check
+- [0025: The database and the topology](./decisions/0025-database-and-topology.md) — one SQLite
+  database with nixie's own dialect, and a modular monolith of workspace packages
 
 ### Policy
 

@@ -1,24 +1,19 @@
 # Open items
 
-Phase 3, the design phase, starts with the event log's database, the system topology, the voice
-stack and the model per job undecided, and with the Google OAuth and SDK latency spikes unrun. The
-design work ahead covers the terminology pass, the channel adapter and trigger source, main-thread
-routing and grants with expiries, and the stages agreed for after the first build.
+Phase 3, the design phase, has the voice stack and the model per job undecided, and the Google
+refresh on day 8 still to run. The design work ahead covers the terminology pass, the channel
+adapter and trigger source, main-thread routing and grants with expiries, and the stages agreed for
+after the first build.
 
 ## Deferred decisions
 
-- **The event log's database and the system topology.** Postgres or SQLite for the event log stays
-  open under [0001](../decisions/0001-durable-layer.md), and the memory store in
-  [0010](../decisions/0010-memory-store.md) uses the same database. Phase 3 decides it together with
-  the topology, where the owner leans towards a modular monolith whose modules are workspace
-  packages, with lint rules that block imports of another module's internals. Database roles per
-  module would enforce the same boundaries at the data layer, at a cost that is heavy for a first
-  version. Whether nixie ever runs on a second host decides most of the database trade-off.
 - **The voice stack.** Voice runs in nixie's own client under
-  [0009](../decisions/0009-first-channel.md), and the stack waits until a spike measures the time
-  from an Agent SDK turn's start to its first token. A pipeline of speech-to-text, nixie's own turn
-  and text-to-speech is the default design, and a speech-to-speech model such as GPT-Live 1 replaces
-  it only if that time rules the pipeline out. The owner expects the speech-to-speech route to win.
+  [0009](../decisions/0009-first-channel.md), and the
+  [first-token spike](../../spikes/sdk-first-token/) measured an Agent SDK turn: Haiku 5.5 at low
+  effort reached its first token in 0.57 s at the median on a process held open, which puts a reply
+  about 2 s after the owner stops speaking. A pipeline of speech-to-text, nixie's own turn and
+  text-to-speech is the default design, and a speech-to-speech model such as GPT-Live 1 replaces it
+  only if that time rules the pipeline out. The owner expects the speech-to-speech route to win.
   Voice is essential but not part of the first build.
 - **Approval during a voice call.** A spoken yes is a chat message, so it never counts as an
   approval under [0002](../decisions/0002-approvals.md). The voice design needs a route to the
@@ -39,19 +34,10 @@ routing and grants with expiries, and the stages agreed for after the first buil
 
 ## Spikes to run
 
-- **Google personal-use OAuth client** (about 1 hour of work across 8 days, run early): register an
-  unverified production client with Gmail, Calendar and Drive scopes, consent with a consumer
-  account, and refresh its token over 8 days. It shows whether the token outlives the 7-day testing
-  limit and whether Google warns or blocks on restricted scopes such as full Gmail access. The
-  connector design waits on it, with IMAP and an app password as the fallback
-  ([0019](../decisions/0019-connector-authorization.md)).
-- **Agent SDK time to first token** (about half a day): measure the time from a turn's start to its
-  first token on the host placement from [0003](../decisions/0003-sdk-placement.md), against a voice
-  budget of about 1.5 s. The voice stack decision waits on it.
-- **The event log on SQLite and Postgres** (about 1 day): run a leased step, an approval consumed in
-  the same transaction, and a crash at each point, on `kysely-postgres-js` over `Bun.SQL` and on
-  `bun:sqlite`. It measures claim latency, the event-loop block under `bun:sqlite`, and whether
-  recovery is exact, for the database choice under [0001](../decisions/0001-durable-layer.md).
+- **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
+  [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
+  holding Gmail's restricted scope; day 8 shows whether its token outlives testing mode's 7-day
+  limit ([0019](../decisions/0019-connector-authorization.md)).
 - **Retrieval on nixie-shaped memory** (about 1 day): compare keyword search, full-text search with
   BM25 ranking, and full-text search with vectors over a few hundred memory items, with questions
   the owner writes. It tests whether embeddings help at personal scale over the rows from

@@ -6,11 +6,12 @@
   [storage notes](../research/2.4-notes/data-and-storage.md),
   [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#memory)
 
-nixie keeps long-term memory as rows in its own database, which Phase 3 picks. Each memory item
-carries its provenance in columns that nixie sets and the model cannot write: its origin, the task,
-the source of the content it came from, and the proposal that created it. The source is one of the 3
-that the event log records under [0015](./0015-taint-scope.md): the owner's words, the owner's own
-data, or outside content. A history table keeps every version of each item.
+nixie keeps long-term memory as rows in its own database, SQLite under
+[0025](./0025-database-and-topology.md). Each memory item carries its provenance in columns that
+nixie sets and the model cannot write: its origin, the task, the source of the content it came from,
+and the proposal that created it. The source is one of the 3 that the event log records under
+[0015](./0015-taint-scope.md): the owner's words, the owner's own data, or outside content. A
+history table keeps every version of each item.
 
 The owner sees memory in 2 ways:
 
