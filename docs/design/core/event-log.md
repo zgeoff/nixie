@@ -84,11 +84,11 @@ The keys live in a key store apart from the database, each one wrapped by a depl
 memory item keys from 0010 live there too. **Why:** a database backup taken before a key is deleted
 holds the wrapped key next to its ciphertext, so a key kept in the database would come back with any
 restore. Database backups therefore hold only ciphertext. The key store's backup keeps one copy,
-which each backup run replaces, so a deleted key leaves every backup at the next run, daily by
-default. A restore takes the database backup, the current key store backup and the deployment key,
-which is a deployment secret kept with the other secrets under
-[0020](../../decisions/0020-deployment.md). The
-[backup and restore spike](../open-items.md#spikes-to-run) checks that restore.
+which each backup run replaces, so a deleted key leaves every backup at the next run. A restore
+takes the database backup, the current key store backup and the deployment key, which is a
+deployment secret kept with the other secrets under [0020](../../decisions/0020-deployment.md).
+[Backup and restore](../deployment/backup-and-restore.md) covers the schedule and the restore, which
+the [deploy spike](../../../spikes/deploy-local/README.md) ran.
 
 The database's own full-text index covers only the envelope. Free text is erasable, and a persisted
 index would keep its words after the key is gone, so full-text search over message content runs on

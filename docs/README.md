@@ -43,6 +43,16 @@ the decisions it rests on.
 - [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
   approval consumption, reconciliation per connector, and unknown outcomes for the owner
 
+### Deployment
+
+- [Deployment](./design/deployment/deployment.md) — the host, the nixie image and the imp images,
+  secrets decrypted in nixie's process, seeding the definitions, health, and Kubernetes, with the
+  deployment decisions for the owner
+- [Backup and restore](./design/deployment/backup-and-restore.md) — hourly restic backups, the key
+  store in its own repo, restoring on a new host, and the restore check
+- [Upgrades](./design/deployment/upgrades.md) — the pin and the bot, delivery to the host, a release
+  on the host, migrations that only add, and rollback
+
 ## Decisions
 
 What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
@@ -235,3 +245,6 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   first token inside an imp against the host
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
+- [Deploy, back up, restore and roll back](../spikes/deploy-local/) — a digest pin, sops secrets
+  decrypted in the process, the key store in its own restic repo, and a rollback as a revert plus a
+  restore

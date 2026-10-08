@@ -48,13 +48,17 @@ after the first build.
 - **A memory poisoning run** (about half a day): replay poisoned emails through a worker, and
   confirm that every memory write they cause reaches the owner as a proposal with untrusted
   provenance under [0011](../decisions/0011-memory-writes.md).
-- **Backup and restore** (about half a day): restore a database dump or a SQLite copy to a clean
-  host with restic, from an age key held on a passkey or a paper key. It checks that the per-item
-  keys from [0010](../decisions/0010-memory-store.md) survive a lost host.
-- **A deployment on a throwaway host** (about half a day): a Compose file that pins an image,
-  secrets encrypted with sops and age, and a dependency bot. Merge a version bump and roll it back
-  with a database restore, to confirm that an upgrade is a merge and a rollback is a revert plus a
-  restore under [0020](../decisions/0020-deployment.md).
+- **A deployment on a real host** (about 1 day): the [deploy spike](../../spikes/deploy-local/) ran
+  the Compose path on local containers. A throwaway host with KVM adds what it left out: imp beside
+  nixie with imp images added from a manifest, a pull from a public registry by digest, a Renovate
+  pull request, the deploy script on a timer, restic over a network backend, a disk with LUKS, and a
+  recovery key on a YubiKey ([deployment](./deployment/deployment.md#decisions-for-the-owner)).
+- **A rollback across outside actions** (about half a day): run outside actions after an upgrade,
+  roll back with a restore, and confirm that each action reaches the restored log with its outcome
+  and that its task starts paused ([upgrades](./deployment/upgrades.md#rolling-back)).
+- **Kubernetes with imp** (effort unknown): run nixie as a one-replica StatefulSet with impd on the
+  node, the shape [deployment](./deployment/deployment.md#kubernetes-with-pulumi) proposes, on the
+  owner's own cluster.
 - **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against nixie's scripted
   scenarios and measure the bar from [0008](../decisions/0008-auto-mode.md): catastrophic actions
   allowed per stage, harmless denials per action, consent credited, and escalations per task. nixie
@@ -131,10 +135,11 @@ after the first build.
   one, and the last-fired record in [0006](../decisions/0006-approval-record.md) needs a fixed ID.
 - **Memory consolidation.** Phase 3 decides when consolidation runs as a proposal under
   [0011](../decisions/0011-memory-writes.md).
-- **Upgrades on the host.** A merged upgrade reaches the host by a webhook, a poll from the host, or
-  the owner running one command, and a poll needs no inbound route
-  ([0020](../decisions/0020-deployment.md)). The seeding conflict view and the export of runtime
-  rules as a pull request are part of the same design.
+- **The seeding conflict view and the export of runtime rules.** A seed shows a rule edited at
+  runtime as a conflict, and nixie exports runtime rules to the definitions repo as a pull request
+  ([0020](../decisions/0020-deployment.md)).
+  [Deployment](./deployment/deployment.md#seeding-the-definitions) sets when a seed runs, and the
+  client view and the export are left to design.
 - **Connector setup.** Each owner registers their own OAuth client with each provider, so the setup
   guide and the client walk the owner through it
   ([0019](../decisions/0019-connector-authorization.md)).
