@@ -95,6 +95,8 @@ Nixie's interfaces, outside MCP servers, credentials and search.
   goes through a proxy, the owner's own included
 - [0019: Connector authorization](./decisions/0019-connector-authorization.md) — each owner
   registers their own OAuth clients, and the Google spike runs early
+- [0022: Coding and code execution](./decisions/0022-coding-and-code-execution.md) — running code in
+  a sandbox with no grants, and coding sessions through adapters, atc first
 
 ### Deployment
 

@@ -77,4 +77,5 @@ Each non-goal records something nixie deliberately is not.
   trains its own.
 - **Zero risk.** nixie trades risk against usefulness per context, as the owner sets it. It does not
   try to rule out every bad outcome.
-- **A coding agent.** nixie steers coding agents and never writes software itself.
+- **A coding agent.** nixie is not a coding agent; it steers coding agents through adapters, under
+  [0022](./decisions/0022-coding-and-code-execution.md).

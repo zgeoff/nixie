@@ -27,9 +27,6 @@ routing and grants with expiries, and the stages agreed for after the first buil
   different models for chat, memory writing, tool calls and long background reasoning, with low
   reasoning effort for chat, because effort sets cost and latency more than any other setting. No
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
-- **How nixie starts a coding session.** Coding work runs in a sandboxed session inside an imp under
-  [0003](../decisions/0003-sdk-placement.md). nixie either starts its own imp session or uses a tool
-  such as atc, and 0003 leaves the choice open.
 - **How a sandboxed session reaches nixie's endpoint.** In imp 0.38.1, an allow entry admits a whole
   address, so a sandboxed session that reaches nixie's tools on the host reaches imp's management
   API too ([0003](../decisions/0003-sdk-placement.md)). The options are port-level allow entries in
@@ -169,6 +166,9 @@ routing and grants with expiries, and the stages agreed for after the first buil
 - **Connector setup.** Each owner registers their own OAuth client with each provider, so the setup
   guide and the client walk the owner through it
   ([0019](../decisions/0019-connector-authorization.md)).
+- **The coding agent adapter and running code.** Design the adapter interface from
+  [0022](../decisions/0022-coding-and-code-execution.md), with atc as the first adapter, and the
+  tool that runs code in a disposable imp with no grants, which comes early.
 
 ## Later stages
 

@@ -1,7 +1,8 @@
 # 0007: Credential grants for imps that read untrusted content
 
 - Date: 2026-10-07
-- Status: decided, amended by [0015](./0015-taint-scope.md)
+- Status: decided, amended by [0015](./0015-taint-scope.md) and
+  [0022](./0022-coding-and-code-execution.md)
 - Research: [imp broker spike](../../spikes/imp-broker/),
   [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#the-imp-credential-broker)
 
@@ -9,8 +10,9 @@ An imp that reads untrusted content, or runs code for the conversation or a job 
 credential grant. [0015](./0015-taint-scope.md) treats the conversation as always untrusted, and
 every job run in the first build as untrusted too. Code in such an imp reaches an outside API only
 through one of nixie's tools on the host, where the destination limits from
-[0005](./0005-effects-and-taint.md) apply. An imp that reads no untrusted content, such as a coding
-session on the owner's own code, takes grants under the owner's rules.
+[0005](./0005-effects-and-taint.md) apply. nixie's own imps that run code take no grants. A session
+on a coding agent adapter can hold grants only by the owner's rule for the coding context, under
+[0022](./0022-coding-and-code-execution.md).
 
 ## Why
 

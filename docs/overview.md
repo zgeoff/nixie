@@ -50,8 +50,8 @@ running inside a durable execution engine ([0001](./decisions/0001-durable-layer
 behind the log, and how the system splits into modules, are deferred to Phase 3.
 
 The model runs one turn at a time through the Agent SDK, and nixie owns the loop around it.
-Assistant work runs on the host with only nixie's tools; coding work runs inside an imp and reaches
-nixie's tools over MCP ([0003](./decisions/0003-sdk-placement.md)).
+Assistant work runs on the host with only nixie's tools; sessions on the built-in coding adapter run
+inside an imp and reach nixie's tools over MCP ([0003](./decisions/0003-sdk-placement.md)).
 
 The owner talks to the main thread. The main thread routes work to tasks, which are durable side
 threads with their own context and tools, and tasks start workers, which are disposable jobs behind
@@ -119,6 +119,10 @@ nixie takes tools from MCP and defines 4 interfaces of its own: a channel adapte
 a connector and a credential store, which can use several backends, imp's broker among them
 ([0016](./decisions/0016-own-interfaces.md)). An imp that reads untrusted content gets no credential
 grant ([0007](./decisions/0007-grants-and-taint.md)).
+
+nixie runs code for general work in a disposable imp with no credential grants. It is not a coding
+agent; it steers coding agents through a coding agent adapter, with atc first and a built-in
+single-session adapter later ([0022](./decisions/0022-coding-and-code-execution.md)).
 
 Every MCP server outside nixie's code, the owner's own included, reaches the model only through a
 proxy that pins each tool by hash and requires declared effects. The proxy arrives with the first
