@@ -43,6 +43,21 @@ the decisions it rests on.
 - [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
   approval consumption, reconciliation per connector, and unknown outcomes for the owner
 
+### Channels
+
+- [Channels design index](./design/channels/README.md) — the client, the channel adapter, approvals,
+  the live view and the trigger source
+- [The client](./design/channels/client.md) — the web client and the Expo app, the typed API,
+  sessions, paste spans, messages into a running task, and the decisions for the owner
+- [The channel adapter](./design/channels/channel-adapter.md) — the interface, the owner record, and
+  the Telegram notifier with its content-free notice
+- [Approvals in the client](./design/channels/approvals.md) — approval cards, risk classes, the
+  server's check, and the digest sheet
+- [The live view and the dashboard](./design/channels/live-view.md) — the dashboard, a task as a
+  conversation, stepping in and routing marks
+- [The trigger source](./design/channels/trigger-source.md) — schedules, polls, webhooks, and which
+  services need push
+
 ## Decisions
 
 What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
@@ -235,3 +250,7 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   first token inside an imp against the host
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
+- [A typed API with a live stream](../spikes/client-rpc/) — one oRPC contract on Bun with checked
+  actions and a stream that resumes by sequence
+- [Paste spans in a text box](../spikes/paste-spans/) — which spans of a message the owner pasted,
+  kept right through edits
