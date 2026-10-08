@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines-per-function, max-statements, one-var, sort-vars, no-map-spread -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable no-nested-ternary, max-lines-per-function, max-statements, one-var, sort-vars, no-map-spread -- a throwaway spike keeps each question in one readable pass */
 // Question 2: is the snapshot hash stable across reordered but equivalent
 // definitions, and does every real change move it?
 import type { Definitions, Rule } from './engine.ts';
@@ -25,7 +25,17 @@ function buildDefs(): Definitions {
         tools: ['mail.search', 'mail.label', 'mail.archive'],
       },
     ],
-    policy: makePolicy(),
+    policy: makePolicy([
+      {
+        id: 'allow-some-labels',
+        outcome: 'allow',
+        tools: ['mail.label'],
+        checks: [
+          { arg: 'label', op: 'in', values: ['receipts', 'travel'] },
+          { arg: 'folder', op: 'eq', value: 'café' },
+        ],
+      },
+    ]),
   };
 }
 
@@ -41,6 +51,16 @@ function buildScrambled(defs: Definitions, seed: number): Definitions {
       }
       if (flipped.tools) {
         flipped.tools = [...flipped.tools, ...flipped.tools].toReversed();
+      }
+      if (flipped.checks) {
+        const copies = structuredClone(flipped.checks).map((check) =>
+          check.op === 'in'
+            ? { ...check, values: check.values.toReversed() }
+            : check.op === 'eq' && typeof check.value === 'string'
+              ? { ...check, value: check.value.normalize('NFD') }
+              : check,
+        );
+        flipped.checks = [...copies, ...structuredClone(copies)].toReversed();
       }
       return flipped;
     }),

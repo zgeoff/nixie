@@ -114,12 +114,22 @@ function readArg(args: Record<string, unknown>, path: string): unknown {
     }
     value = (value as Record<string, unknown>)[part];
   }
-  return value;
+  return toNfc(value);
+}
+
+// strings compare in NFC, the same form the snapshot hash serialises
+function toNfc(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return value.normalize('NFC');
+  }
+  return Array.isArray(value) ? value.map((item) => toNfc(item)) : value;
 }
 
 // glob with `*` only, anchored at both ends
-export function isGlobMatch(pattern: string, text: string): boolean {
-  const parts = pattern.split('*');
+export function isGlobMatch(rawPattern: string, rawText: string): boolean {
+  const pattern = rawPattern.normalize('NFC'),
+    text = rawText.normalize('NFC'),
+    parts = pattern.split('*');
   if (parts.length === 1) {
     return pattern === text;
   }
@@ -153,10 +163,10 @@ function isCheckMet(check: Check, args: Record<string, unknown>, all: boolean): 
   const isPassing = (value: unknown): boolean => {
     switch (check.op) {
       case 'eq': {
-        return value === check.value;
+        return value === toNfc(check.value);
       }
       case 'in': {
-        return check.values.includes(value as string | number);
+        return (toNfc(check.values) as unknown[]).includes(value);
       }
       case 'matches': {
         return typeof value === 'string' && isGlobMatch(check.pattern, value);
@@ -282,7 +292,24 @@ export function isNamedVerbatim(call: Call, destination: string): boolean {
     return true;
   }
   const name = resolveContact(call, destination);
-  return name !== undefined && new RegExp(`\\b${name}\\b`, 'iu').test(typed);
+  return name !== undefined && hasWholeWord(typed, name);
+}
+
+function isWordChar(char: string | undefined): boolean {
+  return char !== undefined && /[\p{L}\p{N}]/u.test(char);
+}
+
+function hasWholeWord(text: string, word: string): boolean {
+  const haystack = text.normalize('NFC').toLowerCase(),
+    needle = word.normalize('NFC').toLowerCase();
+  let at = haystack.indexOf(needle);
+  while (at !== -1) {
+    if (!isWordChar(haystack[at - 1]) && !isWordChar(haystack[at + needle.length])) {
+      return true;
+    }
+    at = haystack.indexOf(needle, at + 1);
+  }
+  return false;
 }
 
 function hasConsent(call: Call, destinations: string[]): boolean {
@@ -381,7 +408,8 @@ function sortSet<T>(items: T[] | undefined): T[] | undefined {
   if (!items) {
     return undefined;
   }
-  return [...new Set(items)].toSorted((a, b) => (toCanonical(a) < toCanonical(b) ? -1 : 1));
+  const unique = new Map(items.map((item) => [toCanonical(item), item]));
+  return [...unique].toSorted(([a], [b]) => (a < b ? -1 : 1)).map(([, item]) => item);
 }
 
 // set-valued fields sort, so an equivalent rule always has one form

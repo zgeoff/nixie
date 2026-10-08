@@ -39,11 +39,13 @@ match field matches every call.
 | `note`         | The owner's own words about the rule                            |
 
 The checks are the 3 that 0004 fixes: `eq` compares an argument with one value, `in` with a list of
-values, and `matches` with a pattern. A pattern uses `*` as its only wildcard and matches the whole
-string, so `*@example.com` matches every address at that domain. **Why:** a pattern with one kind of
-wildcard keeps the widening check below decidable in plain code, and the owner reads it at a glance.
-A regular expression would give the owner more power and give the check a problem it cannot solve in
-general.
+values, and `matches` with a pattern. Strings compare in Unicode NFC on both sides, the form the
+snapshot hash below uses, so 2 spellings of one name match the same calls. A saved contact name in
+the consent check matches as literal text between word boundaries, never as a pattern. A pattern
+uses `*` as its only wildcard and matches the whole string, so `*@example.com` matches every address
+at that domain. **Why:** a pattern with one kind of wildcard keeps the widening check below
+decidable in plain code, and the owner reads it at a glance. A regular expression would give the
+owner more power and give the check a problem it cannot solve in general.
 
 Each rule also carries metadata that sits outside its match: its source (a definitions commit, or
 the approval that created it), who proposed it (the owner, or nixie from a task, as 0023 requires

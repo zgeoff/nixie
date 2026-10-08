@@ -40,16 +40,18 @@ the design proposes. Each question has its own script:
   and adds 4 rules that conflict with the starter set: a spending lift, a deny that overlaps an
   allow, a narrow ask and a narrow allow. It decides each call once, then again under 200 shuffled
   rule orders, and compares the decisions.
-- [`hash.ts`](./hash.ts) hashes a definition set with a persona, 2 jobs and the starter policy. It
-  reorders rules, keys, list members and jobs, duplicates list members, and rewrites the persona
-  with a byte order mark, CRLF line endings and trailing blank lines, 1,000 ways. Then it makes 8
-  real changes, one at a time.
+- [`hash.ts`](./hash.ts) hashes a definition set with a persona, 2 jobs, the starter policy and a
+  rule with argument checks. It reorders rules, keys, list members and jobs, duplicates list members
+  and argument checks as separate objects, writes a check value in decomposed Unicode, and rewrites
+  the persona with a byte order mark, CRLF line endings and trailing blank lines, 1,000 ways. Then
+  it makes 8 real changes, one at a time.
 - [`widening.ts`](./widening.ts) classifies 27 rule edits: adds, removals, outcome changes, pattern
   changes, context limits, expiries, argument checks, lift caps and a CEL condition.
 - [`scenarios.ts`](./scenarios.ts) runs 13 scripted scenarios. Each is a fixed sequence of tool
   calls with the owner's typed message and the owner's answer to any prompt; no model runs. The
   script records each prompt with its cause, applies "always allow" and accepted rule proposals as
-  new rules, charges spending to a budget, and checks each step against the expected outcome.
+  new rules, charges spending to a budget, and checks each step's outcome and cause against the
+  script. It exits with status 1 when any step differs, so CI can run it.
 
 The consent check is a stub. Its code half runs as designed: every destination, or a saved contact
 name that resolves to it, appears word for word in the text the owner typed. Its model half reads a
@@ -64,7 +66,9 @@ STARTER=cautious bun scenarios.ts
 ```
 
 The second command reruns the scenarios with a cautious starter set that drops the allow rules for
-writes to the owner's services and for sends within the destination limits.
+writes to the owner's services and for sends within the destination limits. The script's
+expectations describe the starter set, so the cautious run reports its 6 extra prompts as differing
+steps and exits with status 0.
 
 ## Output
 
@@ -106,9 +110,11 @@ equivalent reorderings that changed the hash: 0 of 1000
   budget limit: hash changed
 ```
 
-The canonical form sorts object keys, sorts and deduplicates every set-valued field, sorts rules by
-ID and jobs by ID, and normalises markdown to NFC with LF line endings, no byte order mark and one
-final newline. It keeps trailing spaces inside a line, because 2 trailing spaces are a hard line
+The canonical form sorts object keys, sorts and deduplicates every set-valued field by its canonical
+value, sorts rules by ID and jobs by ID, and normalises markdown to NFC with LF line endings, no
+byte order mark and one final newline. Strings serialise in NFC, and the matcher compares arguments
+and rule values in NFC too, so 2 spellings of one string that the hash treats as equal always match
+the same calls. It keeps trailing spaces inside a line, because 2 trailing spaces are a hard line
 break in markdown, and the second change shows that the hash sees them.
 
 ### Question 3: the widening check

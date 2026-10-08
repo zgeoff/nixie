@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines, max-lines-per-function, max-statements, one-var, sort-vars, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
+/* oxlint-disable no-nested-ternary, max-lines, max-lines-per-function, max-statements, one-var, sort-vars, no-loop-func, prefer-spread -- a throwaway spike keeps each question in one readable pass */
 // Question 4: how many prompts do scripted scenarios raise against the starter
 // rule set with auto-mode off, and from which causes? Each scenario is a fixed
 // sequence of tool calls; no model runs.
@@ -10,6 +10,7 @@ interface Step {
   call: Omit<Call, 'time'>;
   note?: string;
   expectPrompt?: Cause;
+  expectDeny?: boolean;
   answer?: 'once' | 'always';
   fromSearch?: boolean;
   addRule?: Rule;
@@ -135,6 +136,7 @@ const SCENARIOS: Scenario[] = [
       },
       {
         call: buildTriageCall('calendar.invite', { attendees: ['x@example.net'] }),
+        expectDeny: true,
         note: 'tool not on the job list',
       },
       { call: buildTriageCall('notify.owner', { to: 'owner' }) },
@@ -472,7 +474,8 @@ function runScenarios(): void {
         );
       }
       const expected = step.expectPrompt,
-        ok = decision.outcome === 'ask' ? cause === expected : expected === undefined;
+        wanted = expected ? 'ask' : step.expectDeny ? 'deny' : 'allow',
+        ok = decision.outcome === wanted && (wanted !== 'ask' || cause === expected);
       if (!ok) {
         mismatches += 1;
       }
@@ -499,6 +502,11 @@ function runScenarios(): void {
   console.log(`defects (causes 1 and 2): ${defects}`);
   console.log(`prompts where the destination came from search results: ${fromSearch}`);
   console.log(`steps that differed from the script's expectation: ${mismatches}`);
+
+  // the expectations describe the starter set; the cautious run is a comparison
+  if (mismatches > 0 && process.env.STARTER !== 'cautious') {
+    process.exitCode = 1;
+  }
 }
 
 runScenarios();
