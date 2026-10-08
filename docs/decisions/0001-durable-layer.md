@@ -1,7 +1,7 @@
 # 0001: The durable layer
 
 - Date: 2026-10-07
-- Status: decided
+- Status: decided, amended by [0025](./0025-database-and-topology.md)
 - Research: [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#durable-execution),
   [engine notes](../research/2.2-notes/engines.md)
 
@@ -36,4 +36,4 @@ reference, and nixie borrows their semantics without depending on them.
 
 - nixie owns leases, durable timers, retries, wake-ups and a run viewer, with crash tests for each.
   The estimate is 800 to 1,500 lines, and no prototype has tested that figure.
-- The choice between Postgres and SQLite for the event log stays open.
+- [0025](./0025-database-and-topology.md) puts the event log on SQLite for the first version.
