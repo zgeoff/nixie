@@ -33,10 +33,12 @@ the next seed marks those rules as seeded.
 
 ## Viable deployment models
 
-- **Docker Compose on one host:** the recommended path for most owners. The research recommends an
-  OCI image, upgrades as pull requests from a dependency bot with a database backup before each
-  migration, secrets encrypted with sops and age, and access over Tailscale with nixie bound to
-  loopback.
+- **Docker Compose on one host:** the recommended path for most owners. It uses an OCI image,
+  upgrades as pull requests from a dependency bot with a database backup before each migration,
+  secrets encrypted with sops and age, and access over Tailscale with nixie bound to loopback.
+  Renovate's docker-compose manager bumps image tags in a Compose file
+  ([docker-compose manager](https://docs.renovatebot.com/modules/manager/docker-compose/),
+  2026-10-08).
 - **Kubernetes managed with Pulumi:** the owner's own setup, which the owner tests in practice. The
   infrastructure repo runs nixie, and the definitions repo stays separate.
 

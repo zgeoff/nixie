@@ -1,7 +1,7 @@
 # 0003: Where the Agent SDK runs
 
 - Date: 2026-10-07
-- Status: decided
+- Status: decided, amended by [0022](./0022-coding-and-code-execution.md)
 - Research: [placement spike](../../spikes/sdk-placement/),
   [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#open-questions)
 
@@ -10,8 +10,9 @@ nixie runs the Agent SDK in one of 2 places, by the kind of work:
 - **Assistant work runs on the host, with only nixie's tools.** `tools: []` removes every built-in
   tool, and nixie's tools run in nixie's own process through an in-process MCP server. Running code
   is one of nixie's tools, and it runs the code inside an imp.
-- **Coding work runs in a sandboxed session inside an imp.** The model keeps Claude Code's built-in
-  tools inside the sandbox, and reaches nixie's tools on the host over HTTP MCP.
+- **Coding sessions on nixie's built-in coding adapter run inside an imp,** under
+  [0022](./0022-coding-and-code-execution.md). The model keeps Claude Code's built-in tools inside
+  the sandbox, and reaches nixie's tools on the host over HTTP MCP.
 
 ## Why
 

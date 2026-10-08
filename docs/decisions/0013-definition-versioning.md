@@ -1,15 +1,15 @@
 # 0013: Definition versioning
 
 - Date: 2026-10-08
-- Status: decided
+- Status: decided, amended by [0020](./0020-deployment.md)
 - Research: [versioning notes](../research/2.4-notes/definition-versioning.md),
   [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#where-data-lives)
 
 Every record carries a hash of the definition set in force when nixie made it: persona, jobs and
 policy, next to the rule ID from [0004](./0004-rule-engine.md). nixie keeps each snapshot in its
 database, keyed by hash, so a replay knows exactly which definitions applied. nixie computes a new
-snapshot when the deployment loads or a rule changes, and every record until the next change shares
-its hash.
+snapshot when the definitions repo from [0020](./0020-deployment.md) seeds the database or a rule
+changes, and every record until the next change shares its hash.
 
 A change reaches tasks that are already running by kind:
 
@@ -35,6 +35,6 @@ A change reaches tasks that are already running by kind:
 
 - A record's snapshot hash covers the rules in force at the moment of the decision, while its
   persona and job versions are those the task started with. The record keeps both.
-- The deployment repo's commit is stored as a label on each snapshot, and a rule written at runtime
+- The definitions repo's commit is stored as a label on each snapshot, and a rule written at runtime
   carries the ID of the approval that created it.
 - Memory versions separately, through the history table from [0010](./0010-memory-store.md).

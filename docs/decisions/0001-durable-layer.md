@@ -6,7 +6,7 @@
   [engine notes](../research/2.2-notes/engines.md)
 
 nixie builds its own durable layer on its own event log, and adopts no durable execution engine.
-Each long task is an explicit state machine, stored as rows in nixie's database, and a worker that
+Each long task is an explicit state machine, stored as rows in nixie's database, and a process that
 holds a lease runs one step at a time. The designs of Absurd, OpenWorkflow and DBOS serve as
 reference, and nixie borrows their semantics without depending on them.
 
@@ -22,12 +22,18 @@ reference, and nixie borrows their semantics without depending on them.
 
 - **Restate.** It suspends a waiting task without holding a process, and its CI tests Bun. It adds a
   second system and a second log of record, and a handler that waits on an old deployment keeps that
-  deployment running. Its server licence is BSL 1.1 until each release is 4 years old.
-- **DBOS.** It is an MIT library on Postgres with no extra server. Bun is unsupported, a waiting
-  task keeps a process polling, and its versions need managing by hand after each deploy.
+  deployment running: "Existing requests continue on the original deployment"
+  ([Restate versioning](https://docs.restate.dev/services/versioning.md), 2026-10-07). Its server
+  licence is BSL 1.1 until each release is 4 years old, then Apache-2.0
+  ([Restate LICENSE](https://github.com/restatedev/restate/blob/main/LICENSE), 2026-10-07).
+- **DBOS.** It is an MIT library on Postgres with no extra server. Bun is unsupported: its `engines`
+  field requires `node >=20`, and its CI tests Node 20, 22 and 24 only
+  ([DBOS CI](https://github.com/dbos-inc/dbos-transact-ts/blob/main/.github/workflows/test.yml),
+  2026-10-07). A waiting task keeps a process polling, and its versions need managing by hand after
+  each deploy.
 
 ## Consequences
 
 - nixie owns leases, durable timers, retries, wake-ups and a run viewer, with crash tests for each.
-  The engine notes estimate 800 to 1,500 lines; no prototype has tested that figure.
+  The estimate is 800 to 1,500 lines, and no prototype has tested that figure.
 - The choice between Postgres and SQLite for the event log stays open.

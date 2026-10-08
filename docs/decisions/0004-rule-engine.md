@@ -26,13 +26,19 @@ When no rule matches, the outcome is ask.
 ## Alternatives
 
 - **Cedar.** It names the deciding rule, lets a forbid rule override an allow, and validates an edit
-  against a schema. It ships as Rust compiled to WASM, which nixie cannot read or patch in
-  TypeScript, and its widening check may not run in Bun.
-- **OPA.** It needs its Go binary at build time, its JS SDK last shipped in 2024, and a decision
-  carries no rule ID unless each rule reports one.
-- **CEL as the whole engine.** It is pure JS, but it evaluates expressions only, so nixie would
-  still build rule IDs and precedence around it, and arbitrary expressions defeat the widening
-  check.
+  against a schema. It ships as Rust compiled to WASM in `@cedar-policy/cedar-wasm` 4.13.0
+  ([cedar-wasm on npm](https://registry.npmjs.org/@cedar-policy/cedar-wasm/latest), 2026-10-07),
+  which nixie cannot read or patch in TypeScript. Its widening check lives in Cedar's Lean-based
+  analysis tooling, which no test has run inside Bun.
+- **OPA.** It needs its Go binary at build time to compile Rego to WASM
+  ([OPA docs: Wasm](https://www.openpolicyagent.org/docs/wasm), 2026-10-07). Its JS SDK last shipped
+  as 1.10.0 on 2024-11-08
+  ([opa-wasm on npm](https://registry.npmjs.org/@open-policy-agent/opa-wasm/latest), 2026-10-07). A
+  decision carries no rule ID unless each rule reports one.
+- **CEL as the whole engine.** `@marcbachmann/cel-js` 8.0.0 runs in pure JS
+  ([cel-js README](https://raw.githubusercontent.com/marcbachmann/cel-js/main/README.md),
+  2026-10-07). It evaluates expressions only, so nixie would still build rule IDs and precedence
+  around it, and arbitrary expressions defeat the widening check.
 
 ## Consequences
 

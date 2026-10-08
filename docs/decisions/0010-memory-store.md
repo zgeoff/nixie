@@ -1,15 +1,16 @@
 # 0010: The memory store
 
 - Date: 2026-10-08
-- Status: decided
+- Status: decided, amended by [0011](./0011-memory-writes.md) and [0015](./0015-taint-scope.md)
 - Research: [memory notes](../research/2.4-notes/memory-models.md),
   [storage notes](../research/2.4-notes/data-and-storage.md),
   [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#memory)
 
 nixie keeps long-term memory as rows in its own database, which Phase 3 picks. Each memory item
 carries its provenance in columns that nixie sets and the model cannot write: its origin, the task,
-whether the main thread was tainted, and the proposal that created it. A history table keeps every
-version of each item.
+the source of the content it came from, and the proposal that created it. The source is one of the 3
+that the event log records under [0015](./0015-taint-scope.md): the owner's words, the owner's own
+data, or outside content. A history table keeps every version of each item.
 
 The owner sees memory in 2 ways:
 
@@ -22,13 +23,21 @@ The owner sees memory in 2 ways:
 Forgetting is crypto-shredding. nixie encrypts each memory item with its own key, and forgetting
 deletes the key, so the item becomes unreadable in the live database and in every backup at once.
 
+## Export
+
+The owner can export all memory to a plain, documented format, such as JSON or markdown files, with
+provenance and history included. Export is a tool and a button in the client, and it writes to a
+place the owner chooses. An export holds decrypted data, so creating one is an action with its own
+declared effect under the owner's rules, and nixie cannot send an export to an outside destination
+on its own. A forgotten item cannot be exported, because its key is gone.
+
 ## Why
 
 - Transparency for the owner means a UI to inspect and manage memory, and an agent that answers
   plainly, not files on disk.
 - A memory write commits in the same transaction as its approval and its event, so a crash cannot
   leave them disagreeing.
-- Rows handle several main threads writing at once.
+- Rows handle several tasks from [0018](./0018-main-thread-and-tasks.md) writing at once.
 - Crypto-shredding makes "forget that" true in backups as well, which git cannot do without
   rewriting history.
 
@@ -45,7 +54,8 @@ deletes the key, so the item becomes unreadable in the live database and in ever
 
 - nixie manages a key per memory item, and a replay shows a gap where a forgotten item was.
 - Every memory write is a nixie tool with a memory-write effect, so the rules from
-  [0004](./0004-rule-engine.md) and the taint rules from [0005](./0005-effects-and-taint.md) apply.
-- Which memory writes skip review, and how consolidation runs, stay open.
+  [0004](./0004-rule-engine.md) and the effect rules from [0005](./0005-effects-and-taint.md) apply.
+- [0011](./0011-memory-writes.md) decides which memory writes skip review, and makes consolidation a
+  proposal that shows the diff.
 - The same crypto-shredding can cover other erasable fields in the event log, such as a contact's
   details.

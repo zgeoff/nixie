@@ -17,7 +17,8 @@ The terms in this record are provisional. A terminology pass settles them before
   proposals from tasks, not their raw work.
 - **A task** is a side thread: a durable piece of work with its own context, tools and record, such
   as "keep the backlog moving today". It lasts from minutes to days, can wait and wake, and reports
-  to the main thread. The owner can open a task and talk inside it to steer it.
+  to the main thread. The owner can open a task and talk inside it to steer it, in the same
+  conversation view as the main thread.
 - **A worker** is a disposable job behind a tool call, such as "read this page and return the
   price". It has no conversation, returns a result to its caller, and is part of its caller's
   record. A task can start workers, and a worker starts nothing.
