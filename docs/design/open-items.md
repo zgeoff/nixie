@@ -197,3 +197,11 @@ design. Until imp does, nixie designs around the current behaviour.
 - **A fuller audit.** The broker records method, host, path, status and sizes for each credentialed
   request, and no refused request. An audit with refused requests lets the broker's log feed nixie's
   record under [0007](../decisions/0007-grants-and-taint.md).
+- **A warm template.** A template taken after a warm-up turn, with entropy and identity reseeded on
+  restore, would let a new worker skip the 2 s of cold reads that the
+  [imp worker spike](../../spikes/imp-worker-start/README.md) measured. imp forks are disk-only by
+  design, because a memory fork duplicates entropy and IDs, so the reseed is what makes a memory
+  template safe ([tasks](./core/tasks.md#workers)).
+- **Page cache kept across sleep.** For imps marked long-lived, keeping the guest's page cache in
+  the snapshot would let a woken imp skip cold reads. It costs larger snapshots, a slightly slower
+  sleep and more pressure on host memory, and its benefit is unmeasured.

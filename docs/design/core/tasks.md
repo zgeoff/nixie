@@ -3,7 +3,9 @@
 - Status: Proposed
 - Decisions: [0001](../../decisions/0001-durable-layer.md),
   [0002](../../decisions/0002-approvals.md), [0005](../../decisions/0005-effects-and-taint.md),
-  [0015](../../decisions/0015-taint-scope.md), [0018](../../decisions/0018-main-thread-and-tasks.md)
+  [0015](../../decisions/0015-taint-scope.md), [0016](../../decisions/0016-own-interfaces.md),
+  [0018](../../decisions/0018-main-thread-and-tasks.md),
+  [0025](../../decisions/0025-database-and-topology.md)
 
 A task is durable work with its own context, such as "keep the backlog moving today", and nixie runs
 each one as an explicit state machine over the [event log](./event-log.md), under
@@ -11,25 +13,25 @@ each one as an explicit state machine over the [event log](./event-log.md), unde
 a time, and a step is usually one model turn. A task that waits on a proposal, a timer or a message
 holds no process, so it survives any restart or deploy. The conversation routes the owner's messages
 to tasks from the task board, a job's schedule starts a task for each run, and a worker is a tool
-call that runs inside one step in its own imp. Everything in this doc beyond the decisions it links
-is a proposal, and the state names are this design's, not a decision's.
+call that runs inside one step, entirely inside its own imp. Everything in this doc beyond the
+decisions it links is a proposal, and the state names are this design's, not a decision's.
 
 ## States
 
-A task is in one state at a time, held in its row of the task state projection. The states extend
-the sketch in the
-[2.2 and 2.3 landscape](../../research/2.2-2.3-core-and-policy.md#durable-execution) with the
-owner's pause and stop from the [scope](../../scope.md).
+A task is in one state at a time, held in its row of the task state table. The states extend the
+sketch in the [2.2 and 2.3 landscape](../../research/2.2-2.3-core-and-policy.md#durable-execution)
+with the owner's pause, stop and close.
 
-| State     | Meaning                                           | Leaves on                              |
-| --------- | ------------------------------------------------- | -------------------------------------- |
-| `ready`   | Has unread input and no lease                     | A runner claims it                     |
-| `running` | A runner holds its lease and runs a step          | The step commits, or the lease expires |
-| `waiting` | Has open waits and no unread input                | An event arrives for one of its waits  |
-| `paused`  | The owner paused it, effective after the step     | The owner resumes it                   |
-| `done`    | Finished, with a final report to the conversation | Never                                  |
-| `failed`  | Stopped by an error that retries did not clear    | The owner retries it                   |
-| `stopped` | The owner stopped it                              | Never                                  |
+| State     | Meaning                                            | Leaves on                              |
+| --------- | -------------------------------------------------- | -------------------------------------- |
+| `ready`   | Has unread input and no lease                      | A runner claims it                     |
+| `running` | A runner holds its lease and runs a step           | The step commits, or the lease expires |
+| `waiting` | Has open waits and no unread input                 | An event arrives for one of its waits  |
+| `paused`  | Frozen in place by the owner                       | The owner resumes it                   |
+| `stopped` | Its run ended by the owner, restartable            | The owner restarts or closes it        |
+| `failed`  | Ended by an error that retries did not clear       | The owner restarts or closes it        |
+| `done`    | Finished, with a final report to the conversation  | The owner closes it                    |
+| `closed`  | Ended for good, and still visible in the live view | Never                                  |
 
 Each task has an inbox: the records addressed to it that it has not read yet, found by a read cursor
 on the task row. Owner messages, approvals, lapsed proposals, fired timers and outside action
@@ -40,6 +42,21 @@ A waiting task holds a set of open waits, each naming what it waits on: a propos
 an owner reply. A task with open waits and other work to do stays `ready`, because a proposal never
 blocks the work around it ([0011](../../decisions/0011-memory-writes.md) states this for memory, and
 the same holds for every proposal).
+
+## Pause, stop and close
+
+The owner controls a task with 3 actions, each a checked action in the client with its own record:
+
+- **Pause** freezes the task in place after the current step commits. Its proposals keep waiting,
+  its queued outside actions hold, and no runner claims it. Resume returns it to `ready` or
+  `waiting`, and the task carries on as if it had not paused.
+- **Stop** ends the current run. nixie aborts a running step, withdraws the task's open proposals
+  and cancels its outside actions that have not started an attempt. An action that has started an
+  attempt runs to an outcome, which still reaches the record. The owner can restart a stopped task
+  from its last committed step, with its context, through the same session branch that
+  [crash recovery](#crash-recovery) uses.
+- **Close** ends the task for good. A closed task takes no messages and starts nothing, and it stays
+  in the live view and the record like any finished task.
 
 ## Steps and leases
 
@@ -52,20 +69,17 @@ next state and the moved inbox cursor in one transaction. A second commit for th
 the key, so a step never commits twice.
 
 A runner claims a task with a lease: it sets itself as holder, an expiry, and a lease generation one
-higher than the last. A lease lasts 60 s by default, and the runner renews it every 20 s while the
-step runs. **Why:** a turn takes seconds to minutes, renewing at a third of the lease survives 2
-missed renewals, and a dead runner frees its task within a minute. Every write the step makes checks
-the generation, so a runner whose lease expired and passed to another cannot commit. The claim
-differs by database:
+higher than the last. The claim runs in a `BEGIN IMMEDIATE` transaction with a conditional
+`UPDATE … RETURNING`, so SQLite's single writer serialises claims, under
+[0025](../../decisions/0025-database-and-topology.md). A lease lasts 60 s by default, and the runner
+renews it every 20 s while the step runs. **Why:** a turn takes seconds to minutes, renewing at a
+third of the lease survives 2 missed renewals, and a dead runner frees its task within a minute.
+Every write the step makes checks the generation, so a runner whose lease expired and passed to
+another cannot commit.
 
-- **Postgres:** `SELECT … FOR UPDATE SKIP LOCKED` picks a ready task that no other runner is
-  claiming.
-- **SQLite:** a `BEGIN IMMEDIATE` transaction with a conditional `UPDATE … RETURNING` serialises
-  claims, since SQLite allows one writer
-  ([storage notes](../../research/2.4-notes/data-and-storage.md#the-queue-pattern-on-each)).
-
-A runner learns of new ready tasks through the same wake-up as the live view: LISTEN and NOTIFY on
-Postgres, an in-process signal on SQLite, and polling as the fallback on both.
+A runner learns of new ready tasks by watching the database's WAL file, with polling as the
+fallback, under 0025. On Postgres, which 0025 keeps for a second host, the claim becomes
+`SELECT … FOR UPDATE SKIP LOCKED` and the wake-up becomes `LISTEN`.
 
 ## Waits
 
@@ -74,8 +88,7 @@ the owner sees it at once, and returns "pending approval as <id>" to the model, 
 [0002](../../decisions/0002-approvals.md). The step then adds the proposal to the task's open waits.
 An approval that arrives before the step commits is already a record in the inbox, so the step's
 commit sees unread input and leaves the task `ready` instead of `waiting`. The inbox therefore
-buffers an approval that arrives before its wait registers, which the durable layer item in
-[open items](../open-items.md#phase-3-design-tasks) asks about.
+buffers an approval that arrives before its wait registers.
 
 **Lapses.** Each proposal gets a timer at creation for the lapse that
 [0006](../../decisions/0006-approval-record.md) requires. A proposal lapses after 72 hours by
@@ -97,7 +110,7 @@ at once ([2.2 and 2.3 landscape](../../research/2.2-2.3-core-and-policy.md#owner
 
 ## Routing from the conversation
 
-The design runs the conversation as a task that never ends, an
+The design runs the conversation as a task that never ends, which is a
 [decision for the owner](#decisions-for-the-owner), and the owner's messages land in its inbox by
 default. A message the owner sends while a task is open in the client goes straight to that task.
 
@@ -119,21 +132,49 @@ fields under [0015](../../decisions/0015-taint-scope.md). The schedule is a trig
 [0016](../../decisions/0016-own-interfaces.md). When it fires, nixie creates a task for the run with
 the job's definition version pinned for the task's life, under
 [0013](../../decisions/0013-definition-versioning.md). The run can call only the tools on the job's
-list, and the first build treats every run as untrusted. A fire missed while nixie was down is
-recorded as skipped or late, and what nixie does with it is a
-[decision for the owner](#decisions-for-the-owner).
+list, and the first build treats every run as untrusted.
+
+Every run gets its trigger details in its context: when it was scheduled, when it started, whether
+it is a catch-up, and which fires were skipped. **Why:** a morning report that starts at 10:40
+instead of 7:00 can say so, and the model never guesses the time it was meant to run.
+
+A fire missed while nixie was down gets one catch-up run when the latest missed fire is within half
+the job's interval, and otherwise nixie skips it and reports the skip. The owner can set another
+rule per job. **Why:** running every missed fire floods the owner after an outage, while skipping
+them all loses a report that is still useful an hour late.
 
 ## Workers
 
 A worker is disposable work behind one tool call, such as "read this page and return the price". It
 runs inside the calling step, has no conversation, and returns a result to its caller.
 
-Each worker run gets its own imp, which starts in about 350 ms, under
-[0005](../../decisions/0005-effects-and-taint.md). The imp gets no credential grant, under
-[0007](../../decisions/0007-grants-and-taint.md), and the worker reaches anything outside through
-nixie's tools, where the destination limits apply. The worker holds a subset of its caller's tools,
-so delegation only narrows. Its transcript and sources become records whose parent is the tool call.
-The imp is destroyed when the tool call returns.
+Each worker run gets its own imp, and the whole worker runs inside it: the model loop through the
+Agent SDK and any code it runs. nixie creates and destroys the imp through the sandbox adapter from
+[0016](../../decisions/0016-own-interfaces.md), with imp as the reference adapter. The imp's one
+credential grant is the model credential, which the broker injects on the model provider's host, so
+the guest holds only a placeholder. Data sent on that grant reaches only the owner's own model
+account, which every turn reaches anyway, so the grant opens no new exit under
+[0007](../../decisions/0007-grants-and-taint.md). The worker reaches anything else outside through
+nixie's tools on the host, where the destination limits apply. The worker holds a subset of its
+caller's tools, so delegation only narrows. Its transcript and sources become records whose parent
+is the tool call, and the imp is destroyed when the tool call returns.
+
+The [imp worker spike](../../../spikes/imp-worker-start/README.md) measured the cost of that
+placement:
+
+| Stage                    | Time        |
+| ------------------------ | ----------- |
+| Create an imp            | 472 ms      |
+| Wake a sleeping imp      | 363 ms      |
+| Grant a credential       | 64 ms       |
+| First text, warm imp     | about 0.8 s |
+| First text, fresh worker | 2.5 to 3 s  |
+
+A turn in a warm imp is as fast as one on the host. About 2 s of a fresh worker's start goes to
+reading Claude Code and Bun from a cold disk. nixie therefore builds a purpose-built image per kind
+of work, with a minimal base, Bun, and the SDK with only the Claude Code build it needs, and
+measures start time with the host's page cache warm. 2 imp changes that could remove most of the
+remaining cost are in [open items](../open-items.md#candidate-imp-changes).
 
 A worker run stops at 10 min of wall time, 25 model turns or $1 of model cost by default, whichever
 comes first, and the owner can set other limits per tool. The runner reads the cost from the SDK's
@@ -186,26 +227,14 @@ ran.
 
 ## Decisions for the owner
 
-The database choice and its effect on claims and wake-ups are in the
-[event log design](./event-log.md#decisions-for-the-owner).
-
 - **Whether the conversation runs as a task.** As a task, the conversation gets leases, an inbox and
   crash recovery from the same code, and the board hides it as a special case. A separate loop keeps
   the task model free of that special case, but duplicates the durable machinery for the one thread
   that matters most. The recommendation is the conversation as a task.
-- **Whether a worker's model loop runs inside its imp or on the host.** Inside the imp, the whole
-  worker sits behind the sandbox, but its tool calls reach nixie's endpoint over HTTP MCP, which
-  inherits the open question of reaching that endpoint without reaching imp's management API
-  ([0003](../../decisions/0003-sdk-placement.md)). On the host, the loop has only nixie's tools, as
-  assistant work does under 0003, and the imp holds the code and fetches the worker runs. The
-  recommendation is the host loop for the first build, because it needs no endpoint exposure.
-- **What stopping a task does to its pending proposals and queued outside actions.** Withdrawing the
-  proposals and cancelling every action that has not started an attempt leaves nothing acting for a
-  task the owner ended, and an attempt in flight finishes and records its outcome. Leaving them for
-  the owner keeps work the owner may still want, at the cost of proposals from a stopped task. The
-  recommendation is to withdraw and cancel, with the stop confirmation listing what it withdraws.
-- **What happens to schedule runs missed while nixie was down.** Running every missed fire floods
-  the owner after an outage, and skipping them all loses a morning report that is still useful an
-  hour late. Running one catch-up when the latest missed fire is within half the job's interval, and
-  otherwise skipping with a report, keeps the useful case. The recommendation is that catch-up rule
-  as the default, with a setting per job.
+- **Whether the conversation lives in a long-lived imp.** On the host, as
+  [0003](../../decisions/0003-sdk-placement.md) places assistant work, the conversation's SDK
+  process has only nixie's tools, so every action it takes passes nixie's policy, and it needs no
+  sandbox plumbing. In a long-lived imp, the conversation sits behind the same boundary as workers,
+  and a warm imp's turn is as fast as the host's, at the cost of an imp held for the deployment's
+  life, a wake of about 363 ms after each sleep, and an amendment to 0003. The recommendation is the
+  host, because the conversation's process holds no tool of its own for a sandbox to contain.

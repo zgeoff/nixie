@@ -4,15 +4,17 @@
 - Decisions: [0001](../../decisions/0001-durable-layer.md),
   [0010](../../decisions/0010-memory-store.md),
   [0013](../../decisions/0013-definition-versioning.md),
-  [0015](../../decisions/0015-taint-scope.md), [0018](../../decisions/0018-main-thread-and-tasks.md)
+  [0015](../../decisions/0015-taint-scope.md),
+  [0018](../../decisions/0018-main-thread-and-tasks.md),
+  [0025](../../decisions/0025-database-and-topology.md)
 
 The event log is nixie's one log of record. Every owner message, model turn, tool call, policy
 decision, proposal, approval and outside action outcome becomes a record in it, and no record is
 ever changed in place. Task state, the task board and the live view are projections: tables that
 nixie updates in the same transaction as the record that changes them, and that nixie can rebuild
-from the log. The design runs on SQLite or Postgres, which
-[0001](../../decisions/0001-durable-layer.md) leaves open, and names each place where the two
-differ. Everything in this doc beyond the decisions it links is a proposal.
+from the log. The log lives in one SQLite database with the rest of nixie's state, under
+[0025](../../decisions/0025-database-and-topology.md). Everything in this doc beyond the decisions
+it links is a proposal.
 
 ## What a record holds
 
@@ -121,23 +123,17 @@ The client follows the log by sequence. It loads a projection, notes the last se
 then receives every newer record. A record the client cannot render yet still shows by its kind, so
 nothing is hidden by a missing renderer.
 
-Following by sequence needs a sequence that orders records by commit, and here the databases differ:
+Following by sequence needs a sequence that orders records by commit. SQLite allows one writer at a
+time, so an integer primary key grows in commit order, and a reader that asks for records after
+sequence N misses nothing. Every append runs in a `BEGIN IMMEDIATE` transaction with
+`synchronous = FULL`, through nixie's own Kysely dialect off the main thread, as 0025 sets. The
+client's stream and the task runners wake by watching the database's WAL file, with polling as the
+fallback.
 
-- **SQLite** allows one writer at a time, so an integer primary key grows in commit order, and a
-  reader that asks for records after sequence N misses nothing.
-- **Postgres** hands out identity values when a transaction asks for them, not when it commits. A
-  transaction that takes sequence 101 and commits after the one that took 102 is invisible to a
-  reader that has already moved past 102. nixie serialises appends with a transaction-level advisory
-  lock, so values are taken and committed in order, at the cost of one append at a time. **Why:** a
-  reader that tails by transaction snapshot allows parallel appends, but an assistant for one owner
-  gains nothing from them, and that reader is harder to get right. The
-  [event log spike](../open-items.md#spikes-to-run) measures whether one append at a time keeps up
-  with one owner's load.
-
-Wake-ups differ too. Postgres has LISTEN and NOTIFY, so a commit can wake the client's stream and
-the task runners at once. SQLite on one host uses an in-process signal after each commit, with
-polling as the fallback
-([storage notes](../../research/2.4-notes/data-and-storage.md#postgres-or-sqlite-for-the-event-log)).
+On Postgres, which 0025 keeps for a second host, identity values follow the order transactions ask
+for them, not the order they commit, so appends take a transaction-level advisory lock to keep the
+two orders the same. Readers wake with `LISTEN` there, and every read before a write takes
+`FOR UPDATE`.
 
 ## Memory history and export
 
@@ -149,21 +145,22 @@ changed to.
 
 Retrieval over past conversation searches the log, under
 [0024](../../decisions/0024-memory-in-context.md), with keyword search first. A persisted full-text
-index, FTS5 on SQLite or `tsvector` on Postgres, keeps the words of an erasable field after its key
-is deleted, in the live database and in every backup. nixie therefore builds its search index for
-free text in memory at start, from the payloads it can still decrypt, and updates it on each append;
-forgetting a record removes its entries. **Why:** the index never reaches a backup, and its size
-follows the log's free text, which the [retrieval spike](../open-items.md#spikes-to-run) measures
-along with whether ranked search pays off.
+index, such as FTS5, keeps the words of an erasable field after its key is deleted, in the live
+database and in every backup. nixie therefore builds its search index for free text in memory at
+start, from the payloads it can still decrypt, and updates it on each append; forgetting a record
+removes its entries. **Why:** the index never reaches a backup, and its size follows the log's free
+text, which the [retrieval spike](../open-items.md#spikes-to-run) measures along with whether ranked
+search pays off.
 
 A record that recalls memory lists each memory item it read with the item's version. **Why:** the
 history table keeps every version, so a replay shows what the model saw at the cost of a few IDs per
 record.
 
 Memory export is a tool and a button under [0010](../../decisions/0010-memory-store.md). The event
-log exports the same way, as a SQLite file holding the records with decrypted payloads, subject to
-the [export format decision](#decisions-for-the-owner). A shredded payload stays a gap in the
-export. Creating an export carries its own declared effect, as memory export does.
+log exports the same way, as a SQLite file holding the records with decrypted payloads, as a default
+the owner can change. **Why:** any SQLite reader opens the file and keeps its schema, and the
+Library of Congress lists SQLite as a preferred format for datasets. A shredded payload stays a gap
+in the export. Creating an export carries its own declared effect, as memory export does.
 
 ## Retention
 
@@ -183,18 +180,7 @@ the log supersedes, which stays a [deferred decision](../open-items.md#deferred-
 
 ## Decisions for the owner
 
-- **SQLite or Postgres.** SQLite keeps the log as one file in the process, which is also its export
-  and its backup, but `bun:sqlite` blocks the event loop during a long query, and a second host
-  needs a layer that is not ready. Postgres covers a second host, wakes readers with LISTEN and
-  NOTIFY, and has the maintained Kysely driver on Bun, at the cost of a service to run and upgrade
-  ([storage notes](../../research/2.4-notes/data-and-storage.md#weighing-the-evidence)). The design
-  works on either. The recommendation is Postgres if nixie may ever run on a second host, and SQLite
-  otherwise, with the [event log spike](../open-items.md#spikes-to-run) as the check.
 - **State tables beside the log, or state rebuilt from the log.** State tables written in the same
   transaction make a claim or a board read one indexed query, and a rebuild test catches any drift.
   Rebuilding state from the log on every read removes any chance of the two disagreeing, but every
   claim and board read pays for a fold. The recommendation is state tables beside the log.
-- **The export format.** A SQLite file opens in any SQLite reader and keeps the schema, and the
-  Library of Congress lists SQLite as a preferred format for datasets. JSON lines read in any text
-  tool and diff well, but lose the schema and the links between tables. The recommendation is the
-  SQLite file.

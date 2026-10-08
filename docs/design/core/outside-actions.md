@@ -3,7 +3,8 @@
 - Status: Proposed
 - Decisions: [0002](../../decisions/0002-approvals.md),
   [0006](../../decisions/0006-approval-record.md),
-  [0021](../../decisions/0021-outside-action-outcomes.md)
+  [0021](../../decisions/0021-outside-action-outcomes.md),
+  [0025](../../decisions/0025-database-and-topology.md)
 
 An outside action with side effects, such as sending an email or making a payment, runs as an entry
 on a durable queue in the [event log](./event-log.md), with one of 4 outcomes: pending, done, failed
@@ -165,9 +166,6 @@ with a long turn, and let the owner limit concurrent sends apart from concurrent
 step limit is the limit on concurrent work that the [scope](../../scope.md) asks for in tier 2.
 
 ## Decisions for the owner
-
-The database choice is in the [event log design](./event-log.md#decisions-for-the-owner), and it
-changes neither the outcomes nor the reconciliation.
 
 - **The word for a queue entry.** [0021](../../decisions/0021-outside-action-outcomes.md) calls it a
   job, which collides with a job as a definition with a schedule under
