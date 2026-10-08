@@ -87,10 +87,13 @@ The connector maps each provider response to an outcome:
 - **A timeout, a dropped connection or an ambiguous error** makes the action `unknown`, and
   reconciliation starts.
 
-A crash between the first stage and the third leaves an attempt record with no result. On restart,
-nixie marks the action unknown, as step 3 of [crash recovery](./tasks.md#crash-recovery) lists. A
-request that failed before it left the host, such as a refused connection, guarantees no effect, and
-the connector reports it as a retryable refusal.
+A crash between the first stage and the third leaves an attempt record with no result, and so does a
+runner that loses its lease mid-call. A runner that claims an action whose last attempt has no
+result marks the action unknown before anything else, so a lost lease leads to reconciliation, never
+to a plain second attempt. On restart, nixie does the same for every such action, as step 3 of
+[crash recovery](./tasks.md#crash-recovery) lists. A request that failed before it left the host,
+such as a refused connection, guarantees no effect, and the connector reports it as a retryable
+refusal.
 
 Retries follow one default schedule, which a connector can override per action: up to 5 attempts in
 all, waiting 30 s, 2 min, 8 min and 30 min between them, or longer when the provider names a retry

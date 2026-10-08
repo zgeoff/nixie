@@ -77,11 +77,15 @@ A free-text field can still mention a contact by name. Forgetting the contact cl
 fields, and the client offers to forget each record whose text matches the contact's details, which
 the owner confirms.
 
-The keys live in a key table in the same database, each one wrapped by a deployment key. The
-deployment key is a deployment secret, kept outside the database and its backups with the other
-secrets under [0020](../../decisions/0020-deployment.md). A restore therefore needs both the
-database backup and the deployment key, which the
-[backup and restore spike](../open-items.md#spikes-to-run) checks.
+The keys live in a key store apart from the database, each one wrapped by a deployment key, and the
+memory item keys from 0010 live there too. **Why:** a database backup taken before a key is deleted
+holds the wrapped key next to its ciphertext, so a key kept in the database would come back with any
+restore. Database backups therefore hold only ciphertext. The key store's backup keeps one copy,
+which each backup run replaces, so a deleted key leaves every backup at the next run, daily by
+default. A restore takes the database backup, the current key store backup and the deployment key,
+which is a deployment secret kept with the other secrets under
+[0020](../../decisions/0020-deployment.md). The
+[backup and restore spike](../open-items.md#spikes-to-run) checks that restore.
 
 The database's own full-text index covers only the envelope. Free text is erasable, and a persisted
 index would keep its words after the key is gone, so full-text search over message content runs on

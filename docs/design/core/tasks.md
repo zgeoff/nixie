@@ -176,8 +176,10 @@ turn.
 The rerun gives the model the unread inbox plus a record that lists each outside action the
 interrupted step started, with its outcome. The model reads which actions ran, so it has no reason
 to call them again. When it does call one again, the tool matches it by action hash against 2 sets:
-actions that the interrupted step started, and actions in the task that are still pending or
-unknown. A match returns the existing action's outcome instead of queuing a second one. An action
+actions started under the interrupted step's key, and actions in the task that are still pending or
+unknown. A rerun keeps the step key of the step it replaces, so the first set holds every action
+started by any attempt at that step, however many reruns crash in turn, until a commit for that key
+succeeds. A match returns the existing action's outcome instead of queuing a second one. An action
 that finished in an earlier committed step is outside both sets, so the model can repeat it on
 purpose. Crash tests at each point confirm that a resumed turn never repeats an outside action that
 ran.
