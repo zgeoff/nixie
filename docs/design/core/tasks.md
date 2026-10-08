@@ -221,15 +221,18 @@ nixie records on the task. On `@anthropic-ai/claude-agent-sdk` 0.3.293, the resu
 that this drops both a completed later turn and an aborted one, and leaves the original session
 intact. The SDK's docs require the boundary to be the kept turn's last chain entry, not its last
 assistant message, when that turn ends in a tool call, so nixie records the last entry of every
-turn.
+turn. A task that crashes in its first step has no boundary yet, so its rerun starts a fresh session
+from the task's brief instead of resuming the old one, and records the new session ID.
 
-The rerun gives the model the unread inbox plus a record that lists each outside action the
-interrupted step started, with its outcome. The model reads which actions ran, so it has no reason
-to call them again. When it does call one again, the tool matches it by action hash against 2 sets:
-actions started under the interrupted step's key, and actions in the task that are still pending or
-unknown. A rerun keeps the step key of the step it replaces, so the first set holds every action
-started by any attempt at that step, however many reruns crash in turn, until a commit for that key
-succeeds. A match returns the existing action's outcome instead of queuing a second one. An action
-that finished in an earlier committed step is outside both sets, so the model can repeat it on
-purpose. Crash tests at each point confirm that a resumed turn never repeats an outside action that
-ran.
+The rerun gives the model the unread inbox plus a record that lists each proposal the interrupted
+step created, with its status, and each outside action it started, with its outcome. The model reads
+which actions ran, so it has no reason to call them again. When it does call one again, the tool
+matches it by action hash against 3 sets: proposals and actions started under the interrupted step's
+key, proposals in the task that are still open, and actions in the task that are still pending or
+unknown. A rerun keeps the step key of the step it replaces, so the first set holds every proposal
+and action started by any attempt at that step, however many reruns crash in turn, until a commit
+for that key succeeds. A match returns the existing proposal's ID or the existing action's outcome
+instead of creating a second one, so the owner never sees 2 approvable proposals for one call. An
+action that finished in an earlier committed step is outside all 3 sets, so the model can repeat it
+on purpose. Crash tests at each point confirm that a resumed turn never repeats an outside action
+that ran.
