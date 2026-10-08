@@ -33,7 +33,7 @@ request or a repeat.
 
 [`engine.ts`](./engine.ts) holds the rule format, the decision pipeline, the canonical form, the
 snapshot hash and the widening check. [`starter.ts`](./starter.ts) holds a sample tool registry of
-27 tools with declared effects and destination arguments, and the starter rule set of 9 rules that
+27 tools with declared effects and destination arguments, and the starter rule set of 10 rules that
 the design proposes. Each question has its own script:
 
 - [`matcher.ts`](./matcher.ts) builds 108 calls, every tool in every context with sample arguments,

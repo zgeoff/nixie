@@ -19,7 +19,8 @@ export type Effect =
   | 'policy_widen'
   | 'policy_narrow'
   | 'budget_raise'
-  | 'budget_lower';
+  | 'budget_lower'
+  | 'export';
 
 export const ALWAYS_ASK: ReadonlySet<Effect> = new Set(['spend', 'policy_widen', 'budget_raise']);
 

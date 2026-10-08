@@ -70,6 +70,7 @@ effects:
 | `policy_narrow` | Removes or tightens an allow rule, or adds a deny or ask rule                    |
 | `budget_raise`  | Raises a budget                                                                  |
 | `budget_lower`  | Lowers a budget                                                                  |
+| `export`        | Writes decrypted personal data out of nixie to a place the owner picks           |
 
 A tool's effects are fixed per tool, and never depend on its arguments. A capability whose effects
 differ by argument splits into tools, such as moving an email to the trash, a `write`, and purging

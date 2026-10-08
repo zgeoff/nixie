@@ -201,7 +201,7 @@ attendees with no prompt during it, and held back the first invite after it ende
 
 The starter rule set ships as a template in the definitions scaffold that an owner copies, never as
 rules built into the public repo, because the principle "Behaviour is data" keeps policy out of the
-system tier. It has 9 rules:
+system tier. It has 10 rules:
 
 | Rule                        | Outcome | Matches                                                    |
 | --------------------------- | ------- | ---------------------------------------------------------- |
@@ -214,6 +214,7 @@ system tier. It has 9 rules:
 | `allow-quiet-jobs`          | Allow   | Creating a job whose tools only read, fetch, note or write |
 | `ask-permanent-deletes`     | Ask     | Effect `delete`                                            |
 | `ask-jobs-that-act`         | Ask     | Creating a job with a tool that sends or deletes           |
+| `ask-exports`               | Ask     | Effect `export`, such as a memory or event log export      |
 
 The always-ask set and the destination limits hold whatever the starter rules say, so the set is
 permissive inside those bounds. An effect it does not mention, such as `device`, falls to "no rule

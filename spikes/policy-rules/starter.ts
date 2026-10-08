@@ -47,6 +47,7 @@ export const STARTER_RULES: Rule[] = [
   },
   { id: 'ask-permanent-deletes', outcome: 'ask', effects: ['delete'] },
   { id: 'ask-jobs-that-act', outcome: 'ask', tools: ['job.create'], effects: ['send', 'delete'] },
+  { id: 'ask-exports', outcome: 'ask', effects: ['export'] },
 ];
 
 // the cautious variant asks before every write to an owner's service and every
