@@ -86,7 +86,7 @@ endorses those types, not because the values are clean.
   whatever its tools reach. The tool list limits that, and the owner sees the list at sign-off.
 - Cause 1 in 0005's prompt causes, a direct request, now means that the owner asked for the action
   in a direct message, since the conversation is never clean.
-- [0011](./0011-memory-writes.md) applies memory writes from a clean main thread at once. With the
-  conversation always untrusted, which memory writes still apply at once is open.
+- [0011](./0011-memory-writes.md) applies a memory write at once only when an exact quote from the
+  owner's own message backs it.
 - [0014](./0014-search.md) no longer needs a search to mark the conversation, because the
   conversation is always untrusted.
