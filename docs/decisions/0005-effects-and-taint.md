@@ -46,7 +46,7 @@ leak.
 
 ## Prompts
 
-The target is 0 approval prompts. Every prompt records which of 4 causes produced it:
+The target is 0 approval prompts. Every prompt records which of 5 causes produced it:
 
 1. **A direct request.** The owner asked for the action in a direct message, which can carry consent
    under [0006](./0006-approval-record.md).
@@ -54,12 +54,17 @@ The target is 0 approval prompts. Every prompt records which of 4 causes produce
 3. **Outside steering.** nixie wants to send or act towards a destination with no standing
    permission and no consent in the owner's message.
 4. **The always-ask set** above.
+5. **No rule matched.** No rule covers the action, so it asks under [0004](./0004-rule-engine.md),
+   with auto-mode off.
 
-Only causes 3 and 4 may prompt. A prompt from cause 1 or 2 is a defect. With auto-mode on, an action
-that no rule covers goes to auto-mode instead of the owner, and cause 3 first denies with a reason,
-such as "write a draft instead", before it prompts; [0008](./0008-auto-mode.md) covers both. Phase 3
-tests this with scripted scenarios, such as finding something on the web, triaging an inbox, and
-booking a table, which report every prompt with its cause.
+Causes 3, 4 and 5 may prompt. A prompt from cause 1 or 2 is a defect. A prompt from cause 5 counts
+as a gap in the owner's rules: the record groups these prompts by tool and context, and nixie can
+propose the rule that would remove a run of them, such as "you approved this 5 times; allow it?".
+Creating that rule is a widening, so it asks once. With auto-mode on, an action that no rule covers
+goes to auto-mode instead of the owner, and cause 3 first denies with a reason, such as "write a
+draft instead", before it prompts; [0008](./0008-auto-mode.md) covers both. Phase 3 tests this with
+scripted scenarios, such as finding something on the web, triaging an inbox, and booking a table,
+which report every prompt with its cause.
 
 ## Order of work
 
