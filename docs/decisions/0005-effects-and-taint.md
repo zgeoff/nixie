@@ -81,7 +81,7 @@ first loosens the risk stance for that context or adds a rule.
 
 - **No taint layer.** Rules and approvals alone decide each action. An injected instruction is
   stopped only when a rule happens to ask, which breaks the principle that untrusted content cannot
-  reach out alone.
+  reach a new destination alone.
 - **Taint per task.** One task reads and acts, and taint limits it once it reads untrusted content.
   It puts the boundary inside a task instead of at the tools, and needs extra rules, such as which
   URLs a tainted task may fetch. [0015](./0015-taint-scope.md) adopts taint per job run, with an
