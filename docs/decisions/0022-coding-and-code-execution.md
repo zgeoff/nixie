@@ -55,7 +55,7 @@ Adapters arrive in this order:
 
 ## Consequences
 
-- [0003](./0003-sdk-placement.md)'s coding placement, a session inside an imp with Claude Code's
-  built-in tools, describes the built-in adapter.
+- The coding placement in [0003](./0003-sdk-placement.md), a session inside an imp with Claude
+  Code's built-in tools, describes the built-in adapter.
 - [0007](./0007-grants-and-taint.md) holds for nixie's own imps: running code never takes grants.
   Only a coding adapter's sessions can hold grants, and only by the owner's rule.
