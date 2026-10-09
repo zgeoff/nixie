@@ -30,8 +30,10 @@ An outside action enters the queue in 2 ways, both under [0002](../../decisions/
 
 The action ID serves as the proposal ID, the queue entry's key and the idempotency key, so one
 action keeps one identity from the tool call to the provider. Each action also holds the action hash
-from [0006](../../decisions/0006-approval-record.md): the tool, its arguments, its destination and
-the optional `deadlineAt` from [the action deadline](#the-action-deadline).
+from [0006](../../decisions/0006-approval-record.md): the canonical proposal kind, tool, arguments,
+targets, destinations, any execution profile and the optional `deadlineAt` from
+[the action deadline](#the-action-deadline), as
+[policy approvals](../policy/approvals.md#the-proposal) defines.
 
 An allowed call waits for its outcome inside the turn for up to 10 s by default, and returns the
 outcome when it arrives in time. **Why:** a provider call that will succeed usually returns within
