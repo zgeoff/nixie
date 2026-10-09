@@ -29,18 +29,18 @@ and the stages agreed for after the first build.
   needs the answer. The options are port-level allow entries in imp, an imp network or granted
   hostname, or nixie's endpoint on an address that serves nothing else.
 - **The memory decisions.** The [memory store design](./memory/store.md#decisions-for-the-owner)
-  ends with 4 choices for the owner: who writes memory, whether the SDK transcript is a cache or a
-  store, whether "forget" in chat destroys an item, and how the owner learns of a write that applied
-  at once. Each has a recommendation, and the memory docs assume it until the owner decides.
+  ends with 3 choices for the owner: whether the SDK transcript is a cache or a store, whether
+  "forget" in chat destroys an item, and how the owner learns of a write that applied at once. Each
+  has a recommendation, and the memory docs assume it until the owner decides.
 
 ## Spikes to run
 
-- **Batched memory capture, if chosen.** The [offline batch spike](../../spikes/memory-batch/)
-  checks a durable cursor, source-bound quote checks and recovery after process kills with fixture
-  model output. A batch can exceed the draft's 20-message evidence window, so source IDs must bind
-  quotes to its original owner messages. Model quality, capture delay and cache/input costs remain
-  unmeasured. Custom rollover needs live SDK continuity and compaction-boundary checks before it
-  replaces the SDK route; both writer cadence and rollover remain owner proposals.
+- **Batched memory capture.** The [offline batch spike](../../spikes/memory-batch/) checks a durable
+  cursor, source-bound quote checks and recovery after process kills with fixture model output. A
+  batch can exceed the conversation's 20-message evidence window, so source IDs must bind quotes to
+  its original owner messages. Model quality, capture delay and cache/input costs remain unmeasured.
+  Custom rollover needs live SDK continuity and compaction-boundary checks before it replaces the
+  SDK route; the owner agreed batching with SDK compaction retained.
 
 - **The semantic-index lifecycle.** Check the design's version gates and memory-only generations
   when a write, retire, forget or encoder change races with background encoding. A stale candidate

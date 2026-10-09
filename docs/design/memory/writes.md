@@ -17,18 +17,49 @@ always a proposal. Everything in this doc beyond the decisions it links is a pro
 
 ## Who writes
 
-2 paths call the memory tools, as the owner decision on who writes memory in
-[the store](./store.md#decisions-for-the-owner) recommends:
+The owner agreed 2 paths for memory writes, with SDK compaction retained:
 
 - **The conversation and tasks** call `memory.remember` and `memory.retire` during a turn, such as
   when the owner says "remember that I'm vegetarian now".
-- **The memory writer** is a nixie step that runs after each conversation turn commits. A small
-  model reads the owner's messages from that turn, the reply, and the items that retrieval found for
-  them, and calls `memory.remember` for each fact the owner stated, with an exact quote for each. It
-  holds only `memory.recall`, `memory.remember` and `memory.retire`. **Why:** the model-eval spike
-  found that a writer prompted for an exact owner quote per entry invented nothing on Haiku 5.5,
-  Muse and Luna, where a plain summary prompt invented facts on every model
-  ([model-eval](../../../spikes/model-eval/README.md#a-required-owner-quote-stops-invented-memory)).
+- **The memory writer** captures passing facts in batches of committed conversation turns. A small
+  model reads original owner messages in source order, the corresponding replies, and relevant
+  current memory items. Its only tools are `memory.recall`, `memory.remember` and `memory.retire`.
+  It supplies an exact owner quote for each candidate. The same write gate applies to both paths.
+
+The writer triggers on a count of unprocessed owner messages, idle time or the oldest unprocessed
+message's age. Configurable initial defaults are 4 messages, 5 minutes idle and 20 minutes maximum
+age. The age limit works while replies keep a conversation busy. Capture does not replace the SDK
+session or wait for compaction; explicit conversation writes do not wait for a batch. A summary is
+never evidence for a memory.
+
+### Batch boundaries and recovery
+
+A durable batch covers committed conversation turns after the writer's cursor through a fixed record
+sequence. Owner messages that arrive while it runs remain for the next batch. The host gives the
+writer the eligible original messages with their IDs; an evidence selector must identify a readable
+owner record within that batch and thread. The host resolves it and sets provenance itself. It never
+accepts model-supplied source categories or quote offsets.
+
+The writer's write tools stage candidates instead of applying them during extraction. Each batch
+permits one final revision per target item. Distinct candidates that revise the same item reject the
+batch before publication; retry feedback asks the writer to resolve them in source order. The host
+never picks a winning fact by text matching. The host runs the gate outside the database
+transaction, then publishes the batch's writes or review proposals, their notices, receipts and
+advanced cursor in one transaction. Final publication rechecks source readability and any item
+versions it revises under the task lease; stale results cannot overwrite a newer item. A source
+forgotten during extraction cannot publish its text as a new memory or proposal.
+
+A crash before publication retries the pending batch; a crash after it resumes after the committed
+cursor. Extraction attempts can repeat, but the batch's committed effects do not. Failed checks
+produce review proposals under the same gate as conversation writes; the cursor does not silently
+skip those candidates. A failed batch keeps its cursor, records the error and retries under the
+worker limits.
+
+The [offline batch spike](../../../spikes/memory-batch/) checks the cursor transaction, late
+arrivals, source-bound quotes and process-kill recovery with fixture output. It does not validate
+model extraction, checker behavior, competing leases or SDK continuity. The model-eval spike found
+zero invented entries on 3 models with quote-backed prompts in its synthetic sample; real-history
+coverage and capture delay remain validation work.
 
 The writer runs in its own imp like any worker under
 [0026](../../decisions/0026-where-workers-and-the-conversation-run.md), because it reads the
@@ -38,30 +69,31 @@ the reply. Its model follows the deferred model-per-job choice in
 the spike.
 
 A write whose text matches an active item exactly, after the [matching](#the-quote-check) rules,
-returns that item and writes nothing, so the 2 paths never store one fact twice. A near-duplicate is
-the model's job: the writer sees the items retrieval found and revises one rather than adding a
-second. A fact that replaces another, such as a new address, revises the old item or retires it.
-**Why:** the [retrieval spike](../../../spikes/memory-retrieval/README.md) found that no ranking
-separates a current fact from the one it superseded, so the store must not hold both as active.
+returns that item and writes nothing, so exact duplicates from the 2 paths create no second item. A
+near-duplicate is the model's job: the writer sees the items retrieval found and revises one rather
+than adding a second. A fact that replaces another, such as a new address, revises the old item or
+retires it. **Why:** the [retrieval spike](../../../spikes/memory-retrieval/README.md) found that no
+ranking separates a current fact from the one it superseded, so the store must not hold both as
+active.
 
 ## The gate
 
 `memory.remember` and `memory.retire` run these steps in order. The first check to fail ends the
 gate, and the write becomes a proposal with that check as its review reason:
 
-1. **Find the evidence.** nixie searches the owner messages of the calling thread for the quote,
-   newest first, up to the last 20 owner messages by default. A write with no quote skips to the
-   proposal.
+1. **Find the evidence.** Conversation and task writes search the calling thread’s last 20 owner
+   messages by default, newest first. Batch writes resolve the original owner record selected from
+   their fixed batch. A write with no quote skips to the proposal.
 2. **The quote check.** The quote lies wholly in typed text outside any quoted block, as
    [the quote check](#the-quote-check) sets out.
 3. **The token check.** Every destination-like token in the memory text appears in the quote.
 4. **The checker.** A checker model confirms that the owner asserted the memory.
 5. **Apply.** nixie writes the version, its record and a notice to the owner in one transaction.
 
-The window of 20 messages is configurable. **Why:** a fact the owner stated a few turns earlier
-still counts, while a match far back is more likely a coincidence than evidence. A job run has no
-owner messages, so every write from a job run is a proposal, which 0011 requires for facts that
-reach nixie only through outside content.
+The conversation window of 20 messages is configurable; a batch uses its bounded source records
+instead. **Why:** a fact the owner stated a few turns earlier still counts, while a match far back
+is more likely a coincidence than evidence. A job run has no owner messages, so every write from a
+job run is a proposal, which 0011 requires for facts that reach nixie only through outside content.
 
 The checks run in the tool, not in the decision point's pipeline. The decision point decides whether
 the call may run, and the `note` effect is allowed by the starter rules; the gate decides whether

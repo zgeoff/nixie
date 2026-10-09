@@ -78,5 +78,7 @@ quality, cache behavior, token costs, compaction inside a tool loop or external 
 harness runs one conversation and one publisher at a time; task leases, competing publishers,
 cross-thread provenance and physical power loss are outside this experiment.
 
-Neither custom rollover nor a batched writer is an agreed owner choice. The
-[memory design](../../docs/design/memory/store.md#decisions-for-the-owner) keeps that choice open.
+The owner agreed a batched writer with SDK compaction retained. These results remain limited to the
+checkpoint mechanics; custom rollover is not adopted. The
+[memory design](../../docs/design/memory/writes.md#batch-boundaries-and-recovery) covers the batch
+contract.

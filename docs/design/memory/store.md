@@ -214,23 +214,20 @@ checked action and needs no further approval. The file goes to a place the owner
 never sends it to an outside destination. The event log export from the
 [event log design](../core/event-log.md#memory-history-and-export) uses the same effect.
 
+## Agreed capture
+
+The conversation and tasks write during a turn, and a background writer captures passing facts in
+bounded batches. SDK compaction remains responsible for session continuity. Both paths use the same
+quote, token and assertion checks, as [memory writes](./writes.md#who-writes) sets out. Batching
+reduces extraction calls at the cost of delayed capture; provider costs and real-history quality
+remain unmeasured.
+
 ## Decisions for the owner
 
 These choices are the memory design's open decisions, each with a recommendation. The memory docs
 assume the recommendation until the owner decides.
 
-1. **Who writes memory.** The model-eval spike found that a separate model writing memory from the
-   transcript, with an owner quote for each entry, invented nothing on 3 models
-   ([model-eval](../../../spikes/model-eval/README.md#a-required-owner-quote-stops-invented-memory)).
-   - Options: the conversation's model calls `memory.remember` when it chooses; a memory writer, a
-     small model that runs after each conversation turn over the owner's new messages and proposes
-     writes; or both.
-   - Recommendation: both, as [memory writes](./writes.md#who-writes) sets out. The conversation's
-     model handles "remember that", and the writer catches facts stated in passing.
-   - Trade-off: one small model call per owner message, about $0.0015 and 11 s in the background on
-     the spike's numbers, and a second path that can propose the same fact, which the writer's
-     duplicate check absorbs.
-2. **The SDK transcript.** The Agent SDK keeps its own transcript of each session under
+1. **The SDK transcript.** The Agent SDK keeps its own transcript of each session under
    `CLAUDE_CONFIG_DIR`, inside the imp that runs the session.
    - Options: a cache that the event log supersedes, rebuilt from the log when it is lost or must
      drop forgotten content; or a store of record that the owner can read, back up and export.
@@ -239,14 +236,14 @@ assume the recommendation until the owner decides.
      nothing the transcript holds, and backups and export cover one store.
    - Trade-off: a lost or rebuilt transcript costs the conversation the context older than the
      rebuild window, and one turn at full input price.
-3. **"Forget" in chat.** Forgetting destroys an item in every backup and cannot be undone.
+2. **"Forget" in chat.** Forgetting destroys an item in every backup and cannot be undone.
    - Options: chat retires the item, with "forget for good" one tap away on the notice; or a
      quote-backed "forget that" in chat forgets at once.
    - Recommendation: chat retires, and only a checked action forgets. A misread "forget that", or
      one injected into a pasted message that the checker misjudges, then costs an undo, never data.
    - Trade-off: the owner taps once more to destroy an item, and a retired item stays readable in
      the store and its backups until the owner does.
-4. **Notices for writes that apply at once.** 0011 requires that the owner sees each such write and
+3. **Notices for writes that apply at once.** 0011 requires that the owner sees each such write and
    can undo it.
    - Options: a compact line under nixie's reply, such as "Remembered: dentist is Dr Okafor", with
      undo; a count in the digest sheet, such as "nixie stored 3 memories", with no line in the
