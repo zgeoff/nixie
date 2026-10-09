@@ -216,15 +216,19 @@ The owner tests this path in practice. How impd runs beside a cluster is the ope
 
 1. **The backup tool and the replica.** Options:
    - restic, with an hourly `VACUUM INTO` copy, and no continuous replica
-   - restic plus Litestream streaming the database to a second local disk, which cuts loss on a
-     failed disk from an hour to seconds
+   - restic plus Litestream streaming the database to a second local disk. It can recover newer
+     database changes, but new encrypted content also needs the corresponding keys; a database-only
+     replica does not guarantee recovery within seconds.
    - Kopia in place of restic
 
    Recommendation: restic with hourly backups. The deploy spike restored from it on a clean host,
    and a backup run took about 3 s once its repos existed. Litestream 0.5 has no client-side
    encryption, so its replica stays on the owner's disks, and its 24-hour snapshot retention rules
-   it out for the key store. Kopia encrypts as well and its repos are not tested here. The trade-off
-   is up to an hour of writes lost when the host's disk fails between backups.
+   it out for the key store. The [paired-store control](../../../spikes/forget-backups/) shows that
+   current data with an older key backup cannot decrypt a newly created item. The replica option
+   needs a validated mutable-key recovery path before it can promise a shorter window. Kopia
+   encrypts as well and its repos are not tested here. The trade-off is up to an hour of writes lost
+   when the host's disk fails between backups.
 
 2. **How a merged upgrade reaches the host.** Options: a poll from the host, a webhook from the git
    host, or the owner running one command. Recommendation: a poll every 5 minutes by a script on the
