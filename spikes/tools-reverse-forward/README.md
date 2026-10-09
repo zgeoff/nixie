@@ -1,10 +1,10 @@
 # Spike: tools through an imp reverse forward
 
 An imp with egress `none` reaches nixie's tools through a reverse forward on its loopback. The relay
-adds about 0.6 to 0.7 ms to the median HTTP round trip on the local host. It passes streamed chunks
-before the response ends, serves a Claude Agent SDK tool call over MCP revision 2026-07-28, and
-reopens after sleep and wake. The model grant injects a dummy credential into a local Messages API
-stand-in; the run uses no real credential or model service.
+adds about 0.6 ms to the median HTTP round trip on the local host. It passes streamed chunks before
+the response ends, serves a Claude Agent SDK tool call over MCP revision 2026-07-28, and reopens
+after sleep and wake. The model grant injects a dummy credential into a local Messages API stand-in;
+the run uses no real credential or model service.
 
 ## Question
 
@@ -57,38 +57,43 @@ directly to nixie's handler.
    all interfaces so both the bridge baseline and the CLI's loopback relay reach the same server;
    the MCP endpoint checks its random bearer token.
 
-4. Read `results/*.jsonl` and the scratch logs. Expect successful SDK init and tool results on both
-   routes and after wake, a sleeping state before wake, a reachable management-port control under
-   the baseline policy, and failed raw connections under egress `none`.
+4. Read `results/<run_id>/*.jsonl` and the scratch logs. Expect successful SDK init and tool results
+   on both routes and after wake, a sleeping state before wake, a reachable management-port control
+   under the baseline policy, and failed raw connections under egress `none`.
 5. Stop the dedicated dev instance and remove its containers, volumes, generated image and data when
    the run ends. The script removes its imp and dummy secret, stops its server and relay, and
    restores any prior broker test-upstream file in `finally`. It refuses pre-existing probe names.
+   Each run writes to its own results directory so a rerun preserves earlier evidence.
 
 ## Findings
 
-Each HTTP measurement drops 10 warm-up requests and measures 100 sequential requests. Two runs gave
-these ranges:
+Each HTTP measurement drops 10 warm-up requests and measures 100 sequential requests. The preserved
+run gives these values:
 
-| Route                        | Median          | 95th percentile |
-| ---------------------------- | --------------- | --------------- |
-| Bridge allow entry           | 0.27 to 0.31 ms | 0.38 to 0.50 ms |
-| Reverse forward, egress none | 0.91 to 1.00 ms | 1.11 to 1.41 ms |
+| Route                        | Median   | 95th percentile |
+| ---------------------------- | -------- | --------------- |
+| Bridge allow entry           | 0.273 ms | 0.377 ms        |
+| Reverse forward, egress none | 0.909 ms | 1.111 ms        |
 
-The stream endpoint sends its first chunk at once and closes after 250 ms. The reverse route
-delivers that first chunk in 1.2 to 1.3 ms; it delivers the final chunk after about 252 ms. The v2
-endpoint logs `server/discover`, `subscriptions/listen`, `tools/list` and `tools/call`. SDK init
-over the reverse route completes in 325 to 370 ms, so the relay does not incur the 25 s buffering
-delay from the tools-endpoint spike.
+The synthetic `/stream` endpoint sends its first chunk at once and closes after 250 ms. The reverse
+route delivers that first chunk in 1.16 ms and the final chunk after about 253 ms. These timings
+measure the synthetic endpoint, not the MCP subscription stream. The v2 endpoint logs
+`server/discover`, `subscriptions/listen`, `tools/list` and `tools/call`. SDK init over the reverse
+route completes in 325 ms, so the relay does not incur the 25 s buffering delay from the
+tools-endpoint spike.
 
 The model stand-in receives the injected dummy key, and the SDK receives the structured result
 `{ "n": 42 }` and ends successfully. A single turn per route does not establish a performance
 difference between SDK turns; the 100-request HTTP samples measure the relay overhead.
 
-The control reaches the live management port through the bridge allow entry. With egress `none`, raw
-TCP connections fail to the management port through both the guest gateway and host bridge, and to
-an external address. The reverse route continues to work under that policy. The imp reaches
-`sleeping`, the CLI reports that its forward ended, and after wake the CLI listens again and another
-SDK tool call succeeds.
+The control reaches the live management port through the bridge allow entry. This is the only target
+with a positive control; the baseline does not allow the guest gateway or external address. With
+egress `none`, raw TCP connections fail to the management port through both the guest gateway and
+host bridge, and to an external address. The paired management-host result demonstrates the policy
+change. The gateway and external failures are observations without a positive control, so they do
+not establish which component refused the connection. The reverse route continues to work under that
+policy. The imp reaches `sleeping`, the CLI reports that its forward ended, and after wake the CLI
+listens again and another SDK tool call succeeds.
 
 ## Limits
 

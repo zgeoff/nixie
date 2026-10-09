@@ -11,7 +11,7 @@ const cli = process.env.IMP_CLI ?? 'imp',
   secret = 'nixie-route-probe-model',
   token = crypto.randomUUID(),
   here = import.meta.dir,
-  results = join(here, 'results');
+  results = join(here, 'results', crypto.randomUUID());
 if (
   !/^http:\/\/(?:localhost|127\.0\.0\.1):\d+$/u.test(api) ||
   !process.env.IMP_TOKEN ||

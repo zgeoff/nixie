@@ -194,10 +194,9 @@ the connector docs assume the recommendation.
      [the sandbox adapter](./sandbox-adapter.md#the-route-to-nixies-tools) describes. imp 0.40.2 has
      it, the imp keeps egress `none`, and nixie knows which imp each connection came from.
    - Trade-off: every tool call passes through impd, and a sleep ends the forward. The
-     [transport spike](../../../spikes/tools-reverse-forward/README.md) measures about 0.6 to 0.7 ms
-     of added median HTTP time and confirms streaming, isolation and reopening after wake. The
-     sandbox adapter must implement the reopen lifecycle; a port-level allow entry stays the
-     fallback.
+     [transport spike](../../../spikes/tools-reverse-forward/README.md) measures about 0.6 ms of
+     added median HTTP time and confirms streaming, isolation and reopening after wake. The sandbox
+     adapter must implement the reopen lifecycle; a port-level allow entry stays the fallback.
 2. **The first connector.** The scope asks for one connector in tier 1.
    - Options: Google through its APIs, with Gmail, Calendar and Drive on one owner-registered
      client; generic IMAP and SMTP with an app password; or Microsoft Graph.

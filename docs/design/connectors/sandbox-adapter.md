@@ -118,9 +118,9 @@ The reverse forward has 4 limits that the design accepts:
 - Opening a forward needs a token with `exec` scope on the imp, which the adapter holds already for
   `exec`.
 - The relay adds a hop through impd. The
-  [reverse-forward spike](../../../spikes/tools-reverse-forward/README.md) measures about 0.6 to 0.7
-  ms of added median HTTP time on a local host, including one local TCP hop. It completes an SDK
-  tool call through the v2 subscription stream and after sleep and wake, with egress `none`.
+  [reverse-forward spike](../../../spikes/tools-reverse-forward/README.md) measures about 0.6 ms of
+  added median HTTP time on a local host, including one local TCP hop. It completes an SDK tool call
+  through the v2 subscription stream and after sleep and wake, with egress `none`.
 
 The other routes, in order of preference if the reverse forward fails that spike:
 
