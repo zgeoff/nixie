@@ -35,6 +35,13 @@ and the stages agreed for after the first build.
 
 ## Spikes to run
 
+- **Session recovery and invalid-cache cleanup.** Compare the proposed event-log rebuild with SDK
+  resume: record which history and SDK state each preserves, test recovery after compaction and
+  verify pending approvals and action outcomes come from canonical rows. Forget must remove every
+  invalid local transcript branch and sidecar after its writer stops, including late writes. File
+  and artifact recovery is separate. The [context design](./memory/context.md#rebuilding-a-session)
+  states the proposed limits; transcript-as-cache remains an owner choice.
+
 - **Batched memory capture.** The [offline batch spike](../../spikes/memory-batch/) checks a durable
   cursor, source-bound quote checks and recovery after process kills with fixture model output. A
   batch can exceed the conversation's 20-message evidence window, so source IDs must bind quotes to

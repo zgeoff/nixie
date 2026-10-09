@@ -200,6 +200,9 @@ so a new worker never repeats it blindly.
 
 A crash stops the steps in flight, and a restart resumes every task from the log. On start, nixie:
 
+Before any affected task starts, the restart sweep finishes pending
+[invalid-cache cleanup](../memory/context.md#removing-invalid-transcript-copies). It also:
+
 1. Expires every lease held by the dead process, which returns those tasks to `ready`.
 2. Marks each step that started without a commit as interrupted, with a record.
 3. Marks each outside action that started an attempt without a recorded result as unknown, under

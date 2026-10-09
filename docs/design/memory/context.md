@@ -231,10 +231,10 @@ that runs the session under [0026](../../decisions/0026-where-workers-and-the-co
 The [decision for the owner](./store.md#decisions-for-the-owner) recommends treating the transcript
 as a cache that the event log supersedes:
 
-- **Not a store.** nixie never backs up or exports a transcript. The event log holds every owner
-  message, reply, tool call, tool result and compaction summary, so the log export from the
-  [event log design](../core/event-log.md#memory-history-and-export) gives the owner everything the
-  transcript holds in a form they can read.
+- **Not a store.** nixie never backs up or exports a transcript. The event log owns nixie's recorded
+  messages, replies, tool activity and compaction summaries. Its export gives readable application
+  history, not an SDK transcript that can resume the identical context. SDK-internal chain metadata
+  and context assembly are not a promised reconstruction target.
 - **Kept while a task lives.** nixie sets `cleanupPeriodDays` high enough that the SDK never sweeps
   a session nixie still resumes, and deletes a task's sessions when the task closes. **Why:** the
   SDK deletes transcripts after 30 days by default, and a task that waits on the owner for longer
@@ -245,18 +245,34 @@ as a cache that the event log supersedes:
 The SDK can mirror a transcript to a store of the caller's through its `sessionStore` option, and
 load it from there to resume. nixie does not use it in the first build. **Why:** the option is
 marked alpha in SDK 0.3.293, and its adapter runs in the SDK's process inside the imp, so it would
-need a write route from the imp to the host for every transcript entry.
+need a write route from the imp to the host for every transcript entry. The mirror is best-effort:
+after failed append attempts, the SDK can drop a batch and continue with a `mirror_error`. A mirror
+therefore needs a checked coverage boundary before it can protect a committed task checkpoint. Its
+retention and deletion are the adapter's responsibility, as the
+[SDK storage contract](https://code.claude.com/docs/en/agent-sdk/session-storage#mirror-writes-are-best-effort)
+specifies.
 
 ### Rebuilding a session
 
 A rebuild starts a new session from the log instead of resuming the old one. Its first turn carries
 the task's brief, the most recent turns of the thread word for word from the log up to 30,000 tokens
-by default, and the latest compaction summary from before those turns. Forgotten records and items
-leave gaps, and a summary written after a forgotten record is dropped, because it may hold the
-forgotten content. nixie records the new session ID on the task as crash recovery does.
+by default, and the latest compaction summary from before those turns. It includes the unread inbox
+and the canonical listing of pending proposals, approval statuses and outside-action outcomes,
+including those from an interrupted step, as crash recovery does. Forgotten records and items leave
+gaps, and a summary written after a forgotten record is dropped, because it may hold the forgotten
+content. nixie records the new session ID on the task as crash recovery does.
 
-A rebuild costs one turn at full input price and every turn older than the window, apart from what
-the summary keeps. The live view marks the rebuild in the thread.
+A rebuild restores application continuity, not an identical SDK session. It does not reproduce
+internal chain state or guarantee the same prompt prefix or model behavior. Context older than the
+window reaches the new session only through the summary or later recall. The fresh history needs new
+input processing; unchanged system and tool prefixes may remain cacheable, so its cost needs
+measurement. The live view marks the rebuild in the thread.
+
+Pending proposals, approvals, action hashes and outside-action outcomes come from canonical task
+state and records, not summary text. A rebuild carries that state and applies the same action
+matching as [crash recovery](../core/tasks.md#crash-recovery). It does not restore unfinished
+provider work or infer that an unknown action succeeded. Files and artifacts need their own durable
+ownership; an SDK transcript backup alone does not preserve a filesystem.
 
 ### Forgetting and the live session
 
@@ -268,3 +284,34 @@ A result published before forget can already sit in an in-flight model request. 
 retract that request or erase the provider's context; the next task step rebuilds. The checked
 action reports that boundary rather than promising cancellation of a request that already received
 the text.
+
+### Removing invalid transcript copies
+
+Each task keeps its SDK state in a directory reserved for that task's cache, with no owner files or
+durable artifacts mixed into it. Cleanup removes that entire directory, including transcript JSONL
+files, session subdirectories and SDK metadata. The SDK-version layout check must confirm that
+transcript-derived files stay inside that directory.
+
+Before key deletion, forget commits `session_invalidated` records for every task whose session read
+the item or record. Each record identifies the task, its SDK state directory and its sandbox
+generation. The cleanup projection starts as pending and blocks all queries and resumes from those
+session branches. The forget operation keeps a durable ID, so recovery can finish key deletion if it
+crashes after invalidation. No request can start a new branch from that invalid cache.
+
+The runner aborts an active SDK query through its `AbortController`, marks the unfinished step
+interrupted under crash recovery, and waits for the runner and SDK subprocess to exit. A bounded
+shutdown timeout replaces the owning imp if exit cannot be confirmed; cleanup completes only after
+the old imp stops and its cache storage is removed. Local cancellation does not guarantee that a
+provider stops work it received. Host-side outside actions keep their canonical outcomes and do not
+repeat because an SDK query stopped.
+
+After writer shutdown, nixie deletes the reserved cache directory and checks its absence before it
+records `session_cleanup_completed`. The task then starts a fresh session from the log, without
+copying any invalid branch. The forget action reports pending local cleanup until that completion
+record exists. On startup, nixie resumes every pending cleanup before any affected task runs;
+deletion and shutdown are idempotent.
+
+The [session-recovery validation](../open-items.md#spikes-to-run) must check crashes after
+invalidation, after key deletion, after shutdown and after directory removal. It must show that
+abandoned forks and late writes cannot return forgotten text. These cache files never reach a
+backup. Provider-held context remains outside this local deletion boundary.

@@ -232,10 +232,11 @@ assume the recommendation until the owner decides.
    - Options: a cache that the event log supersedes, rebuilt from the log when it is lost or must
      drop forgotten content; or a store of record that the owner can read, back up and export.
    - Recommendation: a cache, as [memory in context](./context.md#the-sdk-transcript) sets out. The
-     log holds every owner message, reply, tool call and compaction summary, so the owner loses
-     nothing the transcript holds, and backups and export cover one store.
-   - Trade-off: a lost or rebuilt transcript costs the conversation the context older than the
-     rebuild window, and one turn at full input price.
+     log owns readable application history, backups and export. The transcript remains the working
+     context; a rebuild does not reproduce all SDK-internal state.
+   - Trade-off: a lost transcript makes the model start from recent turns and a summary, with older
+     owner messages and stored items available through recall. Older tool output is outside indexed
+     recall, and exact context and cache continuity are not guaranteed.
 2. **"Forget" in chat.** Forgetting destroys an item in every backup and cannot be undone.
    - Options: chat retires the item, with "forget for good" one tap away on the notice; or a
      quote-backed "forget that" in chat forgets at once.
