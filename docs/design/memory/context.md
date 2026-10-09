@@ -88,11 +88,18 @@ messages and model replies whose keys remain readable. The embedding model runs 
 text encoder, not as an agent with tools or grants.
 
 Every entry carries its canonical item ID and version, or its record ID and sequence, together with
-the encoder revision and index generation. The host loads the encoder's pinned assets before it
-publishes a ready semantic generation; it never mixes vectors from different model revisions or
-dimensions. A model change builds a fresh generation and swaps it in as a unit. Keyword lookup
-remains available while the semantic generation rebuilds; the retrieval result records that it used
-keyword-only fallback, so reduced capability is visible rather than silent.
+the encoder revision and index generation. A ready semantic generation holds the pinned encoder
+assets and a complete pass over the eligible corpus. A rebuild takes a canonical sequence watermark,
+encodes that snapshot, and applies subsequent invalidations through a second watermark before
+publication. Publication and canonical writes share a gate, so no write falls between catch-up and
+the swap. A model change builds a fresh generation and swaps it in as a unit.
+
+Each query holds one ready generation for both query encoding and ranking. It uses that generation's
+encoder revision and dimensions; a swap never pairs its query vector with a different generation.
+Final canonical validation applies even when a query holds an older generation. Keyword lookup
+remains available while semantic retrieval has no ready generation. The retrieval result and its
+durable tool or turn record include the actual search mode, generation, encoder revision and
+keyword-only fallback reason.
 
 A canonical write commits an index-invalidation record with the item or log record. After that
 commit, the retrieval service removes an old entry and queues the current readable version for
@@ -103,8 +110,10 @@ write or forget that races with a background encoding.
 
 The indexes rank candidate IDs; they never supply authoritative result text. Before returning any
 candidate, the retrieval service reads its current canonical version, checks that it is eligible and
-can decrypt it, and discards a version mismatch. It fills the final result only from those validated
-rows. A stale index entry cannot return content that was retired, superseded or forgotten.
+can decrypt it, and discards a version mismatch. Final validation and publication to the caller
+share the same gate as canonical writes, retire and forget. Publication records the items and
+versions delivered to the task before it releases that gate. A result that loses the race
+revalidates or drops the candidate; validation alone does not authorize later delivery.
 
 Retire and forget invalidate both indexes and their cached candidates. Forget waits for those
 entries to be removed and pending results to be invalidated before its checked action completes.
@@ -131,7 +140,8 @@ or the task's brief on a task's first turn. It places up to 5 memory items and u
 above a score floor in the newest turn, all 3 numbers configurable. Each retrieved entry carries its
 ID, version or record sequence, source and date, inside a block that labels them as stored items,
 not instructions. Pinned items, which the system prompt holds, and messages still in the session's
-context stay out. The turn's record lists every item and version it placed, as the
+context stay out. The turn's record lists every item and version it placed, together with the search
+mode and fallback metadata from the retrieval service, as the
 [event log design](../core/event-log.md#memory-history-and-export) requires.
 
 ### The recall tools
@@ -254,5 +264,7 @@ A forgotten record or memory item can still sit in a live session's context, in 
 or in a summary written after it. nixie therefore tracks, per task, the records and memory items its
 session has read, from the recall lists and inbox reads on each turn's record. Forgetting one that a
 live session read marks that session for rebuild, and the task's next step rebuilds before it runs.
-**Why:** "forget" under [0010](../../decisions/0010-memory-store.md) must mean the model stops
-seeing the item, not only that the database stops holding it.
+A result published before forget can already sit in an in-flight model request. Forget cannot
+retract that request or erase the provider's context; the next task step rebuilds. The checked
+action reports that boundary rather than promising cancellation of a request that already received
+the text.

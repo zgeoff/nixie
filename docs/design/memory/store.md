@@ -13,7 +13,7 @@ nixie keeps long-term memory as rows in its SQLite database, under
 dentist is Dr Okafor at Riverside Dental", and every change to it adds a version to a history table.
 nixie sets each version's provenance from the turn that wrote it, and the model's arguments never
 reach those columns. Each item's text is encrypted with a key of its own, so forgetting deletes one
-key and the item becomes unreadable everywhere at once. The model reads memory through a recall tool
+key and every version of that item becomes unreadable. The model reads memory through a recall tool
 that returns stored items word for word, and the owner reads and manages it in the client. This doc
 covers the store and its operations; [memory writes](./writes.md) covers which writes apply at once,
 and [memory in context](./context.md) covers how memory reaches the model. Everything in this doc
@@ -109,8 +109,14 @@ alone can destroy an item is a [decision for the owner](#decisions-for-the-owner
 
 A forgotten item may sit in a live SDK session that read it, through recall or retrieval. Forgetting
 an item that a session read makes that session rebuild before its next turn, which
-[memory in context](./context.md#forgetting-and-the-live-session) covers. **Why:** a forget that the
-model can still quote from its context is not a forget.
+[memory in context](./context.md#forgetting-and-the-live-session) covers. The live-session boundary
+applies to requests that already received the text; the context design states that limit.
+
+Item forget destroys the item's versions and their derived index entries. It does not destroy
+independently keyed owner messages or replies that state the same fact. The confirmation states this
+scope and links to the separate record-forget action; it never promises that the fact disappears
+from all conversation history. Log search may return that fact from a record whose key remains
+readable.
 
 A forgotten item cannot be exported or restored, and an undo never reaches across a forget.
 

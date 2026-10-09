@@ -37,9 +37,10 @@ and the stages agreed for after the first build.
 
 - **The semantic-index lifecycle.** Check the design's version gates and memory-only generations
   when a write, retire, forget or encoder change races with background encoding. A stale candidate
-  must never return canonical text that is no longer eligible. Check startup coverage and the
-  reported keyword fallback while semantic indexing rebuilds, under
-  [memory in context](./memory/context.md#the-index).
+  must never return canonical text that is no longer eligible. Pause a result after validation,
+  forget its item, then resume publication. Test a query across a generation swap, writes during
+  rebuild catch-up, full startup coverage and the reported keyword fallback while semantic indexing
+  rebuilds, under [memory in context](./memory/context.md#the-index).
 
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
