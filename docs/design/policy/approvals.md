@@ -21,25 +21,49 @@ the decisions it links is a proposal.
 A proposal is a row in the proposals projection of the
 [event log](../core/event-log.md#projections), and each change to it is a record. It holds:
 
-| Field          | Holds                                                                    |
-| -------------- | ------------------------------------------------------------------------ |
-| ID             | The action ID, which is also the outside action's ID and idempotency key |
-| Action         | The canonical action: tool, arguments, destinations and declared effects |
-| Action hash    | SHA-256 over the canonical action                                        |
-| Sentence       | The action rendered from the tool's template and the structured fields   |
-| Risk class     | Routine, always-ask, or lifting                                          |
-| Cause          | The prompt cause from the decision point                                 |
-| Deciding rule  | The rule ID and revision, or none                                        |
-| Proposed rule  | For a gap, the rule that would remove it, as data and a sentence         |
-| Task           | The task that proposed it, with its delegation chain                     |
-| Proposer       | The owner, or nixie from a task, for a rule or a lift under 0023         |
-| Created, lapse | When it was created, and when it lapses                                  |
-| Status         | Pending, approved, rejected, withdrawn, lapsed or consumed               |
+| Field              | Holds                                                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| ID                 | The operation ID; an outside action keeps it as its queue ID and idempotency key                                          |
+| Kind               | Outside action, memory write or internal change, from the registered operation                                            |
+| Action             | The canonical operation: tool, arguments, targets, destinations and declared effects                                      |
+| Execution boundary | For code, the host-resolved placement, image and egress/grant profile                                                     |
+| Action hash        | SHA-256 over the canonical action                                                                                         |
+| Sentence           | The action rendered from the tool's template and the structured fields                                                    |
+| Risk class         | Routine, always-ask, or lifting                                                                                           |
+| Cause              | The decision-point prompt cause for a policy prompt, for outside actions and internal changes; absent for a memory review |
+| Review reason      | The memory gate's review reason for a memory write, absent for outside actions and internal changes                       |
+| Deciding rule      | The rule ID and revision, or none                                                                                         |
+| Proposed rule      | For a gap, the rule that would remove it, as data and a sentence                                                          |
+| Task               | The task that proposed it, with its delegation chain                                                                      |
+| Proposer           | The owner, or nixie from a task, for a rule or a lift under 0023                                                          |
+| Created, lapse     | When it was created, and when it lapses                                                                                   |
+| Status             | Pending, approved, rejected, withdrawn, lapsed or consumed                                                                |
+
+The registered operation determines the proposal kind; neither model output nor the checked client
+request can change it. All kinds share exact-operation hashes, identity checks, expiry, rejection
+and deferral. An outside-action proposal goes to the provider queue; a memory write applies an
+internal version; an internal policy, grant or job change uses its registered host mutation. Their
+common projection does not make every proposal a provider call.
+
+Memory proposals carry the bound remember or retire operation, evidence or intent quote and exact
+target item/version under [0031](../../decisions/0031-memory-capture-context-and-removal.md). The
+memory gate supplies a structured review reason instead of one of the decision point's six prompt
+causes. The host renders both from fixed labels. Memory review counts stay separate from policy
+prompts, and its operation-specific lapse replaces the outside-action default.
 
 The canonical action serialises the same way as the snapshot form in
 [rules](./rules.md#the-snapshot-hash): sorted keys, no whitespace, NFC strings. The hash covers the
-tool, every argument and every destination, so one changed word in an email body makes a different
-action, and the model makes a new proposal, as 0006 requires.
+kind, tool, every argument, target item/version, any execution boundary and every destination, so
+one changed word in an email body makes a different action, and the model makes a new proposal, as
+0006 requires.
+
+For code execution, the canonical operation includes the host-resolved placement class, runtime
+image and egress/grant profile. A worker profile binds its existing sandbox generation and
+credential references with their host scopes; a fresh no-grant profile names its required isolation
+without a sandbox ID that does not exist yet. The executor records the actual created sandbox and
+checks that it matches the approved profile before code starts. A changed worker generation, grant
+profile or image makes the approval stale; the model cannot choose a weaker profile through
+arguments.
 
 The sentence comes from a template the tool declares, filled from the structured fields, and the
 client shows the fields beside it. The model writes none of it. **Why:** a prompt that a model wrote
@@ -71,10 +95,15 @@ return to pending under the same ID with a new hash, such as when a rule narrows
 so a stale screen must not approve a different action.
 
 The approval record holds the proposal ID, the action hash, the answer, the channel and device, the
-check used (a tap or a passkey), and the "always allow" choice. nixie consumes the approval in the
-transaction that queues the action, which
-[outside actions](../core/outside-actions.md#consuming-the-approval) covers, and every retry of that
-action runs under the same approval.
+check used (a tap or a passkey), and the selected choice. The host dispatches by the stored proposal
+kind after it checks the current operation, policy, target version and permitted choice. An outside
+action consumes approval in the transaction that queues it, under
+[outside actions](../core/outside-actions.md#consuming-the-approval). A memory approval consumes it
+in the transaction that applies the exact item version, provenance, notice and receipt, as the
+[memory write contract](../memory/writes.md#memory-proposals) requires. An internal change consumes
+it with the registered host mutation. Stale or ineligible operations apply nothing. Client action
+IDs make retries return the existing receipt, and outside-action retries stay under their one
+consumed approval.
 
 A rejection is a record that the task reads in its next turn, with the owner's optional reason. A
 task never proposes the same action hash again after a rejection in the same run, and the tool
@@ -95,6 +124,10 @@ loosen or tighten the rule in the same form. The rule has no expiry, under 0006,
 a widening, so the approval takes the always-ask class and its check. **Why:** the owner sees
 exactly what the rule allows before it exists, and a free-text field such as an email body never
 pins a rule to one message.
+
+The host supplies the applicable choices with each proposal and checks them again when the owner
+answers. Memory-review proposals offer no "always allow": accepting a fact does not loosen the write
+gate. A client cannot add a choice that the current operation, cause or risk class does not permit.
 
 A prompt from the owner's ask rule offers "change this rule" instead, because an allow rule cannot
 override an ask rule under [rules](./rules.md#evaluation-order). A prompt from the always-ask set
@@ -133,4 +166,10 @@ with its own action hash, so a digest approval is the same as approving each ite
 
 A gap group with a proposed rule shows its pending items together with the proposal, so the owner
 can approve the items and accept the rule in one visit. Memory proposals from
-[0011](../../decisions/0011-memory-writes.md) join the routine items.
+[0011](../../decisions/0011-memory-writes.md) join the routine items and the routine batch, as the
+agreed routine-only sweep implies. Each memory row shows its operation, exact item/version,
+structured review reason and proposed content or retirement intent, with its source/evidence
+available before approval. The batch sends each displayed operation hash, not a request to approve
+whatever arrives later. Every memory operation still checks its current target and applies
+atomically on its own; a stale item fails alone. Permanent forgetting is a separate checked action
+and never joins this routine batch.

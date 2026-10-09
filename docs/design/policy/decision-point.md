@@ -64,13 +64,23 @@ effects:
 | `send`          | Reaches a person or service other than the owner                                 |
 | `spend`         | Spends money                                                                     |
 | `schedule`      | Creates or changes a job                                                         |
-| `run_code`      | Runs code in a sandbox with no grants                                            |
+| `run_code`      | Runs code in the caller's sandbox under its recorded grant boundary              |
 | `device`        | Acts on a physical device, such as a light or a lock                             |
 | `policy_widen`  | Adds or loosens an allow rule, removes a deny or ask rule, or adds a lift        |
 | `policy_narrow` | Removes or tightens an allow rule, or adds a deny or ask rule                    |
 | `budget_raise`  | Raises a budget                                                                  |
 | `budget_lower`  | Lowers a budget                                                                  |
 | `export`        | Writes decrypted personal data out of nixie to a place the owner picks           |
+
+A `run_code` call from the conversation or an ordinary task uses a fresh sandbox with no credential
+grants. In a worker, it uses the worker's disposable sandbox, which holds the model-API credential
+as its sole grant under [0026](../../decisions/0026-where-workers-and-the-conversation-run.md). The
+fixed effect covers both placements; the adapter checks and records the caller's actual sandbox and
+grants. The resolved execution profile is part of the canonical operation and approval hash. Worker
+code's model requests pass through the same host counting proxy and task/deployment budgets under
+[0028](../../decisions/0028-policy-design.md), so the `run_code` effect does not bypass model-spend
+limits. The sandbox adapter refuses direct model routes around that proxy. It does not promise zero
+grants for worker code.
 
 A tool's effects are fixed per tool, and never depend on its arguments. A capability whose effects
 differ by argument splits into tools, such as moving an email to the trash, a `write`, and purging

@@ -121,7 +121,10 @@ form of the whole definition set:
 - **Jobs** sort by ID, with their schedule, their instructions' hash, their tool list and their
   allowed destinations.
 - **Policy** holds the rules sorted by ID, the effect declarations sorted by tool name, the budgets'
-  limits, and the IDs of the known contacts.
+  limits, the IDs of known contacts, and the versioned checker definitions. A checker definition
+  includes its prompt hash and the model/adapter configuration that affects its verdict; consent,
+  memory assertion and retirement-intent checks keep distinct definitions. A changed checker
+  produces a changed snapshot even when no rule changed.
 - **Objects** serialise as JSON with sorted keys and no whitespace, and every set-valued field, such
   as a rule's tools or a job's tool list, sorts and drops duplicates.
 
@@ -129,7 +132,7 @@ The form leaves out state that changes without an edit: when a rule last fired, 
 is spent, and the rules' metadata. **Why:** the hash then changes exactly when the definitions do,
 and a replay with the snapshot reproduces every deterministic decision. The
 [prototype](../../../spikes/policy-rules/README.md) kept one hash across 1,000 equivalent
-reorderings, line ending changes and duplicated list members, and the hash moved on each of 8 real
+reorderings, line ending changes and duplicated list members, and the hash moved on each of 14 real
 changes, a trailing hard line break among them.
 
 nixie keeps each snapshot in its database under its hash, with the definitions commit as a label

@@ -4,7 +4,7 @@ This spike prototypes the policy decision point from the
 [policy design](../../docs/design/policy/decision-point.md) in TypeScript, with no dependency, and
 runs it over sample tool calls, reordered definitions, rule edits and scripted scenarios. Every
 sample call got exactly one decision, and none changed under 200 rule orders. The snapshot hash
-stayed the same across 1,000 equivalent reorderings and moved on each of 8 real changes. The
+stayed the same across 1,000 equivalent reorderings and moved on each of 14 real changes. The
 widening check classified 26 of 27 rule edits correctly and erred only towards "widens". The
 scripted scenarios raised 16 prompts against the starter rule set, none of them from a direct
 request or a repeat.
@@ -116,6 +116,12 @@ equivalent reorderings that changed the hash: 0 of 1000
   known contact added: hash changed
   effect declaration: hash changed
   budget limit: hash changed
+  checker prompt: hash changed
+  checker model: hash changed
+  checker adapter: hash changed
+  checker settings: hash changed
+  checker removed: hash changed
+  checker added: hash changed
 ```
 
 The canonical form sorts object keys, sorts and deduplicates every set-valued field by its canonical
@@ -124,6 +130,12 @@ byte order mark and one final newline. Strings serialise in NFC, and the matcher
 and rule values in NFC too, so 2 spellings of one string that the hash treats as equal always match
 the same calls. It keeps trailing spaces inside a line, because 2 trailing spaces are a hard line
 break in markdown, and the second change shows that the hash sees them.
+
+The fixture includes consent, memory-assertion and retirement-intent checker definitions. Their
+normalized prompt hashes, model and adapter identifiers, and verdict-affecting settings enter the
+policy form. The reorder controls also reverse checker order and config-key order and change prompt
+line endings. Every real checker change must move the hash, and the runner asserts that it does. It
+calls no checker model and adopts no model or provider.
 
 ### Question 3: the widening check
 

@@ -1,6 +1,7 @@
 /* oxlint-disable no-nested-ternary, max-lines-per-function, max-statements, one-var, sort-vars, no-map-spread -- a throwaway spike keeps each question in one readable pass */
 // Question 2: is the snapshot hash stable across reordered but equivalent
 // definitions, and does every real change move it?
+import assert from 'node:assert/strict';
 import type { Definitions, Rule } from './engine.ts';
 import { buildSnapshotHash } from './engine.ts';
 import { makePolicy } from './starter.ts';
@@ -25,6 +26,13 @@ function buildDefs(): Definitions {
         tools: ['mail.search', 'mail.label', 'mail.archive'],
       },
     ],
+    checkers: ['consent', 'memory-assertion', 'memory-retire'].map((id) => ({
+      id,
+      prompt: `# ${id}\n\nCheck the owner's exact request.\n`,
+      model: 'fixture-model',
+      adapter: 'fixture-adapter',
+      config: { temperature: 0, maximumTokens: 128 },
+    })),
     policy: makePolicy([
       {
         id: 'allow-some-labels',
@@ -73,6 +81,11 @@ function buildScrambled(defs: Definitions, seed: number): Definitions {
     jobs: defs.jobs
       .toReversed()
       .map((job) => ({ ...toReversedKeys(job), tools: job.tools.toReversed() })),
+    checkers: defs.checkers?.toReversed().map((checker) => ({
+      ...toReversedKeys(checker),
+      prompt: `﻿${checker.prompt.replaceAll('\n', '\r\n')}\n`,
+      config: toReversedKeys(checker.config),
+    })),
     policy: toReversedKeys({
       ...defs.policy,
       rules: order,
@@ -91,6 +104,7 @@ function runHash(): void {
       drift += 1;
     }
   }
+  assert.equal(drift, 0, 'Equivalent definitions must retain the same snapshot hash');
   console.log(`base hash: ${base.slice(0, 16)}`);
   console.log(`equivalent reorderings that changed the hash: ${drift} of 1000`);
 
@@ -163,8 +177,54 @@ function runHash(): void {
       },
     ],
   ];
+  const checkerChanges: [
+    string,
+    (
+      checker: NonNullable<Definitions['checkers']>[number],
+    ) => NonNullable<Definitions['checkers']>[number],
+  ][] = [
+    [
+      'checker prompt',
+      (checker) => ({ ...checker, prompt: `${checker.prompt}Reject quoted intent.\n` }),
+    ],
+    ['checker model', (checker) => ({ ...checker, model: 'another-fixture-model' })],
+    ['checker adapter', (checker) => ({ ...checker, adapter: 'another-fixture-adapter' })],
+    [
+      'checker settings',
+      (checker) => ({ ...checker, config: { ...checker.config, maximumTokens: 256 } }),
+    ],
+  ];
+  for (const [label, change] of checkerChanges) {
+    changes.push([
+      label,
+      {
+        ...defs,
+        checkers: defs.checkers?.map((checker, index) => (index === 0 ? change(checker) : checker)),
+      },
+    ]);
+  }
+  changes.push(
+    ['checker removed', { ...defs, checkers: defs.checkers?.slice(1) }],
+    [
+      'checker added',
+      {
+        ...defs,
+        checkers: [
+          ...(defs.checkers ?? []),
+          {
+            id: 'extra-check',
+            prompt: 'Check another operation.\n',
+            model: 'fixture-model',
+            adapter: 'fixture-adapter',
+            config: {},
+          },
+        ],
+      },
+    ],
+  );
   for (const [label, changed] of changes) {
     const moved = buildSnapshotHash(changed) !== base;
+    assert.ok(moved, `${label} must change the snapshot hash`);
     console.log(`  ${label}: ${moved ? 'hash changed' : 'HASH UNCHANGED'}`);
   }
 }

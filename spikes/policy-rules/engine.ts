@@ -444,10 +444,19 @@ export function getSha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');
 }
 
+export interface CheckerDefinition {
+  id: string;
+  prompt: string;
+  model: string;
+  adapter: string;
+  config: Record<string, string | number | boolean>;
+}
+
 export interface Definitions {
   persona: string;
   jobs: { id: string; schedule: string; instructions: string; tools: string[] }[];
   policy: Policy;
+  checkers?: CheckerDefinition[];
 }
 
 export function buildSnapshotHash(defs: Definitions): string {
@@ -475,6 +484,15 @@ export function buildSnapshotHash(defs: Definitions): string {
         .toSorted((a, b) => (a.name < b.name ? -1 : 1)),
       budgets: defs.policy.budgets.toSorted((a, b) => (a.id < b.id ? -1 : 1)),
       knownContacts: sortSet(defs.policy.knownContacts),
+      checkers: (defs.checkers ?? [])
+        .map((checker) => ({
+          id: checker.id,
+          prompt: getSha256(normalizeMarkdown(checker.prompt)),
+          model: checker.model,
+          adapter: checker.adapter,
+          config: checker.config,
+        }))
+        .toSorted((a, b) => (a.id < b.id ? -1 : 1)),
     },
   };
   return getSha256(toCanonical(form));
