@@ -131,8 +131,13 @@ The replica targets the S3-compatible backend that the deployment configures. It
 crypt gateway and matching-key recovery path need cloud validation before use; scheduled key backups
 alone do not give fresh encrypted content the data replica's recovery window. With the proposed
 hourly key snapshots, new encrypted items can still lose up to an hour after host loss.
-Generation-triggered, debounced key publication is a candidate; its measured cadence and paired
-restore remain untested.
+Generation-triggered, debounced key publication is a candidate. The
+[paired recovery spike](../../../spikes/paired-recovery/) restores new content from a real
+continuous encrypted replica once the matching Restic key snapshot exists, and keeps forgotten
+content unreadable with post-forget keys. Its small local key publications took about 700 ms each,
+excluding initialization and snapshot copying. The debounce scheduler, concurrent publication
+barrier, cloud behavior and production recovery window remain untested; the spike adopts no cadence
+or mechanism.
 
 The deployment supplies storage settings to Restic and rclone's existing backends. The shared S3
 backend uses the configured endpoint, bucket, region and credentials, with compatibility flags where

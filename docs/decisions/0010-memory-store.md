@@ -1,7 +1,8 @@
 # 0010: The memory store
 
 - Date: 2026-10-08
-- Status: decided, amended by [0011](./0011-memory-writes.md) and [0015](./0015-taint-scope.md)
+- Status: decided, amended by [0011](./0011-memory-writes.md), [0015](./0015-taint-scope.md) and
+  [0032](./0032-offsite-backups-and-replication.md)
 - Research: [memory notes](../research/2.4-notes/memory-models.md),
   [storage notes](../research/2.4-notes/data-and-storage.md),
   [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#memory)
@@ -22,7 +23,10 @@ The owner sees memory in 2 ways:
   paraphrase.
 
 Forgetting is crypto-shredding. nixie encrypts each memory item with its own key, and forgetting
-deletes the key, so the item becomes unreadable in the live database and in every backup at once.
+deletes the key. The operation remains pending until local cleanup and removal of recoverable key
+copies from every registered backup finish under [0032](./0032-offsite-backups-and-replication.md).
+It reports completion only when the item is unreadable across that scope; it does not report success
+while a scheduled backup cleanup still waits.
 
 ## Export
 

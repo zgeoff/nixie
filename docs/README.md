@@ -255,3 +255,6 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
 
 - [Replica encryption](../spikes/replica-encryption/) — Litestream through a host crypt gateway,
   process outages and a restore without the original database
+
+- [Paired data and key recovery](../spikes/paired-recovery/) — continuous encrypted data plus Restic
+  keys, stale-key control and a post-forget restore
