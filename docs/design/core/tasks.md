@@ -105,8 +105,10 @@ an action approved later than that, such as a reply, is likely stale, while the 
 again. When the timer fires, nixie records the lapse, closes the proposal and puts the lapse record
 in the task's inbox, so the task's next turn learns of it. An owner defer under
 [0029](../../decisions/0029-channels-and-clients.md) extends that lapse and sets a resurface timer,
-never past the action's real deadline. The defer event joins the task's inbox without closing the
-proposal or authorizing its action.
+never past the action's real deadline. The extension covers one full configured proposal-lapse
+interval after resurface, or after quiet hours end when they hold its notice, and never shortens an
+existing lapse. The real deadline still caps it. The defer event joins the task's inbox without
+closing the proposal or authorizing its action.
 
 **Timers.** A durable timer is a row with a due time and the record to write when it fires. A
 sweeper fires every due timer in a transaction that writes the record and removes the timer. A timer

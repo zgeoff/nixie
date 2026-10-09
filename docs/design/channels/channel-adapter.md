@@ -134,7 +134,7 @@ amount. **Why:** Telegram keeps the full history of a bot chat, so anything in t
 Telegram's servers.
 
 nixie keeps one live notice. Routine items edit that notice quietly, with no buzz. Always-ask items,
-unconfirmed outcomes and returning deferred items send a new, buzzing notice, which becomes the live
+unknown outcomes and returning deferred items send a new, buzzing notice, which becomes the live
 notice. When no active item waits, nixie edits the live notice to "Nothing waiting". Deferred
 proposals count in no push. Opening an item does not answer it or remove its count.
 
@@ -150,7 +150,7 @@ nixie pushes when an item needs the owner and the owner has no client open:
 An owner counts as present when a client has shown the conversation or a task within the last 2 min,
 and nixie then skips the push, because the client shows the item itself. nixie batches the items
 that arrive within 30 s into one notice. Quiet hours suppress loud pushes overnight by default,
-except for unconfirmed outcomes. A loud push held by quiet hours goes out when they end if the item
+except for unknown outcomes. A loud push held by quiet hours goes out when they end if the item
 still waits. Presence, batching and quiet-hour times are settings the owner can change.
 
 ## Room for later channels

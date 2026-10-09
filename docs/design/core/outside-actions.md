@@ -39,6 +39,19 @@ returns "queued as <id>", the turn goes on, and the outcome reaches the task's i
 which the task's next turn reads. An approved proposal always reports through the inbox, because its
 turn ended when the proposal was made.
 
+### The action deadline
+
+An action may carry an optional `deadlineAt`, an absolute timestamp supplied by checked connector
+constraints or an explicit owner or job constraint. nixie validates that source on the host; model
+text alone cannot invent an authoritative deadline. The proposal record and projection copy that
+value, apart from their configurable lapse time. No value means no known real deadline.
+
+The action hash covers `deadlineAt` with the tool, arguments and destination. Changing it needs a
+new proposal, so defer cannot change it. The client receives it on reads and the live stream and
+offers no defer time after it; the server repeats that check. The lapse timer runs no later than
+`deadlineAt`. Approval consumption and each queue attempt check it too; an action past it never
+starts. The lapse or refusal joins the task's inbox. These checks apply even without a defer.
+
 ## Consuming the approval
 
 The approval is consumed in the transaction that queues the action. That transaction checks that the

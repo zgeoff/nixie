@@ -28,8 +28,8 @@ The owner agreed these channels choices:
   acknowledges the return time. Approval remains bound to the exact action, and policy runs again on
   approval.
 - **Two push levels.** Routine items edit the live Telegram notice quietly. Always-ask items,
-  unconfirmed outcomes and returning deferred items send a new, buzzing notice that becomes the live
-  one. Quiet hours suppress loud pushes overnight except unconfirmed outcomes, as a configurable
+  unknown outcomes and returning deferred items send a new, buzzing notice that becomes the live
+  one. Quiet hours suppress loud pushes overnight except unknown outcomes, as a configurable
   default.
 - **Native Android paste capture.** Build a native module that hooks paste from the first Android
   build, so text not pasted counts as typed. Extend its depth through device checks. Clipboard chips

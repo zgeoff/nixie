@@ -78,12 +78,21 @@ updates the proposal and its durable resurface and lapse timers in one transacti
 
 The proposal stays pending, moves to a collapsed "Deferred" group in the thread and digest sheet,
 and counts in no push or routine approval batch. At the chosen time it returns as a fresh active
-item and sends a buzzing notice, subject to quiet hours. A withdrawn, declined, approved or lapsed
-proposal never resurfaces; its timer checks the current proposal state and defer generation.
+item. Its buzzing notice follows the notifier's presence gate, batching and quiet hours under
+[when nixie pushes](./channel-adapter.md#when-nixie-pushes). The return itself is never held by
+quiet hours. A withdrawn, declined, approved or lapsed proposal never resurfaces; its timer checks
+the current proposal state and defer generation.
 
-Defer extends the lapse so the item can return for an answer, but never past the action's own real
-deadline. The client offers no time past that deadline, and the server checks it again. If the
-deadline arrives first, the proposal lapses. Deferral changes no action arguments or action hash.
+Defer sets the lapse to at least one full proposal-lapse interval after the chosen return time, or
+after the end of quiet hours if that return falls inside them. The interval is the same configurable
+per-effect value used at creation (72 hours by default). It never shortens an existing lapse and
+never extends it past the action's real deadline. The item returns at the chosen time even if its
+notice waits. A real deadline can still make it lapse before quiet hours end.
+
+The optional `deadlineAt` on the proposal and action stores that real deadline, as
+[outside actions](../core/outside-actions.md#from-tool-call-to-queue) defines. The client offers no
+time past that deadline, and the server checks it again. If the deadline arrives first, the proposal
+lapses. Deferral changes no action arguments or action hash.
 
 The task receives an event such as "owner deferred until 18:00", plus the note, and can continue
 other work. The agent does not ask why by default; at most it says "OK, I'll bring this back at 6".

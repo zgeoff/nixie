@@ -103,7 +103,8 @@ serve the core:
 
 - **Task state:** one row per task, with its state, its lease, its open waits and its pinned
   definition versions. [Tasks](./tasks.md) covers it.
-- **Proposals and approvals:** each proposal's action hash, status and expiry.
+- **Proposals and approvals:** each proposal's action hash, status, lapse time, optional real
+  deadline `deadlineAt`, deferred-until time and defer generation.
 - **Outside actions:** each queued action and its outcome, covered in
   [outside actions](./outside-actions.md).
 - **The task board:** one row per task with its status, last update and what it waits on, which
