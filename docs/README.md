@@ -247,3 +247,6 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   from a repo and a local path
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
+
+- [Tools through a reverse forward](../spikes/tools-reverse-forward/) — relay overhead, streamed
+  responses, egress isolation and reopening after wake

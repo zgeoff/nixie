@@ -73,14 +73,6 @@ after the first build.
 - **Model choice on real use** (about 1 day): repeat the model-eval memory and tool tasks on a real
   conversation history, real services and a long context, with more than 2 samples per cell and
   direct API calls. It firms up the model-per-job split above.
-- **Tools through a reverse forward** (about half a day, on a dev instance of imp): run a worker
-  turn whose SDK reaches nixie's tools at a loopback port that a reverse forward relays to the host,
-  with the imp on egress `none` and the model credential as its one grant. Measure the time a tool
-  call adds against the bridge-address route from the
-  [imp worker spike](../../spikes/imp-worker-start/), check that impd's API is unreachable, and
-  sleep and wake the imp to confirm the forward reopens, and confirm that the relay passes the MCP
-  subscription stream on without buffering. It settles the route that the
-  [sandbox adapter](./connectors/sandbox-adapter.md#the-route-to-nixies-tools) recommends.
 - **An OAuth redirect to a tailnet hostname** (about 1 hour): add an HTTPS redirect URI on a tailnet
   hostname to a Google web client and to a Microsoft app registration, and complete a consent with
   each. It shows whether setup can redirect to the client itself, under the third decision in
