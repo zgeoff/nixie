@@ -1,7 +1,8 @@
 # 0022: Coding and code execution
 
 - Date: 2026-10-08
-- Status: decided, amended by [0030](./0030-connectors-and-sandbox-environments.md)
+- Status: decided, amended by [0026](./0026-where-workers-and-the-conversation-run.md) and
+  [0030](./0030-connectors-and-sandbox-environments.md)
 - Amends: [0003](./0003-sdk-placement.md), [0007](./0007-grants-and-taint.md)
 - Research: [placement spike](../../spikes/sdk-placement/),
   [imp broker spike](../../spikes/imp-broker/)
@@ -11,7 +12,9 @@ sandboxed work:
 
 - **Running code.** nixie writes and runs code for general work, such as processing a file,
   crunching data or transforming a document. The code runs in a disposable imp with no credential
-  grants, and anything outside reaches it only through nixie's tools. This comes early.
+  grants when called from the conversation or an ordinary task, and outside data reaches it through
+  nixie's tools. Worker code uses the worker's existing imp with its sole model-API grant under
+  [0026](./0026-where-workers-and-the-conversation-run.md). This comes early.
 - **Coding sessions.** Long-running work on a repo, which needs version control, package registries
   and credentials, runs through a coding agent adapter.
 
@@ -42,8 +45,8 @@ Adapters arrive in this order:
   stance the owner sets, as the principle "risk stance is set per context" requires.
 - atc already manages coding sessions and their permissions, and rebuilding that inside nixie would
   duplicate it.
-- A built-in adapter keeps coding possible without atc, and running code with no grants covers
-  general work without any of the grant problem.
+- A built-in adapter keeps coding possible without atc, and a fresh code sandbox without grants
+  covers ordinary work through nixie's tools.
 
 ## Alternatives
 
@@ -57,5 +60,6 @@ Adapters arrive in this order:
 
 - The coding placement in [0003](./0003-sdk-placement.md), a session inside an imp with Claude
   Code's built-in tools, describes the built-in adapter.
-- [0007](./0007-grants-and-taint.md) holds for nixie's own imps: running code never takes grants.
-  Only a coding adapter's sessions can hold grants, and only by the owner's rule.
+- [0007](./0007-grants-and-taint.md), as amended by 0026, allows only the model-API grant in a
+  worker or conversation imp. Fresh code imps take no grants; code inside a worker shares that one
+  model grant. A coding adapter's sessions may hold broader grants only under the owner's rule.

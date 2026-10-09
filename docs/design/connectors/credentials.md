@@ -158,5 +158,31 @@ it, by default. Renewing it needs the owner's browser, so nixie cannot renew it 
 | `forgotten`     | The owner removed it, and its key is deleted                | Removed            |
 
 The client shows every credential with its status, its label, its scopes, its fingerprint and its
-last use, and the owner can forget any of them. Forgetting an OAuth token also revokes it with the
-provider where the provider offers a revocation endpoint.
+last use, and the database backend supports forgetting through key deletion. Removal of a credential
+supplied by a read-only backend remains an owner choice below; the client does not promise erasure
+of an external source. Forgetting an OAuth token also revokes it with the provider where the
+provider offers a revocation endpoint.
+
+## Read-only credential removal — owner choice
+
+A deployment or outside manager can supply a credential that nixie can read but cannot erase. The
+deployment owns that source under 0016 and 0020. The platform must not claim that deleting its
+reference erases the source, its history or the provider's copy. Automatic registration at restart
+also needs a rule that prevents an owner-removed binding from returning silently.
+
+Options:
+
+- **Disconnect in nixie.** The proposed checked action disables the binding durably, blocks future
+  fetches and grants, revokes existing grants and cleans up nixie-owned copies. A tombstone prevents
+  startup or source refresh from silently reconnecting it. The client names this "Disconnect" and
+  shows that the original credential remains at its source. Reconnection needs an explicit checked
+  action. This does not retract requests a provider already received.
+- **Require a source change first.** The client explains where the secret lives and waits for the
+  owner to remove or revoke it there before nixie removes the binding. This preserves the external
+  source as the only control, but splits a removal request across tools and delays nixie's stop-use
+  path.
+
+Recommendation: Disconnect for read-only sources, and crypto-shredding Forget for database-owned
+credentials. The trade-off is a deliberate local override beside the source's configuration and two
+clearly different guarantees in the client. The behavior and names remain unchosen; the backend
+interface sketch is not an implemented removal API.
