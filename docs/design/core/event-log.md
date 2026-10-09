@@ -178,6 +178,6 @@ settings the owner can change per kind of record:
 | Definition snapshots                   | Kept while a record points at one | A replay always finds its definitions                      |
 
 An expired payload reads as expired in the live view and in an export, next to its envelope. The
-[memory in context design](../memory/context.md#the-sdk-transcript) proposes treating the SDK
-transcript under `CLAUDE_CONFIG_DIR` as a cache that the log supersedes, which is a decision for the
-owner.
+[memory in context design](../memory/context.md#the-sdk-transcript) treats the SDK transcript under
+`CLAUDE_CONFIG_DIR` as a live cache. The log owns readable application history; a rebuild does not
+restore identical SDK context.

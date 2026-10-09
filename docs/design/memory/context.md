@@ -228,8 +228,8 @@ and is a [spike to run](../open-items.md#spikes-to-run).
 
 The SDK writes each session's transcript as JSON lines under `CLAUDE_CONFIG_DIR`, inside the imp
 that runs the session under [0026](../../decisions/0026-where-workers-and-the-conversation-run.md).
-The [decision for the owner](./store.md#decisions-for-the-owner) recommends treating the transcript
-as a cache that the event log supersedes:
+The owner agreed that the transcript is a live cache, with the event log as the source of readable
+application history:
 
 - **Not a store.** nixie never backs up or exports a transcript. The event log owns nixie's recorded
   messages, replies, tool activity and compaction summaries. Its export gives readable application

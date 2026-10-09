@@ -222,29 +222,27 @@ quote, token and assertion checks, as [memory writes](./writes.md#who-writes) se
 reduces extraction calls at the cost of delayed capture; provider costs and real-history quality
 remain unmeasured.
 
+## Agreed transcript lifecycle
+
+The SDK transcript is a live working cache, with the event log as the source of readable application
+history. nixie excludes the transcript from backups and export, and rebuilds it when lost or
+invalidated by forget, as [memory in context](./context.md#the-sdk-transcript) sets out. A rebuild
+does not restore identical SDK context or cache continuity. Older owner messages and stored items
+remain available through recall; older tool output is outside indexed recall.
+
 ## Decisions for the owner
 
 These choices are the memory design's open decisions, each with a recommendation. The memory docs
 assume the recommendation until the owner decides.
 
-1. **The SDK transcript.** The Agent SDK keeps its own transcript of each session under
-   `CLAUDE_CONFIG_DIR`, inside the imp that runs the session.
-   - Options: a cache that the event log supersedes, rebuilt from the log when it is lost or must
-     drop forgotten content; or a store of record that the owner can read, back up and export.
-   - Recommendation: a cache, as [memory in context](./context.md#the-sdk-transcript) sets out. The
-     log owns readable application history, backups and export. The transcript remains the working
-     context; a rebuild does not reproduce all SDK-internal state.
-   - Trade-off: a lost transcript makes the model start from recent turns and a summary, with older
-     owner messages and stored items available through recall. Older tool output is outside indexed
-     recall, and exact context and cache continuity are not guaranteed.
-2. **"Forget" in chat.** Forgetting destroys an item in every backup and cannot be undone.
+1. **"Forget" in chat.** Forgetting deletes the item’s key and cannot be undone through nixie.
    - Options: chat retires the item, with "forget for good" one tap away on the notice; or a
      quote-backed "forget that" in chat forgets at once.
    - Recommendation: chat retires, and only a checked action forgets. A misread "forget that", or
      one injected into a pasted message that the checker misjudges, then costs an undo, never data.
    - Trade-off: the owner taps once more to destroy an item, and a retired item stays readable in
      the store and its backups until the owner does.
-3. **Notices for writes that apply at once.** 0011 requires that the owner sees each such write and
+2. **Notices for writes that apply at once.** 0011 requires that the owner sees each such write and
    can undo it.
    - Options: a compact line under nixie's reply, such as "Remembered: dentist is Dr Okafor", with
      undo; a count in the digest sheet, such as "nixie stored 3 memories", with no line in the

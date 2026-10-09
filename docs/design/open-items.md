@@ -29,9 +29,9 @@ and the stages agreed for after the first build.
   needs the answer. The options are port-level allow entries in imp, an imp network or granted
   hostname, or nixie's endpoint on an address that serves nothing else.
 - **The memory decisions.** The [memory store design](./memory/store.md#decisions-for-the-owner)
-  ends with 3 choices for the owner: whether the SDK transcript is a cache or a store, whether
-  "forget" in chat destroys an item, and how the owner learns of a write that applied at once. Each
-  has a recommendation, and the memory docs assume it until the owner decides.
+  ends with 2 choices for the owner: whether "forget" in chat destroys an item, and how the owner
+  learns of a write that applied at once. Each has a recommendation, and the memory docs assume it
+  until the owner decides.
 
 ## Spikes to run
 
@@ -40,7 +40,7 @@ and the stages agreed for after the first build.
   verify pending approvals and action outcomes come from canonical rows. Forget must remove every
   invalid local transcript branch and sidecar after its writer stops, including late writes. File
   and artifact recovery is separate. The [context design](./memory/context.md#rebuilding-a-session)
-  states the proposed limits; transcript-as-cache remains an owner choice.
+  states the limits of the agreed cache lifecycle.
 
 - **Batched memory capture.** The [offline batch spike](../../spikes/memory-batch/) checks a durable
   cursor, source-bound quote checks and recovery after process kills with fixture model output. A
