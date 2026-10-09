@@ -64,7 +64,10 @@ the task's thread at once with its pending mark.
 The task's controls sit in its header, each a checked action with its own record, under
 [0027](../../decisions/0027-tasks-and-outside-actions.md):
 
-- **Pause** and **Resume** apply at once, because pause loses nothing.
+- **Pause** records the request at once and shows "Pause requested" while a current step finishes.
+  The task becomes paused after that step commits, under the task contract; no later step starts.
+  The client displays an idle task as paused when the pause record commits. **Resume** returns a
+  paused task to ready through its checked action.
 - **Stop** first shows what it will do: the proposals it withdraws, the outside actions it cancels,
   and any action already started, which runs to an outcome. The owner confirms, and the stopped task
   then shows a restart action.

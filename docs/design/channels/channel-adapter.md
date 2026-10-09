@@ -145,7 +145,7 @@ nixie pushes when an item needs the owner and the owner has no client open:
 - a proposal, under [0002](../../decisions/0002-approvals.md)
 - an unknown outcome that needs the owner, under [outside actions](../core/outside-actions.md)
 - a question that ends a turn, and a task's report flagged for the owner's attention, such as a
-  morning report
+  morning report, and a platform status report flagged for attention
 
 An owner counts as present when a client has shown the conversation or a task within the last 2 min,
 and nixie then skips the push, because the client shows the item itself. nixie batches the items

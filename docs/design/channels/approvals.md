@@ -25,6 +25,8 @@ A card renders one waiting item from the fields the policy design supplies:
 - the action as a sentence, such as "Send an email to the booking desk", with the structured
   arguments and the destination below it, and long values such as an email body collapsed to their
   first lines
+- for code, the execution boundary: placement, runtime image and egress/grant profile, with
+  credential references and allowed hosts but no secret values
 - the declared effects, and the risk class: routine, always-ask, or lifting the always-ask set
 - the prompt cause, such as "no rule matched", as an enumerated value that the client renders from a
   label table, so a cause that policy adds later renders without a client change
@@ -55,15 +57,23 @@ for the passkey check, and the routine control stays one tap.
 
 ## The owner's choices
 
-A proposal card offers these choices, each a checked action:
+A proposal card renders the choices that policy supplies for its kind, cause and class, and the
+server checks those choices again. The common choices are checked actions:
 
 - **Approve** runs the action once, under [0006](../../decisions/0006-approval-record.md).
-- **Always allow** approves and creates the rule the card shows. Creating a rule widens policy, so
-  the client asks for a second confirmation in the always-ask style before it sends the answer.
+- **Always allow**, when policy permits it for a routine gap or missing-consent cause, approves and
+  creates the rule the card shows. Creating a rule widens policy, so the client asks for a second
+  confirmation in the always-ask style before it sends the answer.
 - **Defer** keeps the proposal pending until a chosen time, with an optional note. It is available
   on every proposal card, including always-ask and lifting cards.
 - **Decline** closes the proposal, and the task learns of it in its next turn. An optional note goes
   to the task as an ordinary owner message, so the model reads why.
+
+An ask-rule prompt offers "change this rule" instead of "always allow", and an always-ask spending
+prompt can offer only the bounded lift that policy permits. Memory proposals show their structured
+review reason, exact item/version and evidence or intent quote; they offer no "always allow". The
+owner can approve their operation or edit the proposed text through the memory contract. A common
+card does not turn these internal operations into provider calls.
 
 The owner can also reply in the thread, such as "make it 8:30", and the model withdraws the proposal
 and posts a new one, as [0002](../../decisions/0002-approvals.md) describes. The client shows a
@@ -115,8 +125,9 @@ proposal ID, the action hash the card rendered, the choice and a client action I
 3. checks that the choice fits the class, so an always-ask item never arrives in a batch, and once
    0012 lands, that an approval of an always-ask or lifting item has a passkey assertion
 4. records the answer with the session's identity row; a defer updates the timers without consuming
-   approval, while an approval is consumed as
-   [outside actions](../core/outside-actions.md#consuming-the-approval) describes
+   approval, while an approval dispatches by the stored proposal kind. Outside actions consume it
+   with queue insertion; memory and other internal operations consume it with their registered host
+   transaction, under [policy approvals](../policy/approvals.md#the-approval)
 
 A hash that no longer matches gets a `CONFLICT` error, and the client fetches the proposal again and
 shows the changed action with the difference marked. **Why:** an action can return to a proposal
@@ -127,8 +138,9 @@ The passkey check derives its WebAuthn challenge from the proposal ID and the ac
 verification required, so the signed assertion covers that one action. WebAuthn has no standard
 transaction confirmation, so the binding is nixie's own.
 
-After an approval, the card follows the action through the log: queued, then done, failed or
-unknown, from nixie's own record and never from the model's words.
+After an outside-action approval, the card follows queued, done, failed or unknown from canonical
+records. A memory or other internal approval shows the committed operation receipt or a stale/error
+result, without a provider-queue stage. The card never infers success from the model's words.
 
 ## The digest sheet
 
@@ -141,8 +153,15 @@ a push. The groups follow the policy design's order:
 
 Each item shows as one line: the action sentence, its task and its lapse time. A tap expands it to
 the full card in place, so the owner never leaves the sheet to read the details. Routine items have
-a checkbox, and the sheet offers "Approve selected" and, pending the policy design's decision,
-"Approve all routine". Always-ask items keep their own controls on each line and never join a batch.
+a checkbox, and the sheet offers "Approve selected" and "Approve all routine", as
+[0028](../../decisions/0028-policy-design.md) records. Always-ask items keep their own controls on
+each line and never join a batch.
+
+Routine memory proposals join the routine batch. Their rows show the bound remember or retire
+operation, exact target/version, review reason and proposed content or intent, with the
+source/evidence expandable before approval. "Approve all routine" submits the displayed item IDs and
+hashes; newly arrived items do not join that request. Permanent forgetting keeps its separate
+checked flow and is never a routine proposal approval.
 
 A batch is one call that carries each item's proposal ID, action hash and choice. The server checks
 and records each item on its own, and returns a result per item, so one stale item fails alone and
