@@ -145,7 +145,7 @@ Definitions and deployment models.
 
 - [0032: Offsite backups and replication](./decisions/0032-offsite-backups-and-replication.md) —
   Restic snapshots plus a database-only Litestream replica through a host rclone crypt gateway; the
-  S3-compatible provider remains open
+  deployment supplies the S3-compatible backend
 
 ## Research
 

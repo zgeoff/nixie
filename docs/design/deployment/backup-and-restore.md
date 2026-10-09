@@ -14,8 +14,8 @@ forces a refresh and removal of every older recoverable key copy before it repor
 recovery age, not forget completion. A new host restores from the 2 repos, the deployment repo and
 the owner's recovery key. The owner chose Restic snapshots plus an offsite Litestream data replica
 to S3-compatible storage in the [deployment choices](./deployment.md#decisions-for-the-owner). The
-provider and matching-key recovery path remain open; the lifecycle details here are proposals beyond
-the linked decisions.
+matching-key recovery path remains open; the lifecycle details here are proposals beyond the linked
+decisions.
 
 The [deploy spike](../../../spikes/deploy-local/README.md) ran every step here on local containers,
 and the [event log spike](../../../spikes/event-log-db/README.md) measured `VACUUM INTO` at scale.
@@ -127,12 +127,17 @@ did not. Backend-specific fault and deletion tests remain required before real u
 The agreed Litestream replica follows the database only. Litestream 0.5 keeps snapshots and their
 changes for 24 hours by default, so a replica of the key store would keep a deleted key for a day,
 and it has no client-side encryption ([Litestream config](https://litestream.io/reference/config/)).
-The replica targets S3-compatible offsite storage, with Amazon S3 or Cloudflare R2 still open. Its
-selected rclone crypt gateway and matching-key recovery path need cloud validation before use;
-scheduled key backups alone do not give fresh encrypted content the data replica's recovery window.
-With the proposed hourly key snapshots, new encrypted items can still lose up to an hour after host
-loss. Generation-triggered, debounced key publication is a candidate; its measured cadence and
-paired restore remain untested.
+The replica targets the S3-compatible backend that the deployment configures. Its selected rclone
+crypt gateway and matching-key recovery path need cloud validation before use; scheduled key backups
+alone do not give fresh encrypted content the data replica's recovery window. With the proposed
+hourly key snapshots, new encrypted items can still lose up to an hour after host loss.
+Generation-triggered, debounced key publication is a candidate; its measured cadence and paired
+restore remain untested.
+
+The deployment supplies storage settings to Restic and rclone's existing backends. The shared S3
+backend uses the configured endpoint, bucket, region and credentials, with compatibility flags where
+required. Provider-specific object versioning or retention settings must not leave unmanaged
+recoverable key copies; the platform's completion contract stays the same for every backend.
 
 The host runs rclone's crypt remote as the replica's local S3 endpoint. Its password and any custom
 salt live in the deployment's encrypted secrets, so the owner's recovery key can recover them after

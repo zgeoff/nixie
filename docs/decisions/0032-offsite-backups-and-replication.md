@@ -7,8 +7,11 @@
 ## Decision
 
 Restic holds scheduled encrypted snapshots of the data store and the wrapped key store in separate
-repositories. Litestream replicates the data database offsite to S3-compatible object storage.
-Amazon S3 or Cloudflare R2 remains an owner choice.
+repositories. Litestream replicates the data database offsite to S3-compatible object storage. The
+deployment selects the S3-compatible backend through configuration; the platform adopts no cloud
+provider. Endpoint, bucket, region, credential references and any compatibility settings belong to
+the deployment under [0020](./0020-deployment.md). Restic and rclone supply the storage backends for
+this implementation, so nixie needs no provider-specific calls for ordinary object storage.
 
 Offsite backup copies may live on provider storage as ciphertext. The owner-controlled host remains
 the primary store of readable personal data. This narrows the storage test in
@@ -24,6 +27,19 @@ Litestream never replicates the key store. Its historical copies would preserve 
 recoverable key backup follows 0010: a forget stays pending until its deleted keys leave every
 registered recoverable copy. Scheduled key backups alone do not give new encrypted content the
 replica's recovery window; the matching-key recovery mechanism and its validation remain open.
+
+## Platform and deployment boundary
+
+nixie owns the backup lifecycle and its guarantees: client-side encryption, recoverable data with
+matching keys, and complete removal of registered recoverable key copies before forget completion.
+Restic, Litestream and rclone are the selected implementation of that lifecycle; another
+implementation must preserve those guarantees. Existing tool backends provide the provider
+abstraction, rather than a new wrapper around each cloud vendor.
+
+The deployment repo owns infrastructure, secrets and backend settings. The definitions source owns
+personas, prompts, jobs and policy seeds; it does not choose backup infrastructure. A backend's
+versioning, retention and deletion behavior still needs validation: S3 API compatibility alone is
+not proof that the forget contract holds.
 
 ## Alternatives and trade-offs
 
@@ -45,6 +61,6 @@ The local deployment spike restored Restic snapshots on a clean host. The paired
 that fresh data with an older key backup cannot decrypt new text. The
 [replica encryption spike](../../spikes/replica-encryption/) tests the selected host gateway with
 process outages and a fresh-config restore; it tests no cloud provider or matching-key recovery. The
-provider, matching-key recovery, cloud forget cleanup and end-to-end restore test remain open in
+matching-key recovery, backend forget cleanup and end-to-end restore test remain open in
 [the deployment design](../design/deployment/deployment.md#decisions-for-the-owner) and
 [open items](../design/open-items.md).

@@ -217,20 +217,13 @@ The owner tests this path in practice. How impd runs beside a cluster is the ope
 ## Decisions for the owner
 
 1. **The backup tool and the replica: agreed.** Restic holds scheduled encrypted snapshots, and
-   Litestream replicates `nixie.db` offsite to S3-compatible object storage. The provider remains
-   open: Amazon S3 or Cloudflare R2. Both are supported by the
-   [Litestream S3-compatible guide](https://litestream.io/guides/s3-compatible/).
-
-   Recommendation for the open provider choice: Cloudflare R2 Standard storage. Its
-   [pricing](https://developers.cloudflare.com/r2/pricing/) has no egress charge, and its
-   [rclone guide](https://developers.cloudflare.com/r2/examples/rclone/) documents the selected
-   uploader's backend. Storage, writes, copies and listings still incur charges; frequent replica
-   updates and gateway copy/delete publication can make request volume the main cost. Amazon S3 is
-   the alternative when the deployment needs AWS-specific access or storage features; its
-   [pricing](https://aws.amazon.com/s3/pricing/) includes transfer charges that depend on the route
-   and region. R2 implements a
-   [subset of the S3 API](https://developers.cloudflare.com/r2/api/s3/api/), so cloud restore and
-   key cleanup need tests with the selected provider. No provider is adopted.
+   Litestream replicates `nixie.db` offsite through configurable S3-compatible storage. The
+   deployment supplies the endpoint, bucket, region, credential references and backend compatibility
+   settings. Restic and rclone already expose storage backends; nixie keeps ordinary storage calls
+   behind those backends and adopts no cloud provider. Amazon S3 and Cloudflare R2 are example
+   deployments, with [R2 documented by rclone](https://rclone.org/s3/#cloudflare-r2). Backend
+   retention and deletion behavior need validation before the deployment relies on forget
+   completion.
 
    The snapshot path restored on a clean host in the deploy spike. The
    [paired-store control](../../../spikes/forget-backups/) shows that current data with an older key
@@ -253,9 +246,9 @@ The owner tests this path in practice. How impd runs beside a cluster is the ope
    The [replica encryption spike](../../../spikes/replica-encryption/) tests the gateway locally,
    including process outages and a restore without the original database. It does not test a cloud
    provider, key recovery or uploads interrupted in flight. Server-side encryption alone was not
-   chosen: it protects storage at rest but trusts the provider with readable pages. Both S3 and
-   [R2 support SSE-C](https://developers.cloudflare.com/r2/examples/ssec/), which sends the key to
-   the provider over TLS with uploads and reads; Amazon S3 also offers AWS KMS.
+   chosen: it protects storage at rest but trusts the provider with readable pages. With SSE-C,
+   uploads and reads send the key to the provider over TLS. These provider-side features do not
+   replace the selected host-side encryption.
 
 2. **How a merged upgrade reaches the host.** Options: a poll from the host, a webhook from the git
    host, or the owner running one command. Recommendation: a poll every 5 minutes by a script on the
