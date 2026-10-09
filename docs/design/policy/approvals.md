@@ -26,6 +26,7 @@ A proposal is a row in the proposals projection of the
 | ID                 | The operation ID; an outside action keeps it as its queue ID and idempotency key                                          |
 | Kind               | Outside action, memory write or internal change, from the registered operation                                            |
 | Action             | The canonical operation: tool, arguments, targets, destinations and declared effects                                      |
+| Deadline           | Optional host-validated real deadline, distinct from the proposal lapse                                                   |
 | Execution boundary | For code, the host-resolved placement, image and egress/grant profile                                                     |
 | Action hash        | SHA-256 over the canonical action                                                                                         |
 | Sentence           | The action rendered from the tool's template and the structured fields                                                    |
@@ -53,9 +54,9 @@ prompts, and its operation-specific lapse replaces the outside-action default.
 
 The canonical action serialises the same way as the snapshot form in
 [rules](./rules.md#the-snapshot-hash): sorted keys, no whitespace, NFC strings. The hash covers the
-kind, tool, every argument, target item/version, any execution boundary and every destination, so
-one changed word in an email body makes a different action, and the model makes a new proposal, as
-0006 requires.
+kind, tool, every argument, target item/version, any execution boundary, host-validated deadline and
+every destination, so one changed word in an email body makes a different action, and the model
+makes a new proposal, as 0006 requires.
 
 For code execution, the canonical operation includes the host-resolved placement class, runtime
 image and egress/grant profile. A worker profile binds its existing sandbox generation and

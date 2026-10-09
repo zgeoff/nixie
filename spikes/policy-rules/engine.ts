@@ -31,6 +31,8 @@ export interface ToolDecl {
   effects: Effect[];
   destinationArgs?: string[];
   amountArg?: string;
+  freeTextArgs?: string[];
+  resultSources?: Record<string, 'owner_words' | 'owner_data' | 'outside'>;
 }
 
 export type Check =
@@ -480,6 +482,7 @@ export function buildSnapshotHash(defs: Definitions): string {
           ...tool,
           effects: sortSet(tool.effects),
           destinationArgs: sortSet(tool.destinationArgs),
+          freeTextArgs: sortSet(tool.freeTextArgs),
         }))
         .toSorted((a, b) => (a.name < b.name ? -1 : 1)),
       budgets: defs.policy.budgets.toSorted((a, b) => (a.id < b.id ? -1 : 1)),

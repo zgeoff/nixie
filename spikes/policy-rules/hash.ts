@@ -203,6 +203,26 @@ function runHash(): void {
       },
     ]);
   }
+  const toolChanges: [string, Partial<Definitions['policy']['tools'][number]>][] = [
+    ['tool destination classification', { destinationArgs: ['different-destination'] }],
+    ['tool amount classification', { amountArg: 'different-amount' }],
+    ['tool free-text classification', { freeTextArgs: ['body'] }],
+    ['tool result source', { resultSources: { text: 'outside' } }],
+  ];
+  for (const [label, change] of toolChanges) {
+    changes.push([
+      label,
+      {
+        ...defs,
+        policy: {
+          ...defs.policy,
+          tools: defs.policy.tools.map((tool, index) =>
+            index === 0 ? { ...tool, ...change } : tool,
+          ),
+        },
+      },
+    ]);
+  }
   changes.push(
     ['checker removed', { ...defs, checkers: defs.checkers?.slice(1) }],
     [

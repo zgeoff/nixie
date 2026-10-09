@@ -4,7 +4,7 @@ This spike prototypes the policy decision point from the
 [policy design](../../docs/design/policy/decision-point.md) in TypeScript, with no dependency, and
 runs it over sample tool calls, reordered definitions, rule edits and scripted scenarios. Every
 sample call got exactly one decision, and none changed under 200 rule orders. The snapshot hash
-stayed the same across 1,000 equivalent reorderings and moved on each of 14 real changes. The
+stayed the same across 1,000 equivalent reorderings and moved on each of 18 real changes. The
 widening check classified 26 of 27 rule edits correctly and erred only towards "widens". The
 scripted scenarios raised 16 prompts against the starter rule set, none of them from a direct
 request or a repeat.
@@ -122,6 +122,10 @@ equivalent reorderings that changed the hash: 0 of 1000
   checker settings: hash changed
   checker removed: hash changed
   checker added: hash changed
+  tool destination classification: hash changed
+  tool amount classification: hash changed
+  tool free-text classification: hash changed
+  tool result source: hash changed
 ```
 
 The canonical form sorts object keys, sorts and deduplicates every set-valued field by its canonical
@@ -136,6 +140,10 @@ normalized prompt hashes, model and adapter identifiers, and verdict-affecting s
 policy form. The reorder controls also reverse checker order and config-key order and change prompt
 line endings. Every real checker change must move the hash, and the runner asserts that it does. It
 calls no checker model and adopts no model or provider.
+
+Tool declarations enter the hash in full, including destination, amount, free-text and result-source
+classifications. Four controls change those declarations without changing the tool's effects; each
+must still change the snapshot. Free-text argument lists normalize as sets, as destination lists do.
 
 ### Question 3: the widening check
 
