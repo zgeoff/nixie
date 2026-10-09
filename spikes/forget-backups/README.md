@@ -46,7 +46,7 @@ and recovered old-key files leave before completion.
 
 ## Results
 
-The run passes 18 assertions:
+The run passes 21 assertions:
 
 - exactly one acknowledged fresh key snapshot survives
 - the obsolete key blob becomes unavailable through the repository API
@@ -58,6 +58,11 @@ The run passes 18 assertions:
 The [restic retention contract](https://restic.readthedocs.io/en/stable/060_forget.html)
 distinguishes snapshot removal from data pruning and describes the default retention grouping. The
 controls reproduce those distinctions with a wrapped memory key rather than a text marker alone.
+
+A separate paired-store control creates a new item after the key snapshot, then copies the latest
+data. The new item decrypts with current keys and fails to decrypt with the older key copy, while
+the older neighbour still reads. Fresh data alone cannot restore new encrypted content. This is not
+a Litestream execution; a replica's useful recovery boundary depends on key availability too.
 
 ## Limits
 

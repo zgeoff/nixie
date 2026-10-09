@@ -113,6 +113,27 @@ try {
   const oldA = createSnapshot('key-repo', join(root, 'stale-keys.db'), 'fixture-a');
   const oldB = createSnapshot('key-repo', join(root, 'stale-keys.db'), 'fixture-b');
   const oldBlob = getFileBlob('key-repo', oldA);
+
+  // A latest data copy alone cannot recover a new item when the key backup is older.
+  // This is a paired-store control, not a Litestream execution or a creation-generation test.
+  await createItem(stores, 'after-backup', ['fact created after the key snapshot']);
+  writeCopy(stores.db, join(root, 'latest-data.db'));
+  const latestData = createDb(join(root, 'latest-data.db'));
+  const previousKeys = createKeyStore(join(root, 'stale-keys.db'), true);
+  check(
+    (await readCurrent({ ...stores, db: latestData }, 'after-backup')) ===
+      'fact created after the key snapshot',
+  );
+  check(
+    (await readCurrent({ ...stores, db: latestData, keys: previousKeys }, 'after-backup')) ===
+      undefined,
+  );
+  check(
+    (await readCurrent({ ...stores, db: latestData, keys: previousKeys }, 'neighbour')) ===
+      'keep this fact',
+  );
+  previousKeys.close();
+  latestData.close();
   stores.db
     .query('INSERT INTO forget_operation VALUES (?, ?, NULL)')
     .run('forget-target', 'pending');
@@ -207,7 +228,11 @@ try {
         assertions,
         version,
         modelCalls: 0,
-        controls: { groupedKeepLastRetainsOldSnapshots: 2, snapshotForgetAloneStillDecrypts: true },
+        controls: {
+          groupedKeepLastRetainsOldSnapshots: 2,
+          snapshotForgetAloneStillDecrypts: true,
+          latestDataWithoutNewKeysCannotRecoverNewText: true,
+        },
         completion: {
           keySnapshots: 1,
           obsoleteBlobUnavailable: true,
