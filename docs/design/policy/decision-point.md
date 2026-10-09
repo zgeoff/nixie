@@ -131,7 +131,8 @@ and the structured action, so injected content cannot reach it.
 
 Consent satisfies stage 5 and allows a call at stage 8. It never overrides a deny rule, the
 always-ask set or an owner's ask rule. A checker that refuses, is unsure, or cannot be reached
-counts as no consent. Which component runs the checker is a decision for the owner below.
+counts as no consent. nixie runs its own checker, always on, under
+[0028](../../decisions/0028-policy-design.md).
 
 ## Taint in the first build
 
@@ -190,7 +191,8 @@ which is the test of the principle "Policy is deterministic".
 ## Prompts and their causes
 
 The target is 0 approval prompts, and every prompt records its cause under
-[0005](../../decisions/0005-effects-and-taint.md). The pipeline stage gives the cause, and 2 checks
+[0005](../../decisions/0005-effects-and-taint.md), with the sixth cause, the owner's ask rule, that
+[0028](../../decisions/0028-policy-design.md) adds. The pipeline stage gives the cause, and 2 checks
 then mark the prompts that are defects:
 
 - **A direct request.** The stage was 5 or 9, and the code half of the consent check passed, so the
@@ -209,7 +211,7 @@ The scenarios fix a sequence of tool calls, the owner's messages and the owner's
 them through the decision point with the starter rule set and auto-mode off. Each reports every
 prompt with its cause and fails on a prompt the script does not expect. No model runs in them, so
 they test the rules and the pipeline; the [auto-mode spike](../open-items.md#spikes-to-run) runs the
-same scenarios with a model. The [prototype](../../../spikes/policy-rules/README.md) ran 13:
+same scenarios with a model. The [prototype](../../../spikes/policy-rules/README.md) ran 14:
 
 | Scenario                                          | Prompts | Causes                                                 |
 | ------------------------------------------------- | ------- | ------------------------------------------------------ |
@@ -224,77 +226,31 @@ same scenarios with a model. The [prototype](../../../spikes/policy-rules/README
 | A direct request with no rule                     | 0       |                                                        |
 | Morning report job                                | 0       |                                                        |
 | Grant for a day                                   | 2       | The always-ask set, then outside steering after expiry |
-| Create a job that replies to email                | 1       | The owner's ask rule                                   |
+| Create a job that replies to email                | 1       | The owner's ask rule; a job the owner asked for ran    |
+| A job nobody asked for                            | 1       | No rule matched                                        |
 | Delete for good                                   | 1       | The owner's ask rule                                   |
 
-None of the 15 prompts came from cause 1 or 2. The booking is the case
+None of the 16 prompts came from cause 1 or 2. The booking is the case
 [0014](../../decisions/0014-search.md) asks the scenarios to count: a destination that came from
 search results, which the owner can clear with a rule for bookings. CI runs the scenarios on every
 change to the starter rule set or the pipeline, and a model-driven run joins them once auto-mode is
 tested.
 
-## Decisions for the owner
+## Settled decisions
 
-These 6 choices are the policy design's open decisions, each with a recommendation. The rest of the
-policy docs assume the recommendation.
+The owner settled the policy design's open choices in [0028](../../decisions/0028-policy-design.md):
 
-1. **The consent checker.** Stage 8 needs a model to confirm that the owner asked for an action.
-   - Options: nixie's own checker, built like the memory checker from
-     [0011](../../decisions/0011-memory-writes.md) and always on; or auto-mode's own consent
-     assessment, which credits consent from the owner's last message but runs only when auto-mode is
-     on.
-   - Recommendation: nixie's own checker. Without it, every direct request that no rule covers asks
-     until auto-mode is on, and those prompts are defects by the measure in 0005.
-   - Trade-off: a second checker model to build and measure, and one model call on each direct
-     request that no rule covers. The design also reads 0006 as letting consent cover an action with
-     no destination on the checker's word alone; the owner can instead limit consent to actions with
-     a destination named word for word, and such requests then ask.
-2. **The cause of a prompt from the owner's own ask rule.** The 5 causes in 0005 have no place for a
-   prompt that a rule the owner wrote asked for, such as "ask before deleting for good".
-   - Options: record a sixth cause, the owner's ask rule, counted apart from the 0-prompt target; or
-     count such prompts as no rule matched.
-   - Recommendation: the sixth cause. The owner asked for these prompts, so they are neither a gap
-     nor a defect, and counting them as gaps would have nixie propose rules that undo the owner's
-     own.
-   - Trade-off: it amends the list in 0005, and the client renders one more cause.
-3. **Where the hard spending stop sits.** [Budgets](./budgets.md#the-hard-spending-stop) puts it on
-   the host or with the provider, because the SDK's own cap runs inside the imp.
-   - Options: a counting proxy on the host that every model request passes through, which refuses
-     requests once a deployment budget is spent; a spend limit set with the model provider, where
-     the provider offers one; or the runner's checks between steps alone.
-   - Recommendation: the counting proxy, with a provider spend limit set as a backstop where one
-     exists. The proxy enforces the owner's own budgets on the owner's host and stops a turn
-     mid-way.
-   - Trade-off: the proxy sits on the path of every turn and must fail closed, and it needs imp's
-     broker to forward model requests through a host proxy, which a spike in
-     [open items](../open-items.md#spikes-to-run) checks. The runner's checks alone let a looping
-     turn overshoot.
-4. **Bulk approval of always-ask items.** The [digest sheet](./approvals.md#the-digest-sheet) has an
-   "approve all" action.
-   - Options: "approve all" sweeps routine items only, and each always-ask or lifting item takes its
-     own approval; or "approve all" sweeps every item behind one passkey check for the batch.
-   - Recommendation: routine items only. A purchase or a widened rule hidden in a batch is the case
-     the distinct rendering from [0023](../../decisions/0023-lifting-always-ask.md) exists to
-     prevent.
-   - Trade-off: a sheet with several purchases takes a tap, and later a passkey check, for each.
-5. **The rule file format in the definitions repo.** The owner writes seeded rules, budgets and
-   effect declarations by hand, and nixie exports runtime rules back as a pull request under
-   [0020](../../decisions/0020-deployment.md).
-   - Options: YAML, TOML, JSON with a schema, or TypeScript.
-   - Recommendation: YAML, validated against a JSON Schema that nixie generates from the rule
-     format. A list of rules with nested checks reads cleanly in it, it allows comments, and Bun
-     1.4.2 parses it natively with `Bun.YAML`, which reads `no` and `on` as strings, as YAML 1.2
-     does.
-   - Trade-off: YAML's indentation and quoting trip hand edits, which the schema catches only at
-     seed time. TOML is stricter but verbose for nested lists, JSON allows no comments, and a
-     TypeScript file is code, which a seed would have to run.
-6. **The starter rule set's posture.** The [starter rule set](./rules.md#the-starter-rule-set)
-   decides how restrictive nixie feels on day one.
-   - Options: permissive inside the always-ask set and the destination limits, as the starter set
-     stands; or cautious, asking before every write to the owner's services and every send.
-   - Recommendation: permissive. In the prototype, it raised 15 prompts over 13 scenarios, each one
-     intended; the cautious variant raised 21, with 6 more in a single run of the inbox job, which
-     would repeat on every run.
-   - Trade-off: a permissive set lets a steered model label, archive, trash or draft in the owner's
-     mailbox and reply to known people without asking. Each of those is restorable or within the
-     destination limits, and the record shows every one.
+1. **The consent checker** is nixie's own checker model, always on, whether or not auto-mode is.
+   Consent covers an action with no destination on the checker's word, and ask rules at stage 6
+   still catch what the owner wants asked, such as deleting for good.
+2. **A sixth prompt cause,** the owner's ask rule, joins the 5 from 0005. Its prompts are counted
+   apart from the 0-prompt target, because the owner asked for them.
+3. **The hard spending stop** is a counting proxy on the host, with a spend limit set with the model
+   provider as a backstop, as [budgets](./budgets.md#the-hard-spending-stop) covers.
+4. **"Approve all"** on the [digest sheet](./approvals.md#the-digest-sheet) covers routine items
+   only.
+5. **Rule files** in the definitions repo are YAML, checked against a JSON Schema that nixie
+   generates from the rule format, for seeding and for export.
+6. **The starter rule set** is permissive within the always-ask set and the destination limits, and
+   no starter rule allows creating a job. Every job creation or change posts a notice with undo, as
+   [rules](./rules.md#the-starter-rule-set) covers.

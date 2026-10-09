@@ -2,8 +2,8 @@
 
 The policy design covers how nixie decides every tool call: the decision point and its stages, the
 rules it reads, the proposals and approvals it creates, and the budgets that bound spending. Each
-doc links the decisions it rests on, and the decision point ends with the decisions still open for
-the owner.
+doc links the decisions it rests on, and the decision point ends with the choices the owner settled
+in [0028](../../decisions/0028-policy-design.md).
 
 - [The policy decision point](./decision-point.md) — the pipeline, declared effects, the always-ask
   set, destination limits and consent, taint in the first build, auto-mode, prompt causes and the

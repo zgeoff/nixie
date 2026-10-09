@@ -2,8 +2,7 @@
 
 Phase 3, the design phase, has the voice stack and the model per job undecided, and the Google
 refresh on day 8 still to run. The design work ahead covers the terminology pass, the channel
-adapter and trigger source, main-thread routing, the open policy decisions, and the stages agreed
-for after the first build.
+adapter and trigger source, main-thread routing, and the stages agreed for after the first build.
 
 ## Deferred decisions
 
@@ -32,12 +31,6 @@ for after the first build.
   `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
   whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
   under [0001](../decisions/0001-durable-layer.md).
-- **The policy decisions.** The
-  [policy decision point](./policy/decision-point.md#decisions-for-the-owner) ends with 6 choices
-  for the owner: the consent checker, a cause for prompts from the owner's own ask rules, where the
-  hard spending stop sits, bulk approval of always-ask items, the rule file format, and the starter
-  rule set's posture. Each has a recommendation, and the policy docs assume it until the owner
-  decides.
 
 ## Spikes to run
 
@@ -87,8 +80,8 @@ for after the first build.
 - **Model requests through a counting proxy** (about half a day, on an imp host): route the model
   requests of a worker imp from imp's broker through a proxy on the host that counts tokens and
   refuses requests once a budget is spent. It checks the hard spending stop that the
-  [budgets design](./policy/budgets.md#the-hard-spending-stop) recommends, and needs a check that
-  the broker can forward to a host proxy without opening the guest a second route.
+  [budgets design](./policy/budgets.md#the-hard-spending-stop) sets under 0028, and needs a check
+  that the broker can forward to a host proxy without opening the guest a second route.
 - **The consent checker on real messages** (about half a day, with model calls): run a checker model
   over owner messages the owner writes, each paired with an action that the message does or does not
   ask for, and measure how often it credits consent wrongly or misses it. It firms up the consent

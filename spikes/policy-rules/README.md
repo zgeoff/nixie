@@ -6,7 +6,7 @@ runs it over sample tool calls, reordered definitions, rule edits and scripted s
 sample call got exactly one decision, and none changed under 200 rule orders. The snapshot hash
 stayed the same across 1,000 equivalent reorderings and moved on each of 8 real changes. The
 widening check classified 26 of 27 rule edits correctly and erred only towards "widens". The
-scripted scenarios raised 15 prompts against the starter rule set, none of them from a direct
+scripted scenarios raised 16 prompts against the starter rule set, none of them from a direct
 request or a repeat.
 
 ## Questions
@@ -33,7 +33,7 @@ request or a repeat.
 
 [`engine.ts`](./engine.ts) holds the rule format, the decision pipeline, the canonical form, the
 snapshot hash and the widening check. [`starter.ts`](./starter.ts) holds a sample tool registry of
-27 tools with declared effects and destination arguments, and the starter rule set of 10 rules that
+27 tools with declared effects and destination arguments, and the starter rule set of 9 rules that
 the design proposes. Each question has its own script:
 
 - [`matcher.ts`](./matcher.ts) builds 108 calls, every tool in every context with sample arguments,
@@ -47,7 +47,7 @@ the design proposes. Each question has its own script:
   it makes 8 real changes, one at a time.
 - [`widening.ts`](./widening.ts) classifies 27 rule edits: adds, removals, outcome changes, pattern
   changes, context limits, expiries, argument checks, lift caps and a CEL condition.
-- [`scenarios.ts`](./scenarios.ts) runs 13 scripted scenarios. Each is a fixed sequence of tool
+- [`scenarios.ts`](./scenarios.ts) runs 14 scripted scenarios. Each is a fixed sequence of tool
   calls with the owner's typed message and the owner's answer to any prompt; no model runs. The
   script records each prompt with its cause, applies "always allow" and accepted rule proposals as
   new rules, charges spending to a budget, and checks each step's outcome and cause against the
@@ -78,23 +78,31 @@ steps and exits with status 0.
 calls: 108, rule orders per call: 200
 decisions that changed with rule order: 0
 decisions by outcome and stage:
-  allow/rules: 68
+  allow/rules: 62
   ask/always_ask: 12
   ask/destinations: 9
-  ask/no_match: 3
+  ask/no_match: 9
   ask/rules: 10
   deny/rules: 6
-fell through to "no rule matched": 3
+fell through to "no rule matched": 9
   home.lights in conversation
   home.lights in task
   home.lights in job
+  job.create in conversation
+  job.create in conversation
+  job.create in task
+  job.create in task
+  job.create in job
+  job.create in job
 allow and deny both match mail.send to *.net: {"outcome":"deny","rule":"deny-mail-to-net","stage":"rules"}
 ```
 
 Every call reached exactly one outcome, because the pipeline returns at its first deciding stage and
 its last stage always decides. Rule order never mattered: within the rules, the strictest matching
-outcome wins, and the record names the lowest rule ID among the matches of that outcome. Only the
-one tool with an effect the starter set does not mention, a device control, fell through.
+outcome wins, and the record names the lowest rule ID among the matches of that outcome. 2 tools
+fell through: a device control, whose effect the starter set does not mention, and creating a job
+whose tools neither send nor delete, which no starter rule allows. The sample calls carry no owner
+message, so consent never applies in this run.
 
 ### Question 2: snapshot hash stability
 
@@ -155,12 +163,15 @@ grant for a day: 2 prompt(s)
       calendar.invite: PROMPT outside_steering - grant expired
 create a job that replies to email: 1 prompt(s)
       job.create: PROMPT ask_rule
+      job.create: allow (consent) - the owner asked, so consent allows it
+a job nobody asked for: 1 prompt(s)
+      job.create: PROMPT no_rule - a task proposes a weekly reading digest
 delete for good: 1 prompt(s)
       mail.purge: PROMPT ask_rule
 prompts by cause:
   always_ask: 4
   ask_rule: 2
-  no_rule: 6
+  no_rule: 7
   outside_steering: 3
 defects (causes 1 and 2): 0
 prompts where the destination came from search results: 1
@@ -174,12 +185,17 @@ the design intends:
   booking, whose venue ID came from search results rather than from the owner's words.
 - **The always-ask set, 4.** A purchase over the lift's per-action cap, a purchase past the month's
   budget, creating a day's grant, and accepting a proposed rule.
-- **No rule matched, 6.** A device tool the starter set does not cover, until "always allow" or an
-  accepted proposal added a rule. The proposal appeared after the third approval.
+- **No rule matched, 7.** A device tool the starter set does not cover, until "always allow" or an
+  accepted proposal added a rule; the proposal appeared after the third approval. One more came from
+  a job that a task created with no request from the owner.
 - **An owner's ask rule, 2.** Creating a job whose tools send email, and a permanent delete. Neither
-  fits the 5 causes from decision 0005; the script records them under a sixth value.
+  fits the 5 causes from decision 0005; the script records them under the sixth cause that
+  [decision 0028](../../docs/decisions/0028-policy-design.md) adds.
 
-The cautious starter set raised 21 prompts instead of 15. All 6 extra prompts came from the inbox
+A job the owner asked for in the conversation, such as a morning summary, ran with no prompt through
+consent.
+
+The cautious starter set raised 22 prompts instead of 16. All 6 extra prompts came from the inbox
 job, one per label, archive, trash, draft, reply and send to a known contact, so a job that runs
 every 30 minutes would raise them on every run.
 

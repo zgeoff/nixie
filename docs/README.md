@@ -48,7 +48,7 @@ the decisions it rests on.
 - [Policy design index](./design/policy/README.md) — the 4 policy docs and the spike behind them
 - [The policy decision point](./design/policy/decision-point.md) — the pipeline, effects, the
   always-ask set, destination limits and consent, taint in the first build, auto-mode, prompt causes
-  and the scripted scenarios, with the policy decisions for the owner
+  and the scripted scenarios, with the decisions the owner settled
 - [Rules](./design/policy/rules.md) — the rule format, evaluation order, rule identity, the snapshot
   hash, the widening check, proposed rules, grants with expiries and the starter rule set
 - [Proposals and approvals](./design/policy/approvals.md) — the proposal and its action hash, risk
@@ -102,6 +102,9 @@ Rules, effects, taint, approvals and auto-mode.
   untrusted, and taint applies to jobs and workers in stages
 - [0023: Lifting the always-ask set](./decisions/0023-lifting-always-ask.md) — a bounded rule can
   lift it, creating one always asks, and such approvals look distinct
+- [0028: The policy design](./decisions/0028-policy-design.md) — nixie's own consent checker, a
+  sixth prompt cause, the spending stop as a host proxy, bulk approval for routine items, YAML rule
+  files, and the permissive starter set with notices for jobs
 
 ### Memory
 

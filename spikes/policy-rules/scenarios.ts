@@ -368,6 +368,22 @@ const SCENARIOS: Scenario[] = [
           args: { tools: ['calendar.list', 'notify.owner'] },
           ...buildTalk('every morning, tell me what is on today'),
         },
+        note: 'the owner asked, so consent allows it',
+      },
+    ],
+  },
+  {
+    name: 'a job nobody asked for',
+    steps: [
+      {
+        call: {
+          tool: 'job.create',
+          args: { tools: ['web.fetch', 'notes.write'] },
+          context: 'task',
+        },
+        note: 'a task proposes a weekly reading digest',
+        expectPrompt: 'no_rule',
+        answer: 'once',
       },
     ],
   },

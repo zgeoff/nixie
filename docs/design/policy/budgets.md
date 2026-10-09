@@ -91,5 +91,11 @@ process that runs the model loop, and under
 [0026](../../decisions/0026-where-workers-and-the-conversation-run.md) that process runs in an imp
 next to code that reads untrusted content. The runner's checks between steps run on the host, and
 each lets one turn overshoot. The hard stop therefore sits on the host, on the route every model
-request takes, or with the provider. Where exactly is a decision for the owner in the
-[decision point](./decision-point.md#decisions-for-the-owner).
+request takes, or with the provider.
+
+Under [0028](../../decisions/0028-policy-design.md), the hard stop is a counting proxy on the host:
+every model request passes through it, it counts the cost from each response, and once a deployment
+budget is spent it refuses further requests. It fails closed, so a proxy that is down stops turns
+rather than letting them run uncounted. A spend limit set with the model provider, where the
+provider offers one, backs it up. The proxy needs imp's broker to forward a worker's model requests
+through it, which the [counting proxy spike](../open-items.md#spikes-to-run) checks.

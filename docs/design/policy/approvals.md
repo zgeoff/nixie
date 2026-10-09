@@ -126,11 +126,10 @@ The sheet holds 4 kinds of item, in this order:
 items with the most risk come before the routine ones that the owner can sweep.
 
 "Approve all" covers the routine items only, and each always-ask or lifting item takes its own
-approval, with the passkey check once 0012 lands. That split is the recommendation in a
-[decision for the owner](./decision-point.md#decisions-for-the-owner). The owner can approve, reject
-or leave each item; an item left alone keeps waiting until it lapses. Approving many items is one
-record per item, each with its own action hash, so a digest approval is the same as approving each
-item alone.
+approval, with the passkey check once 0012 lands, as the owner settled in
+[0028](../../decisions/0028-policy-design.md). The owner can approve, reject or leave each item; an
+item left alone keeps waiting until it lapses. Approving many items is one record per item, each
+with its own action hash, so a digest approval is the same as approving each item alone.
 
 A gap group with a proposed rule shows its pending items together with the proposal, so the owner
 can approve the items and accept the rule in one visit. Memory proposals from
