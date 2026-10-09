@@ -205,7 +205,9 @@ A crash stops the steps in flight, and a restart resumes every task from the log
 3. Marks each outside action that started an attempt without a recorded result as unknown, under
    [outside actions](./outside-actions.md).
 4. Fires every timer that fell due while it was down.
-5. Destroys every imp that belongs to a step that no longer runs.
+5. Lists and destroys every sandbox that belongs to a step that no longer runs through its owning
+   [sandbox adapter](../connectors/sandbox-adapter.md#the-interface). The first build's adapter is
+   imp; recovery depends on the recorded owner and adapter, not an imp-specific identifier.
 
 Resuming the SDK session alone would carry the interrupted turn's partial work. The
 [defer and hold spike](../../../spikes/sdk-long-hold/README.md) found that a resumed session keeps

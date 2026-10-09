@@ -69,10 +69,11 @@ under [0022](../../decisions/0022-coding-and-code-execution.md).
 | A built-in coding session | The session                | Allow  | The model credential, and others by rule | Yes        |
 
 The model credential is the one grant a worker or the conversation holds, limited to the model API's
-host, under [0026](../../decisions/0026-where-workers-and-the-conversation-run.md). A host that a
-grant covers stays reachable under every egress policy, because imp's broker dials it from the host.
-The [coding adapter](./coding.md#the-built-in-adapter) covers the grants and egress of a coding
-session.
+host, under [0026](../../decisions/0026-where-workers-and-the-conversation-run.md). A granted host
+stays reachable under every egress policy through the adapter's injecting backend, which dials from
+the host. A grant never becomes a guest-network egress exception. Imp uses its broker; the container
+sketch uses the host injecting proxy. The [coding adapter](./coding.md#the-built-in-adapter) covers
+the grants and egress of a coding session.
 
 ## The route to nixie's tools
 
@@ -177,22 +178,32 @@ sandbox ID, not a Docker container ID. Each adapter resolves `image` in its own 
 `exec` and `spawn` map to controlled container exec sessions, with output limits and cancellation
 that stops the command and its child processes. File copies use paths inside the sandbox root and
 reject escapes; they do not mount the owner's filesystem. The container receives no Docker socket,
-host network namespace or privileged mode. CPU and memory limits map to runtime controls; a bounded
-writable volume must enforce `diskMiB`, rather than interpreting it as an unenforced label. If the
-selected storage backend cannot enforce that limit, `create` refuses the spec.
+host network namespace or privileged mode. The image root stays read-only; every writable disk path
+belongs to the bounded volume, and any tmpfs counts against the memory limit. CPU and memory limits
+map to runtime controls; the writable volume must enforce `diskMiB`, rather than interpreting it as
+an unenforced label. If the selected storage backend cannot enforce that limit, `create` refuses the
+spec.
 
 ### Tools and credential injection
 
 For `egress: none`, the container has an isolated network namespace with loopback only. An
 adapter-owned relay exposes a loopback HTTP port to the SDK and connects to a per-sandbox Unix
-socket on the host. The socket reaches only that run's MCP endpoint, with the same bearer check as
+socket on the host. The adapter bind-mounts a directory that contains only the enabled per-sandbox
+sockets into the container. The mount is read-only, so the container can connect but cannot replace
+socket entries. No arbitrary host directory, management socket or credential file joins that mount.
+The host creates the directory and socket permissions for that sandbox and removes them at destroy.
+This bounded socket mount is the explicit host channel; file copies introduce no other host mounts.
+
+The tool socket reaches only that run's MCP endpoint, with the same bearer check as
 [tools](./tools.md#one-endpoint-per-run); it is not a generic host-network tunnel. The host binds
 that endpoint to the socket's registered sandbox and run, not an identity claimed by the guest.
 
 Model access uses a separate credential-injecting proxy on the host. A loopback relay in the
 container carries proxy traffic over its own Unix socket; the image includes the proxy's CA and the
-SDK receives a placeholder. The host proxy accepts only a grant's destination, checks the upstream
-TLS identity and injects the value there. The container never holds the real value. The
+SDK receives a placeholder. The model socket exists only when that sandbox has a grant, and the tool
+socket exists only with `toolRoute`. Both sockets belong to the bounded mount above. The host proxy
+accepts only a grant's destination, checks the upstream TLS identity and injects the value there.
+The container never holds the real value. The
 [credential store](./credentials.md#grants-into-a-sandbox) creates, rotates and revokes the grants;
 no grant reaches a code-only container.
 
@@ -201,7 +212,7 @@ list. It cannot turn on unrestricted Docker networking and call that an allow li
 modes need their own tests for management-port isolation, credential leakage, redirect handling and
 revocation before a container adapter is usable.
 
-### Suspension is a capability
+### Suspension
 
 The common interface makes memory-preserving sleep explicit through the `suspension` union. Imp
 returns `kind: memory`; this container sketch returns `kind: none`. The core calls sleep and wake
