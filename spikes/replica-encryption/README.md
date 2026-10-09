@@ -6,10 +6,10 @@ Can Litestream 0.5.17 replicate SQLite through a host-local rclone 1.75.2 S3 gat
 remote, restore after process outages and recover without the original database?
 
 The owner chose host-side encryption before upload in
-[0032](../../docs/decisions/0032-offsite-backups-and-replication.md). The rclone component remains a
-candidate. [rclone serve s3](https://rclone.org/commands/rclone_serve_s3/) is experimental;
-[crypt](https://rclone.org/crypt/) encrypts payloads and filenames before they enter the backing
-store. Litestream 0.5.x does not support client-side age encryption
+[0032](../../docs/decisions/0032-offsite-backups-and-replication.md). The owner chose the rclone
+component in the same decision. [rclone serve s3](https://rclone.org/commands/rclone_serve_s3/) is
+experimental; [crypt](https://rclone.org/crypt/) encrypts payloads and filenames before they enter
+the backing store. Litestream 0.5.x does not support client-side age encryption
 ([configuration](https://litestream.io/reference/config/#encryption)).
 
 ## Run
@@ -46,9 +46,9 @@ The local run passes 7 checks:
 - Every backing object has a crypt header and contains none of the 4 plaintext markers.
 
 The gateway can recover from these process outages, and restoring requires the encryption password
-as well as the remote objects. This supports a candidate for the
-[deployment design](../../docs/design/deployment/deployment.md#decisions-for-the-owner), not
-component adoption or a production recovery bound.
+as well as the remote objects. This supports the selected gateway in the
+[deployment design](../../docs/design/deployment/deployment.md#decisions-for-the-owner), not cloud
+validation or a production recovery bound.
 
 ## Limits
 

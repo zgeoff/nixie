@@ -144,8 +144,8 @@ Definitions and deployment models.
   seed the database, and running nixie lives with the deployment
 
 - [0032: Offsite backups and replication](./decisions/0032-offsite-backups-and-replication.md) —
-  Restic snapshots plus a database-only Litestream replica to S3-compatible storage; provider and
-  encryption component remain open
+  Restic snapshots plus a database-only Litestream replica through a host rclone crypt gateway; the
+  S3-compatible provider remains open
 
 ## Research
 

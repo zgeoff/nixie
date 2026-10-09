@@ -7,14 +7,10 @@ after the first build.
 
 ## Deferred decisions
 
-- **The offsite provider and encryption component.**
-  [0032](../decisions/0032-offsite-backups-and-replication.md) chooses Restic plus a database-only
-  Litestream replica to S3-compatible storage. Amazon S3 versus Cloudflare R2 and the encryption
-  component remain owner choices. Host-side encryption before upload is agreed; server-side
-  encryption alone does not meet the provider-unreadable boundary. The
-  [deployment options](./deployment/deployment.md#decisions-for-the-owner) compare the proposed
-  crypt gateway with a local replica and encrypted uploader.
-
+- **The offsite provider.** [0032](../decisions/0032-offsite-backups-and-replication.md) chooses
+  Restic plus a database-only Litestream replica through a host-local rclone crypt S3 gateway.
+  Amazon S3 versus Cloudflare R2 remains an owner choice. The host encrypts payloads before upload;
+  server-side encryption alone does not meet the provider-unreadable boundary.
 - **The matching-key recovery path.** Generation-triggered, debounced Restic key snapshots are a
   candidate within the existing publication barrier. The encrypted-content recovery point, a paired
   cloud restore and the cadence under failures remain untested; a fresh data replica alone cannot
@@ -49,9 +45,9 @@ after the first build.
 ## Spikes to run
 
 - **Offsite replica and forget cleanup** (effort unknown): test the selected provider and encryption
-  component with the data replica plus fresh keys. Test gateway crashes and restarts if selected,
-  failed/stale key publication, complete backend key cleanup including object versions, and a
-  restore after total host loss. The local Restic and
+  component with the data replica plus fresh keys. Test gateway crashes and restarts against the
+  selected cloud backend, failed/stale key publication, complete backend key cleanup including
+  object versions, and a restore after total host loss. The local Restic and
   [replica encryption](../../spikes/replica-encryption/) spikes test no cloud provider.
 
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the

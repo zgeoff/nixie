@@ -290,7 +290,7 @@ try {
           'No kill during a forced in-flight upload or multipart/concurrency test',
           'No physical host or disk power loss',
           'Marker/header check is not a cryptographic audit',
-          'The experimental gateway is a candidate, not an adopted component',
+          'The experimental gateway has no validated cloud recovery bound',
         ],
       },
       null,

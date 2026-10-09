@@ -69,7 +69,8 @@ The nixie image holds the modular monolith from
 - Bun 1.4.2 on a slim base, pinned by digest
 - every workspace package, bundled with `bun build`
 - the web client's static files
-- the `sops` and `restic` binaries, which nixie runs itself for secrets and backups
+- the `sops`, `restic`, `litestream` and `rclone` binaries for secrets, backups and the encrypted
+  replica
 
 The nixie image holds no Claude Code build. **Why:** every model loop runs in an imp under 0026, so
 the host process needs only nixie's tools, and leaving out the SDK's 2 native Claude Code packages
@@ -101,14 +102,15 @@ The deployment repo holds one sops file, encrypted to 2 age recipients: the host
 recovery key. The host key lives on the host, readable only by nixie's user. The recovery key stays
 with the owner, off the host, and is the one key a restore on a new host needs.
 
-| Secret                         | Used for                                                         |
-| ------------------------------ | ---------------------------------------------------------------- |
-| Deployment key                 | Wraps every key in the key store and the credential store values |
-| restic password                | Encrypts every backup                                            |
-| Model credential               | The broker grant that each imp holds under 0026                  |
-| impd token                     | The sandbox adapter's calls to impd                              |
-| Push notifier and search keys  | Static values for channels and tools, such as a bot token        |
-| The owner's OAuth client pairs | The owner's own clients under 0019                               |
+| Secret                                   | Used for                                                         |
+| ---------------------------------------- | ---------------------------------------------------------------- |
+| Deployment key                           | Wraps every key in the key store and the credential store values |
+| restic password                          | Encrypts every backup                                            |
+| Model credential                         | The broker grant that each imp holds under 0026                  |
+| Replica crypt password and optional salt | rclone object encryption and restore                             |
+| impd token                               | The sandbox adapter's calls to impd                              |
+| Push notifier and search keys            | Static values for channels and tools, such as a bot token        |
+| The owner's OAuth client pairs           | The owner's own clients under 0019                               |
 
 OAuth refresh tokens and every other value nixie writes at runtime live in the credential store in
 the database, encrypted with the deployment key, not in the sops file. The
@@ -219,6 +221,17 @@ The owner tests this path in practice. How impd runs beside a cluster is the ope
    open: Amazon S3 or Cloudflare R2. Both are supported by the
    [Litestream S3-compatible guide](https://litestream.io/guides/s3-compatible/).
 
+   Recommendation for the open provider choice: Cloudflare R2 Standard storage. Its
+   [pricing](https://developers.cloudflare.com/r2/pricing/) has no egress charge, and its
+   [rclone guide](https://developers.cloudflare.com/r2/examples/rclone/) documents the selected
+   uploader's backend. Storage, writes, copies and listings still incur charges; frequent replica
+   updates and gateway copy/delete publication can make request volume the main cost. Amazon S3 is
+   the alternative when the deployment needs AWS-specific access or storage features; its
+   [pricing](https://aws.amazon.com/s3/pricing/) includes transfer charges that depend on the route
+   and region. R2 implements a
+   [subset of the S3 API](https://developers.cloudflare.com/r2/api/s3/api/), so cloud restore and
+   key cleanup need tests with the selected provider. No provider is adopted.
+
    The snapshot path restored on a clean host in the deploy spike. The
    [paired-store control](../../../spikes/forget-backups/) shows that current data with an older key
    backup cannot decrypt a newly created item. A validated matching-key recovery path therefore
@@ -227,15 +240,15 @@ The owner tests this path in practice. How impd runs beside a cluster is the ope
    alone accepts up to an hour of lost writes at the proposed interval; Kopia is the alternative
    snapshot tool that was not chosen.
 
-   **Replica privacy: agreed.** The host encrypts the replica before upload, so the provider cannot
-   read its payload. The component remains an owner choice. Litestream 0.5.x lacks client-side age
-   encryption ([Litestream configuration](https://litestream.io/reference/config/#encryption));
-   item-level encryption leaves database envelopes readable. A host-local
+   **Replica encryption: agreed.** The host runs a local
    [rclone S3 gateway](https://rclone.org/commands/rclone_serve_s3/) over a
-   [crypt remote](https://rclone.org/crypt/) is the recommended candidate. It adds one experimental
-   process between Litestream and the offsite bucket. The alternative is a local Litestream file
-   replica with a separate encrypted uploader, which adds upload scheduling and consistency work.
-   Neither component route is adopted.
+   [crypt remote](https://rclone.org/crypt/). Litestream sends database replica objects to that
+   endpoint, and rclone encrypts their payloads and filenames before upload. This keeps readable
+   database envelopes off provider storage. The gateway adds one experimental process between
+   Litestream and the bucket. A local Litestream file replica with a separate encrypted uploader was
+   not chosen, because it adds upload scheduling and consistency work. Litestream 0.5.x has no
+   built-in client-side age encryption
+   ([configuration](https://litestream.io/reference/config/#encryption)).
 
    The [replica encryption spike](../../../spikes/replica-encryption/) tests the gateway locally,
    including process outages and a restore without the original database. It does not test a cloud
