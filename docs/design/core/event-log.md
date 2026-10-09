@@ -72,6 +72,13 @@ the same pattern with 2 kinds of key:
   in a contacts table. A record refers to the contact by ID and never copies the details, so
   forgetting a person deletes one key and clears them from every structured field at once.
 
+Memory recall results, injected memory blocks and applied-write notices store item/version
+references in their log records, with provenance metadata, rather than a second text copy under a
+record key. The client and replay decrypt the referenced version through its item key; forgetting
+renders it as a gap. The logger applies this rule before it persists a raw tool-result or prompt
+payload, so a generic SDK-message capture cannot bypass it. The live SDK transcript remains a cache
+with its own [forget cleanup](../memory/context.md#removing-invalid-transcript-copies).
+
 The envelope stays in plain text: IDs, kinds, times, rule IDs, outcomes, hashes, the source of
 content and declared effects. **Why:** the envelope holds no personal content, and the projections,
 the task board and replay need it without a decryption per row.
@@ -83,11 +90,13 @@ the owner confirms.
 The keys live in a key store apart from the database, each one wrapped by a deployment key, and the
 memory item keys from 0010 live there too. **Why:** a database backup taken before a key is deleted
 holds the wrapped key next to its ciphertext, so a key kept in the database would come back with any
-restore. Database backups therefore hold only ciphertext. The key store's backup keeps one copy,
-which each backup run replaces, so a deleted key leaves every backup at the next run, daily by
-default. A restore takes the database backup, the current key store backup and the deployment key,
-which is a deployment secret kept with the other secrets under
-[0020](../../decisions/0020-deployment.md). The
+restore. Database backups therefore hold only ciphertext. The key store's backup keeps an
+acknowledged fresh copy. Forget forces replacement and cleanup of older recoverable copies before it
+reports completion, under
+[the memory lifecycle](../memory/store.md#forget-completion-and-key-backups). Key-backup publication
+is serialized with forget so an older staging copy cannot restore a deleted key after completion. A
+restore takes the database backup, the current key store backup and the deployment key, which is a
+deployment secret kept with the other secrets under [0020](../../decisions/0020-deployment.md). The
 [backup and restore spike](../open-items.md#spikes-to-run) checks that restore.
 
 The database's own full-text index covers only the envelope. Free text is erasable, and a persisted

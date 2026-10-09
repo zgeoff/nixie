@@ -111,7 +111,11 @@ The memory store, which writes skip review, and definition versioning.
 - [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
   every record, with rules applying at once and persona and jobs fixed per task
 - [0024: How memory reaches the model](./decisions/0024-memory-in-context.md) — the SDK's session
-  and compaction, with retrieval over memory and the event log, keyword search first
+  and compaction, with retrieval over memory and the event log; refined by 0031
+
+- [0031: Memory capture, context and removal](./decisions/0031-memory-capture-context-and-removal.md)
+  — local semantic retrieval, batched capture, transcript cache, reversible chat removal and grouped
+  notices
 
 ### Channels
 
@@ -253,3 +257,8 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   over sample messages, and what still needs the checker
 - [A pinned memory core](../spikes/sdk-pinned-core/) — when a changed system prompt reaches a
   resumed session, written and not yet run
+
+- [Batched memory checkpoints](../spikes/memory-batch/) — source-bound quotes, process-kill recovery
+  and a cursor-first failure control without model calls
+- [Forget completion across backups](../spikes/forget-backups/) — snapshot removal, data pruning and
+  restore with a deleted item key on a local candidate backend

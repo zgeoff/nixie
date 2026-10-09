@@ -6,7 +6,8 @@
   [0013](../../decisions/0013-definition-versioning.md),
   [0015](../../decisions/0015-taint-scope.md), [0024](../../decisions/0024-memory-in-context.md),
   [0025](../../decisions/0025-database-and-topology.md),
-  [0027](../../decisions/0027-tasks-and-outside-actions.md)
+  [0027](../../decisions/0027-tasks-and-outside-actions.md),
+  [0031](../../decisions/0031-memory-capture-context-and-removal.md)
 
 nixie keeps long-term memory as rows in its SQLite database, under
 [0010](../../decisions/0010-memory-store.md). A memory item is one stored fact, such as "the owner's
@@ -17,8 +18,7 @@ key and every version of that item becomes unreadable. The model reads memory th
 that returns stored items word for word, and the owner reads and manages it in the client. This doc
 covers the store and its operations; [memory writes](./writes.md) covers which writes apply at once,
 and [memory in context](./context.md) covers how memory reaches the model. Everything in this doc
-beyond the decisions it links is a proposal, and the owner's open choices for the whole memory
-design close it.
+beyond the decisions it links is a proposed implementation of the agreed memory design.
 
 ## Items and versions
 
@@ -88,11 +88,11 @@ measured it:
 
 - A forgotten item was unreadable in the live database and in a database backup taken before the
   forget. A key store backup taken before the forget still opened it, until the next backup run
-  replaced that copy. The window is the key store's backup interval, daily by default.
+  replaced that copy. Scheduled replacement alone therefore leaves a recovery window.
 - With SQLite's defaults, the deleted wrapped key stayed in the key store file's free space after a
   checkpoint. With `PRAGMA secure_delete = ON`, the bytes left the file at the next checkpoint. The
-  key store therefore runs with `secure_delete` on, and a forget completes after a WAL checkpoint of
-  the key store.
+  key store therefore runs with `secure_delete` on, and forget waits for its WAL checkpoint as part
+  of completion.
 - 10,000 items with 3 versions each decrypted in 177 to 311 ms with the decryptions run in parallel,
   and unwrapping a key cost about 2 µs. Holding every active item decrypted in memory at start costs
   well under a second at personal scale.
@@ -140,8 +140,31 @@ The operation records per-item progress, deletes keys idempotently and resumes u
 a crash. A partial operation cannot roll back keys that it deleted; its status distinguishes deleted
 items from pending work. Each item gets its own forgotten record, and the bulk operation reports
 completion only after its key-store checkpoint, index invalidation and local-session cleanup finish.
-The [backup validation](../open-items.md#spikes-to-run) must settle completion against key-backup
-copies too; the existing daily-copy gap is not an instant erasure guarantee.
+Completion includes the key-backup cleanup below; it never reports success merely because the live
+key disappeared.
+
+### Forget completion and key backups
+
+A forget starts as a durable pending operation. It completes only after the live key-store
+checkpoint, derived-index invalidation, invalid-session cleanup and removal of recoverable key
+copies from every registered backup. The operation forces a key-backup refresh and cleanup; the
+periodic backup interval controls ordinary recovery age, not forget completion. If a backend is
+unavailable or cleanup fails, the client shows pending cleanup and recovery retries the existing
+operation. Deleted live keys do not return while it waits.
+
+Key-backup publication and forget share a serialized lifecycle. A staged key copy carries its
+key-generation watermark; a stale copy cannot publish after the forget barrier. Cleanup retains an
+acknowledged fresh copy that excludes the deleted keys, removes every older recoverable copy, and
+verifies the remaining copies. It records backend receipts with the operation and rechecks coverage
+before completion. A crash between removing an old snapshot and removing its data remains pending;
+loss of a snapshot listing alone does not prove its key bytes are gone.
+
+The lifecycle includes staging files, restore samples and backup caches that can hold recoverable
+key copies. It removes them before completion. A configured key backend must permit removal of all
+managed historical copies; unhandled versioning or immutable retention cannot satisfy this contract.
+The [backup spike](../../../spikes/forget-backups/) tests one local candidate backend, not
+cloud-provider deletion or physical media erasure. An export or a copy outside nixie's managed
+backup registry remains separate owner-controlled data.
 
 ## Operations
 
@@ -192,7 +215,9 @@ screen.
 
 A record that recalls memory lists each item and version it returned, as the
 [event log design](../core/event-log.md#memory-history-and-export) requires, so a replay shows what
-the model saw.
+the model saw. Its stored result uses item/version references and resolves the text through item
+keys, as the [record key rules](../core/event-log.md#erasable-fields-and-keys) specify; forgetting
+does not leave a plaintext recall copy protected only by an independent record key.
 
 Recall searches the same in-memory index that per-turn retrieval uses, which
 [memory in context](./context.md#retrieval) covers.
@@ -261,17 +286,9 @@ a checked client action to destroy it. The retired-memory view supports bulk per
 a preview and confirmation bound to the selected items. This trades one more checked action for
 recovery from a misread chat request.
 
-## Decisions for the owner
+## Agreed write notices
 
-These choices are the memory design's open decisions, each with a recommendation. The memory docs
-assume the recommendation until the owner decides.
-
-1. **Notices for writes that apply at once.** 0011 requires that the owner sees each such write and
-   can undo it.
-   - Options: a compact line under nixie's reply, such as "Remembered: dentist is Dr Okafor", with
-     undo; a count in the digest sheet, such as "nixie stored 3 memories", with no line in the
-     conversation; or both.
-   - Recommendation: a line under the reply. The owner sees the write while the context is fresh,
-     and undo is one tap.
-   - Trade-off: the conversation carries a line for each memory, which a busy conversation may find
-     noisy; the count alone is quieter and slower to catch a misreading.
+Writes that apply at once appear as one compact group per turn or background batch, with expandable
+items and per-item undo. A late batch adds a quiet notice in its thread, without a push or a
+successful-write entry in the digest. Review proposals retain the digest path under
+[memory writes](./writes.md#notices-and-undo).

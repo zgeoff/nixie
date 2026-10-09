@@ -6,7 +6,8 @@
   [0013](../../decisions/0013-definition-versioning.md),
   [0024](../../decisions/0024-memory-in-context.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md),
-  [0027](../../decisions/0027-tasks-and-outside-actions.md)
+  [0027](../../decisions/0027-tasks-and-outside-actions.md),
+  [0031](../../decisions/0031-memory-capture-context-and-removal.md)
 
 The conversation runs on the Agent SDK's session and compaction, under
 [0024](../../decisions/0024-memory-in-context.md). nixie places memory in it 3 ways: a small pinned
@@ -69,9 +70,8 @@ boundary when the core changes, which writes a new session ID that renders the p
 ## Retrieval
 
 The owner agreed local embeddings in the first build, with keyword lookup retained. This refines
-0024's earlier keyword-first route; the memory module's decision record captures the amendment once
-its remaining owner choices are settled. Per-turn retrieval and the recall tools use the same
-retrieval service over readable active memory items and eligible past messages.
+0024's earlier keyword-first route, as 0031 records. Per-turn retrieval and the recall tools use the
+same retrieval service over readable active memory items and eligible past messages.
 
 A small local encoder produces semantic vectors for natural-language queries. It uses pinned local
 model assets and makes no inference API call or query-time model download. SQLite FTS5 with BM25
@@ -142,7 +142,9 @@ ID, version or record sequence, source and date, inside a block that labels them
 not instructions. Pinned items, which the system prompt holds, and messages still in the session's
 context stay out. The turn's record lists every item and version it placed, together with the search
 mode and fallback metadata from the retrieval service, as the
-[event log design](../core/event-log.md#memory-history-and-export) requires.
+[event log design](../core/event-log.md#memory-history-and-export) requires. Durable prompt payloads
+retain item/version references rather than a second copy of injected memory text; rendering resolves
+those references through the item keys.
 
 ### The recall tools
 

@@ -4,7 +4,8 @@
 - Decisions: [0002](../../decisions/0002-approvals.md),
   [0006](../../decisions/0006-approval-record.md), [0010](../../decisions/0010-memory-store.md),
   [0011](../../decisions/0011-memory-writes.md), [0015](../../decisions/0015-taint-scope.md),
-  [0024](../../decisions/0024-memory-in-context.md)
+  [0024](../../decisions/0024-memory-in-context.md),
+  [0031](../../decisions/0031-memory-capture-context-and-removal.md)
 
 A write that introduces memory text applies at once, with a notice and undo, only when 3 checks pass
 under [0011](../../decisions/0011-memory-writes.md): an exact quote from text the owner typed backs
@@ -249,17 +250,24 @@ memory proposals with its other proposals.
 
 ## Notices and undo
 
-A write that applied at once reaches the owner as a notice, under 0011. The notice is a record in
-the thread that made the write, which the client renders as a compact line under nixie's reply, such
-as "Remembered: dentist is Dr Okafor", with undo, as the owner decision on notices in
-[the store](./store.md#decisions-for-the-owner) recommends. A write from a task appears in that
-task's thread and in the conversation's next report from it.
+Each write that applies at once records a notice under 0011. The client groups one conversation
+turn's writes, or one background batch's writes, into a compact notice beneath the relevant reply. A
+summary such as "Remembered 3 things · View" expands to the actual items, with per-item undo bound
+to the versions written. Retirement uses the same grouping with its own operation label.
+
+A batch group attaches to the last reply in its fixed set of committed turns, with each item linking
+to its original source. If there is no reply, the group is a standalone thread notice. A batch that
+finishes after the reply adds a quiet notice in that thread. It sends no push and creates no digest
+entry for successful writes. Review proposals remain on the digest sheet; unresolved outcomes and
+failed forget cleanup retain their own status rather than appearing as successful writes. A task's
+writes appear in its thread and its next report to the conversation.
 
 Undo is a checked action. It adds a version with the text before the write, or retires the item when
 the write created it, so undo itself is recorded and can be undone. A notice can open the checked
 permanent-delete action in [the store](./store.md#forgetting); deletion needs its loss-listing
 confirmation. Bulk deletion uses the fixed preview of selected retired items, and undo never crosses
-a completed forget.
+a completed forget. Each undo checks the current item version; a later edit makes the old notice
+action stale instead of silently overwriting it.
 
 ## Consolidation
 
