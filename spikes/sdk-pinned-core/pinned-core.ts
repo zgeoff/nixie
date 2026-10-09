@@ -1,7 +1,7 @@
 /* oxlint-disable one-var -- a throwaway spike */
 // Checks when a change to the system prompt, where the pinned memory core would live, reaches a
 // resumed session, and what each change costs the prompt cache.
-// Usage: bun --env-file=../../.env pinned-core.ts <config-dir>
+// Usage: pass the vault token as CLAUDE_CODE_OAUTH_TOKEN, then bun pinned-core.ts <config-dir>
 import { resolve } from 'node:path';
 import type { Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
@@ -39,12 +39,13 @@ function buildOptions(extra: Partial<Options>): Options {
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
       CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '',
       CLAUDE_CONFIG_DIR: configDir ?? '',
-      HOME: process.env.HOME ?? '',
+      HOME: configDir ?? '',
       PATH: process.env.PATH ?? '',
     },
     maxTurns: 1,
     model: 'claude-haiku-4-5-20251001',
     settingSources: [],
+    settings: { autoMemoryEnabled: false, autoDreamEnabled: false },
     tools: [],
     ...extra,
   };
@@ -112,4 +113,10 @@ async function run(): Promise<void> {
   });
 }
 
-await run();
+try {
+  await run();
+} catch (error) {
+  const message = error instanceof Error ? error.message : 'Pinned-core spike failed.';
+  console.error(message);
+  process.exitCode = 1;
+}

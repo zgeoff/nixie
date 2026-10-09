@@ -35,6 +35,12 @@ and the stages agreed for after the first build.
 
 ## Spikes to run
 
+- **The semantic-index lifecycle.** Check the design's version gates and memory-only generations
+  when a write, retire, forget or encoder change races with background encoding. A stale candidate
+  must never return canonical text that is no longer eligible. Check startup coverage and the
+  reported keyword fallback while semantic indexing rebuilds, under
+  [memory in context](./memory/context.md#the-index).
+
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
   holding Gmail's restricted scope; day 8 shows whether its token outlives testing mode's 7-day
@@ -43,8 +49,8 @@ and the stages agreed for after the first build.
   [retrieval spike](../../spikes/memory-retrieval/README.md) with questions the owner writes about
   memory items the owner recognises, and with recall keywords from a model that has not seen the
   items. On synthetic data, words alone found about a fifth of paraphrased questions and a local
-  embedding model about two thirds; this run decides whether embeddings join the index under
-  [0024](../decisions/0024-memory-in-context.md).
+  embedding model about two thirds. The owner agreed local embeddings in the first build; this run
+  validates and tunes semantic recall, model choice and ranking rather than gating inclusion.
 - **The pinned core in the system prompt** (minutes, with model calls): run the
   [pinned core spike](../../spikes/sdk-pinned-core/README.md), which is written and stopped on the
   subscription's weekly limit. It shows whether `snapshot: false` lets a changed pinned core reach a

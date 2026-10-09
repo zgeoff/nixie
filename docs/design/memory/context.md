@@ -12,9 +12,10 @@ The conversation runs on the Agent SDK's session and compaction, under
 [0024](../../decisions/0024-memory-in-context.md). nixie places memory in it 3 ways: a small pinned
 core in the system prompt, a few items retrieved for each turn and placed in the newest turn, and 2
 recall tools the model calls when it needs more. Retrieval searches memory items and past
-conversation in the event log, with keyword ranking, from an index held in memory. A compaction
-summary stays in the session and never becomes memory. The SDK's own transcript is a cache that the
-event log supersedes. Everything in this doc beyond the decisions it links is a proposal.
+conversation in the event log, with local semantic embeddings and keyword lookup from indexes held
+in memory. A compaction summary stays in the session and never becomes memory. The SDK's own
+transcript is a cache that the event log supersedes. Everything in this doc beyond the decisions it
+links is a proposal.
 
 ## The prompt
 
@@ -67,20 +68,52 @@ boundary when the core changes, which writes a new session ID that renders the p
 
 ## Retrieval
 
-Retrieval finds memory items and past messages for a turn, through one index that both per-turn
-retrieval and the recall tools search. It ranks with BM25 over SQLite's FTS5, which is keyword
-search in the sense of 0024: it matches words, and embeddings stay out until a measurement on the
-owner's own memory shows a gain.
+The owner agreed local embeddings in the first build, with keyword lookup retained. This refines
+0024's earlier keyword-first route; the memory module's decision record captures the amendment once
+its remaining owner choices are settled. Per-turn retrieval and the recall tools use the same
+retrieval service over readable active memory items and eligible past messages.
+
+A small local encoder produces semantic vectors for natural-language queries. It uses pinned local
+model assets and makes no inference API call or query-time model download. SQLite FTS5 with BM25
+remains available for word, name and reference lookup; an exact item-ID request reads the canonical
+item directly. Ranking and any combination of the two signals are configurable and validated on the
+owner's questions. The synthetic spike does not establish that fusion is better than semantic
+ranking alone.
 
 ### The index
 
-nixie builds the index at start in an FTS5 table in an in-memory SQLite database, with the porter
-tokenizer, from every active memory item and every owner message and model reply it can decrypt. It
-updates the index in the transaction that writes each item version or record, and removes an entry
-when its item retires or its key is deleted. **Why:** a persisted FTS5 index keeps a forgotten word
-in its file, and every backup taken before the forget keeps it in plain text, as the
-[shredding spike](../../../spikes/memory-shred/README.md) showed, while an index in memory never
-reaches a backup.
+At start, nixie builds an FTS5 table in an in-memory SQLite database, with the porter tokenizer, and
+a semantic vector index in process memory. Both derive from the active memory items and the owner
+messages and model replies whose keys remain readable. The embedding model runs on the host as a
+text encoder, not as an agent with tools or grants.
+
+Every entry carries its canonical item ID and version, or its record ID and sequence, together with
+the encoder revision and index generation. The host loads the encoder's pinned assets before it
+publishes a ready semantic generation; it never mixes vectors from different model revisions or
+dimensions. A model change builds a fresh generation and swaps it in as a unit. Keyword lookup
+remains available while the semantic generation rebuilds; the retrieval result records that it used
+keyword-only fallback, so reduced capability is visible rather than silent.
+
+A canonical write commits an index-invalidation record with the item or log record. After that
+commit, the retrieval service removes an old entry and queues the current readable version for
+encoding. No model computation holds the database write transaction open. When an encoding finishes,
+the service re-checks the version, active state, key availability and index generation; it discards
+work that belongs to an older revision, a retired or forgotten item, or an old model. This handles a
+write or forget that races with a background encoding.
+
+The indexes rank candidate IDs; they never supply authoritative result text. Before returning any
+candidate, the retrieval service reads its current canonical version, checks that it is eligible and
+can decrypt it, and discards a version mismatch. It fills the final result only from those validated
+rows. A stale index entry cannot return content that was retired, superseded or forgotten.
+
+Retire and forget invalidate both indexes and their cached candidates. Forget waits for those
+entries to be removed and pending results to be invalidated before its checked action completes.
+Neither the FTS5 index nor the semantic vectors or query caches are written to disk, exported or
+backed up; model weights contain no owner text. Restart rebuilds derived indexes from readable
+records. **Why:** the [shredding spike](../../../spikes/memory-shred/README.md) found that a
+persisted FTS5 index retains forgotten words, and derived retrieval data must follow the same forget
+boundary as the records it represents. This is an index lifecycle contract, not a claim that every
+transient process-memory copy has been physically zeroed.
 
 Tool results, worker transcripts and compaction summaries stay out of the index. **Why:** they are
 outside content or text the model wrote from it, so retrieving them into a later turn would place
@@ -109,8 +142,10 @@ The model searches further with 2 tools:
 - **`log.search`** returns past owner messages and replies word for word, each with its thread, its
   record sequence and its date. It declares `read`.
 
-Both take keywords that the model writes, and their descriptions ask for several alternative terms
-for each idea, including names, synonyms and the owner's own words.
+Both accept the model's natural-language query for semantic recall and retain keyword lookup for
+specific words, names and references. Their descriptions expose the available search paths and
+return provenance for the same canonical rows. Neither a semantic score nor a keyword match is
+evidence that a memory is current; the active-state and version checks decide that.
 
 ### What the retrieval spike found
 
@@ -127,16 +162,16 @@ message as written, and keywords as a model would pass them to `memory.recall`. 
 Every method found every question that shared a word with its item. The methods parted only on
 paraphrase, such as "who is my doctor?" against an item that holds "GP": words alone found about a
 fifth of those from the owner's message, and a small local embedding model found about two thirds.
-Keywords from the model closed most of that gap for keyword search, at 0.76 against 0.77 for vectors
-on the raw message, though the spike's keywords were written with the items in view. BM25 found no
-more than plain keyword overlap and ranked the right item higher.
+Hand-written keywords closed most of that gap for keyword search, at 0.76 against 0.77 for vectors
+on the raw message. Their author could see the items, so this is not a blind model-keyword result.
+BM25 found no more than plain keyword overlap and ranked the right item higher.
 
-The spike's data is synthetic and written by one author, so it decides nothing about embeddings
-under 0024. It does set the next measurement: the
-[retrieval spike on the owner's questions](../open-items.md#spikes-to-run), with keywords from a
-model that has not seen the items, decides whether embeddings join the index. If they do, a small
-model run on the host, such as the spike's MiniLM at about 1 ms per item on a CPU, keeps memory text
-on the owner's host.
+The spike's data is synthetic and written by one author, so its measured recall is not a claim about
+the owner's memories. Local embeddings are an agreed first-build feature; the
+[retrieval run on the owner's questions](../open-items.md#spikes-to-run), with keywords from a model
+that has not seen the items, validates and tunes that feature instead of deciding whether it exists.
+The small CPU encoders in the spike are candidate implementations, not an agreed final model choice.
+A selected encoder must pass the same version, provenance and forget checks.
 
 No ranking told a current fact from one it superseded: the old version came first about half the
 time. Retrieval therefore searches only active items, and a memory write that replaces a fact

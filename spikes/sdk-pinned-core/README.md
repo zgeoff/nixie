@@ -7,8 +7,8 @@ where the pinned memory core lives in the
 - SDK: `@anthropic-ai/claude-agent-sdk` 0.3.293
 - Model: `claude-haiku-4-5-20251001`
 - Options on every run: `tools: []`, `settingSources: []`, `maxTurns: 1`, a `CLAUDE_CONFIG_DIR` of
-  its own, and an `env` that passes only `PATH`, `HOME`, the OAuth token and
-  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, as in the
+  its own, SDK auto-memory and auto-dream disabled, and an `env` that passes only `PATH`, `HOME`,
+  the OAuth token and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, as in the
   [resume-at spike](../sdk-resume-at/README.md)
 
 ## Questions
@@ -27,7 +27,12 @@ with the answer and the cache tokens from each result.
 
 ```bash
 bun install
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env pinned-core.ts "$(mktemp -d)"
+NIXIE_SPIKE_TOKEN=$(
+  OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../.claude/settings.local.json) \
+    op --cache=false read 'op://nixie/claude-code-oauth-token/credential'
+)
+CLAUDE_CODE_OAUTH_TOKEN="$NIXIE_SPIKE_TOKEN" bun --no-env-file pinned-core.ts "$(mktemp -d)"
+unset NIXIE_SPIKE_TOKEN
 ```
 
 [pinned-core.ts](./pinned-core.ts) puts about 3,000 tokens of stable text and a code word in the
@@ -35,10 +40,10 @@ system prompt, then changes the code word between resumes.
 
 ## Answer
 
-Not run yet. The first run stopped at its first call on the subscription's weekly limit, so the
-script is untested against the model. The memory design assumes `snapshot: false` re-renders the
-prompt on every request, as the SDK's type docs state, and gives a fork as the fallback if it does
-not.
+No turn completed. A rerun with the vault token stops at the first call on the subscription's weekly
+limit, so the script is untested against the model. The blocked run does not validate any
+prompt-refresh or cache claim. The memory design assumes `snapshot: false` re-renders the prompt on
+every request, as the SDK's type docs state, and gives a fork as the fallback if it does not.
 
 ## Untested
 
