@@ -31,19 +31,21 @@ Memory lives in 2 tables beside the [event log](../core/event-log.md), not in it
 
 Each version holds:
 
-| Field          | Holds                                                                         | Encrypted |
-| -------------- | ----------------------------------------------------------------------------- | --------- |
-| Item, version  | The item ID and a version number that starts at 1                             | No        |
-| Change         | Created, edited, retired, restored, merged or undone                          | No        |
-| Text           | The memory as written                                                         | Yes       |
-| Evidence quote | The owner's words that back the text, when a quote exists                     | Yes       |
-| Evidence       | The owner message record and the quote's offsets in it                        | No        |
-| Origin         | Owner, conversation, task, memory writer or consolidation                     | No        |
-| Source         | Owner's words, owner's own data, or outside content                           | No        |
-| Task           | The task whose step wrote the version, or none for an owner action            | No        |
-| Proposal       | The proposal that created the version, or none when it applied at once        | No        |
-| Checks         | The verdict of each check from 0011, and the review reason when one failed    | No        |
-| Record         | The sequence of the log record that wrote the version, with its snapshot hash | No        |
+| Field           | Holds                                                                         | Encrypted |
+| --------------- | ----------------------------------------------------------------------------- | --------- |
+| Item, version   | The item ID and a version number that starts at 1                             | No        |
+| Change          | Created, edited, retired, restored, merged or undone                          | No        |
+| Text            | The memory as written                                                         | Yes       |
+| Evidence quote  | The owner's words that back the text, when a quote exists                     | Yes       |
+| Evidence        | The owner message record and the quote's offsets in it                        | No        |
+| Intent quote    | The owner's request for a content-preserving operation, when present          | Yes       |
+| Intent evidence | The request record and its quote offsets                                      | No        |
+| Origin          | Owner, conversation, task, memory writer or consolidation                     | No        |
+| Source          | Owner's words, owner's own data, or outside content                           | No        |
+| Task            | The task whose step wrote the version, or none for an owner action            | No        |
+| Proposal        | The proposal that created the version, or none when it applied at once        | No        |
+| Checks          | The verdict of each check from 0011, and the review reason when one failed    | No        |
+| Record          | The sequence of the log record that wrote the version, with its snapshot hash | No        |
 
 The source is one of the 3 that the event log records under
 [0015](../../decisions/0015-taint-scope.md), and [memory writes](./writes.md#provenance) sets how
@@ -98,14 +100,16 @@ measured it:
 ### Forgetting
 
 Forgetting is a checked action in the client, and only the owner takes it. The client shows the item
-with its history and asks for a confirmation that lists what is lost. nixie then deletes the key,
-checkpoints the key store, marks the item forgotten and appends a `memory_forgotten` record, which
-holds the item ID and no text. The versions stay as rows with ciphertext nobody can read, so a
-replay shows a gap where the item was.
+with its history and asks for a confirmation bound to the item and current version, listing what is
+lost. A changed version makes that confirmation stale. nixie then deletes the key, checkpoints the
+key store, marks the item forgotten and appends a `memory_forgotten` record, which holds the item ID
+and no text. The versions stay as rows with ciphertext nobody can read, so a replay shows a gap
+where the item was.
 
 When the owner says "forget that" in the conversation, the model retires the item through the memory
-tool, and the notice of the retirement offers "forget for good" as a checked action. Whether chat
-alone can destroy an item is a [decision for the owner](#decisions-for-the-owner).
+tool, and the retirement notice offers undo and a checked permanent-delete action. Chat alone never
+destroys an item; [retirement intent](./writes.md#retirement-intent) binds the reversible request to
+its target.
 
 A forgotten item may sit in a live SDK session that read it, through recall or retrieval. Forgetting
 an item that a session read makes that session rebuild before its next turn, which
@@ -119,6 +123,25 @@ from all conversation history. Log search may return that fact from a record who
 readable.
 
 A forgotten item cannot be exported or restored, and an undo never reaches across a forget.
+
+### Bulk deletion of retired memories
+
+The retired-memory view offers one checked action to permanently delete selected retired items or
+all retired items. Its preview lists the count, items and exact versions, and states that deletion
+cannot be undone through nixie. It states that independent chat records remain. The confirmation
+binds to that fixed item/version set; it does not select "whatever is retired" later.
+
+Before any key deletion, nixie validates the whole selected set and reserves those targets for the
+durable forget operation. An item restored or changed after preview makes the confirmation stale,
+and the client refreshes the preview. Items retired later do not join an existing confirmation.
+Restore, undo and edit cannot change a reserved target during deletion.
+
+The operation records per-item progress, deletes keys idempotently and resumes unfinished work after
+a crash. A partial operation cannot roll back keys that it deleted; its status distinguishes deleted
+items from pending work. Each item gets its own forgotten record, and the bulk operation reports
+completion only after its key-store checkpoint, index invalidation and local-session cleanup finish.
+The [backup validation](../open-items.md#spikes-to-run) must settle completion against key-backup
+copies too; the existing daily-copy gap is not an instant erasure guarantee.
 
 ## Operations
 
@@ -144,16 +167,17 @@ changing its callers. Each verb is a nixie tool, an owner action in the client, 
 starter rules allow the call and the checks in [memory writes](./writes.md) decide whether it
 applies at once. `memory.recall` declares `read`, and `memory.export` declares `export`.
 
-A model tool takes only content: the text, the evidence quote, and the item and version it revises.
-nixie fills every provenance field from the step that called it. A revision carries the version it
-read, and the write fails as stale when the item has moved on, as Hermes binds a staged edit to the
-entry it targets ([memory notes](../../research/2.4-notes/memory-models.md#markdown-in-git)).
-**Why:** 2 tasks that edit the same item from the same version must not silently overwrite each
-other.
+`memory.remember` takes new text, its evidence quote and any item/version it revises.
+`memory.retire` takes the bound item ID, read version and intent quote, with no replacement text.
+nixie fills every provenance field from canonical records and the step that called it. A revision
+carries the version it read, and the write fails as stale when the item has moved on, as Hermes
+binds a staged edit to the entry it targets
+([memory notes](../../research/2.4-notes/memory-models.md#markdown-in-git)). **Why:** 2 tasks that
+edit the same item from the same version must not silently overwrite each other.
 
 Undo and restore never rewrite history: each adds a version. An owner action in the client applies
-at once, with the owner as origin and the owner's words as source, because a checked action in the
-client cannot come from injected content.
+at once, with the owner as operation origin. An owner edit that introduces text uses the owner's
+words as content source; restore and undo preserve the copied content's provenance.
 
 ### Recall
 
@@ -218,7 +242,7 @@ never sends it to an outside destination. The event log export from the
 
 The conversation and tasks write during a turn, and a background writer captures passing facts in
 bounded batches. SDK compaction remains responsible for session continuity. Both paths use the same
-quote, token and assertion checks, as [memory writes](./writes.md#who-writes) sets out. Batching
+checks for the operation they perform, as [memory writes](./writes.md#who-writes) sets out. Batching
 reduces extraction calls at the cost of delayed capture; provider costs and real-history quality
 remain unmeasured.
 
@@ -230,19 +254,19 @@ invalidated by forget, as [memory in context](./context.md#the-sdk-transcript) s
 does not restore identical SDK context or cache continuity. Older owner messages and stored items
 remain available through recall; older tool output is outside indexed recall.
 
+## Agreed removal
+
+Chat removes an item from active memory through reversible retirement. The owner can undo it or use
+a checked client action to destroy it. The retired-memory view supports bulk permanent deletion with
+a preview and confirmation bound to the selected items. This trades one more checked action for
+recovery from a misread chat request.
+
 ## Decisions for the owner
 
 These choices are the memory design's open decisions, each with a recommendation. The memory docs
 assume the recommendation until the owner decides.
 
-1. **"Forget" in chat.** Forgetting deletes the item’s key and cannot be undone through nixie.
-   - Options: chat retires the item, with "forget for good" one tap away on the notice; or a
-     quote-backed "forget that" in chat forgets at once.
-   - Recommendation: chat retires, and only a checked action forgets. A misread "forget that", or
-     one injected into a pasted message that the checker misjudges, then costs an undo, never data.
-   - Trade-off: the owner taps once more to destroy an item, and a retired item stays readable in
-     the store and its backups until the owner does.
-2. **Notices for writes that apply at once.** 0011 requires that the owner sees each such write and
+1. **Notices for writes that apply at once.** 0011 requires that the owner sees each such write and
    can undo it.
    - Options: a compact line under nixie's reply, such as "Remembered: dentist is Dr Okafor", with
      undo; a count in the digest sheet, such as "nixie stored 3 memories", with no line in the

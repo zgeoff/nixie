@@ -28,12 +28,18 @@ and the stages agreed for after the first build.
   imp under [0026](../decisions/0026-where-workers-and-the-conversation-run.md), so the first build
   needs the answer. The options are port-level allow entries in imp, an imp network or granted
   hostname, or nixie's endpoint on an address that serves nothing else.
-- **The memory decisions.** The [memory store design](./memory/store.md#decisions-for-the-owner)
-  ends with 2 choices for the owner: whether "forget" in chat destroys an item, and how the owner
-  learns of a write that applied at once. Each has a recommendation, and the memory docs assume it
-  until the owner decides.
+- **The memory notice choice.** The [memory store design](./memory/store.md#decisions-for-the-owner)
+  leaves one choice for the owner: how a write that applies at once appears, with a recommendation
+  for a compact line under the reply and undo.
 
 ## Spikes to run
+
+- **Retirement and bulk permanent deletion.** Test typed intent against an exact item/version,
+  ambiguous references, pasted instructions and unchanged content provenance. Test a restored or
+  edited item after bulk preview, later retirements, duplicate confirmations and crashes between
+  per-item key deletions. The [memory store](./memory/store.md#bulk-deletion-of-retired-memories)
+  sets the contract. Align forget completion with key-backup removal under 0010: the current daily
+  key-copy window contradicts instant backup erasure and remains unresolved.
 
 - **Session recovery and invalid-cache cleanup.** Compare the proposed event-log rebuild with SDK
   resume: record which history and SDK state each preserves, test recovery after compaction and

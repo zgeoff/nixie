@@ -6,11 +6,11 @@
   [0011](../../decisions/0011-memory-writes.md), [0015](../../decisions/0015-taint-scope.md),
   [0024](../../decisions/0024-memory-in-context.md)
 
-A memory write applies at once, with a notice and undo, only when 3 checks pass under
-[0011](../../decisions/0011-memory-writes.md): an exact quote from text the owner typed backs it,
-every destination-like token in it appears in that quote, and a checker model that sees the owner's
-whole message confirms the owner asserted it. Every other write becomes a memory proposal on the
-digest sheet. The checks run inside the memory tools, after the
+A write that introduces memory text applies at once, with a notice and undo, only when 3 checks pass
+under [0011](../../decisions/0011-memory-writes.md): an exact quote from text the owner typed backs
+it, every destination-like token in it appears in that quote, and a checker model that sees the
+owner's whole message confirms the owner asserted it. Every other write becomes a memory proposal on
+the digest sheet. The checks run inside the memory tools, after the
 [policy decision point](../policy/decision-point.md) has allowed the call, so a write that fails a
 check is held for review rather than refused. Consolidation, which rewrites many items at once, is
 always a proposal. Everything in this doc beyond the decisions it links is a proposal.
@@ -76,10 +76,10 @@ retires it. **Why:** the [retrieval spike](../../../spikes/memory-retrieval/READ
 ranking separates a current fact from the one it superseded, so the store must not hold both as
 active.
 
-## The gate
+## The content gate
 
-`memory.remember` and `memory.retire` run these steps in order. The first check to fail ends the
-gate, and the write becomes a proposal with that check as its review reason:
+`memory.remember` runs these steps in order. The first check to fail ends the gate, and the write
+becomes a proposal with that check as its review reason:
 
 1. **Find the evidence.** Conversation and task writes search the calling thread’s last 20 owner
    messages by default, newest first. Batch writes resolve the original owner record selected from
@@ -97,8 +97,9 @@ job run is a proposal, which 0011 requires for facts that reach nixie only throu
 
 The checks run in the tool, not in the decision point's pipeline. The decision point decides whether
 the call may run, and the `note` effect is allowed by the starter rules; the gate decides whether
-the change it makes needs review. A rule the owner writes can still ask for or deny
-`memory.remember`, and then the decision point's answer applies before the gate runs.
+the change it makes needs review. An owner rule can ask for or deny `memory.remember` or
+`memory.retire`. The decision point runs first, followed by the content gate for remember or the
+intent gate for retire. Consolidation always produces review proposals.
 
 A write that asks to pin its item always becomes a proposal, whatever the checks say. The owner pins
 directly in the client. **Why:** a pinned item rides in the system prompt of every turn of every
@@ -165,16 +166,41 @@ own prompt. Its prompt is part of the policy snapshot, as
 [the store](./store.md#definition-versioning) sets out. Its accuracy on real messages is a
 [spike to run](../open-items.md#spikes-to-run) together with the consent checker's.
 
+## Retirement intent
+
+The owner agreed that chat removal is reversible retirement; only a checked client action destroys a
+memory. `memory.retire` takes an item ID, the version read and an intent quote, with no replacement
+text. The host verifies that the calling session read that item/version and binds the operation to
+the current canonical item. An ambiguous target becomes a proposal rather than a guessed retirement.
+
+The intent quote must lie wholly in the owner's typed text outside quoted blocks under the quote
+rules. A separate checker sees the owner's message with its spans, the intent quote and the bound
+item's text labelled as untrusted data. It checks whether the owner asks to retire that exact item,
+including a statement that the fact stopped being true. It never treats instructions in the stored
+item as authority. A timeout, unsure verdict or failed check produces a review proposal.
+
+The destination-token check applies to new memory content; retirement introduces no content or
+destination. It does not require the owner to repeat an old phone number or address. A successful
+retirement copies the stored text and its content provenance, adds a version with the calling
+actor's origin and task, and records the intent quote and source record separately. It never
+relabels outside content as the owner's words. A stale item version fails before the state changes.
+
+This narrows the content-write checks in 0011 for content-preserving retirement. The memory module
+decision record captures that amendment. Model restore and undo are not added: those remain checked
+client actions. A retirement notice offers undo and a permanent-delete action, while retired history
+remains readable.
+
 ## Provenance
 
 nixie sets every provenance field of a version from the calling step, never from the tool's
-arguments. The source follows one rule: a version whose quote, token and checker checks all passed
-has the owner's words as its source; any other version has the least trusted source in the calling
-task's context. The conversation is always untrusted under
+arguments. For content-introducing writes, a version whose quote, token and checker checks all
+passed has the owner's words as its source; any other version has the least trusted source in the
+calling task's context. The conversation is always untrusted under
 [0015](../../decisions/0015-taint-scope.md), and every job run is untrusted in the first build, so a
 proposal from either carries outside content as its source. An approved proposal keeps that source:
 the owner's approval records that the owner accepted the text, in the proposal and approval fields,
-and does not rewrite where the text came from.
+and does not rewrite where the text came from. Retirement, restore and undo inherit the copied
+content's source and evidence; their operation origin and intent remain separate.
 
 **Why:** a later review of poisoned memory, or a consolidation that drops outside candidates, needs
 the source as it was when the text entered nixie.
@@ -183,16 +209,18 @@ the source as it was when the text entered nixie.
 
 A write that fails the gate becomes a proposal in the
 [proposals projection](../policy/approvals.md#the-proposal), in the routine class, so it gathers on
-the digest sheet with the other routine items. Its canonical action is the tool, the memory text,
-the evidence quote and the item version it revises, so an approval binds to that exact text. Its
-sentence comes from the tool's template, such as "Remember: the owner's mobile is 0412 345 678",
-shown with its evidence quote inside the owner message it came from, or with "no owner quote".
+the digest sheet with the other routine items. A remember action binds the new text, evidence quote
+and any target item/version. A retire action binds the intent quote and target item/version, with no
+replacement text. Approval binds to that exact operation. Its sentence comes from the tool's
+template, with the appropriate content or intent quote shown in its source message, or with "no
+owner quote".
 
 A memory proposal is not one of the 5 prompt causes from
 [0005](../../decisions/0005-effects-and-taint.md), because the gate raises it, not the decision
 point. It carries a review reason instead:
 
-- no quote, or a quote outside the window
+- no quote, or a quote outside the window or bounded batch
+- retirement intent is ambiguous or does not identify the bound item
 - the quote is not in typed text, or lies in a quoted block
 - a token is not in the quote
 - the checker said not asserted, said unsure, or could not be reached
@@ -228,8 +256,10 @@ as "Remembered: dentist is Dr Okafor", with undo, as the owner decision on notic
 task's thread and in the conversation's next report from it.
 
 Undo is a checked action. It adds a version with the text before the write, or retires the item when
-the write created it, so undo itself is recorded and can be undone. Purge, the one-tap removal from
-0011, is the forget action in [the store](./store.md#forgetting).
+the write created it, so undo itself is recorded and can be undone. A notice can open the checked
+permanent-delete action in [the store](./store.md#forgetting); deletion needs its loss-listing
+confirmation. Bulk deletion uses the fixed preview of selected retired items, and undo never crosses
+a completed forget.
 
 ## Consolidation
 
