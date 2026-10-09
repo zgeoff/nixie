@@ -216,9 +216,9 @@ replacement text. Approval binds to that exact operation. Its sentence comes fro
 template, with the appropriate content or intent quote shown in its source message, or with "no
 owner quote".
 
-A memory proposal is not one of the 5 prompt causes from
-[0005](../../decisions/0005-effects-and-taint.md), because the gate raises it, not the decision
-point. It carries a review reason instead:
+A memory proposal is not one of the six policy prompt causes under
+[0028](../../decisions/0028-policy-design.md), because the gate raises it, not the decision point.
+It carries a review reason instead:
 
 - no quote, or a quote outside the window or bounded batch
 - retirement intent is ambiguous or does not identify the bound item
