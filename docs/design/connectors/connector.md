@@ -231,8 +231,9 @@ the connector docs assume the recommendation.
    a weaker boundary than a microVM.
    - Options: build imp only, and keep the interface open; or build a container adapter in the first
      build as well.
-   - Recommendation: imp only. A container adapter needs its own injecting proxy for the model
-     credential, because containers have no broker, and only an owner without KVM needs it.
+   - Agreed: imp only in the first build, with a container sketch to check the interface and its
+     implementation deferred. The [sketch](./sandbox-adapter.md#a-container-adapter-sketch) maps
+     lifecycle, network policy, tools and credential injection, and makes memory sleep a capability.
    - Trade-off: an owner whose host cannot run imp, such as a VPS without nested virtualisation,
      cannot run nixie until the container adapter exists.
 6. **The code runtimes.** The code tool runs code for general work, such as processing a file or

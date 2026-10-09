@@ -42,8 +42,7 @@ interface Sandbox {
   copyIn(files: FileSpec[]): Promise<void>;
   copyOut(paths: string[]): Promise<FileSpec[]>;
   toolRoute(): Promise<ToolRoute | null>; // where code in the sandbox reaches nixie's tools
-  sleep(): Promise<void>;
-  wake(): Promise<void>;
+  suspension: { kind: 'memory'; sleep(): Promise<void>; wake(): Promise<void> } | { kind: 'none' };
   destroy(): Promise<void>;
 }
 ```
@@ -160,11 +159,70 @@ The deployment pins each image by digest, and an upgrade of nixie that changes a
 pins the new one. **Why:** an image is code that runs over untrusted content, so it upgrades with
 nixie and its version reaches every record of the run.
 
-## A container adapter
+## A container adapter sketch
 
-A container adapter is valid under [0016](../../decisions/0016-own-interfaces.md), and its boundary
-is weaker, because a container shares the host's kernel. It also has no credential broker, so nixie
-would have to run an injecting proxy of its own: a forward proxy that terminates TLS for the model
-API's host with a CA the container trusts, and adds the credential there. The design keeps the
-interface open for it and builds only imp in the first build; the fifth owner decision in
-[connectors](./connector.md#decisions-for-the-owner) asks whether to build it.
+The first build implements imp. The container adapter stays a design sketch that tests whether the
+interface assumes a microVM. The owner agreed to sketch the adapter and defer its implementation. A
+container shares the host's kernel, so [0016](../../decisions/0016-own-interfaces.md) treats its
+boundary as weaker. Nothing in this sketch claims that a container implementation passes the same
+isolation tests as imp.
+
+### Lifecycle and files
+
+The adapter creates an OCI container from an image pinned by digest, with an owner label and an
+adapter-owned writable volume. `get` and `list` recover that label and volume after a host restart;
+`destroy` removes the container, its volume, its relays and its grants. The core sees an opaque
+sandbox ID, not a Docker container ID. Each adapter resolves `image` in its own image namespace.
+
+`exec` and `spawn` map to controlled container exec sessions, with output limits and cancellation
+that stops the command and its child processes. File copies use paths inside the sandbox root and
+reject escapes; they do not mount the owner's filesystem. The container receives no Docker socket,
+host network namespace or privileged mode. CPU and memory limits map to runtime controls; a bounded
+writable volume must enforce `diskMiB`, rather than interpreting it as an unenforced label. If the
+selected storage backend cannot enforce that limit, `create` refuses the spec.
+
+### Tools and credential injection
+
+For `egress: none`, the container has an isolated network namespace with loopback only. An
+adapter-owned relay exposes a loopback HTTP port to the SDK and connects to a per-sandbox Unix
+socket on the host. The socket reaches only that run's MCP endpoint, with the same bearer check as
+[tools](./tools.md#one-endpoint-per-run); it is not a generic host-network tunnel. The host binds
+that endpoint to the socket's registered sandbox and run, not an identity claimed by the guest.
+
+Model access uses a separate credential-injecting proxy on the host. A loopback relay in the
+container carries proxy traffic over its own Unix socket; the image includes the proxy's CA and the
+SDK receives a placeholder. The host proxy accepts only a grant's destination, checks the upstream
+TLS identity and injects the value there. The container never holds the real value. The
+[credential store](./credentials.md#grants-into-a-sandbox) creates, rotates and revokes the grants;
+no grant reaches a code-only container.
+
+An allowed-egress coding session needs an adapter-owned gateway that enforces its declared host
+list. It cannot turn on unrestricted Docker networking and call that an allow list. Both egress
+modes need their own tests for management-port isolation, credential leakage, redirect handling and
+revocation before a container adapter is usable.
+
+### Suspension is a capability
+
+The common interface makes memory-preserving sleep explicit through the `suspension` union. Imp
+returns `kind: memory`; this container sketch returns `kind: none`. The core calls sleep and wake
+only on the memory branch. A backend that cannot preserve memory cannot silently map sleep to stop,
+and a backend that cannot free memory cannot silently map it to pause.
+
+[Docker pause](https://docs.docker.com/reference/cli/docker/container/pause/) freezes processes
+through a cgroup; it does not give the memory snapshot and release semantics of imp sleep.
+[Docker checkpoint](https://docs.docker.com/reference/cli/docker/checkpoint/) offers checkpoint and
+restore through CRIU, but is experimental and has restrictions on terminals and kernel support. This
+sketch makes no checkpoint promise. A stopped container starts a fresh SDK process and uses nixie's
+committed-step recovery; that is restart, not wake from preserved memory.
+
+The first conversation stays awake, and workers are disposable, under
+[0026](../../decisions/0026-where-workers-and-the-conversation-run.md), so neither needs memory
+sleep to use this interface. A future memory-sleep requirement must choose a capable adapter or stay
+disabled. A container prototype that passes checkpoint tests could add the memory branch without
+changing the core's meaning of sleep.
+
+### What remains unbuilt
+
+The container sketch leaves the injecting proxy, Unix relays, egress gateway, disk quota backend,
+process cancellation and isolation checks unimplemented. It is an interface check, not a supported
+runtime. [Open items](../open-items.md#later-stages) keeps that implementation deferred.

@@ -142,6 +142,12 @@ after the first build.
 
 ## Later stages
 
+- **A container sandbox adapter.** The first build implements imp. The
+  [container sketch](./connectors/sandbox-adapter.md#a-container-adapter-sketch) checks the common
+  interface without a second implementation. A container adapter needs its injecting proxy, tool
+  relay, egress gateway, disk quota backend and isolation checks before it supports any run. Memory
+  sleep stays unavailable unless a checkpoint implementation proves the same semantics.
+
 - **Taint per job run.** A job that reads only the owner's data runs without the destination limits
   ([0015](../decisions/0015-taint-scope.md)). The first build records the source of every tool
   result to support it.
