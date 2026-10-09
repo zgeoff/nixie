@@ -2,8 +2,9 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Amends: [0016](./0016-own-interfaces.md), [0019](./0019-connector-authorization.md),
-  [0022](./0022-coding-and-code-execution.md)
+- Amends: [0003](./0003-sdk-placement.md), [0016](./0016-own-interfaces.md),
+  [0019](./0019-connector-authorization.md), [0022](./0022-coding-and-code-execution.md),
+  [0026](./0026-where-workers-and-the-conversation-run.md)
 - Design: [connectors](../design/connectors/connector.md), [tools](../design/connectors/tools.md),
   [sandbox adapter](../design/connectors/sandbox-adapter.md),
   [coding](../design/connectors/coding.md)

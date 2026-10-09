@@ -202,7 +202,8 @@ design. Until imp does, nixie designs around the current behaviour.
 - **Port-level allow entries.** They let a sandboxed session reach nixie's endpoint on the host
   without reaching imp's management API ([0003](../decisions/0003-sdk-placement.md)). The
   [sandbox adapter](./connectors/sandbox-adapter.md#the-route-to-nixies-tools) needs them only if a
-  reverse forward fails its spike.
+  later deployment cannot use the agreed reverse-forward route. The transport spike passed, under
+  [0030](../decisions/0030-connectors-and-sandbox-environments.md).
 - **A fuller audit.** The broker records method, host, path, status and sizes for each credentialed
   request, and no refused request. An audit with refused requests lets the broker's log feed nixie's
   record under [0007](../decisions/0007-grants-and-taint.md).

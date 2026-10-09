@@ -1,7 +1,7 @@
 # 0026: Where workers and the conversation run
 
 - Date: 2026-10-09
-- Status: decided
+- Status: decided, amended by [0030](./0030-connectors-and-sandbox-environments.md)
 - Amends: [0003](./0003-sdk-placement.md), [0007](./0007-grants-and-taint.md)
 - Research: [imp worker spike](../../spikes/imp-worker-start/),
   [sandbox adapter](./0016-own-interfaces.md)
@@ -58,9 +58,13 @@ policy.
 ## Consequences
 
 - nixie builds a purpose-built image per kind of work: a minimal base, Bun, and the SDK with only
-  the Claude Code build it needs. Start-up is measured with the host's page cache warm.
+  the Claude Code build it needs for the conversation. Under
+  [0030](./0030-connectors-and-sandbox-environments.md), the code and worker images include actual
+  Node.js, Python and a familiar Linux toolbox. Start-up is measured with the host's page cache
+  warm.
 - Every imp needs a route back to nixie's tools on the host that does not reach imp's management
-  API, the open question from 0003.
+  API. [0030](./0030-connectors-and-sandbox-environments.md) settles it as a reverse forward over
+  vsock with egress `none` and reopening after wake.
 - The conversation imp holds host memory for the deployment's life.
 - 2 candidate imp changes would cut start-up further: a warm template taken after a warm-up turn,
   with entropy and identity reseeded on restore, and a page cache kept across sleep for long-lived
