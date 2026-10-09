@@ -83,8 +83,11 @@ the owner confirms.
 The keys live in a key store apart from the database, each one wrapped by a deployment key, and the
 memory item keys from 0010 live there too. **Why:** a database backup taken before a key is deleted
 holds the wrapped key next to its ciphertext, so a key kept in the database would come back with any
-restore. Database backups therefore hold only ciphertext. The key store's backup keeps one copy,
-which each backup run replaces, so a deleted key leaves every backup at the next run. A restore
+restore. Database backups therefore hold only ciphertext. The key store's backup keeps one
+acknowledged fresh copy. Forget forces replacement and removal of older recoverable copies before
+completion, rather than waiting for the periodic schedule. Key-backup publication rejects stale
+staging generations under
+[the backup lifecycle](../deployment/backup-and-restore.md#forget-triggered-key-cleanup). A restore
 takes the database backup, the current key store backup and the deployment key, which is a
 deployment secret kept with the other secrets under [0020](../../decisions/0020-deployment.md).
 [Backup and restore](../deployment/backup-and-restore.md) covers the schedule and the restore, which
