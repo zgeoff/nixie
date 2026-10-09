@@ -13,10 +13,11 @@ Amazon S3 or Cloudflare R2 remains an owner choice.
 Offsite backup copies may live on provider storage as ciphertext. The owner-controlled host remains
 the primary store of readable personal data. This narrows the storage test in
 [the principles](../principles.md); it does not authorize readable database envelopes on provider
-storage. The Litestream replica protection remains an owner choice before cloud use, because
-Litestream 0.5.x has no client-side age encryption and nixie's item encryption leaves envelopes
-readable. The provider must not be able to read the replica payload under this decision. Server-side
-encryption without host-side payload encryption needs a separate owner amendment to that boundary.
+storage. The owner chose host-side encryption for the Litestream replica before upload. Litestream
+0.5.x has no client-side age encryption, and nixie's item encryption leaves envelopes readable. The
+encryption component remains an owner choice; the provider must not be able to read the replica
+payload. Server-side encryption alone does not meet that boundary because the provider handles
+readable pages and, with SSE-C, the supplied key.
 
 Litestream never replicates the key store. Its historical copies would preserve deleted keys. Every
 recoverable key backup follows 0010: a forget stays pending until its deleted keys leave every
@@ -38,7 +39,10 @@ until both data and keys restore together.
 ## Validation and open choices
 
 The local deployment spike restored Restic snapshots on a clean host. The paired-store control shows
-that fresh data with an older key backup cannot decrypt new text. The provider, replica protection
-component, matching-key recovery, cloud forget cleanup and end-to-end restore test remain open in
+that fresh data with an older key backup cannot decrypt new text. The
+[replica encryption spike](../../spikes/replica-encryption/) tests a candidate host gateway with
+process outages and a fresh-config restore; it tests no cloud provider or matching-key recovery. The
+provider, encryption component, matching-key recovery, cloud forget cleanup and end-to-end restore
+test remain open in
 [the deployment design](../design/deployment/deployment.md#decisions-for-the-owner) and
 [open items](../design/open-items.md).

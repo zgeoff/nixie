@@ -1,0 +1,12 @@
+{
+  "name": "spike-replica-encryption",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "bun --no-env-file run.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2"
+  }
+}

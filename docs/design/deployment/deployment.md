@@ -227,23 +227,22 @@ The owner tests this path in practice. How impd runs beside a cluster is the ope
    alone accepts up to an hour of lost writes at the proposed interval; Kopia is the alternative
    snapshot tool that was not chosen.
 
-   Cloud replica protection remains an owner choice. Litestream 0.5.x lacks client-side age
-   encryption, although its S3 backend supports server-side SSE-C and SSE-KMS
-   ([Litestream configuration](https://litestream.io/reference/config/#encryption)). Item-level
-   encryption covers erasable content but leaves database envelopes readable. The cloud path needs
-   an explicit privacy choice and a restore test; neither a cloud provider nor a new encryption
-   component is adopted here. A candidate is a host-local
+   **Replica privacy: agreed.** The host encrypts the replica before upload, so the provider cannot
+   read its payload. The component remains an owner choice. Litestream 0.5.x lacks client-side age
+   encryption ([Litestream configuration](https://litestream.io/reference/config/#encryption));
+   item-level encryption leaves database envelopes readable. A host-local
    [rclone S3 gateway](https://rclone.org/commands/rclone_serve_s3/) over a
-   [crypt remote](https://rclone.org/crypt/), so the provider receives encrypted replica objects.
-   The gateway is experimental and adds a process; server-side encryption has fewer host components
-   but trusts the provider with readable database pages. The encryption component remains an owner
-   choice.
+   [crypt remote](https://rclone.org/crypt/) is the recommended candidate. It adds one experimental
+   process between Litestream and the offsite bucket. The alternative is a local Litestream file
+   replica with a separate encrypted uploader, which adds upload scheduling and consistency work.
+   Neither component route is adopted.
 
-   Both provider candidates support SSE-C;
-   [Cloudflare's SSE-C guide](https://developers.cloudflare.com/r2/examples/ssec/) covers R2. SSE-C
-   sends the key to the provider over TLS with uploads and reads. Amazon S3 can also use AWS KMS.
-   These server-side options protect storage at rest; using them without host-side payload
-   encryption needs a separate owner agreement to provider-readable envelopes.
+   The [replica encryption spike](../../../spikes/replica-encryption/) tests the gateway locally,
+   including process outages and a restore without the original database. It does not test a cloud
+   provider, key recovery or uploads interrupted in flight. Server-side encryption alone was not
+   chosen: it protects storage at rest but trusts the provider with readable pages. Both S3 and
+   [R2 support SSE-C](https://developers.cloudflare.com/r2/examples/ssec/), which sends the key to
+   the provider over TLS with uploads and reads; Amazon S3 also offers AWS KMS.
 
 2. **How a merged upgrade reaches the host.** Options: a poll from the host, a webhook from the git
    host, or the owner running one command. Recommendation: a poll every 5 minutes by a script on the

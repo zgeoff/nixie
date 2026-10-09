@@ -14,8 +14,8 @@ forces a refresh and removal of every older recoverable key copy before it repor
 recovery age, not forget completion. A new host restores from the 2 repos, the deployment repo and
 the owner's recovery key. The owner chose Restic snapshots plus an offsite Litestream data replica
 to S3-compatible storage in the [deployment choices](./deployment.md#decisions-for-the-owner). The
-provider, replica protection and matching-key recovery path remain open; the lifecycle details here
-are proposals beyond the linked decisions.
+provider, encryption component and matching-key recovery path remain open; the lifecycle details
+here are proposals beyond the linked decisions.
 
 The [deploy spike](../../../spikes/deploy-local/README.md) ran every step here on local containers,
 and the [event log spike](../../../spikes/event-log-db/README.md) measured `VACUUM INTO` at scale.
@@ -128,9 +128,9 @@ The agreed Litestream replica follows the database only. Litestream 0.5 keeps sn
 changes for 24 hours by default, so a replica of the key store would keep a deleted key for a day,
 and it has no client-side encryption ([Litestream config](https://litestream.io/reference/config/)).
 The replica targets S3-compatible offsite storage, with Amazon S3 or Cloudflare R2 still open. Its
-privacy protection and matching-key recovery path need validation before use; scheduled key backups
-alone do not give fresh encrypted content the data replica's recovery window. With the proposed
-hourly key snapshots, new encrypted items can still lose up to an hour after host loss.
+host-side encryption component and matching-key recovery path need validation before use; scheduled
+key backups alone do not give fresh encrypted content the data replica's recovery window. With the
+proposed hourly key snapshots, new encrypted items can still lose up to an hour after host loss.
 Generation-triggered, debounced key publication is a candidate; its measured cadence and paired
 restore remain untested.
 

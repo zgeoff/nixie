@@ -145,7 +145,7 @@ Definitions and deployment models.
 
 - [0032: Offsite backups and replication](./decisions/0032-offsite-backups-and-replication.md) —
   Restic snapshots plus a database-only Litestream replica to S3-compatible storage; provider and
-  protection remain open
+  encryption component remain open
 
 ## Research
 
@@ -252,3 +252,6 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
 - [Deploy, back up, restore and roll back](../spikes/deploy-local/) — a digest pin, sops secrets
   decrypted in the process, the key store in its own restic repo, and a rollback as a revert plus a
   restore
+
+- [Replica encryption](../spikes/replica-encryption/) — Litestream through a host crypt gateway,
+  process outages and a restore without the original database
