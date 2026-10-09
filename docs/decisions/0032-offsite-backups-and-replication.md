@@ -62,5 +62,5 @@ that fresh data with an older key backup cannot decrypt new text. The
 [replica encryption spike](../../spikes/replica-encryption/) tests the selected host gateway with
 process outages and a fresh-config restore; it tests no cloud provider or matching-key recovery. The
 matching-key recovery, backend forget cleanup and end-to-end restore test remain open in
-[the deployment design](../design/deployment/deployment.md#decisions-for-the-owner) and
+[the deployment design](../design/deployment/deployment.md#agreed-backup-design) and
 [open items](../design/open-items.md).

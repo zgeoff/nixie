@@ -47,7 +47,7 @@ the decisions it rests on.
 
 - [Deployment](./design/deployment/deployment.md) — the host, the nixie image and the imp images,
   secrets decrypted in nixie's process, seeding the definitions, health, and Kubernetes, with the
-  deployment decisions for the owner
+  deployment lifecycle and configuration
 - [Backup and restore](./design/deployment/backup-and-restore.md) — hourly restic backups, the key
   store in its own repo, restoring on a new host, and the restore check
 - [Upgrades](./design/deployment/upgrades.md) — the pin and the bot, delivery to the host, a release

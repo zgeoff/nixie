@@ -52,9 +52,10 @@ the system drive ([imp install](https://github.com/zgeoff/imp/blob/v0.40.2/docs/
 nixie reaches impd's API with a token from the deployment's secrets, through the sandbox adapter
 from [0016](../../decisions/0016-own-interfaces.md). **Why:** impd runs as root with extra
 capabilities and its own Docker proxy, and keeping it out of nixie's Compose file keeps nixie's
-service unprivileged and lets imp upgrade on its own schedule. How each imp reaches nixie's tools
-without reaching impd's API stays the
-[deferred decision on the sandboxed endpoint](../open-items.md#deferred-decisions).
+service unprivileged and lets imp upgrade on its own schedule. The sandbox adapter supplies a
+run-bound loopback route to nixie's tools through the guest agent's reverse forward, with egress
+`none`, under [0030](../../decisions/0030-connectors-and-sandbox-environments.md). It never
+substitutes an address-wide allow entry that exposes impd.
 
 ## The image
 
@@ -102,19 +103,22 @@ The deployment repo holds one sops file, encrypted to 2 age recipients: the host
 recovery key. The host key lives on the host, readable only by nixie's user. The recovery key stays
 with the owner, off the host, and is the one key a restore on a new host needs.
 
-| Secret                                   | Used for                                                         |
-| ---------------------------------------- | ---------------------------------------------------------------- |
-| Deployment key                           | Wraps every key in the key store and the credential store values |
-| restic password                          | Encrypts every backup                                            |
-| Model credential                         | The broker grant that each imp holds under 0026                  |
-| Replica crypt password and optional salt | rclone object encryption and restore                             |
-| impd token                               | The sandbox adapter's calls to impd                              |
-| Push notifier and search keys            | Static values for channels and tools, such as a bot token        |
-| The owner's OAuth client pairs           | The owner's own clients under 0019                               |
+| Secret                                   | Used for                                                                |
+| ---------------------------------------- | ----------------------------------------------------------------------- |
+| Deployment key                           | Wraps the per-record, per-item and per-credential keys in the key store |
+| restic password                          | Encrypts every backup                                                   |
+| Model credential                         | The broker grant that each imp holds under 0026                         |
+| Replica crypt password and optional salt | rclone object encryption and restore                                    |
+| impd token                               | The sandbox adapter's calls to impd                                     |
+| Push notifier and search keys            | Static values for channels and tools, such as a bot token               |
 
-OAuth refresh tokens and every other value nixie writes at runtime live in the credential store in
-the database, encrypted with the deployment key, not in the sops file. The
-[credential store design](../connectors/credentials.md) covers the store and its backends.
+OAuth clients and tokens that the owner enters through connector setup live in the writable database
+credential backend. Each credential has its own encryption key in the key store, wrapped by the
+deployment key; runtime credential values are not encrypted directly with the deployment key. The
+deployment can supply a static credential through its read-only backend instead. A connection
+records the selected backend explicitly, and nixie never silently shadows it with a value from
+another source. The [credential store design](../connectors/credentials.md) covers the store and its
+backends.
 
 nixie decrypts the sops file inside its own process at start: it runs `sops decrypt` with the host
 key mounted read-only and keeps the plaintext in memory. In the deploy spike, decryption took 13 to
@@ -128,9 +132,9 @@ puts the plaintext on the host's disk or in the container's configuration.
 
 The owner changes a secret by editing the file with `sops`, committing and deploying. Replacing the
 host key is `sops updatekeys` with the new recipient. Replacing the deployment key means rewrapping
-every row in the key store and the credential store with both keys present, which a nixie command
-does in one transaction. A leaked age key decrypts every earlier commit of the file, so recovery
-rotates every secret the file ever held
+every wrapped key in the key store with both deployment keys present, which a nixie command does in
+one transaction. A leaked age key decrypts every earlier commit of the file, so recovery rotates
+every secret the file ever held
 ([deployment notes](../../research/2.6-notes/deployment.md#recommendations)).
 
 ## Seeding the definitions
@@ -180,13 +184,17 @@ opens, and the Compose health check reads it. Readiness lists each part with its
 | Disk             | Under 90% full on the data volume                          |
 | Spending         | The hard spending stop has not fired                       |
 
-The live view shows readiness, and a part that turns unready sends the owner a push notice through
-the channel adapter. Each notice carries no content beyond the part and its state, as every push
-does under [0009](../../decisions/0009-first-channel.md).
+The live view shows readiness, and a part that turns unready creates a platform status report
+flagged for attention, with its details in the client. The channel adapter sends only the standard
+count, fixed sentence and opaque link under [0009](../../decisions/0009-first-channel.md), never the
+part or its state.
 
-A push notice needs a running nixie, so nixie also sends a heartbeat: an empty request to a URL the
-owner sets, every 5 minutes by default. A dead-man service alerts the owner when the heartbeats
-stop. The upgrade script on the host reports a failed deploy to the same service.
+A push notice needs a running nixie. The deployment can configure an outbound heartbeat: an empty
+request to its chosen endpoint every 5 minutes by default, with no task, message or owner content.
+Its external monitor alerts when heartbeats stop, and the deployment's upgrade runner reports a
+failed deploy through the monitor's supported protocol. The platform exposes health and configurable
+heartbeat behavior; the endpoint, credentials, monitor and host supervision belong to the
+deployment.
 
 nixie logs to stdout as JSON lines, through Docker's local log driver with rotation. A log line
 holds envelope fields only, such as IDs, kinds and outcomes, and never message text, tool arguments
@@ -205,16 +213,23 @@ apart from the definitions repo, under 0020. The program pins the nixie image by
 Compose file does. The shape follows from one SQLite writer:
 
 - one replica, in a StatefulSet with a `ReadWriteOnce` volume and the default `RollingUpdate`
-  strategy, which stops the one pod before it starts its replacement, so 2 pods never open the
-  database at once
+  strategy, which stops the old pod before its normal replacement. The deployment must confirm
+  writer shutdown or isolate the old host from storage and outside services before a forced
+  replacement
 - the sops file and the host key as a Kubernetes Secret mounted read-only, decrypted by nixie at
   start as on Compose
 - impd on each node that runs nixie, outside the cluster or as a privileged pod with `/dev/kvm`
 
+A
+[ReadWriteOnce volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
+limits writable attachment to a node, not to one pod on that node. It does not itself prevent two
+writers. The deployment must preserve single-writer ownership during normal rollouts and forced
+recovery.
+
 The owner tests this path in practice. How impd runs beside a cluster is the open part, and the
 [open items](../open-items.md#spikes-to-run) list it.
 
-## Decisions for the owner
+## Agreed backup design
 
 1. **The backup tool and the replica: agreed.** Restic holds scheduled encrypted snapshots, and
    Litestream replicates `nixie.db` offsite through configurable S3-compatible storage. The
@@ -250,21 +265,17 @@ The owner tests this path in practice. How impd runs beside a cluster is the ope
    uploads and reads send the key to the provider over TLS. These provider-side features do not
    replace the selected host-side encryption.
 
-2. **How a merged upgrade reaches the host.** Options: a poll from the host, a webhook from the git
-   host, or the owner running one command. Recommendation: a poll every 5 minutes by a script on the
-   host. It needs no inbound route and no credential beyond a read-only deploy key. The trade-off is
-   up to 5 minutes between a merge and the deploy. [Upgrades](./upgrades.md#delivery) compares
-   the 3.
+## Deployment configuration
 
-3. **Where the owner keeps the recovery key.** Options: a printed paper key in an emergency kit, an
-   age plugin on a YubiKey, or a passkey through WebAuthn PRF, which `typage` supports. A deployment
-   can hold more than one, as extra recipients. Recommendation: a post-quantum hybrid age key on
-   paper as the baseline, plus a YubiKey for day-to-day restores. sops 3.13.3 encrypted to a hybrid
-   recipient, and the restore in the deploy spike decrypted with it. The trade-off is that losing
-   every recovery copy and the host loses every backup.
+The deployment repo chooses how a merged image pin reaches its hosts, where it keeps recovery
+identities, and which external service checks liveness. These are configuration choices under 0020,
+not platform technology choices. nixie supplies the lifecycle, secrets and health contracts that
+each configuration must meet.
 
-4. **Where the heartbeat goes when nixie is down.** Options: a hosted dead-man service, a
-   self-hosted one such as Healthchecks on another machine, or none. Recommendation: any service
-   that takes a ping URL, with the owner's choice of host. The ping carries no content, so a hosted
-   service learns only that a deployment exists and when it stops. The trade-off of none is that a
-   host down overnight goes unnoticed until the owner opens the client.
+[Upgrade delivery](./upgrades.md#delivery) includes poll, webhook and manual recipes. The deployment
+can use its own orchestrator instead, provided it honors writer shutdown, migrations, image
+compatibility and recovery. The sops reference path accepts the deployment's configured age
+recipients; the platform does not choose paper storage, a hardware device or a personal passkey
+library. The deployment validates that its recovery identity can decrypt the secrets on a clean host
+and keeps it apart from that host. Heartbeat URLs and monitoring services are deployment
+configuration too.

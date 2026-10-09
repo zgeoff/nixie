@@ -13,7 +13,7 @@ forces a refresh and removal of every older recoverable key copy before it repor
 [0010](../../decisions/0010-memory-store.md) requires. The hourly interval controls ordinary
 recovery age, not forget completion. A new host restores from the 2 repos, the deployment repo and
 the owner's recovery key. The owner chose Restic snapshots plus an offsite Litestream data replica
-to S3-compatible storage in the [deployment choices](./deployment.md#decisions-for-the-owner). The
+to S3-compatible storage in the [deployment choices](./deployment.md#agreed-backup-design). The
 matching-key recovery path remains open; the lifecycle details here are proposals beyond the linked
 decisions.
 

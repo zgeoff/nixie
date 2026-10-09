@@ -47,7 +47,7 @@ The local run passes 7 checks:
 
 The gateway can recover from these process outages, and restoring requires the encryption password
 as well as the remote objects. This supports the selected gateway in the
-[deployment design](../../docs/design/deployment/deployment.md#decisions-for-the-owner), not cloud
+[deployment design](../../docs/design/deployment/deployment.md#agreed-backup-design), not cloud
 validation or a production recovery bound.
 
 ## Limits

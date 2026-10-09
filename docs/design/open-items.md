@@ -27,16 +27,6 @@ after the first build.
   different models for chat, memory writing, tool calls and long background reasoning, with low
   reasoning effort for chat, because effort sets cost and latency more than any other setting. No
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
-- **How a sandboxed session reaches nixie's endpoint.** In imp 0.38.1, an allow entry admits a whole
-  address, so a sandboxed session that reaches nixie's tools on the host reaches imp's management
-  API too ([0003](../decisions/0003-sdk-placement.md)). Every worker and the conversation run in an
-  imp under [0026](../decisions/0026-where-workers-and-the-conversation-run.md), so the first build
-  needs the answer. The options are port-level allow entries in imp, an imp network or granted
-  hostname, or nixie's endpoint on an address that serves nothing else.
-- **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
-  `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
-  whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
-  under [0001](../decisions/0001-durable-layer.md).
 
 ## Spikes to run
 
@@ -63,7 +53,7 @@ after the first build.
   the Compose path on local containers. A throwaway host with KVM adds what it left out: imp beside
   nixie with imp images added from a manifest, a pull from a public registry by digest, a Renovate
   pull request, the deploy script on a timer, restic over a network backend, a disk with LUKS, and a
-  recovery key on a YubiKey ([deployment](./deployment/deployment.md#decisions-for-the-owner)).
+  recovery key on a YubiKey ([deployment](./deployment/deployment.md#deployment-configuration)).
 - **A rollback across outside actions** (about half a day): run outside actions after an upgrade,
   roll back with a restore, and confirm that each action reaches the restored log with its outcome
   and that its task starts paused ([upgrades](./deployment/upgrades.md#rolling-back)).

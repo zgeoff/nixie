@@ -6,11 +6,12 @@
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md)
 
 An upgrade is a merged pull request that changes the nixie image digest in the deployment repo, and
-a rollback is a revert of that commit, under [0020](../../decisions/0020-deployment.md). A script on
-the host deploys each new commit. nixie takes a database copy before every migration, and each
-release keeps its migrations readable by the release before it, so a rollback by one release needs
-no restore. A rollback further back restores the copy from before the migration and loses the writes
-made since. Everything in this doc beyond the decisions it links is a proposal.
+a rollback is a revert of that commit, under [0020](../../decisions/0020-deployment.md). The
+deployment decides how each new commit reaches its hosts; a host script is the Compose reference
+recipe. nixie takes a database copy before every migration, and each release keeps its migrations
+readable by the release before it, so a rollback by one release needs no restore. A rollback further
+back restores the copy from before the migration and loses the writes made since. Everything in this
+doc beyond the decisions it links is a proposal.
 
 ## The pin and the bot
 
@@ -36,10 +37,9 @@ A merge has to reach the host. 3 routes do it:
 | Webhook | A public endpoint, a shared secret     | Seconds             | Yes           |
 | Manual  | The owner runs one command on the host | When the owner acts | None          |
 
-The recommendation is the poll, in the
-[decisions for the owner](./deployment.md#decisions-for-the-owner). A systemd timer on the host runs
-the deploy script every 5 minutes by default, and the owner can run the same script by hand, which
-covers the manual route. A webhook can trigger the same script later without changing it.
+Delivery is deployment configuration under 0020. The Compose reference recipe uses a systemd timer
+every 5 minutes, with the same script available by hand or from a webhook. An orchestrator can
+replace that recipe while preserving the platform's stop, migration and recovery contract.
 
 The deploy script runs these stages:
 
@@ -69,8 +69,12 @@ nixie stops and starts in these stages:
 3. **Migrate.** Each migration runs in one transaction with the schema version.
 4. **Add images.** nixie adds each imp image named in its manifest to impd, and keeps the previous
    release's images until the next upgrade, so a rollback finds them.
-5. **Recreate the conversation imp** from the new conversation image. The conversation resumes from
-   its session at its last committed step.
+5. **Replace the conversation imp** from the new conversation image after the old runner stops. Its
+   local SDK transcript is a cache, so replacement rebuilds application context from the canonical
+   log, task state and eligible summary under
+   [0031](../../decisions/0031-memory-capture-context-and-removal.md). It does not promise identical
+   SDK context or cache continuity. Unchanged worker images can retain their own valid caches; a
+   replaced worker follows the same rebuild contract.
 6. **Seed** the definitions, as [deployment](./deployment.md#seeding-the-definitions) describes.
 7. **Ready.** Runners claim work, and the readiness list turns ready.
 
@@ -85,10 +89,12 @@ deploy spike, build 1 exited on build 2's schema with "database schema 2 is newe
 which knows schema 1; restore the backup taken before the upgrade", and Compose reported the start
 as failed.
 
-A release's migrations only add: new tables, new columns with defaults, new indexes. A migration
-that removes or renames lands one release after the change that stopped using the old shape.
-**Why:** the release before can then read the schema each release leaves, so reverting one release
-needs no restore and loses no writes.
+A release normally expands the schema with new tables, columns with defaults or indexes. A removal
+or rename waits until the previous release no longer needs that shape. Migration authors check both
+schema access and write compatibility before they label a release backward-compatible; an additive
+schema alone does not prove that the older build can use the newer data. **Why:** the release before
+can then read the schema each release leaves, so reverting one release needs no restore and loses no
+writes.
 
 A release that cannot follow that rule, such as one that rewrites a table's format, marks its schema
 as unreadable by the release before, and the pull request states it. A rollback past it needs a
@@ -115,7 +121,10 @@ that keys the key store is therefore random, such as a UUID, never a row number 
 out. **Why:** with row numbers, the restored database handed the next item an ID whose key the
 discarded span left behind, and the write failed on the key store's unique key. With random IDs, the
 spike wrote an item after the rollback with no clash. The keys left behind stay until the owner
-removes the set-aside database, and then nixie deletes them.
+removes the set-aside database. Before deleting them, cleanup proves that no retained readable item,
+record, credential or registered recovery copy still needs them. Unreferenced-key cleanup follows
+the same durable key-backup removal contract as forget; it never deletes a live key solely because
+the restored database lacks its row.
 
 The restored database lacks every record written since the upgrade, including outside actions that
 ran then. `nixie rollback` reads the set-aside database before it starts nixie, and writes a record
