@@ -35,6 +35,13 @@ and the stages agreed for after the first build.
 
 ## Spikes to run
 
+- **Batched memory capture, if chosen.** The [offline batch spike](../../spikes/memory-batch/)
+  checks a durable cursor, source-bound quote checks and recovery after process kills with fixture
+  model output. A batch can exceed the draft's 20-message evidence window, so source IDs must bind
+  quotes to its original owner messages. Model quality, capture delay and cache/input costs remain
+  unmeasured. Custom rollover needs live SDK continuity and compaction-boundary checks before it
+  replaces the SDK route; both writer cadence and rollover remain owner proposals.
+
 - **The semantic-index lifecycle.** Check the design's version gates and memory-only generations
   when a write, retire, forget or encoder change races with background encoding. A stale candidate
   must never return canonical text that is no longer eligible. Pause a result after validation,
