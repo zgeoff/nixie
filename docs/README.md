@@ -143,6 +143,10 @@ Definitions and deployment models.
 - [0020: Deployment and definitions](./decisions/0020-deployment.md) — definitions in their own repo
   seed the database, and running nixie lives with the deployment
 
+- [0032: Offsite backups and replication](./decisions/0032-offsite-backups-and-replication.md) —
+  Restic snapshots plus a database-only Litestream replica to S3-compatible storage; provider and
+  protection remain open
+
 ## Research
 
 Phase 2, kept for its evidence until it is archived. Where a decision exists, it supersedes the

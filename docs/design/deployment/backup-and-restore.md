@@ -1,8 +1,9 @@
 # Backup and restore
 
 - Status: Proposed
-- Decisions: [0010](../../decisions/0010-memory-store.md),
-  [0020](../../decisions/0020-deployment.md), [0025](../../decisions/0025-database-and-topology.md),
+- Decisions: [0032](../../decisions/0032-offsite-backups-and-replication.md),
+  [0010](../../decisions/0010-memory-store.md), [0020](../../decisions/0020-deployment.md),
+  [0025](../../decisions/0025-database-and-topology.md),
   [0031](../../decisions/0031-memory-capture-context-and-removal.md)
 
 nixie backs up its SQLite database and its key store every hour by default, with `VACUUM INTO`
@@ -11,8 +12,10 @@ retention. The key store goes to its own repo, which keeps an acknowledged fresh
 forces a refresh and removal of every older recoverable key copy before it reports completion, as
 [0010](../../decisions/0010-memory-store.md) requires. The hourly interval controls ordinary
 recovery age, not forget completion. A new host restores from the 2 repos, the deployment repo and
-the owner's recovery key. Everything in this doc beyond the decisions it links is a proposal, and
-the backup tool itself is a [decision for the owner](./deployment.md#decisions-for-the-owner).
+the owner's recovery key. The owner chose Restic snapshots plus an offsite Litestream data replica
+to S3-compatible storage in the [deployment choices](./deployment.md#decisions-for-the-owner). The
+provider, replica protection and matching-key recovery path remain open; the lifecycle details here
+are proposals beyond the linked decisions.
 
 The [deploy spike](../../../spikes/deploy-local/README.md) ran every step here on local containers,
 and the [event log spike](../../../spikes/event-log-db/README.md) measured `VACUUM INTO` at scale.
@@ -108,7 +111,7 @@ The [key-backup spike](../../../spikes/forget-backups/) tests restic 0.19.1 on a
 filesystem repository. Default `--keep-last 1` retained old key snapshots in separate host groups.
 Removing those snapshots without prune left a blob that still decrypted the forgotten item. Explicit
 fresh-snapshot retention plus prune cleared that blob; the neighbour still restored. This validates
-a candidate, not the owner choice of backup tool or a cloud backend.
+the local snapshot cleanup path, not a cloud backend or its historical object cleanup.
 
 Errors, failed prune, unavailable backends and crashes keep the forget pending. Recovery resumes the
 same operation; it does not restore an old key to reverse a partial deletion. Completion waits for
@@ -121,10 +124,15 @@ The key repo is for restoring a lost host, never for rolling back an upgrade. Th
 spike showed that restoring a pre-forget key copy brought an item back; keeping the live key store
 did not. Backend-specific fault and deletion tests remain required before real use.
 
-A Litestream replica, if the owner chooses one, follows the database only. Litestream 0.5 keeps
-snapshots and their changes for 24 hours by default, so a replica of the key store would keep a
-deleted key for a day, and it has no client-side encryption
-([Litestream config](https://litestream.io/reference/config/)).
+The agreed Litestream replica follows the database only. Litestream 0.5 keeps snapshots and their
+changes for 24 hours by default, so a replica of the key store would keep a deleted key for a day,
+and it has no client-side encryption ([Litestream config](https://litestream.io/reference/config/)).
+The replica targets S3-compatible offsite storage, with Amazon S3 or Cloudflare R2 still open. Its
+privacy protection and matching-key recovery path need validation before use; scheduled key backups
+alone do not give fresh encrypted content the data replica's recovery window. With the proposed
+hourly key snapshots, new encrypted items can still lose up to an hour after host loss.
+Generation-triggered, debounced key publication is a candidate; its measured cadence and paired
+restore remain untested.
 
 ## Restoring on a new host
 

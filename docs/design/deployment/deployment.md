@@ -1,9 +1,9 @@
 # Deployment
 
 - Status: Proposed
-- Decisions: [0010](../../decisions/0010-memory-store.md),
-  [0016](../../decisions/0016-own-interfaces.md), [0020](../../decisions/0020-deployment.md),
-  [0025](../../decisions/0025-database-and-topology.md),
+- Decisions: [0032](../../decisions/0032-offsite-backups-and-replication.md),
+  [0010](../../decisions/0010-memory-store.md), [0016](../../decisions/0016-own-interfaces.md),
+  [0020](../../decisions/0020-deployment.md), [0025](../../decisions/0025-database-and-topology.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md)
 
 nixie runs as one container from one image, next to an imp host on the same machine, with its state
@@ -214,21 +214,36 @@ The owner tests this path in practice. How impd runs beside a cluster is the ope
 
 ## Decisions for the owner
 
-1. **The backup tool and the replica.** Options:
-   - restic, with an hourly `VACUUM INTO` copy, and no continuous replica
-   - restic plus Litestream streaming the database to a second local disk. It can recover newer
-     database changes, but new encrypted content also needs the corresponding keys; a database-only
-     replica does not guarantee recovery within seconds.
-   - Kopia in place of restic
+1. **The backup tool and the replica: agreed.** Restic holds scheduled encrypted snapshots, and
+   Litestream replicates `nixie.db` offsite to S3-compatible object storage. The provider remains
+   open: Amazon S3 or Cloudflare R2. Both are supported by the
+   [Litestream S3-compatible guide](https://litestream.io/guides/s3-compatible/).
 
-   Recommendation: restic with hourly backups. The deploy spike restored from it on a clean host,
-   and a backup run took about 3 s once its repos existed. Litestream 0.5 has no client-side
-   encryption, so its replica stays on the owner's disks, and its 24-hour snapshot retention rules
-   it out for the key store. The [paired-store control](../../../spikes/forget-backups/) shows that
-   current data with an older key backup cannot decrypt a newly created item. The replica option
-   needs a validated mutable-key recovery path before it can promise a shorter window. Kopia
-   encrypts as well and its repos are not tested here. The trade-off is up to an hour of writes lost
-   when the host's disk fails between backups.
+   The snapshot path restored on a clean host in the deploy spike. The
+   [paired-store control](../../../spikes/forget-backups/) shows that current data with an older key
+   backup cannot decrypt a newly created item. A validated matching-key recovery path therefore
+   remains necessary before the continuous replica can promise a shorter recovery window. Litestream
+   does not replicate `keys.db`, because its historical copies would preserve deleted keys. Restic
+   alone accepts up to an hour of lost writes at the proposed interval; Kopia is the alternative
+   snapshot tool that was not chosen.
+
+   Cloud replica protection remains an owner choice. Litestream 0.5.x lacks client-side age
+   encryption, although its S3 backend supports server-side SSE-C and SSE-KMS
+   ([Litestream configuration](https://litestream.io/reference/config/#encryption)). Item-level
+   encryption covers erasable content but leaves database envelopes readable. The cloud path needs
+   an explicit privacy choice and a restore test; neither a cloud provider nor a new encryption
+   component is adopted here. A candidate is a host-local
+   [rclone S3 gateway](https://rclone.org/commands/rclone_serve_s3/) over a
+   [crypt remote](https://rclone.org/crypt/), so the provider receives encrypted replica objects.
+   The gateway is experimental and adds a process; server-side encryption has fewer host components
+   but trusts the provider with readable database pages. The encryption component remains an owner
+   choice.
+
+   Both provider candidates support SSE-C;
+   [Cloudflare's SSE-C guide](https://developers.cloudflare.com/r2/examples/ssec/) covers R2. SSE-C
+   sends the key to the provider over TLS with uploads and reads. Amazon S3 can also use AWS KMS.
+   These server-side options protect storage at rest; using them without host-side payload
+   encryption needs a separate owner agreement to provider-readable envelopes.
 
 2. **How a merged upgrade reaches the host.** Options: a poll from the host, a webhook from the git
    host, or the owner running one command. Recommendation: a poll every 5 minutes by a script on the

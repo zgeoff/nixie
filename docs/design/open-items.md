@@ -7,6 +7,17 @@ after the first build.
 
 ## Deferred decisions
 
+- **The offsite provider and replica protection.**
+  [0032](../decisions/0032-offsite-backups-and-replication.md) chooses Restic plus a database-only
+  Litestream replica to S3-compatible storage. Amazon S3 versus Cloudflare R2 and the encryption
+  component remain owner choices. Readable envelopes on provider storage are not authorized by that
+  decision; the [deployment options](./deployment/deployment.md#decisions-for-the-owner) include a
+  host-local crypt gateway and server-side encryption with a different trust boundary.
+- **The matching-key recovery path.** Generation-triggered, debounced Restic key snapshots are a
+  candidate within the existing publication barrier. The encrypted-content recovery point, a paired
+  cloud restore and the cadence under failures remain untested; a fresh data replica alone cannot
+  recover absent keys.
+
 - **The voice stack.** Voice runs in nixie's own client under
   [0009](../decisions/0009-first-channel.md), and the
   [first-token spike](../../spikes/sdk-first-token/) measured an Agent SDK turn: Haiku 5.5 at low
@@ -34,6 +45,11 @@ after the first build.
   under [0001](../decisions/0001-durable-layer.md).
 
 ## Spikes to run
+
+- **Offsite replica and forget cleanup** (effort unknown): test the selected provider and protection
+  with the data replica plus fresh keys. Test gateway crashes and restarts if selected, failed/stale
+  key publication, complete backend key cleanup including object versions, and a restore after total
+  host loss. The local Restic spike tests no cloud provider.
 
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
