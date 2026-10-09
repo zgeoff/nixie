@@ -1,8 +1,9 @@
 # The channel adapter
 
 - Status: Proposed
-- Decisions: [0002](../../decisions/0002-approvals.md),
-  [0006](../../decisions/0006-approval-record.md), [0009](../../decisions/0009-first-channel.md),
+- Decisions: [0029](../../decisions/0029-channels-and-clients.md),
+  [0002](../../decisions/0002-approvals.md), [0006](../../decisions/0006-approval-record.md),
+  [0009](../../decisions/0009-first-channel.md),
   [0012](../../decisions/0012-high-risk-approvals.md),
   [0016](../../decisions/0016-own-interfaces.md), [0020](../../decisions/0020-deployment.md)
 
@@ -41,9 +42,9 @@ interface ChannelContext {
 - `receiveMessage` writes an `owner_message` record and routes it, under
   [tasks](../core/tasks.md#routing-from-the-conversation). The message carries its client message
   ID, its thread and its paste spans, which [the client](./client.md#sending-a-message) covers.
-- `receiveAction` handles every checked action: approve, decline, settle an unknown outcome, pause,
-  stop, restart, close, and move a message to another task. Each one has its own typed input, is
-  checked against the owner's session or channel identity, and writes its own record.
+- `receiveAction` handles every checked action: approve, defer, decline, settle an unknown outcome,
+  pause, stop, restart, close, and move a message to another task. Each one has its own typed input,
+  is checked against the owner's session or channel identity, and writes its own record.
 - `follow` streams the log by sequence with the projection rows each record changed, which
   [the live view](./live-view.md#how-the-client-stays-current) covers.
 - `push` sends a content-free notice, and only a push notifier implements it in the first build.
@@ -132,11 +133,10 @@ button labelled "Open nixie". The link points at the client with an opaque item 
 amount. **Why:** Telegram keeps the full history of a bot chat, so anything in the notice rests on
 Telegram's servers.
 
-nixie keeps one live notice in the chat instead of sending a message per event. When more items
-arrive, the adapter edits the live notice with the new count and sends a new notice only when the
-last one is older than 1 h by default, so the phone buzzes again for news but not for every item.
-When the owner has opened every waiting item, nixie edits the live notice to "Nothing waiting".
-[Decisions for the owner](./client.md#decisions-for-the-owner) lists this behaviour as a choice.
+nixie keeps one live notice. Routine items edit that notice quietly, with no buzz. Always-ask items,
+unconfirmed outcomes and returning deferred items send a new, buzzing notice, which becomes the live
+notice. When no active item waits, nixie edits the live notice to "Nothing waiting". Deferred
+proposals count in no push. Opening an item does not answer it or remove its count.
 
 ### When nixie pushes
 
@@ -149,8 +149,9 @@ nixie pushes when an item needs the owner and the owner has no client open:
 
 An owner counts as present when a client has shown the conversation or a task within the last 2 min,
 and nixie then skips the push, because the client shows the item itself. nixie batches the items
-that arrive within 30 s into one notice. Quiet hours are off by default, and the owner can set them;
-a push held by quiet hours goes out when they end. All 3 times are settings the owner can change.
+that arrive within 30 s into one notice. Quiet hours suppress loud pushes overnight by default,
+except for unconfirmed outcomes. A loud push held by quiet hours goes out when they end if the item
+still waits. Presence, batching and quiet-hour times are settings the owner can change.
 
 ## Room for later channels
 

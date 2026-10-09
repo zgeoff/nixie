@@ -1,8 +1,9 @@
 # The client
 
 - Status: Proposed
-- Decisions: [0002](../../decisions/0002-approvals.md),
-  [0009](../../decisions/0009-first-channel.md), [0011](../../decisions/0011-memory-writes.md),
+- Decisions: [0029](../../decisions/0029-channels-and-clients.md),
+  [0002](../../decisions/0002-approvals.md), [0009](../../decisions/0009-first-channel.md),
+  [0011](../../decisions/0011-memory-writes.md),
   [0012](../../decisions/0012-high-risk-approvals.md),
   [0016](../../decisions/0016-own-interfaces.md),
   [0018](../../decisions/0018-main-thread-and-tasks.md),
@@ -14,9 +15,9 @@ nixie's own client holds the conversation, the approvals and the live view, unde
 first build and as a React Native app built with Expo, Android first, in tier 2. Both talk to nixie
 through one typed API with a live stream, and both are the same full channel to the
 [channel adapter](./channel-adapter.md). The client records which spans of each message the owner
-pasted, which the memory rules in [0011](../../decisions/0011-memory-writes.md) need. Everything in
-this doc beyond the decisions it links is a proposal, and the framework and library choices are in
-[Decisions for the owner](#decisions-for-the-owner).
+pasted, which the memory rules in [0011](../../decisions/0011-memory-writes.md) need. The owner
+settled the client choices in [0029](../../decisions/0029-channels-and-clients.md); interface
+sketches remain proposals.
 
 ## What the client shows
 
@@ -65,6 +66,22 @@ The Expo app uses the same contract. oRPC documents Expo SDK 56 and later as str
 box, because `expo/fetch` replaces React Native's global `fetch`, whose responses have no body to
 stream. Running it on a device is a [spike to run](../open-items.md#spikes-to-run).
 
+## Two clients, one contract
+
+The web client uses TanStack Start, mounted inside nixie's own Elysia process. Elysia serves the
+assets and passes web requests to Start's fetch handler; there is one server process. Start's server
+code calls nixie's oRPC procedures in-process through an isomorphic link, while browser and Expo
+calls use the HTTP link. Both routes build the same authenticated device-session context and run the
+same checks. Server rendering gives no extra authority, and no global context holds a session.
+
+A shared package holds the oRPC contract, `@orpc/tanstack-query` hooks, paste-span logic and view
+state. Start and Expo each own their UI. The server implementation stays out of client bundles.
+React Server Components are opt-in and experimental, as the
+[Start guide](https://tanstack.com/start/latest/docs/framework/react/guide/server-components)
+states. The [hosting guide](https://tanstack.com/start/latest/docs/framework/react/guide/hosting)
+describes custom servers that serve assets and call the server entry's fetch handler. Mounting that
+handler and the isomorphic session context together needs an integration spike.
+
 ## Owner identity and sessions
 
 The owner signs a device in once, and the device then holds a session until the owner revokes it.
@@ -88,7 +105,8 @@ A passkey joins this scheme once [0012](../../decisions/0012-high-risk-approvals
 owner registers a passkey from a signed-in client, and from then on a new device signs in with the
 passkey instead of an enrolment code, and an always-ask approval asks for it. WebAuthn needs a
 secure origin with a stable host name, so the deployment must serve the client over HTTPS on a fixed
-name, under [0020](../../decisions/0020-deployment.md).
+name, under [0020](../../decisions/0020-deployment.md). The expected private-network deployment
+already supplies HTTPS on a fixed name; a passkey needs no new infrastructure.
 
 ## Sending a message
 
@@ -120,10 +138,11 @@ The client labels every span of a message with how it arrived. The
 - Undo and redo restore text as unknown, because the event does not say where the text came from.
 
 Chromium and Firefox both passed every step of the spike. The same span logic runs in React Native
-with a different source for each edit. React Native's text input has no paste event, and an Android
-keyboard inserts its clipboard suggestions as if typed, so on native a multi-character insertion
-that no paste hook flags counts as unknown. Testing that on a device is a
-[spike to run](../open-items.md#spikes-to-run).
+with a different source for each edit. The Android app includes a native module from the start that
+hooks paste; text not pasted counts as typed. The module's depth grows with device checks. Keyboard
+clipboard chips such as Gboard's can bypass the basic paste hook; those paths remain explicitly
+untested and deferred in [open items](../open-items.md#spikes-to-run). A path known to bypass the
+hook stays unknown until the module can distinguish it.
 
 Offsets count UTF-16 code units, as JavaScript string indices do. The server checks that the spans
 are ordered, do not overlap and cover the whole text, and labels a message whose spans fail the
@@ -148,8 +167,8 @@ message during a long reply with no tool running, are a
 
 nixie passes the message into the live session with the record's ID as the SDK message's `uuid`. The
 SDK stamps that ID on the first assistant message that reads it, so the step's commit marks exactly
-those records read and moves the inbox cursor past them. A step that crashes before its commit
-leaves them unread, and the rerun from the session boundary under
+those records read and moves the inbox cursor only past contiguous read records. A step that crashes
+before its commit leaves them unread, and the rerun from the session boundary under
 [crash recovery](../core/tasks.md#crash-recovery) delivers them again, once.
 
 ## Deep links
@@ -169,37 +188,8 @@ a voice session becomes another kind of procedure on the same API, a transcribed
 through the same send with a `dictated` source, and an approval during a call stays a checked action
 on screen, which the deferred decision on approval during a voice call covers.
 
-## Decisions for the owner
+## Agreed client choices
 
-Each decision lists the options, a recommendation and the trade-off. Approving everything on the
-digest sheet at once is a decision the policy design brings.
-
-1. **The typed API layer.** Options: oRPC, tRPC 11, or Elysia's Eden. **Recommended: oRPC, served
-   through Elysia, with server-sent events for the stream.** The spike showed one contract with
-   typed errors, an event stream that resumes by event ID, a WebSocket transport behind the same
-   contract, and documented Expo support. tRPC has the larger community and needs its own adapters
-   on Bun; Eden ties the client to Elysia's route types, so the contract cannot live apart from the
-   server. Elysia adds static file serving and plugins over plain `Bun.serve`, which oRPC would run
-   on equally.
-2. **The web client and the Expo app: one codebase or two.** Options: one Expo codebase that builds
-   the web client with React Native Web; or a separate web client, with a shared package for the
-   contract, the query hooks, the span logic and view state. **Recommended: a separate web client on
-   Vite with TanStack Router and TanStack Query, and the shared package.** The web client is tier 1
-   and desktop first, and the paste spans need the browser's `beforeinput` event, which React Native
-   Web's text input offers no prop for, so the client would reach past it to the DOM node. One
-   codebase builds the Android app with no second UI to write, at the cost of a weaker desktop
-   experience. TanStack Start in single-page mode is the alternative for the web client; its server
-   functions and server rendering duplicate the typed API and nixie's server.
-3. **Signing a device in.** Options: an enrolment code from the host with device sessions; a
-   password; or a passkey from the first build. **Recommended: the enrolment code with device
-   sessions, and the passkey when 0012 lands.** The code needs no secret to remember and works on a
-   host with no HTTPS name yet. A password adds a secret to guard and reset. A passkey from the
-   start is the strongest, and needs HTTPS on a fixed host name before the first sign-in.
-4. **Where approvals appear.** Options: a card in the thread that asked, plus the digest sheet; or
-   the digest sheet only. **Recommended: both.** A card in the thread lets the owner approve in the
-   flow of the conversation, and the sheet clears what queued while the owner was away. The sheet
-   alone keeps the conversation free of buttons, at the cost of a detour for every approval.
-5. **How the push notice behaves.** Options: one live notice that nixie edits as items arrive, with
-   a new notice after an hour; or a new notice for each batch. **Recommended: the live notice.** The
-   chat holds one current message, and the phone buzzes for news rather than for every item. A
-   notice per batch makes every arrival buzz and leaves a stack of stale counts in the chat.
+[0029](../../decisions/0029-channels-and-clients.md) settles oRPC on Elysia with server-sent events,
+TanStack Start for the web, Expo for Android, device sessions, approval cards plus the digest sheet,
+two push levels and a native Android paste module.

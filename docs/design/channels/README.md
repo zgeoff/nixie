@@ -2,7 +2,7 @@
 
 How the owner reaches nixie and how nixie reaches the owner: nixie's own client, the push notifier,
 and the trigger sources that start work without the owner. [The client](./client.md) is the main doc
-and holds the decisions for the owner.
+and follows the agreed choices in [0029](../../decisions/0029-channels-and-clients.md).
 
 - [The client](./client.md) — the web client and the Expo app, the typed API, owner identity and
   sessions, sending a message with its paste spans, messages into a running task, and deep links

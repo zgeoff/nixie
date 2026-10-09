@@ -1,7 +1,8 @@
 # The trigger source
 
 - Status: Proposed
-- Decisions: [0001](../../decisions/0001-durable-layer.md),
+- Decisions: [0029](../../decisions/0029-channels-and-clients.md),
+  [0001](../../decisions/0001-durable-layer.md),
   [0013](../../decisions/0013-definition-versioning.md),
   [0015](../../decisions/0015-taint-scope.md), [0016](../../decisions/0016-own-interfaces.md),
   [0020](../../decisions/0020-deployment.md),

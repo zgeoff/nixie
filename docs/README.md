@@ -48,7 +48,7 @@ the decisions it rests on.
 - [Channels design index](./design/channels/README.md) — the client, the channel adapter, approvals,
   the live view and the trigger source
 - [The client](./design/channels/client.md) — the web client and the Expo app, the typed API,
-  sessions, paste spans, messages into a running task, and the decisions for the owner
+  sessions, paste spans, messages into a running task, and the agreed client choices
 - [The channel adapter](./design/channels/channel-adapter.md) — the interface, the owner record, and
   the Telegram notifier with its content-free notice
 - [Approvals in the client](./design/channels/approvals.md) — approval cards, risk classes, the
@@ -124,6 +124,9 @@ Clients, push and voice.
 
 - [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
   conversation, approvals and voice, and chat apps carry content-free pushes
+
+- [0029: Channels and clients](./decisions/0029-channels-and-clients.md) — oRPC, Start and Expo,
+  device sessions, deferred approvals, two push levels and native Android paste capture
 
 ### Connectors
 

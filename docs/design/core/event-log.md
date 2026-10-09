@@ -123,8 +123,12 @@ The live view is the long form: the client opens a task and reads its records as
 with each tool call, decision and worker transcript expandable.
 
 The client follows the log by sequence. It loads a projection, notes the last sequence it read, and
-then receives every newer record. A record the client cannot render yet still shows by its kind, so
-nothing is hidden by a missing renderer.
+then receives every newer record together with the projection rows that its transaction changed. The
+initial projection and its sequence come from one read snapshot. Catch-up events carry the rows as
+of each record, from retained deltas or a fold at that sequence, never current rows under an old
+event ID. The client applies records and changed rows together before it advances its cursor. A
+record the client cannot render yet still shows by its kind, so nothing is hidden by a missing
+renderer.
 
 Following by sequence needs a sequence that orders records by commit. SQLite allows one writer at a
 time, so an integer primary key grows in commit order, and a reader that asks for records after

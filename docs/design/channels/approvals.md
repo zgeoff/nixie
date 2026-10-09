@@ -1,8 +1,9 @@
 # Approvals in the client
 
 - Status: Proposed
-- Decisions: [0002](../../decisions/0002-approvals.md),
-  [0006](../../decisions/0006-approval-record.md), [0009](../../decisions/0009-first-channel.md),
+- Decisions: [0029](../../decisions/0029-channels-and-clients.md),
+  [0002](../../decisions/0002-approvals.md), [0006](../../decisions/0006-approval-record.md),
+  [0009](../../decisions/0009-first-channel.md),
   [0012](../../decisions/0012-high-risk-approvals.md),
   [0021](../../decisions/0021-outside-action-outcomes.md),
   [0023](../../decisions/0023-lifting-always-ask.md),
@@ -59,12 +60,36 @@ A proposal card offers these choices, each a checked action:
 - **Approve** runs the action once, under [0006](../../decisions/0006-approval-record.md).
 - **Always allow** approves and creates the rule the card shows. Creating a rule widens policy, so
   the client asks for a second confirmation in the always-ask style before it sends the answer.
+- **Defer** keeps the proposal pending until a chosen time, with an optional note. It is available
+  on every proposal card, including always-ask and lifting cards.
 - **Decline** closes the proposal, and the task learns of it in its next turn. An optional note goes
   to the task as an ordinary owner message, so the model reads why.
 
 The owner can also reply in the thread, such as "make it 8:30", and the model withdraws the proposal
 and posts a new one, as [0002](../../decisions/0002-approvals.md) describes. The client shows a
 withdrawn card as withdrawn, with a link to the proposal that replaced it.
+
+### Defer
+
+The time choices are 1 hour (a configurable default), this evening, tomorrow morning and custom,
+with an optional note. The client resolves the named times in the owner's time zone and shows the
+exact time before the owner confirms. The server checks the time and writes the defer record,
+updates the proposal and its durable resurface and lapse timers in one transaction.
+
+The proposal stays pending, moves to a collapsed "Deferred" group in the thread and digest sheet,
+and counts in no push or routine approval batch. At the chosen time it returns as a fresh active
+item and sends a buzzing notice, subject to quiet hours. A withdrawn, declined, approved or lapsed
+proposal never resurfaces; its timer checks the current proposal state and defer generation.
+
+Defer extends the lapse so the item can return for an answer, but never past the action's own real
+deadline. The client offers no time past that deadline, and the server checks it again. If the
+deadline arrives first, the proposal lapses. Deferral changes no action arguments or action hash.
+
+The task receives an event such as "owner deferred until 18:00", plus the note, and can continue
+other work. The agent does not ask why by default; at most it says "OK, I'll bring this back at 6".
+Defer authorizes no action. A later approval stays bound to the exact action, and policy runs again
+before the action executes. Defer needs the device-session check, not the approval's passkey check;
+the passkey still applies when the owner approves an always-ask or lifting action.
 
 An unknown outcome shows the same card with the action as it was proposed, what nixie tried, each
 check's answer, and the 3 choices that
@@ -79,8 +104,9 @@ proposal ID, the action hash the card rendered, the choice and a client action I
 1. checks the session against the owner record, and refuses a revoked or unknown session
 2. checks that the proposal is still open and that the hash matches the open proposal
 3. checks that the choice fits the class, so an always-ask item never arrives in a batch, and once
-   0012 lands, that a passkey assertion came with it
-4. records the answer with the session's identity row, and consumes the approval as
+   0012 lands, that an approval of an always-ask or lifting item has a passkey assertion
+4. records the answer with the session's identity row; a defer updates the timers without consuming
+   approval, while an approval is consumed as
    [outside actions](../core/outside-actions.md#consuming-the-approval) describes
 
 A hash that no longer matches gets a `CONFLICT` error, and the client fetches the proposal again and
@@ -120,6 +146,7 @@ waiting".
 ## Lapses and reminders
 
 A proposal lapses after the time [tasks](../core/tasks.md#waits) sets, and the card then shows it as
-lapsed with no controls. nixie sends no reminder push for an item a notice has counted. **Why:** the
-live notice from the [push notifier](./channel-adapter.md#what-a-notice-holds) carries the count,
-and a reminder per item works against the 0-prompt target.
+lapsed with no controls. A deferred item resurfaces with a new notice at its chosen time. Otherwise,
+nixie sends no reminder push for an item a notice has counted. **Why:** the live notice from the
+[push notifier](./channel-adapter.md#what-a-notice-holds) carries the count, and a reminder per item
+works against the 0-prompt target.

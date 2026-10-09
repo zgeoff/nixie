@@ -34,6 +34,14 @@ expiries, and the stages agreed for after the first build.
 
 ## Spikes to run
 
+- **Start inside Elysia** (about half a day): mount Start's fetch handler in nixie's Elysia process,
+  check the isomorphic oRPC link and device-session checks on both routes, and check that no server
+  implementation reaches the browser bundle.
+- **Android paste edge cases**: check Gboard clipboard chips and other keyboard insertion paths
+  after the native paste module exists. Keep known ambiguous paths unknown until tested. The basic
+  native paste hook belongs in the first Android build, under
+  [0029](../decisions/0029-channels-and-clients.md).
+
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
   holding Gmail's restricted scope; day 8 shows whether its token outlives testing mode's 7-day

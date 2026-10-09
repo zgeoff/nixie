@@ -1,7 +1,8 @@
 # The live view and the dashboard
 
 - Status: Proposed
-- Decisions: [0001](../../decisions/0001-durable-layer.md),
+- Decisions: [0029](../../decisions/0029-channels-and-clients.md),
+  [0001](../../decisions/0001-durable-layer.md),
   [0018](../../decisions/0018-main-thread-and-tasks.md),
   [0027](../../decisions/0027-tasks-and-outside-actions.md)
 
