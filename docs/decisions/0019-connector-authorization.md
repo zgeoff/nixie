@@ -1,7 +1,7 @@
 # 0019: Connector authorization
 
 - Date: 2026-10-08
-- Status: decided
+- Status: decided, amended by [0030](./0030-connectors-and-sandbox-environments.md)
 - Research: [connector notes](../research/2.6-notes/connectors.md),
   [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
 

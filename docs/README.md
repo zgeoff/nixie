@@ -132,6 +132,10 @@ Nixie's interfaces, outside MCP servers, credentials and search.
 - [0022: Coding and code execution](./decisions/0022-coding-and-code-execution.md) — running code in
   a sandbox with no grants, and coding sessions through adapters, atc first
 
+- [0030: Connectors and sandbox environments](./decisions/0030-connectors-and-sandbox-environments.md)
+  — the reverse-forward route, Google, web OAuth return, MCP v2, imp with a container sketch, and
+  the familiar Linux code environment
+
 ### Deployment
 
 Definitions and deployment models.

@@ -1,7 +1,7 @@
 # 0022: Coding and code execution
 
 - Date: 2026-10-08
-- Status: decided
+- Status: decided, amended by [0030](./0030-connectors-and-sandbox-environments.md)
 - Amends: [0003](./0003-sdk-placement.md), [0007](./0007-grants-and-taint.md)
 - Research: [placement spike](../../spikes/sdk-placement/),
   [imp broker spike](../../spikes/imp-broker/)

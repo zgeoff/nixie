@@ -1,7 +1,8 @@
 # The definitions source
 
 - Status: Proposed
-- Decisions: [0013](../../decisions/0013-definition-versioning.md),
+- Decisions: [0030](../../decisions/0030-connectors-and-sandbox-environments.md),
+  [0013](../../decisions/0013-definition-versioning.md),
   [0016](../../decisions/0016-own-interfaces.md), [0020](../../decisions/0020-deployment.md)
 
 A definitions source is the adapter through which nixie reads an owner's definitions: the persona,

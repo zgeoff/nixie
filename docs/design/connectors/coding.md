@@ -1,9 +1,9 @@
 # Running code and coding sessions
 
 - Status: Proposed
-- Decisions: [0003](../../decisions/0003-sdk-placement.md),
-  [0007](../../decisions/0007-grants-and-taint.md), [0017](../../decisions/0017-mcp-proxy.md),
-  [0018](../../decisions/0018-main-thread-and-tasks.md),
+- Decisions: [0030](../../decisions/0030-connectors-and-sandbox-environments.md),
+  [0003](../../decisions/0003-sdk-placement.md), [0007](../../decisions/0007-grants-and-taint.md),
+  [0017](../../decisions/0017-mcp-proxy.md), [0018](../../decisions/0018-main-thread-and-tasks.md),
   [0022](../../decisions/0022-coding-and-code-execution.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md)
 
@@ -19,6 +19,14 @@ The code tool takes a program, its language, and the files it reads, and returns
 output and the files the program wrote. It declares the `run_code` effect from the
 [decision point](../policy/decision-point.md#effects), and its result is outside content. It comes
 early, under 0022.
+
+The code and worker images provide Node.js, Python and a familiar Linux command-line toolbox,
+including jq, rg and grep, under
+[0030](../../decisions/0030-connectors-and-sandbox-environments.md). A program can call the
+installed tools through its runtime or shell. The model can inspect the image's available commands
+and libraries before it writes a program. The [sandbox images](./sandbox-adapter.md#images) define
+the inventory and version pinning. Coding sessions on an adapter retain their own toolchains; this
+environment is for nixie's general code.
 
 Where the code runs depends on the caller:
 

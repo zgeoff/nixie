@@ -1,7 +1,8 @@
 # The MCP proxy
 
 - Status: Proposed
-- Decisions: [0002](../../decisions/0002-approvals.md), [0004](../../decisions/0004-rule-engine.md),
+- Decisions: [0030](../../decisions/0030-connectors-and-sandbox-environments.md),
+  [0002](../../decisions/0002-approvals.md), [0004](../../decisions/0004-rule-engine.md),
   [0007](../../decisions/0007-grants-and-taint.md), [0015](../../decisions/0015-taint-scope.md),
   [0017](../../decisions/0017-mcp-proxy.md), [0021](../../decisions/0021-outside-action-outcomes.md)
 

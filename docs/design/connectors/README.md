@@ -1,11 +1,11 @@
 # Connectors design
 
 nixie's tools reach the model over MCP, outside services reach nixie through connectors, and every
-model loop and code run sits in a sandbox. [Connectors](./connector.md) holds the decisions for the
-owner.
+model loop and code run sits in a sandbox.
+[0030](../../decisions/0030-connectors-and-sandbox-environments.md) records the agreed choices.
 
 - [Connectors](./connector.md) — the connector interface, connections, setup and OAuth, the Google
-  connector, search on Kagi, and the decisions for the owner
+  connector, search on Kagi, and the agreed connector choices
 - [The credential store](./credentials.md) — backends, the fetcher that keeps tokens out of
   connectors, grants into a sandbox, refresh and statuses
 - [Serving nixie's tools](./tools.md) — tool definitions, what the model sees of a result, one

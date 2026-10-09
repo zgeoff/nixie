@@ -1,8 +1,9 @@
 # The sandbox adapter
 
 - Status: Proposed
-- Decisions: [0003](../../decisions/0003-sdk-placement.md),
-  [0007](../../decisions/0007-grants-and-taint.md), [0016](../../decisions/0016-own-interfaces.md),
+- Decisions: [0030](../../decisions/0030-connectors-and-sandbox-environments.md),
+  [0003](../../decisions/0003-sdk-placement.md), [0007](../../decisions/0007-grants-and-taint.md),
+  [0016](../../decisions/0016-own-interfaces.md),
   [0022](../../decisions/0022-coding-and-code-execution.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md)
 
@@ -93,8 +94,8 @@ keeps egress `none` and never has a route to any host address. `openReverseForwa
 `@zgeoff/imp-client` gives nixie each connection to relay itself, so nixie opens no listening port
 on the host for its tools.
 
-The design takes the reverse forward as the route, as the first owner decision in
-[connectors](./connector.md#decisions-for-the-owner) proposes:
+The agreed route is the reverse forward, under
+[0030](../../decisions/0030-connectors-and-sandbox-environments.md):
 
 1. The sandbox adapter opens a reverse forward from `127.0.0.1:<port>` in the imp when it creates an
    imp with `toolRoute`, and closes it when it destroys the imp.
@@ -122,7 +123,7 @@ The reverse forward has 4 limits that the design accepts:
   added median HTTP time on a local host, including one local TCP hop. It completes an SDK tool call
   through the v2 subscription stream and after sleep and wake, with egress `none`.
 
-The other routes, in order of preference if the reverse forward fails that spike:
+The alternatives considered, if a later deployment cannot use the reverse forward:
 
 - **A port-level allow entry,** a [candidate imp change](../open-items.md#candidate-imp-changes),
   which admits one port of the host address and nothing else.
@@ -149,16 +150,26 @@ process's cgroup 5 s later by default, through `kill_grace_ms`
 nixie builds a purpose-built image per kind of work, under
 [0026](../../decisions/0026-where-workers-and-the-conversation-run.md):
 
-| Image        | Holds                                                       | Used by                         |
-| ------------ | ----------------------------------------------------------- | ------------------------------- |
-| Conversation | A minimal base, Bun, and the SDK with its Claude Code build | The conversation                |
-| Code         | A minimal base and the runtimes the code tool offers        | The code tool, outside workers  |
-| Worker       | The conversation image plus the code runtimes               | Workers                         |
-| Coding       | The conversation image plus git and the owner's toolchains  | Built-in coding sessions, later |
+| Image        | Holds                                                              | Used by                         |
+| ------------ | ------------------------------------------------------------------ | ------------------------------- |
+| Conversation | A minimal base, Bun, and the SDK with its Claude Code build        | The conversation                |
+| Code         | A familiar Linux environment with Node.js, Python and common tools | The code tool, outside workers  |
+| Worker       | The conversation image plus the code runtimes                      | Workers                         |
+| Coding       | The conversation image plus git and the owner's toolchains         | Built-in coding sessions, later |
 
-The deployment pins each image by digest, and an upgrade of nixie that changes an image builds and
-pins the new one. **Why:** an image is code that runs over untrusted content, so it upgrades with
-nixie and its version reaches every record of the run.
+The code and worker images give agents a familiar environment, rather than only a language
+interpreter. Node.js and Python are the primary general-code runtimes. The command-line toolbox
+includes jq, ripgrep (`rg`) and grep, with a shell and the common Linux file and text tools. Bun
+stays in the images that run nixie's model harness; Node.js is an actual runtime, not a promise that
+Bun substitutes for it.
+
+The image build pins the runtime, tool and library versions, and the deployment pins the image by
+digest. The exact package inventory is a build artifact checked against representative agent
+programs. The code tool exposes that inventory to the model, so it can inspect the available
+commands and libraries. Adding a runtime or dependency does not add network egress or a credential
+grant; the sandbox rules remain those in [sandboxes by kind of work](#sandboxes-by-kind-of-work). An
+upgrade that changes an image builds and pins the new digest, which reaches the run's records. The
+final image size and cold-start cost need measurement; the runtime choice makes no size claim.
 
 ## A container adapter sketch
 

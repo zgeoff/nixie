@@ -22,18 +22,19 @@ after the first build.
   different models for chat, memory writing, tool calls and long background reasoning, with low
   reasoning effort for chat, because effort sets cost and latency more than any other setting. No
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
-- **How a sandboxed session reaches nixie's endpoint.** In imp 0.40.2, an allow entry admits a whole
-  address, so an imp allowed to reach nixie's tools on the host reaches imp's management API too
-  ([0003](../decisions/0003-sdk-placement.md)). The
-  [sandbox adapter](./connectors/sandbox-adapter.md#the-route-to-nixies-tools) recommends a reverse
-  forward from the imp's loopback over the guest agent's vsock, which needs no allow entry, and the
-  first decision in [connectors](./connectors/connector.md#decisions-for-the-owner) asks the owner.
+
 - **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
   `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
   whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
   under [0001](../decisions/0001-durable-layer.md).
 
 ## Spikes to run
+
+- **The code environment inventory.** Build the Node.js/Python code and worker images with the
+  common Linux toolbox from [0030](../decisions/0030-connectors-and-sandbox-environments.md). Check
+  representative agent programs for file and text work, expose the installed command and library
+  versions, and measure image size and cold-start cost. Package availability needs a built-image
+  check; the runtime choice is settled.
 
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
@@ -73,10 +74,11 @@ after the first build.
 - **Model choice on real use** (about 1 day): repeat the model-eval memory and tool tasks on a real
   conversation history, real services and a long context, with more than 2 samples per cell and
   direct API calls. It firms up the model-per-job split above.
-- **An OAuth redirect to a tailnet hostname** (about 1 hour): add an HTTPS redirect URI on a tailnet
-  hostname to a Google web client and to a Microsoft app registration, and complete a consent with
-  each. It shows whether setup can redirect to the client itself, under the third decision in
-  [connectors](./connectors/connector.md#decisions-for-the-owner).
+- **The Google web OAuth return** (about 1 hour, needs access to the owner's Google project):
+  register the actual private-network HTTPS callback on a Web application OAuth client and complete
+  consent. The agreed route is automatic HTTPS return under
+  [0030](../decisions/0030-connectors-and-sandbox-environments.md); the spike's Desktop client does
+  not validate it. Check Microsoft's redirect when its connector is selected.
 - **Microsoft Graph and iCloud** (about half a day and about 2 hours): consent to mail and calendar
   scopes with a personal Microsoft account in a free Azure directory, and read iCloud mail, events
   and contacts with one app-specific password. Run them when a connector for either provider is

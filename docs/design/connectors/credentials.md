@@ -1,8 +1,9 @@
 # The credential store
 
 - Status: Proposed
-- Decisions: [0007](../../decisions/0007-grants-and-taint.md),
-  [0010](../../decisions/0010-memory-store.md), [0016](../../decisions/0016-own-interfaces.md),
+- Decisions: [0030](../../decisions/0030-connectors-and-sandbox-environments.md),
+  [0007](../../decisions/0007-grants-and-taint.md), [0010](../../decisions/0010-memory-store.md),
+  [0016](../../decisions/0016-own-interfaces.md),
   [0019](../../decisions/0019-connector-authorization.md),
   [0020](../../decisions/0020-deployment.md),
   [0022](../../decisions/0022-coding-and-code-execution.md),

@@ -1,8 +1,9 @@
 # Connectors
 
 - Status: Proposed
-- Decisions: [0005](../../decisions/0005-effects-and-taint.md),
-  [0014](../../decisions/0014-search.md), [0016](../../decisions/0016-own-interfaces.md),
+- Decisions: [0030](../../decisions/0030-connectors-and-sandbox-environments.md),
+  [0005](../../decisions/0005-effects-and-taint.md), [0014](../../decisions/0014-search.md),
+  [0016](../../decisions/0016-own-interfaces.md),
   [0019](../../decisions/0019-connector-authorization.md),
   [0020](../../decisions/0020-deployment.md),
   [0021](../../decisions/0021-outside-action-outcomes.md),
@@ -108,23 +109,26 @@ pastes it into the client, or the deployment supplies it.
 
 ### The redirect
 
-The provider sends the owner's browser back to nixie with the authorization code. Two routes work,
-and the third owner decision below asks which one setup uses first:
+Google sends the owner's browser back to nixie's HTTPS origin with the authorization code. Setup
+uses a Web application OAuth client and an exactly registered callback URL. nixie binds the consent
+request to the device session with `state` and PKCE, exchanges the code on the host and completes
+setup in the client. The expected deployment supplies HTTPS on a fixed name.
 
-- **A web client** with a redirect to the client's own HTTPS origin, such as the address Tailscale
-  serves under [0020](../../decisions/0020-deployment.md). The redirect completes setup with no
-  extra step. It needs an HTTPS origin that the provider accepts as a redirect URI.
-- **A desktop client** with a loopback redirect, which the
-  [Google OAuth spike](../../../spikes/google-oauth/README.md) used. The browser that consents is
-  rarely on nixie's host, so the redirect page fails to load, and the owner copies its URL from the
-  address bar into the client. It works for any deployment.
+[Google's redirect rules](https://developers.google.com/identity/protocols/oauth2/web-server#uri-validation)
+require HTTPS, a host name and an exactly registered URL. These published rules fit the expected
+origin; accepting the actual private-network URL still needs a live registration and consent check.
+
+The [Google spike](../../../spikes/google-oauth/README.md) uses a Desktop client and a working
+localhost callback. That client cannot substitute for the web client. A failed-localhost URL pasted
+into nixie is untested and is not part of the agreed first setup flow.
 
 ## Google
 
-The first connector, under the second owner decision below, covers Gmail, Google Calendar and Google
-Drive with one OAuth client. The Google OAuth spike set up an unverified client in production and
-consented to `gmail.modify`, a restricted scope, with `calendar.events` and `drive.file`; every API
-answered on day 0. Setup takes these steps in Google Cloud:
+The first connector covers Gmail, Google Calendar and Google Drive with one owner-registered OAuth
+client, under [0030](../../decisions/0030-connectors-and-sandbox-environments.md). The Google OAuth
+spike set up an unverified client in production and consented to `gmail.modify`, a restricted scope,
+with `calendar.events` and `drive.file`; every API answered on day 0. Setup takes these steps in
+Google Cloud:
 
 1. Create a project, and enable the Gmail, Calendar and Drive APIs.
 2. Configure the consent screen as External, with an app name and the owner's email address.
@@ -137,6 +141,10 @@ production client outlives those 7 days is the refresh on day 8 that
 [open items](../open-items.md#spikes-to-run) lists. If it fails, mail falls back to IMAP with an app
 password under [0019](../../decisions/0019-connector-authorization.md), and Calendar and Drive keep
 OAuth, because Google's CalDAV refuses passwords.
+
+`drive.file` covers files nixie creates and files the owner explicitly selects for it, not every
+file in Drive. The setup and tools show that scope boundary, under
+[Google's Drive scope guide](https://developers.google.com/workspace/drive/api/guides/api-specific-auth).
 
 `gmail.modify` reads, labels, archives, trashes and sends mail, and cannot delete a message for
 good, which needs the full `https://mail.google.com/` scope. The Google connector therefore offers
@@ -179,71 +187,14 @@ and model cost, and neither covers a paid read such as a search, so
 [open items](../open-items.md#phase-3-design-tasks) lists a budget for paid tool calls. The Kagi API
 key is a static credential in the deployment backend.
 
-## Decisions for the owner
+## Agreed connector choices
 
-These 6 choices are the connector design's open decisions, each with a recommendation. The rest of
-the connector docs assume the recommendation.
+[0030](../../decisions/0030-connectors-and-sandbox-environments.md) records the owner choices:
+reverse forwards for an imp's tools with egress `none`; Google first; an automatic HTTPS OAuth
+return with a Web application client; the v2 MCP packages for nixie; imp as the first sandbox
+implementation with a deferred container sketch; and a familiar Linux code environment with Node.js,
+Python and common command-line tools.
 
-1. **The route from an imp to nixie's tools.** Every model loop runs in an imp under
-   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md), and needs a route to
-   nixie's tools on the host that does not reach imp's management API.
-   - Options: a reverse forward from the imp's loopback to nixie, over the guest agent's vsock; a
-     port-level allow entry, a change to imp; or nixie's endpoint on an address that serves nothing
-     else.
-   - Recommendation: the reverse forward, which
-     [the sandbox adapter](./sandbox-adapter.md#the-route-to-nixies-tools) describes. imp 0.40.2 has
-     it, the imp keeps egress `none`, and nixie knows which imp each connection came from.
-   - Trade-off: every tool call passes through impd, and a sleep ends the forward. The
-     [transport spike](../../../spikes/tools-reverse-forward/README.md) measures about 0.6 ms of
-     added median HTTP time and confirms streaming, isolation and reopening after wake. The sandbox
-     adapter must implement the reopen lifecycle; a port-level allow entry stays the fallback.
-2. **The first connector.** The scope asks for one connector in tier 1.
-   - Options: Google through its APIs, with Gmail, Calendar and Drive on one owner-registered
-     client; generic IMAP and SMTP with an app password; or Microsoft Graph.
-   - Recommendation: Google through its APIs, with `gmail.modify`, `calendar.events` and
-     `drive.file`. The spike showed an unverified client holding Gmail's restricted scope, and the
-     APIs return typed JSON for headers, labels and events.
-   - Trade-off: the owner sets up a Google Cloud project with a home page and a privacy policy URL,
-     and the day-8 refresh is still pending. IMAP needs no project, and grants the whole mailbox
-     with a password that Google advises against.
-3. **The OAuth redirect.** Setup needs a route for the authorization code back to nixie.
-   - Options: a web client that redirects to the client's own HTTPS origin; or a desktop client with
-     a loopback redirect, whose URL the owner pastes into the client.
-   - Recommendation: the web client where the client has an HTTPS origin, with the paste as the
-     fallback that every connector supports. Setup then takes one click on the usual deployment.
-   - Trade-off: whether Google and Microsoft accept a tailnet hostname as a redirect URI is
-     unverified, and [open items](../open-items.md#spikes-to-run) lists the check. Supporting both
-     costs one more page in the client.
-4. **The MCP library.** nixie serves its tools over MCP and, with the proxy, acts as an MCP client.
-   - Options: the v1 package `@modelcontextprotocol/sdk`, which implements revisions up to
-     2025-11-25 and is what the Agent SDK depends on; or the v2 packages, which implement 2026-07-28
-     and fall back to older servers in `auto` mode.
-   - Recommendation: the v2 packages for nixie's own code: the tool endpoint, and the proxy's client
-     in `auto` mode. In the [MCP proxy spike](../../../spikes/mcp-proxy-pin/README.md), the v2
-     client reached both a 2026-07-28 server and a 2025-11-25 server, and checked structured results
-     by default. In the [tools endpoint spike](../../../spikes/tools-endpoint/README.md), Claude
-     Code 2.1.293 agreed 2026-07-28 with a v2 endpoint, and the model saw the same tools and results
-     as with v1.
-   - Trade-off: the SDK keeps its own v1 package for the in-process route, so the codebase carries
-     both lines, and the v2 line moves fast. On 2026-07-28, a relay that buffers the subscription
-     stream stalls every run start, so the relay must stream.
-5. **A container sandbox adapter.** [0016](../../decisions/0016-own-interfaces.md) allows one, with
-   a weaker boundary than a microVM.
-   - Options: build imp only, and keep the interface open; or build a container adapter in the first
-     build as well.
-   - Agreed: imp only in the first build, with a container sketch to check the interface and its
-     implementation deferred. The [sketch](./sandbox-adapter.md#a-container-adapter-sketch) maps
-     lifecycle, network policy, tools and credential injection, and makes memory sleep a capability.
-   - Trade-off: an owner whose host cannot run imp, such as a VPS without nested virtualisation,
-     cannot run nixie until the container adapter exists.
-6. **The code runtimes.** The code tool runs code for general work, such as processing a file or
-   crunching data, under [0022](../../decisions/0022-coding-and-code-execution.md). The code image
-   and the worker image carry the same runtimes, because a worker runs its code in its own imp.
-   - Options: Bun only; Bun and Python 3 with a fixed set of data libraries, such as pandas; or a
-     general image with package installs at run time.
-   - Recommendation: Bun and Python 3 with a fixed set of data libraries. Models write data work in
-     Python most readily, and a code imp has no egress, so it cannot install a package at run time.
-   - Trade-off: larger images to build and keep current, and a larger worker image reads more from a
-     cold disk at start, which the warm page cache from
-     [0026](../../decisions/0026-where-workers-and-the-conversation-run.md) offsets. A library
-     outside the set is unavailable until the owner adds it to the images.
+The private-network callback registration and the Google refresh on day 8 remain validation work,
+not open provider or redirect choices. The image inventory and its versions need a build-time check
+against representative agent programs, under [open items](../open-items.md#spikes-to-run).

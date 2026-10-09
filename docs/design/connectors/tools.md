@@ -1,9 +1,9 @@
 # Serving nixie's tools
 
 - Status: Proposed
-- Decisions: [0002](../../decisions/0002-approvals.md),
-  [0003](../../decisions/0003-sdk-placement.md), [0005](../../decisions/0005-effects-and-taint.md),
-  [0016](../../decisions/0016-own-interfaces.md),
+- Decisions: [0030](../../decisions/0030-connectors-and-sandbox-environments.md),
+  [0002](../../decisions/0002-approvals.md), [0003](../../decisions/0003-sdk-placement.md),
+  [0005](../../decisions/0005-effects-and-taint.md), [0016](../../decisions/0016-own-interfaces.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md)
 
 nixie's tools run in nixie's process on the host, and the model reaches them only through MCP. Every
