@@ -49,10 +49,10 @@ Spikes that need model calls wait for model quota. Each line names the claim the
 
 ### Memory and sessions
 
-- **The pinned core** (minutes): the [pinned core spike](../../spikes/sdk-pinned-core/README.md)
-  shows whether `snapshot: false` lets a changed pinned core reach a resumed session, and what the
-  change costs the prompt cache. The fallback in [memory in context](./memory/context.md) applies
-  until it runs.
+- **The pinned core on GLM** (minutes): the
+  [pinned core spike](../../spikes/sdk-pinned-core/README.md) showed on Haiku that `snapshot: false`
+  lets a changed pinned core reach a resumed session. Rerun it on GLM 5.3 to check that the setting
+  applies through a non-Anthropic endpoint.
 - **Compaction controls** (about 2 hours): check whether returning `decision: 'block'` from the
   `PreCompact` hook stops an automatic compaction. nixie does not rely on it until then.
 - **A resume after compaction** (about 2 hours): compact a session after a step's recorded boundary,

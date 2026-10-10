@@ -38,8 +38,9 @@ nixie sets `snapshot: false` on every session and builds the system prompt on ea
 the task's persona version and the current core. **Why:** the SDK otherwise keeps a session's first
 system prompt until it compacts, and a pinned or edited item must reach the conversation on its next
 turn. An unchanged core renders the same bytes, so the cache holds. The
-[pinned core spike](../../../spikes/sdk-pinned-core/README.md) checks this, and its fallback forks
-the session at its last boundary when the core changes.
+[pinned core spike](../../../spikes/sdk-pinned-core/README.md) confirmed this on Haiku: the setting
+holds only for the `query()` that sets it, and a fork keeps the old prompt, so no fork fallback
+exists.
 
 ## Retrieval
 
