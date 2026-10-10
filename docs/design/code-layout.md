@@ -59,20 +59,20 @@ dependency against the rules in the root `turbo.json`. The check fails on a depe
 deny, an import of a workspace package that the importer does not declare, an import of a file
 outside the importer's package, and a cycle between packages.
 
-| Tag           | Packages                         | May depend on                                                 |
-| ------------- | -------------------------------- | ------------------------------------------------------------- |
-| `app`         | `apps/server`                    | modules, adapters, libs                                       |
-| `client`      | `apps/web`, the Android app      | libs without `server-only`                                    |
-| `module`      | `modules/*`                      | other modules, libs                                           |
-| `adapter`     | `adapters/*`                     | modules, libs                                                 |
-| `guest`       | `guests/*`                       | libs without `server-only`                                    |
-| `lib`         | `libs/*`                         | libs                                                          |
-| `server-only` | libs that hold server code, `db` | dependents tagged `app`, `module`, `adapter` or `server-only` |
+| Tag       | Packages                    | May depend on              |
+| --------- | --------------------------- | -------------------------- |
+| `app`     | `apps/server`               | modules, adapters, libs    |
+| `client`  | `apps/web`, the Android app | libs without `server-only` |
+| `module`  | `modules/*`                 | other modules, libs        |
+| `adapter` | `adapters/*`                | modules, libs              |
+| `guest`   | `guests/*`                  | libs without `server-only` |
+| `lib`     | `libs/*`                    | libs                       |
 
 - **Libs depend only on libs.** A guest or a client therefore never reaches a module through a lib,
   because no lib can depend on one.
-- **`server-only`** marks a lib that only the trusted core may use, such as the database layer. A
-  guest or a client that declares it fails the check.
+- **`server-only`** marks a lib that only the trusted core may use, such as the database layer. Its
+  rule allows dependents tagged `app`, `module`, `adapter` or `server-only`, so a guest or a client
+  that declares it fails the check.
 - **An adapter depends only on the module that owns its interface.** The tags allow any module, so
   review holds this rule.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
@@ -152,10 +152,10 @@ describes.
 Tests run on `bun test`, with `@zgeoff/bun-test-extended` preloaded for its matchers. Each test sits
 beside the module it tests, as `x.test.ts` beside `x.ts`. The only test folder is the root `e2e/`,
 which holds whole-program suites and the live checks against a Kubernetes or Compose deployment. A
-test that needs a database opens its own SQLite file in a temporary directory.
+test that needs a database opens its own SQLite file in a temporary directory. A guest keeps its
+test helpers inside its own package, because `libs/testing` is server-only.
 
 The checks are oxfmt, oxlint with type-aware rules on `@zgeoff/oxlint-config`, typecheck, knip for
 dead code, `turbo boundaries`, the prose check and the tests. lefthook runs the fast checks before a
 commit and the rest before a push. CI runs the shared Bun pull-request workflow from the tools repo
-with nixie's script list, which adds `boundaries` and the prose check to the standard `audit`,
-`deadcode`, `format:check`, `lint`, `typecheck` and `test`.
+with nixie's script list, which runs the standard script list plus `boundaries` and the prose check.
