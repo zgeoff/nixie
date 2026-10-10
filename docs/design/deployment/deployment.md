@@ -73,15 +73,22 @@ model in an imp reaches nixie's tools through imp's reverse forward with egress 
 
 A nixie release publishes one nixie image, one web image and one imp image per kind of work, all
 from one commit and each pinned by digest. The nixie image carries a manifest of its imp images'
-digests. The deployment pins the nixie and web images, and both pins move in the same pull request,
-so the web client always runs the release of the API it calls.
+digests. The deployment pins the nixie and web images, and both pins move in the same pull request.
+
+The oRPC contract follows the schema rule from [upgrades](./upgrades.md): a release adds procedures
+and fields, and a removal waits until the release before no longer calls it. A web client therefore
+works against the API of its own release and of the release before or after it, so a rollout that
+replaces the containers one at a time and a rollback by one release both keep the web client
+working.
+
+The web image holds the TanStack Start server and its built assets, and no secrets, database or
+credentials. **Why:** the process that holds policy, credentials and the approval check carries no
+UI framework or server-rendering dependencies.
 
 The nixie image holds Bun on a slim base, every workspace package bundled with `bun build`, and the
-`sops`, `restic`, `litestream` and `rclone` binaries. The web image holds the TanStack Start server
-and its built assets, and no secrets, database or credentials. **Why:** the process that holds
-policy, credentials and the approval check carries no UI framework or server-rendering dependencies.
-It holds no Claude Code build. **Why:** every model loop runs in an imp, and leaving out the SDK's
-native packages saves about 480 MB.
+`sops`, `restic`, `litestream` and `rclone` binaries. The nixie image holds no Claude Code build.
+**Why:** every model loop runs in an imp, and leaving out the SDK's native packages saves about 480
+MB.
 
 | Image        | Holds                                              | Runs                            |
 | ------------ | -------------------------------------------------- | ------------------------------- |
