@@ -1,10 +1,15 @@
 # Open items
 
 Phase 3, the design phase, has the voice stack and the model per job undecided, and the Google
-refresh on day 8 still to run. The design work ahead covers the terminology pass and the stages
-agreed for after the first build.
+refresh on day 8 still to run. The design work ahead covers the terminology pass, memory validation,
+and the stages agreed for after the first build.
 
 ## Deferred decisions
+
+- **The local encoder model and library.** Local embeddings are agreed for the first build under
+  [0031](../decisions/0031-memory-capture-context-and-removal.md). The synthetic spike's encoders
+  are candidates, not adopted dependencies. Compare quality, runtime, memory use and pinned-asset
+  packaging, then choose the model and library with the owner before product implementation.
 
 - **The voice stack.** Voice runs in nixie's own client under
   [0009](../decisions/0009-first-channel.md), and the
@@ -21,13 +26,40 @@ agreed for after the first build.
   different models for chat, memory writing, tool calls and long background reasoning, with low
   reasoning effort for chat, because effort sets cost and latency more than any other setting. No
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
-- **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
-  `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
-  whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
-  under [0001](../decisions/0001-durable-layer.md).
 
 ## Spikes to run
 
+- **Retirement and bulk permanent deletion.** Test typed intent against an exact item/version,
+  ambiguous references, pasted instructions and unchanged content provenance. Test a restored or
+  edited item after bulk preview, later retirements, duplicate confirmations and crashes between
+  per-item key deletions. The [memory store](./memory/store.md#bulk-deletion-of-retired-memories)
+  sets the contract. The [key-backup spike](../../spikes/forget-backups/) checks a local backend's
+  snapshot removal and data pruning. Test the selected deployment backend, stale-copy publication
+  races, failures and restarts before declaring completed forget safe on that backend.
+- **Session recovery and invalid-cache cleanup.** Compare the proposed event-log rebuild with SDK
+  resume: record which history and SDK state each preserves, test recovery after compaction and
+  verify pending approvals and action outcomes come from canonical rows. Forget must remove every
+  invalid local transcript branch and sidecar after its writer stops, including late writes. File
+  and artifact recovery is separate. The [context design](./memory/context.md#rebuilding-a-session)
+  states the limits of the agreed cache lifecycle.
+
+  Include pinned-only exposure before an interrupted first turn commits, inherited fork
+  dependencies, and a retained summary that contains an item created only through the memory client.
+  After forget, restart must block old branches, remove their caches and dependent summary keys, and
+  rebuild without the marker even when its source exceeds the recent-history window.
+
+- **Batched memory capture.** The [offline batch spike](../../spikes/memory-batch/) checks a durable
+  cursor, source-bound quote checks and recovery after process kills with fixture model output. A
+  batch can exceed the conversation's 20-message evidence window, so source IDs must bind quotes to
+  its original owner messages. Model quality, capture delay and cache/input costs remain unmeasured.
+  Custom rollover needs live SDK continuity and compaction-boundary checks before it replaces the
+  SDK route; the owner agreed batching with SDK compaction retained.
+- **The semantic-index lifecycle.** Check the design's version gates and memory-only generations
+  when a write, retire, forget or encoder change races with background encoding. A stale candidate
+  must never return canonical text that is no longer eligible. Pause a result after validation,
+  forget its item, then resume publication. Test a query across a generation swap, writes during
+  rebuild catch-up, full startup coverage and the reported keyword fallback while semantic indexing
+  rebuilds, under [memory in context](./memory/context.md#the-index).
 - **The code environment inventory.** Build the Node.js/Python code and worker images with the
   common Linux toolbox from [0030](../decisions/0030-connectors-and-sandbox-environments.md). Check
   representative agent programs for file and text work, expose the installed command and library
@@ -49,18 +81,34 @@ agreed for after the first build.
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
   holding Gmail's restricted scope; day 8 shows whether its token outlives testing mode's 7-day
   limit ([0019](../decisions/0019-connector-authorization.md)).
-- **Retrieval on nixie-shaped memory** (about 1 day): compare keyword search, full-text search with
-  BM25 ranking, and full-text search with vectors over a few hundred memory items, with questions
-  the owner writes. It tests whether embeddings help at personal scale over the rows from
-  [0010](../decisions/0010-memory-store.md). The research recommends keyword search first, and no
-  decision records the route from memory to the model
-  ([memory research](../research/2.4-2.6-data-channels-connectors.md#memory)).
+- **Retrieval on the owner's questions** (about half a day, with model calls): rerun the
+  [retrieval spike](../../spikes/memory-retrieval/README.md) with questions the owner writes about
+  memory items the owner recognises, and with recall keywords from a model that has not seen the
+  items. On synthetic data, words alone found about a fifth of paraphrased questions and a local
+  embedding model about two thirds. The owner agreed local embeddings in the first build; this run
+  validates and tunes semantic recall, model choice and ranking rather than gating inclusion.
+- **The pinned core in the system prompt** (minutes, with model calls): run the
+  [pinned core spike](../../spikes/sdk-pinned-core/README.md), which is written and stopped on the
+  subscription's weekly limit. It shows whether `snapshot: false` lets a changed pinned core reach a
+  resumed session, and what a change costs the prompt cache.
+- **The memory checker on real messages** (about half a day, with model calls): run the checker
+  model from [memory writes](./memory/writes.md#the-checker) over owner messages the owner writes,
+  each paired with memories they do and do not assert, including negations, questions and quoted
+  remarks, and measure how often it confirms wrongly or misses. It can share a run with the consent
+  checker, which uses the same implementation.
+- **A resume after compaction** (about 2 hours, with model calls): compact a session after a step's
+  recorded boundary, crash the next step, and resume at the boundary with `resumeSessionAt`. The
+  [resume-at spike](../../spikes/sdk-resume-at/README.md) left it untested, and
+  [memory in context](./memory/context.md#compaction) depends on it.
 - **A memory poisoning run** (about half a day): replay poisoned emails through a worker, and
   confirm that every memory write they cause reaches the owner as a proposal with untrusted
   provenance under [0011](../decisions/0011-memory-writes.md).
 - **Backup and restore** (about half a day): restore a database dump or a SQLite copy to a clean
   host with restic, from an age key held on a passkey or a paper key. It checks that the per-item
-  keys from [0010](../decisions/0010-memory-store.md) survive a lost host.
+  keys from [0010](../decisions/0010-memory-store.md) survive a lost host. The
+  [shredding spike](../../spikes/memory-shred/README.md) checked forgetting against backups on one
+  host; Litestream replication of the key store, which would keep a deleted key for its own
+  retention, is part of this run.
 - **A deployment on a throwaway host** (about half a day): a Compose file that pins an image,
   secrets encrypted with sops and age, and a dependency bot. Merge a version bump and roll it back
   with a database restore, to confirm that an upgrade is a merge and a rollback is a revert plus a
@@ -129,15 +177,10 @@ agreed for after the first build.
 - **The terminology pass.** The terms in [0018](../decisions/0018-main-thread-and-tasks.md), such as
   main thread, task and worker, are provisional, and a terminology pass settles them before any
   code. It may draw on a metaphor such as the chief of staff.
-- **Compaction controls and the pinned core.** [0024](../decisions/0024-memory-in-context.md) runs
-  the conversation on the SDK's session and compaction. Phase 3 checks which compaction controls the
-  SDK offers, and how large the pinned core can grow before the prompt pays for it.
 - **The durable layer.** nixie owns leases, durable timers, retries, wake-ups and a run viewer, each
   with crash tests ([0001](../decisions/0001-durable-layer.md)), and [tasks](./core/tasks.md)
   designs them. The crash tests confirm that a resumed turn never repeats an outside action that
   ran, and the estimate of 800 to 1,500 lines is untested.
-- **Memory consolidation.** Phase 3 decides when consolidation runs as a proposal under
-  [0011](../decisions/0011-memory-writes.md).
 - **A budget for paid tool calls.** A search on Kagi costs about $0.012
   ([0014](../decisions/0014-search.md)), and the budgets in the policy design count `spend` tools
   and model cost only. A budget kind for tool calls that cost money without the `spend` effect would

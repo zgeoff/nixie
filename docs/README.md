@@ -56,6 +56,15 @@ the decisions it rests on.
 - [Budgets, lifts and the spending stop](./design/policy/budgets.md) — budgets, lifting rules,
   limits on model cost and the hard spending stop
 
+### Memory
+
+- [The memory store](./design/memory/store.md) — items and their history table, provenance, a key
+  per item and forgetting, the recall tool, the memory view and export, and the first build
+- [Memory writes](./design/memory/writes.md) — who writes memory, the quote, token and checker
+  checks, memory proposals, notices and undo, and consolidation
+- [Memory in context](./design/memory/context.md) — the prompt, the pinned core, retrieval over
+  memory and past messages, compaction, and the SDK transcript as a cache
+
 ### Channels
 
 - [Channels design index](./design/channels/README.md) — the client, the channel adapter, approvals,
@@ -138,7 +147,11 @@ The memory store, which writes skip review, and definition versioning.
 - [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
   every record, with rules applying at once and persona and jobs fixed per task
 - [0024: How memory reaches the model](./decisions/0024-memory-in-context.md) — the SDK's session
-  and compaction, with retrieval over memory and the event log, keyword search first
+  and compaction, with retrieval over memory and the event log; refined by 0031
+
+- [0031: Memory capture, context and removal](./decisions/0031-memory-capture-context-and-removal.md)
+  — local semantic retrieval, batched capture, transcript cache, reversible chat removal and grouped
+  notices
 
 ### Channels
 
@@ -292,3 +305,15 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   kept right through edits
 - [Tools through a reverse forward](../spikes/tools-reverse-forward/) — relay overhead, streamed
   responses, egress isolation and reopening after wake
+- [Retrieval on nixie-shaped memory](../spikes/memory-retrieval/) — keyword search, BM25 and local
+  embeddings over synthetic memory, and where they part
+- [Crypto-shredding memory items](../spikes/memory-shred/) — a key per item against backups, the key
+  store's freed pages, and a persisted full-text index
+- [The memory write checks](../spikes/memory-checks/) — the quote check and the token check as code
+  over sample messages, and what still needs the checker
+- [A pinned memory core](../spikes/sdk-pinned-core/) — when a changed system prompt reaches a
+  resumed session, written and not yet run
+- [Batched memory checkpoints](../spikes/memory-batch/) — source-bound quotes, process-kill recovery
+  and a cursor-first failure control without model calls
+- [Forget completion across backups](../spikes/forget-backups/) — snapshot removal, data pruning and
+  restore with a deleted item key on a local candidate backend
