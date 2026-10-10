@@ -11,5 +11,7 @@ runs on. [0001](../../decisions/0001-durable-layer.md) and
   conversation, job runs, workers in imps, and crash recovery
 - [Actions](./actions.md) — the action queue, its outcomes, approval consumption, reconciliation per
   connector, and unknown outcomes
+- [Crash tests](./crash-tests.md) — what a crash is, the harness hooks and fault points, and the
+  tests each slice must pass
 - [Model profiles](./models.md) — the profile, model roles and their defaults, configuration, and
   how nixie computes model cost
