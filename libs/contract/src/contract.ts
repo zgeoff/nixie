@@ -90,7 +90,7 @@ export const contract = {
       .input(
         z.object({
           clientMessageID: clientActionIDSchema,
-          spans: z.array(spanSchema).max(10_000),
+          spans: z.array(spanSchema).max(100_000),
           text: z.string().min(1).max(100_000),
           thread: threadSchema,
         }),
@@ -105,8 +105,9 @@ export const contract = {
       .output(eventIterator(z.object({ record: recordSchema }))),
   },
   sessions: {
-    // Turns an enrolment code into a device session. A browser takes the session as an HttpOnly
-    // cookie, and the Android app takes it as a bearer token in the output.
+    // Turns an enrolment code into a device session: an HttpOnly cookie for a browser, or a bearer
+    // token in the output for the Android app. A retry with the same client action ID answers with
+    // the same session and, for a bearer, a fresh token that replaces the first.
     enrol: oc
       .errors(reusedIDErrors)
       .errors({

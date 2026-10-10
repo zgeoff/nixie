@@ -1,15 +1,19 @@
 import type { PendingInput, Span, SpanSource, SpanState } from './types';
 
-// Builds the span state once the text box holds `text`. Without a pending input, the edit comes
-// from a plain diff and its text counts as unknown. Offsets count UTF-16 code units, and no edit
-// boundary splits a surrogate pair.
+// Builds the span state once the text box holds `text`. Offsets count UTF-16 code units, and no
+// edit boundary splits a surrogate pair.
 export function buildSpanState(
   state: SpanState,
   pending: PendingInput | undefined,
   text: string,
 ): SpanState {
-  const edit = planEdit(state.text, text, pending?.selection);
-  const source = pending?.source ?? 'unknown';
+  const pinned = planEdit(state.text, text, pending?.selection);
+
+  // An insertion away from the selection, such as a spelling fix, or one with no pending input
+  // comes from a plain diff instead, and its text counts as unknown.
+  const fallback = pending === undefined || !isEditAtSelection(pinned, pending.selection);
+  const edit = fallback ? planEdit(state.text, text) : pinned;
+  const source = fallback ? 'unknown' : pending.source;
   const spans = state.spans.flatMap((span) => splitSpan(span, edit));
 
   if (edit.inserted > 0) {
@@ -99,6 +103,13 @@ function buildEdit(before: string, after: string, shared: Shared): Edit {
     inserted: after.length - shared.prefix - shared.suffix,
     removed: before.length - shared.prefix - shared.suffix,
   };
+}
+
+// A deletion inserts nothing to label, so only an insertion must replace exactly the selection.
+function isEditAtSelection(edit: Edit, selection: PendingInput['selection']): boolean {
+  return (
+    edit.inserted === 0 || (edit.at === selection.start && edit.at + edit.removed === selection.end)
+  );
 }
 
 // Shifts a span past the edit, trims the part the edit removed, and splits a span the edit lands

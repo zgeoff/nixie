@@ -20,7 +20,8 @@ and no server code, so it carries the `lib` tag without `server-only` and a clie
   an ID arrives again with a different input.
 - **Sessions.** Every procedure except `sessions.enrol` declares `UNAUTHORIZED`. Enrolment takes
   `tokenDelivery`: `cookie` for a browser, which receives an `HttpOnly` cookie, and `bearer` for the
-  Android app, which receives the token in the output.
+  Android app, which receives the token in the output. The server keeps only a hash of each token,
+  so a retried bearer enrolment receives a fresh token for the same session.
 - **The live stream.** `conversation.read` returns a page of records and `readAtSequence`, the log
   sequence it read at. The client passes that sequence to `log.follow`, whose event ID is each
   record's sequence. A reconnect with `Last-Event-ID` therefore resumes with no gap and no repeat.
@@ -54,8 +55,10 @@ The paste-span logic records how each span of a message box arrived: `typed`, `p
 2. On `input`, the client calls `buildSpanState` with the previous state, the pending input and the
    new text. The selection pins where the edit happened, so a paste next to repeated text keeps its
    label.
-3. An edit with no pending input falls back to a plain diff, and its inserted text counts as
-   `unknown`.
+3. An insertion that does not replace exactly the selection, such as a spelling fix elsewhere in the
+   box, falls back to a plain diff, and its inserted text counts as `unknown`. An edit with no
+   pending input falls back the same way, so a client discards its pending input after each `input`
+   and never keeps one from a cancelled `beforeinput`.
 
 Offsets count UTF-16 code units, as JavaScript string indices do. An edit boundary never splits a
 surrogate pair. `buildSpanState` needs only 2 strings and a pending input, so a client without

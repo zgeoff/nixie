@@ -59,6 +59,30 @@ test('it places a paste next to repeated text at the selection', () => {
   });
 });
 
+test('it labels only the changed text unknown when an edit lands away from the selection', () => {
+  expect(
+    buildSpanState(
+      {
+        spans: [
+          { end: 7, source: 'pasted', start: 0 },
+          { end: 11, source: 'typed', start: 7 },
+        ],
+        text: 'PASTED wrod',
+      },
+      buildPendingInput({ inputType: 'insertReplacementText', selectionEnd: 0, selectionStart: 0 }),
+      'PASTED word',
+    ),
+  ).toStrictEqual({
+    spans: [
+      { end: 7, source: 'pasted', start: 0 },
+      { end: 8, source: 'typed', start: 7 },
+      { end: 10, source: 'unknown', start: 8 },
+      { end: 11, source: 'typed', start: 10 },
+    ],
+    text: 'PASTED word',
+  });
+});
+
 test('it labels an edit with no pending input as unknown', () => {
   expect(
     buildSpanState(
