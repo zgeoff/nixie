@@ -15,11 +15,12 @@ nixie's channels settle these choices:
   process, with `@orpc/tanstack-query` and an isomorphic link. Start's server code calls nixie's
   procedures over the private network. Start keeps no session of its own: it forwards your device
   session to nixie's API on every call, so the API is the one place that checks authority. The web
-  client and the API share one host name: a reverse proxy routes `/rpc` and the live stream to
-  nixie's API and every other path to Start, and the browser's own calls go to the API directly. The
-  session cookie is host-only on that name, so it reaches both servers with no cross-origin setup.
-  Android uses Expo. A shared package holds the contract, query hooks, paste-span logic and view
-  state, and each client owns its UI. React Server Components are opt-in.
+  client and the API share one host name: a reverse proxy sends `/rpc`, which carries every
+  procedure and the live stream, to nixie's API and every other path to Start, and the browser's own
+  calls go to the API directly. The session cookie is host-only on that name, so it reaches both
+  servers with no cross-origin setup. Android uses Expo. A shared package holds the contract, query
+  hooks, paste-span logic and view state, and each client owns its UI. React Server Components are
+  opt-in.
 - **Device sign-in.** An enrolment code from the host creates a device session, and a passkey joins
   with [0012](./0012-high-risk-approvals.md). The web client holds a session cookie and Expo a
   bearer token, and both carry the same device-session authority. The expected deployment serves
