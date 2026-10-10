@@ -47,8 +47,11 @@ sets: it happened, retry, or drop.
 Defer offers 1 hour (a configurable default), this evening, tomorrow morning and a custom time, with
 an optional note.
 
-1. The proposal stays pending in a collapsed "Deferred" group and counts in no push.
+1. The proposal stays pending in a collapsed "Deferred" group and counts in no push and no routine
+   approval batch.
 2. At the chosen time it returns as a fresh item with a buzzing notice, which waits for quiet hours.
+   The return timer checks the proposal's current state and defer generation first, so an answered,
+   lapsed or re-deferred proposal never resurfaces.
 3. The lapse moves to at least one full lapse interval after the return, or after quiet hours end
    when the return falls inside them. It never moves past the action's real deadline, the optional
    `deadlineAt` field that the action hash covers.
@@ -65,7 +68,8 @@ checks that the choice fits the class, and then records the answer. An approved 
 action queue, and an internal operation such as a memory write commits in its own transaction. A
 stale hash returns `CONFLICT`, and the client shows what changed. **Why:** a proposal can change
 under the same ID after a rule narrows. The passkey challenge derives from the proposal ID and the
-action hash, so the assertion covers that one action.
+action hash and requires WebAuthn user verification, so the assertion covers that one action and the
+server rejects one made without your biometric or PIN check.
 
 The card then follows the outcome from its records, never from the model's words.
 

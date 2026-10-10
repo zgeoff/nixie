@@ -64,9 +64,12 @@ write-ahead log. A forget then starts a key backup at once instead of waiting fo
 1. The backup job uploads a fresh key snapshot without the deleted keys, forgets every other key
    snapshot, and prunes their unused data. Forgetting snapshots without a prune left a blob that
    still decrypted the item in the [key-backup spike](../../../spikes/forget-backups/README.md).
-2. It removes staging files and backup cache copies, then records its receipt.
-3. The forget stays pending until every registered key copy has a receipt. An error, a failed prune,
-   an unavailable backend or a crash keeps it pending, and recovery resumes the same operation.
+2. It checks the remaining repository data and restores every surviving key snapshot against an
+   older data snapshot, to confirm that the forgotten items stay unreadable.
+3. It removes staging files and backup cache copies, then records its receipt.
+4. The forget stays pending until every registered key copy has a receipt. An error, a failed prune,
+   an unavailable backend or a crash keeps it pending, and recovery resumes the same operation. It
+   never restores an old key to reverse a partial deletion.
 
 In the first build, key-store staging, key publication and forget share one exclusive lock, so no
 backup can publish a key copy staged before a forget. A later stage replaces the lock with a

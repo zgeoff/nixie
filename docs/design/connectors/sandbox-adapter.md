@@ -93,7 +93,8 @@ process whose stdin and stdout stay open, which runs the SDK of a worker or the 
 pass the environment by name: the broker's proxy and CA variables, `NO_PROXY` and the placeholder
 for the model credential. Output past 1 MiB per stream is cut, with the cut recorded. On imp, both
 run through impd over vsock, so the guest's network policy never touches the host's control of its
-processes. A stop sends SIGTERM and kills the process group 5 s later, by default.
+processes. A stop sends SIGTERM and kills the process's cgroup 5 s later, by default, so no
+descendant outlives it.
 
 ## Images
 
@@ -121,4 +122,9 @@ sketch maps each part of the interface:
 - **Tools and grants.** With `egress: none` the container has loopback only. A read-only mount holds
   only that sandbox's Unix sockets, to its run's tool endpoint and to a host proxy that injects the
   model credential.
+- **Files and disk.** File copies use paths inside the sandbox root and reject escapes, and no host
+  directory is mounted. The writable volume enforces `diskMiB`, and `create` refuses the spec when
+  the storage backend cannot enforce it.
+- **Allowed egress.** A coding session with allowed egress goes through an adapter-owned gateway
+  that enforces its declared host list, never through unrestricted container networking.
 - **Suspension.** `none`. A stopped container restarts through nixie's committed-step recovery.
