@@ -39,9 +39,10 @@ you.
 - The action queue's attempts, outcomes and retry schedule ([actions](./core/actions.md)). Approval
   consumption and reconciliation wait for slice 3.
 - The decision point's registry and scope stages, and one fixed rule in code that allows a call
-  whose effects are only `read` or `fetch`. This subset is this plan's split. Slice 3 builds the
-  full [pipeline](./policy/decision-point.md#the-pipeline) and replaces the fixed rule with your
-  seeded rules.
+  whose effects are only `read`, `fetch` or `note`, so the routing tools from slice 2 run without a
+  prompt. This subset is this plan's split. Slice 3 builds the full
+  [pipeline](./policy/decision-point.md#the-pipeline) and replaces the fixed rule with your seeded
+  rules.
 - The path definitions source and a seed of the persona, which the snapshot hash covers
   ([definitions source](./connectors/definitions-source.md)). Rule seeding waits for slice 3.
 - The sandbox adapter on imp, the model credential grant, the reverse forward and the tool endpoint
@@ -138,7 +139,9 @@ you answer with one tap, and stops at your spending limits.
   ([budgets](./policy/budgets.md)). The model limits count dollars, tokens and turns, each with a
   generous default that config overrides.
 - The Telegram push notifier ([channel adapter](./channels/channel-adapter.md)).
-- Search on Kagi, the first paid tool ([search](./connectors/connector.md#search)).
+- Search on Kagi, the first paid tool, with the credential store's deployment backend and fetcher
+  for its key ([search](./connectors/connector.md#search),
+  [credentials](./connectors/credentials.md#backends)).
 
 **Out of scope:** auto-mode, which stays off until its spike meets the bar, and the passkey check, a
 later stage.
@@ -160,8 +163,9 @@ the consent checker's model.
       lapsed, and each reconciliation path.
 - [ ] Tests trip each model limit, and show that the counting proxy refuses requests once a budget
       is spent and while the proxy is down.
-- [ ] A live check: a send to a new destination shows a card, "always allow" adds its rule, and
-      Telegram shows a notice that holds only a count and a link.
+- [ ] A test sends to a new destination through a test-only `send` tool: a card shows, "always
+      allow" adds its rule, and the next send runs with no prompt.
+- [ ] A live check: a pending card makes Telegram show a notice that holds only a count and a link.
 
 ## 4. Memory
 
@@ -235,7 +239,7 @@ where your rules say to.
 
 - The connector interface and setup with the web OAuth return
   ([connectors](./connectors/connector.md)).
-- The credential store: the database backend, the fetcher, refresh, statuses, Disconnect and Forget
+- The credential store's database backend, refresh, statuses, Disconnect and Forget
   ([credentials](./connectors/credentials.md)).
 - Gmail, Google Calendar and Google Drive, with reconciliation through the Sent folder
   ([Google](./connectors/connector.md#google)).
