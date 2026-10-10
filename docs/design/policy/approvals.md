@@ -62,8 +62,9 @@ from untrusted content could steer your answer, and you judge the action, not th
 it.
 
 A proposal lapses after 72 hours by default, which the lapse timer in [tasks](../core/tasks.md)
-enforces. The model can withdraw a proposal and post a new one, such as after you say "make it
-8:30", because the conversation never waits on a proposal.
+enforces. A memory proposal takes the longer lapse that the
+[memory write contract](../memory/writes.md) sets. The model can withdraw a proposal and post a new
+one, such as after you say "make it 8:30", because the conversation never waits on a proposal.
 
 ### Risk class
 
