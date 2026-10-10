@@ -69,9 +69,9 @@ nixie's channels settle these choices:
   dependencies and failures inside the trusted core.
 - **A Start server with its own session.** It gives the web client a second auth path that must stay
   in step with the API's.
-- **Two host names under one parent domain.** It needs no proxy, and it scopes the session cookie to
-  the parent domain, which sends it to every host under that domain, and it needs cross-origin
-  requests with credentials.
+- **Two host names under one parent domain.** It needs no proxy. The session cookie then covers the
+  parent domain and reaches every host under it, and the API needs cross-origin requests with
+  credentials.
 - **A password, or a passkey from day one.** A password is one more secret to guard and reset.
 - **The approval digest alone, with no cards.** Every approval becomes a trip to one place.
 - **One edited notice for all arrivals, or a new notice for every batch.** An edit never buzzes, and
