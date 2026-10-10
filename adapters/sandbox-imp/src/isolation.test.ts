@@ -1,0 +1,246 @@
+// The reverse-forward spike's isolation control, run against a real impd on a host with /dev/kvm.
+// docs/runbooks/imp-isolation-tests.md names the variables that turn it on.
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
+import { createImpClient } from '@zgeoff/imp-client';
+import { buildImpPort } from './build-imp-port';
+import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
+import { parseImpConfig } from './parse-imp-config';
+import { setupTestRecorder } from './test-utils/setup-test-recorder';
+
+const env = {
+  IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
+  IMP_TOKEN: process.env['NIXIE_IMP_TEST_TOKEN'],
+  IMP_HOST_ADDRESSES: process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'],
+};
+const image = process.env['NIXIE_IMP_TEST_IMAGE'] ?? '';
+const hasImpHost = env.IMP_URL !== undefined && env.IMP_TOKEN !== undefined && image !== '';
+const modelHost = 'api.anthropic.com';
+const toolToken = crypto.randomUUID();
+const secret = `nixie-test-${crypto.randomUUID().slice(0, 8)}`;
+const decoder = new TextDecoder();
+
+// what the probe prints for a connection that reached no server
+const refused = /^status=000 exit=[1-9]\d*$/u;
+
+const limits = { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 };
+
+const conversationSpec: SandboxSpec = {
+  kind: 'conversation',
+  image,
+  owner: 'isolation-test',
+  egress: { kind: 'none' },
+  grants: [{ secret, host: modelHost, env: { ANTHROPIC_API_KEY: 'broker-placeholder' } }],
+  toolRoute: true,
+  limits,
+};
+
+const fetchSpec: SandboxSpec = {
+  kind: 'fetch',
+  image,
+  owner: 'isolation-test',
+  egress: { kind: 'public' },
+  grants: [],
+  toolRoute: false,
+  limits,
+};
+
+// Runs curl in the guest and prints its HTTP status and exit code. With flags left out, curl skips
+// every proxy, so the connection is the guest's own.
+async function runProbe(sandbox: Sandbox, url: string, flags = '--noproxy "*"'): Promise<string> {
+  const script = `curl -sS -m 5 ${flags} -o /dev/null -w "status=%{http_code}" "${url}"; echo " exit=$?"`;
+  const result = await sandbox.exec({ argv: ['sh', '-c', script] });
+
+  return decoder.decode(result.stdout.bytes).trim();
+}
+
+async function runScript(sandbox: Sandbox, script: string): Promise<string> {
+  const result = await sandbox.exec({ argv: ['sh', '-c', script] });
+
+  return decoder.decode(result.stdout.bytes).trim();
+}
+
+interface Suite {
+  adapter: SandboxAdapter | null;
+  conversation: Sandbox | null;
+  readonly cleanup: (() => Promise<unknown>)[];
+}
+
+const suite: Suite = { adapter: null, conversation: null, cleanup: [] };
+
+function getConversation(): Sandbox {
+  if (suite.conversation === null) {
+    throw new Error('the suite made no conversation imp');
+  }
+  return suite.conversation;
+}
+
+describe.skipIf(!hasImpHost)('isolation on an imp host', () => {
+  beforeAll(setupSuite, 120_000);
+  afterAll(teardownSuite);
+  test('the reverse forward reaches the tool endpoint, which checks the run token', checkToolRoute);
+  test('the broker reaches the model host, which answers the dummy credential', checkModelHost);
+  test('the broker refuses any other host', checkOtherHost);
+  test.each([
+    'https://1.1.1.1/',
+    'http://169.254.169.254/',
+    'http://100.100.100.100/',
+    `https://${modelHost}/`,
+  ])('a direct connection to %s fails', checkDirectRefused);
+  test('a direct connection to impd fails, through its address and the gateway', checkImpdRefused);
+  test('the forward reopens after a sleep and a wake', checkRouteAfterWake, 60_000);
+  test.skipIf(env.IMP_HOST_ADDRESSES === undefined)(
+    'a public imp reaches the internet, and never the host or impd',
+    checkPublicEgress,
+    120_000,
+  );
+});
+
+async function setupSuite(): Promise<void> {
+  const config = parseImpConfig(env);
+  const dir = await mkdtemp(join(tmpdir(), 'nixie-isolation-'));
+  const removeSecret = await createDummySecret(config.url, config.token);
+  const ctx = await setupTestRecorder();
+
+  suite.cleanup.push(
+    () => rm(dir, { recursive: true, force: true }),
+    startToolEndpoint(join(dir, 'tools.sock')),
+    removeSecret,
+  );
+  suite.adapter = buildImpSandboxAdapter({
+    port: buildImpPort(config),
+    recorder: ctx.recorder,
+    config,
+    toolTarget: () => ({ path: join(dir, 'tools.sock') }),
+  });
+  suite.conversation = await suite.adapter.create(conversationSpec);
+}
+
+async function teardownSuite(): Promise<void> {
+  await suite.conversation?.destroy();
+  for (const cleanup of suite.cleanup.toReversed()) {
+    // oxlint-disable-next-line no-await-in-loop -- undoes the setup in reverse order
+    await cleanup();
+  }
+}
+
+async function checkToolRoute(): Promise<void> {
+  const sandbox = getConversation();
+  const route = await sandbox.toolRoute();
+  const call = await runScript(
+    sandbox,
+    `curl -sS -m 10 -H "Authorization: Bearer ${toolToken}" -w " status=%{http_code}" "${route?.url}/mcp"`,
+  );
+  const anonymous = await runProbe(sandbox, `${route?.url}/mcp`, '');
+
+  expect(call).toBe('{"result":{"sum":42}} status=200');
+  expect(anonymous).toBe('status=401 exit=0');
+}
+
+async function checkModelHost(): Promise<void> {
+  const outcome = await runProbe(getConversation(), `https://${modelHost}/v1/models`, '');
+
+  expect(outcome).toMatch(/^status=[1-5]\d\d exit=0$/u);
+}
+
+async function checkOtherHost(): Promise<void> {
+  const outcome = await runProbe(getConversation(), 'https://example.com/', '');
+
+  expect(outcome).toMatch(refused);
+}
+
+async function checkDirectRefused(url: string): Promise<void> {
+  const outcome = await runProbe(getConversation(), url);
+
+  expect(outcome).toMatch(refused);
+}
+
+async function checkImpdRefused(): Promise<void> {
+  const impd = new URL(parseImpConfig(env).url);
+  const byAddress = await runProbe(getConversation(), `${impd.protocol}//${impd.host}/`);
+  const byGateway = await runScript(
+    getConversation(),
+    'gw=$(ip -4 route show default | awk \'{print $3; exit}\'); curl -sS -m 5 --noproxy "*" -o /dev/null -w "status=%{http_code}" "http://$gw:7070/"; echo " exit=$?"',
+  );
+
+  expect(byAddress).toMatch(refused);
+  expect(byGateway).toMatch(refused);
+}
+
+async function checkRouteAfterWake(): Promise<void> {
+  const sandbox = getConversation();
+
+  if (sandbox.suspension.kind !== 'memory') {
+    throw new Error('imp keeps memory');
+  }
+  await sandbox.suspension.sleep();
+  await sandbox.suspension.wake();
+
+  const route = await sandbox.toolRoute();
+  const call = await runScript(
+    sandbox,
+    `curl -sS -m 10 -o /dev/null -H "Authorization: Bearer ${toolToken}" -w "status=%{http_code}" "${route?.url}/mcp"`,
+  );
+
+  expect(call).toBe('status=200');
+}
+
+async function checkPublicEgress(): Promise<void> {
+  const fetchSandbox = await getAdapter().create(fetchSpec);
+
+  suite.cleanup.push(() => fetchSandbox.destroy());
+
+  const internet = await runProbe(fetchSandbox, 'https://1.1.1.1/', '');
+  const inside = await Promise.all(buildInsideURLs().map((url) => runProbe(fetchSandbox, url, '')));
+
+  expect(internet).toMatch(/^status=[1-5]\d\d exit=0$/u);
+  expect(inside).toSatisfyAll((outcome: string) => refused.test(outcome));
+}
+
+function getAdapter(): SandboxAdapter {
+  if (suite.adapter === null) {
+    throw new Error('the suite made no adapter');
+  }
+  return suite.adapter;
+}
+
+// every host address the deployment lists, and impd itself
+function buildInsideURLs(): readonly string[] {
+  const config = parseImpConfig(env);
+  const hosts = (config.publicEgress?.hostAddresses ?? []).map(
+    (range) => range.split('/')[0] ?? '',
+  );
+
+  return [
+    ...hosts.map((host) => (host.includes(':') ? `http://[${host}]/` : `http://${host}/`)),
+    `${config.url}/`,
+  ];
+}
+
+function startToolEndpoint(socketPath: string): () => Promise<void> {
+  const tools = Bun.serve({
+    unix: socketPath,
+    fetch: (request) =>
+      request.headers.get('authorization') === `Bearer ${toolToken}`
+        ? Response.json({ result: { sum: 42 } })
+        : new Response('refused', { status: 401 }),
+  });
+
+  return () => tools.stop(true);
+}
+
+// a custom secret for the model host alone, holding a dummy value; the result removes it
+async function createDummySecret(url: string, token: string): Promise<() => Promise<unknown>> {
+  const client = createImpClient({ url, token });
+
+  await client.secrets.add({
+    name: secret,
+    kind: 'custom',
+    value: 'nixie-isolation-dummy',
+    rules: [{ host: modelHost, header: 'x-api-key', scheme: 'raw' }],
+  });
+  return () => client.secrets.delete({ name: secret });
+}
