@@ -45,12 +45,17 @@ directory. They exchange 2 kinds of file there:
 
 The sidecar publishes only a set whose marker exists and whose copies match their checksums. It
 publishes sets one at a time, in sequence order, and removes a set's copies after its receipt. The
-formats live in `libs/wire`, and a release reads its own format and the one before.
+formats live in `libs/wire`, and a release reads its own format and the one before. The sidecar
+writes each receipt in the format version that its set's manifest declares, so a nixie one release
+behind reads every receipt.
 
 ## A backup run
 
 1. nixie copies `nixie.db` and `keys.db` with `VACUUM INTO` into a new snapshot set, while writers
-   continue, then writes the manifest and the marker.
+   continue, then writes the manifest and the marker. **Why:** `VACUUM INTO` writes one consistent
+   copy from a single read transaction, and the deploy spike restored from it. SQLite's online
+   backup API restarts its copy each time a write lands on another connection, so a busy database
+   can delay a backup without limit.
 2. The sidecar backs up the database copy to the data repo, and the key store copy to the key repo.
 3. restic applies retention to the data repo. In the key repo it keeps the new snapshot, forgets
    every other snapshot in every host and path group, and prunes with `--max-unused 0`.

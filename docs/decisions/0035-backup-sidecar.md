@@ -2,13 +2,15 @@
 
 - Date: 2026-10-10
 - Status: decided
+- Supersedes in part: [0020](0020-deployment.md), on its one secrets file
 - Design: [backup and restore](../design/platform/deployment/backup-and-restore.md),
   [deployment](../design/platform/deployment/deployment.md)
 
 nixie's backup tools run in their own container, the backup sidecar, beside nixie: in nixie's pod on
 Kubernetes and in nixie's Compose project. restic, Litestream and the rclone crypt gateway live in
 the backup image, built and released with nixie's other images. sops stays in the nixie image, and
-nixie decrypts its secrets file in its own process at start.
+nixie decrypts its secrets file in its own process at start. Each container has its own encrypted
+secrets file, where [0020](0020-deployment.md) had one for nixie alone.
 
 nixie owns consistency and the sidecar owns transport. nixie is the single writer, so it makes every
 database copy and is the only container that opens a database. The sidecar ships the copies nixie

@@ -180,7 +180,8 @@ part:
 | Definitions      | The last seed applied, with no refused snapshot pending    |
 | imp host         | impd answers, and every imp image in the manifest is added |
 | Conversation imp | Awake, and its last turn did not fail on start             |
-| Backups          | The last backup finished within twice the backup interval  |
+| Backups          | The last receipt arrived within twice the backup interval  |
+| Backup sidecar   | Its health endpoint reports ready                          |
 | Disk             | Under 90% full on the data volume                          |
 | Spending         | The hard spending stop has not fired                       |
 
