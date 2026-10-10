@@ -14,9 +14,13 @@ nixie's channels settle these choices:
 - **Two clients.** The web client is TanStack Start running as its own server, beside nixie's
   process, with `@orpc/tanstack-query` and an isomorphic link. Start's server code calls nixie's
   procedures over the private network. Start keeps no session of its own: it forwards your device
-  session to nixie's API on every call, so the API is the one place that checks authority. Android
-  uses Expo. A shared package holds the contract, query hooks, paste-span logic and view state, and
-  each client owns its UI. React Server Components are opt-in.
+  session to nixie's API on every call, so the API is the one place that checks authority. The web
+  client and the API share one host name: a reverse proxy sends `/rpc`, which carries every
+  procedure and the live stream, to nixie's API and every other path to Start, and the browser's own
+  calls go to the API directly. The session cookie is host-only on that name, so it reaches both
+  servers with no cross-origin setup. Android uses Expo. A shared package holds the contract, query
+  hooks, paste-span logic and view state, and each client owns its UI. React Server Components are
+  opt-in.
 - **Device sign-in.** An enrolment code from the host creates a device session, and a passkey joins
   with [0012](./0012-high-risk-approvals.md). The web client holds a session cookie and Expo a
   bearer token, and both carry the same device-session authority. The expected deployment serves
@@ -48,6 +52,8 @@ nixie's channels settle these choices:
 - A separate Start server keeps Vite, server rendering and the UI framework out of the process that
   holds policy, credentials and the approval check, and a UI crash or deploy never restarts that
   process. Forwarding the device session keeps one authority model across all routes.
+- One host name lets one host-only cookie reach both servers, needs no cross-origin requests, and
+  gives the passkey one name to bind to.
 - Cards keep an approval beside its context, and the approval digest gathers items from your
   absence.
 - Defer lets you choose when to answer without authorizing anything or losing a real deadline.
@@ -64,6 +70,9 @@ nixie's channels settle these choices:
   dependencies and failures inside the trusted core.
 - **A Start server with its own session.** It gives the web client a second auth path that must stay
   in step with the API's.
+- **Two host names under one parent domain.** It needs no proxy. The session cookie then covers the
+  parent domain and reaches every host under it, and the API needs cross-origin requests with
+  credentials.
 - **A password, or a passkey from day one.** A password is one more secret to guard and reset.
 - **The approval digest alone, with no cards.** Every approval becomes a trip to one place.
 - **One edited notice for all arrivals, or a new notice for every batch.** An edit never buzzes, and
@@ -72,6 +81,8 @@ nixie's channels settle these choices:
 
 ## Consequences
 
-- The deployment runs the web client as its own container or pod beside nixie.
-- Integration checks remain for session forwarding through the Start server, the Expo stream on a
+- The deployment runs the web client as its own container or pod beside nixie, behind one reverse
+  proxy.
+- The session forwarding spike (`spikes/start-session-forwarding/`) checked a separate Start server
+  that forwards the session and keeps none. Integration checks remain for the Expo stream on a
   device and Android paste edge cases.
