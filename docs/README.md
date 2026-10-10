@@ -35,6 +35,8 @@ rests on.
 
 - [Slices](./design/slices.md) — the first build in 9 ordered slices, each with its scope, what it
   needs first and its acceptance checks
+- [Code layout](./design/code-layout.md) — the workspace folders, package boundaries, the module
+  packages, the images and the checks
 
 ### Core
 
@@ -125,6 +127,8 @@ The runtime, the durable layer, and how the conversation and tasks share work.
   digest
 - [0033: Model profiles and model cost](./decisions/0033-model-profiles.md) — a profile per model
   route, a profile per role, and model limits in dollars, tokens and turns
+- [0034: The code layout](./decisions/0034-code-layout.md) — 5 workspace folders by trust zone and
+  role, the `@heynixie/` scope, and package boundaries checked by tag
 
 ### Policy
 
