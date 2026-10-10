@@ -52,7 +52,7 @@ Each carries nixie's own declaration in `_meta` (`nixie/effects`, `nixie/destina
 `strictMcpConfig: true`, `settingSources: []`, `allowedTools` set to the 3 tools, a fresh `cwd`, and
 `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`. `options.env` replaces the CLI environment with
 `PATH`, a fresh `HOME` and `CLAUDE_CONFIG_DIR`, the mock as `ANTHROPIC_BASE_URL`, and a dummy
-`ANTHROPIC_API_KEY`, so no token from the shell or the repo's `.env` reaches the CLI.
+`ANTHROPIC_API_KEY`, so no token from the shell reaches the CLI.
 
 - **In-process:** `createSdkMcpServer` with the tools registered on its `instance`. A tap on the
   transport logs every JSON-RPC message both ways.

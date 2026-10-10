@@ -23,7 +23,12 @@ Run the command from this directory. The script runs 7 model calls and prints on
 
 ```bash
 bun install
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env resume-at.ts "$(mktemp -d)"
+# The model token, from the vault. Run `unset CLAUDE_CODE_OAUTH_TOKEN` when you finish.
+export CLAUDE_CODE_OAUTH_TOKEN=$(
+  OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../.claude/settings.local.json) \
+    op --cache=false read 'op://nixie/claude-code-oauth-token/credential'
+)
+env -u ANTHROPIC_API_KEY bun --no-env-file resume-at.ts "$(mktemp -d)"
 ```
 
 ## Answers

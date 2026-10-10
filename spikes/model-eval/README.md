@@ -17,14 +17,18 @@ and what does each cost per task? Which settings move cost and latency the most?
 
 ## Run it
 
-Run each command from this directory. The Anthropic models read the OAuth token from the repo's
-`.env`.
+Run each command from this directory. The Anthropic models read the OAuth token from the vault.
 
 ```bash
 bun install
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env chat.ts --persona personas/example.md
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env matrix.ts --out results/<run_name>
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env converse.ts --out results/<run_name> --scenario scenarios/example
+# The model token, from the vault. Run `unset CLAUDE_CODE_OAUTH_TOKEN` when you finish.
+export CLAUDE_CODE_OAUTH_TOKEN=$(
+  OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../.claude/settings.local.json) \
+    op --cache=false read 'op://nixie/claude-code-oauth-token/credential'
+)
+env -u ANTHROPIC_API_KEY bun --no-env-file chat.ts --persona personas/example.md
+env -u ANTHROPIC_API_KEY bun --no-env-file matrix.ts --out results/<run_name>
+env -u ANTHROPIC_API_KEY bun --no-env-file converse.ts --out results/<run_name> --scenario scenarios/example
 bun codex-converse.ts --out results/<run_name> --scenario scenarios/example
 bun review.ts results/<run_name>
 ```
@@ -66,8 +70,8 @@ in `MOCK_DIR`, and logs every call. `MOCK_FAIL` makes chosen calls fail:
 `calendar_create:1,calendar_create:2` fails the first two calls to that tool.
 
 ```bash
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env agent/run.ts --out results/<run_name> --samples 2
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env agent/judge.ts results/<run_name>
+env -u ANTHROPIC_API_KEY bun --no-env-file agent/run.ts --out results/<run_name> --samples 2
+env -u ANTHROPIC_API_KEY bun --no-env-file agent/judge.ts results/<run_name>
 bun agent/report.ts results/<run_name>
 ```
 

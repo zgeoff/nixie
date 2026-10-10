@@ -1,6 +1,6 @@
 // Defers a Bash call with a PreToolUse hook, then resumes the session in a later process.
-// Usage: bun --env-file=../../.env defer.ts <start|batch> <session-file>
-//        bun --env-file=../../.env defer.ts resume <session-file> <allow|deny|defer>
+// Usage: bun --no-env-file defer.ts <start|batch> <session-file>
+//        bun --no-env-file defer.ts resume <session-file> <allow|deny|defer>
 import { once } from 'node:events';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';

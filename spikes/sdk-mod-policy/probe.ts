@@ -1,5 +1,5 @@
 // Probes whether a policy mod is loaded, before and after a hook wedges the hooks worker.
-// Usage: bun --env-file=../../.env probe.ts <mod-dir>
+// Usage: bun --no-env-file probe.ts <mod-dir>
 import { on } from 'node:events';
 import { resolve } from 'node:path';
 import type { Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';

@@ -1,6 +1,6 @@
 /* oxlint-disable max-lines -- one spike runner; splitting needs a new module */
 // Runs the agent evals: memory writing from a transcript, and a scripted day with tools.
-// Usage: env -u ANTHROPIC_API_KEY bun --env-file=../../.env agent/run.ts --out results/<name>
+// Usage: env -u ANTHROPIC_API_KEY bun --no-env-file agent/run.ts --out results/<name>
 //   [--task memory|day|all] [--memory-case <dir>] [--configs a,b] [--samples n] [--jobs n]
 import { once } from 'node:events';
 import {

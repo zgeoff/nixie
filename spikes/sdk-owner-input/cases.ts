@@ -1,5 +1,5 @@
 // Runs the cases owner.ts leaves out and shows when Claude reads the owner message.
-// Usage: bun --env-file=../../.env cases.ts <text|slow-tool|defer|interrupt> [--human]
+// Usage: bun --no-env-file cases.ts <text|slow-tool|defer|interrupt> [--human]
 import { randomUUID } from 'node:crypto';
 import { on } from 'node:events';
 import { resolve } from 'node:path';

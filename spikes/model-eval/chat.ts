@@ -1,5 +1,5 @@
 // Chats with the model in the terminal under a persona file, one session at a time.
-// Usage: env -u ANTHROPIC_API_KEY bun --env-file=../../.env chat.ts [--persona <file>]
+// Usage: env -u ANTHROPIC_API_KEY bun --no-env-file chat.ts [--persona <file>]
 //   [--mode replace|append] [--model <id>] [--profile <name>] [--tools <A,B>]
 import { randomUUID } from 'node:crypto';
 import { on, once } from 'node:events';

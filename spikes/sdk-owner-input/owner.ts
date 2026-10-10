@@ -1,5 +1,5 @@
 // Sends an owner message into a running task with one priority and shows when Claude reads it.
-// Usage: bun --env-file=../../.env owner.ts <now|next|later|none> [--human] [--step <seconds>]
+// Usage: bun --no-env-file owner.ts <now|next|later|none> [--human] [--step <seconds>]
 import { randomUUID } from 'node:crypto';
 import { on } from 'node:events';
 import { resolve } from 'node:path';
