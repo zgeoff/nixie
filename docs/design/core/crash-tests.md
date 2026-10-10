@@ -173,8 +173,9 @@ freezes A with `SIGSTOP` before B starts, and a third runs the restore command i
 
 ### A stale writer epoch
 
-The test starts process A with a test-only hook that releases A's writer lock without stopping A. It
-then starts process B, which takes the lock and raises the epoch, and lets A commit a step.
+The test starts process A with a test-only hook that closes A's lock descriptor without stopping A,
+as a bug would. It then starts process B, which takes the lock and raises the epoch, and lets A
+commit a step.
 
 - A's first write fails on the epoch, and A exits.
 - A write that A started before B's raise commits before it, and nothing from A commits after it.
