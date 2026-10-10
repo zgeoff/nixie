@@ -42,6 +42,18 @@ model as the tool result, so the model can take another path, and no prompt reac
 action runs through the pipeline again before each attempt, so a rule that narrowed after its
 approval still applies; [actions](../core/actions.md) covers how an approval answers each outcome.
 
+## The slice 1 rule
+
+Slice 1 builds the registry and scope stages and one fixed rule in code, `slice1.read-only`, in
+place of stages 3 to 9. The fixed rule allows a call whose effects are only `read`, `fetch` or
+`note`. It denies every other call, and the decision record names the fixed rule as the deciding
+stage. The model receives the rule's ID and sentence as the tool result. **Why:** proposals arrive
+in slice 3, so a call that would ask has nowhere to wait.
+
+A [test build](../code-layout.md#test-builds) registers one more rule, `test.allow-send`, which
+allows `test.send` from the crash tests' test connector. A release build holds only the fixed rule.
+Slice 3 replaces both rules with the full pipeline and your seeded rules.
+
 ## Effects
 
 Every tool declares its effects in nixie's tool registry, and rules match on them:

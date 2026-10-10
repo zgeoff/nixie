@@ -98,8 +98,11 @@ rests on.
 
 ### Deployment
 
+- [Deployment design index](design/platform/deployment/README.md) — the 4 deployment docs
 - [Deployment](design/platform/deployment/deployment.md) — the first build, the host, the images,
   secrets, seeding the definitions, health, and Kubernetes
+- [Deployment configuration](design/platform/deployment/configuration.md) — the YAML file, what it
+  holds, its schema, and how it is mounted
 - [Backup and restore](design/platform/deployment/backup-and-restore.md) — the backup sidecar,
   Restic snapshots, the key repo and forget, the offsite replica, and restoring on a new host
 - [Upgrades](design/platform/deployment/upgrades.md) — the pin and the bot, delivery to the host, a
@@ -213,6 +216,9 @@ Definitions and deployment models.
   S3-compatible backend the deployment supplies
 - [0035: The backup sidecar](decisions/0035-backup-sidecar.md) — restic, Litestream and rclone in
   their own container beside nixie, with sops kept in nixie
+- [0036: Deployment configuration and reference manifests](decisions/0036-deployment-configuration-and-reference-manifests.md)
+  — one YAML file validated by a zod schema, and generic Kubernetes manifests shipped beside the
+  Compose recipe
 
 ## Archive
 
