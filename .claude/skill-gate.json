@@ -1,0 +1,9 @@
+{
+  "ignore": ["node_modules/", "dist/"],
+  "gates": [
+    {
+      "match": "**/*.md",
+      "skills": ["docs-writing", "project-docs-writing"]
+    }
+  ]
+}
