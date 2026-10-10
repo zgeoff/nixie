@@ -35,7 +35,6 @@ export async function writeRecords(
 // the type demands the field, and this check covers a caller that reached past the type, such as
 // one that parsed its input or passed an empty hash
 function requireDefinitions(input: RecordInput): void {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the check distrusts the type
   const hash: unknown = (input as Partial<RecordInput>).definitions?.snapshotHash;
 
   if (typeof hash !== 'string' || hash.length === 0) {
