@@ -47,8 +47,9 @@ you.
   ([definitions source](./connectors/definitions-source.md)). Rule seeding waits for slice 3.
 - The sandbox adapter on imp, the model credential grant, the reverse forward and the tool endpoint
   per task run ([sandbox adapter](./connectors/sandbox-adapter.md), [tools](./connectors/tools.md)).
-- The conversation in its long-lived imp on the configured model. The default is GLM 5.3 through the
-  Agent SDK against an Anthropic-compatible endpoint, which the
+- The conversation in its long-lived imp, on model profiles: the profile config with one profile,
+  mapped to the conversation role only. The default profile is GLM 5.3 at default effort, through
+  the Agent SDK against an Anthropic-compatible endpoint, which the
   [model-eval spike](../../spikes/model-eval/README.md) ran with nixie's tools.
 - One read-only tool: a web fetch that declares `fetch` and no destination, runs on the host,
   refuses private, loopback and link-local addresses, and returns the page as outside content.
@@ -100,8 +101,9 @@ you.
   ([messages into a running task](./channels/client.md#messages-into-a-running-task)).
 - The dashboard and a task opened as a conversation
   ([the dashboard](./channels/live-view.md#the-dashboard)).
-- Workers, each in its own imp from the worker image, with the worker run limits and the runner
-  pools ([workers](./core/tasks.md#workers), [runner pools](./core/actions.md#runner-pools)).
+- Workers, each in its own imp from the worker image, with the worker role mapped to a model
+  profile, the worker run limits and the runner pools ([workers](./core/tasks.md#workers),
+  [runner pools](./core/actions.md#runner-pools)).
 
 **Out of scope:** proposals and every action that needs your approval, which slice 3 adds.
 
@@ -139,8 +141,9 @@ you answer with one tap, and stops at your spending limits.
 - Approval consumption, policy before each attempt, reconciliation and unknown outcomes
   ([actions](./core/actions.md)).
 - Budgets, lifts for `spend` and the hard spending stop as a counting proxy
-  ([budgets](./policy/budgets.md)). The model limits count dollars, tokens and turns, each with a
-  generous default that config overrides.
+  ([budgets](./policy/budgets.md)). Model profiles gain their price table, and the model limits
+  count dollars, tokens and turns, each with a generous default that config overrides. The consent
+  checker role maps to a model profile.
 - The Telegram push notifier ([channel adapter](./channels/channel-adapter.md)).
 - Search on Kagi, the first paid tool, with the credential store's deployment backend and fetcher
   for its key ([search](./connectors/connector.md#search),
@@ -155,7 +158,7 @@ proposals.
 **Before it starts:** the spending proxy, the model cost on a subscription token, the consent
 checker on real messages, the second guard on the mod and the Telegram round trip spikes, and the
 seeding conflict view and rule export design task. Your choices: a budget for paid tool calls, and
-the consent checker's model.
+the model profile for the consent checker.
 
 **Acceptance:**
 
@@ -180,7 +183,7 @@ forgets an item on your word.
 - The memory store's first build: items, versions, a key per item, recall, the memory view, retire,
   forget, bulk deletion and export ([memory store](./memory/store.md#the-first-build)).
 - Conversation writes and the batched writer behind the content gate, memory proposals and grouped
-  notices ([memory writes](./memory/writes.md)).
+  notices ([memory writes](./memory/writes.md)). The memory writer role maps to a model profile.
 - The prompt, the pinned core, retrieval, `log.search`, compaction, the transcript as a cache and
   the session rebuild ([memory in context](./memory/context.md)).
 
@@ -191,8 +194,8 @@ forgets an item on your word.
 **Before it starts:** the compaction controls, resume after compaction, session recovery, memory
 checker, retrieval on your own questions, batched capture, memory poisoning, retirement and bulk
 deletion, pinned core on GLM, and paste spans in WebKit spikes. Your choices: the encoder model and
-library, and the models of the memory writer and the checker. Your input: the questions for the
-retrieval spike, about memory items you recognise.
+library, and the model profile for the memory writer. Your input: the questions for the retrieval
+spike, about memory items you recognise.
 
 **Acceptance:**
 
