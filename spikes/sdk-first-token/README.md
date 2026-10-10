@@ -14,7 +14,7 @@ and to the end of the turn, in the placement from
 [0003](../../docs/decisions/0003-sdk-placement.md)? How do a new process per turn, a resumed
 session, and a process kept alive between turns compare, and how much do nixie's in-process tools
 add? The voice stack waits on the answer
-([open items](../../docs/design/open-items.md#deferred-decisions)): a pipeline of speech-to-text,
+([open items](../../docs/design/open-items.md#choices-that-need-you)): a pipeline of speech-to-text,
 nixie's own turn and text-to-speech costs about 1.3 to 1.5 s from the end of speech to the reply
 before the model's share.
 

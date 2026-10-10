@@ -47,7 +47,7 @@ Memory lives in 2 tables beside the [event log](../core/event-log.md):
 
 - **`memory_items`** holds one row per item: its ID, current version, state, pin flag and creation
   time. The row is a projection of the versions, and the rebuild check from
-  [0027](../../decisions/0027-tasks-and-outside-actions.md) compares it against them.
+  [0027](../../decisions/0027-tasks-and-actions.md) compares it against them.
 - **`memory_versions`** holds one row per version, and nixie only appends to it.
 
 | Field           | Holds                                                                    | Encrypted |
@@ -110,7 +110,7 @@ ciphertext, so a replay shows a gap where the item was.
 delete. [Retirement intent](./writes.md#retirement-intent) binds that request to its target.
 
 A forget destroys the item's versions, its index entries and the compaction summaries that
-[memory in context](./context.md#compaction) deletes with it. It leaves owner messages and replies
+[memory in context](./context.md#compaction) deletes with it. It leaves your messages and replies
 that state the same fact under their own record keys, and the confirmation shows that scope and
 links the record-forget action. A forgotten item never exports or restores, and an undo never
 reaches across a forget.

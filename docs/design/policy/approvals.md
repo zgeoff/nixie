@@ -3,10 +3,9 @@
 - Decisions: [0002](../../decisions/0002-approvals.md),
   [0006](../../decisions/0006-approval-record.md), [0011](../../decisions/0011-memory-writes.md),
   [0012](../../decisions/0012-high-risk-approvals.md),
-  [0021](../../decisions/0021-outside-action-outcomes.md),
+  [0021](../../decisions/0021-action-outcomes.md),
   [0023](../../decisions/0023-lifting-always-ask.md),
-  [0027](../../decisions/0027-tasks-and-outside-actions.md),
-  [0028](../../decisions/0028-policy-design.md)
+  [0027](../../decisions/0027-tasks-and-actions.md), [0028](../../decisions/0028-policy-design.md)
 
 When the [decision point](./decision-point.md) asks, the tool creates a proposal and the turn ends.
 You answer a proposal with a checked action in the client, never with a chat message. An approval
