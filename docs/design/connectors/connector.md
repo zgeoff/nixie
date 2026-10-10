@@ -135,7 +135,11 @@ A non-public address is one of these:
 - loopback, the private ranges, and the unspecified, multicast and broadcast addresses
 - link-local, which holds cloud metadata services at `169.254.169.254`
 - the shared address space `100.64.0.0/10`, which holds Tailscale addresses
-- IPv6 unique local and link-local addresses, and the IPv4-mapped IPv6 form of any address above
+- IPv6 unique local and link-local addresses
+- an IPv6 address that embeds an IPv4 address, such as the IPv4-mapped, NAT64, 6to4 and Teredo
+  forms, when the embedded address is non-public
+- any range the deployment lists as internal, such as a cluster's pod and service ranges, whatever
+  their public or private class
 
 **Why:** the tool runs on the host, so a URL that names one of these addresses reaches nixie's own
 services, impd, a cluster's pod and service ranges, or a device on your tailnet.
