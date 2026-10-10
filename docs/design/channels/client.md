@@ -28,12 +28,14 @@ The [typed API spike](../../../spikes/client-rpc/) holds the transport and resum
 
 ## Two clients, one contract
 
-The web client runs on TanStack Start, mounted inside nixie's own Elysia process. Start's server
-code calls the oRPC procedures in-process through an isomorphic link, and the browser and Expo use
-the HTTP link. Both routes build the same device-session context, so server rendering grants no
-extra authority. React Server Components are opt-in. A shared package holds the contract, the
-`@orpc/tanstack-query` hooks, the paste-span logic and the view state, and each client owns its UI.
-The Expo app streams through `expo/fetch`.
+The web client runs on TanStack Start as its own server, beside nixie's process. Start's server code
+calls nixie's oRPC procedures over the private network through an isomorphic link, and the browser
+and Expo use the HTTP link straight to nixie. Start keeps no session of its own: on every call it
+forwards the device session from the browser's cookie to nixie's API as a bearer token, and nixie
+checks it as it checks every other call. Server rendering therefore grants no extra authority, and a
+Start server that fails or redeploys never restarts nixie. React Server Components are opt-in. A
+shared package holds the contract, the `@orpc/tanstack-query` hooks, the paste-span logic and the
+view state, and each client owns its UI. The Expo app streams through `expo/fetch`.
 
 ## Device sessions
 
