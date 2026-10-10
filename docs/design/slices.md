@@ -50,9 +50,8 @@ you.
 - The sandbox adapter on imp, the model credential grant, the reverse forward and the tool endpoint
   per task run ([sandbox adapter](./connectors/sandbox-adapter.md), [tools](./connectors/tools.md)).
 - The conversation in its long-lived imp, on model profiles: the profile config with one profile,
-  mapped to the conversation role only. The default profile is GLM 5.3 at default effort, through
-  the Agent SDK against an Anthropic-compatible endpoint, which the
-  [model-eval spike](../../spikes/model-eval/README.md) ran with nixie's tools.
+  mapped to the conversation role only. The conversation runs on its configured profile through the
+  Agent SDK.
 - One read-only tool: a web fetch that declares `fetch` and no destination, runs on the host,
   refuses private, loopback and link-local addresses, and returns the page as outside content.
 - The health endpoints, JSON logs of envelope fields only, and the release pipeline that publishes
@@ -161,8 +160,7 @@ proposals.
 
 **Before it starts:** the spending proxy, the model cost on a subscription token, the consent
 checker on real messages, the second guard on the mod and the Telegram round trip spikes, and the
-seeding conflict view and rule export design task. Your choices: a budget for paid tool calls, and
-the model profile for the consent checker.
+seeding conflict view and rule export design task. Your choice: a budget for paid tool calls.
 
 **Acceptance:**
 
@@ -197,9 +195,9 @@ forgets an item on your word.
 
 **Before it starts:** the compaction controls, resume after compaction, session recovery, memory
 checker, retrieval on your own questions, batched capture, memory poisoning, retirement and bulk
-deletion, pinned core on GLM, and paste spans in WebKit spikes. Your choices: the encoder model and
-library, and the model profile for the memory writer. Your input: the questions for the retrieval
-spike, about memory items you recognise.
+deletion, pinned core on the conversation's configured profile, and paste spans in WebKit spikes.
+Your choice: the encoder model and library. Your input: the questions for the retrieval spike, about
+memory items you recognise.
 
 **Acceptance:**
 
@@ -291,7 +289,7 @@ did and why.
 **Depends on:** slice 3, because every job run starts untrusted under the destination limits, and
 slice 6 for jobs that read mail and calendar.
 
-**Before it starts:** your choice of the model per job.
+**Before it starts:** nothing.
 
 **Acceptance:**
 
