@@ -51,10 +51,12 @@ for later devices. A code works once: a successful enrolment consumes it, and an
 after 15 min by default. nixie stores only a hash of each session token, and each session is a row
 in the [identity record](./channel-adapter.md).
 
-The web client keeps its token in a host-only `HttpOnly`, `Secure`, `SameSite=Strict` cookie, and
-every procedure requires a custom header that a cross-site form cannot send. The Expo app keeps its
-token in `expo-secure-store` and sends it as a bearer token. A session lapses after 30 days without
-use by default. The client lists every session, and revoking one is a checked action.
+The web client keeps its token in a host-only `HttpOnly`, `Secure`, `SameSite=Strict` cookie with
+`Path=/`, and every procedure requires a custom header that a cross-site form cannot send. The Expo
+app keeps its token in `expo-secure-store` and sends it as a bearer token. A session lapses after 30
+days without use by default. The client lists every session, and revoking one is a checked action.
+**Why `Path=/`:** enrolment sets the cookie from an `/rpc` response, and without a path the browser
+sends it only to `/rpc`, so Start would render every page signed out.
 
 With [0012](../../decisions/0012-high-risk-approvals.md), you register a passkey from a signed-in
 client. New devices then sign in with it, and always-ask approvals ask for it. WebAuthn needs HTTPS
