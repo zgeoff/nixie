@@ -52,10 +52,15 @@ you.
 - The conversation in its long-lived imp, on model profiles: the profile config with one profile,
   mapped to the conversation role only. The conversation runs on its configured profile through the
   Agent SDK.
-- One read-only tool: a web fetch that declares `fetch` and no destination, runs on the host,
-  refuses private, loopback and link-local addresses, and returns the page as outside content.
+- One read-only tool: the [web fetch](./connectors/connector.md#web-fetch), which declares `fetch`
+  and no destination, runs in the fetch sandbox with `public` egress and no grants, and returns the
+  page as outside content.
+- The fetch sandbox: one long-lived sandbox on the fetch image, with
+  [public egress](./connectors/sandbox-adapter.md#public-egress) through imp's `public` policy and
+  the deployment's host and internal ranges, replaced after a configured number of fetches or on any
+  error ([sandboxes by kind](./connectors/sandbox-adapter.md#sandboxes-by-kind-of-work)).
 - The health endpoints, JSON logs of envelope fields only, and the release pipeline that publishes
-  the nixie, web and conversation images
+  the nixie, web, conversation and fetch images
   ([health](./deployment/deployment.md#health-and-monitoring),
   [the image](./deployment/deployment.md#the-image)).
 
@@ -64,7 +69,7 @@ you.
 **Depends on:** nothing.
 
 **Before it starts:** the reverse forward from a pod spike, and the durable layer's crash tests and
-the release pipeline, both design tasks in [open items](./open-items.md#design-tasks).
+the release pipeline, both design tasks in [open items](./open-items.md#spikes-and-design-tasks).
 
 **Acceptance:**
 
@@ -84,9 +89,12 @@ the release pipeline, both design tasks in [open items](./open-items.md#design-t
 - [ ] Tests port the isolation control of the
       [reverse-forward spike](../../spikes/tools-reverse-forward/README.md): the conversation imp
       reaches nixie's tools and the model API, and nothing else.
+- [ ] A live check on the Kubernetes deployment and on the Compose recipe: the fetch sandbox fetches
+      a public HTTPS page, and cannot reach impd, any host address, the cluster's pod and service
+      ranges, or a tailnet address.
 - [ ] A test asserts the options of every `query()`: `tools: []`, `settingSources: []` and the SDK's
       own memory off.
-- [ ] A tagged release publishes the 3 images to GHCR, and both the Kubernetes deployment and the
+- [ ] A tagged release publishes the 4 images to GHCR, and both the Kubernetes deployment and the
       Compose recipe run them pinned by digest.
 
 ## 2. Tasks, workers and the dashboard

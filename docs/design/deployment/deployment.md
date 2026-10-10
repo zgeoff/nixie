@@ -98,6 +98,7 @@ MB.
 | Conversation | Bun, nixie's turn runner, the SDK with Claude Code | The long-lived conversation imp |
 | Worker       | The conversation image plus the code runtimes      | One imp per worker run          |
 | Code         | The code tool's runtimes, with no SDK              | A code run in a disposable imp  |
+| Fetch        | A minimal base and the web fetch's fetcher         | The long-lived fetch sandbox    |
 
 The worker image carries the code runtimes because a code run that a worker starts runs in that
 worker's own imp. The [coding design](../connectors/coding.md) sets the runtimes.
@@ -214,5 +215,5 @@ A `ReadWriteOnce` volume limits writable attachment to a node, not to one pod, s
 keeps a single writer through rollouts and forced recovery. imp's client delivers each
 reverse-forward connection to nixie over nixie's own connection to impd, so the pod opens no inbound
 port for its tools. The reverse forward from a pod is a spike in
-[open items](../open-items.md#spikes-to-run), which checks that route with egress `none` still
-holding.
+[open items](../open-items.md#spikes-and-design-tasks), which checks that route with egress `none`
+still holding.

@@ -22,8 +22,8 @@
 - [Principles](./principles.md) — the rules every job and deployment holds to
 - [Scope](./scope.md) — requirements in tiers, and non-goals
 - [Glossary](./glossary.md) — the terms the docs and the code use, one meaning each
-- [Open items](./design/open-items.md) — choices that need you, spikes to run, design tasks and
-  later stages
+- [Open items](./design/open-items.md) — choices that need you, later stages, imp candidates, and
+  the link to the Linear project for spikes and design tasks
 
 `design/` holds designs for what is not built yet, and `architecture/` will hold what is built. Both
 use the same topics as the decisions below.
