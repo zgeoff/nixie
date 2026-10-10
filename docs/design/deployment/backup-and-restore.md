@@ -78,7 +78,7 @@ last success is older than twice the interval, as
 nixie runs `restic` itself, with the repo password from the deployment's secrets in the child
 process's environment only. A repo lives on any restic backend the owner picks, such as SFTP to
 another machine or bucket storage, and holds only ciphertext with names and structure hidden
-([storage notes](../../research/2.4-notes/data-and-storage.md#backups)).
+([storage notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/data-and-storage.md#backups)).
 
 ## Why the key store has its own repo
 

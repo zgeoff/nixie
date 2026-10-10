@@ -2,8 +2,9 @@
 
 - Date: 2026-10-07
 - Status: decided, amended by [0017](./0017-mcp-proxy.md)
-- Research: [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#owner-approvals),
-  [engine notes](../research/2.2-notes/engines.md#recommendation),
+- Research:
+  [2.2 and 2.3 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-2.3-core-and-policy.md#owner-approvals),
+  [engine notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-notes/engines.md#recommendation),
   [defer and hold spike](../../spikes/sdk-long-hold/)
 
 An action that needs the owner's approval becomes a proposal, and the turn ends. Every outside

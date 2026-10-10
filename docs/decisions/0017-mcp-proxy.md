@@ -2,8 +2,9 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Research: [MCP notes](../research/2.6-notes/mcp.md#proxying-third-party-mcp-servers),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
+- Research:
+  [MCP notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/mcp.md#proxying-third-party-mcp-servers),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
 
 An outside MCP server is any MCP server that is not part of nixie's own code, whoever wrote it. The
 owner's own servers count, because nixie's rules cannot see inside them. Every outside server

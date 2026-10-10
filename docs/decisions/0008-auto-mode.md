@@ -4,7 +4,7 @@
 - Status: decided, amended by [0015](./0015-taint-scope.md)
 - Research:
   [auto-mode decision model](https://github.com/zgeoff/auto-mode/blob/main/docs/architecture/decision-model.md),
-  [approval notes](../research/2.3-notes/approvals.md#friction-trade-off)
+  [approval notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/approvals.md#friction-trade-off)
 
 nixie uses auto-mode's core library to decide the actions that its deterministic policy leaves open.
 nixie's own layers decide first: the rules from [0004](./0004-rule-engine.md), the always-ask set

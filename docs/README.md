@@ -10,8 +10,7 @@
     <a href="./design/open-items.md">Open items</a> •
     <a href="#design">Design</a> •
     <a href="#decisions">Decisions</a> •
-    <a href="#research">Research</a> •
-    <a href="#brainstorm">Brainstorm</a> •
+    <a href="#archive">Archive</a> •
     <a href="../spikes/README.md">Spikes</a> •
     <a href="../AGENTS.md">Agent Guidelines</a>
   </p>
@@ -200,85 +199,11 @@ Definitions and deployment models.
   Restic snapshots plus a database-only Litestream replica through a host rclone crypt gateway; the
   deployment supplies the S3-compatible backend
 
-## Research
+## Archive
 
-Phase 2, kept for its evidence until it is archived. Where a decision exists, it supersedes the
-research recommendation. Each track has a landscape doc with its findings and recommendations, and
-notes with the evidence and sources.
-
-### 2.1 Landscape and architecture models
-
-- [Landscape](./research/2.1-landscape.md) — hosted assistants, open-source agents, frameworks, and
-  the published architecture models, and why none fits nixie as a whole
-- Notes:
-  - [Anthropic](./research/2.1-notes/anthropic.md) — the Agent SDK, Managed Agents, and Anthropic's
-    consumer agents
-  - [Architecture writing](./research/2.1-notes/architecture-writing.md) — 5 published architecture
-    models for always-on agents
-  - [OpenAI Dots](./research/2.1-notes/dots.md) — a coordinator agent on its own cloud computer
-  - [eve](./research/2.1-notes/eve.md) — a durable agent framework on Nitro
-  - [Grok Bot and Gemini Spark](./research/2.1-notes/grok-bot-and-spark.md) — cloud-hosted personal
-    agents from xAI and Google
-  - [Hermes Agent](./research/2.1-notes/hermes.md) — a self-hosted agent with a learning loop
-  - [Letta](./research/2.1-notes/letta.md) — Letta Code and memory kept as a git repository of
-    markdown
-  - [Mastra and the Claude Agent SDK](./research/2.1-notes/mastra-and-agent-sdk.md) — a TypeScript
-    framework, and the SDK's loop and permission pipeline
-  - [NanoClaw, IronClaw, and ZeroClaw](./research/2.1-notes/nanoclaw-ironclaw-zeroclaw.md) — three
-    security-focused agents and their defaults
-  - [OpenClaw](./research/2.1-notes/openclaw.md) — the largest open-source assistant and its
-    security record
-
-### 2.2 and 2.3 Core, runtime and policy
-
-- [Landscape](./research/2.2-2.3-core-and-policy.md) — the SDK turn, the policy mod, approvals,
-  owner messages, durable execution, policy layers, and imp's credential broker
-- Notes:
-  - [Durable execution engines](./research/2.2-notes/engines.md) — 11 engines compared, and the
-    Agent SDK inside one
-  - [Policy models](./research/2.3-notes/policy-models.md) — rule languages, typed effects,
-    capability systems, and information-flow control
-  - [Approvals and owner friction](./research/2.3-notes/approvals.md) — how products and standards
-    store, bind and replay approvals, and how they cut prompts
-
-### 2.4 to 2.6 Data, channels and connectors
-
-- [Landscape](./research/2.4-2.6-data-channels-connectors.md) — memory, where data lives, chat
-  channels, voice, MCP, connector authorization, and deployment, with the tensions between them
-- Memory and data notes:
-  - [Memory models](./research/2.4-notes/memory-models.md) — files in git, structured stores, graphs
-    and vector retrieval, and memory poisoning
-  - [Where personal data lives](./research/2.4-notes/data-and-storage.md) — the owner's host,
-    encrypted backups, export, and Postgres or SQLite for the event log
-  - [Versioning persona, jobs and policy](./research/2.4-notes/definition-versioning.md) — a
-    snapshot hash on every record, for replay
-- Channels and voice notes:
-  - [Chat channels](./research/2.5-notes/channels.md) — owner identity, approval buttons and privacy
-    across Telegram, Matrix, WhatsApp, Signal, iMessage and others
-  - [Realtime voice stacks](./research/2.5-notes/voice.md) — pipelines, speech-to-speech APIs and
-    local options, and who holds the conversation
-  - [Voice transports](./research/2.5-notes/transports.md) — web clients, voice notes, native apps
-    and phone lines
-- Connectors and deployment notes:
-  - [MCP and nixie's own interfaces](./research/2.6-notes/mcp.md) — the current MCP spec, a proxy
-    for third-party servers, and taint by output field
-  - [Connector authorization and search providers](./research/2.6-notes/connectors.md) — Google,
-    Microsoft, Apple and IMAP setup, and model-agnostic search
-  - [Deployment repo and infrastructure](./research/2.6-notes/deployment.md) — the private repo,
-    images, secrets, upgrades and network access
-
-## Brainstorm
-
-Phase 1, kept until it is archived. The principles and scope above replace it.
-
-- [Why nixie](./brainstorm/1.1-why.md) — the problem, and what full control means
-- [Jobs](./brainstorm/1.2-jobs.md) — the kinds of job a deployment defines
-- [Principles](./brainstorm/1.3-principles.md) — the rules every job and deployment holds to, each
-  with a test
-- [Requirements](./brainstorm/1.4-requirements.md) — requirements in tiers, each traced to a job or
-  a principle
-- [Non-goals](./brainstorm/1.5-non-goals.md) — what nixie deliberately is not
-- [Research brief](./brainstorm/1.6-research-brief.md) — the questions each research track settles
+The phase 1 brainstorm and the phase 2 research are archived at the
+[`research-archive`](https://github.com/zgeoff/nixie/tree/research-archive/docs) tag. The decisions
+supersede them, and links that cite them as evidence point at that tag.
 
 ## Spikes
 

@@ -2,8 +2,9 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Research: [deployment notes](../research/2.6-notes/deployment.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#deployment)
+- Research:
+  [deployment notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/deployment.md),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#deployment)
 
 Running nixie and defining nixie are separate. An owner's definitions, such as persona, jobs and the
 policy seed, live in a private repo of their own. Running nixie, such as the image version, the

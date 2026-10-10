@@ -2,8 +2,9 @@
 
 - Date: 2026-10-08
 - Status: decided, amended by [0020](./0020-deployment.md)
-- Research: [versioning notes](../research/2.4-notes/definition-versioning.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#where-data-lives)
+- Research:
+  [versioning notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/definition-versioning.md),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#where-data-lives)
 
 Every record carries a hash of the definition set in force when nixie made it: persona, jobs and
 policy, next to the rule ID from [0004](./0004-rule-engine.md). nixie keeps each snapshot in its

@@ -5,7 +5,7 @@
   [0026](./0026-where-workers-and-the-conversation-run.md) and
   [0030](./0030-connectors-and-sandbox-environments.md)
 - Research: [placement spike](../../spikes/sdk-placement/),
-  [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#open-questions)
+  [2.2 and 2.3 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-2.3-core-and-policy.md#open-questions)
 
 nixie runs the Agent SDK in one of 2 places, by the kind of work:
 

@@ -4,9 +4,10 @@
 - Status: decided, amended by [0011](./0011-memory-writes.md), [0015](./0015-taint-scope.md),
   [0031](./0031-memory-capture-context-and-removal.md) and
   [0032](./0032-offsite-backups-and-replication.md)
-- Research: [memory notes](../research/2.4-notes/memory-models.md),
-  [storage notes](../research/2.4-notes/data-and-storage.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#memory)
+- Research:
+  [memory notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/memory-models.md),
+  [storage notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/data-and-storage.md),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#memory)
 
 nixie keeps long-term memory as rows in its own database, SQLite under
 [0025](./0025-database-and-topology.md). Each memory item carries its provenance in columns that

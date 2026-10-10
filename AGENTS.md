@@ -10,9 +10,9 @@ imports from a spike.
 
 [docs/README.md](docs/README.md) is the index. The root of `docs/` holds the overview, the
 principles and the scope. `docs/decisions/` holds numbered decision records: the numbers are stable
-IDs, the records stay flat, and the index groups them by topic. `docs/research/` and
-`docs/brainstorm/` are kept for their evidence until they are archived, and a decision supersedes
-any research recommendation it covers.
+IDs, the records stay flat, and the index groups them by topic. The brainstorm and research are
+archived at the `research-archive` tag, and a decision supersedes any research recommendation it
+covers.
 
 `docs/design/` holds designs for what is not built yet, and `docs/architecture/` holds what is
 built. Both use the topics the index uses for decisions: core, policy, memory, channels, connectors

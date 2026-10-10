@@ -73,7 +73,7 @@ A host runs nixie, the imp host and the deployment's backups. It needs:
   can change the limit. The figure comes from the spike's imp shape, not from a load test.
 - **An encrypted disk,** such as LUKS or the provider's volume encryption. Neither SQLite under Bun
   nor restic on the host encrypts the live files at rest
-  ([storage notes](../../research/2.4-notes/data-and-storage.md#backups-and-encryption-at-rest)).
+  ([storage notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/data-and-storage.md#backups-and-encryption-at-rest)).
   nixie's own encryption covers erasable fields and memory, not the event log's envelopes.
 - **Outbound network only.** nixie binds to loopback, and the owner reaches the client over
   Tailscale under 0020. An inbound route exists only when a channel or connector needs webhooks.
@@ -171,7 +171,7 @@ host key is `sops updatekeys` with the new recipient. Replacing the deployment k
 every wrapped key in the key store with both deployment keys present, which a nixie command does in
 one transaction. A leaked age key decrypts every earlier commit of the file, so recovery rotates
 every secret the file ever held
-([deployment notes](../../research/2.6-notes/deployment.md#recommendations)).
+([deployment notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/deployment.md#recommendations)).
 
 ## Seeding the definitions
 

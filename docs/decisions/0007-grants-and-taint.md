@@ -5,7 +5,7 @@
   [0022](./0022-coding-and-code-execution.md) and
   [0026](./0026-where-workers-and-the-conversation-run.md)
 - Research: [imp broker spike](../../spikes/imp-broker/),
-  [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#the-imp-credential-broker)
+  [2.2 and 2.3 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-2.3-core-and-policy.md#the-imp-credential-broker)
 
 An imp that reads untrusted content, or runs code for the conversation or a job run, gets no
 credential grant. [0015](./0015-taint-scope.md) treats the conversation as always untrusted, and

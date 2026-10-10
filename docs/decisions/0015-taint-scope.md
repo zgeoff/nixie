@@ -3,8 +3,9 @@
 - Date: 2026-10-08
 - Status: decided
 - Amends: [0005](./0005-effects-and-taint.md)
-- Research: [taint in practice](../research/2.3-notes/taint-in-practice.md),
-  [policy model notes](../research/2.3-notes/policy-models.md#information-flow-and-taint)
+- Research:
+  [taint in practice](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/taint-in-practice.md),
+  [policy model notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/policy-models.md#information-flow-and-taint)
 
 The conversation with the owner is always untrusted, and nixie keeps no taint flag on it. Taint
 applies to jobs and workers, the parts of nixie that can stay clean, and the first build treats them

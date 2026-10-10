@@ -3,8 +3,9 @@
 - Date: 2026-10-08
 - Status: decided, amended by [0020](./0020-deployment.md) and
   [0030](./0030-connectors-and-sandbox-environments.md)
-- Research: [MCP notes](../research/2.6-notes/mcp.md#triggers-channels-and-brokering),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
+- Research:
+  [MCP notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/mcp.md#triggers-channels-and-brokering),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
 
 nixie takes tools from MCP and defines 4 interfaces of its own, because MCP has no final counterpart
 for them:
