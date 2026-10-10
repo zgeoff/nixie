@@ -1,5 +1,5 @@
 {
-  "name": "@heynixie/server",
+  "name": "@heynixie/tools",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,8 +13,9 @@
     "@heynixie/log": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
-    "@heynixie/sandbox-imp": "workspace:*",
-    "@heynixie/sandbox-process": "workspace:*",
-    "@heynixie/tools": "workspace:*"
+    "@modelcontextprotocol/server": "catalog:"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "catalog:"
   }
 }
