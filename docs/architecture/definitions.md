@@ -34,7 +34,7 @@ walk. Its directory must still resolve inside the root, it opens with `O_NOFOLLO
 comes from the open handle. A file that fails one of these checks fails the snapshot.
 
 The snapshot fails with `SnapshotError` past either size limit in `defaultSizeLimits`: 1 MiB per
-file and 10 MiB over every kept file. The error names every file past the per-file limit, or every
+file and 10 MiB over every kept file. The error lists every file past the per-file limit, or every
 file from the one that crossed the total, in path order. Skipped files never count towards the
 total.
 
@@ -60,7 +60,7 @@ land in separate repos, in either order.
 
 The seed applies no other file, and lists each one as unapplied, such as a rule file before rules
 seed. Each unapplied YAML or JSON file must still parse. A file that is not UTF-8, or fails to
-parse, fails the whole snapshot with `DefinitionsParseError`, which names each file and its fault.
+parse, fails the whole snapshot with `DefinitionsParseError`, which lists each file and its fault.
 
 ## The snapshot hash
 
