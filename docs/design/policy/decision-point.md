@@ -76,11 +76,11 @@ A `run_code` call from the conversation or an ordinary task uses a fresh sandbox
 grants. In a worker, it uses the worker's disposable sandbox, which holds the model-API credential
 as its sole grant under [0026](../../decisions/0026-where-workers-and-the-conversation-run.md). The
 fixed effect covers both placements; the adapter checks and records the caller's actual sandbox and
-grants. The resolved execution profile is part of the canonical operation and approval hash. Worker
-code's model requests pass through the same host counting proxy and task/deployment budgets under
-[0028](../../decisions/0028-policy-design.md), so the `run_code` effect does not bypass model-spend
-limits. The sandbox adapter refuses direct model routes around that proxy. It does not promise zero
-grants for worker code.
+grants. The resolved execution profile is part of the canonical operation and the approval hash.
+Model requests from worker code pass through the same counting proxy on the host, and count against
+the same task and deployment budgets, under [0028](../../decisions/0028-policy-design.md), so the
+`run_code` effect does not bypass model-spend limits. The sandbox adapter refuses direct model
+routes around that proxy. It does not promise zero grants for worker code.
 
 A tool's effects are fixed per tool, and never depend on its arguments. A capability whose effects
 differ by argument splits into tools, such as moving an email to the trash, a `write`, and purging
@@ -240,11 +240,14 @@ same scenarios with a model. The [prototype](../../../spikes/policy-rules/README
 | A job nobody asked for                            | 1       | No rule matched                                        |
 | Delete for good                                   | 1       | The owner's ask rule                                   |
 
-None of the 16 prompts came from cause 1 or 2. The booking is the case
-[0014](../../decisions/0014-search.md) asks the scenarios to count: a destination that came from
-search results, which the owner can clear with a rule for bookings. CI runs the scenarios on every
-change to the starter rule set or the pipeline, and a model-driven run joins them once auto-mode is
-tested.
+None of the 16 prompts came from cause 1 or 2. Two of them come from the starter template's own ask
+rules, `ask-jobs-that-act` and `ask-permanent-deletes`, and `ask-exports` raises the same cause. A
+prompt from the owner's ask rule sits outside the 0-prompt count, so the starter set can add
+friction that the count never shows. The scenario report lists those prompts apart from the count.
+The booking is the case [0014](../../decisions/0014-search.md) asks the scenarios to count: a
+destination that came from search results, which the owner can clear with a rule for bookings. CI
+runs the scenarios on every change to the starter rule set or the pipeline, and a model-driven run
+joins them once auto-mode is tested.
 
 ## Settled decisions
 

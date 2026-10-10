@@ -75,6 +75,10 @@ turn's record. Model cost has 3 limits, each a default the owner can change:
 - **Per deployment:** a daily and a monthly budget, $10 and $150 by default, which feed the hard
   spending stop below.
 
+Every default here is a placeholder until real use sets it. How to count cost on a subscription
+token is open: the SDK reports a notional price per turn even when the owner pays a flat
+subscription, so the deployment budgets could stop nixie during ordinary use.
+
 **Why:** a narrow worker past $1 is looping, a job run that costs more than a few dollars needs the
 owner's eyes, and the deployment limits stop a fault that every smaller limit misses, such as a job
 that runs too often.

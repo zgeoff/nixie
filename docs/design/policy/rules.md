@@ -122,8 +122,8 @@ form of the whole definition set:
   allowed destinations.
 - **Policy** holds the rules sorted by ID, the complete tool declarations sorted by tool name, the
   budgets' limits, the IDs of known contacts, and the versioned checker definitions. A checker
-  definition includes its prompt hash and the model/adapter configuration that affects its verdict;
-  consent, memory assertion and retirement-intent checks keep distinct definitions. A changed
+  definition includes its prompt hash and the model and adapter settings that affect its verdict.
+  The consent, memory assertion and retirement-intent checks keep distinct definitions. A changed
   checker produces a changed snapshot even when no rule changed.
 - **Objects** serialise as JSON with sorted keys and no whitespace, and every set-valued field, such
   as a rule's tools or a job's tool list, sorts and drops duplicates.

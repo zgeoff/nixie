@@ -27,7 +27,7 @@ A proposal is a row in the proposals projection of the
 | Kind               | Outside action, memory write or internal change, from the registered operation                                            |
 | Action             | The canonical operation: tool, arguments, targets, destinations and declared effects                                      |
 | Deadline           | Optional host-validated real deadline, distinct from the proposal lapse                                                   |
-| Execution boundary | For code, the host-resolved placement, image and egress/grant profile                                                     |
+| Execution boundary | For code, the placement, image, egress and grant profile that the host resolved                                           |
 | Action hash        | SHA-256 over the canonical action                                                                                         |
 | Sentence           | The action rendered from the tool's template and the structured fields                                                    |
 | Risk class         | Routine, always-ask, or lifting                                                                                           |
@@ -46,25 +46,27 @@ and deferral. An outside-action proposal goes to the provider queue; a memory wr
 internal version; an internal policy, grant or job change uses its registered host mutation. Their
 common projection does not make every proposal a provider call.
 
-Memory proposals carry the bound remember or retire operation, evidence or intent quote and exact
-target item/version under [0031](../../decisions/0031-memory-capture-context-and-removal.md). The
-memory gate supplies a structured review reason instead of one of the decision point's six prompt
-causes. The host renders both from fixed labels. Memory review counts stay separate from policy
-prompts, and its operation-specific lapse replaces the outside-action default.
+A memory proposal carries the operation it binds, remember or retire, under
+[0031](../../decisions/0031-memory-capture-context-and-removal.md). It also carries the quote behind
+it: the evidence for a remember, or the owner's intent for a retire. It names the exact item and
+version it targets. The memory gate supplies a structured review reason instead of one of the
+decision point's six prompt causes. The host renders both from fixed labels. Memory review counts
+stay separate from policy prompts, and its operation-specific lapse replaces the outside-action
+default.
 
 The canonical action serialises the same way as the snapshot form in
 [rules](./rules.md#the-snapshot-hash): sorted keys, no whitespace, NFC strings. The hash covers the
-kind, tool, every argument, target item/version, any execution boundary, host-validated deadline and
-every destination, so one changed word in an email body makes a different action, and the model
-makes a new proposal, as 0006 requires.
+kind, the tool, every argument, the target item and version, any execution boundary, the deadline
+that the host validated, and every destination, so one changed word in an email body makes a
+different action, and the model makes a new proposal, as 0006 requires.
 
-For code execution, the canonical operation includes the host-resolved placement class, runtime
-image and egress/grant profile. A worker profile binds its existing sandbox generation and
-credential references with their host scopes; a fresh no-grant profile names its required isolation
-without a sandbox ID that does not exist yet. The executor records the actual created sandbox and
-checks that it matches the approved profile before code starts. A changed worker generation, grant
-profile or image makes the approval stale; the model cannot choose a weaker profile through
-arguments.
+For code execution, the canonical operation includes the placement class, the runtime image, and the
+egress and grant profile, as the host resolves them. A worker profile binds its existing sandbox
+generation and credential references with their host scopes; a fresh no-grant profile names its
+required isolation without a sandbox ID that does not exist yet. The executor records the actual
+created sandbox and checks that it matches the approved profile before code starts. A changed worker
+generation, grant profile or image makes the approval stale; the model cannot choose a weaker
+profile through arguments.
 
 The sentence comes from a template the tool declares, filled from the structured fields, and the
 client shows the fields beside it. The model writes none of it. **Why:** a prompt that a model wrote
@@ -168,9 +170,9 @@ with its own action hash, so a digest approval is the same as approving each ite
 A gap group with a proposed rule shows its pending items together with the proposal, so the owner
 can approve the items and accept the rule in one visit. Memory proposals from
 [0011](../../decisions/0011-memory-writes.md) join the routine items and the routine batch, as the
-agreed routine-only sweep implies. Each memory row shows its operation, exact item/version,
-structured review reason and proposed content or retirement intent, with its source/evidence
-available before approval. The batch sends each displayed operation hash, not a request to approve
-whatever arrives later. Every memory operation still checks its current target and applies
+agreed routine-only sweep implies. Each memory row shows its operation, the exact item and version,
+the review reason, and the proposed content or the retirement intent. The owner can open its source
+and evidence before approving. The batch sends each displayed operation hash, not a request to
+approve whatever arrives later. Every memory operation still checks its current target and applies
 atomically on its own; a stale item fails alone. Permanent forgetting is a separate checked action
 and never joins this routine batch.

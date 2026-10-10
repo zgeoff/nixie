@@ -44,7 +44,7 @@ the design proposes. Each question has its own script:
   rule with argument checks. It reorders rules, keys, list members and jobs, duplicates list members
   and argument checks as separate objects, writes a check value in decomposed Unicode, and rewrites
   the persona with a byte order mark, CRLF line endings and trailing blank lines, 1,000 ways. Then
-  it makes 8 real changes, one at a time.
+  it makes 18 real changes, one at a time.
 - [`widening.ts`](./widening.ts) classifies 27 rule edits: adds, removals, outcome changes, pattern
   changes, context limits, expiries, argument checks, lift caps and a CEL condition.
 - [`scenarios.ts`](./scenarios.ts) runs 14 scripted scenarios. Each is a fixed sequence of tool

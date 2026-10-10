@@ -82,6 +82,9 @@ adapter and trigger source, main-thread routing, and the stages agreed for after
   refuses requests once a budget is spent. It checks the hard spending stop that the
   [budgets design](./policy/budgets.md#the-hard-spending-stop) sets under 0028, and needs a check
   that the broker can forward to a host proxy without opening the guest a second route.
+- **Model cost on a subscription token** (about 2 hours, with model calls): record what the SDK
+  reports per turn on a subscription token against a metered key, and set the deployment budget
+  defaults in the [budgets design](./policy/budgets.md#model-cost) from real use.
 - **The consent checker on real messages** (about half a day, with model calls): run a checker model
   over owner messages the owner writes, each paired with an action that the message does or does not
   ask for, and measure how often it credits consent wrongly or misses it. It firms up the consent
