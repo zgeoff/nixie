@@ -211,9 +211,11 @@ writer sets its shape:
   start
 - impd on each node that runs nixie, outside the cluster, with its API reachable from nixie's pod
 
-A `ReadWriteOnce` volume limits writable attachment to a node, not to one pod, so the deployment
-keeps a single writer through rollouts and forced recovery. imp's client delivers each
-reverse-forward connection to nixie over nixie's own connection to impd, so the pod opens no inbound
-port for its tools. The reverse forward from a pod is a spike in
-[open items](../open-items.md#spikes-and-design-tasks), which checks that route with egress `none`
-still holding.
+nixie keeps one writer itself, with the
+[writer lock and epoch](../core/event-log.md#the-single-writer), so a rollout's new pod waits on the
+lock until the old pod exits. The data volume is block storage on the node, mounted as nixie's data
+directory. It moves to another node only after the old node is powered off, as the single writer
+section explains. imp's client delivers each reverse-forward connection to nixie over nixie's own
+connection to impd, so the pod opens no inbound port for its tools. The reverse forward from a pod
+is a spike in [open items](../open-items.md#spikes-and-design-tasks), which checks that route with
+egress `none` still holding.

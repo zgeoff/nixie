@@ -80,9 +80,10 @@ the release pipeline, both design tasks in [open items](./open-items.md#spikes-a
 - [ ] Session tests port the checks of the
       [session forwarding spike](../../spikes/start-session-forwarding/README.md): a single-use
       enrolment code, a revoked session refused, and Start holding no cookie or state.
-- [ ] The durable crash tests pass in CI: lease expiry, a timer due while nixie was down, a retry, a
-      wake-up and a crash mid-turn. A test-only queued action shows that a resumed task run never
-      repeats an action that ran.
+- [ ] The durable [crash tests](./core/crash-tests.md) pass in CI: lease expiry, a timer due while
+      nixie was down, a retry, a wake-up, a crash mid-turn, the graceful stop, a second writer and a
+      stale writer epoch. A test-only queued action shows that a resumed task run never repeats an
+      action that ran.
 - [ ] A CI test drops every projection, folds the recorded log, and matches the live tables.
 - [ ] A test finds no message text in plain form in `nixie.db` or in the logs, and finds the
       snapshot hash on every record.

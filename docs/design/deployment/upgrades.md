@@ -47,15 +47,17 @@ image other than its pin would break the commit as the record of what ran.
    commit. The Compose file sets `stop_grace_period` to match, because Docker's default 10 s would
    kill nixie first. The next start recovers an interrupted step as after a crash, under
    [tasks](../core/tasks.md).
-2. **Copy.** When the release migrates the schema, nixie copies the database with `VACUUM INTO`
+2. **Lock.** nixie takes the writer lock and a new writer epoch, under
+   [the single writer](../core/event-log.md#the-single-writer).
+3. **Copy.** When the release migrates the schema, nixie copies the database with `VACUUM INTO`
    before the first migration. It never copies the key store.
-3. **Migrate.** Each migration runs in one transaction with the schema version.
-4. **Add images.** nixie adds each imp image in its manifest to impd, and keeps the previous
+4. **Migrate.** Each migration runs in one transaction with the schema version.
+5. **Add images.** nixie adds each imp image in its manifest to impd, and keeps the previous
    release's images until the next upgrade.
-5. **Replace the conversation imp.** The new imp rebuilds its context from the event log, because
+6. **Replace the conversation imp.** The new imp rebuilds its context from the event log, because
    the SDK transcript is a cache.
-6. **Seed** the definitions, as [deployment](./deployment.md#seeding-the-definitions) describes.
-7. **Ready.** Runners claim work.
+7. **Seed** the definitions, as [deployment](./deployment.md#seeding-the-definitions) describes.
+8. **Ready.** Runners claim work.
 
 ## Migrations
 
