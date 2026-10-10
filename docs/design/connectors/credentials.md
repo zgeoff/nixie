@@ -80,11 +80,12 @@ Destroying the sandbox removes its grants.
 ## Refresh
 
 The store refreshes OAuth tokens on the host, 5 min before expiry by default, and pushes each new
-value to every grant that holds it, because imp's broker never refreshes. A rejected request gets
-one refresh and one retry. The store runs one refresh per credential at a time, and writes a rotated
-refresh token in the same transaction as the refresh's record, so a crash never leaves only a spent
-token. Every OAuth token refreshes at least every 7 days, by default, so a quiet connection never
-lapses.
+value to every grant that holds it, because imp's broker never refreshes. A request the service
+rejects as unauthorised gets one refresh and one retry, and a second rejection marks the credential
+failing. Any other failure goes to the [action queue](../core/outside-actions.md) and its
+reconciliation. The store runs one refresh per credential at a time, and writes a rotated refresh
+token in the same transaction as the refresh's record, so a crash never leaves only a spent token.
+Every OAuth token refreshes at least every 7 days, by default, so a quiet connection never lapses.
 
 A refresh the provider refuses for good, such as `invalid_grant`, marks the credential
 `needs_consent`, disables the tools and polls that need it, and puts an item in the client that
