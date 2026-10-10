@@ -29,7 +29,7 @@ const recordSchema = z.object({
   // Set on a record that holds a message, from you or from the conversation.
   message: z
     .object({
-      clientMessageID: z.uuid().optional(),
+      clientMessageId: z.uuid().optional(),
       spans: z.array(spanSchema).optional(),
       text: z.string(),
     })
@@ -83,13 +83,13 @@ export const contract = {
         }),
       ),
 
-    // A checked action whose client action ID is the client message ID: the client keeps an
-    // unsent message as pending and retries it with the same ID until the server confirms it.
+    // A checked action whose client action ID is `clientMessageId`, the name the client design
+    // gives it. The client retries an unsent message with the same ID until the server confirms it.
     send: checkedAction
       .errors({ THREAD_NOT_FOUND: { message: 'No thread has this ID', status: 404 } })
       .input(
         z.object({
-          clientMessageID: clientActionIDSchema,
+          clientMessageId: clientActionIDSchema,
           spans: z.array(spanSchema).max(100_000),
           text: z.string().min(1).max(100_000),
           thread: threadSchema,

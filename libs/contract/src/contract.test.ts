@@ -22,7 +22,7 @@ test.each([
     procedure: contract.sessions.revoke,
   },
   {
-    idField: 'clientMessageID',
+    idField: 'clientMessageId',
     name: 'conversation.send',
     payload: {
       spans: [{ end: 5, source: 'typed', start: 0 }],
@@ -65,7 +65,7 @@ test('it lets enrolment run without a device session', () => {
 
 test('it accepts a message with its spans', () => {
   const payload = {
-    clientMessageID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     spans: [
       { end: 6, source: 'typed' as const, start: 0 },
       { end: 12, source: 'pasted' as const, start: 6 },
@@ -82,7 +82,7 @@ test('it accepts a message with its spans', () => {
 test('it refuses a span source outside the known sources', () => {
   expect(
     contract.conversation.send['~orpc'].inputSchema?.safeParse({
-      clientMessageID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+      clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
       spans: [{ end: 5, source: 'spoken', start: 0 }],
       text: 'hello',
       thread: 'conversation',
@@ -93,7 +93,7 @@ test('it refuses a span source outside the known sources', () => {
 test('it refuses a span offset below zero', () => {
   expect(
     contract.conversation.send['~orpc'].inputSchema?.safeParse({
-      clientMessageID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+      clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
       spans: [{ end: 5, source: 'typed', start: -1 }],
       text: 'hello',
       thread: 'conversation',
@@ -105,7 +105,7 @@ test('it streams each record of the live stream as one event', () => {
   const record = {
     kind: 'owner_message',
     message: {
-      clientMessageID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+      clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
       spans: [{ end: 5, source: 'typed', start: 0 }],
       text: 'hello',
     },
