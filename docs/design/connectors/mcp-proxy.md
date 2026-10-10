@@ -23,8 +23,9 @@ clearing its trusted mark narrows and applies at once.
 
 A server over stdio runs as a command in an imp with egress `none` and no grants, because its code
 sits outside nixie's rules. The proxy reaches a server over HTTP from the host, and applies the
-[web fetch](./connector.md#web-fetch) address check on every hop, except for an address the server's
-URL names.
+[web fetch](./connector.md#web-fetch) address check on every hop. A server on a private network
+passes only when its configuration pairs the server's host with an allowed address range, the hop
+goes to that host, and the resolved address falls in that range.
 
 A server whose backend runs outside the sandbox connects as an HTTP server with an OAuth grant whose
 scopes limit the tools nixie can call. The deployment configures the URL and registers nixie as a
