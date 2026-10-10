@@ -11,6 +11,9 @@ projection rows each record changed.
 
 `writeRecords` is the append API. It takes one or more records and writes them in one write
 transaction through `withWriteTransaction`, so the writer epoch check opens it.
+`writeRecordsInTransaction` appends inside a write transaction the caller already holds, so a
+module's own rows and the records that describe them commit together, as the
+[definitions seed](definitions.md#seeding) does.
 
 | Part              | Holds                                                                  |
 | ----------------- | ---------------------------------------------------------------------- |
