@@ -19,7 +19,7 @@ interface TestAdapter extends TestRecorder {
   readonly buildAdapterWithTarget: (target: ToolTarget) => SandboxAdapter;
 }
 
-export const testPublicEgress: PublicEgressConfig = {
+const testPublicEgress: PublicEgressConfig = {
   hostAddresses: ['203.0.113.7/24'],
   egressDeny: ['198.51.100.0/24'],
 };
