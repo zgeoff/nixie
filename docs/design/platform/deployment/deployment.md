@@ -161,6 +161,10 @@ proposal you confirm in the client, and a rule edited at runtime shows its confl
 nixie refuses a snapshot that fails to parse or validate, keeps the last seed and tells you.
 **Why:** a half-applied seed would leave rules from 2 revisions in force at once.
 
+Slice 1 seeds the persona only. Its seed applies no policy file, and the seed record lists each
+policy file it left unapplied. **Why:** slice 1 has no proposals to confirm a widening, so its
+policy is [the slice 1 rule](../policy/decision-point.md#the-slice-1-rule).
+
 The first seed into an empty database applies its deny and ask rules at once and gathers every allow
 rule into one confirmation. Until you approve it, every tool call with no applied allow rule asks.
 
@@ -223,8 +227,7 @@ host.
 
 Kubernetes runs the same images as Compose, from manifests in your deployment repo. nixie ships
 generic reference manifests in `deploy/kubernetes/`, beside the Compose recipe in `deploy/compose/`,
-and your deployment repo keeps its own version of them. The reference manifests hold no host name,
-address, cloud or tailnet detail. One SQLite writer sets their shape:
+and your deployment repo keeps its own version of them. One SQLite writer sets their shape:
 
 - one replica in a StatefulSet with a `ReadWriteOnce` volume, which stops the old pod before the new
   one starts

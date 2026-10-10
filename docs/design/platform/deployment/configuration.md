@@ -36,8 +36,9 @@ section. **Why:** each module validates the settings it reads, and one root sche
 file as a whole before any part starts. nixie generates a JSON schema from the zod schema into
 `docs/reference/`, so an editor can check the file before a deploy.
 
-A credential reference in the file, such as `deployment:<name>`, names an entry in the secrets file.
-nixie refuses a reference to an entry the secrets file lacks.
+A credential reference of the form `deployment:<name>` names an entry in the secrets file, and nixie
+refuses one whose entry the secrets file lacks. A reference to another backend resolves through that
+backend.
 
 ## Mounting the file
 
