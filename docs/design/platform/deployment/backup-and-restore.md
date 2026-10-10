@@ -99,10 +99,13 @@ write-ahead log. A forget then stages a key set at once instead of waiting for t
    an unavailable backend or a crash keeps it pending, and recovery resumes the same operation. It
    never restores an old key to reverse a partial deletion.
 
-A forget completes only on the receipt of a key set staged after its delete. A key copy staged
-before the forget can still publish, because the sidecar publishes in sequence order, and the
-forget's own set then forgets and prunes that copy before the forget completes. A later stage adds a
-generation barrier that rejects stale staged copies, so key publication and forget run concurrently.
+nixie makes key copies one at a time, and takes a key set's sequence number when its copy starts. A
+forget's delete waits until any key copy in progress has written its marker, so every copy that read
+a key before its delete has a lower sequence number than the forget's own set. A forget completes
+only on the receipt of a key set staged after its delete. An earlier key copy can still publish
+first, because the sidecar publishes in sequence order, and the forget's own set then forgets and
+prunes that copy before the forget completes. A later stage adds a generation barrier that rejects
+stale staged copies, so key publication and forget run concurrently.
 
 A backend counts as registered only if its credentials allow deletion and its versioning or
 immutable retention keeps no unmanaged copy. A backend that cannot meet that condition never reports
