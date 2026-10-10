@@ -66,12 +66,13 @@ the caller's list stays out of its catalog, and every skill tool refuses it.
   and every command that installs a package or reaches the network, for your review. No scan lets a
   skill in.
 - **nixie-written skills are proposals by default.** `skill_write` drafts a new skill or a change as
-  a proposal that shows every file as a diff. An allow rule of yours on `skill_write` lets a skill
-  apply at once with a notice and undo, in the contexts the rule names. No starter rule allows it,
-  and creating such a rule is a widening, so it asks once. Whatever the rule says, a skill holding a
-  destination-like token that is in neither text you typed nor your definitions stays a proposal.
-  nixie exports an applied skill to the definitions repo as a pull request, as it does runtime
-  rules.
+  a proposal that shows every file as a diff. An allow rule of yours that names the `skill_write`
+  tool lets a skill apply at once with a notice and undo, in the contexts the rule names. A rule
+  that matches the `note` effect alone, such as the starter rule that allows notes, lets the call
+  run and keeps the proposal. No starter rule names the tool, and creating such a rule is a
+  widening, so it asks once. Whatever the rule says, a skill holding a destination-like token that
+  is in neither text you typed nor your definitions stays a proposal. nixie exports an applied skill
+  to the definitions repo as a pull request, as it does runtime rules.
 - **Provenance on every skill:** your definitions, vendored with its URL and SHA, or written by
   nixie with the approval or rule that applied it.
 

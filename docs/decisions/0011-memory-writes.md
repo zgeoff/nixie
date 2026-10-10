@@ -18,11 +18,13 @@ A memory write applies at once, with a notice and undo, only when all 3 checks p
    the quote and the pasted spans marked, and the memory, and never the rest of the conversation, so
    it can tell a statement from a question, a negation or a quotation.
 
-An allow rule of yours on `memory.remember` also lets a write apply at once, with a notice and undo,
-in the contexts the rule names, such as the conversation but not job runs. No starter rule allows
-it, and creating such a rule is a widening, so it asks once. Check 2 still runs under that rule:
-every destination-like token in the memory appears word for word in text you typed or in your
-definitions, and a write that fails it is a proposal whatever the rule says.
+An allow rule of yours that names the `memory.remember` tool also lets a write apply at once, with a
+notice and undo, in the contexts the rule names, such as the conversation but not job runs. A rule
+that matches the `note` effect alone, such as the starter rule that allows notes, lets the call run
+and leaves the checks in place. No starter rule names the tool, and creating such a rule is a
+widening, so it asks once. Check 2 still runs under that rule: every destination-like token in the
+memory appears word for word in text you typed or in your definitions, and a write that fails it is
+a proposal whatever the rule says.
 
 Every other memory write is a proposal, including a write the checker rejects, is unsure about or
 cannot reach. The memory reads as text the model wrote, with your quote kept as its evidence.
@@ -80,5 +82,5 @@ you answer when you choose, singly or through the approval digest from
 
 ## Changes
 
-- 2026-10-11: an allow rule of yours on `memory.remember` lets a write apply at once, with the token
-  check kept as a floor.
+- 2026-10-11: an allow rule of yours that names `memory.remember` lets a write apply at once, with
+  the token check kept as a floor.

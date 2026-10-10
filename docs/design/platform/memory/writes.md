@@ -82,8 +82,12 @@ first, then the content gate for a remember or the intent gate for a retirement.
 
 ### Your allow rule
 
-No starter rule allows `memory.remember`. An allow rule of yours on it, such as "remember facts from
-the conversation without asking", changes the content gate in the contexts it names:
+An allow rule of yours whose tool field names `memory.remember`, such as "remember facts from the
+conversation without asking", changes the content gate in the contexts it names. A rule that matches
+the `note` effect alone, such as the starter `allow-notes`, lets the call run and leaves the full
+gate in place, and no starter rule names the tool. A decision records only its deciding rule, so the
+gate itself looks for an allow rule that names the tool and matches the call, and takes this path
+when it finds one:
 
 1. **The token check.** Every destination-like token in the text appears word for word in text you
    typed outside pasted spans and quoted blocks, in any message nixie recorded, or in your

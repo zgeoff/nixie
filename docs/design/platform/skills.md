@@ -169,9 +169,11 @@ package fails, and the vendor command's list of expected tools shows the gap at 
 The seed checks run first, and a skill that fails one returns the failure as an error.
 
 By default, the call becomes a proposal in the approval digest that shows every file as a diff
-against the current version. An allow rule of yours on `skill_write` applies the skill at once, with
-a notice and undo, in the contexts the rule names, such as the conversation but not job runs. No
-starter rule allows `skill_write`, and creating one is a widening that asks once.
+against the current version. An allow rule of yours whose tool field names `skill_write` applies the
+skill at once, with a notice and undo, in the contexts the rule names, such as the conversation but
+not job runs. A rule that matches the `note` effect alone, such as the starter `allow-notes`, lets
+the call run and keeps the proposal. No starter rule names `skill_write`, and creating a rule that
+names it is a widening that asks once.
 
 One check runs whatever the rule says. Every destination-like token in the skill, by the
 [token check](memory/writes.md#the-content-gate) that memory writes use, appears word for word in
