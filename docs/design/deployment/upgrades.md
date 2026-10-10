@@ -33,7 +33,9 @@ The script runs these stages:
 1. `git fetch`, and stop when the branch has no new commit.
 2. `git merge --ff-only`, and stop if the checkout cannot fast-forward.
 3. `docker compose pull`, while the old version keeps running.
-4. `docker compose up -d --wait`, which replaces the container.
+4. `docker compose up -d --wait`, one service at a time: nixie and then the web service for a newer
+   release, and the web service first for an older one, in the order [deployment](./deployment.md)
+   sets.
 5. On failure, report it and leave the failed state.
 
 The script never rolls back on its own. **Why:** a rollback is a revert, and a host that ran an

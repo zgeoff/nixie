@@ -76,10 +76,11 @@ from one commit and each pinned by digest. The nixie image carries a manifest of
 digests. The deployment pins the nixie and web images, and both pins move in the same pull request.
 
 The oRPC contract follows the schema rule from [upgrades](./upgrades.md): a release adds procedures
-and fields, and a removal waits until the release before no longer calls it. A web client therefore
-works against the API of its own release and of the release before or after it, so a rollout that
-replaces the containers one at a time and a rollback by one release both keep the web client
-working.
+and fields, and a removal waits until the release before no longer calls it, so an API serves the
+web client of its own release and of the release before. An upgrade replaces nixie first and the web
+container second, and a rollback replaces the web container first and nixie second. **Why:** in both
+orders the web client only ever calls an API of its own release or a newer one, and a failed nixie
+step stops the rollout before the web container changes.
 
 The web image holds the TanStack Start server and its built assets, and no secrets, database or
 credentials. **Why:** the process that holds policy, credentials and the approval check carries no
