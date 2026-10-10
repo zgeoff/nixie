@@ -11,3 +11,7 @@ lists the variable.
 [Tools through a reverse forward](./tools-reverse-forward/) measures relay overhead and checks the
 SDK tool round trip, streamed responses, egress isolation and sleep/wake recovery with a local model
 stand-in and one dummy credential grant.
+
+[Session forwarding through Start](./start-session-forwarding/) runs the web client on TanStack
+Start as its own server. It checks that server rendering forwards the device session to the API,
+that Start holds no session, and that the browser bundle holds no server code.
