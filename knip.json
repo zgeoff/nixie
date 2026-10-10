@@ -3,5 +3,10 @@
   // repo-sync delivers .claude/ verbatim, and design spikes install and run on their own
   "ignore": [".claude/**", "docs/design/**"],
   // the shared oxlint config loads this plugin, which knip cannot see through
-  "ignoreDependencies": ["@stylistic/eslint-plugin"]
+  "ignoreDependencies": ["@stylistic/eslint-plugin"],
+  "workspaces": {
+    ".": {},
+    // a test spawns the stub program as its own process, so no import reaches it
+    "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] }
+  }
 }

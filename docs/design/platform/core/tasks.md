@@ -82,11 +82,11 @@ transaction, keyed by task ID and step key. A second commit for the same key fai
 step never commits twice.
 
 A runner claims a task with a lease: a holder, an expiry, the
-[writer epoch](event-log.md#the-single-writer), and a lease generation one higher than the last, set
-by a conditional `UPDATE … RETURNING` in a `BEGIN IMMEDIATE` transaction. A lease lasts 60 s by
-default, and the runner renews it every 20 s. **Why:** renewing at a third of the lease survives 2
-missed renewals, and a dead runner frees its task within a minute. Every write a step makes checks
-the generation, so a runner whose lease expired cannot commit.
+[writer epoch](../../../architecture/database.md#the-single-writer), and a lease generation one
+higher than the last, set by a conditional `UPDATE … RETURNING` in a `BEGIN IMMEDIATE` transaction.
+A lease lasts 60 s by default, and the runner renews it every 20 s. **Why:** renewing at a third of
+the lease survives 2 missed renewals, and a dead runner frees its task within a minute. Every write
+a step makes checks the generation, so a runner whose lease expired cannot commit.
 
 ## Waits
 
@@ -172,8 +172,9 @@ repeating an action.
 ## Crash recovery
 
 A crash stops the steps in flight, and a restart resumes every task from the log. Recovery runs only
-in a process that holds the [writer lock and a new writer epoch](event-log.md#the-single-writer).
-Before any task starts, nixie finishes any pending cleanup of invalid transcript copies under
+in a process that holds the
+[writer lock and a new writer epoch](../../../architecture/database.md#the-single-writer). Before
+any task starts, nixie finishes any pending cleanup of invalid transcript copies under
 [memory context](../memory/context.md), then:
 
 1. Expires every lease claimed under an older writer epoch. A task without a pause or a recovery

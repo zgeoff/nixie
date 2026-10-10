@@ -11,8 +11,29 @@
     // oxlint 1.86 enables one-var through the style category, which the shared config predates; it
     // forbids the separate const per step that every test body uses
     "one-var": "off",
-    // a callback's parameter takes its type from the caller, such as a test.each row
-    "typescript/prefer-readonly-parameter-types": ["error", { "ignoreInferredTypes": true }],
+    // a callback's parameter takes its type from the caller, such as a test.each row; the allowed
+    // types are library handles, which no caller can make readonly
+    "typescript/prefer-readonly-parameter-types": [
+      "error",
+      {
+        "ignoreInferredTypes": true,
+        "allow": [
+          {
+            "from": "package",
+            "package": "kysely",
+            "name": ["CompiledQuery", "DatabaseConnection", "Kysely", "Transaction"]
+          },
+          { "from": "package", "package": "bun:ffi", "name": ["Pointer"] },
+          { "from": "package", "package": "bun:sqlite", "name": ["Database", "SQLQueryBindings"] },
+          { "from": "lib", "name": ["Error"] },
+          {
+            "from": "package",
+            "package": "bun-types",
+            "name": ["ErrorEvent", "MessageEvent", "Worker"]
+          }
+        ]
+      }
+    ],
     "no-restricted-imports": [
       "error",
       {

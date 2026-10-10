@@ -8,6 +8,7 @@
     <a href="./principles.md">Principles</a> •
     <a href="./scope.md">Scope</a> •
     <a href="https://linear.app/zgeoff/project/nixie-caa59289fb88">Planned work</a> •
+    <a href="#architecture">Architecture</a> •
     <a href="#design">Design</a> •
     <a href="#decisions">Decisions</a> •
     <a href="#archive">Archive</a> •
@@ -27,8 +28,13 @@
 
 `decisions/` holds the decision records, which stay. `design/<work>/` holds the design for a piece
 of work that is not built yet, with its spikes in `design/<work>/spikes/`: `design/platform/` is the
-first. `architecture/` will hold what is built. Designs and architecture use the topics of the
-decisions below, and planned work lives in Linear.
+first. `architecture/` holds what is built. Designs and architecture use the topics of the decisions
+below, and planned work lives in Linear.
+
+## Architecture
+
+- [The database and the single writer](architecture/database.md) — the SQLite dialect, the writer
+  lock and epoch, migrations and the schema version, and random key store IDs
 
 ## Design
 

@@ -46,9 +46,9 @@ directory. They exchange 2 kinds of file there:
 The sidecar publishes only a set whose marker exists and whose copies match their checksums. It
 publishes sets one at a time, in sequence order, and removes a set's copies after its receipt. The
 formats live in `libs/wire`. Each release reads its own format and the one before, and writes only a
-format the release before reads, the rule that [upgrades](upgrades.md#migrations) sets for the
-schema. A rollback by one release therefore leaves no set or receipt that the older containers
-cannot read.
+format the release before reads, the rule that
+[migrations](../../../architecture/database.md#migrations) sets for the schema. A rollback by one
+release therefore leaves no set or receipt that the older containers cannot read.
 
 ## A backup run
 
@@ -129,9 +129,9 @@ the objects.
 
 Litestream reads the live database and its write-ahead log, so at that stage the sidecar mounts the
 data directory as well. Litestream never takes the
-[writer lock](../core/event-log.md#the-single-writer) and never writes a transaction. Its WAL
-checkpoints go through SQLite's own locks, which hold because both containers run on one kernel. The
-replica stage's spike sets nixie's checkpoint settings beside it.
+[writer lock](../../../architecture/database.md#the-single-writer) and never writes a transaction.
+Its WAL checkpoints go through SQLite's own locks, which hold because both containers run on one
+kernel. The replica stage's spike sets nixie's checkpoint settings beside it.
 
 Litestream never replicates `keys.db`, because its retained history would keep deleted keys. Hourly
 key snapshots alone leave new encrypted items unrecoverable for up to an hour after host loss, so

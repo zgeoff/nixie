@@ -16,7 +16,9 @@
       "adapters/*",
       "libs/*"
     ],
-    "catalog": {}
+    "catalog": {
+      "kysely": "0.29.6"
+    }
   },
   "type": "module",
   "scripts": {

@@ -50,7 +50,7 @@ image other than its pin would break the commit as the record of what ran.
    kill nixie first. The next start recovers an interrupted step as after a crash, under
    [tasks](../core/tasks.md).
 2. **Lock.** nixie takes the writer lock and a new writer epoch, under
-   [the single writer](../core/event-log.md#the-single-writer).
+   [the single writer](../../../architecture/database.md#the-single-writer).
 3. **Copy.** When the release migrates the schema, nixie copies the database with `VACUUM INTO`
    before the first migration. It never copies the key store.
 4. **Migrate.** Each migration runs in one transaction with the schema version.
@@ -63,14 +63,9 @@ image other than its pin would break the commit as the record of what ran.
 
 ## Migrations
 
-Each build records the schema version it writes and the oldest schema it can read. A build refuses
-to start on a schema newer than it can read, and logs the restore it needs.
-
-A release expands the schema: new tables, columns with defaults, or indexes. A removal or rename
-waits until the release before no longer needs that shape. A release counts as backward-compatible
-only when the older build can both read and write the newer data. **Why:** reverting one release
-then needs no restore and loses no writes. A release that cannot follow the rule marks its schema
-unreadable by the release before, and its pull request says so.
+[Migrations](../../../architecture/database.md#migrations) covers the schema version, the copy
+before a migration and the refusal of a newer schema. The release notes list each migration and
+whether the release before can read the schema it leaves.
 
 ## Rolling back
 

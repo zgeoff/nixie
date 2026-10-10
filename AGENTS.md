@@ -173,7 +173,8 @@ this file as its guidelines. A repo that runs another review bot names it and it
 ## nixie
 
 This repo is nixie, a self-hosted personal assistant platform that works for one person. It is in
-the design phase: the docs hold a locked design baseline, and no product code exists yet.
+its first build: `docs/design/` holds the locked design baseline, and `docs/architecture/` covers
+the parts built so far.
 
 ## Repo layout
 
@@ -233,6 +234,15 @@ writing rules, the size limits and the README contract.
 - **Linear.** A PR body names its issue with one relationship: `Fixes GEO-<n>` when merging meets
   the issue's acceptance, `Contributes to GEO-<n>` when work remains, or `Related to GEO-<n>` for
   context only.
+
+## Database
+
+- Only `libs/db` imports `bun:sqlite` and the Kysely dialect. Every other package takes its handle
+  from the writer that `startWriter` in `modules/log` returns, and runs each write transaction
+  through `withWriteTransaction`.
+- Every ID that keys the key store is random, from `crypto.randomUUID()`, and never a row number or
+  any other sequence. [The database](docs/architecture/database.md#key-store-ids) gives the reason.
+- A migration appends to `nixieSchema` and never changes a released one.
 
 ## Public repo
 
