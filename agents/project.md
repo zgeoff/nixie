@@ -20,8 +20,10 @@ Each folder under `docs/` has one job:
 - `docs/architecture/` explains what is built: the parts, their boundaries and their invariants,
   grouped in subfolders by area once an area passes about 6 docs.
 - `docs/decisions/` holds permanent, numbered decision records. A record states the choice, the
-  rejected alternatives and why, and never how the system works now. A changed decision gets a new
-  record that supersedes the old one.
+  rejected alternatives and why, and never how the system works now. A changed decision is edited in
+  place: the record keeps its number and states the decision as it now stands, its header gains an
+  `Updated` date, and a `## Changes` list at its end gives each change's date and a one-line
+  summary. A new record is only for a new decision.
 - `docs/design/<work>/` holds a design for big, speculative work designed well before its code. A
   design is temporary, and its spikes live in `docs/design/<work>/spikes/<name>/`, each a Bun
   package whose README gives the question, how to run it and what it found. Product code never

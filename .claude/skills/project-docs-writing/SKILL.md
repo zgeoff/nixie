@@ -16,7 +16,9 @@ Load the shared `docs-writing` skill first. Where the two skills disagree, this 
   infer from the code.
 - **`docs/decisions/`** holds permanent records. A record states the choice, the alternatives it
   rejected and why, and keeps its date in the header. It never describes how the system works now. A
-  changed decision gets a new record that supersedes the old one.
+  changed decision is edited in place: the record keeps its number and states the decision as it now
+  stands, its header gains an `Updated` date, and a `## Changes` list at its end gives each change's
+  date and a one-line summary. The `## Changes` list is the one place a record holds history.
 - **`docs/design/<work>/`** holds a design for big, speculative work, written well before its code.
   A design doc states contracts: what each part does, its interfaces, its guarantees, and the reason
   for each one. Evidence lives in the design's spikes, in `docs/design/<work>/spikes/<name>/`, and

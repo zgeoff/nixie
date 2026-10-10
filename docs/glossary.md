@@ -55,8 +55,11 @@ one person a nixie deployment works for.
 | forget             | Destroy a memory item's key, so the item is unreadable everywhere                           |
 | moment             | A range of records in one thread that nixie keeps whole, with a title, note and reflections |
 | reflection         | A model's reading of a moment, labelled with its model ID and date                          |
-| definitions        | Your persona, jobs and policy seed                                                          |
+| definitions        | Your persona, jobs, skills and policy seed                                                  |
 | definitions source | Where nixie reads the definitions from, such as a git repo, a local path or bucket storage  |
+| skill              | A procedure in your definitions: instructions, references and scripts, which grants nothing |
+| skill catalog      | The name and description of each skill a caller may load, in its system prompt              |
+| vendored skill     | A third-party skill copied into your definitions at a pinned upstream commit                |
 
 ## Connectors and sandboxes
 

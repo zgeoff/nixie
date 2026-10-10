@@ -105,8 +105,10 @@ canonical form of the whole definition set:
 - **Persona and job instructions,** written in markdown, normalise to Unicode NFC with LF line
   endings, no byte order mark and exactly one final newline. Trailing spaces stay, because 2 of them
   are a markdown line break.
-- **Jobs** sort by ID, with their schedule, their instructions' hash, their tool list and their
-  allowed destinations.
+- **Jobs** sort by ID, with their schedule, their instructions' hash, their tool list, their skill
+  list and their allowed destinations.
+- **Skills** sort by name, each with the content hash of its folder and its provenance, under the
+  [skills design](../skills.md#versions).
 - **Policy** holds the rules sorted by ID, the complete tool declarations sorted by tool name, the
   budget limits, the IDs of known contacts, and the versioned checker definitions. A checker
   definition holds its prompt hash and the model and adapter settings that affect its verdict, so a
@@ -123,9 +125,9 @@ tool's declared effects, so a replay needs the declarations in force.
 The form leaves out state that changes without an edit: when a rule last fired, how much of a budget
 is spent, and rule metadata. **Why:** the hash then changes exactly when the definitions do, and a
 replay with the snapshot reproduces every deterministic decision. nixie keeps each snapshot under
-its hash, with the definitions commit as a label. The persona, each job and the policy each also
-have their own hash, so a task records the persona and job versions it pinned beside the snapshot of
-the policy in force.
+its hash, with the definitions commit as a label. The persona, each job, each skill and the policy
+each also have their own hash, so a task records the persona, job and skill versions it pinned
+beside the snapshot of the policy in force.
 
 ## The widening check
 

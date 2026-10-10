@@ -52,7 +52,7 @@ adding it later means a redesign.
 | Undo for reversible actions through checkpoints, and least privilege for each tool                                               | Survey                       | [0015](decisions/0015-taint-scope.md)                                                    |     |
 | Budgets per job, a model tier per job, and a limit on concurrent work                                                            | Survey                       | [0028](decisions/0028-policy-design.md)                                                  |     |
 | Health checks reported through another channel, safe upgrades with rollback, and backups of personal data                        | Your data stays home; survey | [0020](decisions/0020-deployment.md)                                                     |     |
-| Trust rules for skills: signed, pinned, scanned, with review of skills that nixie writes itself                                  | Survey                       |                                                                                          |     |
+| Trust rules for skills: signed, pinned, scanned, with review of skills that nixie writes itself                                  | Survey                       | [0038](decisions/0038-skills.md)                                                         |     |
 
 nixie integrates a realtime voice model through an adapter and does not build one. nixie owns the
 voice session itself: it reconnects when a provider session ends, keeps a transcript of what you
