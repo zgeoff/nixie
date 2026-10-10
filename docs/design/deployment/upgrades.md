@@ -42,7 +42,8 @@ image other than its pin would break the commit as the record of what ran.
 ## A release on the host
 
 1. **Stop.** On `SIGTERM`, nixie stops claiming steps and gives steps in flight up to 30 s to
-   commit. The next start recovers an interrupted step as after a crash, under
+   commit. The Compose file sets `stop_grace_period` to match, because Docker's default 10 s would
+   kill nixie first. The next start recovers an interrupted step as after a crash, under
    [tasks](../core/tasks.md).
 2. **Copy.** When the release migrates the schema, nixie copies the database with `VACUUM INTO`
    before the first migration. It never copies the key store.

@@ -55,6 +55,8 @@ came back in full from an older snapshot of one combined repo. With a separate k
 one snapshot and prunes every unused byte, the item stayed unreadable while older database snapshots
 still restored.
 
+### Forget-triggered key cleanup
+
 nixie deletes a key from the live store with SQLite's `secure_delete` on and checkpoints the
 write-ahead log. A forget then starts a key backup at once instead of waiting for the schedule. The
 [memory store](../memory/store.md) owns the forget contract. Deployment meets it this way:
@@ -66,8 +68,9 @@ write-ahead log. A forget then starts a key backup at once instead of waiting fo
 3. The forget stays pending until every registered key copy has a receipt. An error, a failed prune,
    an unavailable backend or a crash keeps it pending, and recovery resumes the same operation.
 
-In the first build, one backup job runs at a time, so no backup can publish a key copy staged before
-a forget. A later stage runs publication and forget concurrently behind a generation barrier.
+In the first build, key-store staging, key publication and forget share one exclusive lock, so no
+backup can publish a key copy staged before a forget. A later stage replaces the lock with a
+generation barrier that rejects stale staging copies.
 
 A backend counts as registered only if its credentials allow deletion and its versioning or
 immutable retention keeps no unmanaged copy. A backend that cannot meet that condition never reports

@@ -24,9 +24,9 @@ The first build ships the smallest deployment that keeps every guarantee true:
   encrypted to the host key and your recovery key.
 - **Hourly restic snapshots** of `nixie.db` and `keys.db` to 2 repos, with the key repo kept to one
   snapshot.
-- **Forget completes after the key repo prunes.** A forget starts a key backup at once, and one
-  backup job runs at a time. The forget reports pending until that job prunes every older key
-  snapshot. [Memory](../memory/store.md) owns what forget means.
+- **Forget completes after the key repo prunes.** A forget starts a key backup at once, and key
+  publication and forget share one lock. The forget reports pending until that job prunes every
+  older key snapshot. [Memory](../memory/store.md) owns what forget means.
 - **Restore on a new host,** with recovery holds that stop a restored task from repeating an action.
 - **Upgrades as pin bumps,** by hand or by a poll timer. Every release keeps its schema readable by
   the release before it, so a rollback by one release is a revert with no restore.
