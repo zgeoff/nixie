@@ -50,8 +50,8 @@ you.
 - The conversation in its long-lived imp on the configured model. The default is GLM 5.3 through the
   Agent SDK against an Anthropic-compatible endpoint, which the
   [model-eval spike](../../spikes/model-eval/README.md) ran with nixie's tools.
-- One read-only tool: a web fetch that declares `fetch` and no destination, runs on the host, and
-  returns the page as outside content.
+- One read-only tool: a web fetch that declares `fetch` and no destination, runs on the host,
+  refuses private, loopback and link-local addresses, and returns the page as outside content.
 - The health endpoints, JSON logs of envelope fields only, and the release pipeline that publishes
   the nixie, web and conversation images
   ([health](./deployment/deployment.md#health-and-monitoring),
@@ -75,8 +75,11 @@ you.
       wake-up and a crash mid-turn. A test-only queued action shows that a resumed task run never
       repeats an action that ran.
 - [ ] A CI test drops every projection, folds the recorded log, and matches the live tables.
-- [ ] A test finds no message text in plain form in `nixie.db`, and finds the snapshot hash on every
-      record.
+- [ ] A test finds no message text in plain form in `nixie.db` or in the logs, and finds the
+      snapshot hash on every record.
+- [ ] Tests port the isolation control of the
+      [reverse-forward spike](../../spikes/tools-reverse-forward/README.md): the conversation imp
+      reaches nixie's tools and the model API, and nothing else.
 - [ ] A test asserts the options of every `query()`: `tools: []`, `settingSources: []` and the SDK's
       own memory off.
 - [ ] A tagged release publishes the 3 images to GHCR, and the Compose stack runs them pinned by
@@ -188,7 +191,8 @@ forgets an item on your word.
 **Before it starts:** the compaction controls, resume after compaction, session recovery, memory
 checker, retrieval on your own questions, batched capture, memory poisoning, retirement and bulk
 deletion, pinned core on GLM, and paste spans in WebKit spikes. Your choices: the encoder model and
-library, and the models of the memory writer and the checker.
+library, and the models of the memory writer and the checker. Your input: the questions for the
+retrieval spike, about memory items you recognise.
 
 **Acceptance:**
 
