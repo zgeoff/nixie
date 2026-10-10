@@ -78,6 +78,14 @@ Writes that apply at once appear as one compact group per turn or batch, with ex
 per-item undo. Later batches add quiet notices in their thread, with no push. Successful writes do
 not duplicate into the digest; review proposals stay there.
 
+## The first build
+
+The first build implements each choice above with the smallest mechanism that keeps its guarantee,
+as [the first build](../design/memory/store.md#the-first-build) sets out. It rebuilds the index in
+full, rebuilds every live session and deletes every stored summary on a permanent forget, and holds
+one lock across key-backup publication and forget. Exposure tracking, index generations and
+concurrent key publication extend it later without a change of contract.
+
 ## Alternatives and trade-offs
 
 - Keyword-only retrieval misses paraphrases in the synthetic sample. Local embeddings add an encoder

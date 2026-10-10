@@ -23,8 +23,8 @@ beyond the decisions it links is a proposed implementation of the agreed memory 
 ## The first build
 
 The first build implements every memory decision with the smallest mechanism that keeps its
-guarantee true, and the full design below extends it without a change of contract. This split is a
-proposal for the owner to confirm.
+guarantee true, and the full design below extends it without a change of contract. The owner agreed
+this split under [0031](../../decisions/0031-memory-capture-context-and-removal.md).
 
 - **Store and operations.** The first build has items, the history table, a key per item, recall,
   the memory view, retire with undo, forget, bulk deletion of retired memories and JSON export.
