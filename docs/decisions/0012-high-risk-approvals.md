@@ -3,25 +3,31 @@
 - Date: 2026-10-08
 - Status: decided
 - Research:
-  [channel notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.5-notes/channels.md),
-  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#channels)
+  [channel notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.5-notes/channels.md)
 
-An approval for the always-ask set from [0005](./0005-effects-and-taint.md) asks for a passkey
-check, such as Face ID or Touch ID, in nixie's client from [0009](./0009-first-channel.md). Every
-other approval is a tap. The first build ships with a tap for every approval, and the passkey check
-follows as an early addition.
+An approval in the always-ask set from [0005](./0005-effects-and-taint.md) takes a passkey check,
+such as a fingerprint or face check, in nixie's client. That covers spending, widening a rule,
+including "always allow" and creating a mandate or a lifting rule, raising a budget, and retrying a
+payment whose outcome is unknown. Every other approval is a tap. The first build approves everything
+with a tap, and the passkey check follows as an early addition.
 
 ## Why
 
 - Spending money, widening a rule and raising a budget are rare by design, so an extra step costs
   little.
-- A tap alone lets anyone holding the owner's unlocked phone approve them.
+- A tap alone lets anyone holding your unlocked phone approve them.
+- A retry of an unknown payment can charge twice, so it carries the risk of the first approval.
 - The passkey check sits on top of the approval flow and changes nothing beneath it, so it does not
   block the first build.
 
 ## Alternatives
 
 - **A tap for every approval, permanently.** It is the least friction, and leaves the always-ask set
-  open to anyone with the owner's unlocked device.
+  open to anyone with your unlocked device.
 - **A passkey check for every approval.** It adds a step to routine approvals, against the 0-prompt
   target.
+
+## Consequences
+
+- A rule no wider than the action on its own card may skip the passkey for "always allow". That
+  exemption is an open item for the passkey design.
