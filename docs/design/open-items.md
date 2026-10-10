@@ -19,10 +19,6 @@ doc links an item here instead of restating it.
   source, and the quote check counts only `typed` text ([memory writes](./memory/writes.md)). The
   options are to count dictated words as evidence, or to make every dictated memory a proposal.
   Recommendation: proposals, because a transcript can mishear a name or a number.
-- **The model per job.** The [model-eval spike](../../spikes/model-eval/README.md) suggests
-  different models for chat, memory writing, tool calls and long background reasoning, with low
-  reasoning effort for chat. Its 2 samples per cell make the numbers indicative only. The memory
-  writer's candidates are open too.
 - **The encoder model and library.** Local embeddings are in the first build
   ([0031](../decisions/0031-memory-capture-context-and-removal.md)). Compare quality, runtime,
   memory use and packaging of pinned assets, then choose before implementation.
@@ -30,10 +26,6 @@ doc links an item here instead of restating it.
   [0012](../decisions/0012-high-risk-approvals.md) an "always allow" takes the passkey once 0012
   ships, because it widens a rule. Recommendation: a rule no wider than the card's own action, with
   the same tool and the same destination, stays one tap, and a broader rule asks for the passkey.
-- **Budget defaults on a subscription token.** On a subscription token the SDK reports a notional
-  cost, so the default daily and monthly budgets could stop nixie in ordinary use
-  ([budgets](./policy/budgets.md)). The defaults stay placeholders until the subscription spike
-  below sets them.
 - **A budget for paid tool calls.** A Kagi search costs money without the `spend` effect
   ([0014](../decisions/0014-search.md)), and budgets count only `spend` tools and model cost. The
   option is a budget kind for paid tool calls. Recommendation: add it with the first paid tool.
@@ -83,8 +75,9 @@ Spikes that need model calls wait for model quota. Each line names the claim the
 - **The spending proxy** (about half a day, on an imp host): route a worker's model requests from
   imp's broker through a counting proxy on the host, and check that the broker opens the guest no
   second route ([budgets](./policy/budgets.md)).
-- **Model cost on a subscription token** (about 2 hours): record what the SDK reports per turn on a
-  subscription token against a metered key, and set the budget defaults from real use.
+- **Token use per turn** (about 2 hours): record the input, cached input and output tokens per turn
+  for each model role on its configured [model profile](./core/models.md), and tune the
+  [budget defaults](./policy/budgets.md#model-cost) from real use.
 - **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against the
   [policy rules spike](../../spikes/policy-rules/README.md) scenarios and measure the bar from
   [0008](../decisions/0008-auto-mode.md). nixie switches auto-mode on only when it meets that bar.

@@ -27,7 +27,7 @@ interface SandboxSpec {
   image: string; // a purpose-built image per kind of work
   owner: string; // the task step or tool call that the sandbox belongs to
   egress: { kind: 'none' } | { kind: 'allow'; hosts: string[] };
-  grants: GrantSpec[]; // empty for code runs, the model credential for model loops
+  grants: GrantSpec[]; // empty for code runs, the profile's model credential for model loops
   toolRoute: boolean; // open the route back to nixie's tools
   limits: { vcpus: number; memoryMiB: number; diskMiB: number };
 }
@@ -62,8 +62,9 @@ memory returns `none`, so the core never maps sleep onto a stop or a pause.
 | A code run                | One tool call              | None   | None                                     | No         |
 | A built-in coding session | The session                | Allow  | The model credential, and others by rule | Yes        |
 
-The model credential reaches only the model API's host, through the adapter's injecting backend,
-which dials from the host. A grant never becomes a network exception in the guest.
+The model credential reaches only the host of its [model profile](../core/models.md), through the
+adapter's injecting backend, which dials from the host. A grant never becomes a network exception in
+the guest.
 
 ## The route to nixie's tools
 

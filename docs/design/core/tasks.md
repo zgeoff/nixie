@@ -149,19 +149,19 @@ runs inside the calling step, has no conversation, and returns a result to its c
 
 Each worker run gets its own imp through the [sandbox adapter](../connectors/sandbox-adapter.md),
 and the whole worker runs inside it: the model loop and any code it runs. The imp's one credential
-grant is the model credential, limited to the model API's host, under
-[0026](../../decisions/0026-where-workers-and-the-conversation-run.md). The worker reaches anything
-else through nixie's tools on the host, where the destination limits apply. A worker holds a subset
-of its caller's tools, so delegation only narrows. Its transcript becomes records whose parent is
-the tool call, and nixie destroys the imp when the tool call returns.
+grant is the model credential of the worker's [model profile](./models.md), limited to that
+profile's host, under [0026](../../decisions/0026-where-workers-and-the-conversation-run.md). The
+worker reaches anything else through nixie's tools on the host, where the destination limits apply.
+A worker holds a subset of its caller's tools, so delegation only narrows. Its transcript becomes
+records whose parent is the tool call, and nixie destroys the imp when the tool call returns.
 
 A minimal image per kind of work keeps a fresh worker's start short, as the
 [imp worker spike](../../../spikes/imp-worker-start/README.md) measured.
 
-A worker run stops at 10 min of wall time, 25 model turns or $1 of model cost by default, whichever
-comes first, settable per tool. **Why:** a worker answers one narrow question, so a worker run past
-these limits is looping, and the caller gets an error it can act on. These limits sit inside the
-[budgets](../policy/budgets.md).
+A worker run stops at the first of its limits: 10 min of wall time, 25 model turns, 500,000 tokens
+or $1 of model cost by default, each settable per tool. **Why:** a worker answers one narrow
+question, so a worker run past these limits is looping, and the caller gets an error it can act on.
+These limits sit inside the [budgets](../policy/budgets.md).
 
 A worker is not durable: a rerun of its step starts a new worker, and the action queue keeps it from
 repeating an action.
