@@ -291,3 +291,14 @@ test('a sleep pauses the processes, and the wake resumes them', async () => {
 
   expect(readNextMessage(stream)).resolves.toBe('x');
 });
+
+test('an exec that stops reading stdin early still reports its exit', async () => {
+  const ctx = await setupProcessAdapter();
+  const sandbox = await ctx.createSandbox(workerSpec);
+  const result = await sandbox.exec({
+    argv: ['head', '-c', '1'],
+    stdin: new Uint8Array(4 * 1024 * 1024),
+  });
+
+  expect(result).toMatchObject({ code: 0, stdout: { totalBytes: 1 } });
+});

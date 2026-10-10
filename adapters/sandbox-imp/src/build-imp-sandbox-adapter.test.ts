@@ -326,3 +326,60 @@ test('a restarted adapter lists and destroys what the last one made, for recover
   expect(found).toBeNull();
   expect(ctx.imp.calls.at(-1)).toBe(`remove ${made.id}`);
 });
+
+test('a session that impd loses after a stop rejects the exit and leaves the host running', async () => {
+  const ctx = await setupImpAdapter();
+  const sandbox = await ctx.adapter.create(conversationSpec);
+
+  ctx.imp.failExitOnStop = true;
+
+  const stream = await sandbox.spawn({ argv: ['sleep', '60'], maxMessageBytes: 64 });
+
+  expect(stream.stop()).rejects.toThrow('CONNECTION_CLOSED');
+});
+
+test('a guest connection to a tool endpoint that is down fails that connection alone', async () => {
+  const ctx = await setupImpAdapter();
+  const adapter = ctx.buildAdapterWithTarget({ path: join(ctx.dir, 'missing.sock') });
+  const sandbox = await adapter.create(conversationSpec);
+  const route = await sandbox.toolRoute();
+  const result = await sandbox.exec({
+    argv: [
+      process.execPath,
+      '-e',
+      'await fetch(process.env.TOOL_URL).catch(() => console.log("failed"))',
+    ],
+    env: { TOOL_URL: route?.url ?? '' },
+  });
+
+  expect(decoder.decode(result.stdout.bytes)).toBe('failed\n');
+});
+
+test('a call on a sleeping imp records the wake it causes', async () => {
+  const ctx = await setupImpAdapter();
+  const sandbox = await ctx.adapter.create(conversationSpec);
+
+  if (sandbox.suspension.kind !== 'memory') {
+    throw new Error('imp keeps memory');
+  }
+  await sandbox.suspension.sleep();
+  await sandbox.exec({ argv: ['true'] });
+
+  const records = await ctx.readSandboxRecords();
+  const [row] = await ctx.recorder.list('imp', 'conversation:step-7');
+
+  expect(records.map((record) => record.kind).slice(-2)).toStrictEqual([
+    'sandbox.slept',
+    'sandbox.woken',
+  ]);
+  expect(row?.state).toBe('awake');
+});
+
+test('copyOut refuses a guest file past 64 MiB', async () => {
+  const ctx = await setupImpAdapter();
+  const sandbox = await ctx.adapter.create(conversationSpec);
+
+  expect(sandbox.copyOut(['/dev/zero'])).rejects.toThrow(
+    'copy out of /dev/zero failed: the file passes 67108864 bytes',
+  );
+});

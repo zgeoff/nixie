@@ -55,9 +55,9 @@ async function startReverseForward(
   id: string,
   spec: SandboxSpec,
 ): Promise<ImpForward> {
-  const target = options.toolTarget({ id, owner: spec.owner });
+  // each connection resolves its target afresh, so a long-lived forward follows the owner's run
   const forward = options.port.openReverseForward(id, options.guestToolPort, (accept) => {
-    startToolRelay(target, accept);
+    startToolRelay(options.toolTarget({ id, owner: spec.owner }), accept);
   });
 
   try {

@@ -33,9 +33,15 @@ export async function runCommand(
   }
 }
 
+// A command that exits or closes stdin before it reads all of it fails the write. Its exit and
+// output are the result, so the write error never replaces them.
 async function writeStdin(io: ProcessIO, stdin: Uint8Array | undefined): Promise<void> {
-  if (stdin !== undefined && stdin.byteLength > 0) {
-    await io.write(stdin);
+  try {
+    if (stdin !== undefined && stdin.byteLength > 0) {
+      await io.write(stdin);
+    }
+    await io.closeStdin();
+  } catch {
+    // the exit reports what happened
   }
-  await io.closeStdin();
 }

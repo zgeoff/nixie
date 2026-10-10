@@ -34,6 +34,11 @@ export function startToolRelay(
   });
   socket.once('end', relay.sendEof);
   socket.once('close', relay.close);
+
+  // a tool endpoint that is down or resets fails this one connection, never the host process
+  socket.on('error', () => {
+    relay.close();
+  });
 }
 
 async function waitForRoom(relay: ImpRelay, resume: () => unknown): Promise<void> {

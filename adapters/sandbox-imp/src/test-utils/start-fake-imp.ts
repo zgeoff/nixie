@@ -12,6 +12,9 @@ import type {
 
 interface FakeExec {
   readonly argv: readonly string[];
+
+  // impd ends the session without an exit after a stop, as a lost connection does
+  readonly failsOnStop: boolean;
   readonly options: ImpExecOptions;
   readonly signals: string[];
 }
@@ -24,6 +27,7 @@ interface FakeState {
   readonly secrets: Map<string, readonly string[]>;
   features: ImpFeatures;
   failCreate: boolean;
+  failExitOnStop: boolean;
 }
 
 export interface FakeImp extends FakeState {
@@ -46,6 +50,7 @@ export async function startFakeImp(): Promise<FakeImp> {
     secrets: new Map([['model-default', ['api.anthropic.com']]]),
     features: { publicEgress: true, isEgressEnforced: true },
     failCreate: false,
+    failExitOnStop: false,
   };
 
   return Object.assign(state, { port: buildFakePort(state, stack) });
@@ -73,7 +78,7 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
     readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),
     addGrant: (name, secret) => updateCallLog(`grant ${name} ${secret}`),
     openExec: (_name, argv, options) => {
-      const exec: FakeExec = { argv, options, signals: [] };
+      const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
 
       state.execs.push(exec);
       return Promise.resolve(startFakeExec(exec, stack));
@@ -104,6 +109,8 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
     detached: true,
   });
 
+  const lost = Promise.withResolvers<never>();
+
   stack.defer(() => {
     sendGroupSignal(child.pid, 'SIGKILL');
   });
@@ -119,16 +126,22 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
     },
     sendSignal: (signal) => {
       exec.signals.push(signal);
+      if (exec.failsOnStop) {
+        lost.reject(new Error('CONNECTION_CLOSED'));
+      }
       sendGroupSignal(child.pid, 'SIGTERM');
       setTimeout(sendGroupSignal, exec.options.killGraceMs, child.pid, 'SIGKILL');
     },
     close: () => {
       sendGroupSignal(child.pid, 'SIGKILL');
     },
-    exit: waitForExit(child.exited, () => ({
-      code: child.signalCode === null ? child.exitCode : null,
-      signal: child.signalCode,
-    })),
+    exit: Promise.race([
+      waitForExit(child.exited, () => ({
+        code: child.signalCode === null ? child.exitCode : null,
+        signal: child.signalCode,
+      })),
+      lost.promise,
+    ]),
   };
 }
 

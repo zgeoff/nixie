@@ -27,7 +27,7 @@ async function stopAfterGrace(exec: ImpExec, delayMs: number): Promise<void> {
   const timeout = setTimeout(() => {
     timer.resolve('late');
   }, delayMs);
-  const outcome = await Promise.race([exec.exit, timer.promise]);
+  const outcome = await Promise.race([exec.exit, timer.promise]).catch(() => 'ended' as const);
 
   clearTimeout(timeout);
   if (outcome === 'late') {

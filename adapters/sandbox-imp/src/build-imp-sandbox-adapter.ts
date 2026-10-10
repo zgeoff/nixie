@@ -2,6 +2,7 @@ import type {
   Sandbox,
   SandboxAdapter,
   SandboxRecorder,
+  SandboxRow,
   SandboxSpec,
   ToolTargetResolver,
 } from '@heynixie/sandbox';
@@ -9,6 +10,7 @@ import { createSandboxID, stopGraceMs } from '@heynixie/sandbox';
 import { buildImpPolicy } from './build-imp-policy';
 import { buildImpSandbox } from './build-imp-sandbox';
 import { buildRouteRegistry } from './build-route-registry';
+import { buildSleepRegistry } from './build-sleep-registry';
 import type { PublicEgressConfig } from './parse-imp-config';
 import { requireImpSpec } from './require-imp-spec';
 import type { ImpPort } from './types';
@@ -36,8 +38,10 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
     toolTarget: options.toolTarget,
     guestToolPort,
   });
+  const sleeping = buildSleepRegistry();
   const getSandbox = (id: string, spec: SandboxSpec): Sandbox =>
     buildImpSandbox({
+      sleeping,
       port: options.port,
       recorder: options.recorder,
       routes,
@@ -46,6 +50,11 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
       id,
       spec,
     });
+
+  const getRowSandbox = (row: SandboxRow): Sandbox => {
+    sleeping.setAsleep(row.sandboxID, row.state === 'sleeping');
+    return getSandbox(row.sandboxID, row.spec);
+  };
 
   return {
     id: 'imp',
@@ -61,12 +70,12 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
     get: async (id) => {
       const row = await options.recorder.findRow('imp', id);
 
-      return row ? getSandbox(row.sandboxID, row.spec) : null;
+      return row ? getRowSandbox(row) : null;
     },
     list: async (owner) => {
       const rows = await options.recorder.list('imp', owner);
 
-      return rows.map((row) => getSandbox(row.sandboxID, row.spec));
+      return rows.map((row) => getRowSandbox(row));
     },
   };
 }

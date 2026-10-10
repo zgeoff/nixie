@@ -2,7 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { SandboxAdapter } from '@heynixie/sandbox';
+import type { SandboxAdapter, ToolTarget } from '@heynixie/sandbox';
 import { buildImpSandboxAdapter } from '../build-imp-sandbox-adapter';
 import type { PublicEgressConfig } from '../parse-imp-config';
 import { setupTestRecorder } from './setup-test-recorder';
@@ -16,6 +16,7 @@ interface TestAdapter extends TestRecorder {
   readonly dir: string;
   readonly adapter: SandboxAdapter;
   readonly buildAdapter: (publicEgress: PublicEgressConfig | null) => SandboxAdapter;
+  readonly buildAdapterWithTarget: (target: ToolTarget) => SandboxAdapter;
 }
 
 export const testPublicEgress: PublicEgressConfig = {
@@ -33,16 +34,27 @@ export async function setupImpAdapter(): Promise<TestAdapter> {
   onTestFinished(() => rm(dir, { recursive: true, force: true }));
   onTestFinished(startToolEndpoint(join(dir, 'tools.sock')));
 
-  const buildAdapter = (publicEgress: PublicEgressConfig | null): SandboxAdapter =>
+  const buildWith = (target: ToolTarget, publicEgress: PublicEgressConfig | null): SandboxAdapter =>
     buildImpSandboxAdapter({
       port: imp.port,
       recorder: ctx.recorder,
       config: { publicEgress },
-      toolTarget: () => ({ path: join(dir, 'tools.sock') }),
+      toolTarget: () => target,
       guestToolPort: imp.guestToolPort,
     });
+  const buildAdapter = (publicEgress: PublicEgressConfig | null): SandboxAdapter =>
+    buildWith({ path: join(dir, 'tools.sock') }, publicEgress);
+  const buildAdapterWithTarget = (target: ToolTarget): SandboxAdapter =>
+    buildWith(target, testPublicEgress);
 
-  return { ...ctx, imp, dir, adapter: buildAdapter(testPublicEgress), buildAdapter };
+  return {
+    ...ctx,
+    imp,
+    dir,
+    adapter: buildAdapter(testPublicEgress),
+    buildAdapter,
+    buildAdapterWithTarget,
+  };
 }
 
 function startToolEndpoint(socketPath: string): () => Promise<void> {

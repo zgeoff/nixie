@@ -21,6 +21,9 @@ export interface ProcessIO {
 export function startExecStream(io: ProcessIO, maxMessageBytes: number): ExecStream {
   const exit = waitForStreamExit(io);
 
+  // a caller that never awaits the exit must not turn a failed session into an unhandled rejection
+  void waitForSettled(exit);
+
   return {
     messages: readMessages(io, maxMessageBytes),
     send: (message) => io.write(encodeFrame(message)),
@@ -62,5 +65,13 @@ function decodeOrStop(
   } catch (error) {
     io.stop();
     throw error;
+  }
+}
+
+async function waitForSettled(promise: Promise<unknown>): Promise<void> {
+  try {
+    await promise;
+  } catch {
+    // the caller who awaits the exit sees the error
   }
 }
