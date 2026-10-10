@@ -121,6 +121,14 @@ Destroying a moment shreds the keys of its own records: every version of the tit
 each reflection. The span's records stay in the event log, because they are your conversation, not
 the moment.
 
+The record of a moment tool call holds references, not text: moment IDs, versions and record
+sequences. The title, the note and each reflection live only in the moment records, under their
+keys. **Why:** a destroy then leaves no readable copy in the tool-call records, as the recall record
+does for memory in [the store](store.md#recall). A destroy also rebuilds live sessions and deletes
+compaction summaries as a memory forget does under [memory in context](context.md#compaction). Your
+messages and the replies that quote a moment stay under their own record keys, and the destroy
+preview shows that scope.
+
 A kept span blocks any automatic pruning of its records. A forget always wins over a span, and a
 record inside a span that becomes unreadable shows as a gap in the moment.
 
