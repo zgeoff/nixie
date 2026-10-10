@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Migration } from '@heynixie/db';
@@ -110,8 +110,6 @@ test('it copies the database before the first migration of a release and never t
     },
   };
 
-  await writeFile(join(ctx.dataDir, 'keys'), 'the wrapped record keys');
-
   const release1 = await startWriter({
     dataDir: ctx.dataDir,
     schema: { migrations: [createNotes], oldestReader: 0 },
@@ -144,5 +142,24 @@ test('it copies the database before the first migration of a release and never t
     to: 2,
     copyPath: join(ctx.dataDir, 'nixie-schema-1.db'),
   });
-  expect(names.toSorted()).toStrictEqual(['keys', 'nixie-schema-1.db', 'nixie.db']);
+  expect(names.toSorted()).toStrictEqual(['keys.db', 'nixie-schema-1.db', 'nixie.db']);
+});
+
+test('it opens the key store as keys.db beside nixie.db, with secure delete on', async () => {
+  const ctx = await setupTest();
+
+  const writer = await startWriter({ dataDir: ctx.dataDir });
+
+  onTestFinished(() => writer.stop());
+
+  const secureDelete = await sql<{ secure_delete: number }>`pragma secure_delete`.execute(
+    writer.keys,
+  );
+  const tables = await sql<{ name: string }>`select name from sqlite_schema
+    where type = 'table' and name = 'record_keys'`.execute(writer.keys);
+  const names = await readdir(ctx.dataDir);
+
+  expect(secureDelete.rows).toStrictEqual([{ secure_delete: 1 }]);
+  expect(tables.rows).toStrictEqual([{ name: 'record_keys' }]);
+  expect(names).toIncludeAllMembers(['keys.db', 'nixie.db']);
 });

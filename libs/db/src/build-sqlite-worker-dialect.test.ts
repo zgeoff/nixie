@@ -32,6 +32,22 @@ test('it opens the database in WAL mode with a full sync on every commit', async
   expect(synchronous.rows).toStrictEqual([{ synchronous: 2 }]);
 });
 
+test('it leaves secure delete off unless the caller asks for it', async () => {
+  const ctx = await setupTest();
+
+  const keys = new Kysely<unknown>({
+    dialect: buildSqliteWorkerDialect(`${ctx.path}-keys`, { secureDelete: true }),
+  });
+
+  ctx.stack.defer(() => keys.destroy());
+
+  const plain = await sql<{ secure_delete: number }>`pragma secure_delete`.execute(ctx.db);
+  const secure = await sql<{ secure_delete: number }>`pragma secure_delete`.execute(keys);
+
+  expect(plain.rows).toStrictEqual([{ secure_delete: 0 }]);
+  expect(secure.rows).toStrictEqual([{ secure_delete: 1 }]);
+});
+
 test('it reports the inserted row ID and the affected row count', async () => {
   const ctx = await setupTest();
 

@@ -1,10 +1,21 @@
 import type { SQLQueryBindings } from 'bun:sqlite';
 import type { Transaction } from 'kysely';
 
+// How a database differs from nixie.db. secureDelete overwrites deleted content with zeros, which
+// the key store needs, because a deleted key otherwise stays in the file's free pages.
+export interface DatabaseOptions {
+  readonly secureDelete?: boolean;
+}
+
 // The messages between the dialect on the main thread and the SQLite worker. Each request carries an
 // id, and the worker answers it with a response under the same id.
 export type WorkerRequest =
-  | { readonly id: number; readonly kind: 'open'; readonly path: string }
+  | {
+      readonly id: number;
+      readonly kind: 'open';
+      readonly path: string;
+      readonly options: DatabaseOptions;
+    }
   | {
       readonly id: number;
       readonly kind: 'query';

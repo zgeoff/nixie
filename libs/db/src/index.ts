@@ -5,4 +5,4 @@ export type { MigrationReport, RunMigrationsOptions } from './run-migrations';
 export { runMigrations } from './run-migrations';
 export { startDatabase } from './start-database';
 export { SchemaTooNewError } from './schema-too-new-error';
-export type { BuildSchema, Migration } from './types';
+export type { BuildSchema, DatabaseOptions, Migration } from './types';

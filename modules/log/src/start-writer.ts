@@ -6,6 +6,7 @@ import { claimWriterEpoch } from './claim-writer-epoch';
 import { claimWriterLock } from './claim-writer-lock';
 import { requireLocalFilesystem } from './require-local-filesystem';
 import { requireWriterEpoch } from './require-writer-epoch';
+import { startKeyStore } from './start-key-store';
 import type { ReadFilesystemType, Writer } from './types';
 
 export interface StartWriterOptions {
@@ -17,7 +18,7 @@ export interface StartWriterOptions {
 
 // Makes this process the database's one writer, in the order a release on the host needs: refuse a
 // network filesystem, take the writer lock, raise the writer epoch, then copy and migrate the
-// database. Any failure releases what the start took.
+// database, then open the key store beside it. Any failure releases what the start took.
 export async function startWriter(options: StartWriterOptions): Promise<Writer> {
   requireLocalFilesystem(options.dataDir, options.readFilesystemType ?? statfsSync);
   const lock = claimWriterLock(options.dataDir);
@@ -31,19 +32,41 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
       requireWriter: (tx) => requireWriterEpoch(tx, epoch),
     });
 
-    return { db, epoch, migration, stop: () => stopWriter(db, lock) };
+    const keys = await startKeyStore(options.dataDir);
+
+    return {
+      dataDir: options.dataDir,
+      db,
+      keys,
+      epoch,
+      migration,
+      stop: makeStopOnce([db, keys], lock),
+    };
   } catch (error) {
-    await stopWriter(db, lock);
+    await stopWriter([db], lock);
     throw error;
   }
 }
 
+// a second stop waits for the first, because a stopped handle never answers another close
+function makeStopOnce(
+  handles: readonly Writer['db'][],
+  lock: ReturnType<typeof claimWriterLock>,
+): () => Promise<void> {
+  const stopped: { pending: Promise<void> | null } = { pending: null };
+
+  return () => {
+    stopped.pending ??= stopWriter(handles, lock);
+    return stopped.pending;
+  };
+}
+
 async function stopWriter(
-  db: Writer['db'],
+  handles: readonly Writer['db'][],
   lock: ReturnType<typeof claimWriterLock>,
 ): Promise<void> {
   try {
-    await db.destroy();
+    await Promise.all(handles.map((handle) => handle.destroy()));
   } finally {
     lock.release();
   }
