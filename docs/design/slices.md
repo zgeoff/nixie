@@ -27,9 +27,11 @@ you.
 
 **Scope:**
 
-- The Compose stack: nixie, the web server and the reverse proxy beside an imp host, with the sops
-  file decrypted in nixie's process ([the host](./deployment/deployment.md#the-host),
-  [secrets](./deployment/deployment.md#secrets)).
+- The deployment on Kubernetes: nixie as a one-replica StatefulSet on a `ReadWriteOnce` volume, the
+  web client as a Deployment, one ingress with the `/rpc` path rule, and impd on the node outside
+  the cluster ([Kubernetes](./deployment/deployment.md#kubernetes)). nixie decrypts the secrets file
+  in its own process ([secrets](./deployment/deployment.md#secrets)), and the Compose recipe runs
+  the same images for local and development use.
 - The web client on Start, the oRPC contract with its live stream, device sessions and paste spans
   on every message ([the client](./channels/client.md)).
 - The event log with record encryption, the key store, projections and the snapshot hash on every
@@ -62,13 +64,15 @@ you.
 
 **Depends on:** nothing.
 
-**Before it starts:** the durable layer's crash tests and the release pipeline, both design tasks in
-[open items](./open-items.md#design-tasks).
+**Before it starts:** the reverse forward into a pod spike, and the durable layer's crash tests and
+the release pipeline, both design tasks in [open items](./open-items.md#design-tasks).
 
 **Acceptance:**
 
-- [ ] A live check on the private network: you enrol a browser, send a message, and get a reply that
+- [ ] A live check on a Kubernetes node: you enrol a browser, send a message, and get a reply that
       used the web fetch, with each step in the event log.
+- [ ] A live check rolls the StatefulSet to a new digest, and the old pod stops before the new pod
+      opens the database.
 - [ ] Session tests port the checks of the
       [session forwarding spike](../../spikes/start-session-forwarding/README.md): a single-use
       enrolment code, a revoked session refused, and Start holding no cookie or state.
@@ -83,8 +87,8 @@ you.
       reaches nixie's tools and the model API, and nothing else.
 - [ ] A test asserts the options of every `query()`: `tools: []`, `settingSources: []` and the SDK's
       own memory off.
-- [ ] A tagged release publishes the 3 images to GHCR, and the Compose stack runs them pinned by
-      digest.
+- [ ] A tagged release publishes the 3 images to GHCR, and both the Kubernetes deployment and the
+      Compose recipe run them pinned by digest.
 
 ## 2. Tasks, workers and the dashboard
 
@@ -218,12 +222,13 @@ merged pull request.
 
 - Hourly restic snapshots to the data repo and the key repo, and the forget cleanup of key backups
   ([backup and restore](./deployment/backup-and-restore.md)).
-- Restore on a new host with recovery holds ([recovery holds](./core/tasks.md#recovery-holds)).
-- The deploy script, migrations that the release before can read, and a rollback by one release
-  ([upgrades](./deployment/upgrades.md)).
+- Restore onto a new Kubernetes volume or host, with recovery holds
+  ([recovery holds](./core/tasks.md#recovery-holds)).
+- Upgrades and rollbacks as a change of the pinned digest in the deployment repo, on Kubernetes or
+  Compose, with migrations that the release before can read ([upgrades](./deployment/upgrades.md)).
 - The backups part of readiness, and its push notice.
 
-**Out of scope:** the offsite replica, `nixie rollback` and Kubernetes, all later stages.
+**Out of scope:** the offsite replica and `nixie rollback`, both later stages.
 
 **Depends on:** slice 4, because a forget completes only once the key repo prunes.
 
@@ -231,8 +236,8 @@ merged pull request.
 
 **Acceptance:**
 
-- [ ] A recorded restore on a clean host from the 2 repos, the deployment repo and the recovery key,
-      with recovered tasks held.
+- [ ] A recorded restore onto a fresh Kubernetes volume from the 2 repos, the deployment repo and
+      the recovery key, with recovered tasks held.
 - [ ] A test shows a forgotten item stays unreadable against every older data snapshot.
 - [ ] A CI test runs the release before against the newer schema, reading and writing.
 - [ ] A live check: an upgrade and its revert, each as a merged pull request, with no write lost.
