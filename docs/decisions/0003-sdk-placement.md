@@ -2,7 +2,8 @@
 
 - Date: 2026-10-07
 - Status: decided, amended by [0022](./0022-coding-and-code-execution.md) and
-  [0026](./0026-where-workers-and-the-conversation-run.md)
+  [0026](./0026-where-workers-and-the-conversation-run.md) and
+  [0030](./0030-connectors-and-sandbox-environments.md)
 - Research: [placement spike](../../spikes/sdk-placement/),
   [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#open-questions)
 
@@ -41,8 +42,9 @@ and the broker kept the owner's token out of the sandbox.
 - On the host, nixie passes a neutral working directory, because the system prompt carries the
   host's working directory even with every built-in tool off.
 - In imp 0.38.1, an allow entry admits a whole address, so the spike's imp reached imp's management
-  API on the host. The sandboxed placement needs port-level allow entries, a candidate change to
-  imp, or nixie's endpoint on an address that serves nothing else.
+  API on the host. [0030](./0030-connectors-and-sandbox-environments.md) settles the route as a
+  reverse forward over vsock, with egress `none`; a port-level allow entry or a dedicated address
+  remains an alternative only if a later deployment cannot use that route.
 - In an imp, nixie passes the broker's proxy and CA variables to the SDK by name, and puts its own
   endpoint on `NO_PROXY`.
 - How nixie starts a coding session stays open: its own imp session, or a tool such as atc.

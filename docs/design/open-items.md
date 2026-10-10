@@ -21,12 +21,6 @@ agreed for after the first build.
   different models for chat, memory writing, tool calls and long background reasoning, with low
   reasoning effort for chat, because effort sets cost and latency more than any other setting. No
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
-- **How a sandboxed session reaches nixie's endpoint.** In imp 0.38.1, an allow entry admits a whole
-  address, so a sandboxed session that reaches nixie's tools on the host reaches imp's management
-  API too ([0003](../decisions/0003-sdk-placement.md)). Every worker and the conversation run in an
-  imp under [0026](../decisions/0026-where-workers-and-the-conversation-run.md), so the first build
-  needs the answer. The options are port-level allow entries in imp, an imp network or granted
-  hostname, or nixie's endpoint on an address that serves nothing else.
 - **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
   `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
   whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
@@ -34,6 +28,16 @@ agreed for after the first build.
 
 ## Spikes to run
 
+- **The code environment inventory.** Build the Node.js/Python code and worker images with the
+  common Linux toolbox from [0030](../decisions/0030-connectors-and-sandbox-environments.md). Check
+  representative agent programs for file and text work, expose the installed command and library
+  versions, and measure image size and cold-start cost. Package availability needs a built-image
+  check; the runtime choice is settled.
+- **Worker cold start with the code runtimes** (about 2 hours): time a fresh worker on the worker
+  image, which carries the code runtimes, against the numbers that
+  [0026](../decisions/0026-where-workers-and-the-conversation-run.md) rests on: 472 ms to create an
+  imp and about 2.5 to 3 s to first text, about 2 s of it cold disk reads. A larger image that slows
+  first text past that range reopens a separate, smaller worker image.
 - **Start inside Elysia** (about half a day): mount Start's fetch handler in nixie's Elysia process,
   check the isomorphic oRPC link and device-session checks on both routes, and check that no server
   implementation reaches the browser bundle.
@@ -41,7 +45,6 @@ agreed for after the first build.
   after the native paste module exists. Keep known ambiguous paths unknown until tested. The basic
   native paste hook belongs in the first Android build, under
   [0029](../decisions/0029-channels-and-clients.md).
-
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
   holding Gmail's restricted scope; day 8 shows whether its token outlives testing mode's 7-day
@@ -99,6 +102,11 @@ agreed for after the first build.
 - **Model choice on real use** (about 1 day): repeat the model-eval memory and tool tasks on a real
   conversation history, real services and a long context, with more than 2 samples per cell and
   direct API calls. It firms up the model-per-job split above.
+- **The Google web OAuth return** (about 1 hour, needs access to the owner's Google project):
+  register the actual private-network HTTPS callback on a Web application OAuth client and complete
+  consent. The agreed route is automatic HTTPS return under
+  [0030](../decisions/0030-connectors-and-sandbox-environments.md); the spike's Desktop client does
+  not validate it. Check Microsoft's redirect when its connector is selected.
 - **Microsoft Graph and iCloud** (about half a day and about 2 hours): consent to mail and calendar
   scopes with a personal Microsoft account in a free Azure directory, and read iCloud mail, events
   and contacts with one app-specific password. Run them when a connector for either provider is
@@ -121,10 +129,6 @@ agreed for after the first build.
 - **The terminology pass.** The terms in [0018](../decisions/0018-main-thread-and-tasks.md), such as
   main thread, task and worker, are provisional, and a terminology pass settles them before any
   code. It may draw on a metaphor such as the chief of staff.
-- **Rough sketches of the connector, the credential store and the definitions source.**
-  [0016](../decisions/0016-own-interfaces.md) and [0020](../decisions/0020-deployment.md) ask for
-  sketches that check the channel adapter and the trigger source leave room for them. The credential
-  store's backend interface is open, and the first real connector settles the final shapes.
 - **Compaction controls and the pinned core.** [0024](../decisions/0024-memory-in-context.md) runs
   the conversation on the SDK's session and compaction. Phase 3 checks which compaction controls the
   SDK offers, and how large the pinned core can grow before the prompt pays for it.
@@ -134,18 +138,22 @@ agreed for after the first build.
   ran, and the estimate of 800 to 1,500 lines is untested.
 - **Memory consolidation.** Phase 3 decides when consolidation runs as a proposal under
   [0011](../decisions/0011-memory-writes.md).
+- **A budget for paid tool calls.** A search on Kagi costs about $0.012
+  ([0014](../decisions/0014-search.md)), and the budgets in the policy design count `spend` tools
+  and model cost only. A budget kind for tool calls that cost money without the `spend` effect would
+  let the owner cap search and similar services.
 - **Upgrades on the host.** A merged upgrade reaches the host by a webhook, a poll from the host, or
   the owner running one command, and a poll needs no inbound route
   ([0020](../decisions/0020-deployment.md)). The seeding conflict view and the export of runtime
   rules as a pull request are part of the same design.
-- **Connector setup.** Each owner registers their own OAuth client with each provider, so the setup
-  guide and the client walk the owner through it
-  ([0019](../decisions/0019-connector-authorization.md)).
-- **The coding agent adapter and running code.** Design the adapter interface from
-  [0022](../decisions/0022-coding-and-code-execution.md), with atc as the first adapter, and the
-  tool that runs code in a disposable imp with no grants, which comes early.
 
 ## Later stages
+
+- **A container sandbox adapter.** The first build implements imp. The
+  [container sketch](./connectors/sandbox-adapter.md#a-container-adapter-sketch) checks the common
+  interface without a second implementation. A container adapter needs its injecting proxy, tool
+  relay, egress gateway, disk quota backend and isolation checks before it supports any run. Memory
+  sleep stays unavailable unless a checkpoint implementation proves the same semantics.
 
 - **Taint per job run.** A job that reads only the owner's data runs without the destination limits
   ([0015](../decisions/0015-taint-scope.md)). The first build records the source of every tool
@@ -166,10 +174,10 @@ agreed for after the first build.
   passkey too, because it widens a rule. The 0012 design weighs a proposed exemption: a rule no
   wider than the card's own action, with the same tool and the same destination, stays one tap, and
   a broader rule asks for the passkey ([0029](../decisions/0029-channels-and-clients.md)).
-- **The MCP proxy.** It arrives with the first outside MCP server
-  ([0017](../decisions/0017-mcp-proxy.md)). It needs to know which MCP revision the SDK's in-process
-  server speaks, whether it passes structured output through, and how long a server keeps an input
-  request valid for a retry. Judging taint by output field waits for taint per job run.
+- **The MCP proxy.** It arrives with the first outside MCP server, the atc adapter
+  ([0017](../decisions/0017-mcp-proxy.md)), and [the proxy design](./connectors/mcp-proxy.md) covers
+  it. How long a server keeps an input request valid for a retry is still unknown, and judging taint
+  by output field waits for taint per job run.
 - **Outside agents in the live view.** Entities that nixie starts but that run under their own
   rules, such as coding sessions started through atc, show in the live view labelled as outside
   nixie. It is a low priority, while managing atc sessions is a high priority for v1 or v2
@@ -205,7 +213,10 @@ design. Until imp does, nixie designs around the current behaviour.
   imp as a credential backend, nixie's credential store refreshes tokens on the host and pushes each
   new value into imp ([0016](../decisions/0016-own-interfaces.md)).
 - **Port-level allow entries.** They let a sandboxed session reach nixie's endpoint on the host
-  without reaching imp's management API ([0003](../decisions/0003-sdk-placement.md)).
+  without reaching imp's management API ([0003](../decisions/0003-sdk-placement.md)). The
+  [sandbox adapter](./connectors/sandbox-adapter.md#the-route-to-nixies-tools) needs them only if a
+  later deployment cannot use the agreed reverse-forward route. The transport spike passed, under
+  [0030](../decisions/0030-connectors-and-sandbox-environments.md).
 - **A fuller audit.** The broker records method, host, path, status and sizes for each credentialed
   request, and no refused request. An audit with refused requests lets the broker's log feed nixie's
   record under [0007](../decisions/0007-grants-and-taint.md).

@@ -1,7 +1,8 @@
 # 0016: nixie's own interfaces
 
 - Date: 2026-10-08
-- Status: decided, amended by [0020](./0020-deployment.md)
+- Status: decided, amended by [0020](./0020-deployment.md) and
+  [0030](./0030-connectors-and-sandbox-environments.md)
 - Research: [MCP notes](../research/2.6-notes/mcp.md#triggers-channels-and-brokering),
   [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
 

@@ -71,6 +71,12 @@ the decisions it rests on.
 - [The trigger source](./design/channels/trigger-source.md) — schedules, polls, webhooks, and which
   services need push
 
+### Connectors
+
+- [Connectors design](./design/connectors/README.md) — the connector interface and setup, the
+  credential store, serving nixie's tools, the sandbox adapter, the definitions source, the MCP
+  proxy, and running code and coding sessions
+
 ## Decisions
 
 What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
@@ -159,6 +165,9 @@ Nixie's interfaces, outside MCP servers, credentials and search.
   registers their own OAuth clients, and the Google spike runs early
 - [0022: Coding and code execution](./decisions/0022-coding-and-code-execution.md) — running code in
   a sandbox with no grants, and coding sessions through adapters, atc first
+- [0030: Connectors and sandbox environments](./decisions/0030-connectors-and-sandbox-environments.md)
+  — the reverse-forward route, Google, web OAuth return, MCP v2, imp with a container sketch, the
+  familiar Linux code environment, and Disconnect for externally managed credentials
 
 ### Deployment
 
@@ -267,6 +276,12 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   Gmail's restricted scope, and token refresh past 7 days
 - [Worker start inside an imp](../spikes/imp-worker-start/) — imp create and wake, and the SDK's
   first token inside an imp against the host
+- [Serving nixie's tools](../spikes/tools-endpoint/) — the tool list, the MCP revision and the
+  result the model receives, against a local stand-in for the model API
+- [A pinning MCP proxy](../spikes/mcp-proxy-pin/) — hash pinning, effect declarations and output
+  checks on the v2 MCP packages
+- [A definitions source](../spikes/definitions-source/) — one content hash for the same definitions
+  from a repo and a local path
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
 - [The rule engine and prompt scenarios](../spikes/policy-rules/) — one decision per call whatever
@@ -275,3 +290,5 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   actions and a stream that resumes by sequence
 - [Paste spans in a text box](../spikes/paste-spans/) — which spans of a message the owner pasted,
   kept right through edits
+- [Tools through a reverse forward](../spikes/tools-reverse-forward/) — relay overhead, streamed
+  responses, egress isolation and reopening after wake
