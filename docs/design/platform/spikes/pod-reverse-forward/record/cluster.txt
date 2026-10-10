@@ -1,0 +1,10 @@
+||Running|localhost/nixie-spike:pod-reverse-forward
++ k3s kubectl -n nixie-spike get svc,endpointslices,ingress
+No resources found in nixie-spike namespace.
++ k3s kubectl -n nixie-spike get pod nixie -o wide
++ awk '{print $1,$2,$3}'
+NAME READY STATUS
+nixie 1/1 Running
++ docker exec imp-host imp ls
++ awk 'NR==1 || $1 ~ /^nixie-spike-/'
+NAME                       STATE    IMAGE          VCPUS  MEMORY    RAM       DISK    USED      SHARED    CPU  SESSIONS  IP          URL                                                  NOTE

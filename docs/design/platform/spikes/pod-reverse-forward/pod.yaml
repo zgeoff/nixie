@@ -1,0 +1,37 @@
+# The nixie stand-in. It declares no container port, and the namespace has no Service: every
+# connection it makes is outbound.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nixie
+  namespace: nixie-spike
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: nixie
+      image: localhost/nixie-spike:pod-reverse-forward
+      imagePullPolicy: Never
+      envFrom:
+        - configMapRef:
+            name: nixie-spike
+      env:
+        - name: IMP_TOKEN_FILE
+          value: /var/run/imp/token
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+      volumeMounts:
+        - name: imp-token
+          mountPath: /var/run/imp
+          readOnly: true
+  volumes:
+    - name: imp-token
+      secret:
+        secretName: imp-token

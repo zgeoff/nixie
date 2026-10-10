@@ -246,6 +246,6 @@ nixie keeps one writer itself, with the
 waits on the lock until the old pod exits. The data volume is block storage on the node, mounted as
 nixie's data directory. It moves to another node only after the old node is powered off, as the
 single writer section explains. imp's client delivers each reverse-forward connection to nixie over
-nixie's own connection to impd, so the pod opens no inbound port for its tools. The reverse forward
-from a pod is a spike in [Linear](https://linear.app/zgeoff/issue/GEO-238), which checks that route
-with egress `none` still holding.
+nixie's own connection to impd, so the pod opens no inbound port for its tools. The
+[pod reverse-forward spike](../spikes/pod-reverse-forward/README.md) runs that route from a pod to
+impd's tailnet HTTPS address, with the imp's egress `none`.
