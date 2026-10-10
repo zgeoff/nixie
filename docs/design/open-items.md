@@ -1,9 +1,8 @@
 # Open items
 
 Phase 3, the design phase, has the voice stack and the model per job undecided, and the Google
-refresh on day 8 still to run. The design work ahead covers the terminology pass, the channel
-adapter and trigger source, main-thread routing and grants with expiries, and the stages agreed for
-after the first build.
+refresh on day 8 still to run. The design work ahead covers the terminology pass and the stages
+agreed for after the first build.
 
 ## Deferred decisions
 
@@ -39,6 +38,13 @@ after the first build.
   [0026](../decisions/0026-where-workers-and-the-conversation-run.md) rests on: 472 ms to create an
   imp and about 2.5 to 3 s to first text, about 2 s of it cold disk reads. A larger image that slows
   first text past that range reopens a separate, smaller worker image.
+- **Start inside Elysia** (about half a day): mount Start's fetch handler in nixie's Elysia process,
+  check the isomorphic oRPC link and device-session checks on both routes, and check that no server
+  implementation reaches the browser bundle.
+- **Android paste edge cases**: check Gboard clipboard chips and other keyboard insertion paths
+  after the native paste module exists. Keep known ambiguous paths unknown until tested. The basic
+  native paste hook belongs in the first Android build, under
+  [0029](../decisions/0029-channels-and-clients.md).
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
   holding Gmail's restricted scope; day 8 shows whether its token outlives testing mode's 7-day
@@ -59,14 +65,33 @@ after the first build.
   secrets encrypted with sops and age, and a dependency bot. Merge a version bump and roll it back
   with a database restore, to confirm that an upgrade is a merge and a rollback is a revert plus a
   restore under [0020](../decisions/0020-deployment.md).
-- **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against nixie's scripted
-  scenarios and measure the bar from [0008](../decisions/0008-auto-mode.md): catastrophic actions
-  allowed per stage, harmless denials per action, consent credited, and escalations per task. nixie
-  switches auto-mode on only when it meets that bar.
-- **Owner messages into a running task** (about half a day): test a `now` message while the model
-  writes text, a `now` message during a tool that cannot move to the background,
-  `shouldQuery: false`, and `interrupt()` with queued messages. The answers shape how routing from
-  [0018](../decisions/0018-main-thread-and-tasks.md) delivers a message to a running task.
+- **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against the scripted scenarios
+  in the [policy rules spike](../../spikes/policy-rules/README.md), with a model making the calls,
+  and measure the bar from [0008](../decisions/0008-auto-mode.md): catastrophic actions allowed per
+  stage, harmless denials per action, consent credited, and escalations per task. nixie switches
+  auto-mode on only when it meets that bar.
+- **Owner messages into a running task** (about 1 hour, once the model account has quota): run the 6
+  commands in the [owner input spike](../../spikes/sdk-owner-input/README.md#untested), which cover
+  a `now` message during a reply with no tool running, a tool that cannot move to the background, a
+  message with no priority, `shouldQuery: false`, and `interrupt()` with a queued message. The
+  scripts are written and have not run. The answers confirm or change the default in
+  [the client](./channels/client.md#messages-into-a-running-task).
+- **The Expo client on Android** (about 1 day, with an Android device or emulator): run the
+  [typed API spike](../../spikes/client-rpc/README.md) client inside an Expo SDK 57 app, and check
+  that `expo/fetch` streams the live view and resumes after the phone sleeps. In the same app, check
+  [paste span](../../spikes/paste-spans/README.md) capture with a native paste hook, a keyboard
+  clipboard suggestion, swipe typing, autocorrect and voice typing.
+- **A Telegram notice round trip** (about 2 hours, with a bot the owner registers): pair a chat with
+  a `/start` code, send a content-free notice with a link button, edit it in place, and check that a
+  message from a second account gets only a refusal record. It needs a bot token, a new credential,
+  under [the channel adapter](./channels/channel-adapter.md#the-push-notifier).
+- **Routing quality** (about half a day): replay a scripted day of owner messages against a set of
+  tasks and count the messages the conversation routes wrongly, with the move records from
+  [the live view](./channels/live-view.md#routing-marks) as the measure in real use. A misrouted
+  message fails quietly under [0018](../decisions/0018-main-thread-and-tasks.md).
+- **Paste spans in WebKit** (about 1 hour, on a host with WebKit's libraries or a Mac): rerun the
+  [paste span spike](../../spikes/paste-spans/README.md) in WebKit, which failed to launch where the
+  spike ran.
 - **The sandboxed placement under load** (about half a day): a long turn under imp's broker, which
   serves HTTP/1.1 only, with a token rotation mid-turn, and parallel tool calls over HTTP MCP. The
   spike for [0003](../decisions/0003-sdk-placement.md) saw only short turns and one call at a time.
@@ -86,54 +111,31 @@ after the first build.
   scopes with a personal Microsoft account in a free Azure directory, and read iCloud mail, events
   and contacts with one app-specific password. Run them when a connector for either provider is
   next, under [0019](../decisions/0019-connector-authorization.md).
+- **Model requests through a counting proxy** (about half a day, on an imp host): route the model
+  requests of a worker imp from imp's broker through a proxy on the host that counts tokens and
+  refuses requests once a budget is spent. It checks the hard spending stop that the
+  [budgets design](./policy/budgets.md#the-hard-spending-stop) sets under 0028, and needs a check
+  that the broker can forward to a host proxy without opening the guest a second route.
+- **Model cost on a subscription token** (about 2 hours, with model calls): record what the SDK
+  reports per turn on a subscription token against a metered key, and set the deployment budget
+  defaults in the [budgets design](./policy/budgets.md#model-cost) from real use.
+- **The consent checker on real messages** (about half a day, with model calls): run a checker model
+  over owner messages the owner writes, each paired with an action that the message does or does not
+  ask for, and measure how often it credits consent wrongly or misses it. It firms up the consent
+  stage in the [decision point](./policy/decision-point.md#destination-limits).
 
 ## Phase 3 design tasks
 
 - **The terminology pass.** The terms in [0018](../decisions/0018-main-thread-and-tasks.md), such as
   main thread, task and worker, are provisional, and a terminology pass settles them before any
   code. It may draw on a metaphor such as the chief of staff.
-- **The channel adapter and the trigger source, in full.** The first build needs a client and
-  schedules, so Phase 3 designs both interfaces from [0016](../decisions/0016-own-interfaces.md)
-  completely. The trigger source records a cursor per source in the event log, and the design
-  decides which connectors need push at all.
-- **Main-thread routing and the task board.** The main thread routes each owner message to a task
-  and names where it sent it, from a live task board of every task's status
-  ([0018](../decisions/0018-main-thread-and-tasks.md)). Routing quality is on the critical path,
-  because a misrouted message fails quietly. [Tasks](./core/tasks.md#routing-from-the-conversation)
-  proposes the routing tools and records.
-- **The live view.** The live view shows running and finished tasks and what each did and why, as a
-  projection of the event log that the task board reads too
-  ([0018](../decisions/0018-main-thread-and-tasks.md)). The
-  [event log design](./core/event-log.md#the-live-view-and-the-task-board) proposes how both read
-  it.
-- **Grants with expiries.** Authority granted for a period, such as "full authority to build and
-  ship today", is a rule with an expiry, and widening a rule always asks
-  ([0018](../decisions/0018-main-thread-and-tasks.md)). Phase 3 designs how the owner grants, sees
-  and ends such a rule.
 - **Compaction controls and the pinned core.** [0024](../decisions/0024-memory-in-context.md) runs
   the conversation on the SDK's session and compaction. Phase 3 checks which compaction controls the
   SDK offers, and how large the pinned core can grow before the prompt pays for it.
-- **The starter rule set and the digest sheet.** How restrictive nixie feels depends on the starter
-  rules and the "no match means ask" default from [0004](../decisions/0004-rule-engine.md). The
-  digest sheet's layout and grouping from [0006](../decisions/0006-approval-record.md) are designed
-  together with them.
-- **The scripted prompt scenarios.** Scenarios such as finding something on the web, triaging an
-  inbox and booking a table report every prompt with its cause, so the 0-prompt target from
-  [0005](../decisions/0005-effects-and-taint.md) can fail a test. They count the prompts where a
-  destination comes from search results, the signal for typed workers under
-  [0014](../decisions/0014-search.md).
 - **The durable layer.** nixie owns leases, durable timers, retries, wake-ups and a run viewer, each
   with crash tests ([0001](../decisions/0001-durable-layer.md)), and [tasks](./core/tasks.md)
   designs them. The crash tests confirm that a resumed turn never repeats an outside action that
   ran, and the estimate of 800 to 1,500 lines is untested.
-- **Budgets and the spending stop.** Raising a budget is in the always-ask set from
-  [0005](../decisions/0005-effects-and-taint.md), and no decision sets where nixie enforces a
-  budget. The research recommends a hard spending stop in a proxy in front of the model, not in the
-  SDK ([2.1 landscape](../research/2.1-landscape.md#recommendation-for-22)).
-- **Rule identity and snapshot hashing.** Snapshots under
-  [0013](../decisions/0013-definition-versioning.md) need a canonical form for persona and job
-  definitions written as markdown. A rule's ID stays fixed across edits or each edit mints a new
-  one, and the last-fired record in [0006](../decisions/0006-approval-record.md) needs a fixed ID.
 - **Memory consolidation.** Phase 3 decides when consolidation runs as a proposal under
   [0011](../decisions/0011-memory-writes.md).
 - **A budget for paid tool calls.** A search on Kagi costs about $0.012
@@ -168,7 +170,10 @@ after the first build.
   nixie's policy decides which low-information types it endorses as clean.
 - **The passkey check for high-risk approvals.** The first build approves everything with a tap, and
   a passkey check for the always-ask set follows as an early addition
-  ([0012](../decisions/0012-high-risk-approvals.md)).
+  ([0012](../decisions/0012-high-risk-approvals.md)). Under 0012, an "always allow" takes the
+  passkey too, because it widens a rule. The 0012 design weighs a proposed exemption: a rule no
+  wider than the card's own action, with the same tool and the same destination, stays one tap, and
+  a broader rule asks for the passkey ([0029](../decisions/0029-channels-and-clients.md)).
 - **The MCP proxy.** It arrives with the first outside MCP server, the atc adapter
   ([0017](../decisions/0017-mcp-proxy.md)), and [the proxy design](./connectors/mcp-proxy.md) covers
   it. How long a server keeps an input request valid for a retry is still unknown, and judging taint
@@ -183,6 +188,11 @@ after the first build.
 - **An iOS build.** The native app is Android first, and an iOS build needs the Apple Developer
   Program, with TestFlight builds that expire after 90 days
   ([0009](../decisions/0009-first-channel.md)).
+- **Native push for the Android app.** The app in tier 2 receives the same content-free notice as
+  the Telegram notifier, through Expo's push service or Firebase Cloud Messaging directly, with a
+  notification action that requires a device unlock
+  ([the channel adapter](./channels/channel-adapter.md#room-for-later-channels)). The notice holds
+  no content, so a relay learns only that something waits; the Android app's design picks the route.
 - **A chat app as a full channel.** Telegram or another chat app can carry the conversation as an
   opt-in for a context where the owner accepts the storage
   ([0009](../decisions/0009-first-channel.md)).
