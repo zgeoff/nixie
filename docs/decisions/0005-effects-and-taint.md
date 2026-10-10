@@ -82,10 +82,8 @@ inbox and booking a table, report every prompt with its cause.
 - **Taint per task.** It puts the boundary inside a task instead of at the tools, and needs extra
   rules, such as which URLs a tainted task may fetch. [0015](./0015-taint-scope.md) adopts taint per
   job run as a later stage, for jobs only, where clean runs are possible.
-- **A model as the defence.** Claude Code's full auto mode pipeline has a 17% false-negative rate on
-  real overeager actions
-  ([Anthropic engineering](https://www.anthropic.com/engineering/claude-code-auto-mode)). nixie
-  keeps a model only as an extra layer that can tighten a decision.
+- **A model as the defence.** A classifier misses real overeager actions, under
+  [0008](./0008-auto-mode.md), so nixie keeps a model only as a layer that can tighten a decision.
 - **Prompts from your ask rules counted as "no rule matched".** It keeps 5 causes, and mixes your
   own prompts with the gaps nixie tries to close.
 

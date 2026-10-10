@@ -26,10 +26,7 @@ nixie's channels settle these choices:
   push. At the chosen time it returns as a fresh item with a buzzing notice, subject to quiet hours.
   Defer never goes past the action's real deadline. The task gets the defer event and note and can
   do other work, and the agent does not ask why.
-- **One-tap "always allow".** A routine card shows the rule that "always allow" creates, as one
-  sentence, and one tap runs the action and creates that rule. A quiet line under the reply reads
-  "Rule added: …" with Edit and Undo, and the rule appears in the rules list. Spending and lifting
-  cards keep their own controls and never offer a one-tap "always allow".
+- **One-tap "always allow"** follows [0006](./0006-approval-record.md).
 - **Two push levels.** Routine items edit the live Telegram notice quietly. Always-ask items,
   unknown outcomes and returning deferred items send a new, buzzing notice that becomes the live
   one. Quiet hours suppress loud pushes overnight except unknown outcomes, as a configurable
@@ -48,8 +45,7 @@ nixie's channels settle these choices:
 - Separate UIs keep browser paste events and desktop controls, at the cost of 2 UI implementations.
 - Device sessions keep one authority model across all routes.
 - Cards keep an approval beside its context, and the approval digest gathers items from your
-  absence. The card already shows the rule that "always allow" creates, so a second confirmation
-  adds friction without adding information.
+  absence.
 - Defer lets you choose when to answer without authorizing anything or losing a real deadline.
 - Two push levels keep routine counts quiet while an item that needs you can buzz.
 - The native paste module supplies the evidence that memory writes need on Android.
@@ -62,8 +58,6 @@ nixie's channels settle these choices:
   one Expo UI makes the web client a phone app in a browser.
 - **A password, or a passkey from day one.** A password is one more secret to guard and reset.
 - **The approval digest alone, with no cards.** Every approval becomes a trip to one place.
-- **A second confirmation after "always allow".** It adds a tap on the most common way to stop
-  repeat prompts.
 - **One edited notice for all arrivals, or a new notice for every batch.** An edit never buzzes, and
   a notice per batch buzzes for routine work.
 - **Android input labelled unknown by default.** Facts typed on the phone would become proposals.

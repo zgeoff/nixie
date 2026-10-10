@@ -26,8 +26,5 @@ with a tap, and the passkey check follows as an early addition.
   open to anyone with your unlocked device.
 - **A passkey check for every approval.** It adds a step to routine approvals, against the 0-prompt
   target.
-
-## Consequences
-
-- A rule no wider than the action on its own card may skip the passkey for "always allow". That
-  exemption is an open item for the passkey design.
+- **A tap to retry an unknown payment.** It is one step fewer, and lets anyone holding your unlocked
+  phone trigger a second charge.

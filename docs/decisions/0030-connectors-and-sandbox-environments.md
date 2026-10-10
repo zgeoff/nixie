@@ -42,12 +42,10 @@ nixie's tool endpoint and its external-server proxy use the v2 TypeScript MCP pa
 proxy negotiates the protocol revision with each server. The Agent SDK keeps its own v1 dependency,
 which does not change the one set of tool definitions.
 
-## imp first, with a container sketch
+## Sandbox recovery
 
-The first build implements the imp sandbox adapter only. A container adapter is sketched to check
-that the shared interface does not assume a microVM, and the sketch made memory-preserving sleep an
-optional capability. Recovery lists and destroys orphaned sandboxes through the adapter that owns
-them.
+Recovery lists and destroys orphaned sandboxes through the adapter that owns them. The sandbox
+adapters themselves are set by [0016](./0016-own-interfaces.md).
 
 ## A familiar code environment
 
@@ -71,7 +69,6 @@ under the forget contract from [0010](./0010-memory-store.md).
 - Google is the service already in use, with its project set up and its scopes proven by the spike.
 - An automatic return fits a client served over HTTPS on a fixed name.
 - MCP v2 supports the current protocol, and the spikes reached both protocol revisions through it.
-- A container sketch checks the interface without shipping a second backend.
 - Agents work best in a familiar environment of ordinary programs and commands.
 - Disconnect gives nixie an immediate stop without reaching into secrets that the deployment owns.
 
@@ -83,13 +80,6 @@ under the forget contract from [0010](./0010-memory-store.md).
   provider.
 - **Localhost consent.** It needs the browser to reach a callback listener on the host.
 - **MCP v1,** which the SDK uses internally. It lags the current protocol.
-- **A built container adapter.** It supports hosts without KVM, and adds another network, injection
-  and lifecycle implementation.
 - **Bun-only code images.** They have fewer dependencies, and fewer of the tools agents expect.
 - **Change the source first.** It leaves the external source as the only control, and delays a stop
   from nixie.
-
-## Consequences
-
-- The Google refresh after 7 days, the HTTPS callback on a private network, and the code and worker
-  images' inventory, size and cold start are open items.

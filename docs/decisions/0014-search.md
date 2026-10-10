@@ -16,12 +16,8 @@ URL can hold text in its path.
 ## Why
 
 - Search quality comes first. A model that sees only URLs ranks results it cannot read.
-- Full results cost few prompts. The conversation is always untrusted under
-  [0015](./0015-taint-scope.md), so nixie asks only before it acts towards a destination with no
-  standing permission, and a destination named in your own message carries consent under
-  [0006](./0006-approval-record.md). "Find X and send it to Sam" runs with no prompt.
-- A prompt comes only when the destination comes from the results, which is the case an injection
-  aims at.
+- Full results cost few prompts. nixie asks only before it acts towards a destination that came from
+  the results, which is the case an injection aims at.
 - A summary from a worker is free text too, so summarising results does not clean them. A worker
   that returns a narrow typed answer, such as a price or a date, stays the route for specific flows.
 - Kagi keeps no query log against the account, and its load balancer keeps logs for 7 days

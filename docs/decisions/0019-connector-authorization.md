@@ -13,7 +13,7 @@ tokens. The first connector, its scopes and its consent flow are set by
 
 The Google spike confirmed the route for the first connector: an unverified client in production
 obtained `gmail.modify`, a restricted scope, with no warning page, and called Gmail, Calendar and
-Drive. A token refresh after 7 days, past testing mode's limit, is an open item.
+Drive.
 
 ## Why
 

@@ -25,13 +25,10 @@ limited to the model API's host. The guest sees only a placeholder.
   in an imp, behind a microVM boundary as well as behind nixie's policy.
 - A warm imp costs nothing a person notices. In the spike, a turn in a warm imp reached its first
   text in about 0.8 s, as fast as the same turn on the host.
-- A new worker is affordable. Creating an imp took 472 ms, waking one 363 ms and granting a
-  credential 64 ms, and a fresh worker reached first text in about 2.5 to 3 s.
-- About 2 s of a fresh worker's start went to reading Claude Code and Bun from a cold disk, which
-  purpose-built images per kind of work and a warm host page cache address.
-- The broker keeps the model credential out of the guest. In the spike, the guest held only a
-  placeholder, no file the run wrote held the token, and imp's audit listed only paths on the model
-  API's host.
+- A new worker is affordable: creating an imp took 472 ms and a fresh worker reached first text in
+  about 2.5 to 3 s, most of it cold disk reads that purpose-built images address.
+- The broker keeps the model credential out of the guest, which held only a placeholder in the
+  spike.
 - An awake conversation imp avoids a cold read on your next message.
 
 ## Alternatives

@@ -52,6 +52,5 @@ replica through the rclone gateway follows once data and keys restore together.
 ## Consequences
 
 - The replica adds a service, cloud requests and an experimental encryption gateway.
-- No recovery bound holds until data and keys restore together, which is an open item.
 - S3 compatibility alone does not prove that a backend meets the forget contract, so each backend's
   versioning, retention and deletion need checking.

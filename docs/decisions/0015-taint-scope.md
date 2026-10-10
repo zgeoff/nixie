@@ -53,11 +53,9 @@ The first build includes 3 hooks for those stages:
 
 ## Typed results
 
-In every research system examined, a typed value derived from untrusted data keeps its untrusted
-label ([FIDES](https://arxiv.org/html/2505.23643v2)). A system may choose to accept low-information
-types, which FIDES calls endorsement. The clean return types in 0005, such as dates, numbers and yes
-or no answers, are clean because nixie's policy endorses those types, not because the values are
-clean.
+A typed value derived from untrusted data keeps its untrusted label in every system examined
+([FIDES](https://arxiv.org/html/2505.23643v2)). The clean return types in 0005 are a policy choice
+to endorse low-information types.
 
 ## Why
 

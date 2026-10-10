@@ -63,4 +63,3 @@ nixie's policy design settles these choices:
   implementation with different prompts.
 - The proxy needs imp's broker to forward model requests through it, which a spike on an imp host
   checks before the first build relies on it.
-- What cost means on a subscription token, and the budget defaults, are open items.

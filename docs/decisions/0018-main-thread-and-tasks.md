@@ -11,8 +11,9 @@ have to open a task to get work done, the design has failed.
 ## The conversation, tasks and workers
 
 - **The conversation** is your chat with nixie. It holds summaries, questions and proposals from
-  tasks, not their raw work. It is itself a task that never closes, under
-  [0027](./0027-tasks-and-outside-actions.md).
+  tasks, not their raw work. It is itself a task, flagged as the conversation, on the same state
+  machine, leases and crash recovery as every task, and it never closes. The dashboard shows it
+  apart from the other tasks.
 - **A task** is a durable piece of work with its own context, tools and record, such as "keep the
   backlog moving today". It lasts from minutes to days, can wait and wake, and reports to the
   conversation. You can open a task and talk inside it to steer it, in the same view as the
@@ -45,12 +46,16 @@ projections of data nixie already keeps.
 - Naming where a message went keeps the conversation's handling visible without asking you to manage
   it, and makes a misrouted message easy to catch.
 - One projection behind the conversation's list and both views stops them from disagreeing.
+- The conversation matters most, so it gets the durable machinery that is tested hardest, with no
+  second loop to maintain.
 
 ## Alternatives
 
 - **One thread for everything.** Task work fills the conversation, and compaction loses your
   context.
 - **Tasks as the default way to work.** It repeats the way of working nixie replaces.
+- **A separate loop for the conversation.** It keeps the task model free of a special case, and
+  duplicates the durable machinery.
 
 ## Consequences
 

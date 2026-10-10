@@ -16,7 +16,7 @@ Retrieval uses local embeddings and keyword search together. One retrieval servi
 retrieval and the recall tool. It searches active memory items and the past messages and replies
 whose keys remain readable, and returns text only from current rows. The encoder runs on the host
 from pinned local files, with no inference API call. While its index rebuilds, retrieval falls back
-to keyword search and records the fallback. The encoder library is an open item.
+to keyword search and records the fallback.
 
 ## Why
 
