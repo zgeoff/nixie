@@ -3,13 +3,12 @@
 - Date: 2026-10-10
 - Status: decided
 - Design: [model profiles](../design/core/models.md), [budgets](../design/policy/budgets.md)
-- Research: [model-eval spike](../../spikes/model-eval/README.md)
 
 nixie reaches every model through a model profile: an Anthropic-compatible base URL, a credential
 and its auth header, a model ID, a reasoning effort, an optional provider pin, and a price table.
 The deployment configuration maps each model role to a profile: the conversation, other tasks,
-workers, the checker and the memory writer. The platform's default for every role is GLM 5.3 at its
-default reasoning effort.
+workers, the checker and the memory writer. A role left unset uses the conversation's profile, and
+an unset conversation role stops nixie at start.
 
 Model limits count dollars, tokens and turns, each with a generous default that the deployment
 configuration overrides. nixie computes dollars from each response's token counts and the profile's
@@ -19,8 +18,8 @@ prices, never from the cost the Agent SDK reports.
 
 - The Agent SDK talks to any Anthropic-compatible endpoint, so one setting moves a role between a
   direct provider, an aggregator and Anthropic without code changes.
-- Different roles need different models: the model-eval spike found the models differ on persona
-  register, invented memory and cost per turn.
+- Roles differ in what they need from a model, such as a short wait for a conversation reply and
+  care over evidence for the memory writer, so each role names its own profile.
 - The SDK prices every model at Anthropic's rates, which is wrong for any other model and notional
   on a flat subscription.
 - Dollars bound a metered route, tokens bound load on a flat subscription, and turns catch a loop

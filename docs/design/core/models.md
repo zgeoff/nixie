@@ -12,11 +12,11 @@ pointing the role at another profile in the deployment configuration, and no cod
 
 | Field            | Holds                                                                 |
 | ---------------- | --------------------------------------------------------------------- |
-| ID               | A stable slug, such as `glm-direct`, `glm-aggregator` or `claude`     |
+| ID               | A stable slug, such as `chat-direct` or `background-aggregator`       |
 | Base URL         | The Anthropic-compatible endpoint the Agent SDK calls                 |
 | Credential       | A reference into the [credential store](../connectors/credentials.md) |
 | Auth header      | `authorization: Bearer` or `x-api-key`, whichever the endpoint takes  |
-| Model            | The model ID the endpoint expects, such as `glm-5.3`                  |
+| Model            | The model ID the endpoint expects                                     |
 | Reasoning effort | The effort level passed on every call                                 |
 | Provider pin     | Optional: the upstream provider an aggregator endpoint must use       |
 | Prices           | Per million tokens: input, cache write, cached input and output       |
@@ -41,11 +41,10 @@ between turns.
 | `checker`       | The consent checker and the memory checker, which share one model |
 | `memory-writer` | Batched capture in [memory writes](../memory/writes.md)           |
 
-The platform ships one default profile for every role: GLM 5.3 at its default reasoning effort.
-**Why:** in the [model-eval spike](../../../spikes/model-eval/README.md), GLM 5.3 held a rich
-persona's default register through a 12-turn script, and as a memory writer it invented no entries
-only at default effort. The deployment overrides any role. The spike's per-role results suggest
-where a different model or a lower effort fits.
+The deployment configuration sets each role's profile and each profile's effort, and nixie ships no
+default mapping. A role left unset uses the conversation's profile. nixie refuses to start when the
+conversation role is unset. **Why:** the conversation is the one role every deployment runs, so one
+setting gives a working deployment, and a missing model never shows up as a failed turn.
 
 ## Configuration
 

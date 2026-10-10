@@ -77,7 +77,7 @@ Spikes that need model calls wait for model quota. Each line names the claim the
   imp's broker through a counting proxy on the host, and check that the broker opens the guest no
   second route ([budgets](./policy/budgets.md)).
 - **Token use per turn** (about 2 hours): record the input, cached input and output tokens per turn
-  for each model role on its default [model profile](./core/models.md), and tune the
+  for each model role on its configured [model profile](./core/models.md), and tune the
   [budget defaults](./policy/budgets.md#model-cost) from real use.
 - **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against the
   [policy rules spike](../../spikes/policy-rules/README.md) scenarios and measure the bar from
