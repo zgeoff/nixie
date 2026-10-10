@@ -59,7 +59,13 @@ sent" with a Retry control after a failed send, and goes again with the same ID.
 every stored message again. **Why:** the server writes a message once per client message ID, so a
 retry can never write it twice.
 
-The outbox drops a stored message that no longer fits the contract's `conversation.send` input.
+The outbox sends one message at a time, in the order you sent them. **Why:** the API writes records
+in arrival order, so 2 sends at once could land in the wrong order.
+
+Every tab shares the storage key. A write keeps every stored message that the tab does not hold and
+drops only the messages that the tab saw confirmed, so a tab never erases another tab's unsent
+message. The outbox drops a stored message that no longer fits the contract's `conversation.send`
+input.
 
 ## Health and the image
 
@@ -69,6 +75,10 @@ The web server serves 2 health endpoints before Start sees the request:
 | --------------- | -------------------------------------- |
 | `/health/live`  | the process answers                    |
 | `/health/ready` | the API answers a call with no session |
+
+Every page that Start renders goes out with `Cache-Control: private, no-store` and `Vary: cookie`.
+**Why:** a page holds the conversation of the session that asked for it, so no shared cache may
+serve it to another browser.
 
 The readiness probe calls `sessions.list` with no credential and takes the API's typed
 `UNAUTHORIZED` as proof that the API is up. On any other outcome the endpoint returns 503.

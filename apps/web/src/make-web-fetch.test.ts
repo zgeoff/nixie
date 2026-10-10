@@ -138,3 +138,17 @@ test('it sends every other path to Start', async () => {
   expect(body).toBe('start');
   expect(startFetch).toHaveBeenCalledOnce();
 });
+
+test('it marks a rendered page private to the browser that asked for it', async () => {
+  const ctx = await setupTest();
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('<html></html>', { headers: { 'content-type': 'text/html' } }),
+  });
+
+  const response = await webFetch(new Request('http://web.test/'));
+
+  expect(response.headers.get('cache-control')).toBe('private, no-store');
+  expect(response.headers.get('vary')).toBe('cookie');
+});

@@ -1,5 +1,5 @@
 import type { ContractClient } from '@heynixie/contract';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { OutboxMessage } from './types';
 import { useNixieClient } from './use-nixie-client';
 import { useStoredOutbox } from './use-stored-outbox';
@@ -15,13 +15,23 @@ export interface OutboxEntry {
 export function useOutbox() {
   const client = useNixieClient().client;
   const [entries, setEntries] = useState<readonly OutboxEntry[]>([]);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+
+  // Sends wait their turn, so the API writes the messages in the order you sent them.
   const sendEntry = useCallback(
-    async (message: OutboxMessage) => {
+    (message: OutboxMessage): Promise<void> => {
       setEntries((current) => buildEntriesWithStatus(current, message, 'sending'));
+      const previous = queue.current;
 
-      const status = await trySendMessage(client, message);
+      queue.current = (async () => {
+        await previous;
 
-      setEntries((current) => buildEntriesWithStatus(current, message, status));
+        const status = await trySendMessage(client, message);
+
+        setEntries((current) => buildEntriesWithStatus(current, message, status));
+      })();
+
+      return queue.current;
     },
     [client],
   );

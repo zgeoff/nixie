@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -120,7 +120,7 @@ test('it retries an unsent message with its first client message ID', async () =
   });
 });
 
-test('it sends an unsent message again after the page reloads', async () => {
+test('it sends an unsent message again after the page reloads, with its first ID', async () => {
   const ctx = await setupTest();
 
   server.use(http.post('*/rpc/conversation/send', () => HttpResponse.error(), { once: true }));
@@ -129,13 +129,85 @@ test('it sends an unsent message again after the page reloads', async () => {
   const textBox = await rendered.findByRole('textbox', { name: 'Message' });
 
   await ctx.user.type(textBox, 'hello{Enter}');
-  await rendered.findByText('Not sent');
+
+  const stored = globalThis.localStorage.getItem('nixie.outbox');
+
   rendered.unmount();
   render(<Conversation thread="conversation" />);
-
   await waitFor(() => {
-    expect(
-      store.records.findFirst((query) => query.where({ kind: 'owner_message' }))?.message?.text,
-    ).toBe('hello');
+    expect(store.records.count()).toBe(1);
   });
+
+  expect(stored).toInclude(
+    store.records.findFirst((query) => query.where({ kind: 'owner_message' }))?.message
+      ?.clientMessageId ?? 'no record',
+  );
+});
+
+test('it sends stored messages in the order you sent them', async () => {
+  await setupTest();
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+        spans: [{ end: 5, source: 'typed', start: 0 }],
+        text: 'first',
+        thread: 'conversation',
+      },
+      {
+        clientMessageId: '0b9d6c1e-2f4a-4e7b-9c3d-8a5f1e2b7c64',
+        spans: [{ end: 6, source: 'typed', start: 0 }],
+        text: 'second',
+        thread: 'conversation',
+      },
+    ]),
+  );
+
+  // the first send is slow, so a client that sends both at once writes the second one first
+  server.use(
+    http.post(
+      '*/rpc/conversation/send',
+      async () => {
+        await delay(50);
+      },
+      { once: true },
+    ),
+  );
+  render(<Conversation thread="conversation" />);
+  await waitFor(() => {
+    expect(store.records.count()).toBe(2);
+  });
+
+  expect(
+    store.records
+      .findMany((query) => query.where({ kind: 'owner_message' }), { orderBy: { sequence: 'asc' } })
+      .map((record) => record.message?.text),
+  ).toStrictEqual(['first', 'second']);
+});
+
+test('it keeps a message that another tab left unsent', async () => {
+  const ctx = await setupTest();
+  const rendered = render(<Conversation thread="conversation" />);
+  const textBox = await rendered.findByRole('textbox', { name: 'Message' });
+
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+        spans: [{ end: 10, source: 'typed', start: 0 }],
+        text: 'other tab',
+        thread: 'conversation',
+      },
+    ]),
+  );
+  await ctx.user.type(textBox, 'hello{Enter}');
+  await waitFor(() => {
+    expect(store.records.count()).toBe(1);
+  });
+
+  expect(globalThis.localStorage.getItem('nixie.outbox')).toInclude(
+    '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+  );
 });

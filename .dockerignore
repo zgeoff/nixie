@@ -7,7 +7,7 @@
 .claude
 .reviews
 .turbo
-.env
-.env.*
+**/.env
+**/.env.*
 docs
 e2e

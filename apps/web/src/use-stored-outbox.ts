@@ -32,11 +32,24 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
 
   useEffect(() => {
     if (loaded) {
-      writeStoredMessages(
-        options.entries.filter((entry) => entry.status !== 'sent').map((entry) => entry.message),
-      );
+      writeStoredMessages(mergeStoredMessages(readStoredMessages(), options.entries));
     }
   }, [loaded, options.entries]);
+}
+
+// Another tab shares the storage key, so a write keeps every stored message this outbox does not
+// hold, adds this outbox's unconfirmed messages, and drops only the ones it saw confirmed.
+function mergeStoredMessages(
+  stored: readonly OutboxMessage[],
+  entries: readonly OutboxEntry[],
+): readonly OutboxMessage[] {
+  const held = new Set(entries.map((entry) => entry.message.clientMessageId));
+  const others = stored.filter((message) => !held.has(message.clientMessageId));
+  const unconfirmed = entries
+    .filter((entry) => entry.status !== 'sent')
+    .map((entry) => entry.message);
+
+  return [...others, ...unconfirmed];
 }
 
 // Storage outlives a release, so a stored message that no longer fits the contract is dropped

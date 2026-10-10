@@ -30,8 +30,29 @@ export function makeWebFetch(options: WebFetchOptions) {
 
     const asset = await findAsset(options.clientDir, pathname);
 
-    return asset ?? options.startFetch(request);
+    if (asset !== undefined) {
+      return asset;
+    }
+
+    const page = await options.startFetch(request);
+
+    return toPrivateResponse(page);
   };
+}
+
+// A rendered page holds the conversation of the session that asked for it, so no cache between the
+// browser and the web server may keep it or serve it to another browser.
+function toPrivateResponse(response: Response): Response {
+  const headers = new Headers(response.headers);
+
+  headers.set('cache-control', 'private, no-store');
+  headers.append('vary', 'cookie');
+
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  });
 }
 
 // The probe calls the API with no session, so it holds no credential and grants nothing.
