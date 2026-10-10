@@ -4,7 +4,8 @@
   [0011](../../../decisions/0011-memory-writes.md),
   [0013](../../../decisions/0013-definition-versioning.md),
   [0024](../../../decisions/0024-memory-in-context.md),
-  [0031](../../../decisions/0031-memory-capture-context-and-removal.md)
+  [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
+  [0037](../../../decisions/0037-moments.md)
 
 nixie keeps long-term memory as rows in its SQLite database. A memory item is one stored fact, such
 as "my dentist is Dr Okafor at Riverside Dental", and every change to it adds a version to a history
@@ -194,6 +195,10 @@ screen.
 The recall record lists each item and version it returned, so a replay shows what the model saw. The
 record holds references, not text, so a forget leaves no readable copy behind. Recall searches the
 index that [memory in context](context.md#retrieval) describes.
+
+Recall returns each item's links to moments as moment IDs and titles, never moment text, under
+[0037](../../../decisions/0037-moments.md). The model reads a linked moment through `moment.read`
+when the reason behind a fact matters.
 
 ## Definition versioning
 

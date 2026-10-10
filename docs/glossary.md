@@ -47,14 +47,16 @@ one person a nixie deployment works for.
 
 ## Memory and definitions
 
-| Term               | Meaning                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------ |
-| memory item        | One stored fact, with its provenance and its evidence                                      |
-| evidence           | Your quote that backs a memory item                                                        |
-| retire             | Stop using a memory item in recall, with undo                                              |
-| forget             | Destroy a memory item's key, so the item is unreadable everywhere                          |
-| definitions        | Your persona, jobs and policy seed                                                         |
-| definitions source | Where nixie reads the definitions from, such as a git repo, a local path or bucket storage |
+| Term               | Meaning                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| memory item        | One stored fact, with its provenance and its evidence                                       |
+| evidence           | Your quote that backs a memory item                                                         |
+| retire             | Stop using a memory item in recall, with undo                                               |
+| forget             | Destroy a memory item's key, so the item is unreadable everywhere                           |
+| moment             | A range of records in one thread that nixie keeps whole, with a title, note and reflections |
+| reflection         | A model's reading of a moment, labelled with its model ID and date                          |
+| definitions        | Your persona, jobs and policy seed                                                          |
+| definitions source | Where nixie reads the definitions from, such as a git repo, a local path or bucket storage  |
 
 ## Connectors and sandboxes
 
