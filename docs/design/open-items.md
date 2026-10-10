@@ -49,10 +49,9 @@ Spikes that need model calls wait for model quota. Each line names the claim the
 
 ### Memory and sessions
 
-- **The pinned core** (minutes): the [pinned core spike](../../spikes/sdk-pinned-core/README.md)
-  shows whether `snapshot: false` lets a changed pinned core reach a resumed session, and what the
-  change costs the prompt cache. The fallback in [memory in context](./memory/context.md) applies
-  until it runs.
+- **The pinned core at scale** (minutes): the
+  [pinned core spike](../../spikes/sdk-pinned-core/README.md) tested the change note with one item
+  in a short session. Test it with a full pinned core and in a session that runs for days.
 - **Compaction controls** (about 2 hours): check whether returning `decision: 'block'` from the
   `PreCompact` hook stops an automatic compaction. nixie does not rely on it until then.
 - **A resume after compaction** (about 2 hours): compact a session after a step's recorded boundary,
