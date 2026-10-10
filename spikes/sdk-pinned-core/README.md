@@ -48,6 +48,14 @@ kill %1
 unset ZAI_API_KEY
 ```
 
+`--variant note` and `--variant note-only` run turns 1 to 3 as above, then 2 more turns with the
+change note that the [change note](#a-change-note) section describes:
+
+```bash
+NIXIE_SPIKE_PROVIDER=glm env -u CLAUDE_CODE_OAUTH_TOKEN \
+  bun --no-env-file pinned-core.ts "$(mktemp -d)" --variant note
+```
+
 [pinned-core.ts](./pinned-core.ts) puts about 3,000 tokens of stable text and a code word in the
 system prompt, then changes the code word between resumes. [log-proxy.ts](./log-proxy.ts) forwards
 to Z.ai and logs the code word each request's system prompt holds, so a run shows what the model
@@ -110,8 +118,35 @@ GLM's request, but GLM does not reliably act on it in a session whose history ho
 Z.ai reports no cache writes, and its cache reads stay at about 3,400 to 3,900 tokens across the
 change.
 
+### A change note
+
+A note on the turn after the core changes makes GLM follow the change. The note goes before that
+turn's user message, and the next turn carries no note:
+
+```text
+<system-reminder>
+Your pinned memory changed. Current: Pinned memory: the owner's code word is BANANA.
+</system-reminder>
+```
+
+Both variants run turns 1 to 3 as before, so the history holds 3 APPLE answers. Turn 4 carries the
+note, and turn 5 resumes without it:
+
+| Variant     | System prompt on turns 4 and 5 | Model | Turn 4 answered BANANA | Turn 5 answered BANANA |
+| ----------- | ------------------------------ | ----- | ---------------------- | ---------------------- |
+| `note`      | BANANA, `snapshot: false`      | GLM   | 5 of 5                 | 5 of 5                 |
+| `note`      | BANANA, `snapshot: false`      | Haiku | 3 of 3                 | 3 of 3                 |
+| `note-only` | APPLE, unchanged               | GLM   | 5 of 5                 | 5 of 5                 |
+| none        | BANANA, `snapshot: false`      | GLM   | 2 of 6                 | 3 of 6                 |
+
+The note does the work on GLM: with the note alone and the old prompt, GLM answered BANANA every
+time, and kept it on the turn after. A sixth base run beside these gave APPLE on both turns.
+
+The note costs 35 input tokens on Haiku and 31 on GLM, measured on a fresh session with and without
+it, once per change.
+
 ## Untested
 
 - A fork with `snapshot: false`.
 - A session that compacts after the prompt changes.
-- Whether a pinned core worded as an instruction, rather than a fact, makes GLM follow a change.
+- A change note on a real pinned core of several items, and on a session that runs for days.
