@@ -2,7 +2,7 @@
 
 - Date: 2026-10-07
 - Status: decided, amended by [0012](./0012-high-risk-approvals.md) and
-  [0021](./0021-outside-action-outcomes.md)
+  [0021](./0021-outside-action-outcomes.md) and [0029](./0029-channels-and-clients.md)
 - Research: [approval notes](../research/2.3-notes/approvals.md),
   [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#approval-records)
 
@@ -40,8 +40,10 @@ loosening one asks the owner.
 ## Digest approvals
 
 nixie offers one sheet that lists every pending proposal. Each item stays bound to its own action
-hash, and the owner approves all, some or none of them. Proposals and the destination limits make
-actions queue while the owner is away, so approving them one at a time would carry most of the
+hash. Under [0029](./0029-channels-and-clients.md), deferred items collapse in their own group; only
+routine items join a batch, and always-ask items keep their own controls. The owner can approve some
+or none of the items, and can select routine items together. Proposals and the destination limits
+make actions queue while the owner is away, so approving them one at a time would carry most of the
 friction. Phase 3 designs the sheet's layout and grouping together with the starter rule set.
 
 ## Alternatives

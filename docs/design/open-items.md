@@ -1,9 +1,8 @@
 # Open items
 
 Phase 3, the design phase, has the voice stack and the model per job undecided, and the Google
-refresh on day 8 still to run. The design work ahead covers the terminology pass, the channel
-adapter and trigger source, main-thread routing and grants with expiries, memory validation, and the
-stages agreed for after the first build.
+refresh on day 8 still to run. The design work ahead covers the terminology pass, memory validation,
+and the stages agreed for after the first build.
 
 ## Deferred decisions
 
@@ -27,12 +26,6 @@ stages agreed for after the first build.
   different models for chat, memory writing, tool calls and long background reasoning, with low
   reasoning effort for chat, because effort sets cost and latency more than any other setting. No
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
-- **How a sandboxed session reaches nixie's endpoint.** In imp 0.38.1, an allow entry admits a whole
-  address, so a sandboxed session that reaches nixie's tools on the host reaches imp's management
-  API too ([0003](../decisions/0003-sdk-placement.md)). Every worker and the conversation run in an
-  imp under [0026](../decisions/0026-where-workers-and-the-conversation-run.md), so the first build
-  needs the answer. The options are port-level allow entries in imp, an imp network or granted
-  hostname, or nixie's endpoint on an address that serves nothing else.
 
 ## Spikes to run
 
@@ -43,7 +36,6 @@ stages agreed for after the first build.
   sets the contract. The [key-backup spike](../../spikes/forget-backups/) checks a local backend's
   snapshot removal and data pruning. Test the selected deployment backend, stale-copy publication
   races, failures and restarts before declaring completed forget safe on that backend.
-
 - **Session recovery and invalid-cache cleanup.** Compare the proposed event-log rebuild with SDK
   resume: record which history and SDK state each preserves, test recovery after compaction and
   verify pending approvals and action outcomes come from canonical rows. Forget must remove every
@@ -62,14 +54,29 @@ stages agreed for after the first build.
   its original owner messages. Model quality, capture delay and cache/input costs remain unmeasured.
   Custom rollover needs live SDK continuity and compaction-boundary checks before it replaces the
   SDK route; the owner agreed batching with SDK compaction retained.
-
 - **The semantic-index lifecycle.** Check the design's version gates and memory-only generations
   when a write, retire, forget or encoder change races with background encoding. A stale candidate
   must never return canonical text that is no longer eligible. Pause a result after validation,
   forget its item, then resume publication. Test a query across a generation swap, writes during
   rebuild catch-up, full startup coverage and the reported keyword fallback while semantic indexing
   rebuilds, under [memory in context](./memory/context.md#the-index).
-
+- **The code environment inventory.** Build the Node.js/Python code and worker images with the
+  common Linux toolbox from [0030](../decisions/0030-connectors-and-sandbox-environments.md). Check
+  representative agent programs for file and text work, expose the installed command and library
+  versions, and measure image size and cold-start cost. Package availability needs a built-image
+  check; the runtime choice is settled.
+- **Worker cold start with the code runtimes** (about 2 hours): time a fresh worker on the worker
+  image, which carries the code runtimes, against the numbers that
+  [0026](../decisions/0026-where-workers-and-the-conversation-run.md) rests on: 472 ms to create an
+  imp and about 2.5 to 3 s to first text, about 2 s of it cold disk reads. A larger image that slows
+  first text past that range reopens a separate, smaller worker image.
+- **Start inside Elysia** (about half a day): mount Start's fetch handler in nixie's Elysia process,
+  check the isomorphic oRPC link and device-session checks on both routes, and check that no server
+  implementation reaches the browser bundle.
+- **Android paste edge cases**: check Gboard clipboard chips and other keyboard insertion paths
+  after the native paste module exists. Keep known ambiguous paths unknown until tested. The basic
+  native paste hook belongs in the first Android build, under
+  [0029](../decisions/0029-channels-and-clients.md).
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
   holding Gmail's restricted scope; day 8 shows whether its token outlives testing mode's 7-day
@@ -106,14 +113,33 @@ stages agreed for after the first build.
   secrets encrypted with sops and age, and a dependency bot. Merge a version bump and roll it back
   with a database restore, to confirm that an upgrade is a merge and a rollback is a revert plus a
   restore under [0020](../decisions/0020-deployment.md).
-- **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against nixie's scripted
-  scenarios and measure the bar from [0008](../decisions/0008-auto-mode.md): catastrophic actions
-  allowed per stage, harmless denials per action, consent credited, and escalations per task. nixie
-  switches auto-mode on only when it meets that bar.
-- **Owner messages into a running task** (about half a day): test a `now` message while the model
-  writes text, a `now` message during a tool that cannot move to the background,
-  `shouldQuery: false`, and `interrupt()` with queued messages. The answers shape how routing from
-  [0018](../decisions/0018-main-thread-and-tasks.md) delivers a message to a running task.
+- **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against the scripted scenarios
+  in the [policy rules spike](../../spikes/policy-rules/README.md), with a model making the calls,
+  and measure the bar from [0008](../decisions/0008-auto-mode.md): catastrophic actions allowed per
+  stage, harmless denials per action, consent credited, and escalations per task. nixie switches
+  auto-mode on only when it meets that bar.
+- **Owner messages into a running task** (about 1 hour, once the model account has quota): run the 6
+  commands in the [owner input spike](../../spikes/sdk-owner-input/README.md#untested), which cover
+  a `now` message during a reply with no tool running, a tool that cannot move to the background, a
+  message with no priority, `shouldQuery: false`, and `interrupt()` with a queued message. The
+  scripts are written and have not run. The answers confirm or change the default in
+  [the client](./channels/client.md#messages-into-a-running-task).
+- **The Expo client on Android** (about 1 day, with an Android device or emulator): run the
+  [typed API spike](../../spikes/client-rpc/README.md) client inside an Expo SDK 57 app, and check
+  that `expo/fetch` streams the live view and resumes after the phone sleeps. In the same app, check
+  [paste span](../../spikes/paste-spans/README.md) capture with a native paste hook, a keyboard
+  clipboard suggestion, swipe typing, autocorrect and voice typing.
+- **A Telegram notice round trip** (about 2 hours, with a bot the owner registers): pair a chat with
+  a `/start` code, send a content-free notice with a link button, edit it in place, and check that a
+  message from a second account gets only a refusal record. It needs a bot token, a new credential,
+  under [the channel adapter](./channels/channel-adapter.md#the-push-notifier).
+- **Routing quality** (about half a day): replay a scripted day of owner messages against a set of
+  tasks and count the messages the conversation routes wrongly, with the move records from
+  [the live view](./channels/live-view.md#routing-marks) as the measure in real use. A misrouted
+  message fails quietly under [0018](../decisions/0018-main-thread-and-tasks.md).
+- **Paste spans in WebKit** (about 1 hour, on a host with WebKit's libraries or a Mac): rerun the
+  [paste span spike](../../spikes/paste-spans/README.md) in WebKit, which failed to launch where the
+  spike ran.
 - **The sandboxed placement under load** (about half a day): a long turn under imp's broker, which
   serves HTTP/1.1 only, with a token rotation mid-turn, and parallel tool calls over HTTP MCP. The
   spike for [0003](../decisions/0003-sdk-placement.md) saw only short turns and one call at a time.
@@ -124,71 +150,53 @@ stages agreed for after the first build.
 - **Model choice on real use** (about 1 day): repeat the model-eval memory and tool tasks on a real
   conversation history, real services and a long context, with more than 2 samples per cell and
   direct API calls. It firms up the model-per-job split above.
+- **The Google web OAuth return** (about 1 hour, needs access to the owner's Google project):
+  register the actual private-network HTTPS callback on a Web application OAuth client and complete
+  consent. The agreed route is automatic HTTPS return under
+  [0030](../decisions/0030-connectors-and-sandbox-environments.md); the spike's Desktop client does
+  not validate it. Check Microsoft's redirect when its connector is selected.
 - **Microsoft Graph and iCloud** (about half a day and about 2 hours): consent to mail and calendar
   scopes with a personal Microsoft account in a free Azure directory, and read iCloud mail, events
   and contacts with one app-specific password. Run them when a connector for either provider is
   next, under [0019](../decisions/0019-connector-authorization.md).
+- **Model requests through a counting proxy** (about half a day, on an imp host): route the model
+  requests of a worker imp from imp's broker through a proxy on the host that counts tokens and
+  refuses requests once a budget is spent. It checks the hard spending stop that the
+  [budgets design](./policy/budgets.md#the-hard-spending-stop) sets under 0028, and needs a check
+  that the broker can forward to a host proxy without opening the guest a second route.
+- **Model cost on a subscription token** (about 2 hours, with model calls): record what the SDK
+  reports per turn on a subscription token against a metered key, and set the deployment budget
+  defaults in the [budgets design](./policy/budgets.md#model-cost) from real use.
+- **The consent checker on real messages** (about half a day, with model calls): run a checker model
+  over owner messages the owner writes, each paired with an action that the message does or does not
+  ask for, and measure how often it credits consent wrongly or misses it. It firms up the consent
+  stage in the [decision point](./policy/decision-point.md#destination-limits).
 
 ## Phase 3 design tasks
 
 - **The terminology pass.** The terms in [0018](../decisions/0018-main-thread-and-tasks.md), such as
   main thread, task and worker, are provisional, and a terminology pass settles them before any
   code. It may draw on a metaphor such as the chief of staff.
-- **The channel adapter and the trigger source, in full.** The first build needs a client and
-  schedules, so Phase 3 designs both interfaces from [0016](../decisions/0016-own-interfaces.md)
-  completely. The trigger source records a cursor per source in the event log, and the design
-  decides which connectors need push at all.
-- **Rough sketches of the connector, the credential store and the definitions source.**
-  [0016](../decisions/0016-own-interfaces.md) and [0020](../decisions/0020-deployment.md) ask for
-  sketches that check the channel adapter and the trigger source leave room for them. The credential
-  store's backend interface is open, and the first real connector settles the final shapes.
-- **Main-thread routing and the task board.** The main thread routes each owner message to a task
-  and names where it sent it, from a live task board of every task's status
-  ([0018](../decisions/0018-main-thread-and-tasks.md)). Routing quality is on the critical path,
-  because a misrouted message fails quietly. [Tasks](./core/tasks.md#routing-from-the-conversation)
-  proposes the routing tools and records.
-- **The live view.** The live view shows running and finished tasks and what each did and why, as a
-  projection of the event log that the task board reads too
-  ([0018](../decisions/0018-main-thread-and-tasks.md)). The
-  [event log design](./core/event-log.md#the-live-view-and-the-task-board) proposes how both read
-  it.
-- **Grants with expiries.** Authority granted for a period, such as "full authority to build and
-  ship today", is a rule with an expiry, and widening a rule always asks
-  ([0018](../decisions/0018-main-thread-and-tasks.md)). Phase 3 designs how the owner grants, sees
-  and ends such a rule.
-- **The starter rule set and the digest sheet.** How restrictive nixie feels depends on the starter
-  rules and the "no match means ask" default from [0004](../decisions/0004-rule-engine.md). The
-  digest sheet's layout and grouping from [0006](../decisions/0006-approval-record.md) are designed
-  together with them.
-- **The scripted prompt scenarios.** Scenarios such as finding something on the web, triaging an
-  inbox and booking a table report every prompt with its cause, so the 0-prompt target from
-  [0005](../decisions/0005-effects-and-taint.md) can fail a test. They count the prompts where a
-  destination comes from search results, the signal for typed workers under
-  [0014](../decisions/0014-search.md).
 - **The durable layer.** nixie owns leases, durable timers, retries, wake-ups and a run viewer, each
   with crash tests ([0001](../decisions/0001-durable-layer.md)), and [tasks](./core/tasks.md)
   designs them. The crash tests confirm that a resumed turn never repeats an outside action that
   ran, and the estimate of 800 to 1,500 lines is untested.
-- **Budgets and the spending stop.** Raising a budget is in the always-ask set from
-  [0005](../decisions/0005-effects-and-taint.md), and no decision sets where nixie enforces a
-  budget. The research recommends a hard spending stop in a proxy in front of the model, not in the
-  SDK ([2.1 landscape](../research/2.1-landscape.md#recommendation-for-22)).
-- **Rule identity and snapshot hashing.** Snapshots under
-  [0013](../decisions/0013-definition-versioning.md) need a canonical form for persona and job
-  definitions written as markdown. A rule's ID stays fixed across edits or each edit mints a new
-  one, and the last-fired record in [0006](../decisions/0006-approval-record.md) needs a fixed ID.
+- **A budget for paid tool calls.** A search on Kagi costs about $0.012
+  ([0014](../decisions/0014-search.md)), and the budgets in the policy design count `spend` tools
+  and model cost only. A budget kind for tool calls that cost money without the `spend` effect would
+  let the owner cap search and similar services.
 - **Upgrades on the host.** A merged upgrade reaches the host by a webhook, a poll from the host, or
   the owner running one command, and a poll needs no inbound route
   ([0020](../decisions/0020-deployment.md)). The seeding conflict view and the export of runtime
   rules as a pull request are part of the same design.
-- **Connector setup.** Each owner registers their own OAuth client with each provider, so the setup
-  guide and the client walk the owner through it
-  ([0019](../decisions/0019-connector-authorization.md)).
-- **The coding agent adapter and running code.** Design the adapter interface from
-  [0022](../decisions/0022-coding-and-code-execution.md), with atc as the first adapter, and the
-  tool that runs code in a disposable imp with no grants, which comes early.
 
 ## Later stages
+
+- **A container sandbox adapter.** The first build implements imp. The
+  [container sketch](./connectors/sandbox-adapter.md#a-container-adapter-sketch) checks the common
+  interface without a second implementation. A container adapter needs its injecting proxy, tool
+  relay, egress gateway, disk quota backend and isolation checks before it supports any run. Memory
+  sleep stays unavailable unless a checkpoint implementation proves the same semantics.
 
 - **Taint per job run.** A job that reads only the owner's data runs without the destination limits
   ([0015](../decisions/0015-taint-scope.md)). The first build records the source of every tool
@@ -205,11 +213,14 @@ stages agreed for after the first build.
   nixie's policy decides which low-information types it endorses as clean.
 - **The passkey check for high-risk approvals.** The first build approves everything with a tap, and
   a passkey check for the always-ask set follows as an early addition
-  ([0012](../decisions/0012-high-risk-approvals.md)).
-- **The MCP proxy.** It arrives with the first outside MCP server
-  ([0017](../decisions/0017-mcp-proxy.md)). It needs to know which MCP revision the SDK's in-process
-  server speaks, whether it passes structured output through, and how long a server keeps an input
-  request valid for a retry. Judging taint by output field waits for taint per job run.
+  ([0012](../decisions/0012-high-risk-approvals.md)). Under 0012, an "always allow" takes the
+  passkey too, because it widens a rule. The 0012 design weighs a proposed exemption: a rule no
+  wider than the card's own action, with the same tool and the same destination, stays one tap, and
+  a broader rule asks for the passkey ([0029](../decisions/0029-channels-and-clients.md)).
+- **The MCP proxy.** It arrives with the first outside MCP server, the atc adapter
+  ([0017](../decisions/0017-mcp-proxy.md)), and [the proxy design](./connectors/mcp-proxy.md) covers
+  it. How long a server keeps an input request valid for a retry is still unknown, and judging taint
+  by output field waits for taint per job run.
 - **Outside agents in the live view.** Entities that nixie starts but that run under their own
   rules, such as coding sessions started through atc, show in the live view labelled as outside
   nixie. It is a low priority, while managing atc sessions is a high priority for v1 or v2
@@ -220,6 +231,11 @@ stages agreed for after the first build.
 - **An iOS build.** The native app is Android first, and an iOS build needs the Apple Developer
   Program, with TestFlight builds that expire after 90 days
   ([0009](../decisions/0009-first-channel.md)).
+- **Native push for the Android app.** The app in tier 2 receives the same content-free notice as
+  the Telegram notifier, through Expo's push service or Firebase Cloud Messaging directly, with a
+  notification action that requires a device unlock
+  ([the channel adapter](./channels/channel-adapter.md#room-for-later-channels)). The notice holds
+  no content, so a relay learns only that something waits; the Android app's design picks the route.
 - **A chat app as a full channel.** Telegram or another chat app can carry the conversation as an
   opt-in for a context where the owner accepts the storage
   ([0009](../decisions/0009-first-channel.md)).
@@ -240,7 +256,10 @@ design. Until imp does, nixie designs around the current behaviour.
   imp as a credential backend, nixie's credential store refreshes tokens on the host and pushes each
   new value into imp ([0016](../decisions/0016-own-interfaces.md)).
 - **Port-level allow entries.** They let a sandboxed session reach nixie's endpoint on the host
-  without reaching imp's management API ([0003](../decisions/0003-sdk-placement.md)).
+  without reaching imp's management API ([0003](../decisions/0003-sdk-placement.md)). The
+  [sandbox adapter](./connectors/sandbox-adapter.md#the-route-to-nixies-tools) needs them only if a
+  later deployment cannot use the agreed reverse-forward route. The transport spike passed, under
+  [0030](../decisions/0030-connectors-and-sandbox-environments.md).
 - **A fuller audit.** The broker records method, host, path, status and sizes for each credentialed
   request, and no refused request. An audit with refused requests lets the broker's log feed nixie's
   record under [0007](../decisions/0007-grants-and-taint.md).

@@ -7,3 +7,7 @@ and what it left untested.
 
 Spikes that call the model read a token from the repo's `.env`, which git ignores; `.env.example`
 lists the variable.
+
+[Tools through a reverse forward](./tools-reverse-forward/) measures relay overhead and checks the
+SDK tool round trip, streamed responses, egress isolation and sleep/wake recovery with a local model
+stand-in and one dummy credential grant.

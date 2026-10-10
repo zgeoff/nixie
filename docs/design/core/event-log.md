@@ -22,20 +22,20 @@ it links is a proposal.
 A record is one row of the log. Every record carries the same envelope, and its payload depends on
 its kind.
 
-| Field             | Holds                                                                        | Required by                                                                            |
-| ----------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Sequence          | A number that orders the record in the log                                   | This design                                                                            |
-| Time              | When nixie wrote the record                                                  | This design                                                                            |
-| Kind              | Such as `owner_message`, `turn_finished`, `tool_called` or `approval_given`  | This design                                                                            |
-| Thread            | The conversation or the task the record belongs to                           | [0018](../../decisions/0018-main-thread-and-tasks.md)                                  |
-| Step key          | The task step that wrote it, for idempotent steps                            | [0001](../../decisions/0001-durable-layer.md)                                          |
-| Parent            | The record that caused it, such as the tool call behind a worker's records   | [0006](../../decisions/0006-approval-record.md)                                        |
-| Source of content | Owner's words, owner's own data, or outside content                          | [0015](../../decisions/0015-taint-scope.md)                                            |
-| Decision          | Rule ID, outcome, deciding stage, and auto-mode's reason and inputs          | [0004](../../decisions/0004-rule-engine.md), [0008](../../decisions/0008-auto-mode.md) |
-| Prompt cause      | One of the 5 causes, on every record that prompts the owner                  | [0005](../../decisions/0005-effects-and-taint.md)                                      |
-| Definitions       | The snapshot hash in force, and the persona and job versions the task pinned | [0013](../../decisions/0013-definition-versioning.md)                                  |
-| Approval          | Proposal ID, approval ID and action hash                                     | [0006](../../decisions/0006-approval-record.md)                                        |
-| Payload           | The kind's own data, with erasable fields encrypted                          | [0010](../../decisions/0010-memory-store.md)                                           |
+| Field             | Holds                                                                        | Required by                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Sequence          | A number that orders the record in the log                                   | This design                                                                                      |
+| Time              | When nixie wrote the record                                                  | This design                                                                                      |
+| Kind              | Such as `owner_message`, `turn_finished`, `tool_called` or `approval_given`  | This design                                                                                      |
+| Thread            | The conversation or the task the record belongs to                           | [0018](../../decisions/0018-main-thread-and-tasks.md)                                            |
+| Step key          | The task step that wrote it, for idempotent steps                            | [0001](../../decisions/0001-durable-layer.md)                                                    |
+| Parent            | The record that caused it, such as the tool call behind a worker's records   | [0006](../../decisions/0006-approval-record.md)                                                  |
+| Source of content | Owner's words, owner's own data, or outside content                          | [0015](../../decisions/0015-taint-scope.md)                                                      |
+| Decision          | Rule ID, outcome, deciding stage, and auto-mode's reason and inputs          | [0004](../../decisions/0004-rule-engine.md), [0008](../../decisions/0008-auto-mode.md)           |
+| Prompt cause      | One of the 6 causes, on every record that prompts the owner                  | [0005](../../decisions/0005-effects-and-taint.md), [0028](../../decisions/0028-policy-design.md) |
+| Definitions       | The snapshot hash in force, and the persona and job versions the task pinned | [0013](../../decisions/0013-definition-versioning.md)                                            |
+| Approval          | Proposal ID, approval ID and action hash                                     | [0006](../../decisions/0006-approval-record.md)                                                  |
+| Payload           | The kind's own data, with erasable fields encrypted                          | [0010](../../decisions/0010-memory-store.md)                                                     |
 
 The source of content sits on every tool result. The first build stores it without acting on it, so
 taint per job run becomes a policy change later, as [0015](../../decisions/0015-taint-scope.md)
@@ -112,7 +112,8 @@ serve the core:
 
 - **Task state:** one row per task, with its state, its lease, its open waits and its pinned
   definition versions. [Tasks](./tasks.md) covers it.
-- **Proposals and approvals:** each proposal's action hash, status and expiry.
+- **Proposals and approvals:** each proposal's action hash, status, lapse time, optional real
+  deadline `deadlineAt`, deferred-until time and defer generation.
 - **Outside actions:** each queued action and its outcome, covered in
   [outside actions](./outside-actions.md).
 - **The task board:** one row per task with its status, last update and what it waits on, which
@@ -132,8 +133,12 @@ The live view is the long form: the client opens a task and reads its records as
 with each tool call, decision and worker transcript expandable.
 
 The client follows the log by sequence. It loads a projection, notes the last sequence it read, and
-then receives every newer record. A record the client cannot render yet still shows by its kind, so
-nothing is hidden by a missing renderer.
+then receives every newer record together with the projection rows that its transaction changed. The
+initial projection and its sequence come from one read snapshot. Catch-up events carry the rows as
+of each record, from retained deltas or a fold at that sequence, never current rows under an old
+event ID. The client applies records and changed rows together before it advances its cursor. A
+record the client cannot render yet still shows by its kind, so nothing is hidden by a missing
+renderer.
 
 Following by sequence needs a sequence that orders records by commit. SQLite allows one writer at a
 time, so an integer primary key grows in commit order, and a reader that asks for records after
