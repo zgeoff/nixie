@@ -21,9 +21,9 @@ sandboxed work:
 ## The coding adapter
 
 nixie defines the interface: start a session from a brief, report its status, pass it a message,
-return its results, and stop it. A session is a task under [0018](./0018-main-thread-and-tasks.md),
-so it appears on the dashboard and in the live view, and the conversation routes your messages to
-it.
+return its results, and stop it. A session is a task under
+[0018](./0018-the-conversation-and-tasks.md), so it appears on the dashboard and in the live view,
+and the conversation routes your messages to it.
 
 The adapter owns how a session runs: its sandbox, credentials, lifecycle and agent harness. nixie
 owns whether a session may start, decided by your rules, the brief, supervision, and the results,

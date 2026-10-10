@@ -4,8 +4,9 @@
   [0005](../../decisions/0005-effects-and-taint.md),
   [0006](../../decisions/0006-approval-record.md),
   [0013](../../decisions/0013-definition-versioning.md),
-  [0018](../../decisions/0018-main-thread-and-tasks.md), [0020](../../decisions/0020-deployment.md),
-  [0023](../../decisions/0023-lifting-always-ask.md), [0028](../../decisions/0028-policy-design.md)
+  [0018](../../decisions/0018-the-conversation-and-tasks.md),
+  [0020](../../decisions/0020-deployment.md), [0023](../../decisions/0023-lifting-always-ask.md),
+  [0028](../../decisions/0028-policy-design.md)
 
 A rule is plain data in nixie's own format: it matches a tool call by its tool, effects, context,
 arguments and destinations, and gives one outcome: allow, ask or deny. Rules live in nixie's

@@ -13,7 +13,7 @@ An approval resolves one proposal from [0002](./0002-approvals.md), and nixie re
   invalidates the approval, and the model makes a new proposal.
 - **Used once.** nixie consumes the approval in the database transaction that starts the action, so
   the approval cannot run the action twice. Whether the provider's side effect happens once is set
-  by [0021](./0021-outside-action-outcomes.md).
+  by [0021](./0021-action-outcomes.md).
 - **Expires.** A proposal left unanswered lapses after a set time, and the task learns that it
   lapsed. Defer under [0029](./0029-channels-and-clients.md) extends the lapse, never past the
   action's real deadline.
@@ -41,8 +41,8 @@ rules together. The client sorts and filters rules by last use.
 The approval digest lists everything that waits on your answer. Each item stays bound to its own
 action hash. "Approve all" covers routine items only, and each always-ask or lifting item takes its
 own approval. Actions whose outcome is unknown lead the digest, under
-[0027](./0027-tasks-and-outside-actions.md), and deferred items collapse into their own group until
-they return.
+[0027](./0027-tasks-and-actions.md), and deferred items collapse into their own group until they
+return.
 
 ## Why
 

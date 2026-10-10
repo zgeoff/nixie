@@ -14,8 +14,8 @@ An action interrupted after it may have reached the provider, such as a crash af
 and before nixie recorded the response, is marked unknown. nixie retries an unknown action only when
 it passes an idempotency key that the provider honours, or after a check confirms that the action
 did not happen, such as a look in the Sent folder. Otherwise the action goes to you, at the head of
-the approval digest under [0027](./0027-tasks-and-outside-actions.md). The model cannot retry or
-report around an unknown outcome, because the action's state machine allows neither.
+the approval digest under [0027](./0027-tasks-and-actions.md). The model cannot retry or report
+around an unknown outcome, because the action's state machine allows neither.
 
 ## Why
 

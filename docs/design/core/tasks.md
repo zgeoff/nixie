@@ -3,10 +3,10 @@
 - Decisions: [0001](../../decisions/0001-durable-layer.md),
   [0002](../../decisions/0002-approvals.md), [0005](../../decisions/0005-effects-and-taint.md),
   [0015](../../decisions/0015-taint-scope.md), [0016](../../decisions/0016-own-interfaces.md),
-  [0018](../../decisions/0018-main-thread-and-tasks.md),
+  [0018](../../decisions/0018-the-conversation-and-tasks.md),
   [0025](../../decisions/0025-database-and-topology.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md),
-  [0027](../../decisions/0027-tasks-and-outside-actions.md)
+  [0027](../../decisions/0027-tasks-and-actions.md)
 
 A task is durable work with its own context, such as "keep the backlog moving today", and nixie runs
 each one as an explicit state machine over the [event log](./event-log.md). A runner holds a lease
@@ -118,7 +118,7 @@ task.
 The conversation receives the task board in its newest turn, after the stable part of the prompt, so
 the prompt cache holds. It routes with 2 tools: one passes a message to an existing task, and one
 starts a task with a brief. Each call writes a routing record, and the conversation's reply names
-where it sent the message, as [0018](../../decisions/0018-main-thread-and-tasks.md) requires.
+where it sent the message, as [0018](../../decisions/0018-the-conversation-and-tasks.md) requires.
 
 Moving a misrouted message is one checked action in the client, which writes a correction record and
 updates both tasks' inboxes in one transaction.

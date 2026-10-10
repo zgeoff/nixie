@@ -1,18 +1,17 @@
 # Actions
 
 - Decisions: [0002](../../decisions/0002-approvals.md),
-  [0006](../../decisions/0006-approval-record.md),
-  [0021](../../decisions/0021-outside-action-outcomes.md),
+  [0006](../../decisions/0006-approval-record.md), [0021](../../decisions/0021-action-outcomes.md),
   [0025](../../decisions/0025-database-and-topology.md),
-  [0027](../../decisions/0027-tasks-and-outside-actions.md)
+  [0027](../../decisions/0027-tasks-and-actions.md)
 
 An action is a tool call with side effects outside nixie, such as sending an email or making a
 payment. It runs as an entry on the action queue in the [event log](./event-log.md), with one of 4
-outcomes: pending, done, failed or unknown, under
-[0021](../../decisions/0021-outside-action-outcomes.md). nixie records each attempt before it calls
-the provider, so a crash mid-call leaves an attempt with no result, and the action becomes unknown.
-An unknown action is retried only with an idempotency key the provider honours or after a check that
-it did not happen; otherwise it comes to you. The model reads outcomes and never sets them.
+outcomes: pending, done, failed or unknown, under [0021](../../decisions/0021-action-outcomes.md).
+nixie records each attempt before it calls the provider, so a crash mid-call leaves an attempt with
+no result, and the action becomes unknown. An unknown action is retried only with an idempotency key
+the provider honours or after a check that it did not happen; otherwise it comes to you. The model
+reads outcomes and never sets them.
 
 ## From tool call to queue
 
