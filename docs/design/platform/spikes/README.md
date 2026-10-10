@@ -12,6 +12,9 @@ lists the variable.
 tool round trip, streamed responses, egress isolation and sleep/wake recovery with a local model
 stand-in and one dummy credential grant.
 
+[The reverse forward from a pod](pod-reverse-forward/) runs a nixie stand-in in a k3s pod with no
+inbound port, and checks that an imp with egress `none` reaches its tools through impd.
+
 [Session forwarding through Start](start-session-forwarding/) runs the web client on TanStack Start
 as its own server. It checks that server rendering forwards the device session to the API, that
 Start holds no session, and that the browser bundle holds no server code.

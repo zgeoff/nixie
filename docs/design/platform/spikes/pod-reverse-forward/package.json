@@ -1,0 +1,12 @@
+{
+  "name": "spike-pod-reverse-forward",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike": "bun nixie.ts"
+  },
+  "dependencies": {
+    "@zgeoff/imp-client": "0.40.0"
+  }
+}

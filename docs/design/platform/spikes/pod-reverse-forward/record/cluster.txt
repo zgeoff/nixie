@@ -1,0 +1,8 @@
++ k3s kubectl -n nixie-spike get pod nixie -o 'jsonpath=hostNetwork={.spec.hostNetwork}|ports={.spec.containers[*].ports}|phase={.status.phase}{"\n"}'
+hostNetwork=|ports=|phase=Running
++ k3s kubectl -n nixie-spike get svc,endpointslices,ingress
+No resources found in nixie-spike namespace.
++ docker exec imp-host imp ls
++ awk 'NR==1 || $1 ~ /^nixie-spike-/'
++ cut -c1-40
+NAME                       STATE    IMAG
