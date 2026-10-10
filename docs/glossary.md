@@ -8,7 +8,7 @@ whatever it settles.
 | owner              | The one person a nixie deployment works for                                                |
 | conversation       | The owner's single chat with nixie, which routes work to tasks                             |
 | task               | A durable piece of work with its own context, which the owner can open and talk to         |
-| worker             | A disposable job behind one tool call, run in its own imp                                  |
+| worker             | A disposable unit of work behind one tool call, run in its own imp                         |
 | job                | A definition: a schedule, instructions and a tool list. Each run of a job is a task        |
 | trigger            | What starts a task without the owner, such as a schedule, a webhook or a new email         |
 | tool               | Anything the model can call. Every outside action goes through one                         |

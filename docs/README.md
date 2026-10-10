@@ -43,6 +43,19 @@ the decisions it rests on.
 - [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
   approval consumption, reconciliation per connector, and unknown outcomes for the owner
 
+### Policy
+
+- [Policy design index](./design/policy/README.md) — the 4 policy docs and the spike behind them
+- [The policy decision point](./design/policy/decision-point.md) — the pipeline, effects, the
+  always-ask set, destination limits and consent, taint in the first build, auto-mode, prompt causes
+  and the scripted scenarios, with the decisions the owner settled
+- [Rules](./design/policy/rules.md) — the rule format, evaluation order, rule identity, the snapshot
+  hash, the widening check, proposed rules, grants with expiries and the starter rule set
+- [Proposals and approvals](./design/policy/approvals.md) — the proposal and its action hash, risk
+  classes, the approval record, "always allow" and the digest sheet
+- [Budgets, lifts and the spending stop](./design/policy/budgets.md) — budgets, lifting rules,
+  limits on model cost and the hard spending stop
+
 ### Channels
 
 - [Channels design index](./design/channels/README.md) — the client, the channel adapter, approvals,
@@ -104,6 +117,9 @@ Rules, effects, taint, approvals and auto-mode.
   untrusted, and taint applies to jobs and workers in stages
 - [0023: Lifting the always-ask set](./decisions/0023-lifting-always-ask.md) — a bounded rule can
   lift it, creating one always asks, and such approvals look distinct
+- [0028: The policy design](./decisions/0028-policy-design.md) — nixie's own consent checker, a
+  sixth prompt cause, the spending stop as a host proxy, bulk approval for routine items, YAML rule
+  files, and the permissive starter set with notices for jobs
 
 ### Memory
 
@@ -253,6 +269,8 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   first token inside an imp against the host
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
+- [The rule engine and prompt scenarios](../spikes/policy-rules/) — one decision per call whatever
+  the rule order, a stable snapshot hash, a conservative widening check, and prompts by cause
 - [A typed API with a live stream](../spikes/client-rpc/) — one oRPC contract on Bun with checked
   actions and a stream that resumes by sequence
 - [Paste spans in a text box](../spikes/paste-spans/) — which spans of a message the owner pasted,
