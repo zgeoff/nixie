@@ -32,7 +32,9 @@ An image joins the pipeline in the slice that first builds it, by adding its Doc
 entry in the stage it belongs to. A sandbox image also adds its kind to the sandbox manifest, and an
 image the deployment pins also joins the Renovate group in the deployment repo. The first push of
 each image creates its GHCR package as private, so the slice that adds the image sets the package
-public once in its package settings.
+public once in its package settings. The check-pulls stage of the
+[release workflow](#the-release-workflow) fails the release until it does, so a private sandbox
+image never reaches a pin.
 
 The Android app ships through its own route in slice 9 and stays outside this pipeline.
 
@@ -56,26 +58,34 @@ would never run the checks that `main`'s ruleset requires.
 ## The release workflow
 
 The release workflow runs on every push to `main`, in a concurrency group that never cancels a
-release in progress. Each action is pinned by commit SHA, as in the existing workflows. When
-release-please reports `release_created`, the workflow checks out the release commit (its `sha`
-output) and runs these stages:
+release in progress. When release-please reports `release_created`, the workflow checks out the
+release commit (its `sha` output) and runs these stages:
 
 1. **Sandbox images.** The conversation, fetch and code images build in parallel, and the worker
    image builds after the conversation image, from it by digest. Each pushes by digest only.
 2. **The nixie image.** The workflow writes the sandbox manifest from the stage 1 digests into the
    build context, then builds and pushes the nixie image by digest.
 3. **Web and backup.** The web and backup images build in parallel and push by digest.
-4. **Tag.** The workflow adds the version tag to every image's digest without changing the digest.
-5. **Notes.** The workflow appends the migration list to the GitHub release.
+4. **Notes.** The workflow appends the migration list to the GitHub release.
+5. **Check pulls.** The workflow pulls every sandbox digest with no credentials, and fails when one
+   is private.
+6. **Tag.** The workflow adds the version tag to every image's digest without changing the digest:
+   the sandbox images first, then backup, web and nixie.
 
 A stage starts only when the stage before it succeeded. **Why:** the nixie image needs the sandbox
 digests, and a failed nixie build stops the release before a web image exists that calls an API no
 image serves.
 
-The tag stage comes last because Renovate and every reader find a release by its tag. **Why:** a tag
-on some images and not others would let the deployment repo pin a release that has no backup or web
-image. A failed release leaves untagged digests that nothing pins, and re-running the failed jobs
-resumes from the stage that failed.
+The tag stage comes last because Renovate and every reader find a release by its tag. **Why:** the
+notes and every image exist before any reader can see the version. A failed release before the tag
+stage leaves untagged digests that nothing pins, and re-running the failed jobs resumes from the
+stage that failed.
+
+The tag stage is a sequence of separate registry pushes, so a reader can see some images tagged and
+not others for a few seconds, or longer when the stage fails. The deployment repo's Renovate
+configuration sets a `minimumReleaseAge` of 1 hour on the grouped pins. **Why:** the pin pull
+request then never opens on a release whose tags are still landing. The tag stage is idempotent, so
+re-running it finishes a partly tagged release with the same digests.
 
 A manual run of the workflow takes a release tag and rebuilds that release from its commit, and
 refuses a tag that any image already carries. **Why:** a tagged image may already be pinned, and a
@@ -99,8 +109,7 @@ subject.
 
 Each Dockerfile pins its base image by digest. The nixie image is built from the release bundle that
 the [test builds](../code-layout.md#test-builds) section describes, and the build fails when that
-bundle holds a fault point. Every image carries the `org.opencontainers.image.source`,
-`org.opencontainers.image.revision` and `org.opencontainers.image.version` labels.
+bundle holds a fault point.
 
 Every pull request builds each image without pushing it. **Why:** a broken Dockerfile or a changed
 checksum then fails the pull request, never a release.
@@ -116,10 +125,8 @@ personal data. No image holds a secret, a credential or personal data.
 
 ## Pinned binaries
 
-Some images hold third-party binaries that the build downloads:
-
-- **nixie:** `sops`
-- **backup:** `sops`, `restic`, `litestream` and `rclone`
+The nixie image holds `sops`, and the backup image holds `sops`, `restic`, `litestream` and
+`rclone`, each downloaded by the build.
 
 Each image keeps one file beside its Dockerfile that lists each binary with its version, download
 URL and SHA-256 checksum. The build downloads each binary at its pinned version and checks it
@@ -137,8 +144,7 @@ Each image gets a GitHub build provenance attestation as soon as its push return
 `actions/attest` with `subject-name` set to the repository without a tag, `subject-digest` set to
 the pushed digest, and `push-to-registry: true`. The attestation is a Sigstore bundle signed through
 the workflow's OIDC token, so no signing key exists to store or rotate. The job holds
-`id-token: write` and `attestations: write` for this step. Attestations are available to a public
-repository on every current GitHub plan.
+`id-token: write` and `attestations: write` for this step.
 
 An attestation records the repository, the workflow file, the commit and the run that built the
 digest. `gh attestation verify oci://<image>@sha256:<digest> --repo <owner>/nixie` checks one, and
@@ -183,6 +189,11 @@ writable by the release before. CI checks it in 2 steps:
 2. **Rollback test.** CI migrates a database to the last release's schema, fills it through the last
    release's own end-to-end suite, migrates it with the pull request's build and writes to it, then
    starts the last release's nixie image on it and runs that release's suite again.
+
+Both checks compare against one release back, which matches the rollback that
+[upgrades](upgrades.md#rolling-back) supports. A deployment whose pin skips a release can roll back
+only to a release these checks never compared against, and the open call on
+[skipped releases](#open-for-sign-off) covers it.
 
 A migration that declares the break passes the lint, and the rollback test is skipped for it. The
 release notes then mark the schema unreadable by the release before.
@@ -231,3 +242,9 @@ Each item gives the recommendation the doc above follows, and the alternative.
 6. **The first version and 1.0.** Recommended: start at `0.1.0`, and cut 1.0 when the first
    deployment runs on its own pins. After 1.0, a major release marks a release that cannot roll back
    to the release before. Alternative: start at `1.0.0` with the first slice 1 release.
+7. **Skipped releases.** Recommended: a check in the deployment repo's pin pull request that refuses
+   a jump over more than one release when any skipped release removes a procedure, declares a schema
+   break or holds a migration the old pin's release cannot read. Renovate rewrites an open pin pull
+   request to the newest release, so a jump happens whenever 2 releases land before a merge.
+   Alternative: a removal waits 2 releases after its deprecation, which covers a jump of one skipped
+   release only.

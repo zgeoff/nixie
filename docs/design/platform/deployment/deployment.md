@@ -95,8 +95,9 @@ The nixie image holds Bun on a slim base, every workspace package bundled with `
 loop runs in an imp, and leaving out the SDK's native packages saves about 480 MB.
 
 The backup image holds Bun on a slim base, the backup sidecar's program, and the `sops`, `restic`,
-`litestream` and `rclone` binaries. The image build pins each binary by version and checks its
-published checksum before it adds the binary.
+`litestream` and `rclone` binaries. The image build pins each binary by version and checks it
+against a recorded checksum before it adds the binary, as the
+[release pipeline](release-pipeline.md#pinned-binaries) describes.
 
 | Image        | Holds                                              | Runs                            |
 | ------------ | -------------------------------------------------- | ------------------------------- |
