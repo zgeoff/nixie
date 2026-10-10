@@ -86,5 +86,5 @@ rollback, the live key store holds keys for rows the restored database lacks, an
 number would collide with them. Cleanup of those orphaned keys follows the forget contract in
 [backup and restore](./backup-and-restore.md), after it proves no retained data needs them.
 
-On Kubernetes, the Pulumi program changes the digest, and a rollback reverts it in the
-infrastructure repo.
+On Kubernetes, the upgrade pull request changes the digest in the deployment repo's manifests, and a
+rollback reverts that commit.

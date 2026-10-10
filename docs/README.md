@@ -33,6 +33,9 @@ use the same topics as the decisions below.
 Each design states its contracts, marks what the first build implements, and links the decisions it
 rests on.
 
+- [Slices](./design/slices.md) — the first build in 9 ordered slices, each with its scope, what it
+  needs first and its acceptance checks
+
 ### Core
 
 - [Core design index](./design/core/README.md) — the 4 core docs

@@ -7,9 +7,10 @@
 
 nixie runs as one container from one image, with the web client in a second container beside it,
 next to an imp host on the same machine. Its state is one SQLite database and a key store beside it.
-Docker Compose on one host is the reference deployment. The deployment repo pins the image by digest
-and holds the secrets encrypted with sops and age. An upgrade is a merged pin bump, and a rollback
-is a revert.
+nixie supports 2 deployments from the first build: [Kubernetes](#kubernetes), and Docker Compose,
+the reference recipe for local and development use and for any single host. The deployment repo pins
+the images by digest and holds one encrypted secrets file. An upgrade is a merged pin bump, and a
+rollback is a revert.
 
 nixie owns portable behaviour: the images, the lifecycle, and the secrets, backup and health
 contracts. The deployment repo owns the infrastructure, the secrets, the backend settings and the
@@ -21,8 +22,8 @@ live in [upgrades](./upgrades.md).
 
 The first build ships the smallest deployment that keeps every guarantee true:
 
-- **Compose on one host,** with imp beside nixie, the nixie and web images pinned by digest, and one
-  sops file encrypted to the host key and your recovery key.
+- **Kubernetes or Compose,** with impd beside nixie, the nixie and web images pinned by digest, and
+  one encrypted secrets file that nixie decrypts in its own process.
 - **Hourly restic snapshots** of `nixie.db` and `keys.db` to 2 repos, with the key repo kept to one
   snapshot.
 - **Forget completes after the key repo prunes.** A forget starts a key backup at once, and key
@@ -40,7 +41,6 @@ The first build ships the smallest deployment that keeps every guarantee true:
 - key publication on every key-store change, which lets publication and forget run concurrently
 - `nixie rollback` past a schema the older build cannot read
 - the monthly restore check and the outbound heartbeat
-- [Kubernetes with Pulumi](#kubernetes-with-pulumi)
 
 ## The host
 
@@ -49,7 +49,7 @@ A host runs nixie, the imp host and the backups. It needs:
 - **Linux on x86-64 with `/dev/kvm`,** on bare metal or a VM with nested virtualization, because imp
   boots every worker and the conversation in a microVM
   ([imp install](https://github.com/zgeoff/imp/blob/v0.40.2/docs/guides/install.md)).
-- **Docker Engine with Compose v2.**
+- **Docker Engine with Compose v2,** or a Kubernetes node.
 - **Memory for the imps.** The conversation imp stays awake, and each running worker holds an imp.
   nixie runs at most 3 workers at once by default, which the
   [imp worker spike](../../../spikes/imp-worker-start/README.md) sizes at about 8 GiB for imps.
@@ -65,11 +65,11 @@ A host runs nixie, the imp host and the backups. It needs:
 nixie runs as a non-root user with a read-only root filesystem, and never mounts the Docker socket.
 **Why:** the socket gives root on the host.
 
-imp runs as its own stack from its release image. nixie reaches impd's API with a token from the
-secrets, through the sandbox adapter. **Why:** impd runs as root with extra capabilities, so keeping
-it out of nixie's Compose file keeps nixie unprivileged and lets imp upgrade on its own schedule. A
-model in an imp reaches nixie's tools through imp's reverse forward with egress `none`, as the
-[sandbox adapter](../connectors/sandbox-adapter.md) describes.
+imp runs as its own stack from its release image, outside nixie's Compose file or cluster. nixie
+reaches impd's API with a token from the secrets, through the sandbox adapter. **Why:** impd runs as
+root with extra capabilities, so keeping it apart keeps nixie unprivileged and lets imp upgrade on
+its own schedule. A model in an imp reaches nixie's tools through imp's reverse forward with egress
+`none`, as the [sandbox adapter](../connectors/sandbox-adapter.md) describes.
 
 ## The image
 
@@ -108,9 +108,11 @@ images hold no personal data.
 
 ## Secrets
 
-The deployment repo holds one sops file, encrypted to 2 age recipients. The host key lives on the
-host, readable only by nixie's user. Your recovery key stays off the host, and a restore on a new
-host needs only it.
+nixie reads its secrets from one encrypted file and decrypts it in its own process at start. The
+deployment repo chooses how it supplies the file: the Compose recipe uses sops with age, and a
+Kubernetes deployment uses sops or a secrets manager. In the sops recipe, the file is encrypted to 2
+age recipients. The host key lives on the host, readable only by nixie's user. Your recovery key
+stays off the host, and a restore on a new host needs only it.
 
 | Secret                        | Used for                                                |
 | ----------------------------- | ------------------------------------------------------- |
@@ -126,10 +128,10 @@ own key wrapped by the deployment key. The [credential store](../connectors/cred
 the backends.
 
 nixie decrypts the sops file inside its own process at start, with the host key mounted read-only,
-and keeps the plaintext in memory. A container restart decrypts again, so Docker's restart policy
-brings nixie back after a reboot. **Why:** a decrypt-to-tmpfs sidecar lost its volume when the
-sidecar exited in the [deploy spike](../../../spikes/deploy-local/README.md), and a Compose secret
-or an environment variable puts the plaintext on disk or in the container's configuration.
+and keeps the plaintext in memory. A container restart decrypts again, so the restart policy brings
+nixie back after a reboot. **Why:** a decrypt-to-tmpfs sidecar lost its volume when the sidecar
+exited in the [deploy spike](../../../spikes/deploy-local/README.md), and a Compose secret or an
+environment variable puts the plaintext on disk or in the container's configuration.
 
 You change a secret by editing the file with `sops`, committing and deploying. `sops updatekeys`
 replaces the host key. A nixie command rewraps every key in the key store in one transaction when
@@ -190,23 +192,27 @@ The deployment repo chooses how a merged pin reaches its hosts, where it keeps t
 backup backends, the heartbeat endpoint, the [model profiles](../core/models.md) with the role map,
 and any overrides of the [budget defaults](../policy/budgets.md#model-cost). These are configuration
 under 0020, not platform choices. Backups use the S3-compatible and other backends that Restic and
-rclone already support, and nixie adopts no cloud provider. An orchestrator can replace the Compose
-recipes if it honours writer shutdown, migrations, image compatibility and recovery. The deployment
-checks that its recovery key decrypts the secrets on a clean host.
+rclone already support, and nixie adopts no cloud provider. Every deployment honours writer
+shutdown, migrations, image compatibility and recovery, whether it runs on Compose or Kubernetes.
+The deployment checks that its recovery key decrypts the secrets on a clean host.
 
-## Kubernetes with Pulumi
+## Kubernetes
 
-Kubernetes is a viable later model, with the same images managed by your Pulumi program in an
-infrastructure repo. One SQLite writer sets its shape:
+Kubernetes runs the same images as Compose, from manifests in your deployment repo. One SQLite
+writer sets its shape:
 
 - one replica in a StatefulSet with a `ReadWriteOnce` volume, which stops the old pod before the new
   one starts
 - the web client as its own Deployment, which holds no state and can run more than one replica
 - one ingress on one host name, with a path rule that sends `/rpc` to nixie and a default rule to
   the web client
-- the sops file and host key as a Secret mounted read-only, decrypted by nixie at start
-- impd on each node that runs nixie, outside the cluster or as a privileged pod with `/dev/kvm`
+- the secrets file and its decryption key as a Secret mounted read-only, which nixie decrypts at
+  start
+- impd on each node that runs nixie, outside the cluster, with its API reachable from nixie's pod
 
 A `ReadWriteOnce` volume limits writable attachment to a node, not to one pod, so the deployment
-keeps a single writer through rollouts and forced recovery. How impd runs beside a cluster is an
-[open item](../open-items.md).
+keeps a single writer through rollouts and forced recovery. imp's client delivers each
+reverse-forward connection to nixie over nixie's own connection to impd, so the pod opens no inbound
+port for its tools. The reverse forward from a pod is a spike in
+[open items](../open-items.md#spikes-to-run), which checks that route with egress `none` still
+holding.

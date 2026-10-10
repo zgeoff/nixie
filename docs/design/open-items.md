@@ -140,8 +140,10 @@ Spikes that need model calls wait for model quota. Each line names the claim the
   rclone gateway, gateway crashes, stale key publication, backend key cleanup including object
   versions, and a restore after total host loss. The
   [replica encryption spike](../../spikes/replica-encryption/) tested no cloud provider.
-- **Kubernetes with imp** (effort unknown): run nixie as a one-replica StatefulSet with impd on the
-  node ([deployment](./deployment/deployment.md)).
+- **The reverse forward from a pod** (effort unknown, before slice 1): run impd on a Kubernetes node
+  outside the cluster and nixie in a pod, and check that the conversation imp reaches nixie's tools
+  through the reverse forward that nixie opens over its connection to impd, with no inbound port on
+  the pod and the imp's egress still `none` ([Kubernetes](./deployment/deployment.md#kubernetes)).
 
 ## Design tasks
 
