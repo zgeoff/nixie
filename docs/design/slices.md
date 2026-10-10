@@ -52,8 +52,9 @@ you.
 - The conversation in its long-lived imp, on model profiles: the profile config with one profile,
   mapped to the conversation role only. The conversation runs on its configured profile through the
   Agent SDK.
-- One read-only tool: a web fetch that declares `fetch` and no destination, runs on the host,
-  refuses private, loopback and link-local addresses, and returns the page as outside content.
+- One read-only tool: the [web fetch](./connectors/connector.md#web-fetch), which declares `fetch`
+  and no destination, runs on the host, refuses private, loopback and link-local addresses, and
+  returns the page as outside content.
 - The health endpoints, JSON logs of envelope fields only, and the release pipeline that publishes
   the nixie, web and conversation images
   ([health](./deployment/deployment.md#health-and-monitoring),

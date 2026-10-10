@@ -95,9 +95,6 @@ Spikes that need model calls wait for model quota. Each line names the claim the
   tested ([0029](../decisions/0029-channels-and-clients.md)).
 - **Paste spans in WebKit** (about 1 hour): rerun the paste span spike in WebKit, which failed to
   launch where the spike ran.
-- **Messages into a running task** (about 1 hour): run the 6 untested cases in the
-  [message input spike](../../spikes/sdk-owner-input/README.md). They confirm or change the default
-  in [the client](./channels/client.md).
 - **Routing quality** (about half a day): replay a scripted day of messages against a set of tasks
   and count misroutes, with the move records from [the live view](./channels/live-view.md) as the
   measure in real use. A misrouted message fails quietly

@@ -109,3 +109,42 @@ The tool declares the `fetch` effect and returns full results, 10 hits by defaul
 Every field is outside content, and only `publishedAt` is an endorsed type, because a URL can carry
 text in its path. The tool writes each search's cost on the call's record, so the live view shows
 what search costs. The Kagi API key is a static credential from the deployment.
+
+## Web fetch
+
+Web fetch is one of nixie's own tools: it fetches one public HTTPS page for the model and returns
+its text. It runs in nixie's process on the host and declares only the `fetch` effect, so it runs
+`direct`. It declares no destination, as the
+[destination limits](../policy/decision-point.md#destination-limits) set for the first build.
+
+The tool calls the page through a plain HTTP client, never through the [fetcher](./credentials.md),
+so a request carries no credential, cookie or stored header. The tool drops any user name or
+password in the URL.
+
+The tool refuses any URL that could reach a non-public address, in these stages:
+
+1. It accepts `https` only, and refuses every other scheme, `http` included.
+2. It resolves the host, checks every A and AAAA address returned, and refuses the URL when any
+   address is not public.
+3. It connects to the address it checked, and sends the host name for TLS and in the `Host` header,
+   so a second DNS answer never changes where the request goes.
+4. It runs the first 3 stages again on every redirect.
+
+A non-public address is one of these:
+
+- loopback, the private ranges, and the unspecified, multicast and broadcast addresses
+- link-local, which holds cloud metadata services at `169.254.169.254`
+- the shared address space `100.64.0.0/10`, which holds Tailscale addresses
+- IPv6 unique local and link-local addresses, and the IPv4-mapped IPv6 form of any address above
+
+**Why:** the tool runs on the host, so a URL that names one of these addresses reaches nixie's own
+services, impd, a cluster's pod and service ranges, or a device on your tailnet.
+
+Each call has 3 limits, all configurable: a body of 2 MB, 15 s for the whole call with its
+redirects, and 5 redirects. The tool stops reading at the body limit and marks the result as
+truncated.
+
+The result holds the final URL, the status code, the content type, the page's text and the truncated
+mark. An HTML page returns its readable text, another text type returns as it arrived, and a binary
+type returns no body. Every field is outside content. The status code and the truncated mark are
+endorsed types, and the URL and the text never are.
