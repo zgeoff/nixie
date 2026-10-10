@@ -22,8 +22,9 @@ Adding a server and marking it trusted are widenings, so each asks once. Removin
 clearing its trusted mark narrows and applies at once.
 
 A server over stdio runs as a command in an imp with egress `none` and no grants, because its code
-sits outside nixie's rules. The proxy reaches a server over HTTP from the host, and refuses private,
-loopback and link-local addresses that the server's URL does not name.
+sits outside nixie's rules. The proxy reaches a server over HTTP from the host, and applies the
+[web fetch](./connector.md#web-fetch) address check on every hop, except for an address the server's
+URL names.
 
 A server whose backend runs outside the sandbox connects as an HTTP server with an OAuth grant whose
 scopes limit the tools nixie can call. The deployment configures the URL and registers nixie as a
