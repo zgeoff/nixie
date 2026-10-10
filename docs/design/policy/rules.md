@@ -204,7 +204,7 @@ attendees with no prompt during it, and held back the first invite after it ende
 
 The starter rule set ships as a template in the definitions scaffold that an owner copies, never as
 rules built into the public repo, because the principle "Behaviour is data" keeps policy out of the
-system tier. It has 9 rules:
+system tier. It has 8 rules:
 
 | Rule                        | Outcome | Matches                                               |
 | --------------------------- | ------- | ----------------------------------------------------- |
@@ -215,22 +215,21 @@ system tier. It has 9 rules:
 | `allow-sandboxed-code`      | Allow   | Effect `run_code`                                     |
 | `allow-narrowing`           | Allow   | Effects `policy_narrow` and `budget_lower`            |
 | `ask-permanent-deletes`     | Ask     | Effect `delete`                                       |
-| `ask-jobs-that-act`         | Ask     | Creating a job with a tool that sends or deletes      |
 | `ask-exports`               | Ask     | Effect `export`, such as a memory or event log export |
 
 The always-ask set and the destination limits hold whatever the starter rules say, so the set is
 permissive inside those bounds. An effect it does not mention, such as `device`, falls to "no rule
-matched" until the owner adds a rule. In the prototype, the starter set raised 16 prompts over 14
+matched" until the owner adds a rule. In the prototype, the starter set raised 15 prompts over 14
 scenarios, each one intended. A cautious variant that asks before every write and every send raised
-22, all 6 extra prompts in one run of the inbox job. The owner chose the permissive posture in
+21, all 6 extra prompts in one run of the inbox job. The owner chose the permissive posture in
 [0028](../../decisions/0028-policy-design.md).
 
 ### Jobs
 
 No starter rule allows creating a job. A job the owner asks for in a direct message runs through
 consent at stage 8 of the [decision point](./decision-point.md#the-pipeline), with no prompt, and a
-job nobody asked for, such as one a task proposes, falls to "no rule matched" and asks.
-`ask-jobs-that-act` still asks for a job whose tools send or delete, whoever asked.
+job nobody asked for, such as one a task proposes, falls to "no rule matched" and asks. This holds
+for a job whose tools send or delete too: the notice below keeps it in the owner's sight.
 
 Every job creation or change posts a notice, however the decision point allowed it: a line under
 nixie's reply, such as "Scheduled: inbox triage, daily 7:00", with an undo action. Undo removes the

@@ -236,18 +236,18 @@ same scenarios with a model. The [prototype](../../../spikes/policy-rules/README
 | A direct request with no rule                     | 0       |                                                        |
 | Morning report job                                | 0       |                                                        |
 | Grant for a day                                   | 2       | The always-ask set, then outside steering after expiry |
-| Create a job that replies to email                | 1       | The owner's ask rule; a job the owner asked for ran    |
+| Create a job that replies to email                | 0       |                                                        |
 | A job nobody asked for                            | 1       | No rule matched                                        |
 | Delete for good                                   | 1       | The owner's ask rule                                   |
 
-None of the 16 prompts came from cause 1 or 2. Two of them come from the starter template's own ask
-rules, `ask-jobs-that-act` and `ask-permanent-deletes`, and `ask-exports` raises the same cause. A
-prompt from the owner's ask rule sits outside the 0-prompt count, so the starter set can add
-friction that the count never shows. The scenario report lists those prompts apart from the count.
-The booking is the case [0014](../../decisions/0014-search.md) asks the scenarios to count: a
-destination that came from search results, which the owner can clear with a rule for bookings. CI
-runs the scenarios on every change to the starter rule set or the pipeline, and a model-driven run
-joins them once auto-mode is tested.
+None of the 15 prompts came from cause 1 or 2. One of them comes from the starter template's own ask
+rule `ask-permanent-deletes`, and `ask-exports` raises the same cause. A prompt from the owner's ask
+rule sits outside the 0-prompt count, so the starter set can add friction that the count never
+shows. The scenario report lists those prompts apart from the count. The booking is the case
+[0014](../../decisions/0014-search.md) asks the scenarios to count: a destination that came from
+search results, which the owner can clear with a rule for bookings. CI runs the scenarios on every
+change to the starter rule set or the pipeline, and a model-driven run joins them once auto-mode is
+tested.
 
 ## Settled decisions
 

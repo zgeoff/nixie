@@ -29,10 +29,10 @@ nixie settles the open choices in its policy design as follows:
   the database and when nixie exports runtime rules.
 - **A permissive starter rule set, with notices for jobs.** The starter set allows reads, notes,
   writes the service can restore, sends within the destination limits, sandboxed code and narrowing
-  changes, and asks before deleting for good, before exporting, and before creating a job whose
-  tools send or delete. No starter rule allows creating a job: a job the owner asks for runs through
-  consent, and a job nobody asked for asks. Every job creation or change posts a notice with undo,
-  and the live view lists every job.
+  changes, and asks before deleting for good and before exporting. No starter rule allows or asks
+  for creating a job: a job the owner asks for runs through consent, whatever its tools do, and a
+  job nobody asked for asks. Every job creation or change posts a notice with undo, and the live
+  view lists every job.
 
 ## Why
 
@@ -48,7 +48,7 @@ nixie settles the open choices in its policy design as follows:
   [0023](./0023-lifting-always-ask.md) exists to prevent.
 - A list of rules with nested checks is readable in YAML, YAML allows comments, and Bun parses it
   natively. The schema catches the mistakes that hand edits make.
-- The starter set raised 16 prompts over 14 scripted scenarios, each one intended, against 22 for a
+- The starter set raised 15 prompts over 14 scripted scenarios, each one intended, against 21 for a
   set that asks before every write and send, whose 6 extra prompts all came from one run of an inbox
   job ([policy rules spike](../../spikes/policy-rules/), 2026-10-09).
 - A job acts long after the conversation that made it, so a notice and a list keep every job in the
@@ -69,6 +69,9 @@ nixie settles the open choices in its policy design as follows:
 - **A cautious starter set, or one that allows quiet jobs.** The cautious set asks on every run of a
   routine job. A rule that allows quiet jobs lets a steered task schedule work the owner never asked
   for.
+- **A starter rule that asks before creating a job that sends or deletes.** It adds one deliberate
+  yes for a job that acts on the owner's behalf, and prompts for a job the owner already asked for.
+  Consent stops jobs nobody asked for, and the notice keeps every job in sight.
 
 ## Consequences
 

@@ -359,8 +359,7 @@ const SCENARIOS: Scenario[] = [
           args: { tools: ['mail.search', 'mail.reply'] },
           ...buildTalk('every weekday, reply to routine emails for me'),
         },
-        expectPrompt: 'ask_rule',
-        answer: 'once',
+        note: 'the owner asked, so consent allows a job that sends',
       },
       {
         call: {

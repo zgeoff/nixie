@@ -40,7 +40,6 @@ export const STARTER_RULES: Rule[] = [
   { id: 'allow-sandboxed-code', outcome: 'allow', effects: ['run_code'] },
   { id: 'allow-narrowing', outcome: 'allow', effects: ['policy_narrow', 'budget_lower'] },
   { id: 'ask-permanent-deletes', outcome: 'ask', effects: ['delete'] },
-  { id: 'ask-jobs-that-act', outcome: 'ask', tools: ['job.create'], effects: ['send', 'delete'] },
   { id: 'ask-exports', outcome: 'ask', effects: ['export'] },
 ];
 

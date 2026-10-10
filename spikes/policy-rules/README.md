@@ -6,7 +6,7 @@ runs it over sample tool calls, reordered definitions, rule edits and scripted s
 sample call got exactly one decision, and none changed under 200 rule orders. The snapshot hash
 stayed the same across 1,000 equivalent reorderings and moved on each of 18 real changes. The
 widening check classified 26 of 27 rule edits correctly and erred only towards "widens". The
-scripted scenarios raised 16 prompts against the starter rule set, none of them from a direct
+scripted scenarios raised 15 prompts against the starter rule set, none of them from a direct
 request or a repeat.
 
 ## Questions
@@ -33,7 +33,7 @@ request or a repeat.
 
 [`engine.ts`](./engine.ts) holds the rule format, the decision pipeline, the canonical form, the
 snapshot hash and the widening check. [`starter.ts`](./starter.ts) holds a sample tool registry of
-27 tools with declared effects and destination arguments, and the starter rule set of 9 rules that
+27 tools with declared effects and destination arguments, and the starter rule set of 8 rules that
 the design proposes. Each question has its own script:
 
 - [`matcher.ts`](./matcher.ts) builds 108 calls, every tool in every context with sample arguments,
@@ -181,8 +181,8 @@ morning report job: 0 prompt(s)
 grant for a day: 2 prompt(s)
       rules.add: PROMPT always_ask
       calendar.invite: PROMPT outside_steering - grant expired
-create a job that replies to email: 1 prompt(s)
-      job.create: PROMPT ask_rule
+create a job that replies to email: 0 prompt(s)
+      job.create: allow (consent)
       job.create: allow (consent) - the owner asked, so consent allows it
 a job nobody asked for: 1 prompt(s)
       job.create: PROMPT no_rule - a task proposes a weekly reading digest
@@ -190,7 +190,7 @@ delete for good: 1 prompt(s)
       mail.purge: PROMPT ask_rule
 prompts by cause:
   always_ask: 4
-  ask_rule: 2
+  ask_rule: 1
   no_rule: 7
   outside_steering: 3
 defects (causes 1 and 2): 0
@@ -208,14 +208,14 @@ the design intends:
 - **No rule matched, 7.** A device tool the starter set does not cover, until "always allow" or an
   accepted proposal added a rule; the proposal appeared after the third approval. One more came from
   a job that a task created with no request from the owner.
-- **An owner's ask rule, 2.** Creating a job whose tools send email, and a permanent delete. Neither
-  fits the 5 causes from decision 0005; the script records them under the sixth cause that
+- **An owner's ask rule, 1.** A permanent delete. It fits none of the 5 causes from decision 0005;
+  the script records it under the sixth cause that
   [decision 0028](../../docs/decisions/0028-policy-design.md) adds.
 
-A job the owner asked for in the conversation, such as a morning summary, ran with no prompt through
-consent.
+A job the owner asked for in the conversation ran with no prompt through consent, both a morning
+summary and a job that replies to email.
 
-The cautious starter set raised 22 prompts instead of 16. All 6 extra prompts came from the inbox
+The cautious starter set raised 21 prompts instead of 15. All 6 extra prompts came from the inbox
 job, one per label, archive, trash, draft, reply and send to a known contact, so a job that runs
 every 30 minutes would raise them on every run.
 
