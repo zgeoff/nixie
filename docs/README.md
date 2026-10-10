@@ -39,6 +39,8 @@ below, and planned work lives in Linear.
   lock and epoch, migrations and the schema version, and random key store IDs
 - [The event log](architecture/event-log.md) — the record envelope, erasable fields and the key
   store, projections and their rebuild, and reading by sequence
+- [The web client](architecture/web-client.md) — the Start server, session forwarding, the
+  conversation view, the outbox, health and the web image
 
 ## Design
 

@@ -1,0 +1,13 @@
+# The image builds from the tracked sources only: no dependencies, build output, local
+# credentials or agent state.
+**/node_modules
+**/dist
+.git
+.worktrees
+.claude
+.reviews
+.turbo
+**/.env
+**/.env.*
+docs
+e2e

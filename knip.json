@@ -7,6 +7,8 @@
   "workspaces": {
     ".": {},
     // a test spawns the stub program as its own process, so no import reaches it
-    "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] }
+    "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
+    // TanStack Router loads each route file by its path, so no import reaches it
+    "apps/web": { "entry": ["src/routes/**/*.tsx"] }
   }
 }

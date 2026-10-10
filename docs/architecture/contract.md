@@ -22,6 +22,10 @@ and no server code, so it carries the `lib` tag without `server-only` and a clie
   `tokenDelivery`: `cookie` for a browser, which receives an `HttpOnly` cookie, and `bearer` for the
   Android app, which receives the token in the output. The server keeps only a hash of each token,
   so a retried bearer enrolment receives a fresh token for the same session.
+- **Transport names.** `sessionCookieName` holds the name of the browser's session cookie, which the
+  API sets from the enrolment response with `Path=/`. `clientHeaderName` holds the name of the
+  custom header that every call carries. **Why:** a cross-site form cannot send a custom header, so
+  the API refuses a call without it.
 - **The live stream.** `conversation.read` returns a page of records and `readAtSequence`, the log
   sequence it read at. The client passes that sequence to `log.follow`, whose event ID is each
   record's sequence. A reconnect with `Last-Event-ID` therefore resumes with no gap and no repeat.
