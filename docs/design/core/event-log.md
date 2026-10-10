@@ -90,14 +90,18 @@ the owner confirms.
 The keys live in a key store apart from the database, each one wrapped by a deployment key, and the
 memory item keys from 0010 live there too. **Why:** a database backup taken before a key is deleted
 holds the wrapped key next to its ciphertext, so a key kept in the database would come back with any
-restore. Database backups therefore hold only ciphertext. The key store's backup keeps an
-acknowledged fresh copy. Forget forces replacement and cleanup of older recoverable copies before it
+restore. Database backups therefore hold only ciphertext. The key store's backup keeps one
+acknowledged fresh copy. Forget forces replacement and removal of older recoverable copies before it
 reports completion, under
-[the memory lifecycle](../memory/store.md#forget-completion-and-key-backups). Key-backup publication
-is serialized with forget so an older staging copy cannot restore a deleted key after completion. A
-restore takes the database backup, the current key store backup and the deployment key, which is a
-deployment secret kept with the other secrets under [0020](../../decisions/0020-deployment.md). The
-[backup and restore spike](../open-items.md#spikes-to-run) checks that restore.
+[the memory lifecycle](../memory/store.md#forget-completion-and-key-backups). In the first build,
+key-backup publication and forget share one lock, so an older staging copy cannot restore a deleted
+key after completion. A later stage replaces the lock with publication that rejects stale staging
+generations, under
+[the backup lifecycle](../deployment/backup-and-restore.md#forget-triggered-key-cleanup). A restore
+takes the database backup, the current key store backup and the deployment key, which is a
+deployment secret kept with the other secrets under [0020](../../decisions/0020-deployment.md).
+[Backup and restore](../deployment/backup-and-restore.md) covers the schedule and the restore, which
+the [deploy spike](../../../spikes/deploy-local/README.md) ran.
 
 The database's own full-text index covers only the envelope. Free text is erasable, and a persisted
 index would keep its words after the key is gone, so full-text search over message content runs on

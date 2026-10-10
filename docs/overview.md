@@ -15,12 +15,12 @@ This page states the current design in brief. Each point links the decision that
 
 ## Tiers
 
-| Tier          | Holds                                                   | Lives in                                      |
-| ------------- | ------------------------------------------------------- | --------------------------------------------- |
-| System        | Platform code, defaults and docs                        | The public `nixie` repo                       |
-| Definitions   | One owner's persona, jobs and policy seed               | A private repo, or another definitions source |
-| Deployment    | The image version, infrastructure, secrets and backups  | Wherever the owner deploys nixie              |
-| Personal data | Memory, conversations, the event log and connector data | Hosts the owner controls, with backups        |
+| Tier          | Holds                                                   | Lives in                                         |
+| ------------- | ------------------------------------------------------- | ------------------------------------------------ |
+| System        | Platform code, defaults and docs                        | The public `nixie` repo                          |
+| Definitions   | One owner's persona, jobs and policy seed               | A private repo, or another definitions source    |
+| Deployment    | The image version, infrastructure, secrets and backups  | Wherever the owner deploys nixie                 |
+| Personal data | Memory, conversations, the event log and connector data | Hosts the owner controls, with encrypted backups |
 
 The public repo ships no persona and no policy that encodes one owner: every behaviour is data that
 the owner's definitions supply.
@@ -58,10 +58,10 @@ imp that stays awake, and sessions on the built-in coding adapter run inside an 
 [0026](./decisions/0026-where-workers-and-the-conversation-run.md)).
 
 The owner talks to the main thread. The main thread routes work to tasks, which are durable side
-threads with their own context and tools, and tasks start workers, which are disposable jobs behind
-a tool call. The main thread names where it sent each message and works from a live task board. A
-live view of the whole system reads the same data, so the owner can inspect any task and step in
-([0018](./decisions/0018-main-thread-and-tasks.md)).
+threads with their own context and tools, and tasks start workers, each a disposable unit of work
+behind one tool call. The main thread names where it sent each message and works from a live task
+board. A live view of the whole system reads the same data, so the owner can inspect any task and
+step in ([0018](./decisions/0018-main-thread-and-tasks.md)).
 
 An outside action with side effects runs on a durable queue with an explicit outcome. An outside
 action whose outcome is unknown after a crash is retried only with an idempotency key or after a
@@ -100,6 +100,12 @@ fails closed; nixie runs fully without it ([0008](./decisions/0008-auto-mode.md)
 always-ask set gain a passkey check after the first build
 ([0012](./decisions/0012-high-risk-approvals.md)).
 
+A consent checker that nixie builds confirms that the owner's own message asked for an action, so a
+direct request that no rule covers runs without a prompt. A prompt from a rule the owner wrote is
+counted apart from the 0-prompt target. A counting proxy on the host enforces a hard spending stop.
+Rules are YAML in the definitions repo, and the starter set is permissive, with a notice and undo
+for every job created or changed ([0028](./decisions/0028-policy-design.md)).
+
 ## Memory
 
 Memory is rows in nixie's database, with provenance the model cannot write and a history table. The
@@ -116,9 +122,12 @@ Every record carries a hash of the definitions in force. Rule and policy changes
 at once, and persona and job definitions stay fixed for a task's life
 ([0013](./decisions/0013-definition-versioning.md)).
 
-The conversation runs on the Agent SDK's session and compaction. nixie adds retrieval over memory
-and over the event log, starting with keyword search, and a compaction summary never becomes memory
-([0024](./decisions/0024-memory-in-context.md)).
+The conversation runs on the Agent SDK's session and compaction, and a compaction summary never
+becomes memory ([0024](./decisions/0024-memory-in-context.md)). nixie retrieves from memory and past
+messages with local embeddings and keyword search. The conversation writes memory during chat, and a
+background writer captures passing facts in batches. The SDK transcript is a cache that nixie
+rebuilds from the event log. "Forget that" in chat retires an item with undo, and only a checked
+action in the client destroys one ([0031](./decisions/0031-memory-capture-context-and-removal.md)).
 
 ## Channels
 
@@ -126,6 +135,12 @@ nixie's own client holds the conversation, approvals and voice: a web client for
 and a React Native app built with Expo, Android first. Chat apps such as Telegram carry only a push
 notice with no content and a link to the client ([0009](./decisions/0009-first-channel.md)). Voice
 is essential but not in the first build, and its stack is deferred.
+
+Both clients share one oRPC contract served through Elysia, with a live stream over server-sent
+events. The web client runs on TanStack Start inside nixie's own process. A device signs in with an
+enrolment code, and later a passkey. A proposal shows as a card in its thread and on the digest
+sheet, with Approve, Always allow, Defer and Decline. A push buzzes only for items that need the
+owner's judgement ([0029](./decisions/0029-channels-and-clients.md)).
 
 ## Connectors
 
@@ -149,6 +164,16 @@ Each owner registers their own OAuth clients, and nixie ships no central app
 ([0019](./decisions/0019-connector-authorization.md)). Search is one of nixie's tools, on Kagi
 first, returning full results to the conversation ([0014](./decisions/0014-search.md)).
 
+A model in an imp reaches nixie's tools through a reverse forward, with no network egress. Google is
+the first connector. nixie's tools and its proxy use the v2 MCP packages, and the first build
+implements the imp sandbox only. The code environment offers Node.js, Python and common Linux tools.
+Disconnect stops nixie's use of a credential it cannot delete at its source
+([0030](./decisions/0030-connectors-and-sandbox-environments.md)).
+
+The [MCP proxy design](./design/connectors/mcp-proxy.md) connects an outside server whose backend
+lives outside the sandbox, such as atc, over HTTP with a scoped OAuth grant that the deployment
+configures.
+
 ## Deployment
 
 An owner's definitions live apart from the deployment and reach nixie through a definitions source:
@@ -156,3 +181,8 @@ a git repo, a local path or bucket storage. The definitions seed the database, w
 place the owner looks, and a seed that widens a rule waits for the owner's confirmation. Docker
 Compose on one host is the recommended deployment, and Kubernetes managed with Pulumi is also viable
 ([0020](./decisions/0020-deployment.md)).
+
+Restic takes encrypted snapshots of the data and key stores. Litestream replicates the database to
+S3-compatible storage through an rclone crypt gateway on the host, so the provider holds only
+ciphertext. The deployment chooses the backend. The first build runs Restic snapshots on one host,
+and the replica follows ([0032](./decisions/0032-offsite-backups-and-replication.md)).

@@ -2,7 +2,8 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Amends: [0011](./0011-memory-writes.md), [0024](./0024-memory-in-context.md)
+- Amends: [0010](./0010-memory-store.md), [0011](./0011-memory-writes.md),
+  [0024](./0024-memory-in-context.md)
 - Design: [the store](../design/memory/store.md), [writes](../design/memory/writes.md),
   [context](../design/memory/context.md)
 

@@ -6,11 +6,14 @@ and the stages agreed for after the first build.
 
 ## Deferred decisions
 
+- **The matching-key recovery path.** Generation-triggered, debounced Restic key snapshots are a
+  candidate within the existing publication barrier. The encrypted-content recovery point, a paired
+  cloud restore and the cadence under failures remain untested; a fresh data replica alone cannot
+  recover absent keys.
 - **The local encoder model and library.** Local embeddings are agreed for the first build under
   [0031](../decisions/0031-memory-capture-context-and-removal.md). The synthetic spike's encoders
   are candidates, not adopted dependencies. Compare quality, runtime, memory use and pinned-asset
   packaging, then choose the model and library with the owner before product implementation.
-
 - **The voice stack.** Voice runs in nixie's own client under
   [0009](../decisions/0009-first-channel.md), and the
   [first-token spike](../../spikes/sdk-first-token/) measured an Agent SDK turn: Haiku 5.5 at low
@@ -29,6 +32,11 @@ and the stages agreed for after the first build.
 
 ## Spikes to run
 
+- **Offsite replica and forget cleanup** (effort unknown): test the deployment-configured backend
+  and encryption component with the data replica plus fresh keys. Test gateway crashes and restarts
+  against the selected cloud backend, failed/stale key publication, complete backend key cleanup
+  including object versions, and a restore after total host loss. The local Restic and
+  [replica encryption](../../spikes/replica-encryption/) spikes test no cloud provider.
 - **Retirement and bulk permanent deletion.** Test typed intent against an exact item/version,
   ambiguous references, pasted instructions and unchanged content provenance. Test a restored or
   edited item after bulk preview, later retirements, duplicate confirmations and crashes between
@@ -103,16 +111,18 @@ and the stages agreed for after the first build.
 - **A memory poisoning run** (about half a day): replay poisoned emails through a worker, and
   confirm that every memory write they cause reaches the owner as a proposal with untrusted
   provenance under [0011](../decisions/0011-memory-writes.md).
-- **Backup and restore** (about half a day): restore a database dump or a SQLite copy to a clean
-  host with restic, from an age key held on a passkey or a paper key. It checks that the per-item
-  keys from [0010](../decisions/0010-memory-store.md) survive a lost host. The
-  [shredding spike](../../spikes/memory-shred/README.md) checked forgetting against backups on one
-  host; Litestream replication of the key store, which would keep a deleted key for its own
-  retention, is part of this run.
-- **A deployment on a throwaway host** (about half a day): a Compose file that pins an image,
-  secrets encrypted with sops and age, and a dependency bot. Merge a version bump and roll it back
-  with a database restore, to confirm that an upgrade is a merge and a rollback is a revert plus a
-  restore under [0020](../decisions/0020-deployment.md).
+- **A deployment on a real host** (about 1 day): the [deploy spike](../../spikes/deploy-local/) ran
+  the Compose path on local containers. A throwaway host with KVM adds what it left out: imp beside
+  nixie with imp images added from a manifest, a pull from a public registry by digest, a Renovate
+  pull request, the deploy script on a timer, restic over a network backend, a disk with LUKS, and a
+  recovery key held off the host
+  ([deployment](./deployment/deployment.md#deployment-configuration)).
+- **A rollback across outside actions** (about half a day): run outside actions after an upgrade,
+  roll back with a restore, and confirm that each action reaches the restored log with its outcome
+  and that its task starts paused ([upgrades](./deployment/upgrades.md#rolling-back)).
+- **Kubernetes with imp** (effort unknown): run nixie as a one-replica StatefulSet with impd on the
+  node, the shape [deployment](./deployment/deployment.md#kubernetes-with-pulumi) proposes, on the
+  owner's own cluster.
 - **auto-mode on nixie's scenarios** (effort unknown): run auto-mode against the scripted scenarios
   in the [policy rules spike](../../spikes/policy-rules/README.md), with a model making the calls,
   and measure the bar from [0008](../decisions/0008-auto-mode.md): catastrophic actions allowed per
@@ -185,10 +195,17 @@ and the stages agreed for after the first build.
   ([0014](../decisions/0014-search.md)), and the budgets in the policy design count `spend` tools
   and model cost only. A budget kind for tool calls that cost money without the `spend` effect would
   let the owner cap search and similar services.
-- **Upgrades on the host.** A merged upgrade reaches the host by a webhook, a poll from the host, or
-  the owner running one command, and a poll needs no inbound route
-  ([0020](../decisions/0020-deployment.md)). The seeding conflict view and the export of runtime
-  rules as a pull request are part of the same design.
+- **The seeding conflict view and the export of runtime rules.** A seed shows a rule edited at
+  runtime as a conflict, and nixie exports runtime rules to the definitions repo as a pull request
+  ([0020](../decisions/0020-deployment.md)).
+  [Deployment](./deployment/deployment.md#seeding-the-definitions) sets when a seed runs, and the
+  client view and the export are left to design.
+- **The release pipeline.** Versioning, the CI build, registry publishing and signing for the nixie
+  image and its imp images, following the owner's usual release-please setup with CI publishing to
+  GHCR ([deployment](./deployment/deployment.md#the-image)).
+- **npm packages.** The first build publishes no package, and every adapter lives in the monorepo.
+  Publishing the interfaces from [0016](../decisions/0016-own-interfaces.md) as a package, for
+  adapters outside the repo, is a later stage.
 
 ## Later stages
 
@@ -197,7 +214,6 @@ and the stages agreed for after the first build.
   interface without a second implementation. A container adapter needs its injecting proxy, tool
   relay, egress gateway, disk quota backend and isolation checks before it supports any run. Memory
   sleep stays unavailable unless a checkpoint implementation proves the same semantics.
-
 - **Taint per job run.** A job that reads only the owner's data runs without the destination limits
   ([0015](../decisions/0015-taint-scope.md)). The first build records the source of every tool
   result to support it.

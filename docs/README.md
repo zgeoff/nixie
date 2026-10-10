@@ -86,6 +86,16 @@ the decisions it rests on.
   credential store, serving nixie's tools, the sandbox adapter, the definitions source, the MCP
   proxy, and running code and coding sessions
 
+### Deployment
+
+- [Deployment](./design/deployment/deployment.md) — the host, the nixie image and the imp images,
+  secrets decrypted in nixie's process, seeding the definitions, health, and Kubernetes, with the
+  deployment lifecycle and configuration
+- [Backup and restore](./design/deployment/backup-and-restore.md) — hourly restic backups, the key
+  store in its own repo, restoring on a new host, and the restore check
+- [Upgrades](./design/deployment/upgrades.md) — the pin and the bot, delivery to the host, a release
+  on the host, migrations that only add, and rollback
+
 ## Decisions
 
 What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
@@ -148,7 +158,6 @@ The memory store, which writes skip review, and definition versioning.
   every record, with rules applying at once and persona and jobs fixed per task
 - [0024: How memory reaches the model](./decisions/0024-memory-in-context.md) — the SDK's session
   and compaction, with retrieval over memory and the event log; refined by 0031
-
 - [0031: Memory capture, context and removal](./decisions/0031-memory-capture-context-and-removal.md)
   — local semantic retrieval, batched capture, transcript cache, reversible chat removal and grouped
   notices
@@ -159,7 +168,6 @@ Clients, push and voice.
 
 - [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
   conversation, approvals and voice, and chat apps carry content-free pushes
-
 - [0029: Channels and clients](./decisions/0029-channels-and-clients.md) — oRPC, Start and Expo,
   device sessions, deferred approvals, two push levels and native Android paste capture
 
@@ -188,6 +196,9 @@ Definitions and deployment models.
 
 - [0020: Deployment and definitions](./decisions/0020-deployment.md) — definitions in their own repo
   seed the database, and running nixie lives with the deployment
+- [0032: Offsite backups and replication](./decisions/0032-offsite-backups-and-replication.md) —
+  Restic snapshots plus a database-only Litestream replica through a host rclone crypt gateway; the
+  deployment supplies the S3-compatible backend
 
 ## Research
 
@@ -317,3 +328,10 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   and a cursor-first failure control without model calls
 - [Forget completion across backups](../spikes/forget-backups/) — snapshot removal, data pruning and
   restore with a deleted item key on a local candidate backend
+- [Deploy, back up, restore and roll back](../spikes/deploy-local/) — a digest pin, sops secrets
+  decrypted in the process, the key store in its own restic repo, and a rollback as a revert plus a
+  restore
+- [Replica encryption](../spikes/replica-encryption/) — Litestream through a host crypt gateway,
+  process outages and a restore without the original database
+- [Paired data and key recovery](../spikes/paired-recovery/) — continuous encrypted data plus Restic
+  keys, stale-key control and a post-forget restore

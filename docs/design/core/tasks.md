@@ -66,6 +66,29 @@ its own record:
 - **Close** ends the task for good. A closed task takes no messages and starts nothing, and it stays
   in the live view and the record like any finished task.
 
+### Recovery holds
+
+A restore or rollback command installs a durable recovery hold before startup can claim work. The
+hold is independent of the task's lease and ordinary state. It takes precedence over lease expiry,
+inbox delivery, timer recovery and step transitions: those paths can record input and outcomes but
+cannot make held work runnable. Task claims and the transaction that starts each outside-action
+attempt check the hold, including retries and idempotent reconciliation attempts.
+
+A host restore holds every nonterminal task and autonomous job or trigger launch recovered from the
+snapshot. A rollback holds tasks and autonomous launch sources affected by the discarded span. A
+restored job launch can enqueue held work but cannot start it. A restart preserves the holds. Only a
+checked owner resume for the task, or a checked re-enable of its job or trigger source, clears the
+corresponding hold; message arrival alone does not. The existing outcome-recording path remains
+available for an attempt that already started.
+
+Before replacing the database, the stopped-host restore or rollback command writes an
+incomplete-recovery marker outside that database. It commits the holds and restore epoch after
+installing the recovered database, then clears the marker before runners, outside-action executors
+or trigger dispatchers start. Startup rejects an incomplete recovery marker rather than treating it
+as an ordinary crash. This is the hold used by
+[backup recovery](../deployment/backup-and-restore.md#restoring-on-a-new-host) and
+[rollback](../deployment/upgrades.md#rolling-back).
+
 ## Steps and leases
 
 A step is the unit of progress. A turn step runs `query()` with `resume` on the task's SDK session,
@@ -225,7 +248,8 @@ A crash stops the steps in flight, and a restart resumes every task from the log
 Before any affected task starts, the restart sweep finishes pending
 [invalid-cache cleanup](../memory/context.md#removing-invalid-transcript-copies). It also:
 
-1. Expires every lease held by the dead process, which returns those tasks to `ready`.
+1. Expires every lease held by the dead process. A task without a pause or recovery hold returns to
+   `ready`; a held task keeps its hold and cannot be claimed.
 2. Marks each step that started without a commit as interrupted, with a record.
 3. Marks each outside action that started an attempt without a recorded result as unknown, under
    [outside actions](./outside-actions.md).
