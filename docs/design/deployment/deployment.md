@@ -39,7 +39,8 @@ The first build holds:
 - **Restore on a new host,** with the recovery holds that stop a restored task from repeating an
   outside action.
 - **Upgrades as pin bumps,** delivered by hand or by the poll timer. Every first-build release keeps
-  its schema readable by the release before it, so every rollback is a revert with no restore.
+  its schema readable by the release before it, so a rollback by one release is a revert with no
+  restore. A rollback further back waits for the restore path in a later stage.
 - **The health endpoint,** with a push notice when a part turns unready.
 
 Later stages add:
