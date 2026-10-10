@@ -7,6 +7,19 @@
   "workspaces": {
     ".": {},
     // a test spawns the stub program as its own process, so no import reaches it
-    "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] }
+    "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
+    // knip's Vite plugin cannot load vite.config.ts through the workspace tsconfig, so the web
+    // client names Start's entries itself: the router, the routes, the server entry, and the test
+    // preload that bunfig.toml loads
+    "apps/web": {
+      "entry": [
+        "src/router.tsx",
+        "src/routes/**/*.tsx",
+        "src/server.ts",
+        "src/mocks/test-preload.ts",
+        "vite.config.ts"
+      ],
+      "vite": false
+    }
   }
 }
