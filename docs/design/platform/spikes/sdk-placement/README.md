@@ -76,7 +76,7 @@ audit row for a refused host.
    environment, so read it from the vault first.
 
    ```bash
-   cd <nixie_repo>/spikes/sdk-placement && bun install
+   cd <nixie_repo>/docs/design/platform/spikes/sdk-placement && bun install
    export IMP_URL=http://localhost:7470 IMP_TOKEN=$(<imp_clone>/scripts/dev.sh token)
    export CLAUDE_CODE_OAUTH_TOKEN=$(
      OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../../../../.claude/settings.local.json) \

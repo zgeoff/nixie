@@ -59,7 +59,7 @@ flag in the script that says whether the owner asked for the action.
 ## How to run
 
 ```bash
-cd spikes/policy-rules
+cd docs/design/platform/spikes/policy-rules
 bun run spike
 STARTER=cautious bun scenarios.ts
 ```

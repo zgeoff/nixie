@@ -62,7 +62,7 @@ on exit.
 
    ```bash
    export IMP_URL=http://localhost:7470 IMP_TOKEN=$(scripts/dev.sh token) SPIKE_WORK=<scratch_dir>
-   bash <nixie_repo>/spikes/imp-broker/run.sh
+   bash <nixie_repo>/docs/design/platform/spikes/imp-broker/run.sh
    ```
 
 4. Read the host image tag, stop the instance, and remove what it made. `dev.sh down` removes both

@@ -94,7 +94,7 @@ empties `results/` first, so a summary never mixes runs.
    The script refuses any `IMP_URL` that is not `http://localhost:*`.
 
    ```bash
-   cd <nixie_repo>/spikes/imp-worker-start && bun install
+   cd <nixie_repo>/docs/design/platform/spikes/imp-worker-start && bun install
    export IMP_URL=http://localhost:7570 IMP_TOKEN=$(<imp_clone>/scripts/dev.sh token)
    export CLAUDE_CODE_OAUTH_TOKEN=$(op read "op://<vault>/<item>/credential")
    SPIKE_WORK=<scratch_dir> bash run.sh

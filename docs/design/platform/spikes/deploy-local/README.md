@@ -67,7 +67,7 @@ Results land in `results/`, which git ignores.
 Docker with Compose, `jq`, `xxd` and `curl` need to be on the host, and ports 55100 to 55102 free.
 
 ```bash
-cd spikes/deploy-local && bun install
+cd docs/design/platform/spikes/deploy-local && bun install
 bash run.sh
 ```
 

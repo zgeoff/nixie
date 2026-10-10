@@ -31,8 +31,8 @@ libs/       shared code that belongs to no domain
 - **A guest** holds the code a sandbox image runs. It speaks to nixie only through the wire formats
   in `libs/wire`, over the sandbox's route back to nixie.
 
-The workspace globs are `apps/*`, `modules/*`, `guests/*`, `adapters/*` and `libs/*`. `spikes/`
-stays outside the workspace, and each spike installs on its own.
+The workspace globs are `apps/*`, `modules/*`, `guests/*`, `adapters/*` and `libs/*`. Spikes under
+`docs/design/` stay outside the workspace, and each spike installs on its own.
 
 ## Packages
 

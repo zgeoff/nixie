@@ -63,7 +63,7 @@ mode it also approves the changed tool and checks again. It ends with calls thro
 ## Run it
 
 ```bash
-cd spikes/mcp-proxy-pin
+cd docs/design/platform/spikes/mcp-proxy-pin
 bun install
 bun run.ts
 ```

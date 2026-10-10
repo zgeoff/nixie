@@ -84,6 +84,6 @@ nixie's channels settle these choices:
 
 - The deployment runs the web client as its own container or pod beside nixie, behind one reverse
   proxy.
-- The session forwarding spike (`spikes/start-session-forwarding/`) checked a separate Start server
-  that forwards the session and keeps none. Integration checks remain for the Expo stream on a
-  device and Android paste edge cases.
+- The session forwarding spike (`docs/design/platform/spikes/start-session-forwarding/`) checked a
+  separate Start server that forwards the session and keeps none. Integration checks remain for the
+  Expo stream on a device and Android paste edge cases.

@@ -70,7 +70,7 @@ bytes, so the content hash never uses ETags.
 ## Run it
 
 ```bash
-cd spikes/definitions-source
+cd docs/design/platform/spikes/definitions-source
 SPIKE_WORK=<scratch_dir> bun run.ts
 ```
 

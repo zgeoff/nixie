@@ -98,7 +98,7 @@ The scripts:
 Docker and the sqlite3 CLI need to be on the host, and port 55432 free.
 
 ```bash
-cd spikes/event-log-db && bun install
+cd docs/design/platform/spikes/event-log-db && bun install
 bash run.sh
 ```
 

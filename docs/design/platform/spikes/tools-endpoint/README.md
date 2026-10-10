@@ -69,7 +69,7 @@ connects to a fresh in-process server over an in-memory transport and sends `ini
 ## Run it
 
 ```bash
-cd spikes/tools-endpoint && bun install
+cd docs/design/platform/spikes/tools-endpoint && bun install
 env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY bun run.ts
 ```
 
