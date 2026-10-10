@@ -217,5 +217,5 @@ lock until the old pod exits. The data volume is block storage on the node, moun
 directory. It moves to another node only after the old node is powered off, as the single writer
 section explains. imp's client delivers each reverse-forward connection to nixie over nixie's own
 connection to impd, so the pod opens no inbound port for its tools. The reverse forward from a pod
-is a spike in [open items](../open-items.md#spikes-and-design-tasks), which checks that route with
-egress `none` still holding.
+is a spike in [Linear](https://linear.app/zgeoff/issue/GEO-238), which checks that route with egress
+`none` still holding.

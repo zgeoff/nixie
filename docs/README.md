@@ -7,11 +7,11 @@
     <a href="./overview.md">Overview</a> •
     <a href="./principles.md">Principles</a> •
     <a href="./scope.md">Scope</a> •
-    <a href="./design/open-items.md">Open items</a> •
+    <a href="https://linear.app/zgeoff/project/nixie-caa59289fb88">Planned work</a> •
     <a href="#design">Design</a> •
     <a href="#decisions">Decisions</a> •
     <a href="#archive">Archive</a> •
-    <a href="../spikes/README.md">Spikes</a> •
+    <a href="#spikes">Spikes</a> •
     <a href="../AGENTS.md">Agent Guidelines</a>
   </p>
 </div>
@@ -22,19 +22,21 @@
 - [Principles](principles.md) — the rules every job and deployment holds to
 - [Scope](scope.md) — requirements in tiers, and non-goals
 - [Glossary](glossary.md) — the terms the docs and the code use, one meaning each
-- [Open items](design/platform/open-items.md) — choices that need you, later stages, imp candidates,
-  and the link to the Linear project for spikes and design tasks
+- [Planned work](https://linear.app/zgeoff/project/nixie-caa59289fb88) — the nixie project in
+  Linear: the slice plan, choices that need you, spikes, design tasks and later stages
 
-`design/` holds designs for what is not built yet, and `architecture/` will hold what is built. Both
-use the same topics as the decisions below.
+`decisions/` holds the decision records, which stay. `design/<work>/` holds the design for a piece
+of work that is not built yet, with its spikes in `design/<work>/spikes/`: `design/platform/` is the
+first. `architecture/` will hold what is built. Designs and architecture use the topics of the
+decisions below, and planned work lives in Linear.
 
 ## Design
 
 Each design states its contracts, marks what the first build implements, and links the decisions it
 rests on.
 
-- [Slices](design/platform/slices.md) — the first build in 9 ordered slices, each with its scope,
-  what it needs first and its acceptance checks
+- [Slice plan](https://linear.app/zgeoff/document/slice-plan-f056442e64a3) — the first build in 9
+  ordered slices, each with its scope, what it needs first and its acceptance checks, in Linear
 - [Code layout](design/platform/code-layout.md) — the workspace folders, package boundaries, the
   module packages, the images and the checks
 

@@ -10,8 +10,8 @@ by voice, and nixie handles the work behind it like a chief of staff. It needs n
 shows everything when you ask.
 
 Each point below links the decision that settles it. [Principles](principles.md) and
-[scope](scope.md) bind the design, and [open items](design/platform/open-items.md) lists what is
-open.
+[scope](scope.md) bind the design, and the
+[Linear project](https://linear.app/zgeoff/project/nixie-caa59289fb88) lists what is open.
 
 ## Tiers
 

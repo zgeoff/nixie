@@ -6,7 +6,8 @@ that run inside a sandbox live in their own folder, so a boundary check stops sa
 importing the trusted core. Package boundaries are the module boundaries of
 [0025](../../decisions/0025-database-and-topology.md): a package exposes only its entry point, and a
 tag rule decides which kinds of package may depend on which. Each slice creates the packages it
-first builds, so the workspace grows with the [slices](slices.md).
+first builds, so the workspace grows with the
+[slices](https://linear.app/zgeoff/document/slice-plan-f056442e64a3).
 
 ## The folders
 

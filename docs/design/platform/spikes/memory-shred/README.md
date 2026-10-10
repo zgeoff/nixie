@@ -113,7 +113,7 @@ bun 1.4.2, SQLite 3.53.2
 ## Untested
 
 - A restore on a clean host from restic or age-encrypted backups, which the backup and restore spike
-  in [open items](../../open-items.md#spikes-and-design-tasks) covers.
+  in [Linear](https://linear.app/zgeoff/issue/GEO-264) covers.
 - Litestream replication of the key store: its replica and its retained WAL segments would keep a
   deleted key for their own retention period.
 - Remnants below SQLite: SSD wear levelling, journaling and copy-on-write filesystems, and imp disk

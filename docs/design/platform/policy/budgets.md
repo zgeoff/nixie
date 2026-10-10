@@ -75,10 +75,10 @@ turns catch a loop whatever the price.
 - **Per deployment,** a day and a month. These limits feed the hard spending stop.
 
 Each default is generous, because it exists to stop a fault, and the deployment configuration
-overrides every value. Real use sets the defaults, which the [open items](../open-items.md) track.
-**Why:** a narrow worker past its limit is looping, a job run past its limit needs your eyes, and
-the deployment limits stop a fault that every smaller limit misses, such as a job that runs too
-often.
+overrides every value. Real use sets the defaults, which the
+[token use spike](https://linear.app/zgeoff/issue/GEO-249) tracks. **Why:** a narrow worker past its
+limit is looping, a job run past its limit needs your eyes, and the deployment limits stop a fault
+that every smaller limit misses, such as a job that runs too often.
 
 ## The hard spending stop
 
@@ -96,4 +96,4 @@ letting them run uncounted. A spend limit set with the model provider, where one
 up. **Why:** a limit the SDK enforces runs inside the imp, next to code that reads untrusted
 content, and the runner's checks between steps let one turn overshoot, so the stop sits on the host
 route that every model request takes. The proxy relies on imp's broker to forward a worker's model
-requests through it, which a spike in [open items](../open-items.md) checks.
+requests through it, which a spike in [Linear](https://linear.app/zgeoff/issue/GEO-248) checks.

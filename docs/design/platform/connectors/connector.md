@@ -171,5 +171,5 @@ share a boundary: a page that compromises the fetcher can see the URLs of later 
 sandbox until the sandbox is replaced, and can send them out over its public egress. **Why it is
 acceptable for the first build:** the URLs carry no credential, every result is outside content, and
 an outbound check on URLs that carry private context is a
-[later stage](../open-items.md#later-stages). One sandbox per fetch removes the shared boundary, and
-becomes the default once the worker cold start spike measures its cost.
+[later stage](https://linear.app/zgeoff/issue/GEO-309). One sandbox per fetch removes the shared
+boundary, and becomes the default once the worker cold start spike measures its cost.

@@ -48,7 +48,7 @@ Per-turn retrieval and the recall tools share one retrieval service over active 
 readable past messages. A small local encoder with pinned model assets produces semantic vectors,
 with no inference API call. SQLite FTS5 with BM25 serves word, name and reference lookup, and an
 exact item ID reads the item directly. The encoder and the ranking are configurable, and the encoder
-choice is open in [open items](../open-items.md).
+choice is open in [GEO-303](https://linear.app/zgeoff/issue/GEO-303).
 
 ### The index
 
