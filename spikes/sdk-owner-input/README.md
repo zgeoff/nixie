@@ -4,9 +4,11 @@ This spike sends an owner message into an Agent SDK session while the model work
 once for each value of `SDKUserMessage.priority`, and records when the model reads it.
 
 - SDK: `@anthropic-ai/claude-agent-sdk` 0.3.292, which runs its bundled Claude Code 2.1.292
-- Model: `claude-haiku-4-5-20251001`
+- Models: `claude-haiku-4-5-20251001` on the subscription, and `glm-5.3` through Z.ai's
+  Anthropic-compatible endpoint
 - Options: `settingSources: []`, `permissionMode: 'default'`, `allowedTools: ['Bash']`,
-  `permissionPrompts: 'none'`, and an `env` that passes only `PATH`, `HOME`, and the OAuth token
+  `permissionPrompts: 'none'`, and an `env` that passes only `PATH`, `HOME`, and the model's
+  credential
 
 ## Question
 
@@ -15,7 +17,8 @@ With streaming input, an owner sends a message mid-task with each priority the S
 
 ## Run it
 
-Run each command from this directory.
+Run each command from this directory. [provider.ts](./provider.ts) picks the model: Haiku by
+default, or GLM 5.3 when `NIXIE_SPIKE_PROVIDER` is `glm`.
 
 ```bash
 bun install
@@ -28,6 +31,13 @@ env -u ANTHROPIC_API_KEY bun --no-env-file owner.ts next --step 20
 env -u ANTHROPIC_API_KEY bun --no-env-file owner.ts later
 env -u ANTHROPIC_API_KEY bun --no-env-file owner.ts now --step 20
 env -u ANTHROPIC_API_KEY bun --no-env-file owner.ts now --human --step 20
+# GLM 5.3: the Z.ai key from the vault, then any command above or below without the Claude token
+export NIXIE_SPIKE_PROVIDER=glm ZAI_API_KEY=$(
+  OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../.claude/settings.local.json) \
+    op --cache=false read 'op://nixie/zai-api-key/credential'
+)
+env -u ANTHROPIC_API_KEY -u CLAUDE_CODE_OAUTH_TOKEN bun --no-env-file owner.ts next --step 20
+unset NIXIE_SPIKE_PROVIDER ZAI_API_KEY
 ```
 
 The task is 4 Bash commands that the model runs one at a time, each `sleep <step> && echo step-<n>`.
@@ -120,10 +130,10 @@ With 5 s commands, the same move happens about 2.7 s after the send. Only work t
 background moves: the SDK docs name shell commands, subagents, MCP tool calls, WebFetch, and
 WebSearch.
 
-## Untested
+## More cases
 
-[cases.ts](./cases.ts) holds a script for each case below, and none of them has run yet. Run each
-command from this directory:
+[cases.ts](./cases.ts) holds the cases below. Each ran twice, and the log marks whether a reply
+holds PINEAPPLE. Run each command from this directory:
 
 ```bash
 env -u ANTHROPIC_API_KEY bun --no-env-file cases.ts text
@@ -134,13 +144,76 @@ env -u ANTHROPIC_API_KEY bun --no-env-file cases.ts defer
 env -u ANTHROPIC_API_KEY bun --no-env-file cases.ts interrupt
 ```
 
-- A `now` message while the model writes text with no tool running (`text`). The SDK docs say Claude
-  Code interrupts the turn in that case.
-- A `now` message with a `human` origin during a tool that cannot move to the background
-  (`slow-tool`, an in-process tool that sleeps 20 s). The SDK types name only WebFetch and WebSearch
-  as tools that step aside for a user message.
-- A message with no `priority` field (`owner.ts none`). The SDK docs give it the behavior of `next`.
-- `shouldQuery: false` (`defer`). The SDK types say such a message joins the transcript without
-  starting a turn and merges into the next message that does.
-- `interrupt()` with a queued owner message (`interrupt`). The SDK types say `interrupt()` returns
-  the stamped messages that will still run.
+- **`now` while the model writes text** (`text`). Claude Code cuts the reply at once, with
+  `stop_reason: null`, and a new turn reads the message about 1.4 s after the send. With a `human`
+  origin the new reply held PINEAPPLE in both runs. Without one it held PINEAPPLE in 1 run, and in
+  the other the model refused "instructions embedded in system reminders".
+- **`now` from a human during a slow in-process tool** (`slow-tool`). Claude Code moved the MCP tool
+  to the background at the send, although the SDK types name only WebFetch and WebSearch. In both
+  runs the model then called the message "an injected instruction" and ignored it.
+- **No `priority` field** (`owner.ts none`). It behaves as `next`: the model reads it after the
+  running command, and the turn goes on. In both runs the model put PINEAPPLE in its final reply,
+  not the next one.
+- **`shouldQuery: false`** (`defer`). The message emits an empty `result` with no model call, and
+  joins the transcript. The next message's turn sees it: asked for the secret word, the model
+  answered PINEAPPLE.
+- **`interrupt()` with a queued `next` message** (`interrupt`). `interrupt()` returns the owner
+  message's `uuid` in `still_queued`. The running Bash call ends as a rejected tool use, the turn
+  ends with `error_during_execution`, and the queued message starts a new turn that holds PINEAPPLE
+  and runs the task again from its first command.
+
+The `text` case:
+
+```text
+ 3.5s OWNER SENDS {"priority":"now"} after 534 streamed chars
+ 3.5s result #1 success stop_reason=null "# The Last Light ..."
+ 4.9s OWNER MESSAGE CONSUMED by this assistant message
+12.5s assistant (3326 chars) pineapple=true "# The Last Light ..."
+```
+
+The `interrupt` case:
+
+```text
+6.4s interrupt receipt {"still_queued":["20ac9be8-..."]} owner=20ac9be8
+6.4s tool_result (is_error) "The user doesn't want to proceed with this tool use. ..."
+7.9s assistant (129 chars) pineapple=true "I'll include PINEAPPLE as requested, then proceed ..."
+```
+
+The design's default holds: `next` for a message into a running task, and an interrupt control that
+ends the turn so the message starts the next one. `next` reached the model at every tool boundary
+and was never refused. Every refusal came on a `now` path, where Claude Code wraps the message in a
+system reminder or a tool result.
+
+## GLM 5.3
+
+All 10 cases ran once on GLM 5.3. Claude Code handled every message the same way it did for Haiku,
+because the delivery happens in Claude Code before the request leaves:
+
+- `next` and no `priority` reached the model after the running command, and the turn went on.
+- `later` started a second turn after the `result`.
+- `now` waited for the tool boundary and ended the turn there.
+- `now` with a `human` origin moved the Bash command, and the slow MCP tool, to the background.
+- `now` cut a text reply at once, `shouldQuery: false` joined the transcript without a model call,
+  and `interrupt()` kept the queued message for a new turn.
+
+The model differs in 2 ways:
+
+- GLM followed every message, on every path. Each reply that read the message held PINEAPPLE,
+  including the `now` text runs and the slow tool, where Haiku refused it.
+- GLM is slower. Each tool turn took about 5 s against about 1 to 2 s for Haiku, so the `interrupt`
+  case reached its 120 s cap during the last command, after the queued message had run.
+
+```text
+ 9.1s OWNER SENDS {"origin":{"kind":"human"},"priority":"now"} after 0 streamed chars
+ 9.1s tool_result [{"type":"text","text":"MCP tool \"spike/slow_wait\" was moved to the background ...
+15.3s OWNER MESSAGE CONSUMED by this assistant message
+15.5s assistant (139 chars) pineapple=true "PINEAPPLE — acknowledged, Owner. The slow_wait call ..."
+```
+
+The client default holds on GLM as well.
+
+## Untested
+
+- Why Haiku refuses a `now` message, and whether a different wording or a newer model stops it.
+  These runs used one test sentence.
+- More than one GLM run per case.

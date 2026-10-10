@@ -35,11 +35,12 @@ rides in the cached prefix of every turn of every task, and every change to it c
 per live session.
 
 nixie sets `snapshot: false` on every session and builds the system prompt on each `query()` from
-the task's persona version and the current core. **Why:** the SDK otherwise keeps a session's first
-system prompt until it compacts, and a pinned or edited item must reach the conversation on its next
-turn. An unchanged core renders the same bytes, so the cache holds. The
-[pinned core spike](../../../spikes/sdk-pinned-core/README.md) checks this, and its fallback forks
-the session at its last boundary when the core changes.
+the task's persona version and the current core. On the turn after the core changes, nixie also puts
+a short change note before your message that states the changed items, at about 30 tokens per
+change. **Why:** the SDK otherwise keeps a session's first system prompt until it compacts, and a
+pinned or edited item must reach the conversation on its next turn. A model can still repeat the old
+value from its own earlier turns, which the note stops. An unchanged core renders the same bytes, so
+the cache holds. The [pinned core spike](../../../spikes/sdk-pinned-core/README.md) is the evidence.
 
 ## Retrieval
 

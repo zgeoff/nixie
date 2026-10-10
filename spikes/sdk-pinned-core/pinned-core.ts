@@ -1,22 +1,27 @@
 /* oxlint-disable one-var -- a throwaway spike */
-// Checks when a change to the system prompt, where the pinned memory core would live, reaches a
-// resumed session, and what each change costs the prompt cache.
-// Usage: pass the vault token as CLAUDE_CODE_OAUTH_TOKEN, then bun pinned-core.ts <config-dir>
+// Checks when a changed system prompt, where the pinned core would live, reaches a resumed session.
+// Usage: pass the vault token as CLAUDE_CODE_OAUTH_TOKEN, then
+// bun pinned-core.ts <config-dir> [--variant base|note|note-only]
 import { resolve } from 'node:path';
 import type { Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import { readProvider } from './provider.ts';
 
 interface TurnResult {
   answer: string;
   cacheRead: number;
   cacheWrite: number;
+  input: number;
   lastUuid: string | undefined;
   sessionId: string | undefined;
 }
 
 const ask = "What is the owner's code word? Answer with the word only.",
   configDir = process.argv.at(2),
-  cwd = resolve(import.meta.dir);
+  cwd = resolve(import.meta.dir),
+  variant = process.argv.includes('--variant')
+    ? process.argv[process.argv.indexOf('--variant') + 1]
+    : 'base';
 
 // Enough stable text that the prompt crosses the cache minimum length.
 const filler = Array.from(
@@ -28,22 +33,33 @@ if (!configDir) {
   throw new Error('usage: pinned-core.ts <config-dir>');
 }
 
-function buildCore(word: string): string {
-  return `${filler}\n\nPinned memory: the owner's code word is ${word}.`;
+function buildCoreLine(word: string): string {
+  return `Pinned memory: the owner's code word is ${word}.`;
 }
+
+function buildCore(word: string): string {
+  return `${filler}\n\n${buildCoreLine(word)}`;
+}
+
+// The note a turn carries when the core changed since the session's last turn.
+function buildNote(word: string): string {
+  return `<system-reminder>\nYour pinned memory changed. Current: ${buildCoreLine(word)}\n</system-reminder>\n\n${ask}`;
+}
+
+const provider = readProvider();
 
 function buildOptions(extra: Partial<Options>): Options {
   return {
     cwd,
     env: {
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
-      CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '',
+      ...provider.env,
       CLAUDE_CONFIG_DIR: configDir ?? '',
       HOME: configDir ?? '',
       PATH: process.env.PATH ?? '',
     },
     maxTurns: 1,
-    model: 'claude-haiku-4-5-20251001',
+    model: provider.model,
     settingSources: [],
     settings: { autoMemoryEnabled: false, autoDreamEnabled: false },
     tools: [],
@@ -65,6 +81,7 @@ function collect(result: TurnResult, message: SDKMessage): void {
   } else if (message.type === 'result') {
     result.cacheRead = message.usage.cache_read_input_tokens ?? 0;
     result.cacheWrite = message.usage.cache_creation_input_tokens ?? 0;
+    result.input = message.usage.input_tokens + result.cacheRead + result.cacheWrite;
   }
 }
 
@@ -73,6 +90,7 @@ async function runTurn(label: string, extra: Partial<Options>, prompt = ask): Pr
     answer: '',
     cacheRead: 0,
     cacheWrite: 0,
+    input: 0,
     lastUuid: undefined,
     sessionId: undefined,
   };
@@ -80,9 +98,27 @@ async function runTurn(label: string, extra: Partial<Options>, prompt = ask): Pr
     collect(result, message);
   }
   console.log(
-    `${label}: answer=${JSON.stringify(result.answer.trim())} cacheRead=${result.cacheRead} cacheWrite=${result.cacheWrite} session=${result.sessionId?.slice(0, 8)}`,
+    `${label}: answer=${JSON.stringify(result.answer.trim())} cacheRead=${result.cacheRead} cacheWrite=${result.cacheWrite} input=${result.input} session=${result.sessionId?.slice(0, 8)}`,
   );
   return result;
+}
+
+// Turns 4 and 5 of a variant: the note on the first changed turn, then a plain resume.
+async function runVariant(sessionId: string): Promise<void> {
+  const changed = variant === 'note-only' ? 'APPLE' : 'BANANA',
+    label = variant === 'note-only' ? 'APPLE prompt' : 'BANANA, snapshot false';
+  await runTurn(
+    `4 resume, ${label}, note BANANA`,
+    {
+      resume: sessionId,
+      systemPrompt: { prompt: buildCore(changed), snapshot: false, type: 'custom' },
+    },
+    buildNote('BANANA'),
+  );
+  await runTurn(`5 resume, ${label}, no note`, {
+    resume: sessionId,
+    systemPrompt: { prompt: buildCore(changed), snapshot: false, type: 'custom' },
+  });
 }
 
 async function run(): Promise<void> {
@@ -93,6 +129,10 @@ async function run(): Promise<void> {
     resume: sessionId,
     systemPrompt: buildCore('BANANA'),
   });
+  if (variant !== 'base') {
+    await runVariant(sessionId);
+    return;
+  }
   await runTurn('4 resume, BANANA, snapshot false', {
     resume: sessionId,
     systemPrompt: { prompt: buildCore('BANANA'), snapshot: false, type: 'custom' },
