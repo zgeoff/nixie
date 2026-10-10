@@ -94,10 +94,6 @@ Spikes that need model calls wait for model quota. Each line names the claim the
 
 ### Channels
 
-- **Session forwarding through Start** (about half a day): run Start as its own server beside nixie,
-  check the isomorphic oRPC link over the private network, check that Start forwards the device
-  session on every call and keeps none of its own, and check that no server code reaches the browser
-  bundle ([client](./channels/client.md)).
 - **The Expo client on Android** (about 1 day): run the [typed API spike](../../spikes/client-rpc/)
   in an Expo app, check that the live stream resumes after the phone sleeps, and check
   [paste span](../../spikes/paste-spans/) capture with the native paste hook, swipe typing,

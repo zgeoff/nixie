@@ -111,9 +111,10 @@ force ([0013](./decisions/0013-definition-versioning.md)).
 
 nixie's own client holds the conversation and the approvals: a web client on TanStack Start, which
 runs as its own server and forwards your device session to nixie's API, and an Android app built
-with Expo. Both share one oRPC contract served through Elysia, with a live stream over server-sent
-events. Chat apps such as Telegram carry only a content-free push
-([0009](./decisions/0009-first-channel.md), [0029](./decisions/0029-channels-and-clients.md)).
+with Expo. The web client and the API share one host name, and a reverse proxy splits them by path.
+Both share one oRPC contract served through Elysia, with a live stream over server-sent events. Chat
+apps such as Telegram carry only a content-free push ([0009](./decisions/0009-first-channel.md),
+[0029](./decisions/0029-channels-and-clients.md)).
 
 A proposal shows as a card in its thread and in the approval digest, with Approve, Always allow,
 Defer and Decline. A push buzzes only for items that need your judgement. Voice is essential but not
