@@ -12,7 +12,8 @@ covers.
 
 `docs/design/` holds designs for what is not built yet, and `docs/architecture/` holds what is
 built. Both use the topics the index uses for decisions: core, policy, memory, channels, connectors
-and deployment. `docs/design/open-items.md` lists everything still open.
+and deployment. `docs/design/open-items.md` lists the choices, later stages and imp candidates, and
+links the Linear project that tracks spikes and design tasks.
 
 The structure grows by these rules:
 
@@ -31,9 +32,10 @@ imports from a spike.
 ## Keeping the docs lean
 
 The docs stay small enough for one reader to hold. Decision records state the locked baseline as it
-stands, and design docs state contracts. Evidence lives in the spike that produced it, open
-questions live only in `docs/design/open-items.md`, and terms follow `docs/glossary.md`. The
-`project-docs-writing` skill holds the detail.
+stands, and design docs state contracts. Evidence lives in the spike that produced it, choices,
+later stages and imp candidates live in `docs/design/open-items.md`, spikes and design tasks live in
+the Linear project it links, and terms follow `docs/glossary.md`. The `project-docs-writing` skill
+holds the detail.
 
 ## Choices that need the owner
 

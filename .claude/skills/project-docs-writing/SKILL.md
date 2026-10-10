@@ -21,9 +21,10 @@ for each one. Evidence lives in the spike that produced it, and the design links
 of repeating its numbers or its method. Each design marks what the first build implements and what
 extends it later.
 
-Open questions live only in [open items](../../../docs/design/open-items.md), each with its options
-and a recommendation. A decision record or a design doc links the open item instead of restating the
-question.
+Choices, later stages and imp candidates live only in
+[open items](../../../docs/design/open-items.md), each choice with its options and a recommendation.
+Spikes and design tasks live in the Linear project that open items links. A decision record or a
+design doc links the open item instead of restating the question.
 
 ## Voice
 

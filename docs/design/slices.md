@@ -65,7 +65,7 @@ you.
 **Depends on:** nothing.
 
 **Before it starts:** the reverse forward from a pod spike, and the durable layer's crash tests and
-the release pipeline, both design tasks in [open items](./open-items.md#design-tasks).
+the release pipeline, both design tasks in [open items](./open-items.md#spikes-and-design-tasks).
 
 **Acceptance:**
 

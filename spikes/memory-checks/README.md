@@ -96,7 +96,7 @@ ok  a domain that is a suffix of the one in the quote: fail  the domain ample.co
 ## Untested
 
 - The checker model itself, and its accuracy on real owner messages, which the memory checker spike
-  in [open items](../../docs/design/open-items.md#spikes-to-run) measures.
+  in [open items](../../docs/design/open-items.md#spikes-and-design-tasks) measures.
 - Token patterns beyond these kinds, such as local account formats without an IBAN, postal
   addresses, crypto wallet addresses and short codes.
 - Real paste spans from the clients; the cases build spans by hand.
