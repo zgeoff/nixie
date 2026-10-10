@@ -81,8 +81,9 @@ stages ([0015](./decisions/0015-taint-scope.md)).
 
 An approval binds to one exact action and is used once. "Always allow" is one tap that also creates
 the rule shown on the card ([0006](./decisions/0006-approval-record.md)). A consent checker confirms
-that your own message asked for an action, so a direct request runs without a prompt. A counting
-proxy on the host enforces a hard spending stop, and rules are YAML in your definitions
+that your own message asked for an action, so a direct request that no rule covers runs without a
+prompt. Consent never overrides a deny rule, an ask rule or the always-ask set. A counting proxy on
+the host enforces a hard spending stop, and rules are YAML in your definitions
 ([0028](./decisions/0028-policy-design.md)). auto-mode decides only what the deterministic layers
 leave open, and nixie runs fully without it ([0008](./decisions/0008-auto-mode.md)). Approvals for
 the always-ask set gain a passkey check after the first build
