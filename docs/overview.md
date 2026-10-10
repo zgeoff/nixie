@@ -167,9 +167,12 @@ first, returning full results to the conversation ([0014](./decisions/0014-searc
 A model in an imp reaches nixie's tools through a reverse forward, with no network egress. Google is
 the first connector. nixie's tools and its proxy use the v2 MCP packages, and the first build
 implements the imp sandbox only. The code environment offers Node.js, Python and common Linux tools.
-An outside server whose backend lives outside the sandbox, such as atc, connects over HTTP with a
-scoped OAuth grant that the deployment configures. Disconnect stops nixie's use of a credential it
-cannot delete at its source ([0030](./decisions/0030-connectors-and-sandbox-environments.md)).
+Disconnect stops nixie's use of a credential it cannot delete at its source
+([0030](./decisions/0030-connectors-and-sandbox-environments.md)).
+
+The [MCP proxy design](./design/connectors/mcp-proxy.md) connects an outside server whose backend
+lives outside the sandbox, such as atc, over HTTP with a scoped OAuth grant that the deployment
+configures.
 
 ## Deployment
 
