@@ -94,8 +94,8 @@ makes checks the generation, so a runner whose lease expired cannot commit.
   already in the inbox, so the commit leaves the task `ready`.
 - **Lapses.** A proposal lapses after 72 hours by default, settable per effect, and the lapse record
   joins the task's inbox. **Why:** 72 hours spans a weekend away, and an older approval is likely
-  stale. A defer under [0029](../../decisions/0029-channels-and-clients.md) extends the lapse by one
-  full lapse interval after the proposal returns, and never past the action's `deadlineAt`.
+  stale. A defer extends the lapse as [channels approvals](../channels/approvals.md) defines, never
+  shortens it, and never extends it past the action's `deadlineAt`.
 - **Timers.** A durable timer is a row with a due time and the record to write when it fires. A
   timer that fell due while nixie was down fires late, and its record holds both times, which feeds
   the report of late triggers.
@@ -103,8 +103,9 @@ makes checks the generation, so a runner whose lease expired cannot commit.
   also passes it into the live session with `streamInput()`; otherwise it waits in the inbox for the
   next turn. [The client](../channels/client.md) owns the delivery modes.
 - **Trigger events.** The [trigger source](../channels/trigger-source.md) writes each event to the
-  log and to every matching task's inbox in one transaction with its cursor, so registering a wait
-  never loses an event.
+  log and to every matching task's inbox in one transaction with its cursor. An event that arrives
+  before a step registers its wait stays eligible from the sequence the step captured, so
+  registering a wait never loses an event.
 
 ## Routing from the conversation
 
