@@ -85,7 +85,8 @@ leads to reconciliation, never to a plain second attempt.
 Retries follow one default schedule, which a connector can override: up to 5 attempts, waiting 30 s,
 2 min, 8 min and 30 min between them, or longer when the provider names a retry time. **Why:** the
 schedule rides out a rate limit or a short outage within about 40 min, and an action still failing
-after that needs you more than another attempt.
+after that needs you more than another attempt. A retryable refusal on the last attempt makes the
+action `failed`, and the reason goes to the task's inbox.
 
 ## Reconciliation per connector
 

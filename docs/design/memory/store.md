@@ -119,7 +119,9 @@ reaches across a forget.
 
 The retired-memory view offers one checked action that permanently deletes selected retired items or
 all of them. Its preview lists the items and exact versions and states that deletion cannot be
-undone and that chat records remain. The confirmation binds to that fixed set:
+undone and that chat records remain. The confirmation binds to that fixed set. Before it deletes any
+key, nixie validates every selected item and version and reserves the whole set, so a stale target
+stops the operation before anything is destroyed:
 
 - An item restored or changed after the preview makes the confirmation stale.
 - An item retired after the preview never joins it.
@@ -127,7 +129,8 @@ undone and that chat records remain. The confirmation binds to that fixed set:
 
 The operation records per-item progress, deletes keys idempotently and resumes after a crash. A
 partial run never restores a key it deleted, and its status separates deleted items from pending
-ones. Each item gets its own `memory_forgotten` record.
+ones. Each item gets its own `memory_forgotten` record, and the bulk operation reports completion
+only when every item's forget completes.
 
 ### Forget completion and key backups
 
@@ -143,9 +146,11 @@ while the forget waits. With no key backup registered, a forget completes after 
 
 A forget forces a key-backup refresh and cleanup at once; the backup schedule sets recovery age, not
 forget completion. Cleanup keeps one fresh copy without the deleted keys, removes every older
-recoverable copy, and records the backend's receipts. Staging files, restore samples and backup
-caches count as recoverable copies. A key backend must allow removal of every historical copy it
-holds, so a backend with unmanaged versioning or immutable retention cannot hold keys.
+recoverable copy, and verifies that every remaining copy excludes the deleted keys. It records the
+backend's receipts and checks coverage again before the forget completes; a command that exits
+cleanly does not prove the keys are gone. Staging files, restore samples and backup caches count as
+recoverable copies. A key backend must allow removal of every historical copy it holds, so a backend
+with unmanaged versioning or immutable retention cannot hold keys.
 [Backup and restore](../deployment/backup-and-restore.md) covers the backup tools, and the
 [forget backups spike](../../../spikes/forget-backups/) tests one local backend.
 

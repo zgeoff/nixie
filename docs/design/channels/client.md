@@ -39,8 +39,9 @@ The Expo app streams through `expo/fetch`.
 
 You sign a device in once with an enrolment code, and the device holds a session until you revoke
 it. nixie prints the code to its log and through a host command, and a signed-in client issues codes
-for later devices. A code lapses after 15 min by default. nixie stores only a hash of each session
-token, and each session is a row in the [identity record](./channel-adapter.md).
+for later devices. A code works once: a successful enrolment consumes it, and an unused code lapses
+after 15 min by default. nixie stores only a hash of each session token, and each session is a row
+in the [identity record](./channel-adapter.md).
 
 The web client keeps its token in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie, and every
 procedure requires a custom header that a cross-site form cannot send. The Expo app keeps its token
