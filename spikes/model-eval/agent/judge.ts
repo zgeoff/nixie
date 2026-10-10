@@ -1,5 +1,5 @@
 // Scores agent runs: an Opus judge labels memory entries and tool honesty, and code checks quotes.
-// Usage: env -u ANTHROPIC_API_KEY bun --env-file=../../.env agent/judge.ts results/<name>
+// Usage: env -u ANTHROPIC_API_KEY bun --no-env-file agent/judge.ts results/<name>
 //   [--memory-case <dir>] [--jobs n]
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';

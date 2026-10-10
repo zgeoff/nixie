@@ -1,5 +1,5 @@
 // Checks whether a session can resume or fork from a given message, dropping the turns after it.
-// Usage: bun --env-file=../../.env resume-at.ts <config-dir>
+// Usage: bun --no-env-file resume-at.ts <config-dir>
 import { resolve } from 'node:path';
 import type { Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { forkSession, getSessionMessages, query } from '@anthropic-ai/claude-agent-sdk';

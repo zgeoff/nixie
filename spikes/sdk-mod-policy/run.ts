@@ -1,5 +1,5 @@
 // Runs one Agent SDK query with one mod loaded and prints a compact timeline of what happened.
-// Usage: bun --env-file=../../.env run.ts <mod-dir> <prompt-file> [--debug-file <path>]
+// Usage: bun --no-env-file run.ts <mod-dir> <prompt-file> [--debug-file <path>]
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk';

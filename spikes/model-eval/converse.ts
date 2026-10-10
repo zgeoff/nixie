@@ -1,5 +1,5 @@
 // Runs one scripted conversation per persona and model, all turns in one session, to show drift.
-// Usage: env -u ANTHROPIC_API_KEY bun --env-file=../../.env converse.ts --out results/<run_name>
+// Usage: env -u ANTHROPIC_API_KEY bun --no-env-file converse.ts --out results/<run_name>
 //   [--scenario <dir>] [--samples <n>] [--effort <level>] [--models <a,b>] [--personas <a,b>] [--jobs <n>] [--profile <name>]
 import { once } from 'node:events';
 import {

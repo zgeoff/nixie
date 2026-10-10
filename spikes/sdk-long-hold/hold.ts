@@ -1,5 +1,5 @@
 // Runs one Agent SDK query whose Bash call a hold mod pauses, and plays the owner who answers late.
-// Usage: bun --env-file=../../.env hold.ts <mod-dir> <delay-s> <port> [--poll] [--debug-file <path>]
+// Usage: bun --no-env-file hold.ts <mod-dir> <delay-s> <port> [--poll] [--debug-file <path>]
 import { resolve } from 'node:path';
 import type { Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';

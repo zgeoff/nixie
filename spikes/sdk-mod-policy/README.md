@@ -21,18 +21,23 @@ use to tell that the policy is gone.
 
 ## Run it
 
-Run each command from this directory. The token comes from the repo's `.env`.
+Run each command from this directory.
 
 ```bash
 bun install
+# The model token, from the vault. Run `unset CLAUDE_CODE_OAUTH_TOKEN` when you finish.
+export CLAUDE_CODE_OAUTH_TOKEN=$(
+  OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../.claude/settings.local.json) \
+    op --cache=false read 'op://nixie/claude-code-oauth-token/credential'
+)
 # Question 1: the policy mod against six Bash calls and one Read
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env run.ts mods/nixie-policy prompts/policy.txt --debug-file /tmp/policy.log
+env -u ANTHROPIC_API_KEY bun --no-env-file run.ts mods/nixie-policy prompts/policy.txt --debug-file /tmp/policy.log
 # Question 2: one run for each broken mod
 for m in nixie-throw-load nixie-throw-hook nixie-throw-hook-catch nixie-busy-loop; do
-  env -u ANTHROPIC_API_KEY bun --env-file=../../.env run.ts mods/$m prompts/failure.txt --debug-file /tmp/$m.log
+  env -u ANTHROPIC_API_KEY bun --no-env-file run.ts mods/$m prompts/failure.txt --debug-file /tmp/$m.log
 done
 # Question 2: probe for the mod before and after the worker wedges
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env probe.ts mods/nixie-busy-loop
+env -u ANTHROPIC_API_KEY bun --no-env-file probe.ts mods/nixie-busy-loop
 ```
 
 `run.ts` prints a timeline of the init message, each tool call and result, and the final result.

@@ -27,23 +27,28 @@ type declarations and a `tsconfig.json` into each mod directory when it loads th
 
 ```bash
 bun install
+# The model token, from the vault. Run `unset CLAUDE_CODE_OAUTH_TOKEN` when you finish.
+export CLAUDE_CODE_OAUTH_TOKEN=$(
+  OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../.claude/settings.local.json) \
+    op --cache=false read 'op://nixie/claude-code-oauth-token/credential'
+)
 # A hold on a timer of the hook's own, without and with .catch
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env hold.ts mods/nixie-hold-promise 0 47831 --debug-file /tmp/promise.log
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env hold.ts mods/nixie-hold-promise-catch 0 47832 --debug-file /tmp/promise-catch.log
+env -u ANTHROPIC_API_KEY bun --no-env-file hold.ts mods/nixie-hold-promise 0 47831 --debug-file /tmp/promise.log
+env -u ANTHROPIC_API_KEY bun --no-env-file hold.ts mods/nixie-hold-promise-catch 0 47832 --debug-file /tmp/promise-catch.log
 # A hold on one long-poll through $.http.fetch
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env hold.ts mods/nixie-hold-http 45 47833 --debug-file /tmp/http.log
+env -u ANTHROPIC_API_KEY bun --no-env-file hold.ts mods/nixie-hold-http 45 47833 --debug-file /tmp/http.log
 # A hold on repeated long-polls, for 30, 120, and 360 seconds
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env hold.ts mods/nixie-hold-poll 360 47843 --poll --debug-file /tmp/poll.log
+env -u ANTHROPIC_API_KEY bun --no-env-file hold.ts mods/nixie-hold-poll 360 47843 --poll --debug-file /tmp/poll.log
 # Defer, then resume in new processes
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env defer.ts start /tmp/session.txt
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env defer.ts resume /tmp/session.txt defer
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env defer.ts resume /tmp/session.txt allow
+env -u ANTHROPIC_API_KEY bun --no-env-file defer.ts start /tmp/session.txt
+env -u ANTHROPIC_API_KEY bun --no-env-file defer.ts resume /tmp/session.txt defer
+env -u ANTHROPIC_API_KEY bun --no-env-file defer.ts resume /tmp/session.txt allow
 # Defer a parallel batch
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env defer.ts batch /tmp/batch.txt
+env -u ANTHROPIC_API_KEY bun --no-env-file defer.ts batch /tmp/batch.txt
 # Write Claude Code's debug log for a defer run
-NIXIE_DEBUG_FILE=/tmp/defer.log env -u ANTHROPIC_API_KEY bun --env-file=../../.env defer.ts batch /tmp/batch.txt
+NIXIE_DEBUG_FILE=/tmp/defer.log env -u ANTHROPIC_API_KEY bun --no-env-file defer.ts batch /tmp/batch.txt
 # Resume a session whose process was killed during a hold
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env resume.ts <session_id> "What happened to the Bash command you ran?"
+env -u ANTHROPIC_API_KEY bun --no-env-file resume.ts <session_id> "What happened to the Bash command you ran?"
 ```
 
 ## Answers

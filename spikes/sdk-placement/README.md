@@ -73,12 +73,17 @@ audit row for a refused host.
 
 3. Install this spike's packages, then run it with the instance's URL and token. The script refuses
    any `IMP_URL` that is not `http://localhost:*`. It reads `CLAUDE_CODE_OAUTH_TOKEN` from the
-   repo's `.env`.
+   environment, so read it from the vault first.
 
    ```bash
    cd <nixie_repo>/spikes/sdk-placement && bun install
    export IMP_URL=http://localhost:7470 IMP_TOKEN=$(<imp_clone>/scripts/dev.sh token)
+   export CLAUDE_CODE_OAUTH_TOKEN=$(
+     OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../.claude/settings.local.json) \
+       op --cache=false read 'op://nixie/claude-code-oauth-token/credential'
+   )
    SPIKE_WORK=<scratch_dir> bash run.sh
+   unset CLAUDE_CODE_OAUTH_TOKEN
    ```
 
    The script uses impd's built-in `ubuntu` image, and installs curl and Bun in `nixie-spike-b`

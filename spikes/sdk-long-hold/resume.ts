@@ -1,5 +1,5 @@
 // Resumes a session in a new process with a follow-up prompt and prints what Claude sees.
-// Usage: bun --env-file=../../.env resume.ts <session-id> <prompt>
+// Usage: bun --no-env-file resume.ts <session-id> <prompt>
 import { resolve } from 'node:path';
 import type { Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';

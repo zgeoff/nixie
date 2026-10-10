@@ -1,5 +1,5 @@
 // Sends every prompt once to every model under every persona and appends each reply to a JSONL file.
-// Usage: env -u ANTHROPIC_API_KEY bun --env-file=../../.env matrix.ts --out results/<run_name>
+// Usage: env -u ANTHROPIC_API_KEY bun --no-env-file matrix.ts --out results/<run_name>
 //   [--models <a,b>] [--personas <a,b>] [--prompts <a,b>] [--jobs <count>] [--profile <name>]
 import {
   appendFileSync,

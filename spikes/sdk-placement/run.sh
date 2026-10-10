@@ -4,18 +4,18 @@
 # host MCP server, runs both options, and removes them all on exit.
 #
 # Env: IMP_URL and IMP_TOKEN of the dev instance (required, so a run never reaches the saved
-#      default host), SPIKE_WORK (scratch directory for notes, logs and the staged copy).
+#      default host), SPIKE_WORK (scratch directory for notes, logs and the staged copy),
+#      CLAUDE_CODE_OAUTH_TOKEN (the model token, read from the vault; see README.md).
 set -euo pipefail
 
 : "${IMP_URL:?set IMP_URL to the dev instance}" "${IMP_TOKEN:?set IMP_TOKEN}"
-: "${SPIKE_WORK:?set SPIKE_WORK}"
+: "${SPIKE_WORK:?set SPIKE_WORK}" "${CLAUDE_CODE_OAUTH_TOKEN:?set CLAUDE_CODE_OAUTH_TOKEN}"
 case $IMP_URL in
   http://localhost:*) ;;
   *) echo "run.sh: IMP_URL must be a local dev instance, not $IMP_URL" >&2; exit 1 ;;
 esac
 
 here=$(cd "$(dirname "$0")" && pwd)
-repo_env=$here/../../.env
 run_box=nixie-spike-a
 sdk_box=nixie-spike-b
 secret=nixie-spike-model
@@ -60,11 +60,11 @@ imp new "$run_box" --image ubuntu --memory 1g --policy none >/dev/null
 made_run=1
 
 step "Option A: the task"
-(cd "$here" && env -u ANTHROPIC_API_KEY bun --env-file="$repo_env" host-a.ts)
+(cd "$here" && env -u ANTHROPIC_API_KEY bun --no-env-file host-a.ts)
 ls "$SPIKE_WORK/notes"
 
 step "Option A: ask for built-in tools by name"
-(cd "$here" && env -u ANTHROPIC_API_KEY bun --env-file="$repo_env" host-a.ts --probe)
+(cd "$here" && env -u ANTHROPIC_API_KEY bun --no-env-file host-a.ts --probe)
 
 step "Option B: create $sdk_box, install curl and Bun while the policy is open"
 imp new "$sdk_box" --image ubuntu --memory 2g >/dev/null
@@ -79,7 +79,7 @@ in_sdk "cd /root/sdk-placement && bun install --frozen-lockfile >/dev/null 2>&1 
 
 step "Option B: policy box with the host address only, then the model grant"
 imp policy "$sdk_box" box --allow "$mcp_host/32"
-grep '^CLAUDE_CODE_OAUTH_TOKEN=' "$repo_env" | cut -d= -f2- | tr -d '\n' \
+printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" \
   | imp secret add "$secret" --kind custom --hosts api.anthropic.com --header authorization \
     --scheme bearer >/dev/null
 made_secret=1

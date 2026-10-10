@@ -19,10 +19,15 @@ Run each command from this directory.
 
 ```bash
 bun install
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env owner.ts next --step 20
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env owner.ts later
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env owner.ts now --step 20
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env owner.ts now --human --step 20
+# The model token, from the vault. Run `unset CLAUDE_CODE_OAUTH_TOKEN` when you finish.
+export CLAUDE_CODE_OAUTH_TOKEN=$(
+  OP_SERVICE_ACCOUNT_TOKEN=$(jq -r .env.OP_SERVICE_ACCOUNT_TOKEN ../../.claude/settings.local.json) \
+    op --cache=false read 'op://nixie/claude-code-oauth-token/credential'
+)
+env -u ANTHROPIC_API_KEY bun --no-env-file owner.ts next --step 20
+env -u ANTHROPIC_API_KEY bun --no-env-file owner.ts later
+env -u ANTHROPIC_API_KEY bun --no-env-file owner.ts now --step 20
+env -u ANTHROPIC_API_KEY bun --no-env-file owner.ts now --human --step 20
 ```
 
 The task is 4 Bash commands that the model runs one at a time, each `sleep <step> && echo step-<n>`.
@@ -121,12 +126,12 @@ WebSearch.
 command from this directory:
 
 ```bash
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts text
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts text --human
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts slow-tool
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env owner.ts none --step 20
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts defer
-env -u ANTHROPIC_API_KEY bun --env-file=../../.env cases.ts interrupt
+env -u ANTHROPIC_API_KEY bun --no-env-file cases.ts text
+env -u ANTHROPIC_API_KEY bun --no-env-file cases.ts text --human
+env -u ANTHROPIC_API_KEY bun --no-env-file cases.ts slow-tool
+env -u ANTHROPIC_API_KEY bun --no-env-file owner.ts none --step 20
+env -u ANTHROPIC_API_KEY bun --no-env-file cases.ts defer
+env -u ANTHROPIC_API_KEY bun --no-env-file cases.ts interrupt
 ```
 
 - A `now` message while the model writes text with no tool running (`text`). The SDK docs say Claude
