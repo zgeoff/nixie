@@ -21,6 +21,36 @@
         "typescript": "7.0.2",
       },
     },
+    "adapters/sandbox-imp": {
+      "name": "@heynixie/sandbox-imp",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/sandbox": "workspace:*",
+        "@zgeoff/imp-client": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/log": "workspace:*",
+      },
+    },
+    "adapters/sandbox-process": {
+      "name": "@heynixie/sandbox-process",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/sandbox": "workspace:*",
+      },
+      "devDependencies": {
+        "@heynixie/log": "workspace:*",
+      },
+    },
+    "apps/server": {
+      "name": "@heynixie/server",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/sandbox": "workspace:*",
+        "@heynixie/sandbox-imp": "workspace:*",
+        "@heynixie/sandbox-process": "workspace:*",
+      },
+    },
     "apps/web": {
       "name": "@heynixie/web",
       "version": "0.0.0",
@@ -71,6 +101,10 @@
       "name": "@heynixie/testing",
       "version": "0.0.0",
     },
+    "libs/wire": {
+      "name": "@heynixie/wire",
+      "version": "0.0.0",
+    },
     "modules/definitions": {
       "name": "@heynixie/definitions",
       "version": "0.0.0",
@@ -84,6 +118,15 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/db": "workspace:*",
+        "kysely": "catalog:",
+      },
+    },
+    "modules/sandbox": {
+      "name": "@heynixie/sandbox",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/log": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
       },
     },
@@ -105,6 +148,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.1",
+    "@zgeoff/imp-client": "0.40.4",
     "happy-dom": "20.14.5",
     "kysely": "0.29.6",
     "msw": "2.15.0",
@@ -224,9 +268,19 @@
 
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
 
+    "@heynixie/sandbox": ["@heynixie/sandbox@workspace:modules/sandbox"],
+
+    "@heynixie/sandbox-imp": ["@heynixie/sandbox-imp@workspace:adapters/sandbox-imp"],
+
+    "@heynixie/sandbox-process": ["@heynixie/sandbox-process@workspace:adapters/sandbox-process"],
+
+    "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
+
     "@heynixie/testing": ["@heynixie/testing@workspace:libs/testing"],
 
     "@heynixie/web": ["@heynixie/web@workspace:apps/web"],
+
+    "@heynixie/wire": ["@heynixie/wire@workspace:libs/wire"],
 
     "@humanfs/core": ["@humanfs/core@0.19.2", "", { "dependencies": { "@humanfs/types": "^0.15.0" } }, "sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA=="],
 
@@ -659,6 +713,8 @@
     "@zgeoff/bun-test-extended": ["@zgeoff/bun-test-extended@0.1.0", "", { "dependencies": { "jest-extended": "7.0.0", "jest-matcher-utils": "30.4.1" } }, "sha512-cGR7cagfrFDvLGLe+9S8c5wbKfNYbuwbkp1sXdQmlo3D2c8AkS0JKPvEod/YNxk4DanS3BUju2GE4ilkEySogA=="],
 
     "@zgeoff/bun-test-react": ["@zgeoff/bun-test-react@0.1.0", "", { "dependencies": { "@happy-dom/global-registrator": "20.14.5", "@testing-library/jest-dom": "7.0.1", "happy-dom": "20.14.5" }, "peerDependencies": { "@testing-library/react": ">=16.0.0", "react": ">=19.0.0", "react-dom": ">=19.0.0", "zustand": ">=5.0.0" }, "optionalPeers": ["zustand"] }, "sha512-+WutmZNuhKBCxZ/HW3U0ARAZ2NbT9Hqwx2Uo6AXDa9RWOuSluiJcjJC/mHMSniXFIBWbTB5gQwSN1iGZ+ztETA=="],
+
+    "@zgeoff/imp-client": ["@zgeoff/imp-client@0.40.4", "", { "dependencies": { "@orpc/client": "^1.14.15", "@orpc/contract": "^1.14.15", "zod": "^4.4.3" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-dD8A286GMNVHPxnHBrdcBzT+Ic7zv6TVxDq9N8aoScWF6xgCnodL526+yDiYFBGpo+piyICEAFW79vVOx7i+Rw=="],
 
     "@zgeoff/oxlint-config": ["@zgeoff/oxlint-config@0.1.0", "", { "dependencies": { "@stylistic/eslint-plugin": "5.10.0" }, "peerDependencies": { "oxlint": ">=1.71.0" } }, "sha512-C8dKxUzoVv/Ol6Xp/CO8kPBZUa1mNOiqL0t/A7GmUzLYPozRxbR41Hc0M0xVB1XxRwgcvwRMHYEsIOcxiYc+sg=="],
 

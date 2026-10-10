@@ -41,8 +41,15 @@ below, and planned work lives in Linear.
   definitions format, the snapshot hash and the persona seed
 - [The event log](architecture/event-log.md) — the record envelope, erasable fields and the key
   store, projections and their rebuild, and reading by sequence
+- [Sandboxes](architecture/sandbox.md) — the sandbox interface and its kinds, the lifecycle records,
+  the imp adapter, running a command, the process double and the test build
 - [The web client](architecture/web-client.md) — the Start server, session forwarding, the
   conversation view, the outbox, health and the web image
+
+## Runbooks
+
+- [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
+  public imp reach, on a host with impd
 
 ## Design
 

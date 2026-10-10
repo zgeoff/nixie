@@ -1,0 +1,17 @@
+{
+  "name": "@heynixie/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/sandbox": "workspace:*",
+    "@heynixie/sandbox-imp": "workspace:*",
+    "@heynixie/sandbox-process": "workspace:*"
+  }
+}
