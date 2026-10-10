@@ -45,9 +45,10 @@ directory. They exchange 2 kinds of file there:
 
 The sidecar publishes only a set whose marker exists and whose copies match their checksums. It
 publishes sets one at a time, in sequence order, and removes a set's copies after its receipt. The
-formats live in `libs/wire`, and a release reads its own format and the one before. The sidecar
-writes each receipt in the format version that its set's manifest declares, so a nixie one release
-behind reads every receipt.
+formats live in `libs/wire`. Each release reads its own format and the one before, and writes only a
+format the release before reads, the rule that [upgrades](upgrades.md#migrations) sets for the
+schema. A rollback by one release therefore leaves no set or receipt that the older containers
+cannot read.
 
 ## A backup run
 
@@ -73,9 +74,9 @@ The interval and the data retention are settings. The key repo's single snapshot
 not a tuning value. The interval bounds the writes a failed disk loses.
 
 nixie sends a push notice when a set gets a failed receipt or none within the interval, and
-readiness reports backups unready once the last receipt is older than twice the interval. The
-sidecar runs `restic` with the repo password in the child process's environment only. A repo lives
-on any restic backend the deployment picks.
+readiness reports backups unready once the last successful receipt is older than twice the interval.
+The sidecar runs `restic` with the repo password in the child process's environment only. A repo
+lives on any restic backend the deployment picks.
 
 ## The key repo and forget
 

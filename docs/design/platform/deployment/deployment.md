@@ -174,16 +174,16 @@ nixie reports its health through a health endpoint for the container runtime and
 while it runs. Liveness holds when the process answers and the database opens. Readiness lists each
 part:
 
-| Part             | Ready when                                                 |
-| ---------------- | ---------------------------------------------------------- |
-| Database         | Migrations finished and the last integrity check passed    |
-| Definitions      | The last seed applied, with no refused snapshot pending    |
-| imp host         | impd answers, and every imp image in the manifest is added |
-| Conversation imp | Awake, and its last turn did not fail on start             |
-| Backups          | The last receipt arrived within twice the backup interval  |
-| Backup sidecar   | Its health endpoint reports ready                          |
-| Disk             | Under 90% full on the data volume                          |
-| Spending         | The hard spending stop has not fired                       |
+| Part             | Ready when                                                    |
+| ---------------- | ------------------------------------------------------------- |
+| Database         | Migrations finished and the last integrity check passed       |
+| Definitions      | The last seed applied, with no refused snapshot pending       |
+| imp host         | impd answers, and every imp image in the manifest is added    |
+| Conversation imp | Awake, and its last turn did not fail on start                |
+| Backups          | The last successful receipt arrived within twice the interval |
+| Backup sidecar   | Its health endpoint reports ready                             |
+| Disk             | Under 90% full on the data volume                             |
+| Spending         | The hard spending stop has not fired                          |
 
 A part that turns unready raises a status report in the live view, and the push notice carries only
 the standard count and link. nixie reads the Backups part from the sidecar's receipts. A later stage
@@ -191,9 +191,9 @@ adds an outbound heartbeat from nixie: an empty request every 5 minutes to an en
 deployment picks, so an outside monitor alerts when nixie is down.
 
 The backup sidecar has its own health endpoint: live when it answers, and ready when its last
-receipt is within twice the backup interval. It reports the age of the newest snapshot set and the
-time of the last upload. The sidecar holds no push credentials, so every backup notice comes from
-nixie.
+successful receipt is within twice the backup interval. It reports the age of the newest snapshot
+set and the time of the last upload. The sidecar holds no push credentials, so every backup notice
+comes from nixie.
 
 The web server has its own health endpoint: live when it answers, and ready when it reaches nixie's
 API.
