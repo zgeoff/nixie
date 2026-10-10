@@ -59,6 +59,8 @@ A host runs nixie, the imp host and the backups. It needs:
 - **Outbound network only.** nixie and the web server bind to loopback or the private network, and
   you reach the web client over Tailscale. An inbound route exists only for a channel or connector
   that needs webhooks.
+- **One host name for the web client and the API.** A reverse proxy sends `/rpc` to nixie and every
+  other path to the web server, and terminates HTTPS for that name.
 
 nixie runs as a non-root user with a read-only root filesystem, and never mounts the Docker socket.
 **Why:** the socket gives root on the host.
@@ -199,6 +201,8 @@ infrastructure repo. One SQLite writer sets its shape:
 - one replica in a StatefulSet with a `ReadWriteOnce` volume, which stops the old pod before the new
   one starts
 - the web client as its own Deployment, which holds no state and can run more than one replica
+- one ingress on one host name, with a path rule that sends `/rpc` to nixie and a default rule to
+  the web client
 - the sops file and host key as a Secret mounted read-only, decrypted by nixie at start
 - impd on each node that runs nixie, outside the cluster or as a privileged pod with `/dev/kvm`
 

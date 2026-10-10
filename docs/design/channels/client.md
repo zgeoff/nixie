@@ -37,6 +37,12 @@ Start server that fails or redeploys never restarts nixie. React Server Componen
 shared package holds the contract, the `@orpc/tanstack-query` hooks, the paste-span logic and the
 view state, and each client owns its UI. The Expo app streams through `expo/fetch`.
 
+The web client and the API share one host name. A reverse proxy in front of both sends `/rpc`, which
+carries every procedure and the live stream, to nixie's API and every other path to Start. Pages and
+the browser's own calls therefore share one origin, so the API needs no cross-origin setup. **Why:**
+one host-only cookie then reaches both servers, and the passkey binds to that one name. Compose uses
+an existing proxy such as Caddy, and Kubernetes uses one ingress with a path rule for `/rpc`.
+
 ## Device sessions
 
 You sign a device in once with an enrolment code, and the device holds a session until you revoke
@@ -45,14 +51,15 @@ for later devices. A code works once: a successful enrolment consumes it, and an
 after 15 min by default. nixie stores only a hash of each session token, and each session is a row
 in the [identity record](./channel-adapter.md).
 
-The web client keeps its token in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie, and every
-procedure requires a custom header that a cross-site form cannot send. The Expo app keeps its token
-in `expo-secure-store` and sends it as a bearer token. A session lapses after 30 days without use by
-default. The client lists every session, and revoking one is a checked action.
+The web client keeps its token in a host-only `HttpOnly`, `Secure`, `SameSite=Strict` cookie, and
+every procedure requires a custom header that a cross-site form cannot send. The Expo app keeps its
+token in `expo-secure-store` and sends it as a bearer token. A session lapses after 30 days without
+use by default. The client lists every session, and revoking one is a checked action.
 
 With [0012](../../decisions/0012-high-risk-approvals.md), you register a passkey from a signed-in
 client. New devices then sign in with it, and always-ask approvals ask for it. WebAuthn needs HTTPS
-on a fixed host name, which the expected private-network deployment serves.
+on a fixed host name, which the expected private-network deployment serves: the one name the web
+client and the API share.
 
 ## Sending a message
 
