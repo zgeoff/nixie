@@ -38,8 +38,7 @@ The caller's tool list at stage 2 is the job's list for a job run, and the subse
 for a worker, so delegation only narrows. A denied call returns the rule's ID and sentence to the
 model as the tool result, so the model can take another path, and no prompt reaches you. A queued
 action runs through the pipeline again before each attempt, so a rule that narrowed after its
-approval still applies; [actions](../core/outside-actions.md) covers how an approval answers each
-outcome.
+approval still applies; [actions](../core/actions.md) covers how an approval answers each outcome.
 
 ## Effects
 

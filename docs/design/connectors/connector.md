@@ -48,11 +48,11 @@ different effects splits into actions, such as trashing an email and sending one
 [policy design](../policy/decision-point.md) owns each tool's declaration.
 
 The connector maps each provider response to one of the 4 responses, and the
-[action queue](../core/outside-actions.md) turns them into outcomes. Each queued action declares how
-the queue reconciles an unknown outcome: the provider's idempotency key and how long the provider
-keeps it, a read-only check and how long to wait before trusting a negative answer, or neither.
-`run` passes the action ID as the idempotency key, or writes it where the check finds it, such as a
-header on a sent email.
+[action queue](../core/actions.md) turns them into outcomes. Each queued action declares how the
+queue reconciles an unknown outcome: the provider's idempotency key and how long the provider keeps
+it, a read-only check and how long to wait before trusting a negative answer, or neither. `run`
+passes the action ID as the idempotency key, or writes it where the check finds it, such as a header
+on a sent email.
 
 `ConnectorContext` gives the connector a [fetcher](./credentials.md) for the connection's
 credential, limited to the hosts the connector declares, and nothing else that reaches the network.

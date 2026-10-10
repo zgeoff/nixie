@@ -39,11 +39,11 @@ change to it is a record. It holds:
 
 The registered operation fixes the proposal's kind, and neither model output nor a client request
 changes it. Every kind shares the operation hash, the identity check, the lapse, rejection and
-deferral. An action goes to the [action queue](../core/outside-actions.md), a memory write applies
-an item version under the [memory write contract](../memory/writes.md), and an internal change to
-policy, a mandate or a job runs its registered host mutation. A memory proposal carries its
-operation, remember or retire, its quote, and the exact item and version it targets; memory review
-counts stay apart from policy prompts.
+deferral. An action goes to the [action queue](../core/actions.md), a memory write applies an item
+version under the [memory write contract](../memory/writes.md), and an internal change to policy, a
+mandate or a job runs its registered host mutation. A memory proposal carries its operation,
+remember or retire, its quote, and the exact item and version it targets; memory review counts stay
+apart from policy prompts.
 
 The canonical operation serialises like the [snapshot form](./rules.md#the-snapshot-hash): sorted
 keys, no whitespace, NFC strings. The hash covers the kind, the tool, every argument, the target
@@ -91,8 +91,7 @@ The approval record holds the proposal ID, the action hash, the rule hash for an
 answer, the channel and device, the check used, and the chosen option. The host checks the current
 operation, policy, target version and permitted choice, then consumes the approval by kind:
 
-- an action consumes it in the transaction that queues it, under
-  [actions](../core/outside-actions.md);
+- an action consumes it in the transaction that queues it, under [actions](../core/actions.md);
 - a memory write consumes it in the transaction that applies the item version, its notice and its
   receipt;
 - an internal change consumes it with its registered host mutation.
@@ -140,8 +139,7 @@ hash. Policy owns what it holds and its order; the client lays it out. It holds 
 this order:
 
 1. **Unconfirmed outcomes:** actions whose outcome is unknown and that reconciliation could not
-   settle, each offering "it happened", "retry" and "drop", as [actions](../core/outside-actions.md)
-   covers.
+   settle, each offering "it happened", "retry" and "drop", as [actions](../core/actions.md) covers.
 2. **Lifting items:** proposals that create or widen a lifting rule.
 3. **Always-ask items:** spending, raising a budget, mandates, proposed rules and known contacts.
 4. **Routine items,** grouped by task, oldest first within each task.

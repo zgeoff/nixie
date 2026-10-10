@@ -27,8 +27,8 @@ interface ToolDefinition<Input, Output> {
 
 The [policy decision point](../policy/decision-point.md) owns the declaration. A tool whose effects
 include `write`, `delete`, `send`, `spend` or `device` runs `queued`, as an
-[action](../core/outside-actions.md) with an ID and an outcome. Every other tool runs `direct` in
-the turn, because a read retried after a crash repeats nothing.
+[action](../core/actions.md) with an ID and an outcome. Every other tool runs `direct` in the turn,
+because a read retried after a crash repeats nothing.
 
 Every call runs the same steps on the host:
 
