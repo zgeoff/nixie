@@ -18,7 +18,9 @@ const impURL = process.env.IMP_URL ?? '',
   toolToken = crypto.randomUUID(),
   quiet = { isOn: false },
   // the impd host name and address stay out of the recorded run
-  redactions: [string, string][] = [];
+  redactions: [string, string][] = [],
+  // the steps whose outcome differs from the expected one
+  failures: string[] = [];
 
 if (!/^https:\/\//u.test(impURL) || !impToken || !/^nixie-spike-[a-z0-9-]+$/u.test(impName) || !image) {
   throw new Error('Set IMP_URL (https), IMP_TOKEN_FILE, SPIKE_IMP (nixie-spike-*) and SPIKE_IMAGE.');
@@ -32,7 +34,7 @@ let forward: ReverseForward | null = null,
   failed = false;
 
 try {
-  printStep('pod-sockets-before', { listeners: collectListeners() });
+  checkListeners('pod-sockets-before');
   printStep('impd-version', await client.checkServer());
   const existing = await client.imps.list();
   if (existing.some((row) => row.name === impName)) {
@@ -45,7 +47,7 @@ try {
     policy: { mode: 'none', allow: [] },
   });
   madeImp = true;
-  printStep('imp-created', { name: impName, image, policy: await client.imps.policy({ name: impName }) });
+  await checkPolicy('imp-created');
 
   forward = openReverseForward({
     baseUrl: impURL,
@@ -61,12 +63,15 @@ try {
     printStep('forward-ended', end);
   });
   printStep('forward-listening', await forward.listening);
-  printStep('pod-sockets-forward-open', { listeners: collectListeners() });
+  checkListeners('pod-sockets-forward-open');
 
   await runGuestChecks();
 
-  printStep('imp-policy-after', { policy: await client.imps.policy({ name: impName }) });
-  printStep('pod-sockets-after', { listeners: collectListeners() });
+  await checkPolicy('imp-policy-after');
+  checkListeners('pod-sockets-after');
+  if (failures.length > 0) {
+    throw new Error(`Unexpected outcome: ${failures.join(', ')}`);
+  }
 } catch (error) {
   failed = true;
   printStep('error', { message: error instanceof Error ? error.message : String(error) });
@@ -196,46 +201,88 @@ async function runGuestChecks(): Promise<void> {
   };
   redactions.push([impdHost, '<impd-host>'], [impdAddress, '<impd-address>']);
 
-  printStep('guest-tool-call', await runGuest(
+  await checkGuest(
+    'guest-tool-call',
     'curl -sS -m 10 --noproxy "*" -H "Authorization: Bearer $TOOL_TOKEN" -H "content-type: application/json" -d "$CALL" -w "\\nstatus=%{http_code} total=%{time_total}s" "$BASE/mcp"',
     env,
-  ));
-  printStep('guest-tool-call-no-token', await runGuest(
+    (out) => out.code === 0 && out.stdout.includes('"sum":42') && out.stdout.includes('status=200'),
+  );
+  await checkGuest(
+    'guest-tool-call-no-token',
     'curl -sS -m 10 --noproxy "*" -o /dev/null -w "status=%{http_code}" -d "$CALL" "$BASE/mcp"',
     env,
-  ));
-  printStep('guest-stream', await runGuest(
+    (out) => out.stdout === 'status=401',
+  );
+  await checkGuest(
+    'guest-stream',
     'curl -sSN -m 10 --noproxy "*" -H "Authorization: Bearer $TOOL_TOKEN" "$BASE/stream" | while IFS= read -r line; do echo "$(date +%s.%N) $line"; done',
     env,
-  ));
+    (out) => /first\n.*last$/su.test(out.stdout),
+  );
   quiet.isOn = true;
-  printStep('guest-latency', await runGuest(
+  await checkGuest(
+    'guest-latency',
     'for i in $(seq 1 60); do curl -sS -m 10 --noproxy "*" -o /dev/null -H "Authorization: Bearer $TOOL_TOKEN" -H "content-type: application/json" -d "$CALL" -w "%{time_total}\\n" "$BASE/mcp"; done | tail -n 50 | sort -n | awk \'{v[NR]=$1} END {printf "n=%d median=%.4fs p95=%.4fs\\n", NR, (v[int(NR/2)]+v[int(NR/2)+1])/2, v[int(NR*0.95)]}\'',
     env,
-  ));
+    (out) => out.code === 0 && out.stdout.startsWith('n=50 '),
+  );
   quiet.isOn = false;
-  printStep('guest-egress-impd-name', await runGuest(
+  await checkGuest(
+    'guest-egress-impd-name',
     'curl -sS -m 5 --noproxy "*" -o /dev/null -w "status=%{http_code}" "https://$IMPD_HOST/health"; echo " exit=$?"',
     env,
-  ));
-  printStep('guest-egress-impd-address', await runGuest(
+    isRefused,
+  );
+  await checkGuest(
+    'guest-egress-impd-address',
     'curl -sS -m 5 --noproxy "*" -o /dev/null -w "status=%{http_code}" --resolve "$IMPD_HOST:443:$IMPD_ADDRESS" "https://$IMPD_HOST/health"; echo " exit=$?"',
     env,
-  ));
-  printStep('guest-egress-gateway', await runGuest(
+    isRefused,
+  );
+  await checkGuest(
+    'guest-egress-gateway',
     'gw=$(ip -4 route show default | awk \'{print $3; exit}\'); curl -sS -m 5 --noproxy "*" -o /dev/null -w "status=%{http_code}" "http://$gw:7070/health"; echo " exit=$?"',
     env,
-  ));
-  printStep('guest-egress-internet', await runGuest(
+    isRefused,
+  );
+  await checkGuest(
+    'guest-egress-internet',
     'curl -sS -m 5 --noproxy "*" -o /dev/null -w "status=%{http_code}" https://1.1.1.1/; echo " exit=$?"',
     env,
-  ));
+    isRefused,
+  );
+}
+
+// a connection the guest must not make: curl reaches no server, so it
+// reports status 000 and a nonzero exit
+function isRefused(out: GuestOutput): boolean {
+  return out.stdout.startsWith('status=000 exit=') && !out.stdout.endsWith('exit=0');
+}
+
+async function checkGuest(
+  step: string,
+  script: string,
+  env: Readonly<Record<string, string>>,
+  isExpected: (out: GuestOutput) => boolean,
+): Promise<void> {
+  const out = await runGuest(script, env);
+  const pass = isExpected(out);
+  if (!pass) {
+    failures.push(step);
+  }
+  printStep(step, { pass, ...out });
+}
+
+interface GuestOutput {
+  readonly code: number | null;
+  readonly stdout: string;
+  readonly stderr: string;
 }
 
 async function runGuest(
   script: string,
   env: Readonly<Record<string, string>>,
-): Promise<{ code: number | null; stdout: string; stderr: string }> {
+): Promise<GuestOutput> {
   const result = await client.run(impName, ['bash', '-c', script], { env });
   const decoder = new TextDecoder();
   return {
@@ -243,6 +290,24 @@ async function runGuest(
     stdout: decoder.decode(result.stdout).trim(),
     stderr: decoder.decode(result.stderr).trim(),
   };
+}
+
+function checkListeners(step: string): void {
+  const listeners = collectListeners();
+  const pass = listeners.length === 0;
+  if (!pass) {
+    failures.push(step);
+  }
+  printStep(step, { pass, listeners });
+}
+
+async function checkPolicy(step: string): Promise<void> {
+  const policy = await client.imps.policy({ name: impName });
+  const pass = policy.mode === 'none' && policy.allow.length === 0;
+  if (!pass) {
+    failures.push(step);
+  }
+  printStep(step, { pass, name: impName, image, policy });
 }
 
 // every TCP socket in LISTEN and every bound UDP socket in the pod's network

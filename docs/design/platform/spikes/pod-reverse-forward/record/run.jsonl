@@ -1,23 +1,21 @@
-{"step":"pod-sockets-before","ms":5,"data":{"listeners":[]}}
-{"step":"impd-version","ms":168,"data":{"clientVersion":"0.40.0","serverVersion":"0.40.0","compatible":true}}
-{"step":"imp-created","ms":2801,"data":{"name":"nixie-spike-conv-203846","image":"imp-builder","policy":{"mode":"none","allow":[]}}}
-{"step":"forward-listening","ms":3408,"data":{"path":null,"port":8901}}
-{"step":"pod-sockets-forward-open","ms":3412,"data":{"listeners":[]}}
-{"step":"tool-request","ms":4106,"data":{"path":"/mcp","status":200,"method":"tools/call","tool":"add"}}
-{"step":"guest-tool-call","ms":4135,"data":{"code":0,"stdout":"{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"42\"}],\"structuredContent\":{\"sum\":42,\"servedBy\":\"nixie-pod\"}}}
-status=200 total=0.206741s","stderr":""}}
-{"step":"tool-request","ms":4175,"data":{"path":"/mcp","status":401}}
-{"step":"guest-tool-call-no-token","ms":4182,"data":{"code":0,"stdout":"status=401","stderr":""}}
-{"step":"tool-request","ms":4409,"data":{"path":"/stream","status":200}}
-{"step":"guest-stream","ms":4698,"data":{"code":0,"stdout":"1791625162.398997049 first
-1791625162.604797484 last","stderr":""}}
-{"step":"guest-latency","ms":8949,"data":{"code":0,"stdout":"n=50 median=0.0109s p95=0.0234s","stderr":""}}
-{"step":"guest-egress-impd-name","ms":8979,"data":{"code":0,"stdout":"status=000 exit=6","stderr":"curl: (6) Could not resolve host: <impd-host>"}}
-{"step":"guest-egress-impd-address","ms":14007,"data":{"code":0,"stdout":"status=000 exit=28","stderr":"curl: (28) Connection timed out after 5003 milliseconds"}}
-{"step":"guest-egress-gateway","ms":19118,"data":{"code":0,"stdout":"status=000 exit=28","stderr":"curl: (28) Connection timed out after 5002 milliseconds"}}
-{"step":"guest-egress-internet","ms":19143,"data":{"code":0,"stdout":"status=000 exit=7","stderr":"curl: (7) Failed to connect to 1.1.1.1 port 443 after 0 ms: Couldn't connect to server"}}
-{"step":"imp-policy-after","ms":19145,"data":{"policy":{"mode":"none","allow":[]}}}
-{"step":"pod-sockets-after","ms":19149,"data":{"listeners":[]}}
-{"step":"forward-ended","ms":19150,"data":{"kind":"stopped"}}
-{"step":"imp-destroyed","ms":19388,"data":{"name":"nixie-spike-conv-203846"}}
-{"step":"done","ms":19388,"data":{"ok":true}}
+{"step":"pod-sockets-before","ms":5,"data":{"pass":true,"listeners":[]}}
+{"step":"impd-version","ms":158,"data":{"clientVersion":"0.40.0","serverVersion":"0.40.0","compatible":true}}
+{"step":"imp-created","ms":1585,"data":{"pass":true,"name":"nixie-spike-conv-205302","image":"imp-builder","policy":{"mode":"none","allow":[]}}}
+{"step":"forward-listening","ms":1647,"data":{"path":null,"port":8901}}
+{"step":"pod-sockets-forward-open","ms":1652,"data":{"pass":true,"listeners":[]}}
+{"step":"tool-request","ms":3275,"data":{"path":"/mcp","status":200,"method":"tools/call","tool":"add"}}
+{"step":"guest-tool-call","ms":3312,"data":{"pass":true,"code":0,"stdout":"{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"42\"}],\"structuredContent\":{\"sum\":42,\"servedBy\":\"nixie-pod\"}}}\nstatus=200 total=0.635115s","stderr":""}}
+{"step":"tool-request","ms":3567,"data":{"path":"/mcp","status":401}}
+{"step":"guest-tool-call-no-token","ms":3583,"data":{"pass":true,"code":0,"stdout":"status=401","stderr":""}}
+{"step":"tool-request","ms":3849,"data":{"path":"/stream","status":200}}
+{"step":"guest-stream","ms":4111,"data":{"pass":true,"code":0,"stdout":"1791626019.667414083 first\n1791626019.914383185 last","stderr":""}}
+{"step":"guest-latency","ms":8455,"data":{"pass":true,"code":0,"stdout":"n=50 median=0.0130s p95=0.0207s","stderr":""}}
+{"step":"guest-egress-impd-name","ms":8506,"data":{"pass":true,"code":0,"stdout":"status=000 exit=6","stderr":"curl: (6) Could not resolve host: <impd-host>"}}
+{"step":"guest-egress-impd-address","ms":13608,"data":{"pass":true,"code":0,"stdout":"status=000 exit=28","stderr":"curl: (28) Connection timed out after 5002 milliseconds"}}
+{"step":"guest-egress-gateway","ms":18889,"data":{"pass":true,"code":0,"stdout":"status=000 exit=28","stderr":"curl: (28) Connection timed out after 5002 milliseconds"}}
+{"step":"guest-egress-internet","ms":18916,"data":{"pass":true,"code":0,"stdout":"status=000 exit=7","stderr":"curl: (7) Failed to connect to 1.1.1.1 port 443 after 0 ms: Couldn't connect to server"}}
+{"step":"imp-policy-after","ms":18919,"data":{"pass":true,"name":"nixie-spike-conv-205302","image":"imp-builder","policy":{"mode":"none","allow":[]}}}
+{"step":"pod-sockets-after","ms":18922,"data":{"pass":true,"listeners":[]}}
+{"step":"forward-ended","ms":18923,"data":{"kind":"stopped"}}
+{"step":"imp-destroyed","ms":19196,"data":{"name":"nixie-spike-conv-205302"}}
+{"step":"done","ms":19196,"data":{"ok":true}}
