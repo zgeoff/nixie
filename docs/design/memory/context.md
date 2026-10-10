@@ -62,14 +62,19 @@ and queues the current version for encoding, outside the write transaction. When
 finishes, the service checks the version, state and key again and discards stale work.
 
 The indexes rank candidate IDs and never supply the returned text. Before returning a candidate, the
-service reads its current version, checks that it is active and decrypts it. Retire and forget
-remove the item's entries and cached results, and a forget completes only after that removal.
+service reads its current version, checks that it is active and decrypts it. That final check and
+the delivery to the task share one lock with writes, retire and forget, and the delivery records
+each item and version before the lock releases. **Why:** a forget that ran between the check and the
+delivery would otherwise let the text reach the task after the forget completes. Retire and forget
+remove the item's entries, cached results and pending deliveries, and a forget completes only after
+that removal.
 
 Neither index is written to disk, exported or backed up, and restart rebuilds them from readable
 records. **Why:** the [shredding spike](../../../spikes/memory-shred/README.md) found that a
 persisted FTS5 index keeps forgotten words. The
-[retrieval spike](../../../spikes/memory-retrieval/README.md) measured a full build over 20,000
-messages in 62 ms, so a rebuild at every start costs little.
+[retrieval spike](../../../spikes/memory-retrieval/README.md) built the FTS5 index over 20,000
+messages in 62 ms and measured embedding at 1.2 to 2.6 ms per item. A full semantic rebuild over
+that many messages is unmeasured, and keyword search covers the gap while it runs.
 
 Tool results, worker transcripts and compaction summaries stay out of the index. **Why:** they are
 outside content or model text written from it, and retrieving them would place that text beside your
