@@ -74,7 +74,8 @@ the call to its turn.
 ## Starting a model loop
 
 Every model loop starts with the same options, from the
-[placement spike](../../../spikes/sdk-placement/README.md):
+[placement spike](../../../spikes/sdk-placement/README.md), plus the base URL, model and effort of
+its role's [model profile](../core/models.md):
 
 - `tools: []`, `strictMcpConfig: true` and `settingSources: []`, so nothing comes from a settings
   file

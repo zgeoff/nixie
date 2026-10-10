@@ -4,7 +4,7 @@
   [0012](../../decisions/0012-high-risk-approvals.md),
   [0023](../../decisions/0023-lifting-always-ask.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md),
-  [0028](../../decisions/0028-policy-design.md)
+  [0028](../../decisions/0028-policy-design.md), [0033](../../decisions/0033-model-profiles.md)
 
 nixie spends money in 2 ways and keeps them apart. Spending in the world, such as a purchase, is a
 tool call with the `spend` effect, which always asks unless a lifting rule covers it. Model cost is
@@ -16,8 +16,8 @@ limit. A budget is one kind of record for both: a limit over a period, and raisi
 | Field  | Holds                                                              |
 | ------ | ------------------------------------------------------------------ |
 | ID     | A stable slug, such as `shopping-month`                            |
-| Counts | Spending through `spend` tools, or model cost                      |
-| Limit  | An amount in your currency                                         |
+| Counts | Spending through `spend` tools, or model dollars, tokens or turns  |
+| Limit  | An amount in your currency, a token count or a turn count          |
 | Period | A day, a week or a month, reset at local midnight on its first day |
 | Scope  | The whole deployment, one job, or the lifting rules that name it   |
 
@@ -53,33 +53,46 @@ and an unknown outcome stays charged until you settle it.
 
 ## Model cost
 
-Every turn reports its estimated cost in the Agent SDK's result, and the runner records it on the
-turn's record. Model cost has 3 limits:
+Model use has 3 measures, and each limit below sets all 3: dollars, tokens and turns. The
+[counting proxy](#the-hard-spending-stop) counts tokens from each response, and nixie prices them
+with the role's [model profile](../core/models.md#cost), never with the cost the Agent SDK reports.
+A token count includes input, cached input and output. **Why:** dollars bound what a metered route
+costs, tokens bound the load on a flat subscription, where dollars are notional, and turns catch a
+loop whatever the price.
 
-- **Per worker run:** $1, with 10 min and 25 turns. The runner passes the cap to the SDK as
-  `maxBudgetUsd`.
-- **Per job run:** $2, counted over every turn and worker in the job run. The runner checks it
-  before each step and stops the job run with a report when it is spent.
-- **Per deployment:** $10 a day and $150 a month, which feed the hard spending stop.
+| Limit          | Dollars | Tokens      | Turns  | Other  |
+| -------------- | ------- | ----------- | ------ | ------ |
+| Per worker run | $1      | 500,000     | 25     | 10 min |
+| Per job run    | $5      | 2,000,000   | 100    |        |
+| Per day        | $20     | 10,000,000  | 1,000  |        |
+| Per month      | $300    | 200,000,000 | 20,000 |        |
 
-Every value is a placeholder until real use sets it. How to count cost on a subscription token is
-open, because the SDK reports a notional price per turn even on a flat subscription; the
-[open items](../open-items.md) track it. **Why:** a narrow worker past its cap is looping, a job run
-past a few dollars needs your eyes, and the deployment limits stop a fault that every smaller limit
-misses, such as a job that runs too often.
+- **Per worker run.** The runner passes the turn limit to the SDK as `maxTurns`, and stops the
+  worker run when the proxy's dollar or token count for its imp reaches the limit.
+- **Per job run.** The count covers every turn and worker in the job run. The runner checks it
+  before each step and stops the job run with a report when a limit is reached.
+- **Per deployment,** a day and a month. These limits feed the hard spending stop.
+
+Each default is generous, because it exists to stop a fault, and the deployment configuration
+overrides every value. Real use sets the defaults, which the [open items](../open-items.md) track.
+**Why:** a narrow worker past its limit is looping, a job run past its limit needs your eyes, and
+the deployment limits stop a fault that every smaller limit misses, such as a job that runs too
+often.
 
 ## The hard spending stop
 
-The hard spending stop ends all model spending once a deployment budget is spent. When it trips,
+The hard spending stop ends all model spending once a deployment limit is reached. When it trips,
 nixie stops starting turns, pauses every task in place with a record, and tells you through the push
 channel, which needs no model. You resume by raising the budget, which always asks, or by waiting
 for the next period.
 
-The stop is a counting proxy on the host. Every model request passes through it, it counts the cost
-from each response, and once a deployment budget is spent it refuses further requests. It fails
-closed, so a proxy that is down stops turns instead of letting them run uncounted. A spend limit set
-with the model provider, where one exists, backs it up. **Why:** the SDK's `maxBudgetUsd` runs
-inside the imp, next to code that reads untrusted content, and the runner's checks between steps let
-one turn overshoot, so the stop sits on the host route that every model request takes. The proxy
-relies on imp's broker to forward a worker's model requests through it, which a spike in
-[open items](../open-items.md) checks.
+The stop is a counting proxy on the host. Every model request passes through it, it counts the
+tokens and the cost from each response, and once a deployment dollar or token limit is reached it
+refuses further requests. The proxy holds one route per model profile, so it prices each response
+with that profile's table. The runner counts turns from the turn records and trips the stop at the
+deployment turn limit. The proxy fails closed, so a proxy that is down stops turns instead of
+letting them run uncounted. A spend limit set with the model provider, where one exists, backs it
+up. **Why:** a limit the SDK enforces runs inside the imp, next to code that reads untrusted
+content, and the runner's checks between steps let one turn overshoot, so the stop sits on the host
+route that every model request takes. The proxy relies on imp's broker to forward a worker's model
+requests through it, which a spike in [open items](../open-items.md) checks.

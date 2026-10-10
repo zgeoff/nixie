@@ -6,10 +6,11 @@
   [0030](../../decisions/0030-connectors-and-sandbox-environments.md)
 
 The credential store holds every credential nixie uses: OAuth clients and their tokens, static
-secrets such as API keys and app passwords, and the model credential that imps receive as a grant.
-Tools and connectors use a credential on the host through the store, so a credential value never
-enters a tool result, a prompt, a record or a log. The store sits in front of one or more backends,
-and the deployment picks the backend for each credential.
+secrets such as API keys and app passwords, and the model credential of each
+[model profile](../core/models.md), which imps receive as a grant. Tools and connectors use a
+credential on the host through the store, so a credential value never enters a tool result, a
+prompt, a record or a log. The store sits in front of one or more backends, and the deployment picks
+the backend for each credential.
 
 ## The interface
 
@@ -45,11 +46,11 @@ a SHA-256 of the value, so the live view shows a rotation without the value.
 
 ## Backends
 
-| Backend    | Holds                                                | Writes | Injects |
-| ---------- | ---------------------------------------------------- | ------ | ------- |
-| Database   | OAuth clients and tokens, and secrets you enter      | Yes    | No      |
-| Deployment | Static secrets from the deployment, read at start    | No     | No      |
-| imp        | Copies of the model credential, for grants into imps | No     | Yes     |
+| Backend    | Holds                                             | Writes | Injects |
+| ---------- | ------------------------------------------------- | ------ | ------- |
+| Database   | OAuth clients and tokens, and secrets you enter   | Yes    | No      |
+| Deployment | Static secrets from the deployment, read at start | No     | No      |
+| imp        | Copies of model credentials, for grants into imps | No     | Yes     |
 
 - **Database.** Each credential is a row encrypted with a key of its own, wrapped by a deployment
   key from the deployment's secrets, so a backup alone reveals no credential. OAuth tokens change at
@@ -64,8 +65,9 @@ a SHA-256 of the value, so the live view shows a rotation without the value.
 
 A grant puts a credential into a sandbox's broker, limited to one host, so the sandbox's code sends
 a placeholder and the broker adds the value. The first build makes one kind of grant: the model
-credential, on the model API's host, into the conversation's imp and each worker's imp. Any other
-grant goes only to a session on a coding adapter, by your rule for the coding context.
+credential of the sandbox's model profile, on that profile's host, into the conversation's imp and
+each worker's imp. Any other grant goes only to a session on a coding adapter, by your rule for the
+coding context.
 
 The store refuses 2 grants whatever a rule says:
 

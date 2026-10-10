@@ -30,8 +30,8 @@ is never evidence for a memory.
 
 The writer runs in its own imp like any worker, under
 [0026](../../decisions/0026-where-workers-and-the-conversation-run.md), because the replies it reads
-can carry outside content. It runs in the background and never delays a reply. Its model is an open
-choice in [open items](../open-items.md).
+can carry outside content. It runs in the background and never delays a reply. Its model comes from
+the `memory-writer` role's [model profile](../core/models.md#roles).
 
 A write whose text matches an active item exactly returns that item and writes nothing. A
 near-duplicate is the model's job: the writer sees the items retrieval found and revises one instead

@@ -20,6 +20,8 @@ one person a nixie deployment works for.
 | inbox            | A task's queue of messages and events that reach it between task runs                      |
 | lease            | A task's claim on the runner, which expires so that a crashed task run can restart         |
 | supervised agent | An agent nixie starts and steers but that runs under its own rules, such as an atc session |
+| model profile    | A named route to one model: endpoint, credential, model, effort and prices                 |
+| model role       | A part a model plays for nixie, such as the conversation or the checker, with its profile  |
 
 ## Policy
 
