@@ -37,28 +37,21 @@ address.
 
 ## A server with its own backend
 
-Some stdio servers exist to reach a backend on the host, and an imp with egress `none` leaves such a
-server unable to work. atc is the first case. Its stdio server, `atc mcp`, talks to atc's daemon
-over a unix socket, and the daemon checks no credential on that socket: any process that reaches it
-controls every session
-([atc protocol](https://github.com/zgeoff/atc/blob/main/docs/architecture/protocol.md)). atc also
-serves the same tools as `atc mcp --http`, over Streamable HTTP behind OAuth 2.1, where each grant
-carries scopes that limit which tools a client can call
-([remote MCP](https://github.com/zgeoff/atc/blob/main/docs/architecture/remote-mcp.md)).
+An outside server whose backend runs outside the sandbox connects to the proxy as an HTTP server,
+with an OAuth grant whose scopes limit the tools nixie can call. The deployment configures the
+server's URL and registers nixie as its client, and the owner revokes the grant at the server. The
+proxy reaches it through the steps above and in [authorization](#authorization).
 
-The route is an owner choice, with 3 options:
+atc is the expected first case. Its stdio server, `atc mcp`, talks to atc's daemon over a unix
+socket that checks no credential, so any process that reaches the socket controls every session
+([atc protocol](https://github.com/zgeoff/atc/blob/main/docs/architecture/protocol.md)). atc serves
+the same tools as `atc mcp --http`, over Streamable HTTP behind OAuth 2.1 with scoped grants
+([remote MCP](https://github.com/zgeoff/atc/blob/main/docs/architecture/remote-mcp.md)), and that
+transport is how nixie reaches it.
 
-| Option           | How the proxy reaches atc                                                     | Trade-off                                                                                                                       |
-| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| HTTP transport   | As an HTTP server at `atc mcp --http`, with an OAuth grant from atc           | atc's scopes limit what nixie can do, and the owner revokes the grant in atc; the owner runs one more process and adds a client |
-| Forwarded socket | Runs `atc mcp` in its imp, with a forward to the daemon's socket              | The imp isolates the server's code, and the forward hands it the socket's full authority                                        |
-| Host exception   | Runs `atc mcp` on the host, as a declared exception to the imp rule for stdio | It needs no setup, and the server runs with the full authority of the owner's account                                           |
-
-The recommendation is the HTTP transport. **Why:** a grant scope is the only boundary among the 3
-options that limits what nixie can do in atc, and the proxy reaches an HTTP server with OAuth
-through the steps above and in [authorization](#authorization). It also works when atc runs on
-another machine than nixie, where a socket cannot reach. The forwarded socket and the host exception
-stay available for a stdio server that has no HTTP transport.
+nixie neither forwards a backend socket into an imp nor runs a stdio server on the host by default.
+A forwarded socket that checks no credential hands the server its backend's full authority, and a
+stdio server on the host runs outside the sandbox with the full authority of the owner's account.
 
 ## Pinning
 

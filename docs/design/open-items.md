@@ -22,11 +22,6 @@ after the first build.
   different models for chat, memory writing, tool calls and long background reasoning, with low
   reasoning effort for chat, because effort sets cost and latency more than any other setting. No
   decision adopts the split, and the spike ran 2 samples per cell, so its numbers are indicative.
-- **The route to atc.** atc's stdio server reaches atc's daemon through a unix socket, which an imp
-  with egress `none` cannot reach. The options are atc's HTTP transport with a scoped OAuth grant, a
-  forwarded socket, or running the server on the host as an exception, and
-  [the MCP proxy](./connectors/mcp-proxy.md#a-server-with-its-own-backend) recommends the HTTP
-  transport. The atc adapter needs the answer.
 - **The SDK transcript as a store.** The Agent SDK keeps its own transcript under
   `CLAUDE_CONFIG_DIR`. Phase 3 decides whether the owner must be able to read and export it, or
   whether nixie's own event log supersedes it as a cache, which sets how backups and export treat it
