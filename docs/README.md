@@ -98,13 +98,15 @@ rests on.
 
 ### Deployment
 
-- [Deployment design index](design/platform/deployment/README.md) — the 4 deployment docs
+- [Deployment design index](design/platform/deployment/README.md) — the 5 deployment docs
 - [Deployment](design/platform/deployment/deployment.md) — the first build, the host, the images,
   secrets, seeding the definitions, health, and Kubernetes
 - [Deployment configuration](design/platform/deployment/configuration.md) — the YAML file, what it
   holds, its schema, and how it is mounted
 - [Backup and restore](design/platform/deployment/backup-and-restore.md) — the backup sidecar,
   Restic snapshots, the key repo and forget, the offsite replica, and restoring on a new host
+- [Release pipeline](design/platform/deployment/release-pipeline.md) — versioning, the build order,
+  registry publishing, attestations, pinned binaries and the compatibility checks
 - [Upgrades](design/platform/deployment/upgrades.md) — the pin and the bot, delivery to the host, a
   release on the host, migrations, and rollback
 

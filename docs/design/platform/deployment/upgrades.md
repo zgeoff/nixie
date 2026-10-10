@@ -13,9 +13,10 @@ release needs no restore.
 The Compose file names the image by tag and digest, such as
 `ghcr.io/<owner>/nixie:<version>@sha256:<digest>`. Renovate opens a pull request for each release
 through its [docker-compose manager](https://docs.renovatebot.com/modules/manager/docker-compose/).
-The release notes list each migration and whether the release before can read the schema it leaves.
-Renovate groups the nixie, web and backup images into one pull request, and the nixie image carries
-its imp images' digests, so one pull request moves every image, the SDK included.
+The [release pipeline](release-pipeline.md#migrations-in-the-release-notes) lists each migration in
+the release notes, with whether the release before can read the schema it leaves. Renovate groups
+the nixie, web and backup images into one pull request, and the nixie image carries its imp images'
+digests, so one pull request moves every image, the SDK included.
 
 ## Delivery
 
