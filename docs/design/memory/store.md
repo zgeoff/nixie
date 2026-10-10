@@ -35,17 +35,20 @@ proposal for the owner to confirm.
   [Index generations](./context.md#the-index), which swap a rebuilt index in while queries continue,
   come later.
 - **Forget in live sessions.** In the first build, any forget rebuilds every live session before its
-  next step, without a compaction summary.
-  [Session exposure records](./context.md#session-exposure-before-publication) and summary
-  dependency sets, which rebuild only the sessions that read the item, come later.
-- **Forget and backups.** In the first build, a forget stays pending until every registered backup
-  drops the old key copies. With no key backup registered, it completes after local cleanup. The
-  serialized [key-backup lifecycle](#forget-completion-and-key-backups) with generation watermarks
-  comes later.
+  next step, and it deletes the keys of every stored compaction summary, so no summary can hold the
+  forgotten text. [Session exposure records](./context.md#session-exposure-before-publication) and
+  summary dependency sets, which rebuild only the sessions that read the item, come later.
+- **Forget and backups.** In the first build, key-backup publication and forget share one exclusive
+  lock, so no backup can publish a key copy staged before a forget. A forget stays pending until
+  every registered backup drops the old key copies, and with no key backup registered it completes
+  after local cleanup. Generation watermarks in the
+  [key-backup lifecycle](#forget-completion-and-key-backups), which let publication and forget run
+  without that lock, come later.
 
 Each split keeps the agreed behaviour the owner sees: a forgotten item never returns, a pending
 forget shows as pending, and retrieval returns text only from current canonical rows. A rebuild on
-every forget costs more session rebuilds, which is acceptable while forgets are rare.
+every forget costs more session rebuilds and loses every summary, which is acceptable while forgets
+are rare.
 
 ## Items and versions
 
@@ -172,8 +175,8 @@ key disappeared.
 
 ### Forget completion and key backups
 
-The [first build](#the-first-build) keeps a forget pending until registered backups drop the old key
-copies; the serialized lifecycle below is the later extension.
+The [first build](#the-first-build) serializes key-backup publication and forget with one exclusive
+lock; the generation watermarks below are the later extension.
 
 A forget starts as a durable pending operation. It completes only after the live key-store
 checkpoint, derived-index invalidation, invalid-session cleanup and removal of recoverable key

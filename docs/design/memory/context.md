@@ -239,13 +239,13 @@ memory, under 0024, and retrieval never searches summaries. **Why:** the model w
 from an untrusted conversation, so retrieving it into a later turn would launder that text into a
 trusted-looking place.
 
-The [first build](./store.md#the-first-build) rebuilds every live session without a summary on any
-forget, so it needs no dependency sets. Each summary record carries the cumulative item version and
-record dependencies of its session branch at compaction. That set includes pinned exposure,
-inherited summaries and retained context, even if a source falls outside the recent-history window.
-Summary publication validates and commits those dependencies under the canonical gate; it rejects a
-late hook result from an invalidated branch. Missing dependency coverage makes a summary ineligible
-for reconstruction.
+The [first build](./store.md#the-first-build) deletes every stored summary on any forget, so it
+needs no dependency sets. Each summary record carries the cumulative item version and record
+dependencies of its session branch at compaction. That set includes pinned exposure, inherited
+summaries and retained context, even if a source falls outside the recent-history window. Summary
+publication validates and commits those dependencies under the canonical gate; it rejects a late
+hook result from an invalidated branch. Missing dependency coverage makes a summary ineligible for
+reconstruction.
 
 Permanent forget invalidates every summary that depends on a target item or record before
 reconstruction can select it. The durable forget operation includes those summary record keys in its
