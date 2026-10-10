@@ -228,8 +228,10 @@ scenarios, each one intended. A cautious variant that asks before every write an
 
 No starter rule allows creating a job. A job the owner asks for in a direct message runs through
 consent at stage 8 of the [decision point](./decision-point.md#the-pipeline), with no prompt, and a
-job nobody asked for, such as one a task proposes, falls to "no rule matched" and asks. This holds
-for a job whose tools send or delete too: the notice below keeps it in the owner's sight.
+job nobody asked for, such as one a task proposes, falls to "no rule matched" and asks. A job the
+owner asks for whose tools send also runs through consent. A job carries its tools' effects, so one
+whose tools delete for good meets `ask-permanent-deletes` and one whose tools spend meets the
+always-ask set, both before consent.
 
 Every job creation or change posts a notice, however the decision point allowed it: a line under
 nixie's reply, such as "Scheduled: inbox triage, daily 7:00", with an undo action. Undo removes the

@@ -30,9 +30,10 @@ nixie settles the open choices in its policy design as follows:
 - **A permissive starter rule set, with notices for jobs.** The starter set allows reads, notes,
   writes the service can restore, sends within the destination limits, sandboxed code and narrowing
   changes, and asks before deleting for good and before exporting. No starter rule allows or asks
-  for creating a job: a job the owner asks for runs through consent, whatever its tools do, and a
-  job nobody asked for asks. Every job creation or change posts a notice with undo, and the live
-  view lists every job.
+  for creating a job: a job the owner asks for runs through consent, including one whose tools send,
+  and a job nobody asked for asks. A job whose tools delete for good or spend still asks, because it
+  carries its tools' effects into the ask rule and the always-ask set, which run before consent.
+  Every job creation or change posts a notice with undo, and the live view lists every job.
 
 ## Why
 
