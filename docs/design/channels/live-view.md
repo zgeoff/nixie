@@ -16,6 +16,18 @@ action. The [event log design](../core/event-log.md#the-live-view-and-the-task-b
 projections and the follow-by-sequence model, and [tasks](../core/tasks.md) owns routing and the
 task states. Everything in this doc beyond the decisions it links is a proposal.
 
+## Stages
+
+The view lands in the 2 stages that [scope](../../scope.md#requirements) sets:
+
+- **Tier 1:** the dashboard groups, a task opened as a conversation in the same view as the main
+  thread, and the task controls for stepping in.
+- **Tier 2:** the history of finished tasks, the report of skipped or late triggers, and expansion
+  of any line into its raw record.
+
+The tier 1 build reads the same projections that tier 2 extends, so tier 2 adds views and no new
+data model.
+
 ## The dashboard
 
 The dashboard lists the conversation first, apart from the tasks, under

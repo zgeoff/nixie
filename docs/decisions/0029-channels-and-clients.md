@@ -40,8 +40,11 @@ The owner agreed these channels choices:
 
 The API spike supports oRPC, typed errors and a resumable stream. Start gives the web client server
 rendering and in-process procedure calls inside one server, while Expo keeps the Android UI native.
-Separate UIs preserve browser paste events and desktop controls at the cost of two UI
-implementations. Device sessions keep one authority model across all routes.
+Server rendering and server components improve the web client's UX: views render with their data on
+the first paint, and heavy rendering stays off the browser. Start also matches the owner's existing
+pattern of oRPC contract packages and TanStack Query, so code and habits carry over. Separate UIs
+preserve browser paste events and desktop controls at the cost of two UI implementations. Device
+sessions keep one authority model across all routes.
 
 Cards keep an approval beside its context, and the sheet gathers items from the owner's absence.
 Defer lets the owner choose when to answer without authorizing anything or losing a real deadline.

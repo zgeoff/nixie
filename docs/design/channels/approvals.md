@@ -25,8 +25,8 @@ A card renders one waiting item from the fields the policy design supplies:
 - the action as a sentence, such as "Send an email to the booking desk", with the structured
   arguments and the destination below it, and long values such as an email body collapsed to their
   first lines
-- for code, the execution boundary: placement, runtime image and egress/grant profile, with
-  credential references and allowed hosts but no secret values
+- for code, the execution boundary: where the code runs, its runtime image, and the egress and
+  grants it gets, with credential references and allowed hosts but no secret values
 - the declared effects, and the risk class: routine, always-ask, or lifting the always-ask set
 - the prompt cause, such as "no rule matched", as an enumerated value that the client renders from a
   label table, so a cause that policy adds later renders without a client change
@@ -70,10 +70,10 @@ server checks those choices again. The common choices are checked actions:
   to the task as an ordinary owner message, so the model reads why.
 
 An ask-rule prompt offers "change this rule" instead of "always allow", and an always-ask spending
-prompt can offer only the bounded lift that policy permits. Memory proposals show their structured
-review reason, exact item/version and evidence or intent quote; they offer no "always allow". The
-owner can approve their operation or edit the proposed text through the memory contract. A common
-card does not turn these internal operations into provider calls.
+prompt can offer only the bounded lift that policy permits. A memory proposal shows why it needs
+review, the exact item and version it changes, and the quote that backs it. It offers no "always
+allow". The owner can approve their operation or edit the proposed text through the memory contract.
+A common card does not turn these internal operations into provider calls.
 
 The owner can also reply in the thread, such as "make it 8:30", and the model withdraws the proposal
 and posts a new one, as [0002](../../decisions/0002-approvals.md) describes. The client shows a
@@ -139,8 +139,9 @@ verification required, so the signed assertion covers that one action. WebAuthn 
 transaction confirmation, so the binding is nixie's own.
 
 After an outside-action approval, the card follows queued, done, failed or unknown from canonical
-records. A memory or other internal approval shows the committed operation receipt or a stale/error
-result, without a provider-queue stage. The card never infers success from the model's words.
+records. A memory approval or another internal approval shows the receipt of the committed
+operation, or shows that the operation failed or went stale. It has no stage on the outside action
+queue. The card never infers success from the model's words.
 
 ## The digest sheet
 
@@ -157,11 +158,12 @@ a checkbox, and the sheet offers "Approve selected" and "Approve all routine", a
 [0028](../../decisions/0028-policy-design.md) records. Always-ask items keep their own controls on
 each line and never join a batch.
 
-Routine memory proposals join the routine batch. Their rows show the bound remember or retire
-operation, exact target/version, review reason and proposed content or intent, with the
-source/evidence expandable before approval. "Approve all routine" submits the displayed item IDs and
-hashes; newly arrived items do not join that request. Permanent forgetting keeps its separate
-checked flow and is never a routine proposal approval.
+Routine memory proposals join the routine batch. Each row shows whether the proposal remembers or
+retires an item, the exact item and version it targets, why it needs review, and the proposed text
+or the owner's request. The owner can expand the source and the evidence before approving. "Approve
+all routine" submits the displayed item IDs and hashes; newly arrived items do not join that
+request. Permanent forgetting keeps its separate checked flow and is never a routine proposal
+approval.
 
 A batch is one call that carries each item's proposal ID, action hash and choice. The server checks
 and records each item on its own, and returns a result per item, so one stale item fails alone and
