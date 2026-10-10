@@ -86,6 +86,8 @@ rests on.
   token and checker checks, memory proposals, notices and undo, and consolidation
 - [Memory in context](design/platform/memory/context.md) — the prompt, the pinned core, retrieval
   over memory and past messages, compaction, and the SDK transcript as a cache
+- [Moments](design/platform/memory/moments.md) — kept spans of the event log, their records and
+  tools, links from memory items, reading back, and destroying a moment
 
 ### Channels
 
@@ -190,6 +192,8 @@ The memory store, its writes, how it reaches the model, and definition versionin
 - [0031: Memory capture, context and removal](decisions/0031-memory-capture-context-and-removal.md)
   — batched capture, the transcript as a cache, reversible chat removal, grouped notices and the
   first build
+- [0037: Moments](decisions/0037-moments.md) — kept spans of the event log with your note and the
+  model's reflections, reached by tool call and by links from memory items
 
 ### Channels
 

@@ -3,7 +3,8 @@
 - Decisions: [0013](../../../decisions/0013-definition-versioning.md),
   [0024](../../../decisions/0024-memory-in-context.md),
   [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
-  [0031](../../../decisions/0031-memory-capture-context-and-removal.md)
+  [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
+  [0037](../../../decisions/0037-moments.md)
 
 The conversation runs on the Agent SDK's session and compaction. Memory reaches it 3 ways: a small
 pinned core in the system prompt, a few items retrieved for each turn, and 2 recall tools the model
@@ -88,7 +89,8 @@ first turn. It places up to 5 memory items and up to 3 past messages above a sco
 newest turn, all 3 numbers configurable. Each entry carries its ID, version or record sequence,
 source and date, inside a block that labels them as stored items, not instructions. Pinned items and
 messages already in the session stay out. The turn's record lists each item and version it placed,
-as references, not text.
+as references, not text. Per-turn retrieval never places a moment's title, note or reflection, as
+[moments](moments.md#reading-moments-back) sets out.
 
 ### The recall tools
 

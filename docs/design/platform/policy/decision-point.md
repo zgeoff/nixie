@@ -68,7 +68,7 @@ Every tool declares its effects in nixie's tool registry, and rules match on the
 | `send`          | Reaches a person or service other than you                                 |
 | `spend`         | Spends money                                                               |
 | `schedule`      | Creates or changes a job                                                   |
-| `run_code`      | Runs code in the caller's sandbox under its recorded grant boundary        |
+| `code_run`      | Runs code in the caller's sandbox under its recorded grant boundary        |
 | `device`        | Acts on a physical device, such as a light or a lock                       |
 | `policy_widen`  | Adds or loosens an allow rule, removes a deny or ask rule, or adds a lift  |
 | `policy_narrow` | Removes or tightens an allow rule, or adds a deny or ask rule              |
@@ -87,11 +87,11 @@ A tool also declares which arguments are destinations, which argument holds the 
 declarations are policy data that you can read and edit. Removing an effect from a declaration
 counts as a widening, because it can move a call out of the always-ask set or past an ask rule.
 
-A `run_code` call from the conversation or an ordinary task gets a fresh sandbox with no grants. In
+A `code_run` call from the conversation or an ordinary task gets a fresh sandbox with no grants. In
 a worker, it runs in the worker's own sandbox, whose one grant is the model-API credential. The
 sandbox adapter records the actual placement and grants, and the resolved execution profile is part
 of the action hash. Model requests from worker code pass through the counting proxy on the host and
-count against the same budgets, so `run_code` never bypasses the spending limits.
+count against the same budgets, so `code_run` never bypasses the spending limits.
 
 ### The always-ask set and narrowing changes
 

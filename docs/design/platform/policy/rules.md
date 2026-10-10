@@ -184,7 +184,7 @@ tier. It has 8 rules:
 | `allow-notes`               | Allow   | Effect `note`                                         |
 | `allow-service-writes`      | Allow   | Effect `write`, which the service can restore         |
 | `allow-sends-within-limits` | Allow   | Effect `send`, still bound by the destination limits  |
-| `allow-sandboxed-code`      | Allow   | Effect `run_code`                                     |
+| `allow-sandboxed-code`      | Allow   | Effect `code_run`                                     |
 | `allow-narrowing`           | Allow   | Effects `policy_narrow` and `budget_lower`            |
 | `ask-permanent-deletes`     | Ask     | Effect `delete`                                       |
 | `ask-exports`               | Ask     | Effect `export`, such as a memory or event log export |
