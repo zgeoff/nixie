@@ -31,6 +31,8 @@ A card renders one waiting item from the fields the policy design supplies:
 - the prompt cause, such as "no rule matched", as an enumerated value that the client renders from a
   label table, so a cause that policy adds later renders without a client change
 - for a "no rule matched" cause, the rule that would close the gap, as the sentence policy renders
+- when the card offers "always allow", the rule that the tap creates, as one sentence such as "Inbox
+  jobs may reply to sam@example.com"
 - the task it belongs to, as a link that opens the task
 - when it lapses, under [0006](../../decisions/0006-approval-record.md)
 - for a lifting rule, its bounds and who proposed it: the owner, or nixie from a conversation
@@ -50,10 +52,13 @@ on colour alone:
 | Always-ask | "Always asks" with the effect, such as "spends money" | A heavy warning frame       | One tap on its own card, never in a batch         |
 | Lifting    | "Lifts the always-ask set"                            | The warning frame, inverted | One tap after the rule's bounds are shown in full |
 
-A rule proposal from repeated approvals, a grant with an expiry and an "always allow" each widen a
-rule, so policy gives them the always-ask class, and the client renders them that way. Once
+A rule proposal from repeated approvals and a grant with an expiry each widen a rule, so policy
+gives them the always-ask class, and the client renders them on their own always-ask card. An
+"always allow" also widens a rule, and the routine card that offers it is the ask: the card shows
+the rule beside the action, and one tap approves both. Once
 [0012](../../decisions/0012-high-risk-approvals.md) lands, the always-ask and lifting controls ask
-for the passkey check, and the routine control stays one tap.
+for the passkey check, and the routine control stays one tap. Whether a one-tap "always allow" then
+needs the passkey is open in [open items](../open-items.md).
 
 ## The owner's choices
 
@@ -61,19 +66,23 @@ A proposal card renders the choices that policy supplies for its kind, cause and
 server checks those choices again. The common choices are checked actions:
 
 - **Approve** runs the action once, under [0006](../../decisions/0006-approval-record.md).
-- **Always allow**, when policy permits it for a routine gap or missing-consent cause, approves and
-  creates the rule the card shows. Creating a rule widens policy, so the client asks for a second
-  confirmation in the always-ask style before it sends the answer.
+- **Always allow**, when policy permits it for a routine gap or missing-consent cause, runs the
+  action once and creates the rule the card shows, in one tap. The answer carries the hash of that
+  rule with the action hash, so the owner approves exactly the rule they read. A quiet line then
+  appears under the reply, such as "Rule added: inbox jobs may reply to Sam · Edit · Undo", and the
+  rule appears in the rules list. Undo removes the rule, a narrowing that applies at once under
+  [0005](../../decisions/0005-effects-and-taint.md).
 - **Defer** keeps the proposal pending until a chosen time, with an optional note. It is available
   on every proposal card, including always-ask and lifting cards.
 - **Decline** closes the proposal, and the task learns of it in its next turn. An optional note goes
   to the task as an ordinary owner message, so the model reads why.
 
 An ask-rule prompt offers "change this rule" instead of "always allow", and an always-ask spending
-prompt can offer only the bounded lift that policy permits. A memory proposal shows why it needs
-review, the exact item and version it changes, and the quote that backs it. It offers no "always
-allow". The owner can approve their operation or edit the proposed text through the memory contract.
-A common card does not turn these internal operations into provider calls.
+prompt can offer only the bounded lift that policy permits. Spending and lifting cards never offer a
+one-tap "always allow". A memory proposal shows why it needs review, the exact item and version it
+changes, and the quote that backs it. It offers no "always allow". The owner can approve their
+operation or edit the proposed text through the memory contract. A common card does not turn these
+internal operations into provider calls.
 
 The owner can also reply in the thread, such as "make it 8:30", and the model withdraws the proposal
 and posts a new one, as [0002](../../decisions/0002-approvals.md) describes. The client shows a
@@ -121,7 +130,8 @@ Every answer is a call to a checked action in the [typed API](./client.md#the-ty
 proposal ID, the action hash the card rendered, the choice and a client action ID. The server:
 
 1. checks the session against the owner record, and refuses a revoked or unknown session
-2. checks that the proposal is still open and that the hash matches the open proposal
+2. checks that the proposal is still open and that the hash matches the open proposal; for "always
+   allow", it also checks the rule hash against the rule that policy offered for that proposal
 3. checks that the choice fits the class, so an always-ask item never arrives in a batch, and once
    0012 lands, that an approval of an always-ask or lifting item has a passkey assertion
 4. records the answer with the session's identity row; a defer updates the timers without consuming

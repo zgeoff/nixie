@@ -27,6 +27,12 @@ The owner agreed these channels choices:
   defer event and note and can do other work. The agent does not ask why by default; at most it
   acknowledges the return time. Approval remains bound to the exact action, and policy runs again on
   approval.
+- **One-tap "always allow".** A routine card shows the rule that "always allow" creates, as one
+  sentence, and one tap runs the action and creates that rule. The approval binds the hash of the
+  action and the hash of the rule the owner saw. A quiet line under the reply reads "Rule added: …"
+  with Edit and Undo, and the rule appears in the rules list. Spending and lifting cards keep their
+  own controls and never offer a one-tap "always allow". Whether the passkey from 0012 covers a
+  one-tap "always allow" stays open until 0012 is designed.
 - **Two push levels.** Routine items edit the live Telegram notice quietly. Always-ask items,
   unknown outcomes and returning deferred items send a new, buzzing notice that becomes the live
   one. Quiet hours suppress loud pushes overnight except unknown outcomes, as a configurable
@@ -46,10 +52,12 @@ pattern of oRPC contract packages and TanStack Query, so code and habits carry o
 preserve browser paste events and desktop controls at the cost of two UI implementations. Device
 sessions keep one authority model across all routes.
 
-Cards keep an approval beside its context, and the sheet gathers items from the owner's absence.
-Defer lets the owner choose when to answer without authorizing anything or losing a real deadline.
-Two push levels keep routine counts quiet while an item that needs attention can buzz. The native
-paste module supplies the evidence that memory rules need on Android.
+Cards keep an approval beside its context, and the sheet gathers items from the owner's absence. The
+card that offers "always allow" already asks the owner about the rule it shows, so a second
+confirmation adds friction without adding information. Defer lets the owner choose when to answer
+without authorizing anything or losing a real deadline. Two push levels keep routine counts quiet
+while an item that needs attention can buzz. The native paste module supplies the evidence that
+memory rules need on Android.
 
 ## Alternatives
 
@@ -58,6 +66,8 @@ paste module supplies the evidence that memory rules need on Android.
   separate UIs add UI work but preserve each platform's controls.
 - A password or a passkey from day one instead of enrolment codes and staged passkey support.
 - The digest sheet alone, with no thread cards or explicit defer control.
+- A second confirmation in the always-ask style after "always allow". It adds a tap on the most
+  common way to stop repeat prompts, and the card already shows the rule.
 - One edited notice for all arrivals, or a new notice for every batch.
 - Native input labelled unknown by default instead of a native paste hook.
 
