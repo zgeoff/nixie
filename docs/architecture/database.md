@@ -21,6 +21,9 @@ query or a synchronous fsync on the main thread blocks the event loop for its wh
   opens at the same moment fails at once.
 - A SQLite error reaches the caller as a `DatabaseError` with SQLite's result code, such as
   `SQLITE_CONSTRAINT_UNIQUE`.
+- When SQLite rolls a transaction back on its own, such as on a trigger's `RAISE(ROLLBACK)`, the
+  worker fails every later statement of that transaction. **Why:** each one would otherwise commit
+  on its own, outside the transaction and its writer epoch check.
 
 The lint rules refuse `bun:sqlite` outside `libs/db`. A module narrows the handle to its own tables
 with Kysely's `withTables`.
@@ -62,6 +65,9 @@ the build's migrations in order, and the build writes schema version N after N m
 - Each migration runs in its own transaction, together with the update of the one-row
   `schema_version` table, and the writer epoch check opens that transaction. A failed migration
   leaves the schema at the version before it.
+- The runner turns foreign key enforcement off around the migrations, and each migration runs
+  `foreign_key_check` before it commits. **Why:** SQLite ignores the pragma inside a transaction,
+  and a table rebuild's `DROP TABLE` would otherwise cascade into the child rows.
 - Before the first migration of a release, nixie copies the database with `VACUUM INTO` to
   `nixie-schema-<version>.db` in the data directory. The copy goes to a temporary file, reaches the
   disk, and then takes its name. A database that holds no schema yet gets no copy. The copy holds
@@ -70,12 +76,13 @@ the build's migrations in order, and the build writes schema version N after N m
   rename waits until the release before no longer needs that shape.
 
 `schema_version` holds the version and its oldest reader: the oldest schema version whose build can
-still read and write it. The build that migrates writes both. A build that meets a newer schema runs
-on it unchanged when its own version reaches the oldest reader. Otherwise it refuses to start, and
-the error names the newest `nixie-schema-<version>.db` copy it can read, or a backup when no copy
-exists. **Why:** a release that keeps the schema readable leaves the oldest reader where it was, so
-reverting one release needs no restore and loses no writes. A release that breaks the release before
-raises `oldestReader` in `nixieSchema`, and its pull request says so.
+still read and write it. The build that migrates writes both. A version short of the build's own,
+left by a failed upgrade, records an oldest reader no newer than itself. A build that meets a newer
+schema runs on it unchanged when its own version reaches the oldest reader. Otherwise it refuses to
+start, and the error names the newest `nixie-schema-<version>.db` copy it can read, or a backup when
+no copy exists. **Why:** a release that keeps the schema readable leaves the oldest reader where it
+was, so reverting one release needs no restore and loses no writes. A release that breaks the
+release before raises `oldestReader` in `nixieSchema`, and its pull request says so.
 
 ## Key store IDs
 

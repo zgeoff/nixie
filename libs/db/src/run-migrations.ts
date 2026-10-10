@@ -38,12 +38,7 @@ export async function runMigrations(
   }
   const copyPath = await createCopyBeforeMigration(db, stored.version, options.copyDir);
 
-  for (const [index, migration] of options.schema.migrations.entries()) {
-    if (index >= stored.version) {
-      // oxlint-disable-next-line no-await-in-loop -- each migration builds on the one before it
-      await runMigration(db, options, { index, migration });
-    }
-  }
+  await runPendingMigrations(db, options, stored.version);
   return { from: stored.version, to: writes, copyPath };
 }
 
@@ -121,6 +116,27 @@ async function createCopyBeforeMigration(
   return copyPath;
 }
 
+// SQLite ignores the foreign_keys pragma inside a transaction, so the runner turns enforcement off
+// around the migrations. Otherwise a table rebuild's DROP TABLE would cascade into its child rows.
+// Each migration checks the foreign keys before it commits instead.
+async function runPendingMigrations(
+  db: Kysely<unknown>,
+  options: RunMigrationsOptions,
+  from: number,
+): Promise<void> {
+  await sql`pragma foreign_keys = off`.execute(db);
+  try {
+    for (const [index, migration] of options.schema.migrations.entries()) {
+      if (index >= from) {
+        // oxlint-disable-next-line no-await-in-loop -- each migration builds on the one before it
+        await runMigration(db, options, { index, migration });
+      }
+    }
+  } finally {
+    await sql`pragma foreign_keys = on`.execute(db);
+  }
+}
+
 interface PendingMigration {
   readonly index: number;
   readonly migration: Migration;
@@ -134,9 +150,20 @@ function runMigration(
   return db.transaction().execute(async (tx) => {
     await options.requireWriter?.(tx);
     await pending.migration.up(tx);
+    const violations = await sql`pragma foreign_key_check`.execute(tx);
+
+    if (violations.rows.length > 0) {
+      throw new Error(
+        `migration ${pending.migration.name} leaves ${violations.rows.length} foreign key violations`,
+      );
+    }
+
+    // a version short of the build's own can be read by the builds that write it
+    const version = pending.index + 1;
+    const oldestReader = Math.min(options.schema.oldestReader, version);
     const result = await sql`update schema_version
-      set version = ${pending.index + 1}, oldest_reader = ${options.schema.oldestReader}
-      where id = 1 and version = ${pending.index}`.execute(tx);
+        set version = ${version}, oldest_reader = ${oldestReader}
+        where id = 1 and version = ${pending.index}`.execute(tx);
 
     if (result.numAffectedRows !== 1n) {
       throw new Error(`schema_version moved during migration ${pending.migration.name}`);

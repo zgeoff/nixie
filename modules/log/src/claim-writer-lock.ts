@@ -20,9 +20,15 @@ export function claimWriterLock(dataDir: string): WriterLock {
     }
     throw new Error(`flock on ${dataDir} failed with errno ${errno}`);
   }
+  const held = { open: true };
+
+  // a second release must never close a descriptor that reused the number, such as a later lock
   return {
     release: () => {
-      closeSync(fd);
+      if (held.open) {
+        held.open = false;
+        closeSync(fd);
+      }
     },
   };
 }

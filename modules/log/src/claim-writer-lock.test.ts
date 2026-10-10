@@ -62,3 +62,23 @@ test('it locks only its own data directory', async () => {
 
   expect(second.release).toBeFunction();
 });
+
+test('it ignores a second release, which leaves a later holder its lock', async () => {
+  const ctx = await setupTest();
+
+  const first = claimWriterLock(ctx.dataDir);
+
+  first.release();
+
+  const second = claimWriterLock(ctx.dataDir);
+
+  onTestFinished(() => {
+    second.release();
+  });
+  first.release();
+
+  expect(() => claimWriterLock(ctx.dataDir)).toThrowWithMessage(
+    Error,
+    'writer lock held by another process',
+  );
+});

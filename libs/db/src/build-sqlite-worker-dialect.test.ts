@@ -135,3 +135,41 @@ test('it refuses a transaction with an isolation level', async () => {
     'SQLite transactions take no isolation level or access mode',
   );
 });
+
+test('it fails the rest of a transaction that SQLite rolled back on its own, and commits none of it', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table notes (id text primary key)`.execute(ctx.db);
+  await sql`create table refused (id text primary key)`.execute(ctx.db);
+  await sql`create trigger refuse before insert on refused
+    begin select raise(rollback, 'refused'); end`.execute(ctx.db);
+
+  const transaction = ctx.db.transaction().execute(async (tx) => {
+    await sql`insert into notes (id) values ('before')`.execute(tx);
+    await sql`insert into refused (id) values ('r1')`.execute(tx).catch(() => {});
+    await sql`insert into notes (id) values ('after')`.execute(tx);
+  });
+
+  await transaction.catch(() => {});
+
+  const notes = await sql`select id from notes`.execute(ctx.db);
+
+  expect(transaction).rejects.toThrowWithMessage(
+    Error,
+    'SQLite rolled the transaction back after an earlier error',
+  );
+  expect(notes.rows).toStrictEqual([]);
+});
+
+test('it runs every statement of a block of SQL without parameters', async () => {
+  const ctx = await setupTest();
+
+  await sql`create table notes (id text primary key); create table tags (id text primary key)`.execute(
+    ctx.db,
+  );
+
+  const tables =
+    await sql`select name from sqlite_schema where type = 'table' order by name`.execute(ctx.db);
+
+  expect(tables.rows).toStrictEqual([{ name: 'notes' }, { name: 'tags' }]);
+});

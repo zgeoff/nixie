@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { sql } from 'kysely';
 import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
-import type { BuildSchema } from './types';
+import type { BuildSchema, Migration } from './types';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -295,4 +295,106 @@ test('it runs the writer check first in every transaction and applies nothing wh
 
   expect(run).rejects.toThrowWithMessage(Error, 'stale writer');
   expect(tables.rows).toStrictEqual([]);
+});
+
+test('it keeps the child rows when a migration rebuilds their parent table', async () => {
+  const ctx = await setupTest();
+
+  const createTables: Migration = {
+    name: 'create tasks and steps',
+    up: async (tx) => {
+      await sql`create table tasks (id text primary key)`.execute(tx);
+      await sql`create table steps (id text primary key,
+        task_id text not null references tasks (id) on delete cascade)`.execute(tx);
+    },
+  };
+
+  await runMigrations(ctx.db, {
+    schema: { migrations: [createTables], oldestReader: 0 },
+    copyDir: ctx.dir,
+  });
+  await sql`insert into tasks (id) values ('t1')`.execute(ctx.db);
+  await sql`insert into steps (id, task_id) values ('s1', 't1')`.execute(ctx.db);
+
+  await runMigrations(ctx.db, {
+    schema: {
+      migrations: [
+        createTables,
+        {
+          name: 'rebuild tasks with a title',
+          up: async (tx) => {
+            await sql`create table tasks_new (id text primary key, title text not null default '')`.execute(
+              tx,
+            );
+            await sql`insert into tasks_new (id) select id from tasks`.execute(tx);
+            await sql`drop table tasks`.execute(tx);
+            await sql`alter table tasks_new rename to tasks`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+    copyDir: ctx.dir,
+  });
+
+  const steps = await sql`select id from steps`.execute(ctx.db);
+  const foreignKeys = await sql`pragma foreign_keys`.execute(ctx.db);
+
+  expect(steps.rows).toStrictEqual([{ id: 's1' }]);
+  expect(foreignKeys.rows).toStrictEqual([{ foreign_keys: 1 }]);
+});
+
+test('it fails a migration that leaves a foreign key violation', async () => {
+  const ctx = await setupTest();
+
+  const run = runMigrations(ctx.db, {
+    schema: {
+      migrations: [
+        {
+          name: 'create a step without its task',
+          up: async (tx) => {
+            await sql`create table tasks (id text primary key)`.execute(tx);
+            await sql`create table steps (id text primary key,
+              task_id text not null references tasks (id))`.execute(tx);
+            await sql`insert into steps (id, task_id) values ('s1', 'missing')`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+    copyDir: ctx.dir,
+  });
+
+  await run.catch(() => {});
+
+  const stored = await sql`select version from schema_version`.execute(ctx.db);
+
+  expect(run).rejects.toThrowWithMessage(
+    Error,
+    'migration create a step without its task leaves 1 foreign key violations',
+  );
+  expect(stored.rows).toStrictEqual([{ version: 0 }]);
+});
+
+test('it lets the build before read a database that a failed upgrade left between versions', async () => {
+  const ctx = await setupTest();
+
+  const one: Migration = { name: 'one', up: () => Promise.resolve() };
+  const two: Migration = { name: 'two', up: () => Promise.resolve() };
+
+  await runMigrations(ctx.db, { schema: { migrations: [one], oldestReader: 0 }, copyDir: ctx.dir });
+  await runMigrations(ctx.db, {
+    schema: {
+      migrations: [one, two, { name: 'three', up: () => Promise.reject(new Error('failed')) }],
+      oldestReader: 3,
+    },
+    copyDir: ctx.dir,
+  }).catch(() => {});
+
+  const report = await runMigrations(ctx.db, {
+    schema: { migrations: [one, two], oldestReader: 0 },
+    copyDir: ctx.dir,
+  });
+
+  expect(report).toStrictEqual({ from: 2, to: 2, copyPath: null });
 });
