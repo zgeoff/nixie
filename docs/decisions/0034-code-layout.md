@@ -19,8 +19,8 @@ or a server-only lib, and modules never depend on apps, guests or adapters.
   folder and tag let a check stop it from importing the trusted core.
 - Adapters in their own folder keep each outside system's client in one package, and leave them
   ready to publish on their own.
-- `exports` and tag rules enforce the boundaries at install and check time with no lint plugin to
-  maintain, and the same check flags an import of an undeclared workspace package.
+- `exports` and tag rules enforce the boundaries with no lint plugin to maintain, and the same check
+  refuses an undeclared workspace import, a relative path into another package and a cycle.
 - The `nixie` npm scope belongs to someone else, and `@heynixie/` is free to publish under.
 
 ## Alternatives

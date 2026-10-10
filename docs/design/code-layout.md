@@ -37,14 +37,15 @@ stays outside the workspace, and each spike installs on its own.
 
 Every package name is `@heynixie/` plus its folder name, and every package is private until it
 publishes. A package is consumed as source: its `exports` map points at `./src/index.ts`, and
-nothing builds it before use. An `exports` map refuses every subpath it does not list, so no package
-can import another package's internal files.
+nothing builds it before use. An `exports` map refuses every package subpath it does not list, and
+`turbo boundaries` refuses a relative path into another package, so no package imports another
+package's internal files.
 
 Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
-for an external dependency and `"workspace:*"` for an internal one, and pins no version itself.
-`bunfig.toml` sets `linker = "isolated"`, so a package resolves only what it declares, with
-`exact = true` and `minimumReleaseAge = 604800`, which installs only versions published at least 7
-days earlier.
+for an external dependency and `"workspace:*"` for an internal one, and pins no version itself. The
+root `package.json` declares only tooling, never a runtime dependency. `bunfig.toml` sets
+`linker = "isolated"`, so a package resolves only what it or the root declares, with `exact = true`
+and `minimumReleaseAge = 604800`, which installs only versions published at least 7 days earlier.
 
 TypeScript is version 7. `tsconfig.base.json` extends `@tsconfig/strictest` with `module: Preserve`
 and `moduleResolution: bundler`, and sets no `baseUrl` and no path aliases, so every import is a
@@ -55,7 +56,8 @@ package name or a path relative to the importing file. Each package extends the 
 
 Each package has a `turbo.json` that holds only its tags, and `turbo boundaries` checks every
 dependency against the rules in the root `turbo.json`. The check fails on a dependency the rules
-deny, and on an import of a workspace package that the importer does not declare.
+deny, an import of a workspace package that the importer does not declare, an import of a file
+outside the importer's package, and a cycle between packages.
 
 | Tag           | Packages                         | May depend on                                                 |
 | ------------- | -------------------------------- | ------------------------------------------------------------- |
@@ -73,22 +75,21 @@ deny, and on an import of a workspace package that the importer does not declare
   guest or a client that declares it fails the check.
 - **An adapter depends only on the module that owns its interface.** The tags allow any module, so
   review holds this rule.
-- **Modules form no cycles.** Workspace dependencies cannot form a cycle, and a module that needs
-  another module's work takes it through an interface the server passes in.
+- **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
+  module that depends on it takes that work through an interface the server passes in.
 
-Third-party code follows the same declare-to-use rule. The isolated linker resolves only declared
-dependencies, so an import of an undeclared package fails typecheck and the tests. A few
-dependencies belong to one package each:
+A few imports belong to one package each:
 
-| Dependency                          | The only package that declares it |
-| ----------------------------------- | --------------------------------- |
-| The Agent SDK                       | `guests/conversation`             |
-| imp's client                        | `adapters/sandbox-imp`            |
-| `bun:sqlite` and the Kysely dialect | `libs/db`                         |
+| Import                              | The only package that may import it |
+| ----------------------------------- | ----------------------------------- |
+| The Agent SDK                       | `guests/conversation`               |
+| imp's client                        | `adapters/sandbox-imp`              |
+| `bun:sqlite` and the Kysely dialect | `libs/db`                           |
 
-A CI check reads every `package.json` and fails when another package declares one of these. **Why:**
-the Agent SDK runs only inside a sandbox ([0003](../decisions/0003-sdk-placement.md)), and one
-package owns each outside system.
+An oxlint `no-restricted-imports` rule refuses each of these imports everywhere, with an override
+for its one package. The rule covers `bun:sqlite`, which Bun provides with no declared dependency.
+**Why:** the Agent SDK runs only inside a sandbox ([0003](../decisions/0003-sdk-placement.md)), and
+one package owns each outside system.
 
 ## Modules
 
@@ -153,7 +154,7 @@ which holds whole-program suites and the live checks against a Kubernetes or Com
 test that needs a database opens its own SQLite file in a temporary directory.
 
 The checks are oxfmt, oxlint with type-aware rules on `@zgeoff/oxlint-config`, typecheck, knip for
-dead code, `turbo boundaries`, the dependency check, the prose check and the tests. lefthook runs
-the fast checks before a commit and the rest before a push. CI runs the shared Bun pull-request
-workflow from the tools repo with nixie's script list, which adds `boundaries` and the prose check
-to the standard `audit`, `deadcode`, `format:check`, `lint`, `typecheck` and `test`.
+dead code, `turbo boundaries`, the prose check and the tests. lefthook runs the fast checks before a
+commit and the rest before a push. CI runs the shared Bun pull-request workflow from the tools repo
+with nixie's script list, which adds `boundaries` and the prose check to the standard `audit`,
+`deadcode`, `format:check`, `lint`, `typecheck` and `test`.
