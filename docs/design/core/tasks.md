@@ -80,11 +80,12 @@ Each step commits its result, its records, the next state and the moved inbox cu
 transaction, keyed by task ID and step key. A second commit for the same key fails on the key, so a
 step never commits twice.
 
-A runner claims a task with a lease: a holder, an expiry, and a lease generation one higher than the
-last, set by a conditional `UPDATE … RETURNING` in a `BEGIN IMMEDIATE` transaction. A lease lasts 60
-s by default, and the runner renews it every 20 s. **Why:** renewing at a third of the lease
-survives 2 missed renewals, and a dead runner frees its task within a minute. Every write a step
-makes checks the generation, so a runner whose lease expired cannot commit.
+A runner claims a task with a lease: a holder, an expiry, the
+[writer epoch](./event-log.md#the-single-writer), and a lease generation one higher than the last,
+set by a conditional `UPDATE … RETURNING` in a `BEGIN IMMEDIATE` transaction. A lease lasts 60 s by
+default, and the runner renews it every 20 s. **Why:** renewing at a third of the lease survives 2
+missed renewals, and a dead runner frees its task within a minute. Every write a step makes checks
+the generation, so a runner whose lease expired cannot commit.
 
 ## Waits
 
@@ -168,12 +169,13 @@ repeating an action.
 
 ## Crash recovery
 
-A crash stops the steps in flight, and a restart resumes every task from the log. Before any task
-starts, nixie finishes any pending cleanup of invalid transcript copies under
+A crash stops the steps in flight, and a restart resumes every task from the log. Recovery runs only
+in a process that holds the [writer lock and a new writer epoch](./event-log.md#the-single-writer).
+Before any task starts, nixie finishes any pending cleanup of invalid transcript copies under
 [memory context](../memory/context.md), then:
 
-1. Expires every lease the dead process held. A task without a pause or a recovery hold returns to
-   `ready`.
+1. Expires every lease claimed under an older writer epoch. A task without a pause or a recovery
+   hold returns to `ready`.
 2. Marks each step that started without a commit as interrupted, with a record.
 3. Marks each action that started an attempt without a recorded result as unknown, under
    [actions](./actions.md).
@@ -191,5 +193,5 @@ its first step has no boundary, so its rerun starts a fresh session from the tas
 The rerun gives the model the unread inbox plus the status of each proposal and action the
 interrupted step started. A repeat call matches by action hash against everything started under the
 step's key and everything still open or unknown in the task, and returns the existing proposal or
-outcome instead of a second one. Crash tests at each point confirm that a resumed turn never repeats
-an action that ran.
+outcome instead of a second one. The [crash tests](./crash-tests.md) confirm that a resumed turn
+never repeats an action that ran.

@@ -86,7 +86,8 @@ Retries follow one default schedule, which a connector can override: up to 5 att
 2 min, 8 min and 30 min between them, or longer when the provider names a retry time. **Why:** the
 schedule rides out a rate limit or a short outage within about 40 min, and an action still failing
 after that needs you more than another attempt. A retryable refusal on the last attempt makes the
-action `failed`, and the reason goes to the task's inbox.
+action `failed`, and the reason goes to the task's inbox. The action's row holds the attempt count
+and the next attempt time, so a restart resumes the schedule where it stopped.
 
 ## Reconciliation per connector
 

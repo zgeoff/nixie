@@ -8,8 +8,9 @@ nixie owns its durable layer under [0001](../../decisions/0001-durable-layer.md)
 prove that a crash at any point loses nothing and repeats nothing. Each test runs nixie as a child
 process, stops it at a named fault point, kills it, restarts it on the same database, and checks the
 event log and the projections. 5 tests gate slice 1: lease expiry, a timer due while nixie was down,
-a retry, a wake-up and a crash mid-turn. A test of the graceful stop runs beside them. A test-only
-connector shows in each of them that a resumed task run never repeats an action that ran.
+a retry, a wake-up and a crash mid-turn. Tests of the graceful stop and the single writer run beside
+them. A test-only connector shows in each of them that a resumed task run never repeats an action
+that ran.
 
 ## What a crash is
 
@@ -21,8 +22,9 @@ committed rolls back. Other failures reduce to it or belong to a later slice:
 - **A graceful stop** on `SIGTERM` stops claiming steps and gives steps in flight 30 s to commit,
   under [upgrades](../deployment/upgrades.md). A step still running at the deadline recovers as
   after a crash.
-- **A rollout** must stop the old pod before the new pod opens the database. Slice 1's live check on
-  Kubernetes owns that test.
+- **A rollout or a second process** meets the [writer lock](./event-log.md#the-single-writer). The
+  second writer and stale writer epoch tests below prove the lock and the epoch check in CI, and
+  slice 1's live check on Kubernetes confirms a rollout.
 - **An impd restart or a dead sandbox** fails the tool call that used it. The step reruns, and the
   action queue keeps the rerun from repeating an action.
 
@@ -159,6 +161,25 @@ The test sends `SIGTERM` while a scripted turn runs. A step that finishes inside
 commits once. A step still running at the deadline stops with the process and recovers as after a
 crash. nixie claims no new step after the signal.
 
+### A second writer
+
+The test starts process A, then starts process B on the same data directory. A second variant
+freezes A with `SIGSTOP` before B starts.
+
+- B exits non-zero with `writer lock held by another process`, and writes nothing.
+- A's writer epoch is unchanged, and A carries on, or resumes after `SIGCONT`.
+- After the test kills A, B starts, raises the epoch, and runs recovery.
+
+### A stale writer epoch
+
+The test freezes process A with `SIGSTOP`, replaces `nixie.lock` with a new file, and starts process
+B, which takes the lock on the new file and raises the epoch. Then the test resumes A with a step
+ready to commit.
+
+- A's first write fails on the epoch, and A exits.
+- B expires A's leases, because A claimed them under an older epoch.
+- The log holds no record from A committed after B raised the epoch.
+
 ## Later slice tests
 
 Each later slice adds its crash tests in this doc before it starts, on the same harness and oracle:
@@ -181,6 +202,8 @@ Each later slice adds its crash tests in this doc before it starts, on the same 
 | A wake-up                        | `inbox.write.after`, `trigger.deliver.before`     | CI      |
 | A crash mid-turn                 | `queue.commit.after` through `step.commit.before` | CI      |
 | The graceful stop                | `sigterm.grace`                                   | CI      |
+| A second writer                  | none                                              | CI      |
+| A stale writer epoch             | none                                              | CI      |
 | The rollout keeps one writer     | none                                              | live    |
 
 A random kill soak repeats the [event log spike](../../../spikes/event-log-db/README.md) from slice
