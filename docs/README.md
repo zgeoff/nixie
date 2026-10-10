@@ -10,8 +10,7 @@
     <a href="./design/open-items.md">Open items</a> •
     <a href="#design">Design</a> •
     <a href="#decisions">Decisions</a> •
-    <a href="#research">Research</a> •
-    <a href="#brainstorm">Brainstorm</a> •
+    <a href="#archive">Archive</a> •
     <a href="../spikes/README.md">Spikes</a> •
     <a href="../AGENTS.md">Agent Guidelines</a>
   </p>
@@ -19,49 +18,49 @@
 
 ## Start here
 
-- [Overview](./overview.md) — what nixie is, why it exists, and the current design in brief
+- [Overview](./overview.md) — what nixie is, why it exists, and the design in brief
 - [Principles](./principles.md) — the rules every job and deployment holds to
-- [Scope](./scope.md) — requirements and non-goals
-- [Glossary](./glossary.md) — the tentative terms the docs use
-- [Open items](./design/open-items.md) — deferred decisions, spikes to run, design tasks and later
-  stages
+- [Scope](./scope.md) — requirements in tiers, and non-goals
+- [Glossary](./glossary.md) — the terms the docs and the code use, one meaning each
+- [Open items](./design/open-items.md) — choices that need you, spikes to run, design tasks and
+  later stages
 
 `design/` holds designs for what is not built yet, and `architecture/` will hold what is built. Both
 use the same topics as the decisions below.
 
 ## Design
 
-Designs for what is not built yet, grouped by the same topics as the decisions. Each design links
-the decisions it rests on.
+Each design states its contracts, marks what the first build implements, and links the decisions it
+rests on.
 
 ### Core
 
 - [The event log and records](./design/core/event-log.md) — what a record holds, append-only
-  semantics, the projections behind the live view and the task board, export and retention
+  semantics, projections, the data behind the dashboard and the live view, export and retention
 - [Tasks](./design/core/tasks.md) — tasks as state machines with leases and an inbox, waits, routing
   from the conversation, job runs, workers in imps, and crash recovery
-- [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
-  approval consumption, reconciliation per connector, and unknown outcomes for the owner
+- [Actions](./design/core/actions.md) — the action queue, its outcomes, approval consumption,
+  reconciliation per connector, and unknown outcomes
 
 ### Policy
 
 - [Policy design index](./design/policy/README.md) — the 4 policy docs and the spike behind them
 - [The policy decision point](./design/policy/decision-point.md) — the pipeline, effects, the
-  always-ask set, destination limits and consent, taint in the first build, auto-mode, prompt causes
-  and the scripted scenarios, with the decisions the owner settled
+  always-ask set, destination limits and consent, taint in the first build, auto-mode and prompt
+  causes
 - [Rules](./design/policy/rules.md) — the rule format, evaluation order, rule identity, the snapshot
-  hash, the widening check, proposed rules, grants with expiries and the starter rule set
+  hash, the widening check, proposed rules, mandates and the starter rule set
 - [Proposals and approvals](./design/policy/approvals.md) — the proposal and its action hash, risk
-  classes, the approval record, "always allow" and the digest sheet
-- [Budgets, lifts and the spending stop](./design/policy/budgets.md) — budgets, lifting rules,
-  limits on model cost and the hard spending stop
+  classes, the approval record, one-tap "always allow" and the approval digest
+- [Budgets, lifts and the spending stop](./design/policy/budgets.md) — budgets, lifting rules, model
+  cost and the hard spending stop
 
 ### Memory
 
-- [The memory store](./design/memory/store.md) — items and their history table, provenance, a key
-  per item and forgetting, the recall tool, the memory view and export, and the first build
-- [Memory writes](./design/memory/writes.md) — who writes memory, the quote, token and checker
-  checks, memory proposals, notices and undo, and consolidation
+- [The memory store](./design/memory/store.md) — the first build, items and versions, a key per
+  item, retire and forget, bulk deletion, recall, the memory view and export
+- [Memory writes](./design/memory/writes.md) — who writes memory, batched capture, the quote, token
+  and checker checks, memory proposals, notices and undo, and consolidation
 - [Memory in context](./design/memory/context.md) — the prompt, the pinned core, retrieval over
   memory and past messages, compaction, and the SDK transcript as a cache
 
@@ -69,71 +68,68 @@ the decisions it rests on.
 
 - [Channels design index](./design/channels/README.md) — the client, the channel adapter, approvals,
   the live view and the trigger source
-- [The client](./design/channels/client.md) — the web client and the Expo app, the typed API,
-  sessions, paste spans, messages into a running task, and the agreed client choices
-- [The channel adapter](./design/channels/channel-adapter.md) — the interface, the owner record, and
-  the Telegram notifier with its content-free notice
-- [Approvals in the client](./design/channels/approvals.md) — approval cards, risk classes, the
-  server's check, and the digest sheet
-- [The live view and the dashboard](./design/channels/live-view.md) — the dashboard, a task as a
+- [The client](./design/channels/client.md) — the web client and the Expo app, the typed API, device
+  sessions, paste spans and messages into a running task
+- [The channel adapter](./design/channels/channel-adapter.md) — the interface, the identity record,
+  and the Telegram notifier with its content-free notice
+- [Approvals in the client](./design/channels/approvals.md) — cards, your choices with Defer, the
+  server's check, and the approval digest
+- [The dashboard and the live view](./design/channels/live-view.md) — the dashboard, a task as a
   conversation, stepping in and routing marks
-- [The trigger source](./design/channels/trigger-source.md) — schedules, polls, webhooks, and which
-  services need push
+- [The trigger source](./design/channels/trigger-source.md) — schedules, polls, webhooks and streams
 
 ### Connectors
 
-- [Connectors design](./design/connectors/README.md) — the connector interface and setup, the
-  credential store, serving nixie's tools, the sandbox adapter, the definitions source, the MCP
-  proxy, and running code and coding sessions
+- [Connectors design index](./design/connectors/README.md) — the connector interface and Google,
+  tools and the MCP endpoint, the external-server proxy, the coding adapter, the sandbox adapter,
+  credentials and the definitions source
 
 ### Deployment
 
-- [Deployment](./design/deployment/deployment.md) — the host, the nixie image and the imp images,
-  secrets decrypted in nixie's process, seeding the definitions, health, and Kubernetes, with the
-  deployment lifecycle and configuration
-- [Backup and restore](./design/deployment/backup-and-restore.md) — hourly restic backups, the key
-  store in its own repo, restoring on a new host, and the restore check
+- [Deployment](./design/deployment/deployment.md) — the first build, the host, the images, secrets,
+  seeding the definitions, health, and Kubernetes
+- [Backup and restore](./design/deployment/backup-and-restore.md) — Restic snapshots, the key repo
+  and forget, the offsite replica, and restoring on a new host
 - [Upgrades](./design/deployment/upgrades.md) — the pin and the bot, delivery to the host, a release
-  on the host, migrations that only add, and rollback
+  on the host, migrations, and rollback
 
 ## Decisions
 
-What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
-are stable IDs in the order the decisions were made; a later record can amend an earlier one.
+The locked design baseline: each record states its decision as it stands, with its reasons and the
+alternatives it rejected. The numbers are stable IDs in the order the decisions were made.
 
 ### Core
 
-The runtime, the durable layer, and how the main thread and tasks share work.
+The runtime, the durable layer, and how the conversation and tasks share work.
 
 - [0001: The durable layer](./decisions/0001-durable-layer.md) — nixie's own event log, with each
   long task as a state machine, instead of a durable execution engine
-- [0003: Where the Agent SDK runs](./decisions/0003-sdk-placement.md) — on the host with only
-  nixie's tools for assistant work, and inside an imp for coding work
-- [0018: The main thread and tasks](./decisions/0018-main-thread-and-tasks.md) — the owner works
-  through the main thread, which routes work to tasks and shares a live view
-- [0021: Outside action outcomes](./decisions/0021-outside-action-outcomes.md) — outside actions run
-  on a durable queue, and an unknown outcome is retried only with an idempotency key or a check
+- [0003: Where the Agent SDK runs](./decisions/0003-sdk-placement.md) — every model loop in an imp,
+  with only nixie's tools, which run on the host
+- [0018: The conversation and tasks](./decisions/0018-the-conversation-and-tasks.md) — you work
+  through the conversation, which routes work to tasks, and the conversation is itself a task
+- [0021: Action outcomes](./decisions/0021-action-outcomes.md) — actions run on a durable queue, and
+  an unknown outcome is retried only with an idempotency key or a check
 - [0025: The database and the topology](./decisions/0025-database-and-topology.md) — one SQLite
   database with nixie's own dialect, and a modular monolith of workspace packages
 - [0026: Where workers and the conversation run](./decisions/0026-where-workers-and-the-conversation-run.md)
-  — an imp per worker with the whole worker inside, the conversation in a long-lived imp, and the
-  model credential as the one grant
-- [0027: Tasks and outside actions](./decisions/0027-tasks-and-outside-actions.md) — state tables
-  beside the log, the conversation as a task, pause, stop and close, catch-up runs, and unknown
-  outcomes in the digest
+  — an imp per worker run with the whole worker inside, and the conversation in a long-lived imp
+- [0027: Tasks and actions](./decisions/0027-tasks-and-actions.md) — state tables beside the log,
+  pause, stop and close, trigger details in every task run, and unknown outcomes in the approval
+  digest
 
 ### Policy
 
 Rules, effects, taint, approvals and auto-mode.
 
-- [0002: Outside actions and approvals](./decisions/0002-approvals.md) — every outside action runs
-  through nixie's tools, and an action that needs approval becomes a proposal that ends the turn
+- [0002: Actions and approvals](./decisions/0002-approvals.md) — every action runs through nixie's
+  tools, and an action that needs approval becomes a proposal that ends the turn
 - [0004: The rule engine](./decisions/0004-rule-engine.md) — nixie's own rule format with fixed
   checks, and "no rule matched" means ask
 - [0005: Effects, taint and prompts](./decisions/0005-effects-and-taint.md) — declared tool effects,
   the always-ask set, the tool as the boundary, and the 0-prompt target
 - [0006: The approval record](./decisions/0006-approval-record.md) — approvals bound to one action
-  and used once, "always allow" as a rule, and digest approvals
+  and used once, consent, one-tap "always allow", and the approval digest
 - [0008: auto-mode decides the grey zone](./decisions/0008-auto-mode.md) — auto-mode decides what
   the deterministic layers leave open, and nixie runs fully without it
 - [0012: High-risk approvals](./decisions/0012-high-risk-approvals.md) — a passkey check for the
@@ -142,25 +138,25 @@ Rules, effects, taint, approvals and auto-mode.
   untrusted, and taint applies to jobs and workers in stages
 - [0023: Lifting the always-ask set](./decisions/0023-lifting-always-ask.md) — a bounded rule can
   lift it, creating one always asks, and such approvals look distinct
-- [0028: The policy design](./decisions/0028-policy-design.md) — nixie's own consent checker, a
-  sixth prompt cause, the spending stop as a host proxy, bulk approval for routine items, YAML rule
-  files, and the permissive starter set with notices for jobs
+- [0028: The policy design](./decisions/0028-policy-design.md) — the consent checker, your ask rules
+  as their own prompt cause, the spending stop as a host proxy, YAML rule files, and the permissive
+  starter set with notices for jobs
 
 ### Memory
 
-The memory store, which writes skip review, and definition versioning.
+The memory store, its writes, how it reaches the model, and definition versioning.
 
-- [0010: The memory store](./decisions/0010-memory-store.md) — memory as rows in nixie's database, a
-  UI and a raw recall tool, and forgetting by crypto-shredding
-- [0011: Which memory writes skip review](./decisions/0011-memory-writes.md) — a write backed by the
-  owner's own quote applies at once with undo, and every other write is a proposal
+- [0010: The memory store](./decisions/0010-memory-store.md) — memory as rows in nixie's database,
+  the memory view and a raw recall tool, and forgetting by crypto-shredding
+- [0011: Which memory writes skip review](./decisions/0011-memory-writes.md) — a write backed by a
+  quote you typed applies at once with undo, and every other write is a proposal
 - [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
   every record, with rules applying at once and persona and jobs fixed per task
 - [0024: How memory reaches the model](./decisions/0024-memory-in-context.md) — the SDK's session
-  and compaction, with retrieval over memory and the event log; refined by 0031
+  and compaction, with retrieval by local embeddings and keyword search
 - [0031: Memory capture, context and removal](./decisions/0031-memory-capture-context-and-removal.md)
-  — local semantic retrieval, batched capture, transcript cache, reversible chat removal and grouped
-  notices
+  — batched capture, the transcript as a cache, reversible chat removal, grouped notices and the
+  first build
 
 ### Channels
 
@@ -169,26 +165,26 @@ Clients, push and voice.
 - [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
   conversation, approvals and voice, and chat apps carry content-free pushes
 - [0029: Channels and clients](./decisions/0029-channels-and-clients.md) — oRPC, Start and Expo,
-  device sessions, deferred approvals, two push levels and native Android paste capture
+  device sessions, Defer, two push levels and native Android paste capture
 
 ### Connectors
 
-Nixie's interfaces, outside MCP servers, credentials and search.
+nixie's interfaces, external MCP servers, credentials, search and code.
 
 - [0007: Credential grants](./decisions/0007-grants-and-taint.md) — no grant for an imp that reads
   untrusted content
 - [0014: Search](./decisions/0014-search.md) — Kagi, with full results in the conversation
 - [0016: nixie's own interfaces](./decisions/0016-own-interfaces.md) — channel adapter, trigger
   source, connector, credential store, definitions source and sandbox adapter, with tools from MCP
-- [0017: Outside MCP servers](./decisions/0017-mcp-proxy.md) — every MCP server outside nixie's code
-  goes through a proxy, the owner's own included
-- [0019: Connector authorization](./decisions/0019-connector-authorization.md) — each owner
-  registers their own OAuth clients, and the Google spike runs early
+- [0017: External MCP servers](./decisions/0017-mcp-proxy.md) — every MCP server outside nixie's
+  code goes through a proxy that pins each tool
+- [0019: Connector authorization](./decisions/0019-connector-authorization.md) — each deployment
+  registers its own OAuth clients
 - [0022: Coding and code execution](./decisions/0022-coding-and-code-execution.md) — running code in
   a sandbox with no grants, and coding sessions through adapters, atc first
 - [0030: Connectors and sandbox environments](./decisions/0030-connectors-and-sandbox-environments.md)
-  — the reverse-forward route, Google, web OAuth return, MCP v2, imp with a container sketch, the
-  familiar Linux code environment, and Disconnect for externally managed credentials
+  — the reverse-forward route, Google first, web OAuth return, MCP v2, imp only, the code
+  environment, and Disconnect
 
 ### Deployment
 
@@ -197,88 +193,14 @@ Definitions and deployment models.
 - [0020: Deployment and definitions](./decisions/0020-deployment.md) — definitions in their own repo
   seed the database, and running nixie lives with the deployment
 - [0032: Offsite backups and replication](./decisions/0032-offsite-backups-and-replication.md) —
-  Restic snapshots plus a database-only Litestream replica through a host rclone crypt gateway; the
-  deployment supplies the S3-compatible backend
+  Restic snapshots first, then a Litestream replica through a host rclone crypt gateway to an
+  S3-compatible backend the deployment supplies
 
-## Research
+## Archive
 
-Phase 2, kept for its evidence until it is archived. Where a decision exists, it supersedes the
-research recommendation. Each track has a landscape doc with its findings and recommendations, and
-notes with the evidence and sources.
-
-### 2.1 Landscape and architecture models
-
-- [Landscape](./research/2.1-landscape.md) — hosted assistants, open-source agents, frameworks, and
-  the published architecture models, and why none fits nixie as a whole
-- Notes:
-  - [Anthropic](./research/2.1-notes/anthropic.md) — the Agent SDK, Managed Agents, and Anthropic's
-    consumer agents
-  - [Architecture writing](./research/2.1-notes/architecture-writing.md) — 5 published architecture
-    models for always-on agents
-  - [OpenAI Dots](./research/2.1-notes/dots.md) — a coordinator agent on its own cloud computer
-  - [eve](./research/2.1-notes/eve.md) — a durable agent framework on Nitro
-  - [Grok Bot and Gemini Spark](./research/2.1-notes/grok-bot-and-spark.md) — cloud-hosted personal
-    agents from xAI and Google
-  - [Hermes Agent](./research/2.1-notes/hermes.md) — a self-hosted agent with a learning loop
-  - [Letta](./research/2.1-notes/letta.md) — Letta Code and memory kept as a git repository of
-    markdown
-  - [Mastra and the Claude Agent SDK](./research/2.1-notes/mastra-and-agent-sdk.md) — a TypeScript
-    framework, and the SDK's loop and permission pipeline
-  - [NanoClaw, IronClaw, and ZeroClaw](./research/2.1-notes/nanoclaw-ironclaw-zeroclaw.md) — three
-    security-focused agents and their defaults
-  - [OpenClaw](./research/2.1-notes/openclaw.md) — the largest open-source assistant and its
-    security record
-
-### 2.2 and 2.3 Core, runtime and policy
-
-- [Landscape](./research/2.2-2.3-core-and-policy.md) — the SDK turn, the policy mod, approvals,
-  owner messages, durable execution, policy layers, and imp's credential broker
-- Notes:
-  - [Durable execution engines](./research/2.2-notes/engines.md) — 11 engines compared, and the
-    Agent SDK inside one
-  - [Policy models](./research/2.3-notes/policy-models.md) — rule languages, typed effects,
-    capability systems, and information-flow control
-  - [Approvals and owner friction](./research/2.3-notes/approvals.md) — how products and standards
-    store, bind and replay approvals, and how they cut prompts
-
-### 2.4 to 2.6 Data, channels and connectors
-
-- [Landscape](./research/2.4-2.6-data-channels-connectors.md) — memory, where data lives, chat
-  channels, voice, MCP, connector authorization, and deployment, with the tensions between them
-- Memory and data notes:
-  - [Memory models](./research/2.4-notes/memory-models.md) — files in git, structured stores, graphs
-    and vector retrieval, and memory poisoning
-  - [Where personal data lives](./research/2.4-notes/data-and-storage.md) — the owner's host,
-    encrypted backups, export, and Postgres or SQLite for the event log
-  - [Versioning persona, jobs and policy](./research/2.4-notes/definition-versioning.md) — a
-    snapshot hash on every record, for replay
-- Channels and voice notes:
-  - [Chat channels](./research/2.5-notes/channels.md) — owner identity, approval buttons and privacy
-    across Telegram, Matrix, WhatsApp, Signal, iMessage and others
-  - [Realtime voice stacks](./research/2.5-notes/voice.md) — pipelines, speech-to-speech APIs and
-    local options, and who holds the conversation
-  - [Voice transports](./research/2.5-notes/transports.md) — web clients, voice notes, native apps
-    and phone lines
-- Connectors and deployment notes:
-  - [MCP and nixie's own interfaces](./research/2.6-notes/mcp.md) — the current MCP spec, a proxy
-    for third-party servers, and taint by output field
-  - [Connector authorization and search providers](./research/2.6-notes/connectors.md) — Google,
-    Microsoft, Apple and IMAP setup, and model-agnostic search
-  - [Deployment repo and infrastructure](./research/2.6-notes/deployment.md) — the private repo,
-    images, secrets, upgrades and network access
-
-## Brainstorm
-
-Phase 1, kept until it is archived. The principles and scope above replace it.
-
-- [Why nixie](./brainstorm/1.1-why.md) — the problem, and what full control means
-- [Jobs](./brainstorm/1.2-jobs.md) — the kinds of job a deployment defines
-- [Principles](./brainstorm/1.3-principles.md) — the rules every job and deployment holds to, each
-  with a test
-- [Requirements](./brainstorm/1.4-requirements.md) — requirements in tiers, each traced to a job or
-  a principle
-- [Non-goals](./brainstorm/1.5-non-goals.md) — what nixie deliberately is not
-- [Research brief](./brainstorm/1.6-research-brief.md) — the questions each research track settles
+The phase 1 brainstorm and the phase 2 research are archived at the
+[`research-archive`](https://github.com/zgeoff/nixie/tree/research-archive/docs) tag. The decisions
+supersede them, and links that cite them as evidence point at that tag.
 
 ## Spikes
 
@@ -287,10 +209,10 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
 
 - [A policy mod in the Agent SDK](../spikes/sdk-mod-policy/) — what a mod can enforce, and the 3
   ways it fails open
-- [Hold a tool call for an owner decision](../spikes/sdk-long-hold/) — hook time limits, long holds,
-  and `defer` across processes
-- [Owner messages into a running task](../spikes/sdk-owner-input/) — when each message priority
-  reaches the model
+- [Hold a tool call for a decision](../spikes/sdk-long-hold/) — hook time limits, long holds, and
+  `defer` across processes
+- [Messages into a running task](../spikes/sdk-owner-input/) — when each message priority reaches
+  the model
 - [imp credential broker grants](../spikes/imp-broker/) — what a grant can and cannot limit
 - [Where `query()` runs](../spikes/sdk-placement/) — the SDK on the host with only nixie's tools,
   and inside an imp
@@ -312,8 +234,8 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   the rule order, a stable snapshot hash, a conservative widening check, and prompts by cause
 - [A typed API with a live stream](../spikes/client-rpc/) — one oRPC contract on Bun with checked
   actions and a stream that resumes by sequence
-- [Paste spans in a text box](../spikes/paste-spans/) — which spans of a message the owner pasted,
-  kept right through edits
+- [Paste spans in a text box](../spikes/paste-spans/) — which spans of a message you pasted, kept
+  right through edits
 - [Tools through a reverse forward](../spikes/tools-reverse-forward/) — relay overhead, streamed
   responses, egress isolation and reopening after wake
 - [Retrieval on nixie-shaped memory](../spikes/memory-retrieval/) — keyword search, BM25 and local

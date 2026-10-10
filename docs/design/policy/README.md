@@ -1,19 +1,17 @@
 # Policy design
 
-The policy design covers how nixie decides every tool call: the decision point and its stages, the
-rules it reads, the proposals and approvals it creates, and the budgets that bound spending. Each
-doc links the decisions it rests on, and the decision point ends with the choices the owner settled
-in [0028](../../decisions/0028-policy-design.md).
+Policy decides every tool call nixie makes: allow, ask or deny. The decision point runs a fixed
+pipeline over rules, declared effects and destination limits, an ask becomes a proposal that you
+answer in the client, and budgets bound what nixie spends.
+[0028](../../decisions/0028-policy-design.md) records the policy choices.
 
-- [The policy decision point](./decision-point.md) — the pipeline, declared effects, the always-ask
-  set, destination limits and consent, taint in the first build, auto-mode, prompt causes and the
-  scripted scenarios
-- [Rules](./rules.md) — the rule format and matching, evaluation order, rule identity, the snapshot
-  hash, the widening check, gaps and proposed rules, grants with expiries, and the starter rule set
+- [The decision point](./decision-point.md) — the pipeline, effects, destination limits, consent,
+  taint in the first build, auto-mode, the decision record and prompt causes
+- [Rules](./rules.md) — the rule format, matching, evaluation order, rule identity, the snapshot
+  hash, the widening check, proposed rules, mandates and the starter rule set
 - [Proposals and approvals](./approvals.md) — the proposal and its action hash, risk classes, the
-  approval record, "always allow", and the digest sheet's contents and order
-- [Budgets, lifts and the spending stop](./budgets.md) — budgets, lifting rules, limits on model
-  cost, and the hard spending stop
+  approval, "always allow" and the approval digest
+- [Budgets](./budgets.md) — budgets, lifting rules, model cost and the hard spending stop
 
 The [policy rules spike](../../../spikes/policy-rules/README.md) prototypes the decision point, the
-snapshot hash, the widening check and the scenarios.
+snapshot hash, the widening check and the scripted scenarios.

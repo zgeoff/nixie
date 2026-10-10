@@ -1,16 +1,22 @@
 # 0024: How memory reaches the model
 
 - Date: 2026-10-08
-- Status: decided, amended by [0031](./0031-memory-capture-context-and-removal.md)
-- Research: [memory notes](../research/2.4-notes/memory-models.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#memory)
+- Status: decided
+- Design: [memory context](../design/memory/context.md)
+- Research: [retrieval spike](../../spikes/memory-retrieval/),
+  [memory notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/memory-models.md)
 
 The conversation runs on the Agent SDK's session and compaction, with the stable part of the prompt
 first so the prompt cache holds. nixie adds retrieval over memory and over the event log, which
 holds past conversation word for word: the recall tool from [0010](./0010-memory-store.md), and a
-few retrieved items placed in the newest turn with their provenance. Retrieval starts with keyword
-search, and embeddings follow where a measurement on nixie's own memory shows a gain. A compaction
-summary stays in the session and never becomes memory.
+few retrieved items placed in the newest turn with their provenance. A compaction summary stays in
+the session and never becomes memory.
+
+Retrieval uses local embeddings and keyword search together. One retrieval service serves per-turn
+retrieval and the recall tool. It searches active memory items and the past messages and replies
+whose keys remain readable, and returns text only from current rows. The encoder runs on the host
+from pinned local files, with no inference API call. While its index rebuilds, retrieval falls back
+to keyword search and records the fallback.
 
 ## Why
 
@@ -18,13 +24,13 @@ summary stays in the session and never becomes memory.
   would pay full input price every turn. Items that change each turn go last.
 - The event log already holds every turn, so past conversation needs no extra memory writes or
   cleanup.
-- Independent work found plain search matching or beating vector retrieval on conversational recall:
-  grep scored 83.6 to 93.1% against 62.9 to 83.6% for vector retrieval on a LongMemEval subset
-  ([Sen et al., arXiv 2605.15184](https://arxiv.org/abs/2605.15184)), and vendor scores are
-  self-reported.
+- Your wording often differs from the stored fact, such as "doctor" against "GP". On synthetic
+  paraphrases, keyword search found the relevant item in the top 5 results 18 to 22% of the time,
+  against 68% for local embeddings. The gain on your own questions is unmeasured.
+- A local encoder keeps memory text off any outside service.
 - The model writes a compaction summary from an untrusted conversation, and poisoning through
-  compaction succeeded in 85.17% of cases in one study (MPBench, Dash et al., 2026-06-03), so a
-  summary takes no path into memory except the checks in [0011](./0011-memory-writes.md).
+  compaction succeeded in 85% of cases in one study, so a summary takes no path into memory except
+  the checks in [0011](./0011-memory-writes.md).
 
 ## Alternatives
 
@@ -32,9 +38,4 @@ summary stays in the session and never becomes memory.
   a cached turn on a long context.
 - **Store short-term conversation as memories.** It fills memory with noise that needs cleanup, when
   the event log already holds the conversation.
-- **Embeddings from the start.** They add an index and a model before a measurement shows they help.
-
-## Consequences
-
-- Phase 3 checks which compaction controls the SDK offers, and how large the pinned core can grow
-  before the prompt pays for it.
+- **Keyword search alone.** It needs no encoder or index, and misses paraphrases.

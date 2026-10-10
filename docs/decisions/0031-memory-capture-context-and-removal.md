@@ -2,112 +2,72 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Amends: [0010](./0010-memory-store.md), [0011](./0011-memory-writes.md),
-  [0024](./0024-memory-in-context.md)
-- Design: [the store](../design/memory/store.md), [writes](../design/memory/writes.md),
-  [context](../design/memory/context.md)
+- Design: [memory store](../design/memory/store.md), [memory writes](../design/memory/writes.md),
+  [memory context](../design/memory/context.md)
+- Research: [batch spike](../../spikes/memory-batch/)
 
-The owner agreed the memory choices below. Memory remains canonical rows with version history and
-host-set provenance under [0010](./0010-memory-store.md). SDK sessions provide working context;
-their summaries do not become durable facts.
-
-## Local semantic retrieval
-
-The first build includes local embeddings and retains keyword lookup. One retrieval service serves
-per-turn retrieval and the recall tools. It searches active memory items and the past owner messages
-and model replies whose keys remain readable. The host encoder uses pinned local assets, without an
-inference API call. The encoder and ranking implementation remain validation and tuning choices; no
-candidate model from the synthetic spike is adopted.
-
-Derived indexes stay in memory. Queries use one generation of the encoder and index, and returned
-text comes from current canonical rows. Retire and forget invalidate derived entries and pending
-results. While an index rebuilds, retrieval falls back to keyword search and records the fallback.
-This replaces 0024's keyword-first inclusion rule; its SDK session, compaction and summary
-boundaries remain.
+nixie's memory settles these choices. Retrieval is set by [0024](./0024-memory-in-context.md), and
+the store by [0010](./0010-memory-store.md).
 
 ## Conversation writes and batched capture
 
-The conversation and tasks write during chat, including explicit requests. A background writer
-captures passing facts from bounded batches of committed conversation turns. Count, idle and
-maximum-age triggers prevent capture from waiting indefinitely for compaction. Both paths use the
-same checks for the operation they perform.
+The conversation and tasks write memory during chat, including explicit requests. A background
+writer captures facts mentioned in passing from bounded batches of committed turns, triggered by a
+message count, idle time or a maximum age. Both paths use the checks from
+[0011](./0011-memory-writes.md).
 
-The writer reads original messages in order, with source-bound evidence; a summary is not evidence.
-The writer stages its writes, and the host then commits the writes or review proposals, their
-notices and receipts, and the batch cursor in one transaction. Retries can repeat extraction, but
-not the committed batch effects. SDK compaction remains; nixie does not introduce custom session
-rollover.
+The writer reads the original messages in order, and a summary is never evidence. The writer stages
+its writes, and the host commits the writes or proposals, their notices and the batch cursor in one
+transaction, so a retry can repeat extraction but never the committed effects. SDK compaction stays,
+with no custom session rollover.
 
-## Transcript lifecycle
+## The SDK transcript as a cache
 
-The SDK transcript is a live working cache on its task's imp, and backups and export leave it out.
-The event log owns readable application history, canonical task state and outside-action outcomes. A
-lost or invalid transcript starts a fresh session from the task brief, recent turns, an eligible
-summary and canonical recovery state.
-
-A rebuild does not promise identical SDK-internal context or cache continuity. Older owner messages
-and stored items remain available through recall; older tool output is outside indexed recall.
-Before a rebuild, nixie blocks the invalid cache, stops its writers and removes the task's SDK state
-directory. Pending cleanup survives a restart.
+The SDK transcript is a working cache on its task's imp, and backups and export leave it out. The
+event log owns history, task state and action outcomes. A lost or invalid transcript starts a fresh
+session from the task brief, recent turns, an eligible summary and the task's recorded state. A
+rebuild keeps history but not identical SDK context: older messages and stored items stay reachable
+through recall, and older tool output does not.
 
 ## Reversible chat removal and checked destruction
 
-"Forget that" in chat retires the bound item at the version it read, with undo. Its intent quote
-must come from typed owner text outside quoted blocks. The checker tests the request against the
-exact item, with stored text labelled as untrusted data. Ambiguity or a failed check becomes a
-review proposal.
+"Forget that" in chat retires the item it names, with undo, under the intent check in 0011.
+Ambiguity or a failed check becomes a proposal. The model can retire an item, and cannot restore,
+undo or destroy one. Only a checked action in the client destroys a memory item, and the
+retired-memory view deletes in bulk after a preview bound to a fixed set of items and versions. A
+changed or restored item makes the preview stale, and a later retirement does not join it. A
+destroyed key cannot be restored. Your original messages and nixie's replies stay separate records.
 
-Retirement carries no replacement text, so it does not require the owner to repeat the old fact's
-destination tokens. It preserves content source and evidence, and records the operation actor and
-intent separately. This narrows 0011's content-introducing checks for retirement only. Model
-restore, undo and permanent deletion are not added.
+## Grouped notices with undo
 
-Only a checked client action destroys a memory item. The retired-memory view supports bulk permanent
-deletion after a preview and confirmation bound to a fixed set of items and versions. Changed or
-restored targets make the preview stale; later retirements do not join it. Deletion records durable
-per-item progress and cannot undo a key that it already destroyed. Independent owner messages and
-replies remain separate records.
-
-0010's backup-erasure guarantee remains. Forget completion includes removing recoverable key copies,
-index entries and invalid local session copies, rather than waiting for the next scheduled backup
-after reporting success. Provider-held context that already received the text remains outside that
-local deletion boundary.
-
-## Compact notices with undo
-
-Writes that apply at once appear as one compact group per turn or batch, with expandable facts and
-per-item undo. Later batches add quiet notices in their thread, with no push. Successful writes do
-not duplicate into the digest; review proposals stay there.
+Writes that apply at once show as one group per turn or batch, such as "Remembered 3 things · View",
+with each fact expandable and its own undo. A later batch adds a quiet notice in its thread, with no
+push. Successful writes never enter the approval digest, and proposals do.
 
 ## The first build
 
-The first build implements each choice above with the smallest mechanism that keeps its guarantee,
-as [the first build](../design/memory/store.md#the-first-build) sets out. It rebuilds the index in
-full, rebuilds every live session and deletes every stored summary on a permanent forget, and holds
-one lock across key-backup publication and forget. Exposure tracking, index generations and
-concurrent key publication extend it later without a change of contract.
+The first build uses the smallest mechanism that keeps each guarantee, as the memory store design
+sets out: a full index rebuild, a rebuild of every live session and deletion of every stored summary
+on a permanent forget, and one lock across key-backup publication and forget. Exposure tracking,
+index generations and concurrent key publication extend it later with no change of contract.
 
-## Alternatives and trade-offs
+## Why
 
-- Keyword-only retrieval misses paraphrases in the synthetic sample. Local embeddings add an encoder
-  and an index; the gain on owner questions remains unmeasured.
-- A per-turn writer captures facts sooner and makes more calls. Batching delays passing facts while
-  explicit conversation writes remain immediate.
-- Custom rollover gives nixie more summary control and adds continuity and recovery work. SDK
-  compaction retains the established session path, with its recovery edges still to test.
-- Transcript backups can preserve more exact working context after disk loss and add a second forget
-  path. The live-cache choice accepts a bounded reconstruction after loss.
-- Chat destruction saves a checked action and makes a wrong target irreversible. Retirement
-  preserves undo; bulk checked deletion reduces the work to clear retired items.
-- Digest-only notices reduce conversation clutter and delay discovery of wrong writes. A compact
-  inline group keeps visibility without a separate line per fact.
+- Batching makes fewer model calls than a writer on every turn, and explicit requests stay
+  immediate.
+- One authoritative history is simpler than two, and a second transcript copy would need its own
+  forget path.
+- Retiring by default turns a misread "forget that" into an undo, not a loss.
+- One compact notice per batch keeps writes visible without a line for every fact.
+- A blunt first build keeps every guarantee true while forgets are rare.
 
-## Validation still open
+## Alternatives
 
-The [retrieval spike](../../spikes/memory-retrieval/) uses synthetic memory. The
-[offline batch spike](../../spikes/memory-batch/) checks SQLite checkpoints with fixture model
-output, not extraction quality or real SDK continuity. The
-[pinned-core run](../../spikes/sdk-pinned-core/) completed no turn because of quota. Owner-history
-retrieval, writer and checker quality, encoder choice, cache costs, compaction recovery,
-bulk-deletion races and backend-specific backup erasure remain validation work under
-[open items](../design/open-items.md#spikes-to-run).
+- **A writer on every turn.** It captures facts sooner and makes more calls.
+- **Custom session rollover.** It gives more control over summaries, and adds continuity and crash
+  recovery work.
+- **Transcript backups.** They keep more exact context after disk loss, and add a second forget
+  path.
+- **Destruction from chat.** It saves a checked action, and makes a wrong target irreversible.
+- **Notices in the approval digest only.** They keep the conversation clear, and delay finding a
+  wrong write.

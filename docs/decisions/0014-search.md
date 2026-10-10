@@ -1,9 +1,9 @@
 # 0014: Search
 
 - Date: 2026-10-08
-- Status: decided, amended by [0015](./0015-taint-scope.md)
-- Research: [connector notes](../research/2.6-notes/connectors.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
+- Status: decided
+- Research:
+  [connector notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/connectors.md)
 
 Search is one of nixie's own tools, as [0005](./0005-effects-and-taint.md) requires, and its first
 provider is Kagi. The tool returns full results, with titles and snippets, and those results count
@@ -16,18 +16,13 @@ URL can hold text in its path.
 ## Why
 
 - Search quality comes first. A model that sees only URLs ranks results it cannot read.
-- Full results cost few prompts. The conversation is always untrusted under
-  [0015](./0015-taint-scope.md), so nixie asks only before it acts towards a destination with no
-  standing permission, and a destination named in the owner's own message carries consent under
-  [0006](./0006-approval-record.md). "Find X and send it to Sam" runs with no prompt.
-- A prompt comes only when the destination comes from the results, which is the case an injection
-  aims at.
+- Full results cost few prompts. nixie asks only before it acts towards a destination that came from
+  the results, which is the case an injection aims at.
 - A summary from a worker is free text too, so summarising results does not clean them. A worker
   that returns a narrow typed answer, such as a price or a date, stays the route for specific flows.
 - Kagi keeps no query log against the account, and its load balancer keeps logs for 7 days
-  ([Kagi privacy](https://kagi.com/privacy), 2026-09-22). SearXNG runs on the owner's host, but
-  sends each query on to the services it aggregates, from the host's address
-  ([SearXNG docs](https://docs.searxng.org/), 2026-10-08), and breaks when they block scraping.
+  ([Kagi privacy](https://kagi.com/privacy)). SearXNG runs on your host, but sends each query on to
+  the services it aggregates, from the host's address, and breaks when they block scraping.
 
 ## Alternatives
 
@@ -43,5 +38,5 @@ URL can hold text in its path.
 - The scripted scenarios from 0005 count the prompts that follow a search, where the destination
   comes from the results. A high count is the signal to add a rule or loosen the risk stance for
   that flow.
-- Kagi receives the owner's queries, and each search costs about $0.012, at $12 per 1,000 searches
-  ([Kagi API pricing](https://kagi.com/api/pricing), 2026-10-08).
+- Kagi receives your queries, and each search costs about $0.012
+  ([Kagi API pricing](https://kagi.com/api/pricing)).

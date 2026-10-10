@@ -2,68 +2,71 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Research: [deployment notes](../research/2.6-notes/deployment.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#deployment)
+- Design: [deployment](../design/deployment/deployment.md),
+  [definitions source](../design/connectors/definitions-source.md)
+- Research:
+  [deployment notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/deployment.md)
 
-Running nixie and defining nixie are separate. An owner's definitions, such as persona, jobs and the
-policy seed, live in a private repo of their own. Running nixie, such as the image version, the
-infrastructure, secrets and backups, lives wherever the owner deploys it.
+Running nixie and defining nixie are separate, across 3 repos:
 
-nixie reads its definitions through a definitions source, an adapter. A git repo, a local path and
-bucket storage are all valid sources, and the choice is independent of how nixie is deployed.
+- **The nixie repo** holds the platform: behaviour, contracts, adapters and reference
+  implementations.
+- **A definitions repo,** private, holds your persona, prompts, jobs and policy seed.
+- **A deployment repo** holds the image version, infrastructure, secrets, backups and backend
+  settings, such as which S3-compatible storage holds backups.
+
+nixie reads its definitions through the definitions source from [0016](./0016-own-interfaces.md). A
+git repo, a local path and bucket storage are all valid sources, and the choice is independent of
+how nixie is deployed.
 
 ## Seeding
 
-The definitions repo seeds the database, and the database is the one place the owner looks, through
-the client or the live view. Each rule records its source: seeded from a commit, or created at
-runtime with the ID of the approval that created it, under [0013](./0013-definition-versioning.md).
+The definitions seed the database, and the database is the one place to look, through the client or
+the live view. Each rule records its source: seeded from a commit, or created at runtime with the ID
+of the approval that created it, under [0013](./0013-definition-versioning.md).
 
 - **A seeded rule that changes in the repo** updates in the database at the next seed, unless it was
-  edited at runtime. A runtime edit marks it overridden, and the conflict shows in the client for
-  the owner to resolve.
+  edited at runtime. A runtime edit marks it overridden, and the conflict shows in the client to
+  resolve.
 - **A rule deleted from the repo** is removed at the next seed. Removing an allow rule only narrows,
   so it applies at once with a record, under [0005](./0005-effects-and-taint.md). Removing a deny
   rule widens, so it follows the next case.
 - **A repo change that widens the rules,** such as a looser allow rule or a removed deny rule,
-  applies only after the owner confirms it in the client. Widening is in the always-ask set, and
-  merging a pull request is not an approval.
+  applies only after you confirm it in the client. Widening is in the always-ask set, and merging a
+  pull request is not an approval.
 
-nixie can export runtime rules to the definitions repo as a pull request. Once the owner merges it,
-the next seed marks those rules as seeded.
+nixie can export runtime rules to the definitions repo as a pull request in YAML, the rule format
+from [0028](./0028-policy-design.md). Once you merge it, the next seed marks those rules as seeded.
 
-## Viable deployment models
+## Deployment models
 
-- **Docker Compose on one host:** the recommended path for most owners. It uses an OCI image,
-  upgrades as pull requests from a dependency bot with a database backup before each migration,
-  secrets encrypted with sops and age, and access over Tailscale with nixie bound to loopback.
-  Renovate's docker-compose manager bumps image tags in a Compose file
-  ([docker-compose manager](https://docs.renovatebot.com/modules/manager/docker-compose/),
-  2026-10-08).
-- **Kubernetes managed with Pulumi:** the owner's own setup, which the owner tests in practice. The
-  infrastructure repo runs nixie, and the definitions repo stays separate.
+- **Docker Compose on one host:** the recommended path. It runs one pinned OCI image beside an imp
+  host, with upgrades as pull requests that bump the image digest and a database copy before each
+  migration, secrets encrypted with sops and age, backups under
+  [0032](./0032-offsite-backups-and-replication.md), and access over a private network such as
+  Tailscale, with HTTPS on a fixed name.
+- **Kubernetes managed with Pulumi:** viable, with the same images and the same separate definitions
+  repo.
 
 ## Why
 
-- nixie opens pull requests to its definitions repo when it exports rules, and should not need write
-  access to an infrastructure repo to change a rule.
+- nixie opens pull requests to the definitions repo when it exports rules, and needs no write access
+  to an infrastructure repo to change a rule.
 - Definitions change often and infrastructure rarely, so separate repos keep each history readable.
-- A separate definitions repo is the same artifact for every owner, so the owner's own Kubernetes
-  setup tests the portable model.
+- A separate definitions repo is the same artifact for every deployment, so any deployment model
+  tests the portable one.
 - One place to look for rules answers "why did nixie allow this?" without comparing the repo and the
   database.
-- Confirming a widening in the client keeps someone with access to the owner's git host from
-  widening nixie's rules.
+- Confirming a widening in the client keeps someone with access to your git host from widening
+  nixie's rules.
 
 ## Alternatives
 
-- **One deployment repo that pins the version and holds the definitions,** as the research
-  recommended. It suits Compose, and puts definitions next to infrastructure for other setups.
+- **One deployment repo that pins the version and holds the definitions.** It suits Compose, and
+  puts definitions next to infrastructure for other setups.
 - **The repo as the baseline and the database as a runtime layer on top.** It leaves 2 places to
-  look when the owner asks why nixie allowed an action.
+  look when you ask why nixie allowed an action.
 
 ## Consequences
 
-- The definitions repo is private. The owner's own repo lives on the owner's git host.
 - Memory, conversations and the event log never go in the definitions repo.
-- The definitions source adapter joins the interfaces in [0016](./0016-own-interfaces.md) for Phase
-  3 to sketch.
