@@ -2,24 +2,24 @@
 
 - Date: 2026-10-10
 - Status: decided
-- Design: [backup and restore](../design/deployment/backup-and-restore.md),
-  [deployment](../design/deployment/deployment.md)
-- Research: [replica encryption spike](../../spikes/replica-encryption/),
-  [paired recovery spike](../../spikes/paired-recovery/),
-  [forget backups spike](../../spikes/forget-backups/)
+- Design: [backup and restore](../design/platform/deployment/backup-and-restore.md),
+  [deployment](../design/platform/deployment/deployment.md)
+- Research: [replica encryption spike](../design/platform/spikes/replica-encryption/),
+  [paired recovery spike](../design/platform/spikes/paired-recovery/),
+  [forget backups spike](../design/platform/spikes/forget-backups/)
 
 Restic holds scheduled encrypted snapshots of the data store and the wrapped key store, in separate
 repositories. Litestream replicates the data database offsite to S3-compatible storage, and never
 the key store. The deployment picks the S3-compatible backend through configuration, under
-[0020](./0020-deployment.md), and the platform adopts no cloud provider. Restic and rclone supply
-the storage backends.
+[0020](0020-deployment.md), and the platform adopts no cloud provider. Restic and rclone supply the
+storage backends.
 
 Offsite copies sit on provider storage only as ciphertext. The host runs rclone as a local S3
 gateway over a crypt remote: Litestream sends replica objects to the gateway, and rclone encrypts
 their contents and names before upload. Readable personal data stays on the host.
 
 A forget stays pending until its deleted keys leave every registered backup, under
-[0010](./0010-memory-store.md).
+[0010](0010-memory-store.md).
 
 nixie owns the backup guarantees: encryption on the host, data that restores with matching keys, and
 removal of every registered key copy before a forget completes. Restic, Litestream and rclone are

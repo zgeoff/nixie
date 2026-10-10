@@ -27,6 +27,7 @@ bun run check        # format, lint, and the prose check
 
 ## Layout
 
-- [docs/](./docs/README.md) holds the overview, the principles, the scope, the decision records, and
-  the designs for what is not built yet. Start with the [overview](./docs/overview.md).
-- [spikes/](./spikes/README.md) holds throwaway experiments that answer research questions.
+- [docs/](docs/README.md) holds the overview, the principles, the scope, the decision records, and
+  the designs for what is not built yet. Start with the [overview](docs/overview.md).
+- [spikes/](docs/design/platform/spikes/README.md) holds throwaway experiments that answer research
+  questions.

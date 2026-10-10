@@ -2,14 +2,14 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Design: [client](../design/channels/client.md)
+- Design: [client](../design/platform/channels/client.md)
 - Research:
   [channel notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.5-notes/channels.md),
   [transport notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.5-notes/transports.md)
 
 nixie's own client holds the conversation, the approvals and voice. Chat apps such as Telegram carry
 only a push notice with no content, such as "nixie has 3 things for you", and a link that opens the
-client. The client runs on 2 platforms, with the stack from [0029](./0029-channels-and-clients.md):
+client. The client runs on 2 platforms, with the stack from [0029](0029-channels-and-clients.md):
 
 - a web client for a desktop browser, which comes first, with pushes through Telegram
 - an Android app built with Expo, sideloaded during development, in tier 2 of the
@@ -24,7 +24,7 @@ A desktop app may follow, and nothing plans for it.
   servers ([Telegram FAQ](https://telegram.org/faq)). The principle "Your data stays home" forbids
   that storage, not the processing.
 - **Approvals are strongest in nixie's own client.** A chat account compromise cannot press a button
-  in it, and a passkey can tie an approval to you, which [0012](./0012-high-risk-approvals.md)
+  in it, and a passkey can tie an approval to you, which [0012](0012-high-risk-approvals.md)
   requires for the always-ask set.
 - **One app holds conversation, approvals and voice,** instead of a chat channel, an approval page
   and a voice client as 3 pieces.

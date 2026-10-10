@@ -2,12 +2,12 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Design: [channel adapter](../design/channels/channel-adapter.md),
-  [trigger source](../design/channels/trigger-source.md),
-  [connector](../design/connectors/connector.md),
-  [credentials](../design/connectors/credentials.md),
-  [definitions source](../design/connectors/definitions-source.md),
-  [sandbox adapter](../design/connectors/sandbox-adapter.md)
+- Design: [channel adapter](../design/platform/channels/channel-adapter.md),
+  [trigger source](../design/platform/channels/trigger-source.md),
+  [connector](../design/platform/connectors/connector.md),
+  [credentials](../design/platform/connectors/credentials.md),
+  [definitions source](../design/platform/connectors/definitions-source.md),
+  [sandbox adapter](../design/platform/connectors/sandbox-adapter.md)
 - Research:
   [MCP notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/mcp.md)
 
@@ -15,18 +15,18 @@ nixie takes tools from MCP and defines 6 interfaces of its own, because MCP has 
 them:
 
 - **Channel adapter:** your messages in, replies and pushes out, your identity, and approval
-  controls. The web client, the native app and the push notifier from
-  [0009](./0009-first-channel.md) are channel adapters.
+  controls. The web client, the native app and the push notifier from [0009](0009-first-channel.md)
+  are channel adapters.
 - **Trigger source:** schedules, webhooks, and mailbox pushes and polls, each as an event in nixie's
   log with a cursor.
 - **Connector:** typed calls to one outside service, with declared effects under
-  [0005](./0005-effects-and-taint.md) and a typed result.
+  [0005](0005-effects-and-taint.md) and a typed result.
 - **Credential store:** OAuth clients, refresh and rotation, and the way a tool gets a credential
   without the model seeing it. It sits in front of one or more backends, such as imp's broker for
   work inside an imp, and the deployment defines its credential sources, one backend per credential
   if it likes.
-- **Definitions source:** where nixie reads your definitions from, under
-  [0020](./0020-deployment.md): a git repo, a local path or bucket storage.
+- **Definitions source:** where nixie reads your definitions from, under [0020](0020-deployment.md):
+  a git repo, a local path or bucket storage.
 - **Sandbox adapter:** runs anything that executes a model loop or code over untrusted content in
   its own sandbox: the conversation, workers, code runs, and sessions on the built-in coding
   adapter. It covers the lifecycle, a deny-by-default network with a route back to nixie's tools,

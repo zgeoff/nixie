@@ -2,7 +2,7 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Research: [event log spike](../../spikes/event-log-db/)
+- Research: [event log spike](../design/platform/spikes/event-log-db/)
 
 nixie stores the event log, task state, approvals, the action queue and memory in one SQLite
 database on one host. Every transaction that reads and then writes opens with `BEGIN IMMEDIATE`, and
@@ -12,16 +12,16 @@ off the main thread, instead of depending on a published one.
 Postgres is the path if nixie ever needs a second host.
 
 nixie is a modular monolith: one deployable, with each module a workspace package, and package
-boundaries that block imports of another module's internals, under [0034](./0034-code-layout.md).
-The first build leaves out database roles per module. The web client runs as its own server beside
-the monolith, under [0029](./0029-channels-and-clients.md).
+boundaries that block imports of another module's internals, under [0034](0034-code-layout.md). The
+first build leaves out database roles per module. The web client runs as its own server beside the
+monolith, under [0029](0029-channels-and-clients.md).
 
 ## Why
 
 - In the event log spike, both engines had 0 double claims under killed and stalled workers, and
   neither limits nixie's load: SQLite took 3.9 ms at the median with full fsync, Postgres 3.5 ms.
 - One file keeps the policy decision, the approval record and the task state in one transaction, as
-  [0001](./0001-durable-layer.md) requires, with no database server to run.
+  [0001](0001-durable-layer.md) requires, with no database server to run.
 - A plain `BEGIN`, which published Kysely SQLite dialects use, failed 1,042 of 1,600 read-then-write
   transactions with "database is locked", and `BEGIN IMMEDIATE` fixed it.
 - On the main thread, a full scan in `bun:sqlite` blocked the event loop for 1.3 s, so the dialect

@@ -2,15 +2,15 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Design: [sandbox adapter](../design/connectors/sandbox-adapter.md),
-  [deployment](../design/deployment/deployment.md)
-- Research: [imp worker spike](../../spikes/imp-worker-start/)
+- Design: [sandbox adapter](../design/platform/connectors/sandbox-adapter.md),
+  [deployment](../design/platform/deployment/deployment.md)
+- Research: [imp worker spike](../design/platform/spikes/imp-worker-start/)
 
 Each worker run gets its own imp, and the whole worker runs inside it: the model loop through the
 Agent SDK and any code it runs. nixie creates, wakes and destroys the imp through the sandbox
-adapter from [0016](./0016-own-interfaces.md). The worker reaches everything outside the model API
+adapter from [0016](0016-own-interfaces.md). The worker reaches everything outside the model API
 through nixie's tools on the host, over the route from
-[0030](./0030-connectors-and-sandbox-environments.md).
+[0030](0030-connectors-and-sandbox-environments.md).
 
 The conversation runs in a long-lived imp of its own, which stays awake. It may sleep once imp keeps
 the guest's page cache across sleep, a candidate imp change.
@@ -21,7 +21,7 @@ limited to the model API's host. The guest sees only a placeholder.
 ## Why
 
 - Anything that runs a model loop over untrusted content gets a sandbox. Workers read outside
-  content, and the conversation is always untrusted under [0015](./0015-taint-scope.md), so both run
+  content, and the conversation is always untrusted under [0015](0015-taint-scope.md), so both run
   in an imp, behind a microVM boundary as well as behind nixie's policy.
 - A warm imp costs nothing a person notices. In the spike, a turn in a warm imp reached its first
   text in about 0.8 s, as fast as the same turn on the host.

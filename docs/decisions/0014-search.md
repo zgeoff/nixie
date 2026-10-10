@@ -5,7 +5,7 @@
 - Research:
   [connector notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/connectors.md)
 
-Search is one of nixie's own tools, as [0005](./0005-effects-and-taint.md) requires, and its first
+Search is one of nixie's own tools, as [0005](0005-effects-and-taint.md) requires, and its first
 provider is Kagi. The tool returns full results, with titles and snippets, and those results count
 as free text under 0005.
 

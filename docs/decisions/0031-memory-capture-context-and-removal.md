@@ -2,19 +2,20 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Design: [memory store](../design/memory/store.md), [memory writes](../design/memory/writes.md),
-  [memory context](../design/memory/context.md)
-- Research: [batch spike](../../spikes/memory-batch/)
+- Design: [memory store](../design/platform/memory/store.md),
+  [memory writes](../design/platform/memory/writes.md),
+  [memory context](../design/platform/memory/context.md)
+- Research: [batch spike](../design/platform/spikes/memory-batch/)
 
-nixie's memory settles these choices. Retrieval is set by [0024](./0024-memory-in-context.md), and
-the store by [0010](./0010-memory-store.md).
+nixie's memory settles these choices. Retrieval is set by [0024](0024-memory-in-context.md), and the
+store by [0010](0010-memory-store.md).
 
 ## Conversation writes and batched capture
 
 The conversation and tasks write memory during chat, including explicit requests. A background
 writer captures facts mentioned in passing from bounded batches of committed turns, triggered by a
 message count, idle time or a maximum age. Both paths use the checks from
-[0011](./0011-memory-writes.md).
+[0011](0011-memory-writes.md).
 
 The writer reads the original messages in order, and a summary is never evidence. The writer stages
 its writes, and the host commits the writes or proposals, their notices and the batch cursor in one

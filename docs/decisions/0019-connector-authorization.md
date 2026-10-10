@@ -2,14 +2,14 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Design: [credentials](../design/connectors/credentials.md)
-- Research: [Google OAuth spike](../../spikes/google-oauth/),
+- Design: [credentials](../design/platform/connectors/credentials.md)
+- Research: [Google OAuth spike](../design/platform/spikes/google-oauth/),
   [connector notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/connectors.md)
 
 Each deployment registers its own OAuth clients with each provider, and nixie ships no central OAuth
-app. The credential store from [0016](./0016-own-interfaces.md) holds each deployment's clients and
+app. The credential store from [0016](0016-own-interfaces.md) holds each deployment's clients and
 tokens. The first connector, its scopes and its consent flow are set by
-[0030](./0030-connectors-and-sandbox-environments.md).
+[0030](0030-connectors-and-sandbox-environments.md).
 
 The Google spike confirmed the route for the first connector: an unverified client in production
 obtained `gmail.modify`, a restricted scope, with no warning page, and called Gmail, Calendar and

@@ -54,7 +54,8 @@ writing rules, the size limits and the README contract.
   within 10 minutes of the PR opening, the PR goes ahead without it.
 - **Merge.** A PR merges only on the owner's word, after CI is green and every finding is answered.
   Squash it, and never use `--admin` or any other ruleset bypass. After a merge, remove its worktree
-  and its local and remote branches.
+  and its local and remote branches. Sync PRs that repo-sync opens merge without asking, once CI is
+  green.
 - **Attribution.** Commit messages and PR bodies carry no attribution lines: no co-author trailers
   and no generator notes.
 - **Linear.** A PR body names its issue with one relationship: `Fixes GEO-<n>` when merging meets

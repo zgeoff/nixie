@@ -6,9 +6,9 @@
   [versioning notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/definition-versioning.md)
 
 Every record carries a hash of the definition set in force when nixie made it: persona, jobs and
-policy, next to the rule ID from [0004](./0004-rule-engine.md). nixie keeps each snapshot in its
+policy, next to the rule ID from [0004](0004-rule-engine.md). nixie keeps each snapshot in its
 database, keyed by hash, so a replay knows exactly which definitions applied. nixie computes a new
-snapshot when the definitions source from [0020](./0020-deployment.md) seeds the database or a rule
+snapshot when the definitions source from [0020](0020-deployment.md) seeds the database or a rule
 changes, and every record until the next change shares its hash.
 
 A change reaches running tasks by kind:
@@ -37,4 +37,4 @@ A change reaches running tasks by kind:
   persona and job versions are those the task started with. The record keeps both.
 - The definitions source's commit is stored as a label on each snapshot, and a rule written at
   runtime carries the ID of the approval that created it.
-- Memory versions separately, through the history table from [0010](./0010-memory-store.md).
+- Memory versions separately, through the history table from [0010](0010-memory-store.md).

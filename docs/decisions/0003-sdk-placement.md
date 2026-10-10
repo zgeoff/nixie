@@ -2,15 +2,15 @@
 
 - Date: 2026-10-07
 - Status: decided
-- Research: [placement spike](../../spikes/sdk-placement/)
+- Research: [placement spike](../design/platform/spikes/sdk-placement/)
 
-Every model loop runs in an imp, under [0026](./0026-where-workers-and-the-conversation-run.md), and
+Every model loop runs in an imp, under [0026](0026-where-workers-and-the-conversation-run.md), and
 nixie's tools run on the host. The SDK holds only nixie's tools for assistant work. `tools: []`
 removes every built-in tool from the conversation and from workers, and nixie's tools reach the
 model through nixie's MCP endpoint on the host. Running code is one of nixie's tools. Coding
 sessions on the built-in coding adapter keep Claude Code's built-in tools inside their imp, under
-[0022](./0022-coding-and-code-execution.md). The route from an imp to nixie's tools is set by
-[0030](./0030-connectors-and-sandbox-environments.md).
+[0022](0022-coding-and-code-execution.md). The route from an imp to nixie's tools is set by
+[0030](0030-connectors-and-sandbox-environments.md).
 
 ## Why
 

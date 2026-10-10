@@ -2,12 +2,14 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Design: [connector](../design/connectors/connector.md), [tools](../design/connectors/tools.md),
-  [sandbox adapter](../design/connectors/sandbox-adapter.md),
-  [credentials](../design/connectors/credentials.md)
-- Research: [reverse forward spike](../../spikes/tools-reverse-forward/),
-  [Google OAuth spike](../../spikes/google-oauth/), [proxy spike](../../spikes/mcp-proxy-pin/),
-  [endpoint spike](../../spikes/tools-endpoint/)
+- Design: [connector](../design/platform/connectors/connector.md),
+  [tools](../design/platform/connectors/tools.md),
+  [sandbox adapter](../design/platform/connectors/sandbox-adapter.md),
+  [credentials](../design/platform/connectors/credentials.md)
+- Research: [reverse forward spike](../design/platform/spikes/tools-reverse-forward/),
+  [Google OAuth spike](../design/platform/spikes/google-oauth/),
+  [proxy spike](../design/platform/spikes/mcp-proxy-pin/),
+  [endpoint spike](../design/platform/spikes/tools-endpoint/)
 
 nixie's connectors and sandboxes settle these choices. nixie's host application is Bun and
 TypeScript.
@@ -24,7 +26,7 @@ passed.
 ## Google first
 
 Google APIs are the first connector, with `gmail.modify`, `calendar.events` and `drive.file`, on one
-OAuth client registered by the deployment under [0019](./0019-connector-authorization.md).
+OAuth client registered by the deployment under [0019](0019-connector-authorization.md).
 `drive.file` covers files nixie creates and files you select, not the whole Drive. `gmail.modify`
 covers organising and sending mail without permanent deletion, and the connector adds no purge
 scope.
@@ -45,7 +47,7 @@ which does not change the one set of tool definitions.
 ## Sandbox recovery
 
 Recovery lists and destroys orphaned sandboxes through the adapter that owns them. The sandbox
-adapters themselves are set by [0016](./0016-own-interfaces.md).
+adapters themselves are set by [0016](0016-own-interfaces.md).
 
 ## A familiar code environment
 
@@ -61,7 +63,7 @@ durably disables its binding, revokes nixie's grants and removes nixie's own cop
 or a source refresh cannot reconnect it. Reconnecting takes an explicit checked action. The original
 secret stays at its source, untouched, and a request a provider already received stays sent. A
 credential that nixie stores in its own database gets Forget, which deletes its encryption keys
-under the forget contract from [0010](./0010-memory-store.md).
+under the forget contract from [0010](0010-memory-store.md).
 
 ## Why
 
