@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "extends": ["./node_modules/@zgeoff/oxlint-config/oxlintrc.json"],
+  "jsPlugins": ["./oxlint-plugin.js"],
   "env": {
     "node": true,
     "es2024": true
@@ -10,6 +11,8 @@
     // oxlint 1.86 enables one-var through the style category, which the shared config predates; it
     // forbids the separate const per step that every test body uses
     "one-var": "off",
+    // a callback's parameter takes its type from the caller, such as a test.each row
+    "typescript/prefer-readonly-parameter-types": ["error", { "ignoreInferredTypes": true }],
     "no-restricted-imports": [
       "error",
       {
@@ -25,6 +28,16 @@
           {
             "name": "bun:sqlite",
             "message": "Only libs/db opens SQLite; use @heynixie/db."
+          },
+          {
+            "name": "node:module",
+            "importNames": ["createRequire"],
+            "message": "A require function escapes no-restricted-imports; use import."
+          },
+          {
+            "name": "module",
+            "importNames": ["createRequire"],
+            "message": "A require function escapes no-restricted-imports; use import."
           }
         ],
         "patterns": [
@@ -39,13 +52,15 @@
         ]
       }
     ],
-    "import/no-commonjs": "error",
-    "import/no-dynamic-require": [
+    "no-restricted-globals": [
       "error",
       {
-        "esmodule": true
+        "name": "require",
+        "message": "A require function escapes no-restricted-imports; use import."
       }
-    ]
+    ],
+    "import/no-commonjs": "error",
+    "nixie/no-hidden-import": "error"
   },
   "overrides": [
     {
@@ -62,6 +77,16 @@
               {
                 "name": "bun:sqlite",
                 "message": "Only libs/db opens SQLite; use @heynixie/db."
+              },
+              {
+                "name": "node:module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              },
+              {
+                "name": "module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
               }
             ],
             "patterns": [
@@ -88,6 +113,16 @@
               {
                 "name": "bun:sqlite",
                 "message": "Only libs/db opens SQLite; use @heynixie/db."
+              },
+              {
+                "name": "node:module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              },
+              {
+                "name": "module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
               }
             ],
             "patterns": [
@@ -114,6 +149,16 @@
               {
                 "name": "@zgeoff/imp-client",
                 "message": "Only adapters/sandbox-imp imports imp's client."
+              },
+              {
+                "name": "node:module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              },
+              {
+                "name": "module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
               }
             ],
             "patterns": [

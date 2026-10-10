@@ -264,12 +264,13 @@ Never print a token or a secret value, and never write one to a file in the repo
   variable holds its script list:
   `audit deadcode format:check lint typecheck boundaries prose test`. A change to that list changes
   `bun run check` in the same PR.
-- `turbo.test.ts` proves the tag rules in `turbo.json`, and `oxlintrc.test.ts` proves the import
-  confinement in `.oxlintrc.json`. Both run the real tool against throwaway fixture packages in a
-  temporary directory.
+- `turbo.test.ts` proves the tag rules in `turbo.json` and checks that every package carries the
+  role tag of its folder. `oxlintrc.test.ts` proves the import confinement in `.oxlintrc.json` and
+  `oxlint-plugin.js`, which refuses the import forms that `no-restricted-imports` cannot see. Both
+  run the real tool against throwaway fixture packages in a temporary directory.
 - lefthook runs oxlint, oxfmt and gitleaks before a commit, and commitlint on the message. Before a
   push it runs one job at a time: the format check, typecheck, boundaries and the prose check over
-  the whole tree, and lint and the tests over what the branch changes. commitlint takes a lowercase
-  Conventional Commit header of at most 72 characters.
+  the whole tree, lint and the tests over what the branch changes, and the two rule tests.
+  commitlint takes a lowercase Conventional Commit header of at most 72 characters.
 - `bun run build:agents` builds AGENTS.md from `agents/shared.md` and `agents/project.md`. CI fails
   when the committed AGENTS.md differs from the build.

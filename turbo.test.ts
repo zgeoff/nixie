@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 async function setupTest() {
   const dir = await mkdtemp(join(tmpdir(), 'nixie-boundaries-'));
@@ -336,4 +336,44 @@ test('it refuses a cycle between modules', async () => {
 
   expect(result.exitCode).toBe(1);
   expect(result.stderr).toInclude('Circular package dependency detected');
+});
+
+test.each(
+  [
+    {
+      folder: 'apps',
+      roles: ['app', 'client', 'sidecar'],
+      others: ['module', 'adapter', 'guest', 'lib'],
+    },
+    {
+      folder: 'modules',
+      roles: ['module'],
+      others: ['app', 'client', 'sidecar', 'adapter', 'guest', 'lib'],
+    },
+    {
+      folder: 'guests',
+      roles: ['guest'],
+      others: ['app', 'client', 'sidecar', 'module', 'adapter', 'lib'],
+    },
+    {
+      folder: 'adapters',
+      roles: ['adapter'],
+      others: ['app', 'client', 'sidecar', 'module', 'guest', 'lib'],
+    },
+    {
+      folder: 'libs',
+      roles: ['lib'],
+      others: ['app', 'client', 'sidecar', 'module', 'adapter', 'guest'],
+    },
+  ].flatMap((rule) =>
+    Array.from(new Bun.Glob(`${rule.folder}/*/package.json`).scanSync(import.meta.dir), (path) => ({
+      ...rule,
+      dir: dirname(path),
+    })),
+  ),
+)('it tags $dir with a role tag its folder allows and no other', async (row) => {
+  const turbo: unknown = await Bun.file(join(import.meta.dir, row.dir, 'turbo.json')).json();
+
+  expect(turbo).toHaveProperty('tags', expect.toIncludeAnyMembers(row.roles));
+  expect(turbo).toHaveProperty('tags', expect.not.toIncludeAnyMembers(row.others));
 });

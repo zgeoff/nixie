@@ -41,3 +41,7 @@ pre-push:
       run: bun run prose
     - name: test
       run: bun test --changed=origin/main
+    # these read turbo.json and .oxlintrc.json as files, which --changed never
+    # links to them, so they run on every push
+    - name: test:rules
+      run: bun test ./turbo.test.ts ./oxlintrc.test.ts
