@@ -2,7 +2,13 @@
 // never blocks the main thread's event loop.
 import type { SQLQueryBindings } from 'bun:sqlite';
 import { Database } from 'bun:sqlite';
-import type { WorkerError, WorkerQueryResult, WorkerRequest, WorkerResponse } from './types';
+import type {
+  DatabaseOptions,
+  WorkerError,
+  WorkerQueryResult,
+  WorkerRequest,
+  WorkerResponse,
+} from './types';
 
 // a worker's global scope sends and receives messages the way a Worker handle does
 declare const self: Worker;
@@ -29,7 +35,7 @@ function buildResponse(request: WorkerRequest): WorkerResponse {
 
 function runRequest(request: WorkerRequest): WorkerQueryResult {
   if (request.kind === 'open') {
-    state.database = startConnection(request.path);
+    state.database = startConnection(request.path, request.options);
     return { rows: [] };
   }
   if (request.kind === 'close') {
@@ -53,11 +59,14 @@ const PRAGMAS = [
   'pragma foreign_keys = on',
 ];
 
-function startConnection(path: string): Database {
+function startConnection(path: string, options: DatabaseOptions): Database {
   const database = new Database(path, { create: true, strict: true });
 
   for (const pragma of PRAGMAS) {
     database.run(pragma);
+  }
+  if (options.secureDelete === true) {
+    database.run('pragma secure_delete = on');
   }
   return database;
 }

@@ -37,6 +37,8 @@ below, and planned work lives in Linear.
   stream, the query helper and the paste-span logic
 - [The database and the single writer](architecture/database.md) — the SQLite dialect, the writer
   lock and epoch, migrations and the schema version, and random key store IDs
+- [The event log](architecture/event-log.md) — the record envelope, erasable fields and the key
+  store, projections and their rebuild, and reading by sequence
 
 ## Design
 

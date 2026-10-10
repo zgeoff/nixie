@@ -3,8 +3,9 @@
 nixie keeps its state in one SQLite file, `nixie.db`, in the data directory, under
 [0025](../decisions/0025-database-and-topology.md). `libs/db` is the one package that opens it: it
 holds the Kysely dialect, the migration runner and the schema version. `modules/log` makes one
-process the writer, with the writer lock and the writer epoch. `startWriter` runs every step below
-in order, and any failure releases what the start took.
+process the writer, with the writer lock and the writer epoch, and opens the key store that
+[the event log](event-log.md#erasable-fields-and-the-key-store) covers. `startWriter` runs every
+step below in order, and any failure releases what the start took.
 
 ## The dialect
 

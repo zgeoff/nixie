@@ -1,15 +1,15 @@
 import type { DatabaseConnection, Dialect, Driver, QueryResult, TransactionSettings } from 'kysely';
 import { CompiledQuery, SqliteAdapter, SqliteIntrospector, SqliteQueryCompiler } from 'kysely';
 import { DatabaseError } from './database-error';
-import type { WorkerQueryResult, WorkerRequest, WorkerResponse } from './types';
+import type { DatabaseOptions, WorkerQueryResult, WorkerRequest, WorkerResponse } from './types';
 
 // nixie's Kysely dialect for bun:sqlite. One worker holds the one connection, so no query blocks
 // the main thread, and Kysely queues every query behind the one in flight, because SqliteAdapter
 // declares a single connection.
-export function buildSqliteWorkerDialect(path: string): Dialect {
+export function buildSqliteWorkerDialect(path: string, options: DatabaseOptions = {}): Dialect {
   return {
     createAdapter: () => new SqliteAdapter(),
-    createDriver: () => buildDriver(path),
+    createDriver: () => buildDriver(path, options),
     createIntrospector: (db) => new SqliteIntrospector(db),
     createQueryCompiler: () => new SqliteQueryCompiler(),
   };
@@ -20,7 +20,7 @@ interface DriverState {
   connection: DatabaseConnection | null;
 }
 
-function buildDriver(path: string): Driver {
+function buildDriver(path: string, options: DatabaseOptions): Driver {
   const state: DriverState = { worker: null, connection: null };
 
   return {
@@ -28,7 +28,7 @@ function buildDriver(path: string): Driver {
       const worker = startSqliteWorker();
 
       state.worker = worker;
-      await worker.send({ kind: 'open', path });
+      await worker.send({ kind: 'open', path, options });
       state.connection = buildConnection(worker);
     },
     acquireConnection() {
