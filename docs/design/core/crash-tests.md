@@ -60,8 +60,8 @@ Every test ends with the same checks:
 - The provider double recorded each call that the test allows, and no other.
 - Dropping every projection and folding the log rebuilds tables equal to the live ones, using slice
   1's rebuild test.
-- No task holds a lease after recovery. A task with unread input and no pause or recovery hold is
-  `ready`.
+- No task holds a lease after recovery. A task in `stopped`, `failed`, `done` or `closed` keeps its
+  state, and a running or waiting task with unread input and no pause or recovery hold is `ready`.
 
 ## Fault points
 
@@ -130,7 +130,8 @@ The test connector refuses `test.send` with a refusal that can clear. The test k
 
 A task waits with no unread input. Each source of a wake-up writes to its inbox: your message, a
 fired timer, an action outcome and a trigger event. For each source, the test kills nixie at
-`inbox.write.after` and again at `trigger.deliver.before`, then restarts.
+`inbox.write.after`, then restarts. For a trigger event, it also kills nixie at
+`trigger.deliver.before`.
 
 - A committed inbox entry makes the task `ready` after restart, and its next step reads it once.
 - A trigger batch killed before its commit arrives again from the stored cursor, and its dedupe key
