@@ -87,6 +87,23 @@ test('it skips every file without a definitions extension', async () => {
   expect(snapshot.skipped).toStrictEqual(['README.txt', 'rules.toml', 'scripts/seed.sh']);
 });
 
+test('it reads every file under skills, whatever its extension', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'skills', 'pdf-forms', 'scripts'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'pdf-forms', 'SKILL.md'), '# PDF forms\n');
+  await writeFile(join(ctx.root, 'skills', 'pdf-forms', 'scripts', 'fill.py'), 'print(1)\n');
+  await writeFile(join(ctx.root, 'fill.py'), 'print(1)\n');
+
+  const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
+
+  expect([...snapshot.files.keys()]).toStrictEqual([
+    'skills/pdf-forms/SKILL.md',
+    'skills/pdf-forms/scripts/fill.py',
+  ]);
+  expect(snapshot.skipped).toStrictEqual(['fill.py']);
+});
+
 test('it fails the snapshot at a symlink that leads outside the root', async () => {
   const ctx = await setupTest();
 

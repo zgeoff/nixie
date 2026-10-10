@@ -22,8 +22,13 @@ because a directory has no commit. Its ID is `path:` plus the resolved directory
 
 `isDefinitionsPath` holds the filter every source applies:
 
-- only `.md`, `.yaml`, `.yml` and `.json` files
 - no path with a part that starts with a dot, such as `.git`
+- under `skills/`, every file, whatever its extension
+- elsewhere, only `.md`, `.yaml`, `.yml` and `.json` files
+
+**Why:** a skill brings its scripts, such as `fill.py`, as the
+[skills design](../design/platform/skills.md#the-definitions-filter-under-skills) sets out. Every
+kept file must decode as UTF-8, so a binary file under `skills/` fails the snapshot.
 
 The path source skips a dotted directory without entering it. A symlink that stays inside the root
 is skipped, and a symlink that leads outside the root, or resolves nowhere, fails the snapshot with
@@ -58,9 +63,9 @@ This release writes format 1, and reads its own format and the one before. A man
 format fails with the formats the release reads. **Why:** an image upgrade and a definitions change
 land in separate repos, in either order.
 
-The seed applies no other file, and lists each one as unapplied, such as a rule file before rules
-seed. Each unapplied YAML or JSON file must still parse. A file that is not UTF-8, or fails to
-parse, fails the whole snapshot with `DefinitionsParseError`, which lists each file and its fault.
+The seed applies no other file, and lists each one as unapplied, such as a rule file or a skill.
+Each unapplied YAML or JSON file must still parse. A file that is not UTF-8, or fails to parse,
+fails the whole snapshot with `DefinitionsParseError`, which lists each file and its fault.
 
 ## The snapshot hash
 

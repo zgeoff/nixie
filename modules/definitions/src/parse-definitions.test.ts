@@ -110,3 +110,29 @@ test('it refuses an unapplied JSON file that fails to parse', () => {
     parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
   ).toThrowWithMessage(Error, /^jobs\/morning\.json: JSON Parse error/u);
 });
+
+test('it lists a skill script as unapplied', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['skills/pdf-forms/scripts/fill.py', new TextEncoder().encode('print("fill")\n')],
+  ]);
+
+  expect(parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] })).toStrictEqual({
+    formatVersion: 1,
+    persona: '# Persona\n',
+    unapplied: ['skills/pdf-forms/scripts/fill.py'],
+  });
+});
+
+test('it refuses a skill file that is not UTF-8 text', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['skills/pdf-forms/form.pdf', Uint8Array.from([0x25, 0x50, 0xff, 0xfe])],
+  ]);
+
+  expect(() =>
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+  ).toThrowWithMessage(Error, 'skills/pdf-forms/form.pdf: the file is not UTF-8 text');
+});

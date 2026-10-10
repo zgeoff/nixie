@@ -12,6 +12,12 @@ test.each([
   ['.github/workflow.yaml', false],
   ['jobs/.draft.yaml', false],
   ['.persona.md', false],
+  ['skills/pdf-forms/SKILL.md', true],
+  ['skills/pdf-forms/scripts/fill.py', true],
+  ['skills/pdf-forms/LICENSE', true],
+  ['skills/pdf-forms/.cache/fill.pyc', false],
+  ['scripts/fill.py', false],
+  ['jobs/skills/fill.py', false],
 ])('it reads %s as a definitions path: %p', (path, expected) => {
   expect(isDefinitionsPath(path)).toBe(expected);
 });
