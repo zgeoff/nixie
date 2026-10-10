@@ -5,6 +5,7 @@ import { on } from 'node:events';
 import { resolve } from 'node:path';
 import type { Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import { readProvider } from './provider.ts';
 
 type Priority = 'later' | 'next' | 'now';
 
@@ -19,6 +20,7 @@ const aborter = new AbortController(),
   inbox = new EventTarget(),
   incoming = on(inbox, 'message', { signal: aborter.signal }),
   ownerUuid = randomUUID(),
+  provider = readProvider(),
   started = Date.now(),
   state = { ownerRead: false, ownerSent: false, results: 0, sawDone: false };
 
@@ -97,12 +99,12 @@ function startSession(): Query {
       allowedTools: ['Bash'],
       cwd: resolve(import.meta.dir),
       env: {
-        CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '',
+        ...provider.env,
         HOME: process.env.HOME ?? '',
         PATH: process.env.PATH ?? '',
       },
       maxTurns: 12,
-      model: 'claude-haiku-4-5-20251001',
+      model: provider.model,
       permissionMode: 'default',
       permissionPrompts: 'none',
       settingSources: [],

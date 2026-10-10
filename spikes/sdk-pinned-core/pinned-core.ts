@@ -5,6 +5,7 @@
 import { resolve } from 'node:path';
 import type { Options, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import { readProvider } from './provider.ts';
 
 interface TurnResult {
   answer: string;
@@ -32,18 +33,20 @@ function buildCore(word: string): string {
   return `${filler}\n\nPinned memory: the owner's code word is ${word}.`;
 }
 
+const provider = readProvider();
+
 function buildOptions(extra: Partial<Options>): Options {
   return {
     cwd,
     env: {
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
-      CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '',
+      ...provider.env,
       CLAUDE_CONFIG_DIR: configDir ?? '',
       HOME: configDir ?? '',
       PATH: process.env.PATH ?? '',
     },
     maxTurns: 1,
-    model: 'claude-haiku-4-5-20251001',
+    model: provider.model,
     settingSources: [],
     settings: { autoMemoryEnabled: false, autoDreamEnabled: false },
     tools: [],

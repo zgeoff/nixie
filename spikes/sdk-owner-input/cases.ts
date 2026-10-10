@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import type { Options, Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
+import { readProvider } from './provider.ts';
 
 type CaseName = 'defer' | 'interrupt' | 'slow-tool' | 'text';
 
@@ -16,18 +17,13 @@ interface Extra {
 }
 
 const aborter = new AbortController(),
+  host = { sent: false },
   inbox = new EventTarget(),
   incoming = on(inbox, 'message', { signal: aborter.signal }),
   ownerUuid = randomUUID(),
+  provider = readProvider(),
   started = Date.now(),
-  state = {
-    hostSent: false,
-    ownerRead: false,
-    ownerSent: false,
-    resultsAfterRead: 0,
-    results: 0,
-    streamed: 0,
-  };
+  state = { ownerRead: false, ownerSent: false, resultsAfterRead: 0, results: 0, streamed: 0 };
 
 function formatElapsed(): string {
   return `${((Date.now() - started) / 1000).toFixed(1)}s`.padStart(7);
@@ -100,14 +96,14 @@ function buildOptions(name: CaseName): Options {
     allowedTools: tools[name] ?? [],
     cwd: resolve(import.meta.dir),
     env: {
-      CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '',
+      ...provider.env,
       HOME: process.env.HOME ?? '',
       PATH: process.env.PATH ?? '',
     },
     includePartialMessages: name === 'text',
     maxTurns: 12,
     ...(name === 'slow-tool' && { mcpServers: { spike: buildSlowServer() } }),
-    model: 'claude-haiku-4-5-20251001',
+    model: provider.model,
     permissionMode: 'default',
     permissionPrompts: 'none',
     settingSources: [],
@@ -243,14 +239,14 @@ async function runDefer(session: Query): Promise<void> {
         uuid: ownerUuid,
       });
       setTimeout(() => {
-        state.hostSent = true;
+        host.sent = true;
         printLine('HOST SENDS "What is the secret word?"');
         sendText('What is the secret word, if anyone told you one? Reply with only the word.');
       }, 8000);
     }
 
     // The shouldQuery false message emits an empty result of its own, so wait for the host's.
-    if (message.type === 'result' && state.hostSent) {
+    if (message.type === 'result' && host.sent) {
       return;
     }
   }

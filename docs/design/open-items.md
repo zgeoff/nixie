@@ -49,10 +49,12 @@ Spikes that need model calls wait for model quota. Each line names the claim the
 
 ### Memory and sessions
 
-- **The pinned core on GLM** (minutes): the
-  [pinned core spike](../../spikes/sdk-pinned-core/README.md) showed on Haiku that `snapshot: false`
-  lets a changed pinned core reach a resumed session. Rerun it on GLM 5.3 to check that the setting
-  applies through a non-Anthropic endpoint.
+- **The pinned core on GLM**: the [pinned core spike](../../spikes/sdk-pinned-core/README.md) shows
+  that `snapshot: false` sends a changed pinned core to GLM 5.3, as it does to Haiku. GLM fails to
+  act on it: on the first turn after the change it answered with the new code word in 2 of 5 runs,
+  and otherwise repeated the old word from its own earlier answers. Haiku answered with the new word
+  in 3 of 3 runs. A pinned or edited item does not reliably reach a GLM conversation on its next
+  turn.
 - **Compaction controls** (about 2 hours): check whether returning `decision: 'block'` from the
   `PreCompact` hook stops an automatic compaction. nixie does not rely on it until then.
 - **A resume after compaction** (about 2 hours): compact a session after a step's recorded boundary,
