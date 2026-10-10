@@ -36,4 +36,5 @@ export type {
 } from './types';
 export { withWriteTransaction } from './with-write-transaction';
 export { writeRecords } from './write-records';
+export { writeRecordsInTransaction } from './write-records-in-transaction';
 export { WriterLockHeldError } from './writer-lock-held-error';

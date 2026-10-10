@@ -1,3 +1,4 @@
+import { definitionsMigration } from './definitions-migration';
 import { eventLogMigration } from './event-log-migration';
 import type { BuildSchema } from './types';
 
@@ -5,6 +6,6 @@ import type { BuildSchema } from './types';
 // released. Raise oldestReader only when a release leaves a schema the release before cannot read,
 // and say so in its pull request.
 export const nixieSchema: BuildSchema = {
-  migrations: [eventLogMigration],
+  migrations: [eventLogMigration, definitionsMigration],
   oldestReader: 0,
 };

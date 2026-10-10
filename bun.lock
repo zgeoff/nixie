@@ -71,6 +71,14 @@
       "name": "@heynixie/testing",
       "version": "0.0.0",
     },
+    "modules/definitions": {
+      "name": "@heynixie/definitions",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/log": "workspace:*",
+        "kysely": "catalog:",
+      },
+    },
     "modules/log": {
       "name": "@heynixie/log",
       "version": "0.0.0",
@@ -211,6 +219,8 @@
     "@heynixie/contract": ["@heynixie/contract@workspace:libs/contract"],
 
     "@heynixie/db": ["@heynixie/db@workspace:libs/db"],
+
+    "@heynixie/definitions": ["@heynixie/definitions@workspace:modules/definitions"],
 
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
 

@@ -19,7 +19,8 @@
     // forbids the separate const per step that every test body uses
     "one-var": "off",
     // a callback's parameter takes its type from the caller, such as a test.each row; the allowed
-    // types are library and platform handles, which no caller can make readonly
+    // types are library and platform handles, which no caller can make readonly, and ReadonlyMap,
+    // which the rule reads as mutable
     "typescript/prefer-readonly-parameter-types": [
       "error",
       {
@@ -32,7 +33,7 @@
           },
           { "from": "package", "package": "bun:ffi", "name": ["Pointer"] },
           { "from": "package", "package": "bun:sqlite", "name": ["Database", "SQLQueryBindings"] },
-          { "from": "lib", "name": ["Date", "Error", "Uint8Array"] },
+          { "from": "lib", "name": ["Date", "Error", "ReadonlyMap", "Uint8Array"] },
           {
             "from": "package",
             "package": "bun-types",
