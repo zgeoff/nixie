@@ -1,7 +1,8 @@
 # 0010: The memory store
 
 - Date: 2026-10-08
-- Status: decided, amended by [0011](./0011-memory-writes.md), [0015](./0015-taint-scope.md) and
+- Status: decided, amended by [0011](./0011-memory-writes.md), [0015](./0015-taint-scope.md),
+  [0031](./0031-memory-capture-context-and-removal.md) and
   [0032](./0032-offsite-backups-and-replication.md)
 - Research: [memory notes](../research/2.4-notes/memory-models.md),
   [storage notes](../research/2.4-notes/data-and-storage.md),
