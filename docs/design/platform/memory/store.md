@@ -196,9 +196,8 @@ The recall record lists each item and version it returned, so a replay shows wha
 record holds references, not text, so a forget leaves no readable copy behind. Recall searches the
 index that [memory in context](context.md#retrieval) describes.
 
-Recall returns each item's links to moments as moment IDs and titles, never moment text, under
-[0037](../../../decisions/0037-moments.md). The model reads a linked moment through `moment.read`
-when the reason behind a fact matters.
+Recall returns each item's links to moments as moment IDs and titles, never moment text, as
+[moments](moments.md#reading-moments-back) sets out.
 
 ## Definition versioning
 

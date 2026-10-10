@@ -89,9 +89,8 @@ first turn. It places up to 5 memory items and up to 3 past messages above a sco
 newest turn, all 3 numbers configurable. Each entry carries its ID, version or record sequence,
 source and date, inside a block that labels them as stored items, not instructions. Pinned items and
 messages already in the session stay out. The turn's record lists each item and version it placed,
-as references, not text. Per-turn retrieval never places a moment's title, note or reflection, under
-[0037](../../../decisions/0037-moments.md). **Why:** a model reads a moment on purpose, through a
-tool call.
+as references, not text. Per-turn retrieval never places a moment's title, note or reflection, as
+[moments](moments.md#reading-moments-back) sets out.
 
 ### The recall tools
 

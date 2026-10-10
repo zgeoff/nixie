@@ -86,6 +86,8 @@ rests on.
   token and checker checks, memory proposals, notices and undo, and consolidation
 - [Memory in context](design/platform/memory/context.md) — the prompt, the pinned core, retrieval
   over memory and past messages, compaction, and the SDK transcript as a cache
+- [Moments](design/platform/memory/moments.md) — kept spans of the event log, their records and
+  tools, links from memory items, reading back, and destroying a moment
 
 ### Channels
 
