@@ -19,8 +19,8 @@ export interface ReadRecordsOptions {
 }
 
 // Reads the records after a sequence, oldest first, each with the projection rows its transaction
-// changed. SQLite allows one writer, so the sequence grows in commit order and a reader that asks
-// for the records after N misses none. A record whose key is gone reads as shredded.
+// changed. One writer means the sequence grows in commit order, so a reader misses none. A record
+// that fails to decrypt reads as unreadable, so it never stops a reader at its sequence.
 export async function readRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   options: ReadRecordsOptions,
@@ -83,17 +83,23 @@ function buildChanges(
     }));
 }
 
-async function decodeRecordErasable(
+function decodeRecordErasable(
   row: RecordRow,
-  getKey: (keyID: string) => CryptoKey | undefined,
+  getKey: (keyID: string) => CryptoKey | null | undefined,
 ): Promise<ErasableFields> {
   if (row.key_id === null || row.sealed === null) {
-    return { status: 'none' };
+    return Promise.resolve({ status: 'none' });
   }
   const key = getKey(row.key_id);
 
   if (key === undefined) {
-    return { status: 'shredded' };
+    return Promise.resolve({ status: 'shredded' });
   }
-  return { status: 'readable', fields: await decodeErasable(key, row.key_id, row.sealed) };
+  if (key === null) {
+    return Promise.resolve({ status: 'unreadable' });
+  }
+  return decodeErasable(key, row.key_id, row.sealed).then(
+    (fields): ErasableFields => ({ status: 'readable', fields }),
+    (): ErasableFields => ({ status: 'unreadable' }),
+  );
 }

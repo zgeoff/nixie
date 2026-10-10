@@ -113,10 +113,11 @@ export interface EnvelopeRecord {
 }
 
 // none: the record had no erasable fields. shredded: its key is gone, so a gap stands where they
-// were. readable: the key decrypted them.
+// were. unreadable: the key or the ciphertext failed to decrypt. readable: the key decrypted them.
 export type ErasableFields =
   | { readonly status: 'none' }
   | { readonly status: 'shredded' }
+  | { readonly status: 'unreadable' }
   | { readonly status: 'readable'; readonly fields: JSONObject };
 
 export interface LogRecord extends EnvelopeRecord {

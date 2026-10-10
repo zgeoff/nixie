@@ -18,7 +18,7 @@ export interface RecordWake {
 // Starts the wakes that tell a reader new records may exist: a change to nixie.db's WAL file, a
 // poll every pollMs (1 s by default) for a change the watcher misses, and the signal's abort.
 export function startRecordWake(dataDir: string, options: RecordWakeOptions): RecordWake {
-  const state: WakeState = { pending: true, waiter: null };
+  const state: WakeState = { pending: true, stopped: false, waiter: null };
   const emitWake = (): void => {
     state.pending = true;
     state.waiter?.resolve();
@@ -27,7 +27,19 @@ export function startRecordWake(dataDir: string, options: RecordWakeOptions): Re
   const unsubscribe = (options.subscribeToChanges ?? subscribeToWAL)(dataDir, emitWake);
   const poll = setInterval(emitWake, options.pollMs ?? DEFAULT_POLL_MS);
 
-  options.signal?.addEventListener('abort', emitWake, { once: true });
+  const stop = (): void => {
+    if (state.stopped) {
+      return;
+    }
+    state.stopped = true;
+    clearInterval(poll);
+    unsubscribe();
+    options.signal?.removeEventListener('abort', stop);
+    emitWake();
+  };
+
+  // an abort stops the watcher and the poll at once, even when no consumer pulls again
+  options.signal?.addEventListener('abort', stop, { once: true });
   return {
     reset: () => {
       state.pending = false;
@@ -39,17 +51,13 @@ export function startRecordWake(dataDir: string, options: RecordWakeOptions): Re
       state.waiter ??= Promise.withResolvers<void>();
       return state.waiter.promise;
     },
-    stop: () => {
-      clearInterval(poll);
-      unsubscribe();
-      options.signal?.removeEventListener('abort', emitWake);
-      emitWake();
-    },
+    stop,
   };
 }
 
 interface WakeState {
   pending: boolean;
+  stopped: boolean;
   waiter: PromiseWithResolvers<void> | null;
 }
 

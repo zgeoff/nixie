@@ -1,5 +1,6 @@
 export { claimWriterEpoch } from './claim-writer-epoch';
 export { claimWriterLock } from './claim-writer-lock';
+export { KeyStoreBusyError } from './key-store-busy-error';
 export { logProjections } from './log-projections';
 export { MissingDefinitionsError } from './missing-definitions-error';
 export type { ReadRecordsOptions } from './read-records';

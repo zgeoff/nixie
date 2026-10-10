@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
 import { startKeyStore } from './start-key-store';
@@ -109,4 +109,26 @@ test('it finishes the stream once the signal aborts', async () => {
   const next = await waiting;
 
   expect(next).toStrictEqual({ done: true, value: undefined });
+});
+
+test('it stops watching once the signal aborts, even when no consumer pulls again', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
+  ]);
+
+  const unsubscribe = mock<() => void>();
+  const abort = new AbortController();
+  const stream = subscribeToRecords(ctx.reader, {
+    afterSequence: 0,
+    pollMs: 3_600_000,
+    subscribeToChanges: () => unsubscribe,
+    signal: abort.signal,
+  });
+
+  await stream.next();
+  abort.abort();
+
+  expect(unsubscribe).toHaveBeenCalledOnce();
 });

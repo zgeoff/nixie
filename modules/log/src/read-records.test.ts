@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { sql } from 'kysely';
 import { readRecords } from './read-records';
 import { startTestLog } from './test-utils/start-test-log';
 import { writeRecords } from './write-records';
@@ -76,4 +77,48 @@ test('it returns only the records of the thread asked for, up to the limit', asy
   });
 
   expect(read.map((entry) => entry.record.sequence)).toStrictEqual([1, 3]);
+});
+
+test('it reads a record whose key fails to unwrap as unreadable and reads on past it', async () => {
+  const ctx = await startTestLog();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      erasable: { text: 'wrapped by the first deployment key' },
+    },
+    { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:aa11' } },
+  ]);
+
+  const otherKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
+    'wrapKey',
+    'unwrapKey',
+  ]);
+  const read = await readRecords({ ...ctx.log, deploymentKey: otherKey }, { afterSequence: 0 });
+
+  expect(read.map((entry) => [entry.record.sequence, entry.record.erasable])).toStrictEqual([
+    [1, { status: 'unreadable' }],
+    [2, { status: 'none' }],
+  ]);
+});
+
+test('it reads a record whose ciphertext fails to decrypt as unreadable', async () => {
+  const ctx = await startTestLog();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      erasable: { text: 'damaged on disk' },
+    },
+  ]);
+
+  // the append-only trigger refuses the damage, so the test removes it first
+  await sql`drop trigger records_refuse_update;
+    update records set sealed = randomblob(64)`.execute(ctx.writer.db);
+
+  const read = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(read.at(0)?.record.erasable).toStrictEqual({ status: 'unreadable' });
 });

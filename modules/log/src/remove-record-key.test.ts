@@ -79,3 +79,28 @@ test('it leaves no copy of the wrapped key in keys.db or its WAL', async () => {
   expect(walBefore.includes(key.wrapped)).toBeTrue();
   expect(files.map((file) => file.includes(key.wrapped))).toStrictEqual([false, false]);
 });
+
+test('it refuses to remove a key under a stale writer epoch and keeps the key', async () => {
+  const ctx = await startTestLog();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:aa11' },
+      erasable: { text: 'keep me' },
+    },
+  ]);
+  await sql`update writer_epoch set epoch = epoch + 1`.execute(ctx.writer.db);
+
+  const stored = await sql<{ key_id: string }>`select key_id from record_keys`.execute(
+    ctx.writer.keys,
+  );
+  const remove = removeRecordKey(ctx.log, stored.rows.at(0)?.key_id ?? '');
+
+  await remove.catch(() => {});
+
+  const left = await sql`select key_id from record_keys`.execute(ctx.writer.keys);
+
+  expect(remove).rejects.toMatchObject({ name: 'StaleWriterError' });
+  expect(left.rows).toStrictEqual(stored.rows);
+});

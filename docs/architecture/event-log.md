@@ -51,8 +51,10 @@ migrations, because a copy taken before a migration would keep every key deleted
 The key commits before its record. A failed record write therefore leaves an unused key, and never a
 record whose key is missing.
 
-`removeRecordKey` deletes one key and checkpoints the key store, so neither `keys.db` nor its WAL
-holds the wrapped key afterwards. The record keeps its envelope and its plain payload, and a read
+`removeRecordKey` checks the writer epoch, deletes one key, and checkpoints the key store, so
+neither `keys.db` nor its WAL holds the wrapped key afterwards. When another connection holds a read
+on `keys.db`, the checkpoint cannot finish, and `removeRecordKey` throws `KeyStoreBusyError`. A
+retry finishes the checkpoint. The record keeps its envelope and its plain payload, and a read
 returns its erasable fields as `shredded`. The database holds no full-text index over erasable
 fields.
 
@@ -77,10 +79,12 @@ drops every projection, rebuilds it, and compares the result with the live table
 ## Reading by sequence
 
 `readRecords` returns the records after a sequence, oldest first, each with its decrypted erasable
-fields and the `projection_changes` rows of its own sequence. A reader that applies the record and
-its rows together, then moves its cursor, sees the rows as of each record, never current rows under
-an older sequence. SQLite allows one writer, so the sequence grows in commit order and a reader that
-asks for the records after N misses none.
+fields and the `projection_changes` rows of its own sequence. A record whose key fails to unwrap, or
+whose ciphertext fails to decrypt, reads as `unreadable` with its envelope intact, so it never stops
+a reader at its sequence. A reader that applies the record and its rows together, then moves its
+cursor, sees the rows as of each record, never current rows under an older sequence. SQLite allows
+one writer, so the sequence grows in commit order and a reader that asks for the records after N
+misses none.
 
 `subscribeToRecords` yields the same entries as an async iterator and then waits for a wake:
 
@@ -89,7 +93,7 @@ asks for the records after N misses none.
   and again after 10, 50 and 250 ms.
 - **A poll.** A timer wakes the reader every second by default, for a change the watcher misses or a
   filesystem that cannot watch.
-- **The abort signal,** which ends the iterator.
+- **The abort signal,** which ends the iterator and stops the watcher and the poll at once.
 
 The iterator marks every earlier wake as seen before each read. A commit that lands during a read
 therefore wakes the next read at once.
