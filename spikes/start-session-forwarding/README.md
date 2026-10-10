@@ -76,23 +76,18 @@ comes from, and server rendering grants no authority beyond the cookie the brows
 6. **Start needs no Nitro on Bun.** The Vite build emits `dist/server/server.js` with a `fetch`
    export, and about 25 lines of `Bun.serve` serve it with the client assets.
 
-## A host name constraint the design leaves open
+## One host name
 
 The spike puts both servers on `127.0.0.1` on 2 ports. Browsers ignore the port when they send a
 cookie, so one host-only cookie reached both servers. A deployment with 2 host names breaks this: a
 host-only cookie set for the API host never reaches Start, and server rendering then sees no
 session.
 
-The options:
-
-- **One host name, a path split.** A reverse proxy sends `/rpc` to nixie and everything else to
-  Start. The cookie stays host-only, and the browser makes same-origin calls with no CORS. This is
-  the recommendation.
-- **2 host names under one parent domain.** The cookie takes a `Domain` attribute for the parent, so
-  every host under it receives the session, and the API needs CORS with credentials for the web
-  origin.
-
-`SameSite=Strict` holds in both options, because the 2 hosts are the same site.
+[0029](../../docs/decisions/0029-channels-and-clients.md) settles it with one host name. A reverse
+proxy sends `/rpc` to nixie and every other path to Start. The cookie stays host-only, and the
+browser makes same-origin calls with no CORS. The rejected option put 2 host names under one parent
+domain: the cookie then needs a `Domain` attribute that sends the session to every host under that
+domain, and the API needs CORS with credentials.
 
 ## Not tested
 
