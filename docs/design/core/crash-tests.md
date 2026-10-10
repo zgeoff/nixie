@@ -8,8 +8,8 @@ nixie owns its durable layer under [0001](../../decisions/0001-durable-layer.md)
 prove that a crash at any point loses nothing and repeats nothing. Each test runs nixie as a child
 process, stops it at a named fault point, kills it, restarts it on the same database, and checks the
 event log and the projections. 5 tests gate slice 1: lease expiry, a timer due while nixie was down,
-a retry, a wake-up and a crash mid-turn. A test-only connector shows in each of them that a resumed
-task run never repeats an action that ran.
+a retry, a wake-up and a crash mid-turn. A test of the graceful stop runs beside them. A test-only
+connector shows in each of them that a resumed task run never repeats an action that ran.
 
 ## What a crash is
 
