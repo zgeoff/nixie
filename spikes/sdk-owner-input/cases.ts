@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import type { Options, Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
+import { readProvider } from './provider.ts';
 
 type CaseName = 'defer' | 'interrupt' | 'slow-tool' | 'text';
 
@@ -16,9 +17,11 @@ interface Extra {
 }
 
 const aborter = new AbortController(),
+  host = { sent: false },
   inbox = new EventTarget(),
   incoming = on(inbox, 'message', { signal: aborter.signal }),
   ownerUuid = randomUUID(),
+  provider = readProvider(),
   started = Date.now(),
   state = { ownerRead: false, ownerSent: false, resultsAfterRead: 0, results: 0, streamed: 0 };
 
@@ -93,14 +96,14 @@ function buildOptions(name: CaseName): Options {
     allowedTools: tools[name] ?? [],
     cwd: resolve(import.meta.dir),
     env: {
-      CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '',
+      ...provider.env,
       HOME: process.env.HOME ?? '',
       PATH: process.env.PATH ?? '',
     },
     includePartialMessages: name === 'text',
     maxTurns: 12,
     ...(name === 'slow-tool' && { mcpServers: { spike: buildSlowServer() } }),
-    model: 'claude-haiku-4-5-20251001',
+    model: provider.model,
     permissionMode: 'default',
     permissionPrompts: 'none',
     settingSources: [],
@@ -136,7 +139,9 @@ function printAssistant(message: SDKMessage): boolean {
   checkOwnerRead([...(message.user_message_uuids ?? []), message.user_message_uuid]);
   for (const block of message.message.content) {
     if (block.type === 'text') {
-      printLine(`assistant (${block.text.length} chars) ${formatShort(block.text.slice(0, 90))}`);
+      printLine(
+        `assistant (${block.text.length} chars) pineapple=${/PINEAPPLE/iu.test(block.text)} ${formatShort(block.text.slice(0, 90))}`,
+      );
       printLine(`  ...ends ${formatShort(block.text.slice(-60))}`);
     } else if (block.type === 'tool_use') {
       printLine(`tool_use ${block.name} ${formatShort(block.input)}`);
@@ -234,11 +239,14 @@ async function runDefer(session: Query): Promise<void> {
         uuid: ownerUuid,
       });
       setTimeout(() => {
+        host.sent = true;
         printLine('HOST SENDS "What is the secret word?"');
         sendText('What is the secret word, if anyone told you one? Reply with only the word.');
       }, 8000);
     }
-    if (message.type === 'result' && state.results === 2) {
+
+    // The shouldQuery false message emits an empty result of its own, so wait for the host's.
+    if (message.type === 'result' && host.sent) {
       return;
     }
   }

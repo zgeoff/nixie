@@ -195,9 +195,8 @@ forgets an item on your word.
 
 **Before it starts:** the compaction controls, resume after compaction, session recovery, memory
 checker, retrieval on your own questions, batched capture, memory poisoning, retirement and bulk
-deletion, pinned core on the conversation's configured profile, and paste spans in WebKit spikes.
-Your choice: the encoder model and library. Your input: the questions for the retrieval spike, about
-memory items you recognise.
+deletion, pinned core at scale, and paste spans in WebKit spikes. Your choice: the encoder model and
+library. Your input: the questions for the retrieval spike, about memory items you recognise.
 
 **Acceptance:**
 

@@ -38,12 +38,15 @@ rests on.
 
 ### Core
 
+- [Core design index](./design/core/README.md) — the 4 core docs
 - [The event log and records](./design/core/event-log.md) — what a record holds, append-only
   semantics, projections, the data behind the dashboard and the live view, export and retention
 - [Tasks](./design/core/tasks.md) — tasks as state machines with leases and an inbox, waits, routing
   from the conversation, job runs, workers in imps, and crash recovery
 - [Actions](./design/core/actions.md) — the action queue, its outcomes, approval consumption,
   reconciliation per connector, and unknown outcomes
+- [Model profiles](./design/core/models.md) — the profile, model roles and their defaults, and how
+  nixie computes model cost
 
 ### Policy
 
@@ -120,6 +123,8 @@ The runtime, the durable layer, and how the conversation and tasks share work.
 - [0027: Tasks and actions](./decisions/0027-tasks-and-actions.md) — state tables beside the log,
   pause, stop and close, trigger details in every task run, and unknown outcomes in the approval
   digest
+- [0033: Model profiles and model cost](./decisions/0033-model-profiles.md) — a profile per model
+  route, a profile per role, and model limits in dollars, tokens and turns
 
 ### Policy
 

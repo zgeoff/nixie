@@ -118,7 +118,7 @@ stays off the host, and a restore on a new host needs only it.
 | ----------------------------- | ------------------------------------------------------- |
 | Deployment key                | Wraps every per-record, per-item and per-credential key |
 | restic password               | Encrypts every backup                                   |
-| Model credential              | The grant each imp holds                                |
+| Model credentials             | One per model profile, the grant each imp holds         |
 | Replica crypt password, salt  | rclone object encryption and restore                    |
 | impd token                    | The sandbox adapter's calls to impd                     |
 | Push notifier and search keys | Static values for channels and tools                    |
@@ -189,11 +189,12 @@ nixie handles `SIGTERM` itself, because Bun as PID 1 ignores it.
 ## Deployment configuration
 
 The deployment repo chooses how a merged pin reaches its hosts, where it keeps the recovery key, the
-backup backends, and the heartbeat endpoint. These are configuration under 0020, not platform
-choices. Backups use the S3-compatible and other backends that Restic and rclone already support,
-and nixie adopts no cloud provider. Every deployment honours writer shutdown, migrations, image
-compatibility and recovery, whether it runs on Compose or Kubernetes. The deployment checks that its
-recovery key decrypts the secrets on a clean host.
+backup backends, the heartbeat endpoint, the [model profiles](../core/models.md) with the role map,
+and any overrides of the [budget defaults](../policy/budgets.md#model-cost). These are configuration
+under 0020, not platform choices. Backups use the S3-compatible and other backends that Restic and
+rclone already support, and nixie adopts no cloud provider. Every deployment honours writer
+shutdown, migrations, image compatibility and recovery, whether it runs on Compose or Kubernetes.
+The deployment checks that its recovery key decrypts the secrets on a clean host.
 
 ## Kubernetes
 
