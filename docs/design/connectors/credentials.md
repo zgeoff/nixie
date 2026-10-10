@@ -172,11 +172,13 @@ Disconnect and Forget both start by disabling the credential, before any cleanup
 action disables the binding and records it durably. From then on, the store refuses every fetch,
 refresh and grant for that binding.
 
-A late reply cannot bring the credential back. Each binding carries a removal counter, which every
-removal and every reconnect advances. A fetch, a refresh or a grant replacement rechecks the counter
-when it saves its result, and the store drops any result that started under an older count. A
-refresh that was in flight at removal therefore cannot save a token, create a key or restore a
-grant.
+A request that started before the removal cannot carry the credential past it. Each binding carries
+a removal counter, which every removal and every reconnect advances. The store checks the counter
+twice: just before a fetch sends its request, and when a fetch, a refresh or a grant replacement
+saves its result. Both checks and the removal take the same lock on the binding, so a removal can
+never land between a check and the send or the save it guards. The store drops any request or result
+that started under an older count, so a refresh that was in flight at removal cannot save a token,
+create a key or restore a grant.
 
 The store then records every grant and every copy of the credential that nixie holds, revokes the
 grants and deletes the copies. A restart resumes this cleanup and leaves the binding disabled. The
