@@ -22,7 +22,7 @@ research, design, and decide. Decisions are recorded as research settles each qu
 
 ```sh
 bun install
-bun run check        # format, lint, and the prose check
+bun run check        # every check CI runs
 ```
 
 ## Layout

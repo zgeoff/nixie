@@ -5,5 +5,130 @@
     "node": true,
     "es2024": true
   },
-  "ignorePatterns": [".claude/**", ".reviews/**", ".worktrees/**", "docs/design/**"]
+  "ignorePatterns": [".claude/**", ".reviews/**", ".worktrees/**", "docs/design/**"],
+  "rules": {
+    // oxlint 1.86 enables one-var through the style category, which the shared config predates; it
+    // forbids the separate const per step that every test body uses
+    "one-var": "off",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@anthropic-ai/claude-agent-sdk",
+            "message": "Only guests/conversation imports the Agent SDK."
+          },
+          {
+            "name": "@zgeoff/imp-client",
+            "message": "Only adapters/sandbox-imp imports imp's client."
+          },
+          {
+            "name": "bun:sqlite",
+            "message": "Only libs/db opens SQLite; use @heynixie/db."
+          }
+        ],
+        "patterns": [
+          {
+            "group": ["@anthropic-ai/claude-agent-sdk/*"],
+            "message": "Only guests/conversation imports the Agent SDK."
+          },
+          {
+            "group": ["@zgeoff/imp-client/*"],
+            "message": "Only adapters/sandbox-imp imports imp's client."
+          }
+        ]
+      }
+    ],
+    "import/no-commonjs": "error",
+    "import/no-dynamic-require": [
+      "error",
+      {
+        "esmodule": true
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["guests/conversation/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@zgeoff/imp-client",
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              },
+              {
+                "name": "bun:sqlite",
+                "message": "Only libs/db opens SQLite; use @heynixie/db."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@zgeoff/imp-client/*"],
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["adapters/sandbox-imp/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@anthropic-ai/claude-agent-sdk",
+                "message": "Only guests/conversation imports the Agent SDK."
+              },
+              {
+                "name": "bun:sqlite",
+                "message": "Only libs/db opens SQLite; use @heynixie/db."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@anthropic-ai/claude-agent-sdk/*"],
+                "message": "Only guests/conversation imports the Agent SDK."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["libs/db/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@anthropic-ai/claude-agent-sdk",
+                "message": "Only guests/conversation imports the Agent SDK."
+              },
+              {
+                "name": "@zgeoff/imp-client",
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@anthropic-ai/claude-agent-sdk/*"],
+                "message": "Only guests/conversation imports the Agent SDK."
+              },
+              {
+                "group": ["@zgeoff/imp-client/*"],
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

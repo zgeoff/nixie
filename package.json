@@ -8,24 +8,45 @@
     "type": "git",
     "url": "git+https://github.com/zgeoff/nixie.git"
   },
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "modules/*",
+      "guests/*",
+      "adapters/*",
+      "libs/*"
+    ],
+    "catalog": {}
+  },
   "type": "module",
   "scripts": {
     "audit": "bun audit",
+    "boundaries": "turbo boundaries",
     "build:agents": "bash scripts/build-agents-md.sh agents/shared.md agents/project.md AGENTS.md",
-    "check": "bun run format:check && bun run lint && bun run prose",
+    "check": "bun run audit && bun run deadcode && bun run format:check && bun run lint && bun run typecheck && bun run boundaries && bun run prose && bun run test",
+    "deadcode": "knip",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "lint": "oxlint --report-unused-disable-directives-severity error",
+    "lint": "oxlint --type-aware --report-unused-disable-directives-severity error",
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
-    "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md agents/project.md ':(glob)docs/**/*.md' .claude/skills/project-docs-writing"
+    "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md agents/project.md ':(glob)docs/**/*.md' .claude/skills/project-docs-writing",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit && turbo run typecheck"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
     "@stylistic/eslint-plugin": "5.10.0",
+    "@tsconfig/strictest": "2.0.8",
+    "@types/bun": "1.4.2",
+    "@zgeoff/bun-test-extended": "0.1.0",
     "@zgeoff/oxlint-config": "0.1.0",
+    "knip": "6.39.0",
     "lefthook": "2.1.14",
     "oxfmt": "0.71.0",
-    "oxlint": "1.86.0"
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "turbo": "2.11.7",
+    "typescript": "7.0.2"
   },
   "engines": {
     "node": ">=24"

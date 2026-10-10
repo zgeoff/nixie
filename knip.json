@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/knip/schema.json",
+  // repo-sync delivers .claude/ verbatim, and design spikes install and run on their own
+  "ignore": [".claude/**", "docs/design/**"],
+  // the shared oxlint config loads this plugin, which knip cannot see through
+  "ignoreDependencies": ["@stylistic/eslint-plugin"]
+}
