@@ -114,6 +114,10 @@ canonical form of the whole definition set:
 - **Objects** serialise as JSON with sorted keys and no whitespace, and every set-valued field sorts
   and drops duplicates.
 
+In slice 1, the policy part of the form holds only
+[the slice 1 rule](decision-point.md#the-slice-1-rule) in canonical form, plus the test rule in a
+test build. The snapshot hash therefore changes only with the persona until slice 3 seeds rules.
+
 The form leaves out state that changes without an edit: when a rule last fired, how much of a budget
 is spent, and rule metadata. **Why:** the hash then changes exactly when the definitions do, and a
 replay with the snapshot reproduces every deterministic decision. nixie keeps each snapshot under

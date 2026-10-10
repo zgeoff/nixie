@@ -89,6 +89,8 @@ The CLI opens a `subscriptions/listen` stream and waits for its acknowledgement 
 tools, so nixie's relay passes each chunk on as it arrives. A buffering relay stalled the start of
 every run by 25 s in the tools endpoint spike.
 
-The SDK's in-process MCP server serves the same definitions with no network. Tests and scripted
-scenarios use it to run `query()` against nixie's tools without an imp, so they exercise the
-production handlers.
+The SDK's in-process MCP server serves tool definitions with no network. The tests that run
+`query()` live in `guests/conversation`, the one package that imports the SDK, and use it to check
+the turn runner and the options above without an imp. Those tests serve stub tools, because a guest
+never imports a module. A whole-program test exercises the production handlers through the endpoint,
+with the sandbox double from the [crash tests](../core/crash-tests.md#the-harness).

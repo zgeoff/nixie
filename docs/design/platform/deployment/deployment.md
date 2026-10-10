@@ -172,18 +172,21 @@ definitions change land as separate merges in separate repos, in either order.
 
 nixie reports its health through a health endpoint for the container runtime and through notices
 while it runs. Liveness holds when the process answers and the database opens. Readiness lists each
-part:
+part that the build holds, and a part joins readiness in the slice that builds it:
 
-| Part             | Ready when                                                    |
-| ---------------- | ------------------------------------------------------------- |
-| Database         | Migrations finished and the last integrity check passed       |
-| Definitions      | The last seed applied, with no refused snapshot pending       |
-| imp host         | impd answers, and every imp image in the manifest is added    |
-| Conversation imp | Awake, and its last turn did not fail on start                |
-| Backups          | The last successful receipt arrived within twice the interval |
-| Backup sidecar   | Its health endpoint reports ready                             |
-| Disk             | Under 90% full on the data volume                             |
-| Spending         | The hard spending stop has not fired                          |
+| Part             | Ready when                                                    | Slice |
+| ---------------- | ------------------------------------------------------------- | ----- |
+| Database         | Migrations finished and the last integrity check passed       | 1     |
+| Definitions      | The last seed applied, with no refused snapshot pending       | 1     |
+| imp host         | impd answers, and every imp image in the manifest is added    | 1     |
+| Conversation imp | Awake, and its last turn did not fail on start                | 1     |
+| Disk             | Under 90% full on the data volume                             | 1     |
+| Spending         | The hard spending stop has not fired                          | 3     |
+| Backups          | The last successful receipt arrived within twice the interval | 5     |
+| Backup sidecar   | Its health endpoint reports ready                             | 5     |
+
+**Why:** a part that no slice has built yet has nothing to check, and listing it would either hold
+readiness down or report a check that never ran.
 
 A part that turns unready raises a status report in the live view, and the push notice carries only
 the standard count and link. nixie reads the Backups part from the sidecar's receipts. A later stage
@@ -206,18 +209,22 @@ nixie handles `SIGTERM` itself, because Bun as PID 1 ignores it.
 
 ## Deployment configuration
 
-The deployment repo chooses how a merged pin reaches its hosts, where it keeps the recovery key, the
-backup backends, the heartbeat endpoint, the [model profiles](../core/models.md) with the role map,
-and any overrides of the [budget defaults](../policy/budgets.md#model-cost). These are configuration
-under 0020, not platform choices. Backups use the S3-compatible and other backends that Restic and
-rclone already support, and nixie adopts no cloud provider. Every deployment honours writer
-shutdown, migrations, image compatibility and recovery, whether it runs on Compose or Kubernetes.
-The deployment checks that its recovery key decrypts the secrets on a clean host.
+nixie reads its settings from one YAML file that the [deployment configuration](configuration.md)
+design covers. The deployment repo chooses how a merged pin reaches its hosts, where it keeps the
+recovery key, the backup backends, the heartbeat endpoint, the [model profiles](../core/models.md)
+with the role map, and any overrides of the [budget defaults](../policy/budgets.md#model-cost).
+These are configuration under 0020, not platform choices. Backups use the S3-compatible and other
+backends that Restic and rclone already support, and nixie adopts no cloud provider. Every
+deployment honours writer shutdown, migrations, image compatibility and recovery, whether it runs on
+Compose or Kubernetes. The deployment checks that its recovery key decrypts the secrets on a clean
+host.
 
 ## Kubernetes
 
-Kubernetes runs the same images as Compose, from manifests in your deployment repo. One SQLite
-writer sets its shape:
+Kubernetes runs the same images as Compose, from manifests in your deployment repo. nixie ships
+generic reference manifests in `deploy/kubernetes/`, beside the Compose recipe in `deploy/compose/`,
+and your deployment repo keeps its own version of them. The reference manifests hold no host name,
+address, cloud or tailnet detail. One SQLite writer sets their shape:
 
 - one replica in a StatefulSet with a `ReadWriteOnce` volume, which stops the old pod before the new
   one starts

@@ -34,9 +34,9 @@ designs applied whole or not at all.
 
 ## The harness
 
-The harness drives nixie through 4 hooks. The code exposes the fault points and the clock only under
-a test build flag. The scripted model and the provider double run in the test process, outside the
-nixie process that a test kills, so their records survive every kill.
+The harness drives nixie through 5 hooks, and every hook exists only in a
+[test build](../code-layout.md#test-builds). The scripted model and the provider double run in the
+test process, outside the nixie process that a test kills, so their records survive every kill.
 
 1. **Fault points.** Each transition in the core has a stable fault point ID. When a test names a
    point, the runner that reaches it pauses there and reports that it arrived. Other runners carry
@@ -47,12 +47,18 @@ nixie process that a test kills, so their records survive every kill.
    request from a script, such as "call `test.send` with these arguments, then end the turn", and
    records every request it receives. The real SDK resumes and forks the session, so a test covers
    both the core and the SDK half of a rerun. No test calls a real model.
-3. **The clock.** Leases, timers, lapses and retry delays all read one clock, which the test sets
+3. **The sandbox double.** nixie runs every sandbox through `adapters/sandbox-process`, which starts
+   each guest as a local child process with no isolation. The conversation guest runs the real SDK
+   against the scripted model and reaches nixie's tool endpoint over a local route. **Why:** CI then
+   needs no `/dev/kvm` and no impd. The live checks on Kubernetes and Compose cover imp itself.
+4. **The clock.** Leases, timers, lapses and retry delays all read one clock, which the test sets
    and advances. A test never sleeps to let time pass.
-4. **The test connector.** It declares one action, `test.send`, and calls a provider double that
-   records every call with its idempotency key. The test sets each response: success, a refusal that
-   can clear, a refusal with no effect, or a dropped connection. From slice 3, the double also
-   answers the connector's check with found, not found or inconclusive.
+5. **The test connector.** It declares one action, `test.send`, and calls a provider double that
+   records every call with its idempotency key. The test rule allows `test.send`, as
+   [the slice 1 rule](../policy/decision-point.md#the-slice-1-rule) describes. The test sets each
+   response: success, a refusal that can clear, a refusal with no effect, or a dropped connection.
+   From slice 3, the double also answers the connector's check with found, not found or
+   inconclusive.
 
 ## The oracle
 
@@ -142,10 +148,9 @@ fired timer, an action outcome and a trigger event. For each source, the test ki
 
 ### A crash mid-turn
 
-The scripted model calls `test.send`, which slice 1's fixed rule allows, and the step then commits.
-The test kills nixie at each of `queue.commit.after`, `attempt.record.after`,
-`attempt.result.before` and `step.commit.before`, restarts, and lets the step rerun with the same
-script.
+The scripted model calls `test.send`, which the test rule allows, and the step then commits. The
+test kills nixie at each of `queue.commit.after`, `attempt.record.after`, `attempt.result.before`
+and `step.commit.before`, restarts, and lets the step rerun with the same script.
 
 - The rerun's call matches by action hash and returns the existing action's status, under
   [tasks](tasks.md#crash-recovery).

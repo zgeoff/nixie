@@ -48,10 +48,17 @@ setting gives a working deployment, and a missing model never shows up as a fail
 
 ## Configuration
 
-Profiles and the role map are deployment configuration, read at start. A profile's credential lives
-in the deployment's secrets or the database credential backend like any other credential, and the
-profile holds only the reference. A change to a profile's prices applies to charges after nixie
-reads it, and never reprices a recorded turn.
+Profiles and the role map live in the [deployment configuration](../deployment/configuration.md),
+read at start. A profile's credential lives in the deployment's secrets or the database credential
+backend like any other credential, and the profile holds only the reference. A change to a profile's
+prices applies to charges after nixie reads it, and never reprices a recorded turn.
+
+A reference to a credential in the secrets file reads `deployment:<name>`, and names the entry
+`<name>` under `model_credentials` in nixie's encrypted secrets file. Slice 1 builds no credential
+store, so the runner resolves that reference from the decrypted secrets itself. From slice 3, the
+deployment backend of the [credential store](../connectors/credentials.md#backends) resolves the
+same reference, so no profile changes. A profile's credential never appears in the deployment
+configuration.
 
 Each sandbox that runs a model loop gets its role's profile when nixie creates it, and keeps that
 profile for its life. A role change reaches the conversation when its imp next starts, and reaches a

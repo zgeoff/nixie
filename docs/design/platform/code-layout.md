@@ -37,6 +37,10 @@ libs/       shared code that belongs to no domain
 The workspace globs are `apps/*`, `modules/*`, `guests/*`, `adapters/*` and `libs/*`. Spikes under
 `docs/design/` stay outside the workspace, and each spike installs on its own.
 
+`deploy/` sits outside the workspace and holds the deployment artifacts nixie ships:
+`deploy/compose/` holds the Compose recipe, and `deploy/kubernetes/` holds the
+[reference Kubernetes manifests](deployment/deployment.md#kubernetes).
+
 ## Packages
 
 Every package name is `@heynixie/` plus its folder name, and every package is private until it
@@ -129,12 +133,16 @@ Slice 1 also creates these packages:
 - `guests/conversation`, which runs the conversation's turns through the Agent SDK
 - `guests/fetch`, which runs the web fetch inside the fetch sandbox
 - `adapters/sandbox-imp`, the sandbox adapter on imp
+- `adapters/sandbox-process`, the sandbox double that runs each guest as a local process, wired only
+  in a [test build](#test-builds)
 - `libs/contract`, the oRPC contract with the client code both clients share, under
   [the client](channels/client.md)
-- `libs/db`, nixie's Kysely dialect for `bun:sqlite` off the main thread, tagged `server-only`
+- `libs/db`, nixie's Kysely dialect for `bun:sqlite` off the main thread, the migration runner and
+  the schema version from [upgrades](deployment/upgrades.md#migrations), tagged `server-only`
 - `libs/wire`, the message formats that cross a sandbox boundary, and later the snapshot set formats
   nixie shares with the backup sidecar
-- `libs/testing`, the test helpers, tagged `server-only`
+- `libs/testing`, the test helpers and the [crash test harness](core/crash-tests.md#the-harness),
+  tagged `server-only`
 
 Later adapters follow the same naming, such as `push-telegram` and `connector-kagi` in slice 3,
 `connector-google` in slice 6 and `coding-atc` in slice 8.
@@ -161,6 +169,22 @@ beside the module it tests, as `x.test.ts` beside `x.ts`. The only test folder i
 which holds whole-program suites and the live checks against a Kubernetes or Compose deployment. A
 test that needs a database opens its own SQLite file in a temporary directory. A guest keeps its
 test helpers inside its own package, because `libs/testing` is server-only.
+
+The tests that run the Agent SDK's `query()` live in `guests/conversation`, the one package that
+imports the SDK. They run against the scripted model from the
+[crash tests](core/crash-tests.md#the-harness), so no test needs an imp or a real model.
+Whole-program suites in `e2e/` run nixie with the sandbox double, which starts the conversation
+guest as a local process, so the SDK still loads only from its own package.
+
+### Test builds
+
+The fault points, the controllable clock, the test rule, the test connector and the sandbox double
+exist only in a test build. Each sits behind the global constant `NIXIE_TEST_BUILD`. The release
+`bun build` defines it as `false`, so the bundler drops every branch behind it with its imports, and
+the test runner defines it as `true`. The composition root wires the test pieces in a test build and
+the production pieces otherwise. **Why:** the release bundle holds no fault point, clock control or
+test rule, rather than holding them switched off. CI builds the release bundle and fails when it
+contains a fault point ID or the test rule's ID.
 
 The checks are oxfmt, oxlint with type-aware rules on `@zgeoff/oxlint-config`, typecheck, knip for
 dead code, `turbo boundaries`, the prose check and the tests. lefthook runs the fast checks before a
