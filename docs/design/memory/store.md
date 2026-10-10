@@ -111,16 +111,16 @@ tool, and the retirement notice offers undo and a checked permanent-delete actio
 destroys an item; [retirement intent](./writes.md#retirement-intent) binds the reversible request to
 its target.
 
-A forgotten item may sit in a live SDK session that read it, through recall or retrieval. Forgetting
-an item that a session read makes that session rebuild before its next turn, which
-[memory in context](./context.md#forgetting-and-the-live-session) covers. The live-session boundary
-applies to requests that already received the text; the context design states that limit.
+A forgotten item may sit in a live SDK session that read it, through the pinned core, recall or
+retrieval. Forgetting an item that a session read makes that session rebuild before its next turn,
+which [memory in context](./context.md#forgetting-and-the-live-session) covers. The live-session
+boundary applies to requests that already received the text; the context design states that limit.
 
-Item forget destroys the item's versions and their derived index entries. It does not destroy
-independently keyed owner messages or replies that state the same fact. The confirmation states this
-scope and links to the separate record-forget action; it never promises that the fact disappears
-from all conversation history. Log search may return that fact from a record whose key remains
-readable.
+Item forget destroys the item's versions, their derived index entries and dependent compaction
+summaries under [summary cleanup](./context.md#compaction). It does not destroy independently keyed
+owner messages or replies that state the same fact. The confirmation states this scope and links to
+the separate record-forget action; it never promises that the fact disappears from all conversation
+history. Log search may return that fact from a record whose key remains readable.
 
 A forgotten item cannot be exported or restored, and an undo never reaches across a forget.
 

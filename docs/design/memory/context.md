@@ -67,6 +67,21 @@ unverified: the [pinned core spike](../../../spikes/sdk-pinned-core/README.md) i
 on a model call. If the record holds regardless, the fallback is to fork the session at its last
 boundary when the core changes, which writes a new session ID that renders the prompt afresh.
 
+### Session exposure before publication
+
+The host records every memory item/version and log record that a session receives, including the
+pinned core, per-turn retrieval, recall results and inbox text. Before an SDK query starts, prompt
+rendering validates its references and commits their exposure to the task's session branch under the
+same canonical publication gate as retire and forget. A forget that wins the gate prevents
+publication; an exposure that wins lets forget identify and invalidate that branch. Exposure does
+not wait for the turn commit, so a first or interrupted turn remains discoverable.
+
+Worker sessions and forks inherit the applicable exposure set, and register their own additional
+reads before delivery. A fork never loses dependencies from the context that it keeps. Rendering a
+pinned core uses this gate even when its bytes match the cached prefix. The durable exposure records
+hold references, not duplicate text; forget uses all exposed versions of a target item to find
+affected branches.
+
 ## Retrieval
 
 The owner agreed local embeddings in the first build, with keyword lookup retained. This refines
@@ -220,6 +235,19 @@ memory, under 0024, and retrieval never searches summaries. **Why:** the model w
 from an untrusted conversation, so retrieving it into a later turn would launder that text into a
 trusted-looking place.
 
+Each summary record carries the cumulative item/version and record dependencies of its session
+branch at compaction. That set includes pinned exposure, inherited summaries and retained context,
+even if a source falls outside the recent-history window. Summary publication validates and commits
+those dependencies under the canonical gate; it rejects a late hook result from an invalidated
+branch. Missing dependency coverage makes a summary ineligible for reconstruction.
+
+Permanent forget invalidates every summary that depends on a target item or record before
+reconstruction can select it. The durable forget operation includes those summary record keys in its
+key deletion, checkpoint and registered-backup cleanup. Their ciphertext remains as an unreadable
+gap in the log and export. A summary with incomplete coverage from an affected session branch is
+treated as dependent. Independent owner messages and replies retain their separately stated forget
+scope. Directory cleanup alone does not erase a retained compaction record.
+
 The `PreCompact` hook's output carries no field that steers what compaction keeps, so nixie cannot
 shape the summary through it. Whether returning `decision: 'block'` from it stops an automatic
 compaction is unverified, and nixie does not rely on it. A session that compacts between a step's
@@ -258,11 +286,13 @@ specifies.
 
 A rebuild starts a new session from the log instead of resuming the old one. Its first turn carries
 the task's brief, the most recent turns of the thread word for word from the log up to 30,000 tokens
-by default, and the latest compaction summary from before those turns. It includes the unread inbox
-and the canonical listing of pending proposals, approval statuses and outside-action outcomes,
-including those from an interrupted step, as crash recovery does. Forgotten records and items leave
-gaps, and a summary written after a forgotten record is dropped, because it may hold the forgotten
-content. nixie records the new session ID on the task as crash recovery does.
+by default, and the latest eligible compaction summary from before those turns. It includes the
+unread inbox and the canonical listing of pending proposals, approval statuses and outside-action
+outcomes, including those from an interrupted step, as crash recovery does. Forgotten records and
+items leave gaps. The rebuild validates the summary's dependency coverage and key availability
+against current canonical state; a dependent, invalidated or unreadable summary is excluded. If no
+eligible summary exists, reconstruction uses the readable recent history and task state without a
+summary. nixie records the new session ID on the task as crash recovery does.
 
 A rebuild restores application continuity, not an identical SDK session. It does not reproduce
 internal chain state or guarantee the same prompt prefix or model behavior. Context older than the
@@ -279,13 +309,13 @@ ownership; an SDK transcript backup alone does not preserve a filesystem.
 ### Forgetting and the live session
 
 A forgotten record or memory item can still sit in a live session's context, in a turn that read it
-or in a summary written after it. nixie therefore tracks, per task, the records and memory items its
-session has read, from the recall lists and inbox reads on each turn's record. Forgetting one that a
-live session read marks that session for rebuild, and the task's next step rebuilds before it runs.
-A result published before forget can already sit in an in-flight model request. Forget cannot
-retract that request or erase the provider's context; the next task step rebuilds. The checked
-action reports that boundary rather than promising cancellation of a request that already received
-the text.
+or in a summary written after it. nixie therefore selects affected branches from the host-owned
+[session exposure records](#session-exposure-before-publication), including pinned items and reads
+from unfinished turns. Forgetting one that a live session read marks that session for rebuild, and
+the task's next step rebuilds before it runs. A result published before forget can already sit in an
+in-flight model request. Forget cannot retract that request or erase the provider's context; the
+next task step rebuilds. The checked action reports that boundary rather than promising cancellation
+of a request that already received the text.
 
 ### Removing invalid transcript copies
 

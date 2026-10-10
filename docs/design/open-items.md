@@ -51,6 +51,11 @@ stages agreed for after the first build.
   and artifact recovery is separate. The [context design](./memory/context.md#rebuilding-a-session)
   states the limits of the agreed cache lifecycle.
 
+  Include pinned-only exposure before an interrupted first turn commits, inherited fork
+  dependencies, and a retained summary that contains an item created only through the memory client.
+  After forget, restart must block old branches, remove their caches and dependent summary keys, and
+  rebuild without the marker even when its source exceeds the recent-history window.
+
 - **Batched memory capture.** The [offline batch spike](../../spikes/memory-batch/) checks a durable
   cursor, source-bound quote checks and recovery after process kills with fixture model output. A
   batch can exceed the conversation's 20-message evidence window, so source IDs must bind quotes to
