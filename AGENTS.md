@@ -261,8 +261,9 @@ Never print a token or a secret value, and never write one to a file in the repo
 - Bun is pinned in `.bun-version`. `bun run format` fixes formatting, and `bun run check` runs every
   check that CI runs.
 - CI runs the shared Bun pull-request workflow from zgeoff/tools. The `BUN_CHECK_SCRIPTS` repo
-  variable holds its script list: `audit deadcode format:check lint typecheck boundaries prose test`.
-  A change to that list changes `bun run check` in the same PR.
+  variable holds its script list:
+  `audit deadcode format:check lint typecheck boundaries prose test`. A change to that list changes
+  `bun run check` in the same PR.
 - `turbo.test.ts` proves the tag rules in `turbo.json`, and `oxlintrc.test.ts` proves the import
   confinement in `.oxlintrc.json`. Both run the real tool against throwaway fixture packages in a
   temporary directory.
