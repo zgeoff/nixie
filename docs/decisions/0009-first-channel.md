@@ -21,7 +21,7 @@ A desktop app may follow, and nothing plans for it.
 
 - **Storage stays home.** The model provider processes each turn, which nixie cannot avoid without a
   local model. A chat channel adds storage: Telegram keeps the full history of a bot chat on its
-  servers ([Telegram FAQ](https://telegram.org/faq)). The principle "Owner data stays home" forbids
+  servers ([Telegram FAQ](https://telegram.org/faq)). The principle "Your data stays home" forbids
   that storage, not the processing.
 - **Approvals are strongest in nixie's own client.** A chat account compromise cannot press a button
   in it, and a passkey can tie an approval to you, which [0012](./0012-high-risk-approvals.md)

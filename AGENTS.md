@@ -2,10 +2,6 @@
 
 A personal assistant platform. The project is in the design phase and has no product code.
 
-`spikes/` holds throwaway experiments that answer research questions. Each spike is its own Bun
-package, and its README gives the question, how to run it, and what it found. Product code never
-imports from a spike.
-
 ## Docs layout
 
 [docs/README.md](docs/README.md) is the index. The root of `docs/` holds the overview, the
@@ -25,6 +21,12 @@ The structure grows by these rules:
 3. A component gets its own subfolder once it has more than one doc.
 4. A topic splits when its docs stop referring to each other.
 5. A new or split topic updates the topic list in the docs index, and the decision groups follow it.
+
+## Spikes
+
+`spikes/` holds throwaway experiments that answer research questions. Each spike is its own Bun
+package, and its README gives the question, how to run it, and what it found. Product code never
+imports from a spike.
 
 ## Keeping the docs lean
 
