@@ -32,25 +32,25 @@ designs applied whole or not at all.
 
 ## The harness
 
-The harness drives nixie through 4 hooks, which the code exposes only under a test build flag.
+The harness drives nixie through 4 hooks. The code exposes the fault points and the clock only under
+a test build flag. The scripted model and the provider double run in the test process, outside the
+nixie process that a test kills, so their records survive every kill.
 
 1. **Fault points.** Each transition in the core has a stable fault point ID. When a test names a
-   point, nixie pauses there and reports that it arrived, and the test then sends `SIGKILL`. A test
-   that wants the kill after the transaction names the point after the commit.
-2. **The scripted turn.** The runner's turn step sits behind an interface that the test replaces
-   with a script, such as "call `test.send` with these arguments, then end the turn". The script
-   makes the same calls when the step reruns, as a model replaying an uncommitted turn would. No
-   test calls a model.
+   point, the runner that reaches it pauses there and reports that it arrived. Other runners carry
+   on. The test then sends `SIGKILL` to the nixie process, or releases the runner. A test that wants
+   the kill after a transaction names the point after its commit.
+2. **The scripted model.** The test points the model profile at a local mock of the Messages API, as
+   the [tools endpoint spike](../../../spikes/tools-endpoint/README.md) does. The mock answers each
+   request from a script, such as "call `test.send` with these arguments, then end the turn", and
+   records every request it receives. The real SDK resumes and forks the session, so a test covers
+   both the core and the SDK half of a rerun. No test calls a real model.
 3. **The clock.** Leases, timers, lapses and retry delays all read one clock, which the test sets
    and advances. A test never sleeps to let time pass.
-4. **The test connector.** It declares one action, `test.send`, and calls an in-process provider
-   double that records every call with its idempotency key. The test sets each response: success, a
-   refusal that can clear, a refusal with no effect, or a dropped connection.
-
-The SDK half of a crash mid-turn needs a real session: the rerun forks at the session boundary and
-drops the uncommitted turn. Slice 1's session tests, ported from the
-[resume-at spike](../../../spikes/sdk-resume-at/README.md), cover that half, so these tests replace
-the turn with the scripted turn.
+4. **The test connector.** It declares one action, `test.send`, and calls a provider double that
+   records every call with its idempotency key. The test sets each response: success, a refusal that
+   can clear, a refusal with no effect, or a dropped connection. From slice 3, the double also
+   answers the connector's check with found, not found or inconclusive.
 
 ## The oracle
 
@@ -60,41 +60,50 @@ Every test ends with the same checks:
 - The provider double recorded each call that the test allows, and no other.
 - Dropping every projection and folding the log rebuilds tables equal to the live ones, using slice
   1's rebuild test.
-- No task holds a lease after recovery, and every task with unread input is `ready`.
+- No task holds a lease after recovery. A task with unread input and no pause or recovery hold is
+  `ready`.
 
 ## Fault points
 
 These are the transitions the tests stop at. Each ID belongs to the code, and the list grows with
 each slice.
 
-| Fault point              | Transition it interrupts                              |
-| ------------------------ | ----------------------------------------------------- |
-| `claim.after`            | A runner holds a new lease                            |
-| `renew.before`           | A lease renewal is due                                |
-| `step.commit.before`     | A step's result, records, state and cursor            |
-| `step.commit.after`      | The same, committed                                   |
-| `proposal.commit.after`  | A proposal in its own transaction                     |
-| `queue.commit.before`    | An approval consumed and its action queued            |
-| `queue.commit.after`     | The same, committed                                   |
-| `attempt.record.after`   | An attempt record, before the provider call           |
-| `attempt.result.before`  | A provider response, before its result commits        |
-| `timer.fire.before`      | A due timer, before its record and inbox entry commit |
-| `inbox.write.after`      | A message or event in a task's inbox                  |
-| `trigger.deliver.before` | A trigger batch, its cursor and its wake-ups          |
-| `recovery.step.<n>`      | Each of the 5 recovery steps in [tasks](./tasks.md)   |
-| `sigterm.grace`          | A step in flight during the graceful stop             |
+| Fault point              | Transition it interrupts                               |
+| ------------------------ | ------------------------------------------------------ |
+| `claim.after`            | A runner holds a new lease                             |
+| `renew.before`           | A lease renewal is due                                 |
+| `renew.after`            | A lease renewal committed                              |
+| `step.commit.before`     | A step's result, records, state and cursor             |
+| `step.commit.after`      | The same, committed                                    |
+| `queue.commit.before`    | An allowed call's action queued                        |
+| `queue.commit.after`     | The same, committed                                    |
+| `attempt.record.after`   | An attempt record, before the provider call            |
+| `attempt.result.before`  | A provider response, before its result commits         |
+| `attempt.result.after`   | The result and outcome, committed                      |
+| `timer.fire.before`      | A due timer, before its record and inbox entry commit  |
+| `inbox.write.after`      | A message or event in a task's inbox                   |
+| `trigger.deliver.before` | A trigger batch, its cursor and its wake-ups           |
+| `control.commit.before`  | A pause, stop, restart or close record and its effects |
+| `proposal.commit.after`  | A proposal in its own transaction                      |
+| `consume.commit.before`  | An approval consumed and its action queued             |
+| `policy.recheck.after`   | A queued action failed or returned to a proposal       |
+| `defer.commit.after`     | A defer with its new return time and defer generation  |
+| `recovery.step.<n>`      | Each of the 5 recovery steps in [tasks](./tasks.md)    |
+| `sigterm.grace`          | A step in flight during the graceful stop              |
 
 ## Slice 1 tests
 
 ### Lease expiry
 
-Runner A claims a task and stops at `claim.after`. The test suspends A with `SIGSTOP`, advances the
-clock past the 60 s lease, and lets runner B claim. Then it resumes A and lets it try to commit.
+Runners A and B share one nixie process. A claims a task and pauses at `claim.after`. The test
+advances the clock past the 60 s lease and lets B claim, then releases A to try its commit.
 
 - B holds generation n + 1, and A's commit returns no rows.
 - The task has exactly one commit for the step.
-- In the kill variant, the test kills A instead. The restart expires A's lease, and the task runs
-  once.
+- A variant pauses A at `renew.after`, then advances the clock past the renewed expiry. B claims
+  only after that expiry, never before it.
+- In the kill variant, the test kills nixie at `claim.after`. The restart expires the dead process's
+  lease, and the task runs once.
 
 ### A timer due while nixie was down
 
@@ -107,8 +116,8 @@ and restarts. A second run kills nixie at `timer.fire.before` on the restart.
 
 ### A retry
 
-The test connector refuses `test.send` with a refusal that can clear. The test kills nixie after the
-result commits, restarts, and advances the clock through the retry schedule in
+The test connector refuses `test.send` with a refusal that can clear. The test kills nixie at
+`attempt.result.after`, restarts, and advances the clock through the retry schedule in
 [actions](./actions.md).
 
 - The attempt count continues across the restart, and each delay matches the schedule.
@@ -130,55 +139,49 @@ fired timer, an action outcome and a trigger event. For each source, the test ki
 
 ### A crash mid-turn
 
-The scripted turn calls `test.send`, which a rule allows, and the step then commits. The test kills
-nixie at each of `queue.commit.after`, `attempt.record.after`, `attempt.result.before` and
-`step.commit.before`, restarts, and lets the step rerun with the same script.
+The scripted model calls `test.send`, which slice 1's fixed rule allows, and the step then commits.
+The test kills nixie at each of `queue.commit.after`, `attempt.record.after`,
+`attempt.result.before` and `step.commit.before`, restarts, and lets the step rerun with the same
+script.
 
 - The rerun's call matches by action hash and returns the existing action's status, under
   [tasks](./tasks.md#crash-recovery).
 - The provider double records at most one call without an idempotency key.
-- A kill after the attempt record and before the result leaves the action unknown, and
-  reconciliation follows the connector's declaration.
-- A proposal variant stops at `proposal.commit.after`: the rerun returns the same proposal, and one
-  approval queues one action.
+- A kill after the attempt record and before the result leaves the action unknown, and the provider
+  double records no second call.
+- The mock's first request on the rerun holds the committed turns and none of the interrupted turn,
+  because the rerun forks at the session boundary.
 
-## Reconciliation
-
-The test connector runs once under each reconciliation declaration in [actions](./actions.md). Each
-run kills nixie at `attempt.record.after` so that the action becomes unknown.
-
-- **Idempotency key:** the retry reaches the provider double with the same key, and nixie never
-  creates a second key for the action.
-- **Check:** found makes the action done, and not found returns it to pending. Inconclusive brings
-  it to you, and so do 3 unknown outcomes in a row.
-- **Neither:** the action comes to you in the approval digest, and the provider double records no
-  second call.
-
-## The graceful stop
+### The graceful stop
 
 The test sends `SIGTERM` while a scripted turn runs. A step that finishes inside the grace window
 commits once. A step still running at the deadline stops with the process and recovers as after a
 crash. nixie claims no new step after the signal.
 
-## The tests by slice
+## Later slice tests
 
-| Test                                  | Fault point             | Runs in | Slice |
-| ------------------------------------- | ----------------------- | ------- | ----- |
-| Lease expiry                          | `claim.after`           | CI      | 1     |
-| A timer due while nixie was down      | `timer.fire.before`     | CI      | 1     |
-| A retry                               | `attempt.result.before` | CI      | 1     |
-| A wake-up                             | `inbox.write.after`     | CI      | 1     |
-| A crash mid-turn                      | `step.commit.before`    | CI      | 1     |
-| Reconciliation per declaration        | `attempt.record.after`  | CI      | 1     |
-| The graceful stop                     | `sigterm.grace`         | CI      | 1     |
-| The rollout keeps one writer          | none                    | live    | 1     |
-| Sandbox cleanup after a crash         | `recovery.step.5`       | CI      | 2     |
-| Pause, stop and restart at each state | `step.commit.before`    | CI      | 2     |
-| A misroute moved across a crash       | `step.commit.before`    | CI      | 2     |
-| A recovery hold through restart       | `recovery.step.1`       | CI      | 5     |
-| A job run's catch-up after downtime   | `timer.fire.before`     | CI      | 7     |
-| A random kill soak                    | any                     | CI      | 2     |
+Each later slice adds its crash tests in this doc before it starts, on the same harness and oracle:
 
-The random kill soak repeats the [event log spike](../../../spikes/event-log-db/README.md): many
-runners, kills at random times, and the same oracle. It finds faults the named points miss, and it
-never gates a slice on its own.
+- **Slice 2:** sandbox cleanup after a crash, pause, stop, restart and close at
+  `control.commit.before` and at each task state, and a misroute moved across a crash.
+- **Slice 3:** a proposal at `proposal.commit.after`, consumption at `consume.commit.before`, a
+  lapse at `timer.fire.before`, a defer at `defer.commit.after` with a stale return suppressed, a
+  policy change at `policy.recheck.after`, and reconciliation under each connector declaration.
+- **Slice 5:** a recovery hold through a restart.
+- **Slice 7:** a job run's catch-up after downtime.
+
+## Slice 1 summary
+
+| Test                             | Fault points                                      | Runs in |
+| -------------------------------- | ------------------------------------------------- | ------- |
+| Lease expiry                     | `claim.after`, `renew.after`                      | CI      |
+| A timer due while nixie was down | `timer.fire.before`                               | CI      |
+| A retry                          | `attempt.result.after`, `attempt.record.after`    | CI      |
+| A wake-up                        | `inbox.write.after`, `trigger.deliver.before`     | CI      |
+| A crash mid-turn                 | `queue.commit.after` through `step.commit.before` | CI      |
+| The graceful stop                | `sigterm.grace`                                   | CI      |
+| The rollout keeps one writer     | none                                              | live    |
+
+A random kill soak repeats the [event log spike](../../../spikes/event-log-db/README.md) from slice
+2: many runners, kills at random times, and the same oracle. It finds faults the named points miss,
+and it never gates a slice on its own.
