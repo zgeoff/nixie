@@ -20,6 +20,33 @@ covers the store and its operations; [memory writes](./writes.md) covers which w
 and [memory in context](./context.md) covers how memory reaches the model. Everything in this doc
 beyond the decisions it links is a proposed implementation of the agreed memory design.
 
+## The first build
+
+The first build implements every memory decision with the smallest mechanism that keeps its
+guarantee true, and the full design below extends it without a change of contract. This split is a
+proposal for the owner to confirm.
+
+- **Store and operations.** The first build has items, the history table, a key per item, recall,
+  the memory view, retire with undo, forget, bulk deletion of retired memories and JSON export.
+- **Writes.** The first build has conversation writes and the batched writer, both behind the quote,
+  token and checker checks, with grouped notices. Consolidation comes later.
+- **Retrieval.** The first build keeps FTS5 and one pinned local encoder in memory and rebuilds both
+  in full at start and on an encoder change. Search falls back to keywords while a rebuild runs.
+  [Index generations](./context.md#the-index), which swap a rebuilt index in while queries continue,
+  come later.
+- **Forget in live sessions.** In the first build, any forget rebuilds every live session before its
+  next step, without a compaction summary.
+  [Session exposure records](./context.md#session-exposure-before-publication) and summary
+  dependency sets, which rebuild only the sessions that read the item, come later.
+- **Forget and backups.** In the first build, a forget stays pending until every registered backup
+  drops the old key copies. With no key backup registered, it completes after local cleanup. The
+  serialized [key-backup lifecycle](#forget-completion-and-key-backups) with generation watermarks
+  comes later.
+
+Each split keeps the agreed behaviour the owner sees: a forgotten item never returns, a pending
+forget shows as pending, and retrieval returns text only from current canonical rows. A rebuild on
+every forget costs more session rebuilds, which is acceptable while forgets are rare.
+
 ## Items and versions
 
 Memory lives in 2 tables beside the [event log](../core/event-log.md), not in it:
@@ -129,7 +156,7 @@ A forgotten item cannot be exported or restored, and an undo never reaches acros
 The retired-memory view offers one checked action to permanently delete selected retired items or
 all retired items. Its preview lists the count, items and exact versions, and states that deletion
 cannot be undone through nixie. It states that independent chat records remain. The confirmation
-binds to that fixed item/version set; it does not select "whatever is retired" later.
+binds to that fixed set of items and versions; it does not select "whatever is retired" later.
 
 Before any key deletion, nixie validates the whole selected set and reserves those targets for the
 durable forget operation. An item restored or changed after preview makes the confirmation stale,
@@ -144,6 +171,9 @@ Completion includes the key-backup cleanup below; it never reports success merel
 key disappeared.
 
 ### Forget completion and key backups
+
+The [first build](#the-first-build) keeps a forget pending until registered backups drop the old key
+copies; the serialized lifecycle below is the later extension.
 
 A forget starts as a durable pending operation. It completes only after the live key-store
 checkpoint, derived-index invalidation, invalid-session cleanup and removal of recoverable key
@@ -190,13 +220,11 @@ changing its callers. Each verb is a nixie tool, an owner action in the client, 
 starter rules allow the call and the checks in [memory writes](./writes.md) decide whether it
 applies at once. `memory.recall` declares `read`, and `memory.export` declares `export`.
 
-`memory.remember` takes new text, its evidence quote and any item/version it revises.
+`memory.remember` takes new text, its evidence quote and the item and version it revises, if any.
 `memory.retire` takes the bound item ID, read version and intent quote, with no replacement text.
 nixie fills every provenance field from canonical records and the step that called it. A revision
-carries the version it read, and the write fails as stale when the item has moved on, as Hermes
-binds a staged edit to the entry it targets
-([memory notes](../../research/2.4-notes/memory-models.md#markdown-in-git)). **Why:** 2 tasks that
-edit the same item from the same version must not silently overwrite each other.
+carries the version it read, and the write fails as stale when the item has moved on. **Why:** 2
+tasks that edit the same item from the same version must not silently overwrite each other.
 
 Undo and restore never rewrite history: each adds a version. An owner action in the client applies
 at once, with the owner as operation origin. An owner edit that introduces text uses the owner's
@@ -215,9 +243,9 @@ screen.
 
 A record that recalls memory lists each item and version it returned, as the
 [event log design](../core/event-log.md#memory-history-and-export) requires, so a replay shows what
-the model saw. Its stored result uses item/version references and resolves the text through item
-keys, as the [record key rules](../core/event-log.md#erasable-fields-and-keys) specify; forgetting
-does not leave a plaintext recall copy protected only by an independent record key.
+the model saw. Its stored result uses references to items and versions and resolves the text through
+item keys, as the [record key rules](../core/event-log.md#erasable-fields-and-keys) specify;
+forgetting does not leave a plaintext recall copy protected only by an independent record key.
 
 Recall searches the same in-memory index that per-turn retrieval uses, which
 [memory in context](./context.md#retrieval) covers.

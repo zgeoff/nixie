@@ -12,16 +12,17 @@ their summaries do not become durable facts.
 
 ## Local semantic retrieval
 
-The first build includes local embeddings and retains keyword lookup. Per-turn retrieval and recall
-share a service over readable active memory items and eligible past owner messages and model
-replies. The host encoder uses pinned local assets, without an inference API call. The encoder and
-ranking implementation remain validation and tuning choices; no candidate model from the synthetic
-spike is adopted.
+The first build includes local embeddings and retains keyword lookup. One retrieval service serves
+per-turn retrieval and the recall tools. It searches active memory items and the past owner messages
+and model replies whose keys remain readable. The host encoder uses pinned local assets, without an
+inference API call. The encoder and ranking implementation remain validation and tuning choices; no
+candidate model from the synthetic spike is adopted.
 
-Derived indexes stay in memory. Queries use one encoder/index generation, and returned text comes
-from current canonical rows. Retire and forget invalidate derived entries and pending results.
-Keyword-only fallback during a rebuild is recorded. This replaces 0024's keyword-first inclusion
-rule; its SDK session, compaction and summary boundaries remain.
+Derived indexes stay in memory. Queries use one generation of the encoder and index, and returned
+text comes from current canonical rows. Retire and forget invalidate derived entries and pending
+results. While an index rebuilds, retrieval falls back to keyword search and records the fallback.
+This replaces 0024's keyword-first inclusion rule; its SDK session, compaction and summary
+boundaries remain.
 
 ## Conversation writes and batched capture
 
@@ -31,27 +32,29 @@ maximum-age triggers prevent capture from waiting indefinitely for compaction. B
 same checks for the operation they perform.
 
 The writer reads original messages in order, with source-bound evidence; a summary is not evidence.
-Its writes stage before publication, and the host commits writes or review proposals, notices,
-receipts and the batch cursor together. Retries can repeat extraction, but not the committed batch
-effects. SDK compaction remains; nixie does not introduce custom session rollover.
+The writer stages its writes, and the host then commits the writes or review proposals, their
+notices and receipts, and the batch cursor in one transaction. Retries can repeat extraction, but
+not the committed batch effects. SDK compaction remains; nixie does not introduce custom session
+rollover.
 
 ## Transcript lifecycle
 
-The SDK transcript stays as a live working cache on its task's imp. It leaves backups and export
-out. The event log owns readable application history, canonical task state and outside-action
-outcomes. A lost or invalid transcript starts a fresh session from the task brief, recent turns, an
-eligible summary and canonical recovery state.
+The SDK transcript is a live working cache on its task's imp, and backups and export leave it out.
+The event log owns readable application history, canonical task state and outside-action outcomes. A
+lost or invalid transcript starts a fresh session from the task brief, recent turns, an eligible
+summary and canonical recovery state.
 
 A rebuild does not promise identical SDK-internal context or cache continuity. Older owner messages
 and stored items remain available through recall; older tool output is outside indexed recall.
-Invalid cache branches are blocked, their writers stopped and their task-reserved SDK state
-directory removed before rebuild. Pending cleanup survives a restart.
+Before a rebuild, nixie blocks the invalid cache, stops its writers and removes the task's SDK state
+directory. Pending cleanup survives a restart.
 
 ## Reversible chat removal and checked destruction
 
-"Forget that" in chat retires the bound item/version, with undo. Its intent quote must come from
-typed owner text outside quoted blocks. The checker tests the request against the exact item, with
-stored text labelled as untrusted data. Ambiguity or a failed check becomes a review proposal.
+"Forget that" in chat retires the bound item at the version it read, with undo. Its intent quote
+must come from typed owner text outside quoted blocks. The checker tests the request against the
+exact item, with stored text labelled as untrusted data. Ambiguity or a failed check becomes a
+review proposal.
 
 Retirement carries no replacement text, so it does not require the owner to repeat the old fact's
 destination tokens. It preserves content source and evidence, and records the operation actor and
@@ -59,10 +62,10 @@ intent separately. This narrows 0011's content-introducing checks for retirement
 restore, undo and permanent deletion are not added.
 
 Only a checked client action destroys a memory item. The retired-memory view supports bulk permanent
-deletion after a preview and confirmation bound to a fixed item/version set. Changed or restored
-targets make the preview stale; later retirements do not join it. Deletion records durable per-item
-progress and cannot undo a key that it already destroyed. Independent owner messages and replies
-remain separate records.
+deletion after a preview and confirmation bound to a fixed set of items and versions. Changed or
+restored targets make the preview stale; later retirements do not join it. Deletion records durable
+per-item progress and cannot undo a key that it already destroyed. Independent owner messages and
+replies remain separate records.
 
 0010's backup-erasure guarantee remains. Forget completion includes removing recoverable key copies,
 index entries and invalid local session copies, rather than waiting for the next scheduled backup
@@ -96,6 +99,6 @@ The [retrieval spike](../../spikes/memory-retrieval/) uses synthetic memory. The
 [offline batch spike](../../spikes/memory-batch/) checks SQLite checkpoints with fixture model
 output, not extraction quality or real SDK continuity. The
 [pinned-core run](../../spikes/sdk-pinned-core/) completed no turn because of quota. Owner-history
-retrieval, writer/checker quality, encoder choice, cache costs, compaction recovery, bulk-deletion
-races and backend-specific backup erasure remain validation work under
+retrieval, writer and checker quality, encoder choice, cache costs, compaction recovery,
+bulk-deletion races and backend-specific backup erasure remain validation work under
 [open items](../design/open-items.md#spikes-to-run).

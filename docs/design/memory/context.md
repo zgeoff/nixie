@@ -69,7 +69,10 @@ boundary when the core changes, which writes a new session ID that renders the p
 
 ### Session exposure before publication
 
-The host records every memory item/version and log record that a session receives, including the
+The [first build](./store.md#the-first-build) records no exposure and rebuilds every live session on
+any forget; this section covers the later extension.
+
+The host records every memory item version and log record that a session receives, including the
 pinned core, per-turn retrieval, recall results and inbox text. Before an SDK query starts, prompt
 rendering validates its references and commits their exposure to the task's session branch under the
 same canonical publication gate as retire and forget. A forget that wins the gate prevents
@@ -102,12 +105,13 @@ a semantic vector index in process memory. Both derive from the active memory it
 messages and model replies whose keys remain readable. The embedding model runs on the host as a
 text encoder, not as an agent with tools or grants.
 
-Every entry carries its canonical item ID and version, or its record ID and sequence, together with
-the encoder revision and index generation. A ready semantic generation holds the pinned encoder
-assets and a complete pass over the eligible corpus. A rebuild takes a canonical sequence watermark,
-encodes that snapshot, and applies subsequent invalidations through a second watermark before
-publication. Publication and canonical writes share a gate, so no write falls between catch-up and
-the swap. A model change builds a fresh generation and swaps it in as a unit.
+The [first build](./store.md#the-first-build) rebuilds both indexes in full instead of swapping
+generations. Every entry carries its canonical item ID and version, or its record ID and sequence,
+together with the encoder revision and index generation. A ready semantic generation holds the
+pinned encoder assets and a complete pass over the eligible corpus. A rebuild takes a canonical
+sequence watermark, encodes that snapshot, and applies subsequent invalidations through a second
+watermark before publication. Publication and canonical writes share a gate, so no write falls
+between catch-up and the swap. A model change builds a fresh generation and swaps it in as a unit.
 
 Each query holds one ready generation for both query encoding and ranking. It uses that generation's
 encoder revision and dimensions; a swap never pairs its query vector with a different generation.
@@ -158,8 +162,8 @@ not instructions. Pinned items, which the system prompt holds, and messages stil
 context stay out. The turn's record lists every item and version it placed, together with the search
 mode and fallback metadata from the retrieval service, as the
 [event log design](../core/event-log.md#memory-history-and-export) requires. Durable prompt payloads
-retain item/version references rather than a second copy of injected memory text; rendering resolves
-those references through the item keys.
+retain references to items and versions rather than a second copy of injected memory text; rendering
+resolves those references through the item keys.
 
 ### The recall tools
 
@@ -235,11 +239,13 @@ memory, under 0024, and retrieval never searches summaries. **Why:** the model w
 from an untrusted conversation, so retrieving it into a later turn would launder that text into a
 trusted-looking place.
 
-Each summary record carries the cumulative item/version and record dependencies of its session
-branch at compaction. That set includes pinned exposure, inherited summaries and retained context,
-even if a source falls outside the recent-history window. Summary publication validates and commits
-those dependencies under the canonical gate; it rejects a late hook result from an invalidated
-branch. Missing dependency coverage makes a summary ineligible for reconstruction.
+The [first build](./store.md#the-first-build) rebuilds every live session without a summary on any
+forget, so it needs no dependency sets. Each summary record carries the cumulative item version and
+record dependencies of its session branch at compaction. That set includes pinned exposure,
+inherited summaries and retained context, even if a source falls outside the recent-history window.
+Summary publication validates and commits those dependencies under the canonical gate; it rejects a
+late hook result from an invalidated branch. Missing dependency coverage makes a summary ineligible
+for reconstruction.
 
 Permanent forget invalidates every summary that depends on a target item or record before
 reconstruction can select it. The durable forget operation includes those summary record keys in its

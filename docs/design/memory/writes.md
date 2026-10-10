@@ -65,9 +65,9 @@ coverage and capture delay remain validation work.
 The writer runs in its own imp like any worker under
 [0026](../../decisions/0026-where-workers-and-the-conversation-run.md), because it reads the
 conversation's reply, which can carry outside content. It runs in the background and never delays
-the reply. Its model follows the deferred model-per-job choice in
-[open items](../open-items.md#deferred-decisions), with Haiku 5.5 at low effort as the default from
-the spike.
+the reply. Its model is the owner's choice under the deferred model-per-job decision in
+[open items](../open-items.md#deferred-decisions). Haiku 5.5 at low effort is one candidate from the
+spike, and no default is adopted.
 
 A write whose text matches an active item exactly, after the [matching](#the-quote-check) rules,
 returns that item and writes nothing, so exact duplicates from the 2 paths create no second item. A
@@ -171,8 +171,9 @@ own prompt. Its prompt is part of the policy snapshot, as
 
 The owner agreed that chat removal is reversible retirement; only a checked client action destroys a
 memory. `memory.retire` takes an item ID, the version read and an intent quote, with no replacement
-text. The host verifies that the calling session read that item/version and binds the operation to
-the current canonical item. An ambiguous target becomes a proposal rather than a guessed retirement.
+text. The host verifies that the calling session read that item at that version and binds the
+operation to the current canonical item. An ambiguous target becomes a proposal rather than a
+guessed retirement.
 
 The intent quote must lie wholly in the owner's typed text outside quoted blocks under the quote
 rules. A separate checker sees the owner's message with its spans, the intent quote and the bound
@@ -211,10 +212,10 @@ the source as it was when the text entered nixie.
 A write that fails the gate becomes a proposal in the
 [proposals projection](../policy/approvals.md#the-proposal), in the routine class, so it gathers on
 the digest sheet with the other routine items. A remember action binds the new text, evidence quote
-and any target item/version. A retire action binds the intent quote and target item/version, with no
-replacement text. Approval binds to that exact operation. Its sentence comes from the tool's
-template, with the appropriate content or intent quote shown in its source message, or with "no
-owner quote".
+and the target item and version, if any. A retire action binds the intent quote and target item and
+version, with no replacement text. Approval binds to that exact operation. Its sentence comes from
+the tool's template, with the appropriate content or intent quote shown in its source message, or
+with "no owner quote".
 
 A memory proposal is not one of the six policy prompt causes under
 [0028](../../decisions/0028-policy-design.md), because the gate raises it, not the decision point.

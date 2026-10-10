@@ -46,8 +46,7 @@ the decisions it rests on.
 ### Memory
 
 - [The memory store](./design/memory/store.md) — items and their history table, provenance, a key
-  per item and forgetting, the recall tool, the memory view and export, with the memory decisions
-  for the owner
+  per item and forgetting, the recall tool, the memory view and export, and the first build
 - [Memory writes](./design/memory/writes.md) — who writes memory, the quote, token and checker
   checks, memory proposals, notices and undo, and consolidation
 - [Memory in context](./design/memory/context.md) — the prompt, the pinned core, retrieval over
