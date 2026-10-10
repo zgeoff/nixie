@@ -57,8 +57,9 @@ gives them the always-ask class, and the client renders them on their own always
 "always allow" also widens a rule, and the routine card that offers it is the ask: the card shows
 the rule beside the action, and one tap approves both. Once
 [0012](../../decisions/0012-high-risk-approvals.md) lands, the always-ask and lifting controls ask
-for the passkey check, and the routine control stays one tap. Whether a one-tap "always allow" then
-needs the passkey is open in [open items](../open-items.md).
+for the passkey check, and the routine control stays one tap. An "always allow" also takes the
+passkey check then, under 0012. A proposed exemption for a rule no wider than the card's own action
+waits for the 0012 design in [open items](../open-items.md).
 
 ## The owner's choices
 

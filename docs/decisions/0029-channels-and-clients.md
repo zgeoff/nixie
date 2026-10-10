@@ -31,8 +31,9 @@ The owner agreed these channels choices:
   sentence, and one tap runs the action and creates that rule. The approval binds the hash of the
   action and the hash of the rule the owner saw. A quiet line under the reply reads "Rule added: …"
   with Edit and Undo, and the rule appears in the rules list. Spending and lifting cards keep their
-  own controls and never offer a one-tap "always allow". Whether the passkey from 0012 covers a
-  one-tap "always allow" stays open until 0012 is designed.
+  own controls and never offer a one-tap "always allow". Once the passkey from 0012 ships, an
+  "always allow" takes it. A proposed exemption for a rule no wider than the card's own action waits
+  for the 0012 design.
 - **Two push levels.** Routine items edit the live Telegram notice quietly. Always-ask items,
   unknown outcomes and returning deferred items send a new, buzzing notice that becomes the live
   one. Quiet hours suppress loud pushes overnight except unknown outcomes, as a configurable

@@ -170,10 +170,10 @@ expiries, and the stages agreed for after the first build.
   nixie's policy decides which low-information types it endorses as clean.
 - **The passkey check for high-risk approvals.** The first build approves everything with a tap, and
   a passkey check for the always-ask set follows as an early addition
-  ([0012](../decisions/0012-high-risk-approvals.md)). Its design settles whether a one-tap "always
-  allow" needs the passkey. The proposal: a rule no wider than the card's own action, with the same
-  tool and the same destination, stays one tap, and a broader rule asks for the passkey
-  ([0029](../decisions/0029-channels-and-clients.md)).
+  ([0012](../decisions/0012-high-risk-approvals.md)). Under 0012, an "always allow" takes the
+  passkey too, because it widens a rule. The 0012 design weighs a proposed exemption: a rule no
+  wider than the card's own action, with the same tool and the same destination, stays one tap, and
+  a broader rule asks for the passkey ([0029](../decisions/0029-channels-and-clients.md)).
 - **The MCP proxy.** It arrives with the first outside MCP server
   ([0017](../decisions/0017-mcp-proxy.md)). It needs to know which MCP revision the SDK's in-process
   server speaks, whether it passes structured output through, and how long a server keeps an input
