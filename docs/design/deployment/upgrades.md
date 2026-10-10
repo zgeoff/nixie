@@ -3,10 +3,10 @@
 - Decisions: [0020](../../decisions/0020-deployment.md),
   [0025](../../decisions/0025-database-and-topology.md)
 
-An upgrade is a merged pull request that changes the nixie image digest in the deployment repo, and
-a rollback is a revert of that commit. nixie copies the database before every migration. Each
-release keeps its schema readable by the release before it, so a rollback by one release needs no
-restore.
+An upgrade is a merged pull request that changes the nixie and web image digests in the deployment
+repo, and a rollback is a revert of that commit. nixie copies the database before every migration.
+Each release keeps its schema readable by the release before it, so a rollback by one release needs
+no restore.
 
 ## The pin and the bot
 
@@ -14,8 +14,8 @@ The Compose file names the image by tag and digest, such as
 `ghcr.io/<owner>/nixie:<version>@sha256:<digest>`. Renovate opens a pull request for each release
 through its [docker-compose manager](https://docs.renovatebot.com/modules/manager/docker-compose/).
 The release notes list each migration and whether the release before can read the schema it leaves.
-The nixie image carries its imp images' digests, so one pull request moves every image, the SDK
-included.
+Renovate groups the nixie and web images into one pull request, and the nixie image carries its imp
+images' digests, so one pull request moves every image, the SDK included.
 
 ## Delivery
 

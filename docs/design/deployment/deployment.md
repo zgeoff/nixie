@@ -5,10 +5,11 @@
   [0025](../../decisions/0025-database-and-topology.md),
   [0026](../../decisions/0026-where-workers-and-the-conversation-run.md)
 
-nixie runs as one container from one image, next to an imp host on the same machine. Its state is
-one SQLite database and a key store beside it. Docker Compose on one host is the reference
-deployment. The deployment repo pins the image by digest and holds the secrets encrypted with sops
-and age. An upgrade is a merged pin bump, and a rollback is a revert.
+nixie runs as one container from one image, with the web client in a second container beside it,
+next to an imp host on the same machine. Its state is one SQLite database and a key store beside it.
+Docker Compose on one host is the reference deployment. The deployment repo pins the image by digest
+and holds the secrets encrypted with sops and age. An upgrade is a merged pin bump, and a rollback
+is a revert.
 
 nixie owns portable behaviour: the images, the lifecycle, and the secrets, backup and health
 contracts. The deployment repo owns the infrastructure, the secrets, the backend settings and the
@@ -20,8 +21,8 @@ live in [upgrades](./upgrades.md).
 
 The first build ships the smallest deployment that keeps every guarantee true:
 
-- **Compose on one host,** with imp beside nixie, the image pinned by digest, and one sops file
-  encrypted to the host key and your recovery key.
+- **Compose on one host,** with imp beside nixie, the nixie and web images pinned by digest, and one
+  sops file encrypted to the host key and your recovery key.
 - **Hourly restic snapshots** of `nixie.db` and `keys.db` to 2 repos, with the key repo kept to one
   snapshot.
 - **Forget completes after the key repo prunes.** A forget starts a key backup at once, and key
@@ -55,8 +56,9 @@ A host runs nixie, the imp host and the backups. It needs:
 - **An encrypted disk,** such as LUKS or the provider's volume encryption. SQLite and restic leave
   the live files unencrypted at rest, and nixie's own encryption covers erasable fields and memory
   only.
-- **Outbound network only.** nixie binds to loopback, and you reach the client over Tailscale. An
-  inbound route exists only for a channel or connector that needs webhooks.
+- **Outbound network only.** nixie and the web server bind to loopback or the private network, and
+  you reach the web client over Tailscale. An inbound route exists only for a channel or connector
+  that needs webhooks.
 
 nixie runs as a non-root user with a read-only root filesystem, and never mounts the Docker socket.
 **Why:** the socket gives root on the host.
@@ -69,14 +71,17 @@ model in an imp reaches nixie's tools through imp's reverse forward with egress 
 
 ## The image
 
-A nixie release publishes one nixie image and one imp image per kind of work, all from one commit
-and each pinned by digest. The nixie image carries a manifest of its imp images' digests, so the one
-pin in the deployment fixes every image a deployment runs.
+A nixie release publishes one nixie image, one web image and one imp image per kind of work, all
+from one commit and each pinned by digest. The nixie image carries a manifest of its imp images'
+digests. The deployment pins the nixie and web images, and both pins move in the same pull request,
+so the web client always runs the release of the API it calls.
 
-The nixie image holds Bun on a slim base, every workspace package bundled with `bun build`, the web
-client's static files, and the `sops`, `restic`, `litestream` and `rclone` binaries. It holds no
-Claude Code build. **Why:** every model loop runs in an imp, and leaving out the SDK's native
-packages saves about 480 MB.
+The nixie image holds Bun on a slim base, every workspace package bundled with `bun build`, and the
+`sops`, `restic`, `litestream` and `rclone` binaries. The web image holds the TanStack Start server
+and its built assets, and no secrets, database or credentials. **Why:** the process that holds
+policy, credentials and the approval check carries no UI framework or server-rendering dependencies.
+It holds no Claude Code build. **Why:** every model loop runs in an imp, and leaving out the SDK's
+native packages saves about 480 MB.
 
 | Image        | Holds                                              | Runs                            |
 | ------------ | -------------------------------------------------- | ------------------------------- |
@@ -160,6 +165,9 @@ A part that turns unready raises a status report in the live view, and the push 
 the standard count and link. A later stage adds an outbound heartbeat: an empty request every 5
 minutes to an endpoint the deployment picks, so an outside monitor alerts when nixie is down.
 
+The web server has its own health endpoint: live when it answers, and ready when it reaches nixie's
+API.
+
 nixie logs JSON lines to stdout, through Docker's local log driver with rotation. A log line holds
 envelope fields only, such as IDs, kinds and outcomes, never message text, tool arguments or
 results. **Why:** a log line that copied content would keep it after its key is gone.
@@ -182,6 +190,7 @@ infrastructure repo. One SQLite writer sets its shape:
 
 - one replica in a StatefulSet with a `ReadWriteOnce` volume, which stops the old pod before the new
   one starts
+- the web client as its own Deployment, which holds no state and can run more than one replica
 - the sops file and host key as a Secret mounted read-only, decrypted by nixie at start
 - impd on each node that runs nixie, outside the cluster or as a privileged pod with `/dev/kvm`
 
