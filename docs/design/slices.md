@@ -27,6 +27,8 @@ you.
 
 **Scope:**
 
+- The workspace and the slice 1 packages of the [code layout](./code-layout.md), with its boundary
+  and dependency checks in CI.
 - The deployment on Kubernetes: nixie as a one-replica StatefulSet on a `ReadWriteOnce` volume, the
   web client as a Deployment, one ingress with the `/rpc` path rule, and impd on the node outside
   the cluster ([Kubernetes](./deployment/deployment.md#kubernetes)). nixie decrypts the secrets file

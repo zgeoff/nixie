@@ -11,10 +11,10 @@ off the main thread, instead of depending on a published one.
 
 Postgres is the path if nixie ever needs a second host.
 
-nixie is a modular monolith: one deployable, with each module a workspace package, and lint rules
-that block imports of another module's internals. The first build leaves out database roles per
-module. The web client runs as its own server beside the monolith, under
-[0029](./0029-channels-and-clients.md).
+nixie is a modular monolith: one deployable, with each module a workspace package, and package
+boundaries that block imports of another module's internals, under [0034](./0034-code-layout.md).
+The first build leaves out database roles per module. The web client runs as its own server beside
+the monolith, under [0029](./0029-channels-and-clients.md).
 
 ## Why
 
@@ -26,8 +26,8 @@ module. The web client runs as its own server beside the monolith, under
   transactions with "database is locked", and `BEGIN IMMEDIATE` fixed it.
 - On the main thread, a full scan in `bun:sqlite` blocked the event loop for 1.3 s, so the dialect
   runs the database off the main thread.
-- Lint rules give the module boundaries at little cost. Database roles would enforce the same
-  boundaries in the data layer, at a cost too high for a first build.
+- Package boundaries give the module boundaries at little cost. Database roles would enforce the
+  same boundaries in the data layer, at a cost too high for a first build.
 
 ## Alternatives
 
