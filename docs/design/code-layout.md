@@ -88,8 +88,9 @@ A few imports belong to one package each:
 
 An oxlint `no-restricted-imports` rule refuses each of these imports everywhere, with an override
 for its one package. The rule covers `bun:sqlite`, which Bun provides with no declared dependency.
-**Why:** the Agent SDK runs only inside a sandbox ([0003](../decisions/0003-sdk-placement.md)), and
-one package owns each outside system.
+Lint also refuses `require` and any `import()` whose specifier is not a string literal, so no import
+escapes the restricted-imports rule. **Why:** the Agent SDK runs only inside a sandbox
+([0003](../decisions/0003-sdk-placement.md)), and one package owns each outside system.
 
 ## Modules
 
