@@ -1,5 +1,6 @@
-import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
-import { basename, join, relative, sep } from 'node:path';
+import { constants } from 'node:fs';
+import { lstat, open, readdir, realpath } from 'node:fs/promises';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { buildContentHash } from './build-content-hash';
 import { defaultSizeLimits } from './default-size-limits';
 import { isDefinitionsPath } from './is-definitions-path';
@@ -20,7 +21,7 @@ export function createPathSource(options: PathSourceOptions): DefinitionsSource 
   const limits = options.limits ?? defaultSizeLimits;
 
   return {
-    id: `path:${options.dir}`,
+    id: `path:${resolve(options.dir)}`,
     kind: 'path',
     probe: async () => {
       const snapshot = await readPathSnapshot(options.dir, limits);
@@ -41,7 +42,7 @@ async function readPathSnapshot(dir: string, limits: SizeLimits): Promise<Snapsh
   requireFileLimit(entries.files, limits.maxFileBytes);
   requireTotalLimit(entries.files, limits.maxTotalBytes);
 
-  const files = await readFiles(base, entries.files);
+  const files = await readFiles(base, entries.files, limits.maxFileBytes);
   const contentHash = buildContentHash(files);
 
   return { contentHash, files, revision: contentHash, skipped: entries.skipped.toSorted() };
@@ -130,14 +131,51 @@ function requireTotalLimit(files: readonly WalkFile[], maxTotalBytes: number): v
 async function readFiles(
   base: string,
   files: readonly WalkFile[],
+  maxFileBytes: number,
 ): Promise<ReadonlyMap<string, Uint8Array>> {
-  const read = await Promise.all(
-    files.map(async (file) => {
-      const bytes = await readFile(join(base, file.path));
-
-      return [file.path, normalizeLineEndings(new Uint8Array(bytes))] as const;
-    }),
-  );
+  const read = await Promise.all(files.map((file) => readKeptFile(base, file.path, maxFileBytes)));
 
   return new Map(read);
+}
+
+// re-checks what the walk saw, because a file can change between the walk and the read
+async function readKeptFile(
+  base: string,
+  path: string,
+  maxFileBytes: number,
+): Promise<readonly [string, Uint8Array]> {
+  const full = join(base, path);
+  const dir = await realpath(dirname(full));
+
+  if (dir !== base && !dir.startsWith(`${base}${sep}`)) {
+    throw new SnapshotError('a symlink leads outside the definitions root', [path]);
+  }
+  const bytes = await readNoFollow(full, maxFileBytes);
+
+  if (bytes === null) {
+    throw new SnapshotError('a file changed while the snapshot read it', [path]);
+  }
+  return [path, normalizeLineEndings(bytes)];
+}
+
+// O_NOFOLLOW refuses a file swapped for a symlink, and the size comes from the open handle; null
+// when the file is no longer a regular file within the per-file limit
+async function readNoFollow(full: string, maxFileBytes: number): Promise<Uint8Array | null> {
+  const handle = await open(full, constants.O_RDONLY | constants.O_NOFOLLOW).catch(() => null);
+
+  if (handle === null) {
+    return null;
+  }
+  try {
+    const stat = await handle.stat();
+
+    if (!stat.isFile() || stat.size > maxFileBytes) {
+      return null;
+    }
+    const bytes = await handle.readFile();
+
+    return new Uint8Array(bytes);
+  } finally {
+    await handle.close();
+  }
 }

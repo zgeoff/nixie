@@ -15,7 +15,8 @@ holds the files by path relative to the definitions root, with `/` separators, a
 content hash and the paths the filter skipped.
 
 `createPathSource` walks a directory. Its revision and its probe token are both the content hash,
-because a directory has no commit.
+because a directory has no commit. Its ID is `path:` plus the resolved directory, so `defs` and
+`defs/` name one source.
 
 ### What a source reads
 
@@ -27,6 +28,10 @@ because a directory has no commit.
 The path source skips a dotted directory without entering it. A symlink that stays inside the root
 is skipped, and a symlink that leads outside the root, or resolves nowhere, fails the snapshot with
 `SnapshotError`. **Why:** no file from outside the definitions reaches the seed.
+
+The path source checks each kept file again when it reads it, because a file can change after the
+walk. Its directory must still resolve inside the root, it opens with `O_NOFOLLOW`, and its size
+comes from the open handle. A file that fails one of these checks fails the snapshot.
 
 The snapshot fails with `SnapshotError` past either size limit in `defaultSizeLimits`: 1 MiB per
 file and 10 MiB over every kept file. The error names every file past the per-file limit, or every
@@ -103,6 +108,9 @@ A refused snapshot comes back as a value with its error and the definitions stil
 never thrown. **Why:** a half-applied seed would leave definitions from 2 revisions in force at
 once, and the caller reports the refusal while the last seed serves. A failure inside the
 transaction, such as a projection's fold, rolls the whole seed back and throws.
+
+The caller runs one seed at a time. **Why:** 2 overlapping seeds could commit an older revision
+after a newer one.
 
 `findDefinitionsInForce` returns the newest seed with its persona text, or null before the first
 seed. Every record takes its snapshot hash from it.

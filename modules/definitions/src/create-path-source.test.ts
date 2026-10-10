@@ -204,3 +204,12 @@ test('it names the source by its directory', async () => {
   expect(source.id).toBe(`path:${ctx.root}`);
   expect(source.kind).toBe('path');
 });
+
+test('it gives the same directory written with a trailing slash the same source ID', async () => {
+  const ctx = await setupTest();
+
+  const plain = createPathSource({ dir: ctx.root });
+  const slashed = createPathSource({ dir: `${ctx.root}/` });
+
+  expect(slashed.id).toBe(plain.id);
+});

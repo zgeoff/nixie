@@ -37,9 +37,9 @@ export type SeedResult =
       readonly inForce: DefinitionsInForce | null;
     };
 
-// Seeds a snapshot in one write transaction, so the persona, the snapshot, the definitions_seeded
-// record and the seed row commit together. A snapshot that fails to read or parse comes back as
-// refused, never thrown, and the last seed stays in force.
+// Seeds a snapshot in one write transaction. A snapshot that fails to read or parse comes back
+// refused, never thrown, and the last seed stays in force. The caller runs one seed at a time, so
+// an older revision never commits after a newer one.
 export async function runSeed(options: SeedOptions): Promise<SeedResult> {
   const read = await tryReadDefinitions(options.source);
 
