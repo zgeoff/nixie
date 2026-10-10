@@ -113,15 +113,21 @@ what search costs. The Kagi API key is a static credential from the deployment.
 ## Web fetch
 
 Web fetch is one of nixie's own tools: it fetches one public HTTPS page for the model and returns
-its text. It runs in nixie's process on the host and declares only the `fetch` effect, so it runs
-`direct`. It declares no destination, as the
-[destination limits](../policy/decision-point.md#destination-limits) set for the first build.
+its text. It declares only the `fetch` effect, so it runs `direct`. It declares no destination, as
+the [destination limits](../policy/decision-point.md#destination-limits) set for the first build.
 
-The tool calls the page through a plain HTTP client, never through the [fetcher](./credentials.md),
-so a request carries no credential, cookie or stored header. The tool drops any user name or
-password in the URL.
+The tool runs in the fetch imp, a [sandbox](./sandbox-adapter.md#sandboxes-by-kind-of-work) with
+imp's `public` egress and no grants. A `public` imp reaches the global internet only: imp's firewall
+refuses the host, impd, other imps, the tailnet, and link-local and private networks. The deployment
+adds its own internal ranges, such as a cluster's pod and service ranges, through `IMP_EGRESS_DENY`.
+nixie sends the guest the URL, and the guest resolves the host, fetches the page and extracts its
+text. **Why:** hostile content is parsed outside nixie's trusted process, and the network layer
+enforces the address boundary, so a bug in the fetcher's checks cannot reach an internal address.
 
-The tool refuses any URL that could reach a non-public address, in these stages:
+Inside the guest, the fetcher uses a plain HTTP client, never the host's
+[credential fetcher](./credentials.md), so a request carries no credential, cookie or stored header.
+It drops any user name or password in the URL. It also runs the address check below as a second
+layer, in these stages:
 
 1. It accepts `https` only, and refuses every other scheme, `http` included.
 2. It resolves the host, checks every A and AAAA address returned, and refuses the URL when any
@@ -130,7 +136,9 @@ The tool refuses any URL that could reach a non-public address, in these stages:
    so a second DNS answer never changes where the request goes.
 4. It runs the first 3 stages again on every redirect.
 
-A non-public address is one of these:
+### Non-public addresses
+
+The address check refuses these addresses:
 
 - loopback, the private ranges, and the unspecified, multicast and broadcast addresses
 - link-local, which holds cloud metadata services at `169.254.169.254`
@@ -141,14 +149,15 @@ A non-public address is one of these:
 - any range the deployment lists as internal, such as a cluster's pod and service ranges, whatever
   their public or private class
 
-**Why:** the tool runs on the host, so a URL that names one of these addresses reaches nixie's own
-services, impd, a cluster's pod and service ranges, or a device on your tailnet.
-
 Each call has 3 limits, all configurable: a body of 2 MB, 15 s for the whole call with its
-redirects, and 5 redirects. The tool stops reading at the body limit and marks the result as
+redirects, and 5 redirects. The fetcher stops reading at the body limit and marks the result as
 truncated.
 
 The result holds the final URL, the status code, the content type, the page's text and the truncated
 mark. An HTML page returns its readable text, another text type returns as it arrived, and a binary
 type returns no body. Every field is outside content. The status code and the truncated mark are
 endorsed types, and the URL and the text never are.
+
+The first build keeps one long-lived fetch imp, and replaces it after a configurable number of
+fetches or on any error. It holds no data and no grants. One imp per call is a later option, once
+the worker cold start spike measures its cost.

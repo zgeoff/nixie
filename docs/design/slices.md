@@ -53,10 +53,13 @@ you.
   mapped to the conversation role only. The conversation runs on its configured profile through the
   Agent SDK.
 - One read-only tool: the [web fetch](./connectors/connector.md#web-fetch), which declares `fetch`
-  and no destination, runs on the host, refuses private, loopback and link-local addresses, and
-  returns the page as outside content.
+  and no destination, runs in the fetch imp with imp's `public` egress and no grants, and returns
+  the page as outside content.
+- The fetch imp: one long-lived imp on the fetch image, replaced after a configured number of
+  fetches or on any error
+  ([sandboxes by kind](./connectors/sandbox-adapter.md#sandboxes-by-kind-of-work)).
 - The health endpoints, JSON logs of envelope fields only, and the release pipeline that publishes
-  the nixie, web and conversation images
+  the nixie, web, conversation and fetch images
   ([health](./deployment/deployment.md#health-and-monitoring),
   [the image](./deployment/deployment.md#the-image)).
 
@@ -85,9 +88,11 @@ the release pipeline, both design tasks in [open items](./open-items.md#spikes-a
 - [ ] Tests port the isolation control of the
       [reverse-forward spike](../../spikes/tools-reverse-forward/README.md): the conversation imp
       reaches nixie's tools and the model API, and nothing else.
+- [ ] A live check on the Kubernetes node: the fetch imp cannot reach impd, the host, the cluster's
+      pod and service ranges, or a tailnet address, and it fetches a public HTTPS page.
 - [ ] A test asserts the options of every `query()`: `tools: []`, `settingSources: []` and the SDK's
       own memory off.
-- [ ] A tagged release publishes the 3 images to GHCR, and both the Kubernetes deployment and the
+- [ ] A tagged release publishes the 4 images to GHCR, and both the Kubernetes deployment and the
       Compose recipe run them pinned by digest.
 
 ## 2. Tasks, workers and the dashboard

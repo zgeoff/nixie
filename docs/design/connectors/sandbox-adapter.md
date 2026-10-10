@@ -26,7 +26,7 @@ interface SandboxAdapter {
 interface SandboxSpec {
   image: string; // a purpose-built image per kind of work
   owner: string; // the task step or tool call that the sandbox belongs to
-  egress: { kind: 'none' } | { kind: 'allow'; hosts: string[] };
+  egress: { kind: 'none' } | { kind: 'public' } | { kind: 'allow'; hosts: string[] };
   grants: GrantSpec[]; // empty for code runs, the profile's model credential for model loops
   toolRoute: boolean; // open the route back to nixie's tools
   limits: { vcpus: number; memoryMiB: number; diskMiB: number };
@@ -48,19 +48,21 @@ Every sandbox records the task step or tool call it belongs to, so
 [crash recovery](../core/tasks.md) destroys the sandboxes of steps that no longer run, through the
 adapter that created each one. Every create, grant, wake, sleep and destroy is a record.
 
-The adapter refuses a spec that has both a grant and egress, outside a coding session. **Why:** a
-grant is an exit for whatever the sandbox holds, and a second exit adds risk with no use to a model
-loop. Memory-preserving sleep is a capability: imp returns `memory`, and an adapter that cannot keep
+`public` egress reaches the global internet only, and the adapter refuses it with any grant. The
+adapter refuses a spec that has both a grant and egress, outside a coding session. **Why:** a grant
+is an exit for whatever the sandbox holds, and a second exit adds risk with no use to a model loop.
+Memory-preserving sleep is a capability: imp returns `memory`, and an adapter that cannot keep
 memory returns `none`, so the core never maps sleep onto a stop or a pause.
 
 ## Sandboxes by kind of work
 
-| Kind                      | Lifetime                   | Egress | Grants                                   | Tool route |
-| ------------------------- | -------------------------- | ------ | ---------------------------------------- | ---------- |
-| The conversation          | The deployment, kept awake | None   | The model credential                     | Yes        |
-| A worker                  | One tool call              | None   | The model credential                     | Yes        |
-| A code run                | One tool call              | None   | None                                     | No         |
-| A built-in coding session | The session                | Allow  | The model credential, and others by rule | Yes        |
+| Kind                      | Lifetime                    | Egress | Grants                                   | Tool route |
+| ------------------------- | --------------------------- | ------ | ---------------------------------------- | ---------- |
+| The conversation          | The deployment, kept awake  | None   | The model credential                     | Yes        |
+| A worker                  | One tool call               | None   | The model credential                     | Yes        |
+| A code run                | One tool call               | None   | None                                     | No         |
+| The fetch imp             | Many fetches, then replaced | Public | None                                     | No         |
+| A built-in coding session | The session                 | Allow  | The model credential, and others by rule | Yes        |
 
 The model credential reaches only the host of its [model profile](../core/models.md), through the
 adapter's injecting backend, which dials from the host. A grant never becomes a network exception in
@@ -103,6 +105,7 @@ descendant outlives it.
 | ------------ | ------------------------------------------------------------------ | ------------------------------- |
 | Conversation | A minimal base, Bun, and the SDK with its Claude Code build        | The conversation                |
 | Code         | A familiar Linux environment with Node.js, Python and common tools | Code runs outside a worker      |
+| Fetch        | A minimal base and the fetcher that extracts a page's text         | The fetch imp                   |
 | Worker       | The conversation image plus the code runtimes                      | Workers                         |
 | Coding       | The conversation image plus git and your toolchains                | Built-in coding sessions, later |
 
@@ -129,3 +132,5 @@ sketch maps each part of the interface:
 - **Allowed egress.** A coding session with allowed egress goes through an adapter-owned gateway
   that enforces its declared host list, never through unrestricted container networking.
 - **Suspension.** `none`. A stopped container restarts through nixie's committed-step recovery.
+- **Public egress.** The adapter needs an equivalent of imp's `public` policy, which reaches the
+  global internet only, before a container can host the [web fetch](./connector.md#web-fetch).

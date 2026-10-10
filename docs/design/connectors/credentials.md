@@ -37,11 +37,12 @@ interface CredentialSpec {
 
 A connector never reads a token. It calls the service through `fetcher`, which adds the credential
 on the host and refuses any host outside the credential's `hosts`. The fetcher drops the credential
-on a redirect to another host. It applies the [web fetch](./connector.md#web-fetch) address check on
-every hop. A service on a private network passes only when the credential's configuration pairs its
-host with an allowed address range, the hop goes to that host, and the resolved address falls in
-that range. **Why:** a connector that follows a link from an email must never carry your token to
-the address the link names.
+on a redirect to another host. On every hop it resolves the host, refuses any
+[non-public address](./connector.md#non-public-addresses), and connects to the address it checked. A
+service on a private network passes only when the credential's configuration pairs its host with an
+allowed address range, the hop goes to that host, and the resolved address falls in that range.
+**Why:** a connector that follows a link from an email must never carry your token to the address
+the link names.
 
 A record that mentions a credential holds its reference and a fingerprint, the first 8 hex digits of
 a SHA-256 of the value, so the live view shows a rotation without the value.
