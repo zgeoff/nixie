@@ -19,7 +19,7 @@ pointing the role at another profile in the deployment configuration, and no cod
 | Model            | The model ID the endpoint expects, such as `glm-5.3`                  |
 | Reasoning effort | The effort level passed on every call                                 |
 | Provider pin     | Optional: the upstream provider an aggregator endpoint must use       |
-| Prices           | Per million tokens: input, cached input and output, in your currency  |
+| Prices           | Per million tokens: input, cache write, cached input and output       |
 
 The runner starts each model loop with the profile's base URL, model and effort in `options.env`,
 beside the fixed options that [serving nixie's tools](../connectors/tools.md#starting-a-model-loop)
@@ -66,9 +66,12 @@ flat subscription. The [counting proxy](../policy/budgets.md#the-hard-spending-s
 counts from each response and prices them with the profile's table:
 
 ```text
-cost = uncached input × input price + cached input × cached price + output × output price
+cost = uncached input × input price + cache write × cache write price
+     + cached input × cached price + output × output price
 ```
 
-Reasoning tokens count as output. A response that reports no cached count is priced as all uncached
-input, so a missing count never lowers a charge. [Budgets](../policy/budgets.md#model-cost) set the
-limits that these counts feed.
+Prices are in your currency. Reasoning tokens count as output. Every profile sets all 4 prices, and
+a profile for an endpoint that charges no cache write premium sets its cache write price to its
+input price. A response that reports no cached count is priced as all uncached input, so a missing
+count never lowers a charge. [Budgets](../policy/budgets.md#model-cost) set the limits that these
+counts feed.

@@ -56,9 +56,9 @@ and an unknown outcome stays charged until you settle it.
 Model use has 3 measures, and each limit below sets all 3: dollars, tokens and turns. The
 [counting proxy](#the-hard-spending-stop) counts tokens from each response, and nixie prices them
 with the role's [model profile](../core/models.md#cost), never with the cost the Agent SDK reports.
-A token count includes input, cached input and output. **Why:** dollars bound what a metered route
-costs, tokens bound the load on a flat subscription, where dollars are notional, and turns catch a
-loop whatever the price.
+A token count includes input, cache writes, cached input and output. **Why:** dollars bound what a
+metered route costs, tokens bound the load on a flat subscription, where dollars are notional, and
+turns catch a loop whatever the price.
 
 | Limit          | Dollars | Tokens      | Turns  | Other  |
 | -------------- | ------- | ----------- | ------ | ------ |
