@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/turbo/schema.json",
+  // turbo otherwise writes a guidance block into the generated AGENTS.md
+  "agentGuidance": false,
+  "tasks": {
+    "typecheck": {
+      // a package typechecks against its dependencies' source, which its own hash leaves out
+      "cache": false
+    }
+  },
+  "boundaries": {
+    "tags": {
+      "app": {
+        "dependencies": { "allow": ["module", "adapter", "lib"] }
+      },
+      "client": {
+        "dependencies": { "allow": ["lib"] }
+      },
+      "sidecar": {
+        "dependencies": { "allow": ["lib"] }
+      },
+      "module": {
+        "dependencies": { "allow": ["module", "lib"] }
+      },
+      "adapter": {
+        "dependencies": { "allow": ["module", "lib"] }
+      },
+      "guest": {
+        "dependencies": { "allow": ["lib"] }
+      },
+      "lib": {
+        "dependencies": { "allow": ["lib"] }
+      },
+      "server-only": {
+        "dependents": { "allow": ["app", "module", "adapter", "server-only"] }
+      }
+    }
+  }
+}

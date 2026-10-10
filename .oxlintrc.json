@@ -1,9 +1,179 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "extends": ["./node_modules/@zgeoff/oxlint-config/oxlintrc.json"],
+  "jsPlugins": ["./oxlint-plugin.js"],
   "env": {
     "node": true,
     "es2024": true
   },
-  "ignorePatterns": [".claude/**", ".reviews/**", ".worktrees/**", "docs/design/**"]
+  "ignorePatterns": [".claude/**", ".reviews/**", ".worktrees/**", "docs/design/**"],
+  "rules": {
+    // oxlint 1.86 enables one-var through the style category, which the shared config predates; it
+    // forbids the separate const per step that every test body uses
+    "one-var": "off",
+    // a callback's parameter takes its type from the caller, such as a test.each row
+    "typescript/prefer-readonly-parameter-types": ["error", { "ignoreInferredTypes": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@anthropic-ai/claude-agent-sdk",
+            "message": "Only guests/conversation imports the Agent SDK."
+          },
+          {
+            "name": "@zgeoff/imp-client",
+            "message": "Only adapters/sandbox-imp imports imp's client."
+          },
+          {
+            "name": "bun:sqlite",
+            "message": "Only libs/db opens SQLite; use @heynixie/db."
+          },
+          {
+            "name": "node:module",
+            "importNames": ["createRequire"],
+            "message": "A require function escapes no-restricted-imports; use import."
+          },
+          {
+            "name": "module",
+            "importNames": ["createRequire"],
+            "message": "A require function escapes no-restricted-imports; use import."
+          }
+        ],
+        "patterns": [
+          {
+            "group": ["@anthropic-ai/claude-agent-sdk/*"],
+            "message": "Only guests/conversation imports the Agent SDK."
+          },
+          {
+            "group": ["@zgeoff/imp-client/*"],
+            "message": "Only adapters/sandbox-imp imports imp's client."
+          }
+        ]
+      }
+    ],
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "require",
+        "message": "A require function escapes no-restricted-imports; use import."
+      }
+    ],
+    "import/no-commonjs": "error",
+    "nixie/no-hidden-import": "error"
+  },
+  "overrides": [
+    {
+      "files": ["guests/conversation/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@zgeoff/imp-client",
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              },
+              {
+                "name": "bun:sqlite",
+                "message": "Only libs/db opens SQLite; use @heynixie/db."
+              },
+              {
+                "name": "node:module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              },
+              {
+                "name": "module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@zgeoff/imp-client/*"],
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["adapters/sandbox-imp/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@anthropic-ai/claude-agent-sdk",
+                "message": "Only guests/conversation imports the Agent SDK."
+              },
+              {
+                "name": "bun:sqlite",
+                "message": "Only libs/db opens SQLite; use @heynixie/db."
+              },
+              {
+                "name": "node:module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              },
+              {
+                "name": "module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@anthropic-ai/claude-agent-sdk/*"],
+                "message": "Only guests/conversation imports the Agent SDK."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["libs/db/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@anthropic-ai/claude-agent-sdk",
+                "message": "Only guests/conversation imports the Agent SDK."
+              },
+              {
+                "name": "@zgeoff/imp-client",
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              },
+              {
+                "name": "node:module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              },
+              {
+                "name": "module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@anthropic-ai/claude-agent-sdk/*"],
+                "message": "Only guests/conversation imports the Agent SDK."
+              },
+              {
+                "group": ["@zgeoff/imp-client/*"],
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
