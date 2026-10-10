@@ -23,8 +23,8 @@ Compose path end to end on local containers.
 
 The first build ships the smallest deployment that keeps every agreed guarantee true, and the rest
 of this design arrives in later stages. [Scope](../../scope.md) places backups, safe upgrades and
-rollback in tier 2, so none of the later stages blocks the owner's first use. This split is a
-proposal for the owner to confirm.
+rollback in tier 2, so none of the later stages blocks the owner's first use. The owner agreed this
+split under [0032](../../decisions/0032-offsite-backups-and-replication.md).
 
 The first build holds:
 

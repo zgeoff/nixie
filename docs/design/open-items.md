@@ -148,6 +148,12 @@ after the first build.
 - **The coding agent adapter and running code.** Design the adapter interface from
   [0022](../decisions/0022-coding-and-code-execution.md), with atc as the first adapter, and the
   tool that runs code in a disposable imp with no grants, which comes early.
+- **The release pipeline.** Versioning, the CI build, registry publishing and signing for the nixie
+  image and its imp images, following the owner's usual release-please setup with CI publishing to
+  GHCR ([deployment](./deployment/deployment.md#the-image)).
+- **npm packages.** The first build publishes no package, and every adapter lives in the monorepo.
+  Publishing the interfaces from [0016](../decisions/0016-own-interfaces.md) as a package, for
+  adapters outside the repo, is a later stage.
 
 ## Later stages
 

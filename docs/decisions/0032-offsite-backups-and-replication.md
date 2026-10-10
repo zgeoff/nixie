@@ -41,6 +41,13 @@ personas, prompts, jobs and policy seeds; it does not choose backup infrastructu
 versioning, retention and deletion behavior still needs validation: S3 API compatibility alone is
 not proof that the forget contract holds.
 
+## The first build
+
+The first build runs hourly Restic snapshots of the data and key stores on one Compose host, as
+[the first build](../design/deployment/deployment.md#first-build) sets out. A forget there reports
+pending until the key repo prunes every older snapshot. The Litestream replica through the rclone
+gateway follows once recovery with matching keys passes.
+
 ## Alternatives and trade-offs
 
 - Restic alone gives encrypted historical snapshots, but its proposed hourly cadence can lose up to
