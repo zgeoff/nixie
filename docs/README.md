@@ -53,6 +53,8 @@ rests on.
   ordered slices, each with its scope, what it needs first and its acceptance checks, in Linear
 - [Code layout](design/platform/code-layout.md) — the workspace folders, package boundaries, the
   module packages, the images and the checks
+- [Skills](design/platform/skills.md) — skills in the definitions, vendoring and the lock, versions
+  and reload, skill lists, the skill tools, the catalog, scripts and skills that nixie writes
 
 ### Core
 
@@ -88,6 +90,8 @@ rests on.
   token and checker checks, memory proposals, notices and undo, and consolidation
 - [Memory in context](design/platform/memory/context.md) — the prompt, the pinned core, retrieval
   over memory and past messages, compaction, and the SDK transcript as a cache
+- [Moments](design/platform/memory/moments.md) — kept spans of the event log, their records and
+  tools, links from memory items, reading back, and destroying a moment
 
 ### Channels
 
@@ -184,7 +188,8 @@ The memory store, its writes, how it reaches the model, and definition versionin
 - [0010: The memory store](decisions/0010-memory-store.md) — memory as rows in nixie's database, the
   memory view and a raw recall tool, and forgetting by crypto-shredding
 - [0011: Which memory writes skip review](decisions/0011-memory-writes.md) — a write backed by a
-  quote you typed applies at once with undo, and every other write is a proposal
+  quote you typed, or covered by your allow rule, applies at once with undo, and every other write
+  is a proposal
 - [0013: Definition versioning](decisions/0013-definition-versioning.md) — a snapshot hash on every
   record, with rules applying at once and persona and jobs fixed per task
 - [0024: How memory reaches the model](decisions/0024-memory-in-context.md) — the SDK's session and
@@ -192,6 +197,16 @@ The memory store, its writes, how it reaches the model, and definition versionin
 - [0031: Memory capture, context and removal](decisions/0031-memory-capture-context-and-removal.md)
   — batched capture, the transcript as a cache, reversible chat removal, grouped notices and the
   first build
+- [0037: Moments](decisions/0037-moments.md) — kept spans of the event log with your note and the
+  model's reflections, reached by tool call and by links from memory items
+
+### Skills
+
+Procedures from your definitions that the model loads when a task needs them.
+
+- [0038: Skills](decisions/0038-skills.md) — Agent Skills folders in the definitions that grant
+  nothing, vendored at a pinned commit, loaded through nixie's own tools, with scripts in the code
+  tool
 
 ### Channels
 
@@ -269,6 +284,9 @@ left untested. The [spikes index](design/platform/spikes/README.md) describes ho
   and output checks on the v2 MCP packages
 - [A definitions source](design/platform/spikes/definitions-source/) — one content hash for the same
   definitions from a repo and a local path
+- [Skills and slash commands under nixie's options](design/platform/spikes/sdk-skills/) — planted
+  skills stay out, and a prompt starting with `/` runs a bundled skill until `verbatimPrompts` stops
+  it
 - [Resume a session at a given message](design/platform/spikes/sdk-resume-at/) — `resumeSessionAt`
   and `forkSession` drop a turn that never committed
 - [The rule engine and prompt scenarios](design/platform/spikes/policy-rules/) — one decision per

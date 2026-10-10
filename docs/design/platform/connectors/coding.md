@@ -11,7 +11,7 @@ coding adapter, with atc first and a built-in adapter that runs one session in a
 ## The code tool
 
 The code tool takes a program, its language and the files it reads, and returns the exit code, the
-output and the files the program wrote. It declares the `run_code` effect, and its result is outside
+output and the files the program wrote. It declares the `code_run` effect, and its result is outside
 content. The code environment is the code and worker images that the
 [sandbox adapter](sandbox-adapter.md) lists.
 
@@ -32,9 +32,10 @@ holds it. A code run has these limits by default, each changeable per job:
 | Files out | 20 MiB  |
 | vCPUs     | 1       |
 
-Input files come from nixie's own store, such as an attachment or a file a connector fetched. Output
-files come back as outside content. A program that needs outside data gets it through another tool
-first, because the code imp has no route out.
+Input files come from nixie's own store, such as an attachment or a file a connector fetched. A
+`skills` list places each named skill's folder read-only in the sandbox, as the
+[skills design](../skills.md#scripts) sets out. Output files come back as outside content. A program
+that needs outside data gets it through another tool first, because the code imp has no route out.
 
 ## The coding adapter
 

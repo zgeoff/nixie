@@ -7,10 +7,11 @@
 
 A write that introduces memory text applies at once, with a notice and undo, only when 3 checks
 pass: an exact quote from text you typed backs it, every destination-like token in it appears in
-that quote, and a checker model that sees your whole message confirms you asserted it. Every other
-write becomes a memory proposal in the approval digest. The checks run inside the memory tools,
-after the [policy decision point](../policy/decision-point.md) allows the call, so a write that
-fails a check waits for review instead of failing.
+that quote, and a checker model that sees your whole message confirms you asserted it. An allow rule
+of yours on `memory.remember` lets a write skip the quote and the checker, and never the token
+check. Every other write becomes a memory proposal in the approval digest. The checks run inside the
+memory tools, after the [policy decision point](../policy/decision-point.md) allows the call, so a
+write that fails a check waits for review instead of failing.
 
 ## Who writes
 
@@ -71,13 +72,34 @@ becomes a proposal with that check as its review reason:
 4. **The checker.** A checker model confirms that you asserted the memory.
 5. **Apply.** nixie writes the version, its record and a notice in one transaction.
 
-A job run has no messages from you, so every write from a job run is a proposal. A write that pins
-its item is always a proposal, and you pin directly in the client. **Why:** a pinned item rides in
-the system prompt of every turn of every task, so model-chosen text gets there only with your
-approval.
+A job run has no messages from you, so every write from a job run is a proposal unless your allow
+rule covers job runs. A write that pins its item is always a proposal, and you pin directly in the
+client. **Why:** a pinned item rides in the system prompt of every turn of every task, so
+model-chosen text gets there only with your approval.
 
 A rule of yours can ask for or deny `memory.remember` or `memory.retire`. The decision point runs
 first, then the content gate for a remember or the intent gate for a retirement.
+
+### Your allow rule
+
+An allow rule of yours whose tool field names `memory.remember`, such as "remember facts from the
+conversation without asking", changes the content gate in the contexts it names. A rule that matches
+the `note` effect alone, such as the starter `allow-notes`, lets the call run and leaves the full
+gate in place, and no starter rule names the tool. A decision records only its deciding rule, so the
+gate itself looks for an allow rule that names the tool and matches the call, and takes this path
+when it finds one:
+
+1. **The token check.** Every destination-like token in the text appears word for word in text you
+   typed outside pasted spans and quoted blocks, in any message nixie recorded, or in your
+   definitions.
+2. **Apply.** nixie writes the version, its record and a notice in one transaction.
+
+A write that fails the token check becomes a proposal with that check as its review reason. A write
+that applies under the rule records the rule's ID, and its provenance is the least trusted source in
+the calling task's context, because no quote of yours backs it. A pinning write stays a proposal.
+Creating the rule is a widening under [0005](../../../decisions/0005-effects-and-taint.md), so it
+asks once. **Why:** you choose where memory forms without review, and a memory that points nixie at
+a destination you never typed still waits for you.
 
 ### The quote check
 

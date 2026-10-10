@@ -1,6 +1,7 @@
 # 0011: Which memory writes skip review
 
 - Date: 2026-10-08
+- Updated: 2026-10-11
 - Status: decided
 - Design: [memory writes](../design/platform/memory/writes.md)
 - Research: [memory checks spike](../design/platform/spikes/memory-checks/),
@@ -16,6 +17,14 @@ A memory write applies at once, with a notice and undo, only when all 3 checks p
 3. A separate checker model confirms that you asserted the memory. It sees your whole message, with
    the quote and the pasted spans marked, and the memory, and never the rest of the conversation, so
    it can tell a statement from a question, a negation or a quotation.
+
+An allow rule of yours that names the `memory.remember` tool also lets a write apply at once, with a
+notice and undo, in the contexts the rule names, such as the conversation but not job runs. A rule
+that matches the `note` effect alone, such as the starter rule that allows notes, lets the call run
+and leaves the checks in place. No starter rule names the tool, and creating such a rule is a
+widening, so it asks once. Check 2 still runs under that rule: every destination-like token in the
+memory appears word for word in text you typed or in your definitions, and a write that fails it is
+a proposal whatever the rule says.
 
 Every other memory write is a proposal, including a write the checker rejects, is unsure about or
 cannot reach. The memory reads as text the model wrote, with your quote kept as its evidence.
@@ -45,6 +54,9 @@ you answer when you choose, singly or through the approval digest from
 - In the model-eval spike, requiring an exact quote for each memory brought several models to 0
   invented entries, where a plain summary prompt invented facts on every model.
 - A memory write is reversible, unlike a send, so a wrong memory is visible and can be undone.
+- You set the risk stance for memory as you do for every other tool. An allow rule trades review for
+  fewer proposals in the contexts you pick, and the token check keeps a memory that points nixie at
+  a new destination in review.
 
 ## Alternatives
 
@@ -54,6 +66,10 @@ you answer when you choose, singly or through the approval digest from
 - **Store your quote itself as the memory.** It needs no checker model, and memories read as raw
   quotes rather than natural text.
 - **The quote check alone.** It lets a steered model attach an unrelated quote to a poisoned memory.
+- **Rules that can only ask or deny a memory write.** Every write that the checks cannot back stays
+  a proposal, even in a context where you accept the risk.
+- **An allow rule that skips every check.** It gives the fewest proposals, and lets injected content
+  plant a destination in memory with no review.
 - **A checker that sees only the quote.** You may paste a scam email and ask about it, quote
   someone, or negate a fact. Without the whole message, the checker cannot tell.
 
@@ -63,3 +79,8 @@ you answer when you choose, singly or through the approval digest from
   deletion uses its crypto-shredding.
 - A fact that reaches nixie only through outside content, such as a flight time in an email, needs
   approval before it becomes a memory.
+
+## Changes
+
+- 2026-10-11: an allow rule of yours that names `memory.remember` lets a write apply at once, with
+  the token check kept as a floor.
