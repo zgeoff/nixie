@@ -124,31 +124,35 @@ One nixie process writes the database at a time, and nixie enforces that itself.
 orchestrator's rollout order nor the volume type is the guarantee. Before any migration, recovery
 step or runner claim, nixie runs 2 stages:
 
-1. **The writer lock.** nixie takes an exclusive `flock` on `nixie.lock`, a file beside `nixie.db`
-   on the same volume. When another process holds the lock, nixie logs
-   `writer lock held by another process` and exits non-zero, and Compose or Kubernetes restarts it
-   later. The kernel releases the lock when its holder dies, so a crash never leaves it held.
+1. **The writer lock.** nixie takes an exclusive `flock` on its data directory, which the deployment
+   mounts as the root of the volume that holds `nixie.db` and the key store. When another process
+   holds the lock, nixie logs `writer lock held by another process` and exits non-zero, and Compose
+   or Kubernetes restarts it later. The kernel releases the lock when its holder dies, so a crash
+   never leaves it held.
 2. **The writer epoch.** Holding the lock, nixie raises the writer epoch, a counter in a one-row
    table, in one transaction, and keeps the new value. Every write transaction checks the stored
    epoch against its own as its first statement, and every lease records the epoch it was claimed
    under. A write under an older epoch fails, and that process exits.
 
 The lock stops a second process from starting while the first lives, including a first process
-frozen by `SIGSTOP`, because a paused process keeps its lock. The epoch stops a process whose lock
-no longer guards the database, such as one whose lock file was replaced, or one on another node
-after a forced volume detach: its next write meets a newer epoch and fails.
+frozen by `SIGSTOP`, because a paused process keeps its lock. The lock sits on the mount point
+because a mounted directory cannot be deleted or replaced, so no process can lock a fresh copy of
+it. It never sits on `nixie.db`: SQLite takes POSIX locks on the database, and closing any
+descriptor on a file drops every POSIX lock the process holds on it.
 
-The restore and rollback commands take the same lock before they replace the database. The lock
-covers the key store too, which lives on the same volume.
+The epoch stops a process that writes without the lock, such as one whose lock a fault released: its
+next write transaction meets a newer epoch and fails. Each write transaction opens with
+`BEGIN IMMEDIATE`, so SQLite's own lock orders it against the epoch raise. A write that started
+before the raise commits first, and no write under the older epoch commits after it.
 
-The lock is a file of its own because SQLite takes POSIX locks on `nixie.db`, and closing any
-descriptor on a file drops every POSIX lock the process holds on it. A `flock` on another file stays
-independent of SQLite. `flock` is a kernel lock, so it holds between every process that opens the
-file on one host. A volume that one node mounts serves only that host's processes.
+The restore and rollback commands take the same lock before they replace the database, so they
+refuse to run while nixie runs.
 
-nixie refuses to start when `statfs` reports its data directory on a network filesystem, such as NFS
-or SMB. **Why:** SQLite's WAL mode needs shared memory that a network filesystem does not give it,
-and `flock` there is emulated by the client.
+The lock and the epoch hold only between processes on one kernel, which share SQLite's locks and its
+WAL shared memory. A deployment moves the volume to another node only after the old node is powered
+off. **Why:** a node that still runs nixie behind a forced volume detach shares no lock with the new
+node, and both can write. nixie refuses to start when `statfs` reports its data directory on a
+network filesystem, such as NFS or SMB, for the same reason.
 
 ## Memory history and export
 

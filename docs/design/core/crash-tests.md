@@ -164,21 +164,21 @@ crash. nixie claims no new step after the signal.
 ### A second writer
 
 The test starts process A, then starts process B on the same data directory. A second variant
-freezes A with `SIGSTOP` before B starts.
+freezes A with `SIGSTOP` before B starts, and a third runs the restore command in place of B.
 
 - B exits non-zero with `writer lock held by another process`, and writes nothing.
+- The restore command refuses to replace the database while A holds the lock.
 - A's writer epoch is unchanged, and A carries on, or resumes after `SIGCONT`.
 - After the test kills A, B starts, raises the epoch, and runs recovery.
 
 ### A stale writer epoch
 
-The test freezes process A with `SIGSTOP`, replaces `nixie.lock` with a new file, and starts process
-B, which takes the lock on the new file and raises the epoch. Then the test resumes A with a step
-ready to commit.
+The test starts process A with a test-only hook that releases A's writer lock without stopping A. It
+then starts process B, which takes the lock and raises the epoch, and lets A commit a step.
 
 - A's first write fails on the epoch, and A exits.
+- A write that A started before B's raise commits before it, and nothing from A commits after it.
 - B expires A's leases, because A claimed them under an older epoch.
-- The log holds no record from A committed after B raised the epoch.
 
 ## Later slice tests
 
