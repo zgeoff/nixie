@@ -3,10 +3,10 @@
 - Decisions: [0020](../../../decisions/0020-deployment.md),
   [0025](../../../decisions/0025-database-and-topology.md)
 
-An upgrade is a merged pull request that changes the nixie and web image digests in the deployment
-repo, and a rollback is a revert of that commit. nixie copies the database before every migration.
-Each release keeps its schema readable by the release before it, so a rollback by one release needs
-no restore.
+An upgrade is a merged pull request that changes the nixie, web and backup image digests in the
+deployment repo, and a rollback is a revert of that commit. nixie copies the database before every
+migration. Each release keeps its schema readable by the release before it, so a rollback by one
+release needs no restore.
 
 ## The pin and the bot
 
@@ -14,8 +14,8 @@ The Compose file names the image by tag and digest, such as
 `ghcr.io/<owner>/nixie:<version>@sha256:<digest>`. Renovate opens a pull request for each release
 through its [docker-compose manager](https://docs.renovatebot.com/modules/manager/docker-compose/).
 The release notes list each migration and whether the release before can read the schema it leaves.
-Renovate groups the nixie and web images into one pull request, and the nixie image carries its imp
-images' digests, so one pull request moves every image, the SDK included.
+Renovate groups the nixie, web and backup images into one pull request, and the nixie image carries
+its imp images' digests, so one pull request moves every image, the SDK included.
 
 ## Delivery
 
@@ -33,9 +33,11 @@ The script runs these stages:
 1. `git fetch`, and stop when the branch has no new commit.
 2. `git merge --ff-only`, and stop if the checkout cannot fast-forward.
 3. `docker compose pull`, while the old version keeps running.
-4. `docker compose up -d --wait`, one service at a time: nixie and then the web service for a newer
-   release, and the web service first for an older one, in the order [deployment](deployment.md)
-   sets.
+4. `docker compose up -d --wait`, one service at a time: the backup sidecar, nixie and then the web
+   service for a newer release, and the reverse order for an older one. The order of nixie and the
+   web service follows [deployment](deployment.md#the-image). The sidecar moves first on an upgrade
+   and last on a rollback, because it reads the snapshot set format of its own release and the one
+   before.
 5. On failure, report it and leave the failed state.
 
 The script never rolls back on its own. **Why:** a rollback is a revert, and a host that ran an
@@ -88,5 +90,6 @@ rollback, the live key store holds keys for rows the restored database lacks, an
 number would collide with them. Cleanup of those orphaned keys follows the forget contract in
 [backup and restore](backup-and-restore.md), after it proves no retained data needs them.
 
-On Kubernetes, the upgrade pull request changes the digest in the deployment repo's manifests, and a
-rollback reverts that commit.
+On Kubernetes, the upgrade pull request changes the digests in the deployment repo's manifests, and
+a rollback reverts that commit. nixie and the backup sidecar share one pod, so the rollout replaces
+both containers together.

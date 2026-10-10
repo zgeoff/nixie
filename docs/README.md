@@ -100,8 +100,8 @@ rests on.
 
 - [Deployment](design/platform/deployment/deployment.md) — the first build, the host, the images,
   secrets, seeding the definitions, health, and Kubernetes
-- [Backup and restore](design/platform/deployment/backup-and-restore.md) — Restic snapshots, the key
-  repo and forget, the offsite replica, and restoring on a new host
+- [Backup and restore](design/platform/deployment/backup-and-restore.md) — the backup sidecar,
+  Restic snapshots, the key repo and forget, the offsite replica, and restoring on a new host
 - [Upgrades](design/platform/deployment/upgrades.md) — the pin and the bot, delivery to the host, a
   release on the host, migrations, and rollback
 
@@ -211,6 +211,8 @@ Definitions and deployment models.
 - [0032: Offsite backups and replication](decisions/0032-offsite-backups-and-replication.md) —
   Restic snapshots first, then a Litestream replica through a host rclone crypt gateway to an
   S3-compatible backend the deployment supplies
+- [0035: The backup sidecar](decisions/0035-backup-sidecar.md) — restic, Litestream and rclone in
+  their own container beside nixie, with sops kept in nixie
 
 ## Archive
 
