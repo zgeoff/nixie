@@ -9,22 +9,39 @@ description:
 
 Load the shared `docs-writing` skill first. Where the two skills disagree, this one wins.
 
-## The design baseline
+## What each docs folder holds
 
-`docs/decisions/` and `docs/design/` hold the locked design baseline, and the Selection rules of
-`docs-writing` apply to them in full. Each decision record states the decision as it stands, with
-every later change folded in, and git keeps the history. A record keeps its date in the header and
-the alternatives it rejected, because the rejected options explain the decision.
+- **`docs/architecture/`** explains what is built: the parts, their boundaries, which part owns
+  which state, and the invariants, each with a `**Why:**` line. It leaves out what a reader can
+  infer from the code.
+- **`docs/decisions/`** holds permanent records. A record states the choice, the alternatives it
+  rejected and why, and keeps its date in the header. It never describes how the system works now. A
+  changed decision gets a new record that supersedes the old one.
+- **`docs/design/<work>/`** holds a design for big, speculative work, written well before its code.
+  A design doc states contracts: what each part does, its interfaces, its guarantees, and the reason
+  for each one. Evidence lives in the design's spikes, in `docs/design/<work>/spikes/<name>/`, and
+  the doc links the spike instead of repeating its numbers or its method. The owner opens a design;
+  an agent never opens one by default.
+- **`docs/guides/`, `docs/runbooks/` and `docs/reference/`** hold steps a user does, operator and
+  contributor procedures, and generated reference only.
 
-A design doc states contracts: what each part does, its interfaces, its guarantees, and the reason
-for each one. Evidence lives in the spike that produced it, and the design links the spike instead
-of repeating its numbers or its method. Each design marks what the first build implements and what
-extends it later.
+A plan for work about to be built lives in its Linear issue or PR, never in `docs/`. Planned work,
+open choices and later stages live in the nixie Linear project, and a doc links the issue instead of
+restating the question.
 
-Choices, later stages and imp candidates live only in
-[open items](../../../docs/design/open-items.md), each choice with its options and a recommendation.
-Spikes and design tasks live in the Linear project that open items links. A decision record or a
-design doc links the open item instead of restating the question.
+When work from a design lands, its PR moves the built part into `docs/architecture/`, rewritten to
+describe the code, and deletes the rest of the design folder, spikes included, once nothing in it is
+unbuilt.
+
+## Size
+
+- A doc past 250 lines, or 300 for a runbook: cut points first, then split it at a real code
+  boundary. If it is still over, say so in the PR body. Never compress sentences to fit.
+- The root README is a plain repo README: about 50 lines, and never more than 60. It holds one
+  paragraph, a quick start, the checks, the layout and a docs link, and never flags, config keys or
+  tables of states.
+- `docs/README.md` is the one index. An area of `docs/architecture/` gets a subfolder once it passes
+  about 6 docs.
 
 ## Voice
 
