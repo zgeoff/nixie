@@ -1,6 +1,7 @@
 # 0013: Definition versioning
 
 - Date: 2026-10-08
+- Updated: 2026-10-11
 - Status: decided
 - Research:
   [versioning notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/definition-versioning.md)
@@ -14,8 +15,9 @@ changes, and every record until the next change shares its hash.
 A change reaches running tasks by kind:
 
 - **Rules and policy apply at once,** to running tasks as well as new ones.
-- **Persona and job definitions stay fixed** for the life of a task, at the versions it started
-  with.
+- **Persona, job and skill definitions stay fixed** for the life of a task, at the versions it
+  started with. A skill reload moves a task to newer skill versions on request, under
+  [0038](0038-skills.md).
 
 ## Why
 
@@ -38,3 +40,7 @@ A change reaches running tasks by kind:
 - The definitions source's commit is stored as a label on each snapshot, and a rule written at
   runtime carries the ID of the approval that created it.
 - Memory versions separately, through the history table from [0010](0010-memory-store.md).
+
+## Changes
+
+- 2026-10-11: skills stay fixed per task like persona and jobs, with reload on request.

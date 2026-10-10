@@ -17,7 +17,8 @@ becomes memory. The SDK's transcript is a cache, and the event log holds the his
 Each turn's prompt runs from the most stable part to the least, so the prompt cache holds:
 
 1. **The system prompt:** nixie's instructions, the persona fixed for the task's life under
-   [0013](../../../decisions/0013-definition-versioning.md), and the pinned core.
+   [0013](../../../decisions/0013-definition-versioning.md), the
+   [skill catalog](../skills.md#the-catalog) and the pinned core.
 2. **The session:** every earlier turn, or the compaction summary and the turns after it.
 3. **The newest turn:** the task's inbox records, the dashboard data for the conversation, and the
    retrieved items.
