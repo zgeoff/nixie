@@ -40,14 +40,32 @@ system prompt, then changes the code word between resumes.
 
 ## Answer
 
-No turn completed. A rerun with the vault token stops at the first call on the subscription's weekly
-limit, so the script is untested against the model. The blocked run does not validate any
-prompt-refresh or cache claim. The memory design assumes `snapshot: false` re-renders the prompt on
-every request, as the SDK's type docs state, and gives a fork as the fallback if it does not.
+Each line is one turn: the code word the prompt holds, the answer, and the cache tokens.
+
+```text
+1 new session, APPLE: answer="APPLE" cacheRead=0 cacheWrite=4173
+2 resume, same prompt: answer="APPLE" cacheRead=4173 cacheWrite=111
+3 resume, BANANA, default snapshot: answer="APPLE" cacheRead=4284 cacheWrite=115
+4 resume, BANANA, snapshot false: answer="BANANA" cacheRead=0 cacheWrite=4504
+5 resume, BANANA, snapshot false again: answer="BANANA" cacheRead=4504 cacheWrite=178
+6 fork at turn 1, CHERRY, default snapshot: answer="APPLE" cacheRead=4284 cacheWrite=0
+7 resume original, CHERRY, default snapshot: answer="APPLE" cacheRead=4399 cacheWrite=396
+```
+
+1. Yes. System-prompt recording is on for this account: after a resume with a changed prompt, the
+   model answers from the recorded one (turn 3).
+2. Yes. With `snapshot: false` on the resume, the model answers from the changed prompt (turn 4).
+   The option applies only to the call that sets it. After a later resume without it, the model
+   answers from the recorded prompt again (turn 7), so nixie sets it on every `query()`.
+3. No. A fork with `resumeSessionAt` and `forkSession: true` keeps the recorded prompt (turn 6), so
+   a fork with the default snapshot is no fallback for a changed core.
+4. A changed prompt costs one full cache write of the prefix, about 4,500 tokens here (turn 4). The
+   next turn with the same prompt reads the prefix from the cache again (turn 5).
 
 ## Untested
 
-- Everything above, until the script runs.
-- Whether system-prompt recording is enabled for the account at all: the type docs say it is rolling
-  out, and that `snapshot` has no effect where it is not.
+- A fork with `snapshot: false`.
 - A session that compacts after the prompt changes.
+- A model behind a non-Anthropic endpoint, such as GLM through `ANTHROPIC_BASE_URL`: whether
+  recording and `snapshot` apply there at all. The type docs tie recording to the account, and the
+  run above used only the subscription.

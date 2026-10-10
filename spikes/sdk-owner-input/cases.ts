@@ -20,7 +20,14 @@ const aborter = new AbortController(),
   incoming = on(inbox, 'message', { signal: aborter.signal }),
   ownerUuid = randomUUID(),
   started = Date.now(),
-  state = { ownerRead: false, ownerSent: false, resultsAfterRead: 0, results: 0, streamed: 0 };
+  state = {
+    hostSent: false,
+    ownerRead: false,
+    ownerSent: false,
+    resultsAfterRead: 0,
+    results: 0,
+    streamed: 0,
+  };
 
 function formatElapsed(): string {
   return `${((Date.now() - started) / 1000).toFixed(1)}s`.padStart(7);
@@ -136,7 +143,9 @@ function printAssistant(message: SDKMessage): boolean {
   checkOwnerRead([...(message.user_message_uuids ?? []), message.user_message_uuid]);
   for (const block of message.message.content) {
     if (block.type === 'text') {
-      printLine(`assistant (${block.text.length} chars) ${formatShort(block.text.slice(0, 90))}`);
+      printLine(
+        `assistant (${block.text.length} chars) pineapple=${/PINEAPPLE/iu.test(block.text)} ${formatShort(block.text.slice(0, 90))}`,
+      );
       printLine(`  ...ends ${formatShort(block.text.slice(-60))}`);
     } else if (block.type === 'tool_use') {
       printLine(`tool_use ${block.name} ${formatShort(block.input)}`);
@@ -234,11 +243,14 @@ async function runDefer(session: Query): Promise<void> {
         uuid: ownerUuid,
       });
       setTimeout(() => {
+        state.hostSent = true;
         printLine('HOST SENDS "What is the secret word?"');
         sendText('What is the secret word, if anyone told you one? Reply with only the word.');
       }, 8000);
     }
-    if (message.type === 'result' && state.results === 2) {
+
+    // The shouldQuery false message emits an empty result of its own, so wait for the host's.
+    if (message.type === 'result' && state.hostSent) {
       return;
     }
   }

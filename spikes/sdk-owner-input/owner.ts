@@ -126,7 +126,7 @@ function handleAssistant(message: SDKMessage, args: OwnerArgs): void {
   checkOwnerRead([...(message.user_message_uuids ?? []), message.user_message_uuid]);
   for (const block of message.message.content) {
     if (block.type === 'text') {
-      printLine(`assistant ${formatShort(block.text)}`);
+      printLine(`assistant pineapple=${/PINEAPPLE/iu.test(block.text)} ${formatShort(block.text)}`);
     } else if (block.type === 'tool_use') {
       printLine(`tool_use ${formatShort(block.input)}`);
     }
