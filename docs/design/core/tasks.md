@@ -189,8 +189,8 @@ A worker run stops at 10 min of wall time, 25 model turns or $1 of model cost by
 comes first, and the owner can set other limits per tool. The runner reads the cost from the SDK's
 result for each turn. **Why:** a worker answers one narrow question, such as a price from a page, so
 a run past these limits is looping, and the caller gets an error it can act on instead of a silent
-spend. These limits sit inside the wider budgets and spending stop, which
-[open items](../open-items.md#phase-3-design-tasks) leave to their own design.
+spend. These limits sit inside the wider budgets and the hard spending stop, which
+[budgets](../policy/budgets.md) covers.
 
 A worker is not durable. If the step dies, the worker's imp is destroyed with it, and a rerun of the
 step starts a new worker. An outside action the worker caused runs through the outside action queue,

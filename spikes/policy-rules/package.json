@@ -1,0 +1,9 @@
+{
+  "name": "spike-policy-rules",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike": "bun matcher.ts && bun hash.ts && bun widening.ts && bun scenarios.ts"
+  }
+}
