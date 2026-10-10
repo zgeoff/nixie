@@ -93,19 +93,20 @@ An always-ask or lifting approval asks for the passkey check from
 
 The owner's answer is a checked action in the client: the client sends the proposal ID and the
 action hash it displayed, and nixie accepts the answer only when the hash matches the proposal's
-current hash and the answer came from the owner's identity on that channel. **Why:** a proposal can
-return to pending under the same ID with a new hash, such as when a rule narrows before an attempt,
-so a stale screen must not approve a different action.
+current hash and the answer came from the owner's identity on that channel. An "always allow" answer
+also echoes the rule hash it displayed, and nixie checks it against the rule it offered. **Why:** a
+proposal can return to pending under the same ID with a new hash, such as when a rule narrows before
+an attempt, so a stale screen must not approve a different action.
 
-The approval record holds the proposal ID, the action hash, the answer, the channel and device, the
-check used (a tap or a passkey), and the selected choice. The host dispatches by the stored proposal
-kind after it checks the current operation, policy, target version and permitted choice. An outside
-action consumes approval in the transaction that queues it, under
-[outside actions](../core/outside-actions.md#consuming-the-approval). A memory approval consumes it
-in the transaction that applies the exact item version, provenance, notice and receipt, as the
-[memory write contract](../memory/writes.md#memory-proposals) requires. An internal change consumes
-it with the registered host mutation. Stale or ineligible operations apply nothing. Client action
-IDs make retries return the existing receipt, and outside-action retries stay under their one
+The approval record holds the proposal ID, the action hash, the rule hash for an "always allow", the
+answer, the channel and device, the check used (a tap or a passkey), and the selected choice. The
+host dispatches by the stored proposal kind after it checks the current operation, policy, target
+version and permitted choice. An outside action consumes approval in the transaction that queues it,
+under [outside actions](../core/outside-actions.md#consuming-the-approval). A memory approval
+consumes it in the transaction that applies the exact item version, provenance, notice and receipt,
+as the [memory write contract](../memory/writes.md#memory-proposals) requires. An internal change
+consumes it with the registered host mutation. Stale or ineligible operations apply nothing. Client
+action IDs make retries return the existing receipt, and outside-action retries stay under their one
 consumed approval.
 
 A rejection is a record that the task reads in its next turn, with the owner's optional reason. A
@@ -120,13 +121,20 @@ parent field, so the owner sees which task, started by which message, proposed t
 
 ### Always allow
 
-A routine proposal from cause 3 or cause 5 offers "always allow" next to "approve once". The choice
-shows the rule it would create before the owner saves it: the tool, the destinations of this action,
-and an `eq` check for each argument the tool does not declare as free-text content. The owner can
-loosen or tighten the rule in the same form. The rule has no expiry, under 0006, and creating it is
-a widening, so the approval takes the always-ask class and its check. **Why:** the owner sees
-exactly what the rule allows before it exists, and a free-text field such as an email body never
-pins a rule to one message.
+A routine proposal from cause 3 or cause 5 offers "always allow" next to "approve once". The card
+shows the rule that the choice creates, as one sentence: the tool, the destinations of this action,
+and an `eq` check for each argument the tool does not declare as free-text content. One tap runs the
+action once and creates that rule. The rule has no expiry, under 0006.
+
+Creating the rule is a widening, and the card is its ask: the owner reads the rule on the card
+before the tap. The proposal carries a rule hash beside the action hash, and the answer must echo
+both, so the owner approves exactly the rule they read. After the tap, the client shows the rule
+under the reply with Edit and Undo, and the owner loosens or tightens it there. Undo deletes the
+rule, a narrowing that applies at once under [0005](../../decisions/0005-effects-and-taint.md).
+Whether the passkey check from [0012](../../decisions/0012-high-risk-approvals.md) covers a one-tap
+"always allow" is open until that check is designed. **Why:** the owner sees exactly what the rule
+allows before it exists, without a second confirmation, and a free-text field such as an email body
+never pins a rule to one message.
 
 The host supplies the applicable choices with each proposal and checks them again when the owner
 answers. Memory-review proposals offer no "always allow": accepting a fact does not loosen the write
