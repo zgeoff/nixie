@@ -374,3 +374,91 @@ test('it refuses a typed result outside the output schema', async () => {
     isError: true,
   });
 });
+
+test('it writes a result record for a tool that throws, as outside content', async () => {
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ run: () => Promise.reject(new Error('boom')) })],
+    queue: { enqueue: mock(), waitForOutcome: mock() },
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+    { runID: 'run-1', thread: 'task-1', tools: ['notes_read'] },
+    ctx.options,
+  );
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'the tool notes_read failed: Error: boom' }],
+    isError: true,
+  });
+  expect(entries[1]?.record).toMatchObject({
+    kind: 'tool_result',
+    parent: 1,
+    contentSource: 'untrusted',
+    payload: { outcome: 'error' },
+  });
+});
+
+test('it returns "queued as" the action ID when the wait for the outcome fails', async () => {
+  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve());
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'test.send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+      }),
+    ],
+    queue: { enqueue, waitForOutcome: () => Promise.reject(new Error('the queue stopped')) },
+  });
+
+  const result = await runToolCall(
+    { tool: 'test.send', input: { query: 'hello' }, toolUseID: null },
+    { runID: 'run-1', thread: 'task-1', tools: ['test.send'] },
+    ctx.options,
+  );
+  const actionID = enqueue.mock.calls[0]?.[0].actionID;
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: `queued as ${String(actionID)}` }],
+    isError: false,
+  });
+});
+
+test('it denies an unlisted tool at the scope stage without checking its input', async () => {
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'notes_read' })],
+    queue: { enqueue: mock(), waitForOutcome: mock() },
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: {}, toolUseID: null },
+    { runID: 'run-1', thread: 'task-1', tools: [] },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [
+      { type: 'text', text: "denied: The tool notes_read is not on this run's tool list." },
+    ],
+    isError: true,
+  });
+});
+
+test('it records a scope denial, which repeats the tool name, as outside content', async () => {
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'notes_read' })],
+    queue: { enqueue: mock(), waitForOutcome: mock() },
+  });
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+    { runID: 'run-1', thread: 'task-1', tools: [] },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[1]?.record.contentSource).toBe('untrusted');
+});

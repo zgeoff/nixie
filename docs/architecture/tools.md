@@ -36,17 +36,18 @@ one text block:
 | Queued, failed     | `action <id> failed: <reason>`               | No        |
 | Denied             | `denied: ` and the decision point's sentence | Yes       |
 | Invalid input      | The schema errors                            | Yes       |
-| Tool error         | The tool's message                           | Yes       |
+| Tool error         | The tool's message, or what it threw         | Yes       |
 | Outside the schema | A refusal that names the tool                | Yes       |
 
-An input that breaks the schema never reaches the decision point. A tool the registry does not hold
-skips the schema check, and the registry stage denies it.
+An input that breaks the schema never reaches the decision point. A tool missing from the run's tool
+list skips the schema check, and the registry or scope stage denies it. **Why:** the schema errors
+of an unlisted tool would show the model that the tool exists and what it takes.
 
 ## The call steps
 
 `runToolCall` runs each call in order:
 
-1. It checks the input against the input schema.
+1. It checks the input of a listed tool against the input schema.
 2. It asks the decision point, with the run's tool list.
 3. It writes the `tool_called` record with the decision, before the tool runs.
 4. It runs an allowed `direct` tool, or hands an allowed `queued` call to the `ActionQueue` under a
@@ -65,9 +66,10 @@ action ID, the call, the run and the sequence of the call's record.
 
 Both records carry the run's thread and one snapshot hash, and the result's parent is the call's
 sequence. `sources` maps each result field to its source of content, and the envelope's source is
-the least trusted of them. nixie's own messages count as `owner_data`, and a tool's error or an
-action's failure counts as `untrusted`. The tool-use ID comes from `claudecode/toolUseId` in the
-call's `_meta`, so the record joins the call to the model's turn.
+the least trusted of them. A message that repeats text the model chose counts as `untrusted`: schema
+errors, and a registry or scope denial with the tool's name. A tool's error and an action's failure
+count as `untrusted` too. nixie's other messages count as `owner_data`. The tool-use ID comes from
+`claudecode/toolUseId` in the call's `_meta`, so the record joins the call to the model's turn.
 
 ## One endpoint per run
 

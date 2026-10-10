@@ -6,6 +6,7 @@ import type {
   ActionQueue,
   RegisteredTool,
   ResultSources,
+  SchemaCheck,
   ToolCall,
   ToolRegistry,
   ToolRun,
@@ -44,7 +45,7 @@ export async function runToolCall(
   const call: ToolCall = { ...request, callID: crypto.randomUUID() };
   const recorder = makeCallRecorder(call, run, options);
   const registered = options.registry.findTool(call.tool);
-  const inputCheck = registered?.parseInput(call.input) ?? { isValid: true };
+  const inputCheck = checkListedInput(registered, call, run);
 
   if (!inputCheck.isValid) {
     return writeInvalidCall(recorder, inputCheck.errors);
@@ -55,6 +56,18 @@ export async function runToolCall(
   const settled = await runDecidedCall({ policy, registered, call, run, callSequence, options });
 
   return recorder.writeResult(callSequence, settled);
+}
+
+// A tool missing from the run's list skips the schema, so its errors never show the tool to the
+// model, and the decision point denies the call.
+function checkListedInput(
+  registered: RegisteredTool | null,
+  call: ToolCall,
+  run: ToolRun,
+): SchemaCheck {
+  return registered !== null && run.tools.includes(call.tool)
+    ? registered.parseInput(call.input)
+    : { isValid: true };
 }
 
 type SettledOutcome = 'result' | 'invalid' | 'denied' | 'error' | 'queued' | 'failed' | 'unknown';
@@ -159,7 +172,11 @@ function buildMessage(
 async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
   const callSequence = await recorder.writeCall(null);
 
-  return recorder.writeResult(callSequence, buildMessage('invalid', errors));
+  // the errors repeat the input's own keys, which the model chose
+  return recorder.writeResult(
+    callSequence,
+    buildMessage('invalid', errors, { source: 'untrusted' }),
+  );
 }
 
 interface DecidedCall {
@@ -178,9 +195,13 @@ function runDecidedCall(decided: DecidedCall): Promise<Settled> {
   if (policy.decision.outcome === 'deny' || registered === null) {
     const message = `denied: ${policy.sentence ?? 'no rule allowed this call'}`;
 
-    return Promise.resolve(buildMessage('denied', message));
+    // a registry or scope sentence repeats the tool name, which the model chose
+    const source = policy.decision.rule === null ? 'untrusted' : 'owner_data';
+
+    return Promise.resolve(buildMessage('denied', message, { source }));
   }
-  return runAllowedCall({ ...rest, registered });
+
+  return tryRunAllowedCall({ ...rest, registered });
 }
 
 interface AllowedCall {
@@ -191,6 +212,17 @@ interface AllowedCall {
   // the sequence of the call's record, which holds the decision that allowed it
   readonly callSequence: number;
   readonly options: ToolCallOptions;
+}
+
+// A tool or a queue that throws still settles, so the call keeps its result record.
+async function tryRunAllowedCall(allowed: AllowedCall): Promise<Settled> {
+  try {
+    return await runAllowedCall(allowed);
+  } catch (error) {
+    const message = `the tool ${allowed.registered.definition.name} failed: ${String(error)}`;
+
+    return buildMessage('error', message, { source: 'untrusted' });
+  }
 }
 
 function runAllowedCall(allowed: AllowedCall): Promise<Settled> {
@@ -240,10 +272,10 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
     callSequence: allowed.callSequence,
   });
 
-  const outcome = await allowed.options.queue.waitForOutcome(
-    actionID,
-    allowed.options.queuedWaitMs,
-  );
+  // the action is queued, so a wait that fails leaves its outcome to reach the task's inbox
+  const outcome = await allowed.options.queue
+    .waitForOutcome(actionID, allowed.options.queuedWaitMs)
+    .catch(() => null);
 
   if (outcome === null) {
     return buildMessage('queued', `queued as ${actionID}`, { isError: false, actionID });
