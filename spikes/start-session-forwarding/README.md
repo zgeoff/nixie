@@ -10,7 +10,7 @@ own. The [client design](../../docs/design/channels/client.md) describes this sh
   5.104.1, React 19.3.0
 - `@orpc/server`, `@orpc/client`, `@orpc/contract` and `@orpc/tanstack-query` 1.15.5, `elysia`
   1.4.30, `zod` 4.6.5
-- `playwright-core` 1.61.0 with its bundled Chromium
+- `playwright-core` 1.61.0 with the Chromium build it installs
 
 ## Question
 
@@ -23,6 +23,7 @@ Run each command from this directory.
 
 ```bash
 bun install
+bunx playwright-core install chromium
 bun run.ts
 bun run typecheck
 ```
