@@ -49,13 +49,9 @@ Spikes that need model calls wait for model quota. Each line names the claim the
 
 ### Memory and sessions
 
-- **The pinned core on GLM**: the [pinned core spike](../../spikes/sdk-pinned-core/README.md) shows
-  that `snapshot: false` sends a changed pinned core to GLM 5.3, but GLM fails to act on it: on the
-  first turn after the change it answered with the new code word in 2 of 6 runs, and otherwise
-  repeated the old word from its own earlier answers. Haiku answered with the new word in 3 of 3
-  runs. The candidate mitigation is a change note: a short reminder before the user message on the
-  turn after the core changes, stating the current item. With the note, GLM followed the change in 5
-  of 5 runs, both on that turn and the next, at about 30 input tokens per change.
+- **The pinned core at scale** (minutes): the
+  [pinned core spike](../../spikes/sdk-pinned-core/README.md) tested the change note with one item
+  in a short session. Test it with a full pinned core and in a session that runs for days.
 - **Compaction controls** (about 2 hours): check whether returning `decision: 'block'` from the
   `PreCompact` hook stops an automatic compaction. nixie does not rely on it until then.
 - **A resume after compaction** (about 2 hours): compact a session after a step's recorded boundary,
