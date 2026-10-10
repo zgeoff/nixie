@@ -20,8 +20,10 @@ An approval resolves one proposal from [0002](./0002-approvals.md), and nixie re
 - **Delegation only narrows.** A task or worker never holds wider permissions than the task that
   started it, and the record keeps the chain.
 - **Consent in your message.** When your last direct message asks for an action, that message
-  carries consent. nixie's consent checker from [0028](./0028-policy-design.md) confirms it. Naming
-  a target alone is not consent, and injected content cannot reach your message.
+  carries consent. Code checks that every destination appears word for word in text you typed, or
+  that a name you typed matches exactly one saved contact with that destination. nixie's consent
+  checker from [0028](./0028-policy-design.md) then confirms the request. Naming a target alone is
+  not consent, and injected content cannot reach your message.
 - **Checked identity.** An approval comes from a checked action in nixie's client, bound to that one
   proposal, from a signed-in device. An approval for the always-ask set takes the passkey check from
   [0012](./0012-high-risk-approvals.md).
