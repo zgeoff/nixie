@@ -2,9 +2,11 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Design: [decision point](../design/policy/decision-point.md), [rules](../design/policy/rules.md),
-  [proposals and approvals](../design/policy/approvals.md), [budgets](../design/policy/budgets.md)
-- Research: [policy rules spike](../../spikes/policy-rules/)
+- Design: [decision point](../design/platform/policy/decision-point.md),
+  [rules](../design/platform/policy/rules.md),
+  [proposals and approvals](../design/platform/policy/approvals.md),
+  [budgets](../design/platform/policy/budgets.md)
+- Research: [policy rules spike](../design/platform/spikes/policy-rules/)
 
 nixie's policy design settles these choices:
 
@@ -32,8 +34,8 @@ nixie's policy design settles these choices:
 ## Why
 
 - Without a checker of its own, every direct request that no rule covers would ask until auto-mode
-  is on, and [0005](./0005-effects-and-taint.md) counts such a prompt as a defect. The checker sees
-  no tool output, so injected content cannot reach it.
+  is on, and [0005](0005-effects-and-taint.md) counts such a prompt as a defect. The checker sees no
+  tool output, so injected content cannot reach it.
 - The SDK's own budget cap runs inside the imp, next to code that reads untrusted content, and the
   runner's checks between steps let a looping turn overshoot. A proxy on the host enforces budgets
   mid-turn, and the provider's limit catches a fault in the proxy.
@@ -59,7 +61,7 @@ nixie's policy design settles these choices:
 
 ## Consequences
 
-- The consent checker and the memory checker from [0011](./0011-memory-writes.md) can share one
+- The consent checker and the memory checker from [0011](0011-memory-writes.md) can share one
   implementation with different prompts.
 - The proxy needs imp's broker to forward model requests through it, which a spike on an imp host
   checks before the first build relies on it.

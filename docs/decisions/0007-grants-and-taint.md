@@ -2,15 +2,15 @@
 
 - Date: 2026-10-07
 - Status: decided
-- Research: [imp broker spike](../../spikes/imp-broker/)
+- Research: [imp broker spike](../design/platform/spikes/imp-broker/)
 
 An imp that reads untrusted content holds one grant at most: the model API's credential, under
-[0026](./0026-where-workers-and-the-conversation-run.md). That covers the conversation's imp and
-every worker's imp, since the conversation and every job run are untrusted under
-[0015](./0015-taint-scope.md). A fresh imp for a code run takes no grant at all. Code in such an imp
+[0026](0026-where-workers-and-the-conversation-run.md). That covers the conversation's imp and every
+worker's imp, since the conversation and every job run are untrusted under
+[0015](0015-taint-scope.md). A fresh imp for a code run takes no grant at all. Code in such an imp
 reaches an outside API only through one of nixie's tools on the host, where the destination limits
-from [0005](./0005-effects-and-taint.md) apply. A session on a coding adapter holds broader grants
-only by your rule for the coding context, under [0022](./0022-coding-and-code-execution.md).
+from [0005](0005-effects-and-taint.md) apply. A session on a coding adapter holds broader grants
+only by your rule for the coding context, under [0022](0022-coding-and-code-execution.md).
 
 ## Why
 

@@ -2,7 +2,7 @@
 
 - Date: 2026-10-10
 - Status: decided
-- Design: [code layout](../design/code-layout.md)
+- Design: [code layout](../design/platform/code-layout.md)
 
 nixie's code is one Bun workspace in 5 folders: `apps/` for deployables, `modules/` for domain
 modules, `guests/` for programs that run inside a sandbox, `adapters/` for implementations of

@@ -2,7 +2,8 @@
 
 - Date: 2026-10-10
 - Status: decided
-- Design: [model profiles](../design/core/models.md), [budgets](../design/policy/budgets.md)
+- Design: [model profiles](../design/platform/core/models.md),
+  [budgets](../design/platform/policy/budgets.md)
 
 nixie reaches every model through a model profile: an Anthropic-compatible base URL, a credential
 and its auth header, a model ID, a reasoning effort, an optional provider pin, and a price table.

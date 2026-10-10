@@ -2,8 +2,8 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Design: [memory writes](../design/memory/writes.md)
-- Research: [memory checks spike](../../spikes/memory-checks/),
+- Design: [memory writes](../design/platform/memory/writes.md)
+- Research: [memory checks spike](../design/platform/spikes/memory-checks/),
   [memory notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/memory-models.md)
 
 A memory write applies at once, with a notice and undo, only when all 3 checks pass:
@@ -21,26 +21,26 @@ Every other memory write is a proposal, including a write the checker rejects, i
 cannot reach. The memory reads as text the model wrote, with your quote kept as its evidence.
 
 Retiring an item from chat, as "forget that" does under
-[0031](./0031-memory-capture-context-and-removal.md), carries no new content. It needs your typed
+[0031](0031-memory-capture-context-and-removal.md), carries no new content. It needs your typed
 intent and the exact item and version, and the checker tests the request against that item. It does
 not need the old fact's destination tokens repeated.
 
 Consolidation, which merges or rewrites existing memory items in bulk, is a proposal that shows the
 diff. Every proposal is asynchronous and never blocks: the task and the conversation carry on, and
 you answer when you choose, singly or through the approval digest from
-[0006](./0006-approval-record.md).
+[0006](0006-approval-record.md).
 
 ## Why
 
-- The conversation is always untrusted under [0015](./0015-taint-scope.md), so it cannot decide
-  which writes are safe. Your own words can.
+- The conversation is always untrusted under [0015](0015-taint-scope.md), so it cannot decide which
+  writes are safe. Your own words can.
 - Injected content cannot place text in your message, so a quote check that nixie runs against its
   own record cannot be steered by injection.
 - A real quote does not prove that it supports the memory: a steered model could attach a real but
   unrelated quote to a poisoned memory. The checker closes that gap, and the token check stops the
   most harmful case, a memory that points nixie at an attacker's destination, whatever the checker
   says.
-- The checker follows the pattern of [0008](./0008-auto-mode.md): a model decides a grey zone, can
+- The checker follows the pattern of [0008](0008-auto-mode.md): a model decides a grey zone, can
   only make the outcome stricter, and fails closed.
 - In the model-eval spike, requiring an exact quote for each memory brought several models to 0
   invented entries, where a plain summary prompt invented facts on every model.
@@ -59,7 +59,7 @@ you answer when you choose, singly or through the approval digest from
 
 ## Consequences
 
-- Undo for a memory write uses the history table from [0010](./0010-memory-store.md), and permanent
+- Undo for a memory write uses the history table from [0010](0010-memory-store.md), and permanent
   deletion uses its crypto-shredding.
 - A fact that reaches nixie only through outside content, such as a flight time in an email, needs
   approval before it becomes a memory.

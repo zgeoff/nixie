@@ -2,7 +2,7 @@
 
 - Date: 2026-10-07
 - Status: decided
-- Design: [rules](../design/policy/rules.md)
+- Design: [rules](../design/platform/policy/rules.md)
 - Research:
   [policy model notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/policy-models.md)
 
@@ -40,5 +40,5 @@ When no rule matches, the outcome is ask.
 - nixie owns the rule format, its validation, the editing UI and the widening check.
 - When a real rule cannot be written with the fixed checks, its condition may use a CEL expression
   instead of a new operator. nixie cannot analyse such a rule, so widening it always asks.
-- How restrictive nixie feels depends on the starter rule set from [0028](./0028-policy-design.md)
-  and the "no match means ask" default.
+- How restrictive nixie feels depends on the starter rule set from [0028](0028-policy-design.md) and
+  the "no match means ask" default.

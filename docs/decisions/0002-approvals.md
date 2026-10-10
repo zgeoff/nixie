@@ -2,7 +2,7 @@
 
 - Date: 2026-10-07
 - Status: decided
-- Research: [defer and hold spike](../../spikes/sdk-long-hold/),
+- Research: [defer and hold spike](../design/platform/spikes/sdk-long-hold/),
   [engine notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-notes/engines.md)
 
 Every action runs through one of nixie's own tools, and an action that needs your approval becomes a
@@ -22,7 +22,7 @@ could fake one.
 The Claude Code mod in the SDK guards the SDK's built-in tools: it denies or rewrites a call at once
 and never waits for you. nixie does not use `defer`. A question to you is an ordinary message that
 ends the turn, and your reply starts the next one. An external MCP server reaches the model only
-through nixie's proxy under [0017](./0017-mcp-proxy.md).
+through nixie's proxy under [0017](0017-mcp-proxy.md).
 
 ## Why
 
@@ -31,7 +31,7 @@ once, and the model can withdraw a proposal and post a new one. A hold in the mo
 `defer` call blocks the session until you answer, so you cannot change the request first.
 
 A proposal survives a restart, works with parallel tool calls, and keeps every action in nixie's
-record on the event log from [0001](./0001-durable-layer.md).
+record on the event log from [0001](0001-durable-layer.md).
 
 ## Alternatives
 

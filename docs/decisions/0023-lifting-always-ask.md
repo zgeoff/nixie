@@ -2,9 +2,9 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Design: [rules](../design/policy/rules.md)
+- Design: [rules](../design/platform/policy/rules.md)
 
-The always-ask set from [0005](./0005-effects-and-taint.md) is the default, and a bounded rule can
+The always-ask set from [0005](0005-effects-and-taint.md) is the default, and a bounded rule can
 lift it, such as "spend up to $20 per purchase and $100 per month at these merchants". 3 guards
 apply:
 
@@ -12,7 +12,7 @@ apply:
   lifting rule cannot grow quietly. An unbounded rule, such as "spend freely", is not allowed.
 - **Creating or widening a lifting rule is always-ask.** Its confirmation shows the rule as a
   sentence and marks it as lifting the always-ask set, and it takes the passkey check from
-  [0012](./0012-high-risk-approvals.md).
+  [0012](0012-high-risk-approvals.md).
 - **The record names who proposed it:** you, or nixie from a conversation.
 
 Approvals look different by risk. nixie knows each action's declared effects, so the client renders
@@ -28,7 +28,7 @@ routine approval.
   session. Your confirmation in the client is the real guarantee whichever channel proposes the
   rule, so a separate channel would add friction without adding protection.
 - A record of who proposed each lift lets nixie and you find surprising or stale lifts, as nixie
-  reviews its own rules with you under [0006](./0006-approval-record.md).
+  reviews its own rules with you under [0006](0006-approval-record.md).
 
 ## Alternatives
 

@@ -2,15 +2,15 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Design: [memory context](../design/memory/context.md)
-- Research: [retrieval spike](../../spikes/memory-retrieval/),
+- Design: [memory context](../design/platform/memory/context.md)
+- Research: [retrieval spike](../design/platform/spikes/memory-retrieval/),
   [memory notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/memory-models.md)
 
 The conversation runs on the Agent SDK's session and compaction, with the stable part of the prompt
 first so the prompt cache holds. nixie adds retrieval over memory and over the event log, which
-holds past conversation word for word: the recall tool from [0010](./0010-memory-store.md), and a
-few retrieved items placed in the newest turn with their provenance. A compaction summary stays in
-the session and never becomes memory.
+holds past conversation word for word: the recall tool from [0010](0010-memory-store.md), and a few
+retrieved items placed in the newest turn with their provenance. A compaction summary stays in the
+session and never becomes memory.
 
 Retrieval uses local embeddings and keyword search together. One retrieval service serves per-turn
 retrieval and the recall tool. It searches active memory items and the past messages and replies
@@ -30,7 +30,7 @@ to keyword search and records the fallback.
 - A local encoder keeps memory text off any outside service.
 - The model writes a compaction summary from an untrusted conversation, and poisoning through
   compaction succeeded in 85% of cases in one study, so a summary takes no path into memory except
-  the checks in [0011](./0011-memory-writes.md).
+  the checks in [0011](0011-memory-writes.md).
 
 ## Alternatives
 

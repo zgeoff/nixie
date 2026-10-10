@@ -2,16 +2,16 @@
 
 - Date: 2026-10-07
 - Status: decided
-- Design: [decision point](../design/policy/decision-point.md)
-- Research: [policy rules spike](../../spikes/policy-rules/),
+- Design: [decision point](../design/platform/policy/decision-point.md)
+- Research: [policy rules spike](../design/platform/spikes/policy-rules/),
   [approval notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/approvals.md)
 
 ## Effects
 
 Every nixie tool declares its effects, such as read, write, send, spend, or a change to rules,
-approvals or budgets. Rules from [0004](./0004-rule-engine.md) match on those effects. 3 effects
-form the always-ask set, and always ask unless a bounded rule from
-[0023](./0023-lifting-always-ask.md) lifts them:
+approvals or budgets. Rules from [0004](0004-rule-engine.md) match on those effects. 3 effects form
+the always-ask set, and always ask unless a bounded rule from [0023](0023-lifting-always-ask.md)
+lifts them:
 
 - spending money
 - widening approvals or rules: adding or loosening an allow rule, or removing a deny rule
@@ -23,16 +23,16 @@ follows your rules, within the destination limits below.
 
 ## Tool boundary
 
-Every capability reaches the conversation as a nixie tool, as [0002](./0002-approvals.md) requires.
-A tool is either deterministic code or a worker in its own imp, and the conversation sees no
+Every capability reaches the conversation as a nixie tool, as [0002](0002-approvals.md) requires. A
+tool is either deterministic code or a worker in its own imp, and the conversation sees no
 difference. The record shows every worker run, with its transcript and sources.
 
-The conversation is always untrusted, under [0015](./0015-taint-scope.md). A tool's return type
+The conversation is always untrusted, under [0015](0015-taint-scope.md). A tool's return type
 decides whether its result counts as clean:
 
 - **Typed results,** such as a date, a number or a yes or no, are clean because nixie's policy
   endorses those low-information types, not because the values are clean. A search result is not one
-  of them, because its titles and snippets are text from the pages, under [0014](./0014-search.md).
+  of them, because its titles and snippets are text from the pages, under [0014](0014-search.md).
 - **Free text** from outside, such as a summary of a page or an email body, is untrusted.
 
 The destination limits apply to every send that starts from the conversation, and from every job
@@ -46,7 +46,7 @@ worker have little to leak.
 The target is 0 approval prompts. Every prompt records which of 6 causes produced it:
 
 1. **A direct request.** You asked for the action in a direct message, which carries consent under
-   [0006](./0006-approval-record.md).
+   [0006](0006-approval-record.md).
 2. **A repeat.** You approved the same action before and chose "always allow".
 3. **Outside steering.** nixie wants to send or act towards a destination with no standing
    permission and no consent in your message.
@@ -61,7 +61,7 @@ record groups these prompts by tool and context, and nixie can propose the rule 
 run of them, such as "you approved this 5 times; allow it?". Creating that rule is a widening, so it
 asks once. With auto-mode on, an action that no rule covers goes to auto-mode instead of you, and
 cause 3 first denies with a reason, such as "write a draft instead", before it prompts, under
-[0008](./0008-auto-mode.md). Scripted scenarios, such as finding something on the web, triaging an
+[0008](0008-auto-mode.md). Scripted scenarios, such as finding something on the web, triaging an
 inbox and booking a table, report every prompt with its cause.
 
 ## Why
@@ -80,10 +80,10 @@ inbox and booking a table, report every prompt with its cause.
   stopped only when a rule happens to ask, which breaks the principle that untrusted content cannot
   reach a new destination alone.
 - **Taint per task.** It puts the boundary inside a task instead of at the tools, and needs extra
-  rules, such as which URLs a tainted task may fetch. [0015](./0015-taint-scope.md) adopts taint per
+  rules, such as which URLs a tainted task may fetch. [0015](0015-taint-scope.md) adopts taint per
   job run as a later stage, for jobs only, where clean runs are possible.
 - **A model as the defence.** A classifier misses real overeager actions, under
-  [0008](./0008-auto-mode.md), so nixie keeps a model only as a layer that can tighten a decision.
+  [0008](0008-auto-mode.md), so nixie keeps a model only as a layer that can tighten a decision.
 - **Prompts from your ask rules counted as "no rule matched".** It keeps 5 causes, and mixes your
   own prompts with the gaps nixie tries to close.
 

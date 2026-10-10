@@ -13,11 +13,11 @@ The first build keeps the hooks that let later stages track taint per job run wi
 
 A conversation reads outside content within minutes, and no system examined clears taint once that
 content is in a model's context. A flag on the conversation would be on nearly all the time and
-would tell nixie nothing. The destination limits from [0005](./0005-effects-and-taint.md) therefore
-apply to every send that starts from the conversation. With auto-mode from
-[0008](./0008-auto-mode.md) on, such a send first gets a deny with a reason, and auto-mode never
-allows a destination the limits hold back. Consent in your own message, under
-[0006](./0006-approval-record.md), still lets a direct request run with no prompt.
+would tell nixie nothing. The destination limits from [0005](0005-effects-and-taint.md) therefore
+apply to every send that starts from the conversation. With auto-mode from [0008](0008-auto-mode.md)
+on, such a send first gets a deny with a reason, and auto-mode never allows a destination the limits
+hold back. Consent in your own message, under [0006](0006-approval-record.md), still lets a direct
+request run with no prompt.
 
 ## Jobs
 
@@ -25,7 +25,7 @@ A job is a schedule or trigger, instructions and a tool list, kept as separate f
 workers can call only the tools on that list, so the list is the job's scope. The effects that each
 tool declares give the job its risk. Creating a job is itself a tool call: a job you ask for passes
 by consent, a job nobody asked for asks, and a job whose tools spend or delete for good asks through
-the always-ask set and your ask rules, under [0028](./0028-policy-design.md).
+the always-ask set and your ask rules, under [0028](0028-policy-design.md).
 
 ## Stages
 
@@ -84,6 +84,5 @@ to endorse low-information types.
 
 - A job that sends free text to an allowed destination, such as a reply to a sender, can leak
   whatever its tools reach. The tool list limits that, and the job notice shows the list.
-- A memory write applies at once only under the checks in [0011](./0011-memory-writes.md).
-- A search under [0014](./0014-search.md) marks nothing, because the conversation is always
-  untrusted.
+- A memory write applies at once only under the checks in [0011](0011-memory-writes.md).
+- A search under [0014](0014-search.md) marks nothing, because the conversation is always untrusted.

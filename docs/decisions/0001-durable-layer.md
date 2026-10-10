@@ -2,7 +2,8 @@
 
 - Date: 2026-10-07
 - Status: decided
-- Design: [event log](../design/core/event-log.md), [tasks](../design/core/tasks.md)
+- Design: [event log](../design/platform/core/event-log.md),
+  [tasks](../design/platform/core/tasks.md)
 - Research:
   [engine notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-notes/engines.md)
 
@@ -13,7 +14,7 @@ data are tables that nixie writes in the same transaction as the record that cha
 check folds the log from the first record and compares the result with those tables, so drift
 between them shows. The designs of Absurd, OpenWorkflow and DBOS serve as reference, and nixie
 borrows their semantics without depending on them. The database is SQLite under
-[0025](./0025-database-and-topology.md).
+[0025](0025-database-and-topology.md).
 
 ## Why
 

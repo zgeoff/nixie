@@ -5,11 +5,11 @@
 - Research:
   [channel notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.5-notes/channels.md)
 
-An approval in the always-ask set from [0005](./0005-effects-and-taint.md) takes a passkey check,
-such as a fingerprint or face check, in nixie's client. That covers spending, widening a rule,
-including "always allow" and creating a mandate or a lifting rule, raising a budget, and retrying a
-payment whose outcome is unknown. Every other approval is a tap. The first build approves everything
-with a tap, and the passkey check follows as an early addition.
+An approval in the always-ask set from [0005](0005-effects-and-taint.md) takes a passkey check, such
+as a fingerprint or face check, in nixie's client. That covers spending, widening a rule, including
+"always allow" and creating a mandate or a lifting rule, raising a budget, and retrying a payment
+whose outcome is unknown. Every other approval is a tap. The first build approves everything with a
+tap, and the passkey check follows as an early addition.
 
 ## Why
 

@@ -2,7 +2,7 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Design: [tasks](../design/core/tasks.md), [actions](../design/core/actions.md)
+- Design: [tasks](../design/platform/core/tasks.md), [actions](../design/platform/core/actions.md)
 
 nixie settles the shape of tasks and actions as follows:
 
@@ -16,7 +16,7 @@ nixie settles the shape of tasks and actions as follows:
   nixie was down gets one catch-up job run when the latest missed time is within half the job's
   interval, and otherwise nixie skips it and reports the skip. Each job can set another rule.
 - **Unknown outcomes lead the approval digest.** An action whose outcome is unknown and that
-  reconciliation cannot settle leads the approval digest from [0006](./0006-approval-record.md).
+  reconciliation cannot settle leads the approval digest from [0006](0006-approval-record.md).
 
 ## Why
 

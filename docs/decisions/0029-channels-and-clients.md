@@ -2,10 +2,11 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Design: [client](../design/channels/client.md), [approvals](../design/channels/approvals.md),
-  [channel adapter](../design/channels/channel-adapter.md)
-- Research: [client RPC spike](../../spikes/client-rpc/),
-  [paste spans spike](../../spikes/paste-spans/)
+- Design: [client](../design/platform/channels/client.md),
+  [approvals](../design/platform/channels/approvals.md),
+  [channel adapter](../design/platform/channels/channel-adapter.md)
+- Research: [client RPC spike](../design/platform/spikes/client-rpc/),
+  [paste spans spike](../design/platform/spikes/paste-spans/)
 
 nixie's channels settle these choices:
 
@@ -22,9 +23,9 @@ nixie's channels settle these choices:
   hooks, paste-span logic and view state, and each client owns its UI. React Server Components are
   opt-in.
 - **Device sign-in.** An enrolment code from the host creates a device session, and a passkey joins
-  with [0012](./0012-high-risk-approvals.md). The web client holds a session cookie and Expo a
-  bearer token, and both carry the same device-session authority. The expected deployment serves
-  HTTPS on a fixed name on a private network, so the passkey needs no new infrastructure.
+  with [0012](0012-high-risk-approvals.md). The web client holds a session cookie and Expo a bearer
+  token, and both carry the same device-session authority. The expected deployment serves HTTPS on a
+  fixed name on a private network, so the passkey needs no new infrastructure.
 - **Cards and Defer.** Each proposal has a card in its thread and a place in the approval digest.
   Its choices are Approve, Always allow, Defer and Decline, plus a reply in the thread. Defer offers
   1 hour as a configurable default, this evening, tomorrow morning and a custom time, with an
@@ -32,7 +33,7 @@ nixie's channels settle these choices:
   push. At the chosen time it returns as a fresh item with a buzzing notice, subject to quiet hours.
   Defer never goes past the action's real deadline. The task gets the defer event and note and can
   do other work, and the agent does not ask why.
-- **One-tap "always allow"** follows [0006](./0006-approval-record.md).
+- **One-tap "always allow"** follows [0006](0006-approval-record.md).
 - **Two push levels.** Routine items edit the live Telegram notice quietly. Always-ask items,
   unknown outcomes and returning deferred items send a new, buzzing notice that becomes the live
   one. Quiet hours suppress loud pushes overnight except unknown outcomes, as a configurable

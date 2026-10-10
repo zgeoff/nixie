@@ -6,16 +6,16 @@
   [auto-mode decision model](https://github.com/zgeoff/auto-mode/blob/main/docs/architecture/decision-model.md)
 
 nixie uses auto-mode's core library to decide the actions that its deterministic policy leaves open.
-nixie's own layers decide first: the rules from [0004](./0004-rule-engine.md), the always-ask set
-and the destination limits from [0005](./0005-effects-and-taint.md), and the approval record from
-[0006](./0006-approval-record.md). An action that none of them settles goes to auto-mode, which
-allows it or denies it with a reason. The model reads the reason and takes another path. A prompt
-reaches you only when auto-mode's denial budget runs out.
+nixie's own layers decide first: the rules from [0004](0004-rule-engine.md), the always-ask set and
+the destination limits from [0005](0005-effects-and-taint.md), and the approval record from
+[0006](0006-approval-record.md). An action that none of them settles goes to auto-mode, which allows
+it or denies it with a reason. The model reads the reason and takes another path. A prompt reaches
+you only when auto-mode's denial budget runs out.
 
 ## What nixie needs from auto-mode
 
 - **Inputs:** the tool call, the task's scope, your last direct message, and whether the caller is
-  untrusted. Under [0015](./0015-taint-scope.md), the conversation and every job run are.
+  untrusted. Under [0015](0015-taint-scope.md), the conversation and every job run are.
 - **Outputs:** allow, or deny with a reason that holds the rule, what it refused, and what would
   clear it.
 - **Final deterministic layers.** auto-mode never overrides a decision that nixie's own layers made,
