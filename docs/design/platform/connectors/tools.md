@@ -78,8 +78,8 @@ role's [model profile](../core/models.md):
 
 - `tools: []`, `strictMcpConfig: true` and `settingSources: []`, so nothing comes from a settings
   file
-- `skills: []`, so the SDK loads no skill and the model has no Skill tool; skills reach the model
-  through nixie's [skill tools](../skills.md#the-tools)
+- `skills: []`, `verbatimPrompts: true` and the setting `disableBundledSkills: true`, so no SDK
+  skill or slash command reaches the model, as [skills](../skills.md#no-skill-from-the-sdk) sets out
 - `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, which keeps Claude Code to the model API's host
 - a neutral working directory, because the system prompt carries it
 - `options.env` with each variable passed by name, because it replaces the CLI environment

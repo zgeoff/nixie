@@ -22,8 +22,8 @@ choices:
   to the current versions, and a rule on either tool gates it.
 - **Each caller has a skill list,** as it has a tool list: the job's list, the conversation's list,
   or a worker's subset.
-- **Trust rests on the pin and your review.** nixie checks a publisher's signature when one exists
-  and never requires one. Checks in code refuse a malformed skill, and no scan lets a skill in.
+- **Trust rests on the pin and your review.** nixie requires no publisher signature. Checks in code
+  refuse a malformed skill, and no scan lets a skill in.
 - **nixie-written skills are proposals,** unless an allow rule of yours that names `skill_write`
   applies them at once with a notice and undo. A skill holding a destination you never typed stays a
   proposal whatever the rule says.
@@ -66,5 +66,7 @@ choices:
 
 - The definitions format version rises, because the filter admits scripts under `skills/`.
 - The snapshot hash covers every skill.
-- A spike checks what the SDK's `init` message lists for skills and commands under nixie's options.
+- Every model loop turns off the SDK's prompt dispatch and bundled skills, because the
+  [skills spike](../design/platform/spikes/sdk-skills/README.md) found that a prompt starting with
+  `/` otherwise runs a bundled skill or a built-in command.
 - A script uses only what the code image holds, because a code run has no network.

@@ -282,6 +282,9 @@ left untested. The [spikes index](design/platform/spikes/README.md) describes ho
   and output checks on the v2 MCP packages
 - [A definitions source](design/platform/spikes/definitions-source/) — one content hash for the same
   definitions from a repo and a local path
+- [Skills and slash commands under nixie's options](design/platform/spikes/sdk-skills/) — planted
+  skills stay out, and a prompt starting with `/` runs a bundled skill until `verbatimPrompts` stops
+  it
 - [Resume a session at a given message](design/platform/spikes/sdk-resume-at/) — `resumeSessionAt`
   and `forkSession` drop a turn that never committed
 - [The rule engine and prompt scenarios](design/platform/spikes/policy-rules/) — one decision per

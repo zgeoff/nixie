@@ -54,27 +54,33 @@ cannot read.
     "source": "https://github.com/example/skills",
     "path": "skills/pdf-forms",
     "commit": "<full-commit-sha>",
-    "contentHash": "<sha256-of-the-skill-folder>",
-    "signature": "verified"
+    "contentHash": "<sha256-of-the-skill-folder>"
   }
 }
 ```
 
 `contentHash` uses the definitions content hash over the files of that one folder. The seed
 recomputes it and refuses a snapshot in which a vendored skill differs from its entry, with the
-skill's paths. `signature` holds `verified`, `absent` or `failed`, from the vendor command. A skill
-with no lock entry is yours.
+skill's paths. A skill with no lock entry is yours.
 
-A vendor command copies a skill from a URL and commit into the definitions repo and writes its lock
-entry. It lists, for your review in the pull request:
+You vendor a skill by hand in a checkout of the definitions repo:
 
-- every destination-like token in the skill: URLs, email addresses, host names and phone numbers
-- every command in a script that installs a package or reaches the network
-- the tools and environment its `allowed-tools` and `compatibility` fields expect
-- the publisher's signature check, when the publisher signs
+1. Copy the skill's folder at a full commit SHA into `skills/<name>/`, with LF line endings.
+2. Compute its content hash from inside the folder:
 
-It can also add an advisory model review to the pull request. Nothing the command reports lets a
-skill in or keeps one out: your merge decides.
+   ```bash
+   cd skills/<name>
+   { printf 'nixie-definitions-v1\n'
+     find . -type f ! -path '*/.*' | sed 's|^\./||' | LC_ALL=C sort | while IFS= read -r f; do
+       printf '%s\t%s\t%s\n' "$f" "$(wc -c < "$f" | tr -d ' ')" "$(sha256sum "$f" | cut -d' ' -f1)"
+     done; } | sha256sum | cut -d' ' -f1
+   ```
+
+3. Add the lock entry with the URL, the path, the commit and the hash.
+4. Review the skill in the pull request before you merge it. Read its scripts for commands that
+   install a package or reach the network, and its text for URLs and addresses.
+
+nixie requires no publisher signature. The pin and your review of the pull request stand in for one.
 
 ### The checks at the seed
 
@@ -135,6 +141,15 @@ the skill's other files. A path outside the skill's folder fails. A result field
 skill or a nixie-written skill carries that skill as its source, and a result from your own skill
 carries your definitions.
 
+## No skill from the SDK
+
+Every model loop sets `skills: []`, `verbatimPrompts: true` and the setting
+`disableBundledSkills: true`, beside `settingSources: []` and `tools: []`. **Why:** the
+[skills spike](spikes/sdk-skills/README.md) found that, even with `skills: []`, a prompt starting
+with `/` runs one of the CLI's bundled skills or built-in commands, such as `/clear`, before nixie's
+policy sees it. `verbatimPrompts` delivers every prompt as written, and `disableBundledSkills`
+removes the bundled skills from the session.
+
 ## The catalog
 
 The system prompt holds the catalog, after the persona: one line per skill on the caller's list,
@@ -161,7 +176,7 @@ such as "ask before a script from a vendored skill runs".
 
 A code run has no network, so a script uses only what the code image holds, under
 [0030](../../decisions/0030-connectors-and-sandbox-environments.md). A script that needs a missing
-package fails, and the vendor command's list of expected tools shows the gap at review.
+package fails, and its `compatibility` field shows what it expects.
 
 ## Skills that nixie writes
 
@@ -188,6 +203,8 @@ skill before the export merges shows the conflict in the client to resolve.
 ## What the first build leaves out
 
 - Binary assets in a skill, such as templates and images.
+- A tool that vendors a skill: nixie fetches a skill at a pinned commit and opens a pull request on
+  the definitions repo with the lock entry and a review report.
 - Skills in coding sessions: a coding adapter owns its harness, and atc manages its own skills.
 - Per-job-run taint from a skill's provenance, which waits for the later stage of
   [0015](../../decisions/0015-taint-scope.md).
