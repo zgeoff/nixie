@@ -168,28 +168,32 @@ a revocation endpoint.
 
 ## Stop-use before removal
 
-Both Disconnect and database-owned Forget start with the same durable stop-use barrier. A checked
-host action disables the binding before cleanup; the store blocks future fetches, refreshes and
-grants. Each fetch dispatch, refresh publication and grant replacement rechecks the binding's
-removal generation under the shared publication gate. A delayed response from an earlier generation
-cannot save a token, create a key or restore an injected grant.
+Disconnect and Forget both start by disabling the credential, before any cleanup. A checked host
+action disables the binding and records it durably. From then on, the store refuses every fetch,
+refresh and grant for that binding.
 
-The operation records every grant and nixie-owned credential copy that needs removal, revokes the
-grants and deletes those copies. A restart resumes pending cleanup without enabling the binding.
-Removal stays pending until the local copies and grants leave. A request that the provider already
-received cannot be retracted; local stop-use does not promise cancellation of that request.
+A late reply cannot bring the credential back. Each binding carries a removal counter, which every
+removal and every reconnect advances. A fetch, a refresh or a grant replacement rechecks the counter
+when it saves its result, and the store drops any result that started under an older count. A
+refresh that was in flight at removal therefore cannot save a token, create a key or restore a
+grant.
 
-For database-owned Forget, the host attempts supported provider revocation before destroying the
-canonical credential key. That separately recorded outside action uses the still-readable source
-only for this removal operation; it cannot enable ordinary fetches or grants. Its bounded result
-appears as confirmed, refused or unknown. An unavailable or failed endpoint does not undo local
-stop-use or delay key deletion indefinitely.
+The store then records every grant and every copy of the credential that nixie holds, revokes the
+grants and deletes the copies. A restart resumes this cleanup and leaves the binding disabled. The
+removal stays pending until every copy and grant is gone. A request that the provider already
+received stays with the provider: stopping use locally cannot cancel it.
 
-Forget then destroys the canonical key under the existing key-store checkpoint and registered-backup
-cleanup contract. The store never creates a replacement key or retains a secret copy for a later
-revocation retry. The client distinguishes completed local erasure from unsuccessful or unconfirmed
-provider revocation, with source-side follow-up where necessary. It never reports provider
-revocation as successful without a confirmed outcome.
+Forget on a database-owned credential tries the provider's revocation before it destroys the
+credential's key. The revocation is an outside action of its own, with an outcome of confirmed,
+refused or unknown, and it uses the credential for nothing else. When the revocation endpoint fails
+or is unavailable, the credential stays disabled, and the key deletion waits only for that one
+bounded attempt.
+
+Forget then destroys the credential's key, including the key copies in every registered backup, the
+way forgetting a memory item does under [0010](../../decisions/0010-memory-store.md). The store
+creates no replacement key and keeps no copy for a later revocation retry. The client shows the
+local erasure apart from the provider's revocation, and never reports a revocation as done without a
+confirmed outcome.
 
 ## Disconnect and reconnect
 
@@ -201,6 +205,6 @@ store never calls that source's delete operation or its provider revocation endp
 The client shows the disconnected state and explains that the original secret remains at its source.
 Reconnect is an explicit checked action that enables the binding after the host validates its
 current source and access constraints. It waits for prior cleanup to finish and advances the removal
-generation, so an old refresh cannot publish into the reconnected binding. Automatic registration
-cannot reconnect a disabled binding. The interface remains a design sketch; the storage and cleanup
-implementation need restart and concurrency tests.
+counter, so a refresh from before the disconnect cannot save into the reconnected binding. Automatic
+registration cannot reconnect a disabled binding. The interface remains a design sketch; the storage
+and cleanup implementation need restart and concurrency tests.

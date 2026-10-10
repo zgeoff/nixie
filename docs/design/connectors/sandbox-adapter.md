@@ -150,12 +150,12 @@ process's cgroup 5 s later by default, through `kill_grace_ms`
 nixie builds a purpose-built image per kind of work, under
 [0026](../../decisions/0026-where-workers-and-the-conversation-run.md):
 
-| Image        | Holds                                                              | Used by                         |
-| ------------ | ------------------------------------------------------------------ | ------------------------------- |
-| Conversation | A minimal base, Bun, and the SDK with its Claude Code build        | The conversation                |
-| Code         | A familiar Linux environment with Node.js, Python and common tools | The code tool, outside workers  |
-| Worker       | The conversation image plus the code runtimes                      | Workers                         |
-| Coding       | The conversation image plus git and the owner's toolchains         | Built-in coding sessions, later |
+| Image        | Holds                                                              | Used by                             |
+| ------------ | ------------------------------------------------------------------ | ----------------------------------- |
+| Conversation | A minimal base, Bun, and the SDK with its Claude Code build        | The conversation                    |
+| Code         | A familiar Linux environment with Node.js, Python and common tools | The code tool, run outside a worker |
+| Worker       | The conversation image plus the code runtimes                      | Workers                             |
+| Coding       | The conversation image plus git and the owner's toolchains         | Built-in coding sessions, later     |
 
 The code and worker images give agents a familiar environment, rather than only a language
 interpreter. Node.js and Python are the primary general-code runtimes. The command-line toolbox

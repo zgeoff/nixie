@@ -101,7 +101,10 @@ unknown outcome under it.
 
 atc manages many coding sessions under its own rules, and nixie reaches it as an outside MCP server
 through the [MCP proxy](./mcp-proxy.md), under 0022. The proxy arrives with the first outside server
-under [0017](../../decisions/0017-mcp-proxy.md), so it arrives with the atc adapter.
+under [0017](../../decisions/0017-mcp-proxy.md), so it arrives with the atc adapter. atc's stdio
+server cannot reach atc's daemon from an imp with egress `none`, so the route to atc is an owner
+choice, and [the MCP proxy](./mcp-proxy.md#a-server-with-its-own-backend) recommends atc's HTTP
+transport with a scoped grant.
 
 The atc adapter maps the interface onto atc's MCP tools, which the proxy pins by hash with effects
 the owner declares:

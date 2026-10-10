@@ -131,10 +131,9 @@ Nixie's interfaces, outside MCP servers, credentials and search.
   registers their own OAuth clients, and the Google spike runs early
 - [0022: Coding and code execution](./decisions/0022-coding-and-code-execution.md) — running code in
   a sandbox with no grants, and coding sessions through adapters, atc first
-
 - [0030: Connectors and sandbox environments](./decisions/0030-connectors-and-sandbox-environments.md)
-  — the reverse-forward route, Google, web OAuth return, MCP v2, imp with a container sketch, and
-  the familiar Linux code environment, and Disconnect for externally managed credentials
+  — the reverse-forward route, Google, web OAuth return, MCP v2, imp with a container sketch, the
+  familiar Linux code environment, and Disconnect for externally managed credentials
 
 ### Deployment
 
@@ -251,6 +250,5 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   from a repo and a local path
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
-
 - [Tools through a reverse forward](../spikes/tools-reverse-forward/) — relay overhead, streamed
   responses, egress isolation and reopening after wake

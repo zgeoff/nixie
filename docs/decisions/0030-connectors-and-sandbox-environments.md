@@ -115,7 +115,6 @@ secrets under 0016 and 0020.
   lifecycle implementation. A sketch checks the interface without shipping that backend.
 - Bun-only code images have fewer dependencies. Node.js, Python and common tools match familiar
   agent workflows and add packages to maintain and measure.
-
 - Requiring a source change first leaves the external source as the only control, but delays
   stop-use from nixie. Disconnect adds a durable local override that the client must show clearly.
 

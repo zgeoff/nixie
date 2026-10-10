@@ -35,6 +35,31 @@ reached from the host, and the proxy refuses private, loopback and link-local ad
 server's URL names one, which guards against a server whose metadata points nixie at a private
 address.
 
+## A server with its own backend
+
+Some stdio servers exist to reach a backend on the host, and an imp with egress `none` leaves such a
+server unable to work. atc is the first case. Its stdio server, `atc mcp`, talks to atc's daemon
+over a unix socket, and the daemon checks no credential on that socket: any process that reaches it
+controls every session
+([atc protocol](https://github.com/zgeoff/atc/blob/main/docs/architecture/protocol.md)). atc also
+serves the same tools as `atc mcp --http`, over Streamable HTTP behind OAuth 2.1, where each grant
+carries scopes that limit which tools a client can call
+([remote MCP](https://github.com/zgeoff/atc/blob/main/docs/architecture/remote-mcp.md)).
+
+The route is an owner choice, with 3 options:
+
+| Option           | How the proxy reaches atc                                                     | Trade-off                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| HTTP transport   | As an HTTP server at `atc mcp --http`, with an OAuth grant from atc           | atc's scopes limit what nixie can do, and the owner revokes the grant in atc; the owner runs one more process and adds a client |
+| Forwarded socket | Runs `atc mcp` in its imp, with a forward to the daemon's socket              | The imp isolates the server's code, and the forward hands it the socket's full authority                                        |
+| Host exception   | Runs `atc mcp` on the host, as a declared exception to the imp rule for stdio | It needs no setup, and the server runs with the full authority of the owner's account                                           |
+
+The recommendation is the HTTP transport. **Why:** a grant scope is the only boundary among the 3
+options that limits what nixie can do in atc, and the proxy reaches an HTTP server with OAuth
+through the steps above and in [authorization](#authorization). It also works when atc runs on
+another machine than nixie, where a socket cannot reach. The forwarded socket and the host exception
+stay available for a stdio server that has no HTTP transport.
+
 ## Pinning
 
 The proxy lists a server's tools when it connects, when the server sends
