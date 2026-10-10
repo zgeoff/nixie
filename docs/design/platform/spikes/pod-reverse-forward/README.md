@@ -108,8 +108,8 @@ the pod ran. The stand-in replaces impd's host name and address with `<impd-host
 The tool round trip runs guest → impd → the tailnet → the pod, and each `curl` start adds to it. The
 pod reaches impd's address on 443 for the whole run, while the guest fails to reach that address and
 port. The gateway and internet failures have no positive control from the same imp, because the
-spike creates its imps only with egress `none`. 2 earlier runs on the same setup gave the same
-results, with medians of 13.3 ms and 10.9 ms.
+spike creates its imps only with egress `none`. 3 runs on this setup gave the same results, with
+medians of 10.9 ms, 13.0 ms and 13.3 ms; the record holds the 13.0 ms run.
 
 ## Limits
 
