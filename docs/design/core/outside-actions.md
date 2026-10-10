@@ -70,7 +70,9 @@ the action:
 ## Attempts and outcomes
 
 A runner claims a pending action with the same lease and generation as a task step, covered in
-[tasks](./tasks.md#steps-and-leases). Each attempt runs in 3 stages:
+[tasks](./tasks.md#steps-and-leases). The claim and attempt-start transaction refuse a task or
+source with a [recovery hold](./tasks.md#recovery-holds). Timer delivery and retry recovery cannot
+bypass that check. Each attempt runs in 3 stages:
 
 1. nixie commits an attempt record with the attempt number. From this commit on, the request may
    reach the provider.

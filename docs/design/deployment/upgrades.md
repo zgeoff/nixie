@@ -108,8 +108,10 @@ read the schema, the deploy finishes the rollback, and nothing written since the
 When the older build refuses the schema, the owner restores the copy taken before the migration:
 
 1. Stop nixie with `docker compose stop nixie`.
-2. Run `nixie rollback`, which sets the current database aside, copies the newest pre-migration copy
-   for the build's schema into place, and removes the old write-ahead log files.
+2. Run `nixie rollback`, which writes the incomplete-recovery marker before replacement, sets the
+   current database aside, copies the newest pre-migration copy for the build's schema into place,
+   and removes the old write-ahead log files. It completes the outcome import and recovery holds
+   before clearing the marker.
 3. Start nixie with `docker compose up -d --wait`.
 
 The deploy spike ran these steps: build 1 refused build 2's schema, came back healthy at its own
@@ -130,11 +132,13 @@ The restored database lacks every record written since the upgrade, including ou
 ran then. `nixie rollback` reads the set-aside database before it starts nixie, and writes a record
 for each outside action in that span, with its outcome, into the restored log. The client lists
 those actions for the owner beside the unknown outcomes from
-[outside actions](../core/outside-actions.md#unknown-outcomes-and-the-owner), and nixie starts every
-task that ran in that span paused. **Why:** a task resumed from its pre-upgrade step would repeat
-those actions, and without the record the restored log holds no trace of them. `nixie rollback`
-reads only the outside action queue from the set-aside database, a table whose migrations only add
-columns, so the older build reads it.
+[outside actions](../core/outside-actions.md#unknown-outcomes-and-the-owner), and the rollback
+command installs [recovery holds](../core/tasks.md#recovery-holds) for affected tasks and autonomous
+launch sources before startup. Crash recovery preserves those holds; only the corresponding checked
+owner resume or re-enable clears them. **Why:** a task resumed from its pre-upgrade step would
+repeat those actions, and without the record the restored log holds no trace of them.
+`nixie rollback` reads only the outside action queue from the set-aside database, a table whose
+migrations only add columns, so the older build reads it.
 
 ## Kubernetes
 

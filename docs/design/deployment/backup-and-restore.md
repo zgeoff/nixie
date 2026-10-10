@@ -162,8 +162,8 @@ the owner's recovery key. On a host that meets [the host's needs](./deployment.m
    docker compose run --rm --no-deps nixie restore keys latest /data
    ```
 
-3. Start nixie with `docker compose up -d --wait`. Expect every part of the readiness list to turn
-   ready once impd answers.
+3. Start nixie with `docker compose up -d --wait`. Expect the client and control plane to become
+   ready once impd answers, with recovered work held for owner review.
 4. Make a new host key, add it with `sops updatekeys`, commit, and put the recovery key away again.
 
 In the deploy spike, the clean host restored both repos, started healthy with an intact database,
@@ -172,11 +172,13 @@ recovery key alone. Restore and start took 8.6 s on a small database.
 
 A restored database is older than the lost host by up to one backup interval, so the outside world
 moved on after its last record: an action may have run, or an email may have arrived, after the
-backup. nixie therefore starts a restored database with every task paused, and runs the
-[crash recovery](../core/tasks.md#crash-recovery) steps first. The client shows the time the backup
-was taken and the tasks that were running then, and the owner resumes each task. **Why:** a task
-resumed at once would repeat its last uncommitted step, which may hold an outside action that ran
-after the backup, and only the owner can check the outside world.
+backup. The restore command therefore installs the durable
+[recovery holds](../core/tasks.md#recovery-holds) before startup, then runs crash recovery without
+clearing them. Task claims, autonomous launches and new outside-action attempts remain held until
+the corresponding checked owner resume or re-enable. The client shows the time the backup was taken
+and the tasks that were running then, and the owner resumes each task. **Why:** a task resumed at
+once would repeat its last uncommitted step, which may hold an outside action that ran after the
+backup, and only the owner can check the outside world.
 
 ## The restore check
 
