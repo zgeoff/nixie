@@ -13,7 +13,8 @@ Postgres is the path if nixie ever needs a second host.
 
 nixie is a modular monolith: one deployable, with each module a workspace package, and lint rules
 that block imports of another module's internals. The first build leaves out database roles per
-module.
+module. The web client runs as its own server beside the monolith, under
+[0029](./0029-channels-and-clients.md).
 
 ## Why
 

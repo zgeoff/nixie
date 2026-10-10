@@ -11,10 +11,12 @@ nixie's channels settle these choices:
 
 - **Typed API.** oRPC runs through Elysia, with server-sent events for the live stream. Contract
   packages and typed checked actions connect both clients to the same procedures.
-- **Two clients.** The web client uses TanStack Start inside nixie's own Elysia process, with
-  `@orpc/tanstack-query` and an isomorphic link, and Start's server code calls the procedures
-  in-process. Android uses Expo. A shared package holds the contract, query hooks, paste-span logic
-  and view state, and each client owns its UI. React Server Components are opt-in.
+- **Two clients.** The web client is TanStack Start running as its own server, beside nixie's
+  process, with `@orpc/tanstack-query` and an isomorphic link. Start's server code calls nixie's
+  procedures over the private network. Start keeps no session of its own: it forwards your device
+  session to nixie's API on every call, so the API is the one place that checks authority. Android
+  uses Expo. A shared package holds the contract, query hooks, paste-span logic and view state, and
+  each client owns its UI. React Server Components are opt-in.
 - **Device sign-in.** An enrolment code from the host creates a device session, and a passkey joins
   with [0012](./0012-high-risk-approvals.md). The web client holds a session cookie and Expo a
   bearer token, and both carry the same device-session authority. The expected deployment serves
@@ -43,7 +45,9 @@ nixie's channels settle these choices:
   heavy rendering off the browser. Start also follows the existing pattern of oRPC contract packages
   and TanStack Query, so code and habits carry over.
 - Separate UIs keep browser paste events and desktop controls, at the cost of 2 UI implementations.
-- Device sessions keep one authority model across all routes.
+- A separate Start server keeps Vite, server rendering and the UI framework out of the process that
+  holds policy, credentials and the approval check, and a UI crash or deploy never restarts that
+  process. Forwarding the device session keeps one authority model across all routes.
 - Cards keep an approval beside its context, and the approval digest gathers items from your
   absence.
 - Defer lets you choose when to answer without authorizing anything or losing a real deadline.
@@ -56,6 +60,10 @@ nixie's channels settle these choices:
   contract to Elysia.
 - **A separate Vite web app, or one Expo UI for both clients.** Vite gives up server rendering, and
   one Expo UI makes the web client a phone app in a browser.
+- **Start inside nixie's Elysia process.** It saves a process and a local hop, and it puts the UI's
+  dependencies and failures inside the trusted core.
+- **A Start server with its own session.** It gives the web client a second auth path that must stay
+  in step with the API's.
 - **A password, or a passkey from day one.** A password is one more secret to guard and reset.
 - **The approval digest alone, with no cards.** Every approval becomes a trip to one place.
 - **One edited notice for all arrivals, or a new notice for every batch.** An edit never buzzes, and
@@ -64,5 +72,6 @@ nixie's channels settle these choices:
 
 ## Consequences
 
-- Integration checks remain for Start inside Elysia, the Expo stream on a device and Android paste
-  edge cases.
+- The deployment runs the web client as its own container or pod beside nixie.
+- Integration checks remain for session forwarding through the Start server, the Expo stream on a
+  device and Android paste edge cases.
