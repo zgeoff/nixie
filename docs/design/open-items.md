@@ -1,8 +1,8 @@
 # Open items
 
 Phase 3, the design phase, has the voice stack and the model per job undecided, and the Google
-refresh on day 8 still to run. The design work ahead covers the terminology pass, the channel
-adapter and trigger source, main-thread routing, and the stages agreed for after the first build.
+refresh on day 8 still to run. The design work ahead covers the terminology pass and the stages
+agreed for after the first build.
 
 ## Deferred decisions
 
@@ -34,6 +34,14 @@ adapter and trigger source, main-thread routing, and the stages agreed for after
 
 ## Spikes to run
 
+- **Start inside Elysia** (about half a day): mount Start's fetch handler in nixie's Elysia process,
+  check the isomorphic oRPC link and device-session checks on both routes, and check that no server
+  implementation reaches the browser bundle.
+- **Android paste edge cases**: check Gboard clipboard chips and other keyboard insertion paths
+  after the native paste module exists. Keep known ambiguous paths unknown until tested. The basic
+  native paste hook belongs in the first Android build, under
+  [0029](../decisions/0029-channels-and-clients.md).
+
 - **The Google refresh on day 8** (minutes, on or after 2026-10-16): run `bun refresh.ts` in the
   [Google OAuth spike](../../spikes/google-oauth/). Day 0 showed an unverified production client
   holding Gmail's restricted scope; day 8 shows whether its token outlives testing mode's 7-day
@@ -59,10 +67,28 @@ adapter and trigger source, main-thread routing, and the stages agreed for after
   and measure the bar from [0008](../decisions/0008-auto-mode.md): catastrophic actions allowed per
   stage, harmless denials per action, consent credited, and escalations per task. nixie switches
   auto-mode on only when it meets that bar.
-- **Owner messages into a running task** (about half a day): test a `now` message while the model
-  writes text, a `now` message during a tool that cannot move to the background,
-  `shouldQuery: false`, and `interrupt()` with queued messages. The answers shape how routing from
-  [0018](../decisions/0018-main-thread-and-tasks.md) delivers a message to a running task.
+- **Owner messages into a running task** (about 1 hour, once the model account has quota): run the 6
+  commands in the [owner input spike](../../spikes/sdk-owner-input/README.md#untested), which cover
+  a `now` message during a reply with no tool running, a tool that cannot move to the background, a
+  message with no priority, `shouldQuery: false`, and `interrupt()` with a queued message. The
+  scripts are written and have not run. The answers confirm or change the default in
+  [the client](./channels/client.md#messages-into-a-running-task).
+- **The Expo client on Android** (about 1 day, with an Android device or emulator): run the
+  [typed API spike](../../spikes/client-rpc/README.md) client inside an Expo SDK 57 app, and check
+  that `expo/fetch` streams the live view and resumes after the phone sleeps. In the same app, check
+  [paste span](../../spikes/paste-spans/README.md) capture with a native paste hook, a keyboard
+  clipboard suggestion, swipe typing, autocorrect and voice typing.
+- **A Telegram notice round trip** (about 2 hours, with a bot the owner registers): pair a chat with
+  a `/start` code, send a content-free notice with a link button, edit it in place, and check that a
+  message from a second account gets only a refusal record. It needs a bot token, a new credential,
+  under [the channel adapter](./channels/channel-adapter.md#the-push-notifier).
+- **Routing quality** (about half a day): replay a scripted day of owner messages against a set of
+  tasks and count the messages the conversation routes wrongly, with the move records from
+  [the live view](./channels/live-view.md#routing-marks) as the measure in real use. A misrouted
+  message fails quietly under [0018](../decisions/0018-main-thread-and-tasks.md).
+- **Paste spans in WebKit** (about 1 hour, on a host with WebKit's libraries or a Mac): rerun the
+  [paste span spike](../../spikes/paste-spans/README.md) in WebKit, which failed to launch where the
+  spike ran.
 - **The sandboxed placement under load** (about half a day): a long turn under imp's broker, which
   serves HTTP/1.1 only, with a token rotation mid-turn, and parallel tool calls over HTTP MCP. The
   spike for [0003](../decisions/0003-sdk-placement.md) saw only short turns and one call at a time.
@@ -95,24 +121,10 @@ adapter and trigger source, main-thread routing, and the stages agreed for after
 - **The terminology pass.** The terms in [0018](../decisions/0018-main-thread-and-tasks.md), such as
   main thread, task and worker, are provisional, and a terminology pass settles them before any
   code. It may draw on a metaphor such as the chief of staff.
-- **The channel adapter and the trigger source, in full.** The first build needs a client and
-  schedules, so Phase 3 designs both interfaces from [0016](../decisions/0016-own-interfaces.md)
-  completely. The trigger source records a cursor per source in the event log, and the design
-  decides which connectors need push at all.
 - **Rough sketches of the connector, the credential store and the definitions source.**
   [0016](../decisions/0016-own-interfaces.md) and [0020](../decisions/0020-deployment.md) ask for
   sketches that check the channel adapter and the trigger source leave room for them. The credential
   store's backend interface is open, and the first real connector settles the final shapes.
-- **Main-thread routing and the task board.** The main thread routes each owner message to a task
-  and names where it sent it, from a live task board of every task's status
-  ([0018](../decisions/0018-main-thread-and-tasks.md)). Routing quality is on the critical path,
-  because a misrouted message fails quietly. [Tasks](./core/tasks.md#routing-from-the-conversation)
-  proposes the routing tools and records.
-- **The live view.** The live view shows running and finished tasks and what each did and why, as a
-  projection of the event log that the task board reads too
-  ([0018](../decisions/0018-main-thread-and-tasks.md)). The
-  [event log design](./core/event-log.md#the-live-view-and-the-task-board) proposes how both read
-  it.
 - **Compaction controls and the pinned core.** [0024](../decisions/0024-memory-in-context.md) runs
   the conversation on the SDK's session and compaction. Phase 3 checks which compaction controls the
   SDK offers, and how large the pinned core can grow before the prompt pays for it.
@@ -150,7 +162,10 @@ adapter and trigger source, main-thread routing, and the stages agreed for after
   nixie's policy decides which low-information types it endorses as clean.
 - **The passkey check for high-risk approvals.** The first build approves everything with a tap, and
   a passkey check for the always-ask set follows as an early addition
-  ([0012](../decisions/0012-high-risk-approvals.md)).
+  ([0012](../decisions/0012-high-risk-approvals.md)). Under 0012, an "always allow" takes the
+  passkey too, because it widens a rule. The 0012 design weighs a proposed exemption: a rule no
+  wider than the card's own action, with the same tool and the same destination, stays one tap, and
+  a broader rule asks for the passkey ([0029](../decisions/0029-channels-and-clients.md)).
 - **The MCP proxy.** It arrives with the first outside MCP server
   ([0017](../decisions/0017-mcp-proxy.md)). It needs to know which MCP revision the SDK's in-process
   server speaks, whether it passes structured output through, and how long a server keeps an input
@@ -165,6 +180,11 @@ adapter and trigger source, main-thread routing, and the stages agreed for after
 - **An iOS build.** The native app is Android first, and an iOS build needs the Apple Developer
   Program, with TestFlight builds that expire after 90 days
   ([0009](../decisions/0009-first-channel.md)).
+- **Native push for the Android app.** The app in tier 2 receives the same content-free notice as
+  the Telegram notifier, through Expo's push service or Firebase Cloud Messaging directly, with a
+  notification action that requires a device unlock
+  ([the channel adapter](./channels/channel-adapter.md#room-for-later-channels)). The notice holds
+  no content, so a relay learns only that something waits; the Android app's design picks the route.
 - **A chat app as a full channel.** Telegram or another chat app can carry the conversation as an
   opt-in for a context where the owner accepts the storage
   ([0009](../decisions/0009-first-channel.md)).

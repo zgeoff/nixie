@@ -56,6 +56,21 @@ the decisions it rests on.
 - [Budgets, lifts and the spending stop](./design/policy/budgets.md) — budgets, lifting rules,
   limits on model cost and the hard spending stop
 
+### Channels
+
+- [Channels design index](./design/channels/README.md) — the client, the channel adapter, approvals,
+  the live view and the trigger source
+- [The client](./design/channels/client.md) — the web client and the Expo app, the typed API,
+  sessions, paste spans, messages into a running task, and the agreed client choices
+- [The channel adapter](./design/channels/channel-adapter.md) — the interface, the owner record, and
+  the Telegram notifier with its content-free notice
+- [Approvals in the client](./design/channels/approvals.md) — approval cards, risk classes, the
+  server's check, and the digest sheet
+- [The live view and the dashboard](./design/channels/live-view.md) — the dashboard, a task as a
+  conversation, stepping in and routing marks
+- [The trigger source](./design/channels/trigger-source.md) — schedules, polls, webhooks, and which
+  services need push
+
 ## Decisions
 
 What nixie has settled, each with its reasons and the alternatives, grouped by topic. The numbers
@@ -125,6 +140,9 @@ Clients, push and voice.
 
 - [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
   conversation, approvals and voice, and chat apps carry content-free pushes
+
+- [0029: Channels and clients](./decisions/0029-channels-and-clients.md) — oRPC, Start and Expo,
+  device sessions, deferred approvals, two push levels and native Android paste capture
 
 ### Connectors
 
@@ -253,3 +271,7 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   `forkSession` drop a turn that never committed
 - [The rule engine and prompt scenarios](../spikes/policy-rules/) — one decision per call whatever
   the rule order, a stable snapshot hash, a conservative widening check, and prompts by cause
+- [A typed API with a live stream](../spikes/client-rpc/) — one oRPC contract on Bun with checked
+  actions and a stream that resumes by sequence
+- [Paste spans in a text box](../spikes/paste-spans/) — which spans of a message the owner pasted,
+  kept right through edits

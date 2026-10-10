@@ -12,11 +12,12 @@
 A task is durable work with its own context, such as "keep the backlog moving today", and nixie runs
 each one as an explicit state machine over the [event log](./event-log.md), under
 [0001](../../decisions/0001-durable-layer.md). A runner holds a lease on a task and runs one step at
-a time, and a step is usually one model turn. A task that waits on a proposal, a timer or a message
-holds no process, so it survives any restart or deploy. The conversation routes the owner's messages
-to tasks from the task board, a job's schedule starts a task for each run, and a worker is a tool
-call that runs inside one step, entirely inside its own imp. Everything in this doc beyond the
-decisions it links is a proposal, and the state names are this design's, not a decision's.
+a time, and a step is usually one model turn. A task that waits on a proposal, a timer, a message or
+a trigger event holds no process, so it survives any restart or deploy. The conversation routes the
+owner's messages to tasks from the task board, a job's schedule starts a task for each run, and a
+worker is a tool call that runs inside one step, entirely inside its own imp. Everything in this doc
+beyond the decisions it links is a proposal, and the state names are this design's, not a
+decision's.
 
 ## States
 
@@ -37,13 +38,16 @@ with the owner's pause, stop and close.
 
 Each task has an inbox: the records addressed to it that it has not read yet, found by a read cursor
 on the task row. Owner messages, approvals, lapsed proposals, fired timers and outside action
-outcomes all land in the inbox as records. A step reads everything in the inbox, and its commit
-moves the cursor.
+outcomes all land in the inbox as records. nixie passes each inbox record's ID as the SDK message
+`uuid`, and matches the SDK's read acknowledgement to that ID. A step's commit marks only the
+records that the model read. The cursor advances over contiguous read records; unread gaps stay
+eligible for delivery. A crash before commit leaves those records unread for the rerun.
 
-A waiting task holds a set of open waits, each naming what it waits on: a proposal ID, a timer ID or
-an owner reply. A task with open waits and other work to do stays `ready`, because a proposal never
-blocks the work around it ([0011](../../decisions/0011-memory-writes.md) states this for memory, and
-the same holds for every proposal).
+A waiting task holds a set of open waits, each naming what it waits on: a proposal ID, a timer ID,
+an owner reply or a trigger event matcher. A task with open waits and other work to do stays
+`ready`, because a proposal never blocks the work around it
+([0011](../../decisions/0011-memory-writes.md) states this for memory, and the same holds for every
+proposal).
 
 ## Pause, stop and close
 
@@ -99,7 +103,12 @@ buffers an approval that arrives before its wait registers.
 default, and the owner can set another time per effect. **Why:** 72 hours spans a weekend away, and
 an action approved later than that, such as a reply, is likely stale, while the model can propose it
 again. When the timer fires, nixie records the lapse, closes the proposal and puts the lapse record
-in the task's inbox, so the task's next turn learns of it.
+in the task's inbox, so the task's next turn learns of it. An owner defer under
+[0029](../../decisions/0029-channels-and-clients.md) extends that lapse and sets a resurface timer,
+never past the action's real deadline. The extension covers one full configured proposal-lapse
+interval after resurface, or after quiet hours end if resurface falls inside them, and never
+shortens an existing lapse. The real deadline still caps it. The defer event joins the task's inbox
+without closing the proposal or authorizing its action.
 
 **Timers.** A durable timer is a row with a due time and the record to write when it fires. A
 sweeper fires every due timer in a transaction that writes the record and removes the timer. A timer
@@ -108,9 +117,15 @@ report of late triggers.
 
 **Owner messages.** nixie writes each owner message to the log first. When the task is `running`,
 nixie also passes the message into the live session with `streamInput()`; otherwise the message
-waits in the inbox for the next turn. The research found that the `now` priority does not interrupt
-at once ([2.2 and 2.3 landscape](../../research/2.2-2.3-core-and-policy.md#owner-messages)), and the
-[owner input spike](../open-items.md#spikes-to-run) settles which priority nixie uses.
+waits in the inbox for the next turn. The record ID becomes its SDK message `uuid`, so a step's
+commit marks only the messages it read. `next` is the default, with an explicit interrupt control;
+[the client](../channels/client.md#messages-into-a-running-task) records the spike's evidence and
+the cases still untested.
+
+**Trigger events.** A task can wait on a typed trigger event matcher as a fourth wait kind. The
+[trigger source](../channels/trigger-source.md) writes the event to the log and each matching task's
+inbox in the same transaction as its dedupe key and cursor. Events that arrive before wait
+registration stay eligible from the step's captured sequence, so registration cannot lose an event.
 
 ## Routing from the conversation
 
@@ -128,6 +143,13 @@ brief. Each call writes a routing record that names the message and the task, an
 reply names where it sent the message, as [0018](../../decisions/0018-main-thread-and-tasks.md)
 requires. The client shows the routing record on the message, so the owner can move a misrouted
 message to another task with one action.
+
+Moving a message is a checked owner action. Its correction record holds the message ID, source task
+and destination task. One transaction updates the routing projection, puts a correction in the
+source inbox and puts the message in the destination inbox. The source learns to drop work on the
+moved message; the move does not undo an outside action that already started. Original records
+remain unchanged. The client shows the correction through
+[the routing mark](../channels/live-view.md#routing-marks).
 
 A task reports back by writing a report record, and the conversation's next turn reads it from its
 inbox. The conversation never waits on a task.
