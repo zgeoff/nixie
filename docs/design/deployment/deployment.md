@@ -207,10 +207,11 @@ writer sets its shape:
   the web client
 - the secrets file and its decryption key as a Secret mounted read-only, which nixie decrypts at
   start
-- impd on each node that runs nixie, outside the cluster, with a node-level port that lets imp's
-  reverse forward reach nixie's tool endpoint in its pod
+- impd on each node that runs nixie, outside the cluster, with its API reachable from nixie's pod
 
 A `ReadWriteOnce` volume limits writable attachment to a node, not to one pod, so the deployment
-keeps a single writer through rollouts and forced recovery. The reverse forward into a pod is a
-spike in [open items](../open-items.md#spikes-to-run), which checks that the route works with egress
-`none` still holding.
+keeps a single writer through rollouts and forced recovery. imp's client delivers each
+reverse-forward connection to nixie over nixie's own connection to impd, so the pod opens no inbound
+port for its tools. The reverse forward from a pod is a spike in
+[open items](../open-items.md#spikes-to-run), which checks that route with egress `none` still
+holding.

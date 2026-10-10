@@ -40,13 +40,16 @@ from [0028](./0028-policy-design.md). Once you merge it, the next seed marks tho
 
 ## Deployment models
 
-- **Docker Compose on one host:** the recommended path. It runs one pinned OCI image beside an imp
-  host, with upgrades as pull requests that bump the image digest and a database copy before each
-  migration, secrets encrypted with sops and age, backups under
-  [0032](./0032-offsite-backups-and-replication.md), and access over a private network such as
-  Tailscale, with HTTPS on a fixed name.
-- **Kubernetes managed with Pulumi:** viable, with the same images and the same separate definitions
-  repo.
+- **Kubernetes:** one nixie replica in a StatefulSet, with impd on the node outside the cluster. It
+  suits a deployment that runs for good.
+- **Docker Compose:** the reference recipe beside an imp host, for local and development use and for
+  any single host.
+
+Both models are supported from the first build, with the same pinned images, the same separate
+definitions repo, one encrypted secrets file that nixie decrypts in its own process, upgrades as
+pull requests that bump the image digest, a database copy before each migration, backups under
+[0032](./0032-offsite-backups-and-replication.md), and access over a private network such as
+Tailscale, with HTTPS on a fixed name.
 
 ## Why
 
@@ -62,6 +65,8 @@ from [0028](./0028-policy-design.md). Once you merge it, the next seed marks tho
 
 ## Alternatives
 
+- **Compose first, Kubernetes later.** It keeps the first build on one host, and leaves a cluster
+  deployment untested until after the first build.
 - **One deployment repo that pins the version and holds the definitions.** It suits Compose, and
   puts definitions next to infrastructure for other setups.
 - **The repo as the baseline and the database as a runtime layer on top.** It leaves 2 places to

@@ -144,8 +144,8 @@ connects as an external server over HTTP, configured by the deployment
 ## Deployment
 
 Your definitions seed the database from a definitions source, and a seed that widens a rule waits
-for your confirmation. Docker Compose on one host is the recommended deployment, and Kubernetes is
-also viable ([0020](./decisions/0020-deployment.md)).
+for your confirmation. Kubernetes and Docker Compose are both supported from the first build, with
+Compose as the recipe for local use and any single host ([0020](./decisions/0020-deployment.md)).
 
 Restic snapshots the data and key stores. Litestream replicates the database to S3-compatible
 storage through an rclone crypt gateway on the host, so the provider holds only ciphertext, and the
