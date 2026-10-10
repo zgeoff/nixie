@@ -130,11 +130,13 @@ Creating the rule is a widening, and the card is its ask: the owner reads the ru
 before the tap. The proposal carries a rule hash beside the action hash, and the answer must echo
 both, so the owner approves exactly the rule they read. After the tap, the client shows the rule
 under the reply with Edit and Undo, and the owner loosens or tightens it there. Undo deletes the
-rule, a narrowing that applies at once under [0005](../../decisions/0005-effects-and-taint.md).
-Whether the passkey check from [0012](../../decisions/0012-high-risk-approvals.md) covers a one-tap
-"always allow" is open until that check is designed. **Why:** the owner sees exactly what the rule
-allows before it exists, without a second confirmation, and a free-text field such as an email body
-never pins a rule to one message.
+rule, a narrowing that applies at once under [0005](../../decisions/0005-effects-and-taint.md). Once
+the passkey check from [0012](../../decisions/0012-high-risk-approvals.md) ships, an "always allow"
+takes it, because the rule widens policy. The first build approves it with the tap. The 0012 design
+weighs a proposed exemption for a rule no wider than the card's own action, listed in
+[open items](../open-items.md). **Why:** the owner sees exactly what the rule allows before it
+exists, without a second confirmation, and a free-text field such as an email body never pins a rule
+to one message.
 
 The host supplies the applicable choices with each proposal and checks them again when the owner
 answers. Memory-review proposals offer no "always allow": accepting a fact does not loosen the write
