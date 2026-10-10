@@ -3,14 +3,15 @@
 - Decisions: [0020](../../../decisions/0020-deployment.md),
   [0032](../../../decisions/0032-offsite-backups-and-replication.md),
   [0025](../../../decisions/0025-database-and-topology.md),
-  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md)
+  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
+  [0035](../../../decisions/0035-backup-sidecar.md)
 
-nixie runs as one container from one image, with the web client in a second container beside it,
-next to an imp host on the same machine. Its state is one SQLite database and a key store beside it.
-nixie supports 2 deployments from the first build: [Kubernetes](#kubernetes), and Docker Compose,
-the reference recipe for local and development use and for any single host. The deployment repo pins
-the images by digest and holds one encrypted secrets file. An upgrade is a merged pin bump, and a
-rollback is a revert.
+nixie runs as one container from one image, with the web client in a second container and the backup
+sidecar in a third, next to an imp host on the same machine. Its state is one SQLite database and a
+key store beside it. nixie supports 2 deployments from the first build: [Kubernetes](#kubernetes),
+and Docker Compose, the reference recipe for local and development use and for any single host. The
+deployment repo pins the images by digest and holds one encrypted secrets file. An upgrade is a
+merged pin bump, and a rollback is a revert.
 
 nixie owns portable behaviour: the images, the lifecycle, and the secrets, backup and health
 contracts. The deployment repo owns the infrastructure, the secrets, the backend settings and the
@@ -25,10 +26,10 @@ The first build ships the smallest deployment that keeps every guarantee true:
 - **Kubernetes or Compose,** with impd beside nixie, the nixie and web images pinned by digest, and
   one encrypted secrets file that nixie decrypts in its own process.
 - **Hourly restic snapshots** of `nixie.db` and `keys.db` to 2 repos, with the key repo kept to one
-  snapshot.
-- **Forget completes after the key repo prunes.** A forget starts a key backup at once, and key
-  publication and forget share one lock. The forget reports pending until that job prunes every
-  older key snapshot. [Memory](../memory/store.md) owns what forget means.
+  snapshot. nixie makes the copies, and the [backup sidecar](backup-and-restore.md) ships them.
+- **Forget completes after the key repo prunes.** A forget stages a key backup at once, and key
+  backups publish in the order nixie staged them. The forget reports pending until that job prunes
+  every older key snapshot. [Memory](../memory/store.md) owns what forget means.
 - **Restore on a new host,** with recovery holds that stop a restored task from repeating an action.
 - **Upgrades as pin bumps,** by hand or by a poll timer. Every release keeps its schema readable by
   the release before it, so a rollback by one release is a revert with no restore.
@@ -73,9 +74,10 @@ its own schedule. A model in an imp reaches nixie's tools through imp's reverse 
 
 ## The image
 
-A nixie release publishes one nixie image, one web image and one imp image per kind of work, all
-from one commit and each pinned by digest. The nixie image carries a manifest of its imp images'
-digests. The deployment pins the nixie and web images, and both pins move in the same pull request.
+A nixie release publishes one nixie image, one web image, one backup image and one imp image per
+kind of work, all from one commit and each pinned by digest. The nixie image carries a manifest of
+its imp images' digests. The deployment pins the nixie, web and backup images, and the 3 pins move
+in the same pull request.
 
 The oRPC contract follows the schema rule from [upgrades](upgrades.md): a release adds procedures
 and fields, and a removal waits until the release before no longer calls it, so an API serves the
@@ -89,9 +91,12 @@ credentials. **Why:** the process that holds policy, credentials and the approva
 UI framework or server-rendering dependencies.
 
 The nixie image holds Bun on a slim base, every workspace package bundled with `bun build`, and the
-`sops`, `restic`, `litestream` and `rclone` binaries. The nixie image holds no Claude Code build.
-**Why:** every model loop runs in an imp, and leaving out the SDK's native packages saves about 480
-MB.
+`sops` binary. The nixie image holds no Claude Code build and no backup tools. **Why:** every model
+loop runs in an imp, and leaving out the SDK's native packages saves about 480 MB.
+
+The backup image holds Bun on a slim base, the backup sidecar's program, and the `sops`, `restic`,
+`litestream` and `rclone` binaries. The image build pins each binary by version and checks its
+published checksum before it adds the binary.
 
 | Image        | Holds                                              | Runs                            |
 | ------------ | -------------------------------------------------- | ------------------------------- |
@@ -109,30 +114,35 @@ images hold no personal data.
 
 ## Secrets
 
-nixie reads its secrets from one encrypted file and decrypts it in its own process at start. The
-deployment repo chooses how it supplies the file: the Compose recipe uses sops with age, and a
-Kubernetes deployment uses sops or a secrets manager. In the sops recipe, the file is encrypted to 2
-age recipients. The host key lives on the host, readable only by nixie's user. Your recovery key
+nixie and the backup sidecar each read their secrets from their own encrypted file, and each
+decrypts its file in its own process at start. The deployment repo chooses how it supplies the 2
+files: the Compose recipe uses sops with age, and a Kubernetes deployment uses sops or a secrets
+manager, with one Secret per container. In the sops recipe, each file is encrypted to 2 age
+recipients. The host key lives on the host, readable only by the containers' user. Your recovery key
 stays off the host, and a restore on a new host needs only it.
 
-| Secret                        | Used for                                                |
-| ----------------------------- | ------------------------------------------------------- |
-| Deployment key                | Wraps every per-record, per-item and per-credential key |
-| restic password               | Encrypts every backup                                   |
-| Model credentials             | One per model profile, the grant each imp holds         |
-| Replica crypt password, salt  | rclone object encryption and restore                    |
-| impd token                    | The sandbox adapter's calls to impd                     |
-| Push notifier and search keys | Static values for channels and tools                    |
+| Secret                        | Held by | Used for                                                |
+| ----------------------------- | ------- | ------------------------------------------------------- |
+| Deployment key                | nixie   | Wraps every per-record, per-item and per-credential key |
+| Model credentials             | nixie   | One per model profile, the grant each imp holds         |
+| impd token                    | nixie   | The sandbox adapter's calls to impd                     |
+| Push notifier and search keys | nixie   | Static values for channels and tools                    |
+| restic password               | sidecar | Encrypts every backup                                   |
+| Backup backend credentials    | sidecar | The restic repos and the replica bucket                 |
+| Replica crypt password, salt  | sidecar | rclone object encryption and restore                    |
+
+**Why:** a backup credential never enters nixie's process, so no fault in nixie can reach the
+backups, and the sidecar never holds the deployment key, so it can read no backup it ships.
 
 Credentials you enter through connector setup live in the database credential backend, each with its
 own key wrapped by the deployment key. The [credential store](../connectors/credentials.md) covers
 the backends.
 
-nixie decrypts the sops file inside its own process at start, with the host key mounted read-only,
-and keeps the plaintext in memory. A container restart decrypts again, so the restart policy brings
-nixie back after a reboot. **Why:** a decrypt-to-tmpfs sidecar lost its volume when the sidecar
-exited in the [deploy spike](../spikes/deploy-local/README.md), and a Compose secret or an
-environment variable puts the plaintext on disk or in the container's configuration.
+Each container decrypts its sops file inside its own process at start, with the host key mounted
+read-only, and keeps the plaintext in memory. A container restart decrypts again, so the restart
+policy brings nixie back after a reboot. **Why:** a decrypt-to-tmpfs sidecar lost its volume when
+the sidecar exited in the [deploy spike](../spikes/deploy-local/README.md), and a Compose secret or
+an environment variable puts the plaintext on disk or in the container's configuration.
 
 You change a secret by editing the file with `sops`, committing and deploying. `sops updatekeys`
 replaces the host key. A nixie command rewraps every key in the key store in one transaction when
@@ -164,19 +174,26 @@ nixie reports its health through a health endpoint for the container runtime and
 while it runs. Liveness holds when the process answers and the database opens. Readiness lists each
 part:
 
-| Part             | Ready when                                                 |
-| ---------------- | ---------------------------------------------------------- |
-| Database         | Migrations finished and the last integrity check passed    |
-| Definitions      | The last seed applied, with no refused snapshot pending    |
-| imp host         | impd answers, and every imp image in the manifest is added |
-| Conversation imp | Awake, and its last turn did not fail on start             |
-| Backups          | The last backup finished within twice the backup interval  |
-| Disk             | Under 90% full on the data volume                          |
-| Spending         | The hard spending stop has not fired                       |
+| Part             | Ready when                                                    |
+| ---------------- | ------------------------------------------------------------- |
+| Database         | Migrations finished and the last integrity check passed       |
+| Definitions      | The last seed applied, with no refused snapshot pending       |
+| imp host         | impd answers, and every imp image in the manifest is added    |
+| Conversation imp | Awake, and its last turn did not fail on start                |
+| Backups          | The last successful receipt arrived within twice the interval |
+| Backup sidecar   | Its health endpoint reports ready                             |
+| Disk             | Under 90% full on the data volume                             |
+| Spending         | The hard spending stop has not fired                          |
 
 A part that turns unready raises a status report in the live view, and the push notice carries only
-the standard count and link. A later stage adds an outbound heartbeat: an empty request every 5
-minutes to an endpoint the deployment picks, so an outside monitor alerts when nixie is down.
+the standard count and link. nixie reads the Backups part from the sidecar's receipts. A later stage
+adds an outbound heartbeat from nixie: an empty request every 5 minutes to an endpoint the
+deployment picks, so an outside monitor alerts when nixie is down.
+
+The backup sidecar has its own health endpoint: live when it answers, and ready when its last
+successful receipt is within twice the backup interval. It reports the age of the newest snapshot
+set and the time of the last upload. The sidecar holds no push credentials, so every backup notice
+comes from nixie.
 
 The web server has its own health endpoint: live when it answers, and ready when it reaches nixie's
 API.
@@ -207,8 +224,10 @@ writer sets its shape:
 - the web client as its own Deployment, which holds no state and can run more than one replica
 - one ingress on one host name, with a path rule that sends `/rpc` to nixie and a default rule to
   the web client
-- the secrets file and its decryption key as a Secret mounted read-only, which nixie decrypts at
-  start
+- the backup sidecar as a second container in nixie's pod, mounting only the staging directory on
+  the data volume
+- each container's secrets file and its decryption key as a Secret mounted read-only, which that
+  container decrypts at start
 - impd on each node that runs nixie, outside the cluster, with its API reachable from nixie's pod
 
 nixie keeps one writer itself, with the

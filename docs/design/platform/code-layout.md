@@ -12,7 +12,7 @@ first builds, so the workspace grows with the
 ## The folders
 
 ```text
-apps/       deployables: the server, the web client, and the Android app
+apps/       deployables: the server, the backup sidecar, the web client, and the Android app
 modules/    domain modules, one package each
 guests/     programs that run inside a sandbox and ship in a sandbox image
 adapters/   implementations of nixie's own interfaces that reach one outside system
@@ -22,6 +22,9 @@ libs/       shared code that belongs to no domain
 - **`apps/server`** is the composition root. It constructs each adapter, passes it to the module
   that owns the interface, and starts the runners. **Why:** modules never import adapters, so one
   place wires them.
+- **`apps/backup`** is the [backup sidecar](deployment/backup-and-restore.md), a Bun program that
+  ships nixie's snapshot sets and never opens a database. **Why:** it is its own deployable with its
+  own secrets, and a Bun program shares the snapshot set formats with nixie through `libs/wire`.
 - **`apps/web`** is the Start server and its client code. It reaches nixie only through the oRPC
   contract, as [the client](channels/client.md) requires.
 - **An adapter** implements one of the [0016](../../decisions/0016-own-interfaces.md) interfaces
@@ -64,6 +67,7 @@ outside the importer's package, and a cycle between packages.
 | --------- | --------------------------- | -------------------------- |
 | `app`     | `apps/server`               | modules, adapters, libs    |
 | `client`  | `apps/web`, the Android app | libs without `server-only` |
+| `sidecar` | `apps/backup`               | libs without `server-only` |
 | `module`  | `modules/*`                 | other modules, libs        |
 | `adapter` | `adapters/*`                | modules, libs              |
 | `guest`   | `guests/*`                  | libs without `server-only` |
@@ -128,7 +132,8 @@ Slice 1 also creates these packages:
 - `libs/contract`, the oRPC contract with the client code both clients share, under
   [the client](channels/client.md)
 - `libs/db`, nixie's Kysely dialect for `bun:sqlite` off the main thread, tagged `server-only`
-- `libs/wire`, the message formats that cross a sandbox boundary
+- `libs/wire`, the message formats that cross a sandbox boundary, and later the snapshot set formats
+  nixie shares with the backup sidecar
 - `libs/testing`, the test helpers, tagged `server-only`
 
 Later adapters follow the same naming, such as `push-telegram` and `connector-kagi` in slice 3,
@@ -147,6 +152,7 @@ describes.
 | fetch        | `guests/fetch`                            | 1           |
 | worker       | The conversation image plus code runtimes | 2           |
 | code         | Code runtimes only, with no nixie package | 8           |
+| backup       | `apps/backup`, with its pinned binaries   | 5           |
 
 ## Tests and checks
 

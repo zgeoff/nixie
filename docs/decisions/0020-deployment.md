@@ -2,6 +2,7 @@
 
 - Date: 2026-10-08
 - Status: decided
+- Superseded in part by: [0035](0035-backup-sidecar.md), on the one secrets file
 - Design: [deployment](../design/platform/deployment/deployment.md),
   [definitions source](../design/platform/connectors/definitions-source.md)
 - Research:
