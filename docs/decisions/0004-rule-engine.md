@@ -2,8 +2,9 @@
 
 - Date: 2026-10-07
 - Status: decided
-- Research: [policy model notes](../research/2.3-notes/policy-models.md),
-  [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#policy-layers)
+- Research:
+  [policy model notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/policy-models.md),
+  [2.2 and 2.3 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-2.3-core-and-policy.md#policy-layers)
 
 nixie writes its own rule format and evaluator, in TypeScript, with no policy engine underneath. A
 rule is plain data: it matches a tool, an effect and a context, applies a small fixed set of checks

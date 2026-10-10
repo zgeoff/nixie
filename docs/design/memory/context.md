@@ -41,8 +41,8 @@ every `query()` nixie starts passes both flags. The compaction settings below an
 
 The pinned core is the set of items the owner pins, such as the owner's name and pronouns, which the
 model-eval spike found every model needs
-([2.4 to 2.6 landscape](../../research/2.4-2.6-data-channels-connectors.md#memory)). nixie renders
-it into the system prompt as a list of items, each with its ID, in pin order.
+([2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#memory)).
+nixie renders it into the system prompt as a list of items, each with its ID, in pin order.
 
 The core's budget is 2,000 tokens by default, and the owner can change it. The memory view shows the
 core's size against the budget, and pinning past it asks the owner to unpin something first.

@@ -4,9 +4,10 @@
 - Status: decided, amended by [0008](./0008-auto-mode.md), [0014](./0014-search.md),
   [0015](./0015-taint-scope.md), [0023](./0023-lifting-always-ask.md) and
   [0028](./0028-policy-design.md)
-- Research: [policy model notes](../research/2.3-notes/policy-models.md),
-  [approval notes](../research/2.3-notes/approvals.md),
-  [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#policy-layers)
+- Research:
+  [policy model notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/policy-models.md),
+  [approval notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/approvals.md),
+  [2.2 and 2.3 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-2.3-core-and-policy.md#policy-layers)
 
 ## Effects
 

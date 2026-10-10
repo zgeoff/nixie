@@ -2,8 +2,9 @@
 
 - Date: 2026-10-08
 - Status: decided, amended by [0030](./0030-connectors-and-sandbox-environments.md)
-- Research: [connector notes](../research/2.6-notes/connectors.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
+- Research:
+  [connector notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/connectors.md),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
 
 Each owner registers their own OAuth clients with each provider, and nixie ships no central OAuth
 app. The credential store from [0016](./0016-own-interfaces.md) holds each owner's clients and

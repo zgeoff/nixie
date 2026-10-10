@@ -3,9 +3,10 @@
 - Date: 2026-10-08
 - Status: decided, amended by [0012](./0012-high-risk-approvals.md) and
   [0029](./0029-channels-and-clients.md)
-- Research: [channel notes](../research/2.5-notes/channels.md),
-  [transport notes](../research/2.5-notes/transports.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#channels)
+- Research:
+  [channel notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.5-notes/channels.md),
+  [transport notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.5-notes/transports.md),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#channels)
 
 nixie's own client holds the conversation, the approvals and voice. Chat apps such as Telegram carry
 only a push notice with no content, such as "nixie has 3 things for you", and a link that opens the

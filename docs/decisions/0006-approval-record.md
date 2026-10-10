@@ -3,8 +3,9 @@
 - Date: 2026-10-07
 - Status: decided, amended by [0012](./0012-high-risk-approvals.md) and
   [0021](./0021-outside-action-outcomes.md) and [0029](./0029-channels-and-clients.md)
-- Research: [approval notes](../research/2.3-notes/approvals.md),
-  [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#approval-records)
+- Research:
+  [approval notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/approvals.md),
+  [2.2 and 2.3 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-2.3-core-and-policy.md#approval-records)
 
 An approval resolves one proposal from [0002](./0002-approvals.md), and nixie records it as follows:
 

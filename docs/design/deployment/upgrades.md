@@ -54,7 +54,8 @@ The deploy script runs these stages:
 The script never rolls back on its own. **Why:** a rollback is a revert in the repo, and a host that
 ran an older image than its pin would break the commit as a record of what ran, the problem with
 unattended image pulls that the
-[deployment notes](../../research/2.6-notes/deployment.md#upgrades-from-the-repo) describe.
+[deployment notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/deployment.md#upgrades-from-the-repo)
+describe.
 
 ## A release on the host
 

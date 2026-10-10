@@ -2,8 +2,9 @@
 
 - Date: 2026-10-08
 - Status: decided, amended by [0015](./0015-taint-scope.md)
-- Research: [connector notes](../research/2.6-notes/connectors.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
+- Research:
+  [connector notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/connectors.md),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#connectors-and-mcp)
 
 Search is one of nixie's own tools, as [0005](./0005-effects-and-taint.md) requires, and its first
 provider is Kagi. The tool returns full results, with titles and snippets, and those results count

@@ -2,8 +2,9 @@
 
 - Date: 2026-10-08
 - Status: decided, amended by [0031](./0031-memory-capture-context-and-removal.md)
-- Research: [memory notes](../research/2.4-notes/memory-models.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#memory)
+- Research:
+  [memory notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/memory-models.md),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#memory)
 
 The conversation runs on the Agent SDK's session and compaction, with the stable part of the prompt
 first so the prompt cache holds. nixie adds retrieval over memory and over the event log, which

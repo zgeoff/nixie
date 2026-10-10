@@ -3,8 +3,9 @@
 - Date: 2026-10-08
 - Status: decided, amended by [0027](./0027-tasks-and-outside-actions.md)
 - Amends: [0006](./0006-approval-record.md)
-- Research: [engine notes](../research/2.2-notes/engines.md),
-  [Hermes notes](../research/2.1-notes/hermes.md#restart-behaviour)
+- Research:
+  [engine notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-notes/engines.md),
+  [Hermes notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.1-notes/hermes.md#restart-behaviour)
 
 An outside action with side effects, such as sending an email or making a payment, runs as a job on
 a durable queue built on nixie's event log from [0001](./0001-durable-layer.md). Each job has an
@@ -24,9 +25,11 @@ retry or report around an unknown outcome, because the job's state machine allow
 - A queue retries a job whose worker died, so on its own it delivers at least once. A crash after
   the provider accepted the request would send the email twice.
 - Hermes records a side effect it cannot prove as `unknown` after a restart
-  ([Hermes notes](../research/2.1-notes/hermes.md#restart-behaviour), 2026-10-07), and the durable
-  engines studied use a stable step or workflow ID as the idempotency key
-  ([engine notes](../research/2.2-notes/engines.md), 2026-10-07).
+  ([Hermes notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.1-notes/hermes.md#restart-behaviour),
+  2026-10-07), and the durable engines studied use a stable step or workflow ID as the idempotency
+  key
+  ([engine notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-notes/engines.md),
+  2026-10-07).
 - Without an explicit state, the model improvises after a crash: it guesses that the email went, or
   sends it again.
 

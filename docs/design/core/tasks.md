@@ -22,7 +22,8 @@ decision's.
 ## States
 
 A task is in one state at a time, held in its row of the task state table. The states extend the
-sketch in the [2.2 and 2.3 landscape](../../research/2.2-2.3-core-and-policy.md#durable-execution)
+sketch in the
+[2.2 and 2.3 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-2.3-core-and-policy.md#durable-execution)
 with the owner's pause, stop and close.
 
 | State     | Meaning                                            | Leaves on                              |

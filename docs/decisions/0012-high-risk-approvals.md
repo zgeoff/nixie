@@ -2,8 +2,9 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Research: [channel notes](../research/2.5-notes/channels.md),
-  [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#channels)
+- Research:
+  [channel notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.5-notes/channels.md),
+  [2.4 to 2.6 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-2.6-data-channels-connectors.md#channels)
 
 An approval for the always-ask set from [0005](./0005-effects-and-taint.md) asks for a passkey
 check, such as Face ID or Touch ID, in nixie's client from [0009](./0009-first-channel.md). Every

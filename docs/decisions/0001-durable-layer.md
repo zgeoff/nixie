@@ -3,8 +3,9 @@
 - Date: 2026-10-07
 - Status: decided, amended by [0025](./0025-database-and-topology.md) and
   [0027](./0027-tasks-and-outside-actions.md)
-- Research: [2.2 and 2.3 landscape](../research/2.2-2.3-core-and-policy.md#durable-execution),
-  [engine notes](../research/2.2-notes/engines.md)
+- Research:
+  [2.2 and 2.3 landscape](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-2.3-core-and-policy.md#durable-execution),
+  [engine notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-notes/engines.md)
 
 nixie builds its own durable layer on its own event log, and adopts no durable execution engine.
 Each long task is an explicit state machine, stored as rows in nixie's database, and a process that

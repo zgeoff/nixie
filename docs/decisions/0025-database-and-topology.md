@@ -4,7 +4,7 @@
 - Status: decided
 - Amends: [0001](./0001-durable-layer.md)
 - Research: [event log spike](../../spikes/event-log-db/),
-  [storage notes](../research/2.4-notes/data-and-storage.md)
+  [storage notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/data-and-storage.md)
 
 nixie's first version stores the event log, task state, approvals, the outside action queue and
 memory in one SQLite database on one host. Every transaction that reads and then writes opens with
