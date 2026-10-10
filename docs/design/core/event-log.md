@@ -22,20 +22,20 @@ it links is a proposal.
 A record is one row of the log. Every record carries the same envelope, and its payload depends on
 its kind.
 
-| Field             | Holds                                                                        | Required by                                                                            |
-| ----------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Sequence          | A number that orders the record in the log                                   | This design                                                                            |
-| Time              | When nixie wrote the record                                                  | This design                                                                            |
-| Kind              | Such as `owner_message`, `turn_finished`, `tool_called` or `approval_given`  | This design                                                                            |
-| Thread            | The conversation or the task the record belongs to                           | [0018](../../decisions/0018-main-thread-and-tasks.md)                                  |
-| Step key          | The task step that wrote it, for idempotent steps                            | [0001](../../decisions/0001-durable-layer.md)                                          |
-| Parent            | The record that caused it, such as the tool call behind a worker's records   | [0006](../../decisions/0006-approval-record.md)                                        |
-| Source of content | Owner's words, owner's own data, or outside content                          | [0015](../../decisions/0015-taint-scope.md)                                            |
-| Decision          | Rule ID, outcome, deciding stage, and auto-mode's reason and inputs          | [0004](../../decisions/0004-rule-engine.md), [0008](../../decisions/0008-auto-mode.md) |
-| Prompt cause      | One of the 5 causes, on every record that prompts the owner                  | [0005](../../decisions/0005-effects-and-taint.md)                                      |
-| Definitions       | The snapshot hash in force, and the persona and job versions the task pinned | [0013](../../decisions/0013-definition-versioning.md)                                  |
-| Approval          | Proposal ID, approval ID and action hash                                     | [0006](../../decisions/0006-approval-record.md)                                        |
-| Payload           | The kind's own data, with erasable fields encrypted                          | [0010](../../decisions/0010-memory-store.md)                                           |
+| Field             | Holds                                                                        | Required by                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Sequence          | A number that orders the record in the log                                   | This design                                                                                      |
+| Time              | When nixie wrote the record                                                  | This design                                                                                      |
+| Kind              | Such as `owner_message`, `turn_finished`, `tool_called` or `approval_given`  | This design                                                                                      |
+| Thread            | The conversation or the task the record belongs to                           | [0018](../../decisions/0018-main-thread-and-tasks.md)                                            |
+| Step key          | The task step that wrote it, for idempotent steps                            | [0001](../../decisions/0001-durable-layer.md)                                                    |
+| Parent            | The record that caused it, such as the tool call behind a worker's records   | [0006](../../decisions/0006-approval-record.md)                                                  |
+| Source of content | Owner's words, owner's own data, or outside content                          | [0015](../../decisions/0015-taint-scope.md)                                                      |
+| Decision          | Rule ID, outcome, deciding stage, and auto-mode's reason and inputs          | [0004](../../decisions/0004-rule-engine.md), [0008](../../decisions/0008-auto-mode.md)           |
+| Prompt cause      | One of the 6 causes, on every record that prompts the owner                  | [0005](../../decisions/0005-effects-and-taint.md), [0028](../../decisions/0028-policy-design.md) |
+| Definitions       | The snapshot hash in force, and the persona and job versions the task pinned | [0013](../../decisions/0013-definition-versioning.md)                                            |
+| Approval          | Proposal ID, approval ID and action hash                                     | [0006](../../decisions/0006-approval-record.md)                                                  |
+| Payload           | The kind's own data, with erasable fields encrypted                          | [0010](../../decisions/0010-memory-store.md)                                                     |
 
 The source of content sits on every tool result. The first build stores it without acting on it, so
 taint per job run becomes a policy change later, as [0015](../../decisions/0015-taint-scope.md)
@@ -72,6 +72,13 @@ the same pattern with 2 kinds of key:
   in a contacts table. A record refers to the contact by ID and never copies the details, so
   forgetting a person deletes one key and clears them from every structured field at once.
 
+Memory recall results, injected memory blocks and applied-write notices store item/version
+references in their log records, with provenance metadata, rather than a second text copy under a
+record key. The client and replay decrypt the referenced version through its item key; forgetting
+renders it as a gap. The logger applies this rule before it persists a raw tool-result or prompt
+payload, so a generic SDK-message capture cannot bypass it. The live SDK transcript remains a cache
+with its own [forget cleanup](../memory/context.md#removing-invalid-transcript-copies).
+
 The envelope stays in plain text: IDs, kinds, times, rule IDs, outcomes, hashes, the source of
 content and declared effects. **Why:** the envelope holds no personal content, and the projections,
 the task board and replay need it without a decryption per row.
@@ -84,9 +91,12 @@ The keys live in a key store apart from the database, each one wrapped by a depl
 memory item keys from 0010 live there too. **Why:** a database backup taken before a key is deleted
 holds the wrapped key next to its ciphertext, so a key kept in the database would come back with any
 restore. Database backups therefore hold only ciphertext. The key store's backup keeps one
-acknowledged fresh copy. Forget forces replacement and removal of older recoverable copies before
-completion, rather than waiting for the periodic schedule. Key-backup publication rejects stale
-staging generations under
+acknowledged fresh copy. Forget forces replacement and removal of older recoverable copies before it
+reports completion, under
+[the memory lifecycle](../memory/store.md#forget-completion-and-key-backups). In the first build,
+key-backup publication and forget share one lock, so an older staging copy cannot restore a deleted
+key after completion. A later stage replaces the lock with publication that rejects stale staging
+generations, under
 [the backup lifecycle](../deployment/backup-and-restore.md#forget-triggered-key-cleanup). A restore
 takes the database backup, the current key store backup and the deployment key, which is a
 deployment secret kept with the other secrets under [0020](../../decisions/0020-deployment.md).
@@ -106,7 +116,8 @@ serve the core:
 
 - **Task state:** one row per task, with its state, its lease, its open waits and its pinned
   definition versions. [Tasks](./tasks.md) covers it.
-- **Proposals and approvals:** each proposal's action hash, status and expiry.
+- **Proposals and approvals:** each proposal's action hash, status, lapse time, optional real
+  deadline `deadlineAt`, deferred-until time and defer generation.
 - **Outside actions:** each queued action and its outcome, covered in
   [outside actions](./outside-actions.md).
 - **The task board:** one row per task with its status, last update and what it waits on, which
@@ -126,8 +137,12 @@ The live view is the long form: the client opens a task and reads its records as
 with each tool call, decision and worker transcript expandable.
 
 The client follows the log by sequence. It loads a projection, notes the last sequence it read, and
-then receives every newer record. A record the client cannot render yet still shows by its kind, so
-nothing is hidden by a missing renderer.
+then receives every newer record together with the projection rows that its transaction changed. The
+initial projection and its sequence come from one read snapshot. Catch-up events carry the rows as
+of each record, from retained deltas or a fold at that sequence, never current rows under an old
+event ID. The client applies records and changed rows together before it advances its cursor. A
+record the client cannot render yet still shows by its kind, so nothing is hidden by a missing
+renderer.
 
 Following by sequence needs a sequence that orders records by commit. SQLite allows one writer at a
 time, so an integer primary key grows in commit order, and a reader that asks for records after
@@ -180,6 +195,7 @@ settings the owner can change per kind of record:
 | Tool results and worker transcripts    | Payload expires after 1 year      | They are the bulk of the log, and a year covers any review |
 | Definition snapshots                   | Kept while a record points at one | A replay always finds its definitions                      |
 
-An expired payload reads as expired in the live view and in an export, next to its envelope. The SDK
-transcript under `CLAUDE_CONFIG_DIR` is either a store the owner can read and export or a cache that
-the log supersedes, which stays a [deferred decision](../open-items.md#deferred-decisions).
+An expired payload reads as expired in the live view and in an export, next to its envelope. The
+[memory in context design](../memory/context.md#the-sdk-transcript) treats the SDK transcript under
+`CLAUDE_CONFIG_DIR` as a live cache. The log owns readable application history; a rebuild does not
+restore identical SDK context.

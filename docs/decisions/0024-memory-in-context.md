@@ -1,7 +1,7 @@
 # 0024: How memory reaches the model
 
 - Date: 2026-10-08
-- Status: decided
+- Status: decided, amended by [0031](./0031-memory-capture-context-and-removal.md)
 - Research: [memory notes](../research/2.4-notes/memory-models.md),
   [2.4 to 2.6 landscape](../research/2.4-2.6-data-channels-connectors.md#memory)
 

@@ -30,7 +30,10 @@ An outside action enters the queue in 2 ways, both under [0002](../../decisions/
 
 The action ID serves as the proposal ID, the queue entry's key and the idempotency key, so one
 action keeps one identity from the tool call to the provider. Each action also holds the action hash
-from [0006](../../decisions/0006-approval-record.md): the tool, its arguments and its destination.
+from [0006](../../decisions/0006-approval-record.md): the canonical proposal kind, tool, arguments,
+targets, destinations, any execution profile and the optional `deadlineAt` from
+[the action deadline](#the-action-deadline), as
+[policy approvals](../policy/approvals.md#the-proposal) defines.
 
 An allowed call waits for its outcome inside the turn for up to 10 s by default, and returns the
 outcome when it arrives in time. **Why:** a provider call that will succeed usually returns within
@@ -38,6 +41,19 @@ that time, and a longer wait holds the turn and the owner's reply behind it. Oth
 returns "queued as <id>", the turn goes on, and the outcome reaches the task's inbox as a record,
 which the task's next turn reads. An approved proposal always reports through the inbox, because its
 turn ended when the proposal was made.
+
+### The action deadline
+
+An action may carry an optional `deadlineAt`, an absolute timestamp supplied by checked connector
+constraints or an explicit owner or job constraint. nixie validates that source on the host; model
+text alone cannot invent an authoritative deadline. The proposal record and projection copy that
+value, apart from their configurable lapse time. No value means no known real deadline.
+
+The action hash covers `deadlineAt` with the tool, arguments and destination. Changing it needs a
+new proposal, so defer cannot change it. The client receives it on reads and the live stream and
+offers no defer time after it; the server repeats that check. The lapse timer runs no later than
+`deadlineAt`. Approval consumption and each queue attempt check it too; an action past it never
+starts. The lapse or refusal joins the task's inbox. These checks apply even without a defer.
 
 ## Consuming the approval
 

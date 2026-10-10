@@ -43,6 +43,49 @@ the decisions it rests on.
 - [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
   approval consumption, reconciliation per connector, and unknown outcomes for the owner
 
+### Policy
+
+- [Policy design index](./design/policy/README.md) — the 4 policy docs and the spike behind them
+- [The policy decision point](./design/policy/decision-point.md) — the pipeline, effects, the
+  always-ask set, destination limits and consent, taint in the first build, auto-mode, prompt causes
+  and the scripted scenarios, with the decisions the owner settled
+- [Rules](./design/policy/rules.md) — the rule format, evaluation order, rule identity, the snapshot
+  hash, the widening check, proposed rules, grants with expiries and the starter rule set
+- [Proposals and approvals](./design/policy/approvals.md) — the proposal and its action hash, risk
+  classes, the approval record, "always allow" and the digest sheet
+- [Budgets, lifts and the spending stop](./design/policy/budgets.md) — budgets, lifting rules,
+  limits on model cost and the hard spending stop
+
+### Memory
+
+- [The memory store](./design/memory/store.md) — items and their history table, provenance, a key
+  per item and forgetting, the recall tool, the memory view and export, and the first build
+- [Memory writes](./design/memory/writes.md) — who writes memory, the quote, token and checker
+  checks, memory proposals, notices and undo, and consolidation
+- [Memory in context](./design/memory/context.md) — the prompt, the pinned core, retrieval over
+  memory and past messages, compaction, and the SDK transcript as a cache
+
+### Channels
+
+- [Channels design index](./design/channels/README.md) — the client, the channel adapter, approvals,
+  the live view and the trigger source
+- [The client](./design/channels/client.md) — the web client and the Expo app, the typed API,
+  sessions, paste spans, messages into a running task, and the agreed client choices
+- [The channel adapter](./design/channels/channel-adapter.md) — the interface, the owner record, and
+  the Telegram notifier with its content-free notice
+- [Approvals in the client](./design/channels/approvals.md) — approval cards, risk classes, the
+  server's check, and the digest sheet
+- [The live view and the dashboard](./design/channels/live-view.md) — the dashboard, a task as a
+  conversation, stepping in and routing marks
+- [The trigger source](./design/channels/trigger-source.md) — schedules, polls, webhooks, and which
+  services need push
+
+### Connectors
+
+- [Connectors design](./design/connectors/README.md) — the connector interface and setup, the
+  credential store, serving nixie's tools, the sandbox adapter, the definitions source, the MCP
+  proxy, and running code and coding sessions
+
 ### Deployment
 
 - [Deployment](./design/deployment/deployment.md) — the host, the nixie image and the imp images,
@@ -99,6 +142,9 @@ Rules, effects, taint, approvals and auto-mode.
   untrusted, and taint applies to jobs and workers in stages
 - [0023: Lifting the always-ask set](./decisions/0023-lifting-always-ask.md) — a bounded rule can
   lift it, creating one always asks, and such approvals look distinct
+- [0028: The policy design](./decisions/0028-policy-design.md) — nixie's own consent checker, a
+  sixth prompt cause, the spending stop as a host proxy, bulk approval for routine items, YAML rule
+  files, and the permissive starter set with notices for jobs
 
 ### Memory
 
@@ -111,7 +157,10 @@ The memory store, which writes skip review, and definition versioning.
 - [0013: Definition versioning](./decisions/0013-definition-versioning.md) — a snapshot hash on
   every record, with rules applying at once and persona and jobs fixed per task
 - [0024: How memory reaches the model](./decisions/0024-memory-in-context.md) — the SDK's session
-  and compaction, with retrieval over memory and the event log, keyword search first
+  and compaction, with retrieval over memory and the event log; refined by 0031
+- [0031: Memory capture, context and removal](./decisions/0031-memory-capture-context-and-removal.md)
+  — local semantic retrieval, batched capture, transcript cache, reversible chat removal and grouped
+  notices
 
 ### Channels
 
@@ -119,6 +168,8 @@ Clients, push and voice.
 
 - [0009: The first channel](./decisions/0009-first-channel.md) — nixie's own client holds the
   conversation, approvals and voice, and chat apps carry content-free pushes
+- [0029: Channels and clients](./decisions/0029-channels-and-clients.md) — oRPC, Start and Expo,
+  device sessions, deferred approvals, two push levels and native Android paste capture
 
 ### Connectors
 
@@ -135,6 +186,9 @@ Nixie's interfaces, outside MCP servers, credentials and search.
   registers their own OAuth clients, and the Google spike runs early
 - [0022: Coding and code execution](./decisions/0022-coding-and-code-execution.md) — running code in
   a sandbox with no grants, and coding sessions through adapters, atc first
+- [0030: Connectors and sandbox environments](./decisions/0030-connectors-and-sandbox-environments.md)
+  — the reverse-forward route, Google, web OAuth return, MCP v2, imp with a container sketch, the
+  familiar Linux code environment, and Disconnect for externally managed credentials
 
 ### Deployment
 
@@ -246,8 +300,34 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
   Gmail's restricted scope, and token refresh past 7 days
 - [Worker start inside an imp](../spikes/imp-worker-start/) — imp create and wake, and the SDK's
   first token inside an imp against the host
+- [Serving nixie's tools](../spikes/tools-endpoint/) — the tool list, the MCP revision and the
+  result the model receives, against a local stand-in for the model API
+- [A pinning MCP proxy](../spikes/mcp-proxy-pin/) — hash pinning, effect declarations and output
+  checks on the v2 MCP packages
+- [A definitions source](../spikes/definitions-source/) — one content hash for the same definitions
+  from a repo and a local path
 - [Resume a session at a given message](../spikes/sdk-resume-at/) — `resumeSessionAt` and
   `forkSession` drop a turn that never committed
+- [The rule engine and prompt scenarios](../spikes/policy-rules/) — one decision per call whatever
+  the rule order, a stable snapshot hash, a conservative widening check, and prompts by cause
+- [A typed API with a live stream](../spikes/client-rpc/) — one oRPC contract on Bun with checked
+  actions and a stream that resumes by sequence
+- [Paste spans in a text box](../spikes/paste-spans/) — which spans of a message the owner pasted,
+  kept right through edits
+- [Tools through a reverse forward](../spikes/tools-reverse-forward/) — relay overhead, streamed
+  responses, egress isolation and reopening after wake
+- [Retrieval on nixie-shaped memory](../spikes/memory-retrieval/) — keyword search, BM25 and local
+  embeddings over synthetic memory, and where they part
+- [Crypto-shredding memory items](../spikes/memory-shred/) — a key per item against backups, the key
+  store's freed pages, and a persisted full-text index
+- [The memory write checks](../spikes/memory-checks/) — the quote check and the token check as code
+  over sample messages, and what still needs the checker
+- [A pinned memory core](../spikes/sdk-pinned-core/) — when a changed system prompt reaches a
+  resumed session, written and not yet run
+- [Batched memory checkpoints](../spikes/memory-batch/) — source-bound quotes, process-kill recovery
+  and a cursor-first failure control without model calls
+- [Forget completion across backups](../spikes/forget-backups/) — snapshot removal, data pruning and
+  restore with a deleted item key on a local candidate backend
 - [Deploy, back up, restore and roll back](../spikes/deploy-local/) — a digest pin, sops secrets
   decrypted in the process, the key store in its own restic repo, and a rollback as a revert plus a
   restore
