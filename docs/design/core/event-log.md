@@ -1,6 +1,5 @@
 # The event log and records
 
-- Status: Proposed
 - Decisions: [0001](../../decisions/0001-durable-layer.md),
   [0010](../../decisions/0010-memory-store.md),
   [0013](../../decisions/0013-definition-versioning.md),
@@ -9,193 +8,144 @@
   [0025](../../decisions/0025-database-and-topology.md),
   [0027](../../decisions/0027-tasks-and-outside-actions.md)
 
-The event log is nixie's one log of record. Every owner message, model turn, tool call, policy
-decision, proposal, approval and outside action outcome becomes a record in it, and no record is
-ever changed in place. Task state, the task board and the live view are projections: tables that
-nixie updates in the same transaction as the record that changes them, and that nixie can rebuild
-from the log. The log lives in one SQLite database with the rest of nixie's state, under
-[0025](../../decisions/0025-database-and-topology.md). Everything in this doc beyond the decisions
-it links is a proposal.
+The event log is nixie's one log of record. Every message you send, model turn, tool call, policy
+decision, proposal, approval and action outcome becomes a record, and no record changes in place.
+Task state, the dashboard and the live view read projections: tables that nixie updates in the same
+transaction as the record that changes them, and rebuilds from the log. The log lives in one SQLite
+database under [0025](../../decisions/0025-database-and-topology.md).
 
 ## What a record holds
 
-A record is one row of the log. Every record carries the same envelope, and its payload depends on
-its kind.
+Every record carries one envelope, and its payload depends on its kind.
 
-| Field             | Holds                                                                        | Required by                                                                                      |
-| ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Sequence          | A number that orders the record in the log                                   | This design                                                                                      |
-| Time              | When nixie wrote the record                                                  | This design                                                                                      |
-| Kind              | Such as `owner_message`, `turn_finished`, `tool_called` or `approval_given`  | This design                                                                                      |
-| Thread            | The conversation or the task the record belongs to                           | [0018](../../decisions/0018-main-thread-and-tasks.md)                                            |
-| Step key          | The task step that wrote it, for idempotent steps                            | [0001](../../decisions/0001-durable-layer.md)                                                    |
-| Parent            | The record that caused it, such as the tool call behind a worker's records   | [0006](../../decisions/0006-approval-record.md)                                                  |
-| Source of content | Owner's words, owner's own data, or outside content                          | [0015](../../decisions/0015-taint-scope.md)                                                      |
-| Decision          | Rule ID, outcome, deciding stage, and auto-mode's reason and inputs          | [0004](../../decisions/0004-rule-engine.md), [0008](../../decisions/0008-auto-mode.md)           |
-| Prompt cause      | One of the 6 causes, on every record that prompts the owner                  | [0005](../../decisions/0005-effects-and-taint.md), [0028](../../decisions/0028-policy-design.md) |
-| Definitions       | The snapshot hash in force, and the persona and job versions the task pinned | [0013](../../decisions/0013-definition-versioning.md)                                            |
-| Approval          | Proposal ID, approval ID and action hash                                     | [0006](../../decisions/0006-approval-record.md)                                                  |
-| Payload           | The kind's own data, with erasable fields encrypted                          | [0010](../../decisions/0010-memory-store.md)                                                     |
+| Field             | Holds                                                                       |
+| ----------------- | --------------------------------------------------------------------------- |
+| Sequence          | A number that orders the record in the log                                  |
+| Time              | When nixie wrote the record                                                 |
+| Kind              | Such as `owner_message`, `turn_finished`, `tool_called` or `approval_given` |
+| Thread            | The conversation or the task the record belongs to                          |
+| Step key          | The task step that wrote it, so a step commits once                         |
+| Parent            | The record that caused it, such as the tool call behind a worker's records  |
+| Source of content | Your words, your own data, or untrusted content                             |
+| Decision          | Rule ID, outcome, deciding stage, and auto-mode's reason and inputs         |
+| Prompt cause      | One of the 6 prompt causes, on every record that prompts you                |
+| Definitions       | The snapshot hash in force, and the persona and job versions the task pins  |
+| Approval          | Proposal ID, approval ID and action hash                                    |
+| Payload           | The kind's own data, with erasable fields encrypted                         |
 
 The source of content sits on every tool result. The first build stores it without acting on it, so
-taint per job run becomes a policy change later, as [0015](../../decisions/0015-taint-scope.md)
-requires.
+taint per job run is a later policy change under [0015](../../decisions/0015-taint-scope.md).
 
 The parent field keeps the delegation chain. A worker's records point at the tool call that started
 it, and a task's records point at the routing record that created the task, so the record shows that
 no task or worker held wider permissions than the thread that started it.
 
-A rule created at runtime carries the ID of the approval that created it, and a seeded rule carries
-the definitions commit, under [0013](../../decisions/0013-definition-versioning.md). A trigger
-source writes a record for each event it delivers, with the source's cursor, so a restart resumes
-without missing or repeating an event under [0016](../../decisions/0016-own-interfaces.md).
-
 ## Append-only
 
 nixie only appends to the log. A correction is a new record that points at the record it corrects,
-such as an owner's resolution of an unknown outcome pointing at the action's record. No code path
-updates or deletes a record.
+such as your answer to an unknown outcome pointing at the action's record. No code path updates or
+deletes a record.
 
-Crypto-shredding is the one way a record's content leaves. Erasable fields are encrypted, and
-forgetting deletes their key, as [0010](../../decisions/0010-memory-store.md) does for memory items.
-The record stays with its envelope, and a replay shows a gap where the payload was.
+Crypto-shredding is the one way content leaves a record. Erasable fields are encrypted, and
+forgetting deletes their key. The envelope stays, and a replay shows a gap where the payload was.
 
 ## Erasable fields and keys
 
-Memory items have a key per item under [0010](../../decisions/0010-memory-store.md). Records follow
-the same pattern with 2 kinds of key:
+Records use 2 kinds of key, on the pattern of the per-item memory keys from
+[0010](../../decisions/0010-memory-store.md):
 
-- **A key per record** encrypts every free-text field in its payload: the owner's message text, the
-  model's text, tool arguments, tool results and worker transcripts. Forgetting one message or one
-  tool result deletes one key, and nothing else in the log changes.
-- **A key per contact** encrypts a person's details, such as a name, an address or a phone number,
-  in a contacts table. A record refers to the contact by ID and never copies the details, so
-  forgetting a person deletes one key and clears them from every structured field at once.
-
-Memory recall results, injected memory blocks and applied-write notices store item/version
-references in their log records, with provenance metadata, rather than a second text copy under a
-record key. The client and replay decrypt the referenced version through its item key; forgetting
-renders it as a gap. The logger applies this rule before it persists a raw tool-result or prompt
-payload, so a generic SDK-message capture cannot bypass it. The live SDK transcript remains a cache
-with its own [forget cleanup](../memory/context.md#removing-invalid-transcript-copies).
-
-The envelope stays in plain text: IDs, kinds, times, rule IDs, outcomes, hashes, the source of
-content and declared effects. **Why:** the envelope holds no personal content, and the projections,
-the task board and replay need it without a decryption per row.
+- **A key per record** encrypts every free-text field in its payload: your message text, the model's
+  text, tool arguments, tool results and worker transcripts. Forgetting one message deletes one key.
+- **A key per contact** encrypts a person's details in a contacts table. A record refers to the
+  contact by ID and never copies the details, so forgetting a person deletes one key and clears them
+  from every structured field.
 
 A free-text field can still mention a contact by name. Forgetting the contact clears the structured
-fields, and the client offers to forget each record whose text matches the contact's details, which
-the owner confirms.
+fields, and the client offers to forget each record whose text matches the contact's details.
 
-The keys live in a key store apart from the database, each one wrapped by a deployment key, and the
-memory item keys from 0010 live there too. **Why:** a database backup taken before a key is deleted
-holds the wrapped key next to its ciphertext, so a key kept in the database would come back with any
-restore. Database backups therefore hold only ciphertext. The key store's backup keeps one
-acknowledged fresh copy. Forget forces replacement and removal of older recoverable copies before it
-reports completion, under
-[the memory lifecycle](../memory/store.md#forget-completion-and-key-backups). In the first build,
-key-backup publication and forget share one lock, so an older staging copy cannot restore a deleted
-key after completion. A later stage replaces the lock with publication that rejects stale staging
-generations, under
-[the backup lifecycle](../deployment/backup-and-restore.md#forget-triggered-key-cleanup). A restore
-takes the database backup, the current key store backup and the deployment key, which is a
-deployment secret kept with the other secrets under [0020](../../decisions/0020-deployment.md).
-[Backup and restore](../deployment/backup-and-restore.md) covers the schedule and the restore, which
-the [deploy spike](../../../spikes/deploy-local/README.md) ran.
+Records of memory recall, injected memory blocks and memory notices store item and version
+references, never a second copy of the text. The logger applies this rule before it persists any
+payload, so a generic capture of SDK messages cannot bypass it. Forgetting a memory item therefore
+leaves a gap in every record that read it.
 
-The database's own full-text index covers only the envelope. Free text is erasable, and a persisted
-index would keep its words after the key is gone, so full-text search over message content runs on
-an index held in memory, as [memory history and export](#memory-history-and-export) describes.
+The envelope stays in plain text: IDs, kinds, times, rule IDs, outcomes, hashes, the source of
+content and declared effects. **Why:** the envelope holds no personal content, and the projections
+and replay need it without a decryption per row.
+
+The keys live in a key store apart from the database, each one wrapped by a deployment key. **Why:**
+a key kept in the database would come back with any restore of a backup taken before its deletion,
+so database backups hold only ciphertext. Forget completes only once every recoverable key copy is
+gone, under [memory](../memory/store.md) and
+[backup and restore](../deployment/backup-and-restore.md). A restore takes the database backup, the
+current key store backup and the deployment key.
+
+The database's full-text index covers only the envelope. A persisted index would keep the words of
+an erasable field after its key is gone, so search over free text runs on an index held in memory,
+as [memory history and export](#memory-history-and-export) describes.
 
 ## Projections
 
 A projection is a table that answers a question the log answers too slowly, such as "which tasks
 wait on a proposal". nixie writes each record and every projection row it changes in one
-transaction, so a projection never disagrees with the log at a commit boundary. These projections
-serve the core:
+transaction, so a projection never disagrees with the log at a commit. The core projections:
 
 - **Task state:** one row per task, with its state, its lease, its open waits and its pinned
-  definition versions. [Tasks](./tasks.md) covers it.
-- **Proposals and approvals:** each proposal's action hash, status, lapse time, optional real
-  deadline `deadlineAt`, deferred-until time and defer generation.
-- **Outside actions:** each queued action and its outcome, covered in
-  [outside actions](./outside-actions.md).
-- **The task board:** one row per task with its status, last update and what it waits on, which
-  [0018](../../decisions/0018-main-thread-and-tasks.md) requires.
+  definition versions, covered in [tasks](./tasks.md).
+- **Proposals and approvals:** each proposal's action hash, status, lapse time, optional
+  `deadlineAt`, deferred-until time and defer generation.
+- **Actions:** each queued action and its outcome, covered in [actions](./actions.md).
+- **The task board:** one row per task with its status, last update and what it waits on, under
+  [0018](../../decisions/0018-main-thread-and-tasks.md).
 
-The projections are state tables beside the log, under
-[0027](../../decisions/0027-tasks-and-outside-actions.md). Every projection can be dropped and
-rebuilt by folding the log from the first record. A rebuild test in CI folds a recorded log and
-compares the result with the live tables.
+Every projection can be dropped and rebuilt by folding the log from the first record. A rebuild test
+in CI folds a recorded log and compares the result with the live tables.
 
-## The live view and the task board
+## The dashboard and the live view
 
-The live view and the conversation's task board read the same projections, so the owner and the
-conversation see the same state, as [0018](../../decisions/0018-main-thread-and-tasks.md) requires.
-The task board is the short form: the conversation receives it as a compact list in its newest turn.
-The live view is the long form: the client opens a task and reads its records as a conversation,
-with each tool call, decision and worker transcript expandable.
+The dashboard, the live view and the conversation read the same projections, so you and the
+conversation see the same state. The conversation receives the task board as a compact list in its
+newest turn. The live view opens a task and reads its records as a conversation, with each tool
+call, decision and worker transcript expandable.
 
-The client follows the log by sequence. It loads a projection, notes the last sequence it read, and
-then receives every newer record together with the projection rows that its transaction changed. The
-initial projection and its sequence come from one read snapshot. Catch-up events carry the rows as
-of each record, from retained deltas or a fold at that sequence, never current rows under an old
-event ID. The client applies records and changed rows together before it advances its cursor. A
-record the client cannot render yet still shows by its kind, so nothing is hidden by a missing
-renderer.
+The client follows the log by sequence. It loads a projection and the sequence it read from one read
+snapshot, then receives every newer record together with the projection rows its transaction
+changed, and applies both before it advances its cursor. Catch-up after a disconnect delivers the
+rows as of each record, never current rows under an older sequence. A record the client cannot
+render yet shows by its kind, so a missing renderer hides nothing.
 
-Following by sequence needs a sequence that orders records by commit. SQLite allows one writer at a
-time, so an integer primary key grows in commit order, and a reader that asks for records after
-sequence N misses nothing. Every append runs in a `BEGIN IMMEDIATE` transaction with
-`synchronous = FULL`, through nixie's own Kysely dialect off the main thread, as 0025 sets. The
-client's stream and the task runners wake by watching the database's WAL file, with polling as the
-fallback.
-
-On Postgres, which 0025 keeps for a second host, identity values follow the order transactions ask
-for them, not the order they commit, so appends take a transaction-level advisory lock to keep the
-two orders the same. Readers wake with `LISTEN` there, and every read before a write takes
-`FOR UPDATE`.
+SQLite allows one writer at a time, so an integer primary key grows in commit order, and a reader
+that asks for records after sequence N misses nothing. Every append runs in a `BEGIN IMMEDIATE`
+transaction with `synchronous = FULL`. The client stream and the task runners wake by watching the
+database's WAL file, with polling as the fallback.
 
 ## Memory history and export
 
-Memory lives in its own tables with a history table under
-[0010](../../decisions/0010-memory-store.md), not in the log. Every memory write appends a record
-that names the memory item and its new version, and the record, the history row and any approval
-commit in one transaction. The log holds why a memory changed, and the history table holds what it
-changed to.
+Memory lives in its own tables with a history table, not in the log. Every memory write appends a
+record that names the memory item and its new version, and the record, the history row and any
+approval commit in one transaction. The log holds why a memory changed, and the history table holds
+what it changed to.
 
-Retrieval over past conversation searches the log, under
-[0024](../../decisions/0024-memory-in-context.md), with keyword search first. A persisted full-text
-index, such as FTS5, keeps the words of an erasable field after its key is deleted, in the live
-database and in every backup. nixie therefore builds its search index for free text in memory at
-start, from the payloads it can still decrypt, and updates it on each append; forgetting a record
-removes its entries. **Why:** the index never reaches a backup, and its size follows the log's free
-text, which the [retrieval spike](../open-items.md#spikes-to-run) measures along with whether ranked
-search pays off.
+Retrieval over past conversation searches the log under
+[0024](../../decisions/0024-memory-in-context.md), and [memory context](../memory/context.md) owns
+the retrieval design. nixie builds the free-text search index in memory at start, from the payloads
+it can still decrypt, and updates it on each append. Forgetting a record removes its entries.
+**Why:** the index never reaches a backup.
 
-A record that recalls memory lists each memory item it read with the item's version. **Why:** the
-history table keeps every version, so a replay shows what the model saw at the cost of a few IDs per
-record.
-
-Memory export is a tool and a button under [0010](../../decisions/0010-memory-store.md). The event
-log exports the same way, as a SQLite file holding the records with decrypted payloads, as a default
-the owner can change. **Why:** any SQLite reader opens the file and keeps its schema, and the
-Library of Congress lists SQLite as a preferred format for datasets. A shredded payload stays a gap
-in the export. Creating an export carries its own declared effect, as memory export does.
+The event log exports as a SQLite file holding the records with decrypted payloads. **Why:** any
+SQLite reader opens it with its schema. A shredded payload stays a gap in the export, and creating
+an export carries its own declared effect.
 
 ## Retention
 
-Retention expires content by shredding keys, so the log stays append-only. The defaults below are
-settings the owner can change per kind of record:
+Retention expires content by shredding keys, so the log stays append-only. Each default is a setting
+per kind of record:
 
-| Kind                                   | Default                           | Why                                                        |
-| -------------------------------------- | --------------------------------- | ---------------------------------------------------------- |
-| Envelopes                              | Kept for the deployment's life    | They hold no personal content and explain every action     |
-| Owner messages and the model's replies | Kept for the deployment's life    | Retrieval over past conversation reads them under 0024     |
-| Tool results and worker transcripts    | Payload expires after 1 year      | They are the bulk of the log, and a year covers any review |
-| Definition snapshots                   | Kept while a record points at one | A replay always finds its definitions                      |
+| Kind                                | Default                           | Why                                                        |
+| ----------------------------------- | --------------------------------- | ---------------------------------------------------------- |
+| Envelopes                           | Kept for the deployment's life    | They hold no personal content and explain every action     |
+| Your messages and the model's text  | Kept for the deployment's life    | Retrieval over past conversation reads them                |
+| Tool results and worker transcripts | Payload expires after 1 year      | They are the bulk of the log, and a year covers any review |
+| Definition snapshots                | Kept while a record points at one | A replay always finds its definitions                      |
 
-An expired payload reads as expired in the live view and in an export, next to its envelope. The
-[memory in context design](../memory/context.md#the-sdk-transcript) treats the SDK transcript under
-`CLAUDE_CONFIG_DIR` as a live cache. The log owns readable application history; a rebuild does not
-restore identical SDK context.
+An expired payload reads as expired in the live view and in an export, next to its envelope. The SDK
+transcript is a live cache, not part of the log, under [memory context](../memory/context.md).

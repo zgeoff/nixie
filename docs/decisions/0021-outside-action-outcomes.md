@@ -2,7 +2,7 @@
 
 - Date: 2026-10-08
 - Status: decided
-- Design: [actions](../design/core/outside-actions.md)
+- Design: [actions](../design/core/actions.md)
 - Research:
   [engine notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.2-notes/engines.md)
 

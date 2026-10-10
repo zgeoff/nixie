@@ -2,7 +2,7 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Design: [tasks](../design/core/tasks.md), [actions](../design/core/outside-actions.md)
+- Design: [tasks](../design/core/tasks.md), [actions](../design/core/actions.md)
 
 nixie settles the shape of tasks and actions as follows:
 

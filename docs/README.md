@@ -39,8 +39,8 @@ the decisions it rests on.
   semantics, the projections behind the live view and the task board, export and retention
 - [Tasks](./design/core/tasks.md) — tasks as state machines with leases and an inbox, waits, routing
   from the conversation, job runs, workers in imps, and crash recovery
-- [Outside actions](./design/core/outside-actions.md) — the outside action queue, its outcomes,
-  approval consumption, reconciliation per connector, and unknown outcomes for the owner
+- [Outside actions](./design/core/actions.md) — the outside action queue, its outcomes, approval
+  consumption, reconciliation per connector, and unknown outcomes for the owner
 
 ### Policy
 

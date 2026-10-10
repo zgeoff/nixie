@@ -1,325 +1,230 @@
 # The memory store
 
-- Status: Proposed
 - Decisions: [0010](../../decisions/0010-memory-store.md),
   [0011](../../decisions/0011-memory-writes.md),
   [0013](../../decisions/0013-definition-versioning.md),
-  [0015](../../decisions/0015-taint-scope.md), [0024](../../decisions/0024-memory-in-context.md),
-  [0025](../../decisions/0025-database-and-topology.md),
-  [0027](../../decisions/0027-tasks-and-outside-actions.md),
+  [0024](../../decisions/0024-memory-in-context.md),
   [0031](../../decisions/0031-memory-capture-context-and-removal.md)
 
-nixie keeps long-term memory as rows in its SQLite database, under
-[0010](../../decisions/0010-memory-store.md). A memory item is one stored fact, such as "the owner's
-dentist is Dr Okafor at Riverside Dental", and every change to it adds a version to a history table.
-nixie sets each version's provenance from the turn that wrote it, and the model's arguments never
-reach those columns. Each item's text is encrypted with a key of its own, so forgetting deletes one
-key and every version of that item becomes unreadable. The model reads memory through a recall tool
-that returns stored items word for word, and the owner reads and manages it in the client. This doc
-covers the store and its operations; [memory writes](./writes.md) covers which writes apply at once,
-and [memory in context](./context.md) covers how memory reaches the model. Everything in this doc
-beyond the decisions it links is a proposed implementation of the agreed memory design.
+nixie keeps long-term memory as rows in its SQLite database. A memory item is one stored fact, such
+as "my dentist is Dr Okafor at Riverside Dental", and every change to it adds a version to a history
+table. nixie sets each version's provenance from the turn that wrote it, and the model's arguments
+never reach those columns. Each item's text is encrypted under a key of its own, so forget deletes
+one key and every version of that item becomes unreadable. The model reads memory through a recall
+tool that returns stored items word for word, and the client shows and manages the same items.
+[Memory writes](./writes.md) covers which writes apply at once, and
+[memory in context](./context.md) covers how memory reaches the model.
 
 ## The first build
 
 The first build implements every memory decision with the smallest mechanism that keeps its
-guarantee true, and the full design below extends it without a change of contract. The owner agreed
-this split under [0031](../../decisions/0031-memory-capture-context-and-removal.md).
+guarantee true:
 
-- **Store and operations.** The first build has items, the history table, a key per item, recall,
-  the memory view, retire with undo, forget, bulk deletion of retired memories and JSON export.
-- **Writes.** The first build has conversation writes and the batched writer, both behind the quote,
-  token and checker checks, with grouped notices. Consolidation comes later.
-- **Retrieval.** The first build keeps FTS5 and one pinned local encoder in memory and rebuilds both
-  in full at start and on an encoder change. Search falls back to keywords while a rebuild runs.
-  [Index generations](./context.md#the-index), which swap a rebuilt index in while queries continue,
-  come later.
-- **Forget in live sessions.** In the first build, any forget rebuilds every live session before its
-  next step, and it deletes the keys of every stored compaction summary, so no summary can hold the
-  forgotten text. [Session exposure records](./context.md#session-exposure-before-publication) and
-  summary dependency sets, which rebuild only the sessions that read the item, come later.
-- **Forget and backups.** In the first build, key-backup publication and forget share one exclusive
-  lock, so no backup can publish a key copy staged before a forget. A forget stays pending until
-  every registered backup drops the old key copies, and with no key backup registered it completes
-  after local cleanup. Generation watermarks in the
-  [key-backup lifecycle](#forget-completion-and-key-backups), which let publication and forget run
-  without that lock, come later.
+- **Store and operations:** items, the history table, a key per item, recall, the memory view,
+  retire with undo, forget, bulk deletion of retired memories and JSON export.
+- **Writes:** conversation writes and the batched writer, both behind the quote, token and checker
+  checks, with grouped notices.
+- **Retrieval:** FTS5 and one pinned local encoder, held in memory and rebuilt in full at start and
+  on an encoder change. Search falls back to keywords while a rebuild runs.
+- **Forget in live sessions:** any forget rebuilds every live session before its next step and
+  deletes the key of every stored compaction summary, so no summary holds the forgotten text.
+- **Forget and backups:** key-backup publication and forget share one exclusive lock, so no backup
+  publishes a key copy staged before a forget.
 
-Each split keeps the agreed behaviour the owner sees: a forgotten item never returns, a pending
-forget shows as pending, and retrieval returns text only from current canonical rows. A rebuild on
-every forget costs more session rebuilds and loses every summary, which is acceptable while forgets
-are rare.
+A rebuild on every forget costs session rebuilds and every summary, which is acceptable while
+forgets are rare. Each extension below keeps the same contract and makes it cheaper:
+
+- **Session exposure records** and summary dependency sets, so a forget rebuilds only the sessions
+  and summaries that read the item.
+- **Index generations,** so a rebuilt index swaps in while queries continue.
+- **Generation watermarks** on staged key copies, so key-backup publication and forget run without
+  the shared lock.
+- **Consolidation,** which [memory writes](./writes.md#consolidation) describes.
 
 ## Items and versions
 
-Memory lives in 2 tables beside the [event log](../core/event-log.md), not in it:
+Memory lives in 2 tables beside the [event log](../core/event-log.md):
 
-- **`memory_items`** holds one row per item: its ID, its current version, its state, whether it is
-  pinned, and its creation time. The row is the projection the client and retrieval read.
-- **`memory_versions`** is the history table from 0010. It holds one row per version of each item,
-  with the text and its provenance, and nixie only appends to it.
+- **`memory_items`** holds one row per item: its ID, current version, state, pin flag and creation
+  time. The row is a projection of the versions, and the rebuild check from
+  [0027](../../decisions/0027-tasks-and-outside-actions.md) compares it against them.
+- **`memory_versions`** holds one row per version, and nixie only appends to it.
 
-Each version holds:
+| Field           | Holds                                                                    | Encrypted |
+| --------------- | ------------------------------------------------------------------------ | --------- |
+| Item, version   | The item ID and a version number that starts at 1                        | No        |
+| Change          | Created, edited, retired, restored or undone                             | No        |
+| Text            | The memory as written                                                    | Yes       |
+| Evidence quote  | Your words that back the text, when a quote exists                       | Yes       |
+| Evidence        | Your message record and the quote's offsets in it                        | No        |
+| Intent quote    | Your request for a retirement, when present                              | Yes       |
+| Intent evidence | The request record and its quote offsets                                 | No        |
+| Origin          | You, the conversation, a task or the memory writer                       | No        |
+| Source          | Your words, your own data, or outside content                            | No        |
+| Task            | The task whose step wrote the version, or none for your own action       | No        |
+| Proposal        | The proposal that created the version, or none when it applied at once   | No        |
+| Checks          | The verdict of each check from 0011, and the review reason on a failure  | No        |
+| Record          | The sequence of the log record that wrote the version, with its snapshot | No        |
 
-| Field           | Holds                                                                         | Encrypted |
-| --------------- | ----------------------------------------------------------------------------- | --------- |
-| Item, version   | The item ID and a version number that starts at 1                             | No        |
-| Change          | Created, edited, retired, restored, merged or undone                          | No        |
-| Text            | The memory as written                                                         | Yes       |
-| Evidence quote  | The owner's words that back the text, when a quote exists                     | Yes       |
-| Evidence        | The owner message record and the quote's offsets in it                        | No        |
-| Intent quote    | The owner's request for a content-preserving operation, when present          | Yes       |
-| Intent evidence | The request record and its quote offsets                                      | No        |
-| Origin          | Owner, conversation, task, memory writer or consolidation                     | No        |
-| Source          | Owner's words, owner's own data, or outside content                           | No        |
-| Task            | The task whose step wrote the version, or none for an owner action            | No        |
-| Proposal        | The proposal that created the version, or none when it applied at once        | No        |
-| Checks          | The verdict of each check from 0011, and the review reason when one failed    | No        |
-| Record          | The sequence of the log record that wrote the version, with its snapshot hash | No        |
-
-The source is one of the 3 that the event log records under
-[0015](../../decisions/0015-taint-scope.md), and [memory writes](./writes.md#provenance) sets how
-nixie picks it. The origin says which part of nixie wrote the version, and the owner is the origin
-only for an owner's checked action in the client. **Why:** the client shows how each version came to
-exist, and a review of poisoned memory filters on origin and source without decrypting anything.
+Origin and source stay in plaintext. **Why:** the client shows how each version came to exist, and a
+review of poisoned memory filters on them without decrypting anything. The source is one of the 3
+that [0015](../../decisions/0015-taint-scope.md) defines, and
+[memory writes](./writes.md#provenance) sets how nixie picks it.
 
 An item is in one of 3 states:
 
 - **Active:** retrieval and recall return it.
-- **Retired:** it stays readable with its history, and retrieval skips it. Recall returns it only
-  when asked for retired items. Restoring it adds a version.
+- **Retired:** retrieval skips it, and recall returns it only when asked for retired items. It stays
+  readable with its history, and restoring it adds a version.
 - **Forgotten:** its key is deleted, so every version reads as a gap. Nothing restores it.
 
-Retiring is how memory ends a fact that stopped being true, such as an old address. Forgetting is
-how the owner destroys one. The model can retire an item through [memory writes](./writes.md), and
-only the owner can forget one, as [forgetting](#forgetting) covers.
+Retirement ends a fact that stopped being true, such as an old address. Forget destroys an item, and
+only a checked action in the client forgets one.
 
-nixie appends a record to the log for every change, and the record, the version row, the item row
-and any approval commit in one transaction, as the
-[event log design](../core/event-log.md#memory-history-and-export) sets. A version row and its
-record point at each other, so the log holds why an item changed and the history table holds what it
-changed to.
-
-The `memory_items` row is a projection of `memory_versions`, and the rebuild check from
-[0027](../../decisions/0027-tasks-and-outside-actions.md) folds the versions and compares.
+The version row, its log record, the item row and any approval commit in one transaction, as the
+[event log design](../core/event-log.md) sets. The record holds why an item changed, and the version
+holds what it changed to.
 
 ## Keys and forgetting
 
-Each item has its own key, an AES-256-GCM key in the key store that the
-[event log design](../core/event-log.md#erasable-fields-and-keys) sets up for record keys. The key
-store is a separate SQLite file, each key in it is wrapped by the deployment key, and database
-backups therefore hold only ciphertext. Every version of an item is encrypted under the item's key,
-with the item ID and version number as additional authenticated data. **Why:** one key per item
-makes a forget reach every version at once, and the additional data stops a row from being copied
-under another item or version and still decrypting.
+Each item has its own AES-256-GCM key in the key store that the
+[event log design](../core/event-log.md) sets up. The key store is a separate SQLite file, each key
+in it is wrapped by the deployment key, and database backups hold only ciphertext. Every version is
+encrypted under its item's key, with the item ID and version number as additional authenticated
+data. **Why:** one key per item makes a forget reach every version at once, and the additional data
+stops a row copied under another item or version from decrypting.
 
-The [shredding spike](../../../spikes/memory-shred/README.md) built this layout in `bun:sqlite` and
-measured it:
-
-- A forgotten item was unreadable in the live database and in a database backup taken before the
-  forget. A key store backup taken before the forget still opened it, until the next backup run
-  replaced that copy. Scheduled replacement alone therefore leaves a recovery window.
-- With SQLite's defaults, the deleted wrapped key stayed in the key store file's free space after a
-  checkpoint. With `PRAGMA secure_delete = ON`, the bytes left the file at the next checkpoint. The
-  key store therefore runs with `secure_delete` on, and forget waits for its WAL checkpoint as part
-  of completion.
-- 10,000 items with 3 versions each decrypted in 177 to 311 ms with the decryptions run in parallel,
-  and unwrapping a key cost about 2 µs. Holding every active item decrypted in memory at start costs
-  well under a second at personal scale.
+The key store runs with `PRAGMA secure_delete = ON`, and forget waits for its WAL checkpoint.
+**Why:** the [shredding spike](../../../spikes/memory-shred/README.md) found that a deleted key
+stays in the file's free space under SQLite's defaults.
 
 ### Forgetting
 
-Forgetting is a checked action in the client, and only the owner takes it. The client shows the item
-with its history and asks for a confirmation bound to the item and current version, listing what is
-lost. A changed version makes that confirmation stale. nixie then deletes the key, checkpoints the
-key store, marks the item forgotten and appends a `memory_forgotten` record, which holds the item ID
-and no text. The versions stay as rows with ciphertext nobody can read, so a replay shows a gap
-where the item was.
+Forget is a checked action in the client. Its confirmation shows the item with its history, lists
+what is lost, and binds to the item's current version, so a later edit makes it stale. nixie then
+deletes the key, checkpoints the key store, marks the item forgotten and appends a
+`memory_forgotten` record with the item ID and no text. The version rows stay as unreadable
+ciphertext, so a replay shows a gap where the item was.
 
-When the owner says "forget that" in the conversation, the model retires the item through the memory
-tool, and the retirement notice offers undo and a checked permanent-delete action. Chat alone never
-destroys an item; [retirement intent](./writes.md#retirement-intent) binds the reversible request to
-its target.
+"Forget that" in the conversation retires the item instead, with undo and a link to the checked
+delete. [Retirement intent](./writes.md#retirement-intent) binds that request to its target.
 
-A forgotten item may sit in a live SDK session that read it, through the pinned core, recall or
-retrieval. Forgetting an item that a session read makes that session rebuild before its next turn,
-which [memory in context](./context.md#forgetting-and-the-live-session) covers. The live-session
-boundary applies to requests that already received the text; the context design states that limit.
-
-Item forget destroys the item's versions, their derived index entries and dependent compaction
-summaries under [summary cleanup](./context.md#compaction). It does not destroy independently keyed
-owner messages or replies that state the same fact. The confirmation states this scope and links to
-the separate record-forget action; it never promises that the fact disappears from all conversation
-history. Log search may return that fact from a record whose key remains readable.
-
-A forgotten item cannot be exported or restored, and an undo never reaches across a forget.
+A forget destroys the item's versions, its index entries and the compaction summaries that
+[memory in context](./context.md#compaction) deletes with it. It leaves owner messages and replies
+that state the same fact under their own record keys, and the confirmation shows that scope and
+links the record-forget action. A forgotten item never exports or restores, and an undo never
+reaches across a forget.
 
 ### Bulk deletion of retired memories
 
-The retired-memory view offers one checked action to permanently delete selected retired items or
-all retired items. Its preview lists the count, items and exact versions, and states that deletion
-cannot be undone through nixie. It states that independent chat records remain. The confirmation
-binds to that fixed set of items and versions; it does not select "whatever is retired" later.
+The retired-memory view offers one checked action that permanently deletes selected retired items or
+all of them. Its preview lists the items and exact versions and states that deletion cannot be
+undone and that chat records remain. The confirmation binds to that fixed set. Before it deletes any
+key, nixie validates every selected item and version and reserves the whole set, so a stale target
+stops the operation before anything is destroyed:
 
-Before any key deletion, nixie validates the whole selected set and reserves those targets for the
-durable forget operation. An item restored or changed after preview makes the confirmation stale,
-and the client refreshes the preview. Items retired later do not join an existing confirmation.
-Restore, undo and edit cannot change a reserved target during deletion.
+- An item restored or changed after the preview makes the confirmation stale.
+- An item retired after the preview never joins it.
+- Restore, undo and edit cannot change a reserved item while deletion runs.
 
-The operation records per-item progress, deletes keys idempotently and resumes unfinished work after
-a crash. A partial operation cannot roll back keys that it deleted; its status distinguishes deleted
-items from pending work. Each item gets its own forgotten record, and the bulk operation reports
-completion only after its key-store checkpoint, index invalidation and local-session cleanup finish.
-Completion includes the key-backup cleanup below; it never reports success merely because the live
-key disappeared.
+The operation records per-item progress, deletes keys idempotently and resumes after a crash. A
+partial run never restores a key it deleted, and its status separates deleted items from pending
+ones. Each item gets its own `memory_forgotten` record, and the bulk operation reports completion
+only when every item's forget completes.
 
 ### Forget completion and key backups
 
-The [first build](#the-first-build) serializes key-backup publication and forget with one exclusive
-lock; the generation watermarks below are the later extension.
+A forget is a durable operation that stays pending until all of these finish:
 
-A forget starts as a durable pending operation. It completes only after the live key-store
-checkpoint, derived-index invalidation, invalid-session cleanup and removal of recoverable key
-copies from every registered backup. The operation forces a key-backup refresh and cleanup; the
-periodic backup interval controls ordinary recovery age, not forget completion. If a backend is
-unavailable or cleanup fails, the client shows pending cleanup and recovery retries the existing
-operation. Deleted live keys do not return while it waits.
+1. the key-store checkpoint;
+2. removal of the item's index entries and cached results;
+3. the [session cleanup](./context.md#removing-invalid-transcript-copies) for every live session;
+4. removal of the old key copies from every registered key backup.
 
-Key-backup publication and forget share a serialized lifecycle. A staged key copy carries its
-key-generation watermark; a stale copy cannot publish after the forget barrier. Cleanup retains an
-acknowledged fresh copy that excludes the deleted keys, removes every older recoverable copy, and
-verifies the remaining copies. It records backend receipts with the operation and rechecks coverage
-before completion. A crash between removing an old snapshot and removing its data remains pending;
-loss of a snapshot listing alone does not prove its key bytes are gone.
+The client shows a pending forget as pending, and recovery retries it. A deleted key never returns
+while the forget waits. With no key backup registered, a forget completes after local cleanup.
 
-The lifecycle includes staging files, restore samples and backup caches that can hold recoverable
-key copies. It removes them before completion. A configured key backend must permit removal of all
-managed historical copies; unhandled versioning or immutable retention cannot satisfy this contract.
-The [backup spike](../../../spikes/forget-backups/) tests one local candidate backend, not
-cloud-provider deletion or physical media erasure. An export or a copy outside nixie's managed
-backup registry remains separate owner-controlled data.
+A forget forces a key-backup refresh and cleanup at once; the backup schedule sets recovery age, not
+forget completion. Cleanup keeps one fresh copy without the deleted keys, removes every older
+recoverable copy, and verifies that every remaining copy excludes the deleted keys. It records the
+backend's receipts and checks coverage again before the forget completes; a command that exits
+cleanly does not prove the keys are gone. Staging files, restore samples and backup caches count as
+recoverable copies. A key backend must allow removal of every historical copy it holds, so a backend
+with unmanaged versioning or immutable retention cannot hold keys.
+[Backup and restore](../deployment/backup-and-restore.md) covers the backup tools, and the
+[forget backups spike](../../../spikes/forget-backups/) tests one local backend.
 
 ## Operations
 
-Memory sits behind one interface with a few verbs, so a later backend can replace the rows without
-changing its callers. Each verb is a nixie tool, an owner action in the client, or both:
+Memory sits behind one interface, so a later backend can replace the rows without changing its
+callers. Each verb is a nixie tool, a checked action in the client, or both:
 
-| Verb        | Model tool               | Owner action | Does                                                               |
-| ----------- | ------------------------ | ------------ | ------------------------------------------------------------------ |
-| Recall      | `memory.recall`          | Search       | Returns stored items word for word, with versions and provenance   |
-| Remember    | `memory.remember`        | Add, edit    | Creates an item or adds a version to one                           |
-| Retire      | `memory.retire`          | Retire       | Adds a version that retires an item                                |
-| Restore     |                          | Restore      | Adds a version that makes a retired item active again              |
-| Undo        |                          | Undo         | Adds a version whose text is an earlier version's text             |
-| Pin         | `memory.remember` option | Pin, unpin   | Puts an item in the pinned core, or takes it out                   |
-| Forget      |                          | Forget       | Deletes the item's key                                             |
-| History     | `memory.recall` option   | History      | Returns every readable version of an item                          |
-| Export      | `memory.export`          | Export       | Writes all readable memory to a file the owner chooses             |
-| Propose     |                          | Review       | Approves, edits or rejects a memory proposal from the digest sheet |
-| Consolidate | `memory.consolidate`     |              | Proposes merges, rewrites and retirements, as one reviewed diff    |
+| Verb        | Model tool               | Client action | Does                                                  |
+| ----------- | ------------------------ | ------------- | ----------------------------------------------------- |
+| Recall      | `memory.recall`          | Search        | Returns stored items word for word, with provenance   |
+| Remember    | `memory.remember`        | Add, edit     | Creates an item or adds a version                     |
+| Retire      | `memory.retire`          | Retire        | Adds a version that retires an item                   |
+| Restore     |                          | Restore       | Adds a version that makes a retired item active       |
+| Undo        |                          | Undo          | Adds a version with an earlier version's text         |
+| Pin         | `memory.remember` option | Pin, unpin    | Puts an item in the pinned core or takes it out       |
+| Forget      |                          | Forget        | Deletes the item's key                                |
+| Export      | `memory.export`          | Export        | Writes all readable memory to a file                  |
+| Review      |                          | Review        | Approves, edits or rejects a memory proposal          |
+| Consolidate | `memory.consolidate`     |               | Proposes merges, rewrites and retirements as one diff |
 
 `memory.remember`, `memory.retire` and `memory.consolidate` declare the `note` effect, which the
-[policy decision point](../policy/decision-point.md#effects) defines for writes inside nixie, so the
-starter rules allow the call and the checks in [memory writes](./writes.md) decide whether it
-applies at once. `memory.recall` declares `read`, and `memory.export` declares `export`.
+starter rules allow, and the gate in [memory writes](./writes.md) decides whether a call applies at
+once. `memory.recall` declares `read`, and `memory.export` declares `export`, which the starter
+rules ask for.
 
-`memory.remember` takes new text, its evidence quote and the item and version it revises, if any.
-`memory.retire` takes the bound item ID, read version and intent quote, with no replacement text.
-nixie fills every provenance field from canonical records and the step that called it. A revision
-carries the version it read, and the write fails as stale when the item has moved on. **Why:** 2
-tasks that edit the same item from the same version must not silently overwrite each other.
-
-Undo and restore never rewrite history: each adds a version. An owner action in the client applies
-at once, with the owner as operation origin. An owner edit that introduces text uses the owner's
-words as content source; restore and undo preserve the copied content's provenance.
+A revision carries the version it read, and the write fails as stale when the item has moved on.
+**Why:** 2 tasks that edit the same item must never silently overwrite each other. Undo and restore
+add versions and never rewrite history.
 
 ### Recall
 
 `memory.recall` takes a query, a list of item IDs, or neither, which lists every active item a page
-at a time. It returns each item's text exactly as stored, its ID and version, its origin and source,
-and when it was written, and never a summary. The persona's instructions tell the model to answer a
-question about memory from these items, and the client renders a recall result in the live view as
-the items themselves, each with a tap through to its history, as the
-[live view](../channels/live-view.md#a-task-as-a-conversation) sets out. **Why:** "nothing is
-hidden" asks for the raw data, and the owner can check the model's answer against the items on
+at a time. It returns each item's text exactly as stored, with its ID, version, origin, source and
+date, and never a summary. With its history option it returns every readable version of an item. The
+persona instructs the model to answer questions about memory from these items, and the
+[live view](../channels/live-view.md) renders a recall result as the items themselves. **Why:** a
+request for everything returns the raw data, so you can check the answer against the items on
 screen.
 
-A record that recalls memory lists each item and version it returned, as the
-[event log design](../core/event-log.md#memory-history-and-export) requires, so a replay shows what
-the model saw. Its stored result uses references to items and versions and resolves the text through
-item keys, as the [record key rules](../core/event-log.md#erasable-fields-and-keys) specify;
-forgetting does not leave a plaintext recall copy protected only by an independent record key.
-
-Recall searches the same in-memory index that per-turn retrieval uses, which
-[memory in context](./context.md#retrieval) covers.
+The recall record lists each item and version it returned, so a replay shows what the model saw. The
+record holds references, not text, so a forget leaves no readable copy behind. Recall searches the
+index that [memory in context](./context.md#retrieval) describes.
 
 ## Definition versioning
 
-Every memory record carries the snapshot hash of the definitions in force, like every record under
-[0013](../../decisions/0013-definition-versioning.md), and the version row keeps the record's
-sequence, so each version leads to its snapshot. Memory itself versions through the history table,
-not through the snapshot, as 0013 states. The checker model's prompt is part of the policy snapshot,
-because it decides which writes skip review. **Why:** a replay of a write that applied at once needs
-the checker's prompt as it was, and a changed prompt must reach running tasks at once, as rules do.
+Every memory record carries the snapshot hash of the definitions in force, under
+[0013](../../decisions/0013-definition-versioning.md), and memory itself versions through the
+history table. The checker's prompt is part of the policy snapshot. **Why:** a replay of a write
+that applied at once needs the checker's prompt as it was, and a changed prompt reaches running
+tasks at once, as rules do.
 
 ## The memory view
 
-The client gains a memory view, which the [client design](../channels/client.md) leaves to this
-design. It shows:
+The client's memory view shows:
 
-- every active item with its text, origin, source and age, with search over the same index as recall
+- every active item with its text, origin, source and age, with search over the recall index
 - the pinned core, with its size against its budget
-- each item's history as a list of versions, each with its provenance, its evidence quote shown
-  inside the owner message it came from, and a diff against the version before
-- retired items, apart from active ones, and each forgotten item as a dated gap
-- the actions from [operations](#operations): add, edit, pin, retire, restore, undo, forget and
-  export
+- each item's history, with each version's provenance, its evidence quote inside the message it came
+  from, and a diff against the version before
+- retired items apart from active ones, and each forgotten item as a dated gap
+- the actions from [operations](#operations)
 
-Every action is a checked action with its own record, through the channel adapter's action entry
-point. Memory proposals appear on the digest sheet with the routine items, as the
-[approvals design](../policy/approvals.md#the-digest-sheet) sets, and the memory view links to them.
+Each action is a checked action with its own record. Memory proposals appear in the approval digest
+with the other routine items, and the memory view links to them.
 
 ## Export
 
-Export writes every readable item to one JSON file, under 0010: each item with its state and every
-version, with text, evidence quote and provenance, plus a header with the export time, the schema
-version and the snapshot hash in force. A forgotten item appears as its ID and the time it was
-forgotten, with no text. The schema is documented beside the code and versioned with it. **Why:**
-JSON is the plain format 0010 gives as its example, any tool reads it, and one file keeps the
-history with the items it belongs to.
+Export writes every readable item to one JSON file: each item with its state and every version, with
+text, evidence quote and provenance, and a header with the export time, the schema version and the
+snapshot hash. A forgotten item appears as its ID and the time it was forgotten. The schema is
+versioned beside the code. **Why:** any tool reads JSON, and one file keeps the history with its
+items.
 
-Export is the `memory.export` tool and a button in the client. The tool declares the `export`
-effect, which the starter rule set asks for, so the model never exports on its own; the button is a
-checked action and needs no further approval. The file goes to a place the owner picks, and nixie
-never sends it to an outside destination. The event log export from the
-[event log design](../core/event-log.md#memory-history-and-export) uses the same effect.
-
-## Agreed capture
-
-The conversation and tasks write during a turn, and a background writer captures passing facts in
-bounded batches. SDK compaction remains responsible for session continuity. Both paths use the same
-checks for the operation they perform, as [memory writes](./writes.md#who-writes) sets out. Batching
-reduces extraction calls at the cost of delayed capture; provider costs and real-history quality
-remain unmeasured.
-
-## Agreed transcript lifecycle
-
-The SDK transcript is a live working cache, with the event log as the source of readable application
-history. nixie excludes the transcript from backups and export, and rebuilds it when lost or
-invalidated by forget, as [memory in context](./context.md#the-sdk-transcript) sets out. A rebuild
-does not restore identical SDK context or cache continuity. Older owner messages and stored items
-remain available through recall; older tool output is outside indexed recall.
-
-## Agreed removal
-
-Chat removes an item from active memory through reversible retirement. The owner can undo it or use
-a checked client action to destroy it. The retired-memory view supports bulk permanent deletion with
-a preview and confirmation bound to the selected items. This trades one more checked action for
-recovery from a misread chat request.
-
-## Agreed write notices
-
-Writes that apply at once appear as one compact group per turn or background batch, with expandable
-items and per-item undo. A late batch adds a quiet notice in its thread, without a push or a
-successful-write entry in the digest. Review proposals retain the digest path under
-[memory writes](./writes.md#notices-and-undo).
+The export button is a checked action. The `memory.export` tool asks under the starter rules, so the
+model never exports on its own. The file goes where you pick, and nixie never sends it to an outside
+destination.
