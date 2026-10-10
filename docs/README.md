@@ -134,7 +134,7 @@ Nixie's interfaces, outside MCP servers, credentials and search.
 
 - [0030: Connectors and sandbox environments](./decisions/0030-connectors-and-sandbox-environments.md)
   — the reverse-forward route, Google, web OAuth return, MCP v2, imp with a container sketch, and
-  the familiar Linux code environment
+  the familiar Linux code environment, and Disconnect for externally managed credentials
 
 ### Deployment
 

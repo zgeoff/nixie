@@ -2,12 +2,13 @@
 
 - Date: 2026-10-09
 - Status: decided
+- Extended: 2026-10-10, credential disconnect and forget
 - Amends: [0003](./0003-sdk-placement.md), [0016](./0016-own-interfaces.md),
   [0019](./0019-connector-authorization.md), [0022](./0022-coding-and-code-execution.md),
   [0026](./0026-where-workers-and-the-conversation-run.md)
 - Design: [connectors](../design/connectors/connector.md), [tools](../design/connectors/tools.md),
   [sandbox adapter](../design/connectors/sandbox-adapter.md),
-  [coding](../design/connectors/coding.md)
+  [coding](../design/connectors/coding.md), [credentials](../design/connectors/credentials.md)
 
 The owner agreed the connector and sandbox choices below. nixie's host application remains
 Bun/TypeScript. The code environment is what an agent runs programs in for general work; a coding
@@ -86,6 +87,20 @@ can inspect what is installed. An image update changes that inventory; adding a 
 network egress or credentials. The existing sandbox and policy rules continue to apply. The choice
 does not replace nixie's host language or limit a coding adapter's toolchain.
 
+## Credential disconnect and forget
+
+The client uses Disconnect for a credential supplied by a read-only deployment or external manager.
+Disconnect durably disables its binding, blocks future use and grants, revokes nixie's grants and
+removes nixie-owned copies. Restart and source refresh cannot silently reconnect it. Reconnect needs
+an explicit checked action. The original secret remains at its source; nixie neither deletes nor
+revokes that external credential. Disconnect cannot retract a request that a provider already
+received.
+
+The client retains Forget for credentials that nixie stores in its database. Forget deletes their
+encryption keys under the existing forget-completion contract. The client distinguishes local
+disconnection from erasure of a database-owned value. The deployment retains control of its external
+secrets under 0016 and 0020.
+
 ## Alternatives and trade-offs
 
 - A port-level allow entry needs an imp change; a dedicated host address depends on other services'
@@ -100,6 +115,9 @@ does not replace nixie's host language or limit a coding adapter's toolchain.
   lifecycle implementation. A sketch checks the interface without shipping that backend.
 - Bun-only code images have fewer dependencies. Node.js, Python and common tools match familiar
   agent workflows and add packages to maintain and measure.
+
+- Requiring a source change first leaves the external source as the only control, but delays
+  stop-use from nixie. Disconnect adds a durable local override that the client must show clearly.
 
 ## Remaining validation
 

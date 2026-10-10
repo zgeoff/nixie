@@ -28,7 +28,9 @@ interface CredentialStore {
   grant(ref: CredentialRef, sandbox: Sandbox, rule: InjectRule): Promise<GrantRef>;
   revoke(grant: GrantRef): Promise<void>;
   status(ref: CredentialRef): Promise<CredentialStatus>;
-  forget(ref: CredentialRef): Promise<void>;
+  disconnect(ref: CredentialRef): Promise<void>; // read-only source; stops local use
+  reconnect(ref: CredentialRef): Promise<void>; // explicit checked action
+  forget(ref: CredentialRef): Promise<void>; // database-owned credentials only
 }
 
 interface CredentialSpec {
@@ -155,34 +157,30 @@ it, by default. Renewing it needs the owner's browser, so nixie cannot renew it 
 | `failing`       | Refreshes or uses fail, and the store retries               | Return an error    |
 | `needs_consent` | The provider refused the refresh for good                   | Removed            |
 | `expiring`      | A credential that cannot refresh expires within the warning | Available          |
+| `disconnected`  | The owner disabled a read-only source binding               | Removed            |
 | `forgotten`     | The owner removed it, and its key is deleted                | Removed            |
 
-The client shows every credential with its status, its label, its scopes, its fingerprint and its
-last use, and the database backend supports forgetting through key deletion. Removal of a credential
-supplied by a read-only backend remains an owner choice below; the client does not promise erasure
-of an external source. Forgetting an OAuth token also revokes it with the provider where the
-provider offers a revocation endpoint.
+The client shows every credential with its status, label, scopes, fingerprint and last use. It
+offers Disconnect for a read-only source and Forget for a database-owned credential under
+[the removal decision](../../decisions/0030-connectors-and-sandbox-environments.md#credential-disconnect-and-forget).
+Forgetting a database-owned OAuth token also revokes it with the provider where the provider offers
+a revocation endpoint.
 
-## Read-only credential removal — owner choice
+## Disconnect and reconnect
 
-A deployment or outside manager can supply a credential that nixie can read but cannot erase. The
-deployment owns that source under 0016 and 0020. The platform must not claim that deleting its
-reference erases the source, its history or the provider's copy. Automatic registration at restart
-also needs a rule that prevents an owner-removed binding from returning silently.
+Disconnect is a checked host action that durably disables the credential binding before cleanup. The
+store blocks future fetches, refreshes and grants for that binding, revokes its existing sandbox
+grants and removes nixie-owned credential copies. Cleanup remains pending until those grants and
+copies are removed; a restart continues the cleanup without enabling the binding. A request that the
+provider already received cannot be retracted.
 
-Options:
+The disabled binding is keyed by its stable source reference, not its value fingerprint. Restart,
+source refresh and secret rotation preserve the disabled state. The store rechecks that state before
+an in-flight refresh can publish a token or replace a grant. It never calls a read-only source's
+delete operation or revokes the external source credential at its provider.
 
-- **Disconnect in nixie.** The proposed checked action disables the binding durably, blocks future
-  fetches and grants, revokes existing grants and cleans up nixie-owned copies. A tombstone prevents
-  startup or source refresh from silently reconnecting it. The client names this "Disconnect" and
-  shows that the original credential remains at its source. Reconnection needs an explicit checked
-  action. This does not retract requests a provider already received.
-- **Require a source change first.** The client explains where the secret lives and waits for the
-  owner to remove or revoke it there before nixie removes the binding. This preserves the external
-  source as the only control, but splits a removal request across tools and delays nixie's stop-use
-  path.
-
-Recommendation: Disconnect for read-only sources, and crypto-shredding Forget for database-owned
-credentials. The trade-off is a deliberate local override beside the source's configuration and two
-clearly different guarantees in the client. The behavior and names remain unchosen; the backend
-interface sketch is not an implemented removal API.
+The client shows the disconnected state and explains that the original secret remains at its source.
+Reconnect is an explicit checked action that enables the binding after the host validates its
+current source and access constraints. Automatic registration cannot reconnect a disabled binding.
+The interface remains a design sketch; the storage and cleanup implementation need restart and
+concurrency tests.
