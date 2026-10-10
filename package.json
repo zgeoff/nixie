@@ -17,7 +17,12 @@
       "libs/*"
     ],
     "catalog": {
-      "kysely": "0.29.6"
+      "@orpc/client": "1.15.4",
+      "@orpc/contract": "1.15.4",
+      "@orpc/tanstack-query": "1.15.4",
+      "@tanstack/query-core": "5.104.1",
+      "kysely": "0.29.6",
+      "zod": "4.6.5"
     }
   },
   "type": "module",

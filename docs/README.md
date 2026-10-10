@@ -33,6 +33,8 @@ below, and planned work lives in Linear.
 
 ## Architecture
 
+- [The client contract](architecture/contract.md) — the oRPC procedures, checked actions, the live
+  stream, the query helper and the paste-span logic
 - [The database and the single writer](architecture/database.md) — the SQLite dialect, the writer
   lock and epoch, migrations and the schema version, and random key store IDs
 
