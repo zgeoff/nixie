@@ -6,7 +6,7 @@ import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 import type { ReadonlyDeep } from '../types';
 import { store } from './store';
 
-export interface MockAPIContext extends ResponseHeadersPluginContext {
+interface MockAPIContext extends ResponseHeadersPluginContext {
   // The device session's token, from the bearer header or the cookie.
   readonly sessionToken: string | undefined;
 }

@@ -1,7 +1,7 @@
 import { onTestFinished } from 'bun:test';
 import { runMockAPIRequest } from '../mocks/run-mock-api-request';
 
-export interface StubAPIRequest {
+interface StubAPIRequest {
   readonly authorization: string | null;
   readonly cookie: string | null;
   readonly path: string;

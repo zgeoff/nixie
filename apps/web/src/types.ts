@@ -1,7 +1,7 @@
 import type { ContractClient, Span, buildQueryUtils } from '@heynixie/contract';
 import type { QueryClient } from '@tanstack/react-query';
 
-export type QueryUtils = ReturnType<typeof buildQueryUtils>;
+type QueryUtils = ReturnType<typeof buildQueryUtils>;
 
 // What every view reaches nixie through: the oRPC client and its TanStack Query utils.
 export interface NixieClient {
