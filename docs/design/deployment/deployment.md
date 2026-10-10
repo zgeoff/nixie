@@ -19,6 +19,41 @@ store and recovery from a lost host, and [upgrades](./upgrades.md) covers how a 
 host, migrations and rollback. The [deploy spike](../../../spikes/deploy-local/README.md) ran the
 Compose path end to end on local containers.
 
+## First build
+
+The first build ships the smallest deployment that keeps every agreed guarantee true, and the rest
+of this design arrives in later stages. [Scope](../../scope.md) places backups, safe upgrades and
+rollback in tier 2, so none of the later stages blocks the owner's first use. This split is a
+proposal for the owner to confirm.
+
+The first build holds:
+
+- **Compose on one host,** with imp beside nixie, the image pinned by digest, and secrets in one
+  sops file with the host key and the owner's recovery key.
+- **Hourly restic snapshots** of `nixie.db` and `keys.db` to their 2 repos, with the key repo kept
+  to one snapshot.
+- **Forget completes after the key repo prunes.** A forget starts a key backup at once, and only one
+  backup job runs at a time. The forget reports pending until that job prunes every older key
+  snapshot, so [0010](../../decisions/0010-memory-store.md) holds without the generation barrier
+  that concurrent publishers need.
+- **Restore on a new host,** with the recovery holds that stop a restored task from repeating an
+  outside action.
+- **Upgrades as pin bumps,** delivered by hand or by the poll timer. Every first-build release keeps
+  its schema readable by the release before it, so every rollback is a revert with no restore.
+- **The health endpoint,** with a push notice when a part turns unready.
+
+Later stages add:
+
+- the offsite Litestream replica through the rclone crypt gateway from
+  [0032](../../decisions/0032-offsite-backups-and-replication.md), once its matching-key recovery
+  and a real bucket pass their tests
+- key publication triggered by each key-store change, with the generation barrier from
+  [forget-triggered key cleanup](./backup-and-restore.md#forget-triggered-key-cleanup)
+- `nixie rollback` past a schema the older build cannot read, with outside-action import from
+  [rolling back](./upgrades.md#rolling-back)
+- the monthly restore check and the outbound heartbeat
+- [Kubernetes with Pulumi](#kubernetes-with-pulumi)
+
 ## The host
 
 A host runs nixie, the imp host and the deployment's backups. It needs:

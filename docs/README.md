@@ -142,7 +142,6 @@ Definitions and deployment models.
 
 - [0020: Deployment and definitions](./decisions/0020-deployment.md) — definitions in their own repo
   seed the database, and running nixie lives with the deployment
-
 - [0032: Offsite backups and replication](./decisions/0032-offsite-backups-and-replication.md) —
   Restic snapshots plus a database-only Litestream replica through a host rclone crypt gateway; the
   deployment supplies the S3-compatible backend
@@ -252,9 +251,7 @@ left untested. The [spikes index](../spikes/README.md) describes how they run.
 - [Deploy, back up, restore and roll back](../spikes/deploy-local/) — a digest pin, sops secrets
   decrypted in the process, the key store in its own restic repo, and a rollback as a revert plus a
   restore
-
 - [Replica encryption](../spikes/replica-encryption/) — Litestream through a host crypt gateway,
   process outages and a restore without the original database
-
 - [Paired data and key recovery](../spikes/paired-recovery/) — continuous encrypted data plus Restic
   keys, stale-key control and a post-forget restore

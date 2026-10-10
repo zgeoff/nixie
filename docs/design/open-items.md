@@ -53,7 +53,8 @@ after the first build.
   the Compose path on local containers. A throwaway host with KVM adds what it left out: imp beside
   nixie with imp images added from a manifest, a pull from a public registry by digest, a Renovate
   pull request, the deploy script on a timer, restic over a network backend, a disk with LUKS, and a
-  recovery key on a YubiKey ([deployment](./deployment/deployment.md#deployment-configuration)).
+  recovery key held off the host
+  ([deployment](./deployment/deployment.md#deployment-configuration)).
 - **A rollback across outside actions** (about half a day): run outside actions after an upgrade,
   roll back with a restore, and confirm that each action reaches the restored log with its outcome
   and that its task starts paused ([upgrades](./deployment/upgrades.md#rolling-back)).

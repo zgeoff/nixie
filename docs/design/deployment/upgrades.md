@@ -105,6 +105,10 @@ restore.
 A rollback starts with `git revert` of the upgrade commit and a deploy. When the older build can
 read the schema, the deploy finishes the rollback, and nothing written since the upgrade is lost.
 
+The first build never needs a restore to roll back, because each of its releases stays readable by
+the release before it ([first build](./deployment.md#first-build)). A later stage adds the restore
+path below.
+
 When the older build refuses the schema, the owner restores the copy taken before the migration:
 
 1. Stop nixie with `docker compose stop nixie`.

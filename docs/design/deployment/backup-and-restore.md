@@ -51,7 +51,7 @@ A backup run takes 4 steps:
    to the key repo. Key-repo publication takes the shared lifecycle lock and rejects stale staging
    generations; the staging directory as a whole never enters the data repo.
 3. restic applies retention to the data repo. For the key repo it keeps the explicitly acknowledged
-   fresh snapshot, removes every other snapshot across host/path groups and prunes with
+   fresh snapshot, removes every other snapshot in every host and path group and prunes with
    `--max-unused 0`. Removing snapshot references alone does not remove recoverable pack data.
 4. nixie removes the staging directory and writes a record with the snapshot IDs and the time taken.
 
@@ -94,6 +94,10 @@ on and checkpoints the write-ahead log, and the spike found no byte of the delet
 in the key store's files.
 
 ### Forget-triggered key cleanup
+
+This section covers the full contract for concurrent key publishers. The first build runs one backup
+job at a time and meets the same completion rule in a simpler form, as the
+[first build](./deployment.md#first-build) describes.
 
 A durable forget operation forces key-backup work rather than waiting for the periodic schedule.
 Key-store mutation and key-repo publication obey the shared generation barrier from
