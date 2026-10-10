@@ -49,8 +49,9 @@ an optional note.
 
 1. The proposal stays pending in a collapsed "Deferred" group and counts in no push.
 2. At the chosen time it returns as a fresh item with a buzzing notice, which waits for quiet hours.
-3. The lapse moves to at least one full lapse interval after the return, but never past the action's
-   real deadline, the optional `deadlineAt` field that the action hash covers.
+3. The lapse moves to at least one full lapse interval after the return, or after quiet hours end
+   when the return falls inside them. It never moves past the action's real deadline, the optional
+   `deadlineAt` field that the action hash covers.
 4. The task receives the defer and your note and carries on with other work. Its model does not ask
    why.
 
