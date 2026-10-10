@@ -76,6 +76,8 @@ it. gitleaks runs in the pre-commit hook and in CI.
 - Every PR gets a local review before the owner sees it. Codex reviews first
   (`codex review --base origin/main < /dev/null`), and an Opus review agent reviews when Codex is
   unavailable or times out. Answer every finding: fix it, or reply with the reason you declined it.
+- CodeRabbit never blocks a PR that has a local review. When it is rate-limited or paused, or has
+  not reviewed within 10 minutes of the PR opening, the PR goes ahead without it.
 - A PR merges only on the owner's word, after CI is green and every finding is answered. Merge with
   a squash, never with `--admin` or any other ruleset bypass.
 - Commit messages and PR bodies carry no attribution lines: no co-author trailers and no generator
