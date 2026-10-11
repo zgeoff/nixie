@@ -29,6 +29,11 @@ on:
 
 permissions: {}
 
+# an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: ubuntu-latest

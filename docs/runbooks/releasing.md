@@ -28,10 +28,10 @@ step, and no release pull request opens.
 
 1. Merge the release pull request, titled `chore(main): release <version>`. Its checks run like any
    other pull request's, the compatibility checks included.
-2. Watch the Release run that the merge starts:
+2. Watch the Release run that the merge starts, found by the merge commit:
 
    ```bash
-   gh run watch "$(gh run list --repo <owner>/nixie --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --repo <owner>/nixie
+   gh run watch "$(gh run list --repo <owner>/nixie --workflow release.yml --commit <merge_commit> --json databaseId --jq '.[0].databaseId')" --repo <owner>/nixie
    ```
 
    Expect every job to pass, ending with `tag`, and the GitHub release to list the migrations and
@@ -82,3 +82,16 @@ Expect `Verification succeeded!` and the release commit in the output. A private
   ```bash
   gh workflow run release.yml --repo <owner>/nixie --ref v<version>
   ```
+
+- **The tag stage tagged some images, and its run can no longer re-run.** A manual run refuses this
+  release, because an image carries the version. Finish the tags from the digests in the release
+  notes, in the order the tag stage uses, from a checkout of the repo. The `gh` token needs the
+  `write:packages` scope:
+
+  ```bash
+  gh auth token | docker login ghcr.io -u <owner> --password-stdin
+  .github/scripts/tag-images.sh <version> <conversation_ref> <fetch_ref> <web_ref> <nixie_ref>
+  ```
+
+  Each ref is a `ghcr.io/<owner>/<image>@sha256:<digest>` line from the release notes. Expect one
+  `tagged` line per image. A tag already on its digest stays as it is.

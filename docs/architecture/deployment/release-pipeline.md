@@ -105,7 +105,8 @@ an attestation at deploy yet.
 ## Compatibility checks
 
 Pull-request CI compares each pull request with the last release, the newest `v*` tag reachable from
-its base. Before the first release, both checks pass with nothing to compare.
+its base. Before the first release, CI skips the contract check, and the migration check lists every
+migration and refuses none.
 
 The contract check generates an OpenAPI document from the oRPC contract and diffs it with oasdiff
 against the copy the release tag holds. The repo commits that document beside the contract, and a
