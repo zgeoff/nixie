@@ -23,9 +23,10 @@ revoked. The row holds only the SHA-256 hash of its token, because a random toke
 back from its hash, so a copy of the database grants no session.
 
 An enrolment code turns into a session once. nixie keeps only the code's hash, and a code lapses
-unused after the enrolment code lifetime. The host's code comes from a function the server calls: it
-issues a code while no device holds a live session, so the first device can sign in, and a host
-command issues one at any time. A signed-in device issues codes through a checked action.
+unused after the enrolment code lifetime. The host's code comes from a function the server calls at
+start: it issues a fresh code on each call while no device holds a live session, so the first device
+can sign in, and issues nothing once one does. A host command issues a code at any time. A signed-in
+device issues codes through a checked action.
 
 A browser receives its token only in a host-only cookie that is `HttpOnly`, `Secure`,
 `SameSite=Strict` and `Path=/`, so no script reads it. The path matters because enrolment sets the

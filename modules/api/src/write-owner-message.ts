@@ -39,7 +39,10 @@ export async function writeOwnerMessage(
     const earlier = await findClientAction(tx, input.clientMessageId);
 
     if (earlier !== null) {
-      return { status: 'earlier', procedure: earlier.procedure, result: earlier.result } as const;
+      const isRetry =
+        earlier.procedure === 'conversation.send' && earlier.identityID === caller.identityID;
+
+      return { status: 'earlier', isRetry, result: earlier.result } as const;
     }
     return writeMessage(tx, context, { caller, input });
   });
@@ -47,7 +50,7 @@ export async function writeOwnerMessage(
   if (written.status !== 'earlier') {
     return written;
   }
-  if (written.procedure !== 'conversation.send') {
+  if (!written.isRetry) {
     return { status: 'reused' };
   }
   return checkRetry(context, input, Number(written.result['sequence']));

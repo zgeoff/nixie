@@ -246,3 +246,26 @@ test('it refuses a caller whose session was revoked after the call resolved it',
 
   expect(result).toStrictEqual({ status: 'unauthorized' });
 });
+
+test('it refuses a client message ID that another device used for the same text', async () => {
+  const ctx = await setupTest();
+
+  const phone = await createDeviceSession(ctx.context, 'phone');
+  const phoneCaller = await verifySessionToken(ctx.context, phone.token);
+
+  if (phoneCaller === null) {
+    throw new Error('the session failed to resolve');
+  }
+  const input = {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'hello',
+    spans: [{ start: 0, end: 5, source: 'typed' as const }],
+  };
+
+  await writeOwnerMessage(ctx.context, ctx.caller, input);
+
+  const result = await writeOwnerMessage(ctx.context, phoneCaller, input);
+
+  expect(result).toStrictEqual({ status: 'reused' });
+});
