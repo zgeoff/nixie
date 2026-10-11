@@ -67,6 +67,19 @@ test('it keeps the schedule when the provider names an earlier retry time', () =
   ).toStrictEqual({ status: 'pending', reason: 'refusal_can_clear', delayMs: 120_000 });
 });
 
+test.each([
+  ['NaN', Number.NaN],
+  ['Infinity', Number.POSITIVE_INFINITY],
+])('it keeps the schedule when the provider names %s as its retry time', (_label, retryAfterMs) => {
+  expect(
+    pickOutcome(
+      { kind: 'refused_retryable', reason: 'rate limited', retryAfterMs },
+      1,
+      defaultRetryDelaysMs,
+    ),
+  ).toStrictEqual({ status: 'pending', reason: 'refusal_can_clear', delayMs: 30_000 });
+});
+
 test('it follows a schedule a connector sets in place of the default', () => {
   expect(pickOutcome({ kind: 'refused_retryable', reason: 'busy' }, 2, [5000])).toStrictEqual({
     status: 'failed',

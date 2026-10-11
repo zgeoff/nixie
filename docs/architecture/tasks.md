@@ -64,8 +64,8 @@ the writer epoch and a generation one higher than the last.
   inside its own transaction. A runner whose lease expired, or that another runner claimed since,
   throws `LeaseLostError` and commits nothing.
 - **Renewal.** `startLeaseRenewal` renews a 60 s lease every 20 s, and aborts its signal when a
-  renewal finds the lease gone. **Why:** renewing at a third of the lease survives 2 missed
-  renewals, and a dead runner frees its work within a minute.
+  renewal finds the lease gone. **Why:** renewing at a third of the lease survives 1 missed renewal,
+  and a dead runner frees its work within a minute.
 - **Not a projection.** A claim or a renewal changes a lease without a record, so a rebuild leaves
   the `leases` table as it was.
 

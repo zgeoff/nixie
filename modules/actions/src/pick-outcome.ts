@@ -1,8 +1,8 @@
 import type { Outcome, ProviderResponse } from './types';
 
 // Maps a provider's response to the action's outcome. A refusal that can clear waits for the next
-// attempt, by the schedule or longer when the provider names a retry time, and fails once the
-// schedule runs out; an ambiguity is unknown, because the call may have reached the provider.
+// attempt, by the schedule or longer when the provider names a finite retry time, and fails once
+// the schedule runs out; an ambiguity is unknown, because the call may have reached the provider.
 export function pickOutcome(
   response: ProviderResponse,
   attempt: number,
@@ -24,6 +24,12 @@ export function pickOutcome(
     : {
         status: 'pending',
         reason: 'refusal_can_clear',
-        delayMs: Math.max(delayMs, response.retryAfterMs ?? 0),
+        delayMs: Math.max(delayMs, findRetryAfterMs(response) ?? 0),
       };
+}
+
+function findRetryAfterMs(response: ProviderResponse): number | undefined {
+  const retryAfterMs = response.kind === 'refused_retryable' ? response.retryAfterMs : undefined;
+
+  return Number.isFinite(retryAfterMs) ? retryAfterMs : undefined;
 }

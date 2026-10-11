@@ -63,7 +63,7 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
 
 const DEFAULT_SIZE = 3;
 
-// Why: a lease of 60 s renewed every 20 s survives 2 missed renewals, and a dead runner frees its
+// Why: a lease of 60 s renewed every 20 s survives 1 missed renewal, and a dead runner frees its
 // task within a minute.
 const DEFAULT_LEASE_MS = 60_000;
 const DEFAULT_POLL_MS = 1000;
