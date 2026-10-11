@@ -59,7 +59,7 @@ export interface ImpFeatures {
   readonly isEgressEnforced: boolean;
 }
 
-export interface ImpImage {
+interface ImpImage {
   readonly name: string;
   readonly digest: string;
 }
