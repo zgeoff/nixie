@@ -82,12 +82,12 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
   };
 }
 
-// impd keeps an image under its name, and a release names each image by its kind and digest, so an
-// image added once is never pulled again. A name impd holds at another digest is refused, because a
-// spec that names it would run an image the manifest never pinned.
+// A release names each image by its kind and digest, so impd pulls a name once. A held name matches
+// when its digest or the digest its ref pins is the release's. Any other is refused, because a spec
+// that names it would run an image the manifest never pinned.
 function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
   return async (image) => {
-    const digest = /@(?<digest>sha256:[\da-f]{64})$/u.exec(image.ref)?.groups?.['digest'];
+    const digest = findPinnedDigest(image.ref);
 
     if (digest === undefined) {
       throw new Error(`the image ${image.name} is not pinned by digest: ${image.ref}`);
@@ -97,10 +97,16 @@ function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
 
     if (held === undefined) {
       await port.addImage({ name: image.name, digest, ref: image.ref });
-    } else if (held.digest !== digest) {
-      throw new Error(`impd holds the image ${image.name} at ${held.digest}, not ${digest}`);
+    } else if (held.digest !== digest && findPinnedDigest(held.ref) !== digest) {
+      throw new Error(
+        `impd holds the image ${image.name} at ${held.digest} from ${held.ref}, not ${digest}`,
+      );
     }
   };
+}
+
+function findPinnedDigest(ref: string): string | undefined {
+  return /@(?<digest>sha256:[\da-f]{64})$/u.exec(ref)?.groups?.['digest'];
 }
 
 // A secret stays under its name once stored, because a sandbox's grant may name it; a caller with a
