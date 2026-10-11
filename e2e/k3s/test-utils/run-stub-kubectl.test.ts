@@ -84,7 +84,9 @@ test('it keeps running after its arguments line when its last argument is hang',
   const ctx = setupTest();
   const child = Bun.spawn([process.execPath, ctx.stub, 'hang'], { stdout: 'pipe' });
 
-  onTestFinished(() => child.kill('SIGKILL'));
+  onTestFinished(() => {
+    child.kill('SIGKILL');
+  });
 
   const reader = child.stdout.getReader();
   const first = await reader.read();

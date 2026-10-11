@@ -26,13 +26,17 @@ interface Resource {
   readonly kind: string;
   readonly metadata: { readonly name: string };
   readonly spec?: {
-    readonly template?: { readonly spec: { readonly containers: readonly Container[] } };
+    readonly template?: {
+      readonly spec: { readonly containers: readonly Container[]; readonly volumes?: unknown };
+    };
   };
   readonly data?: Readonly<Record<string, string>>;
 }
 
 interface Container {
   readonly image: string;
+  readonly securityContext?: unknown;
+  readonly volumeMounts?: unknown;
 }
 
 test('it lists every manifest in the kustomization but the example Secret', async () => {
@@ -53,7 +57,7 @@ test('it holds a configuration that nixie’s schema accepts', async () => {
   expect(deploymentConfigSchema.safeParse(Bun.YAML.parse(text)).success).toBeTrue();
 });
 
-test('it runs nixie as one replica on a ReadWriteOnce volume, with its files read-only', async () => {
+test('it runs nixie as one replica on a ReadWriteOnce volume', async () => {
   const ctx = await setupTest();
 
   expect(ctx.find('StatefulSet', 'nixie')?.spec).toMatchObject({
@@ -62,43 +66,37 @@ test('it runs nixie as one replica on a ReadWriteOnce volume, with its files rea
     volumeClaimTemplates: [
       { metadata: { name: 'data' }, spec: { accessModes: ['ReadWriteOnce'] } },
     ],
-    template: {
-      spec: {
-        containers: [
-          {
-            name: 'nixie',
-            securityContext: { readOnlyRootFilesystem: true },
-            volumeMounts: expect.arrayContaining([
-              { name: 'data', mountPath: '/data' },
-              { name: 'etc', mountPath: '/etc/nixie', readOnly: true },
-            ]),
+  });
+});
+
+test('it mounts the data volume writable and the configuration and secrets read-only', async () => {
+  const ctx = await setupTest();
+
+  const pod = ctx.find('StatefulSet', 'nixie')?.spec?.template?.spec;
+  const container = pod?.containers[0];
+
+  expect(container?.securityContext).toMatchObject({ readOnlyRootFilesystem: true });
+  expect(container?.volumeMounts).toIncludeAllMembers([
+    { name: 'data', mountPath: '/data' },
+    { name: 'etc', mountPath: '/etc/nixie', readOnly: true },
+  ]);
+  expect(pod?.volumes).toPartiallyContain({
+    name: 'etc',
+    projected: {
+      sources: [
+        {
+          configMap: { name: 'nixie-config', items: [{ key: 'config.yaml', path: 'config.yaml' }] },
+        },
+        {
+          secret: {
+            name: 'nixie-secrets',
+            items: [
+              { key: 'secrets.yaml', path: 'secrets.yaml', mode: 0o440 },
+              { key: 'age.key', path: 'age.key', mode: 0o440 },
+            ],
           },
-        ],
-        volumes: expect.arrayContaining([
-          {
-            name: 'etc',
-            projected: {
-              sources: [
-                {
-                  configMap: {
-                    name: 'nixie-config',
-                    items: [{ key: 'config.yaml', path: 'config.yaml' }],
-                  },
-                },
-                {
-                  secret: {
-                    name: 'nixie-secrets',
-                    items: [
-                      { key: 'secrets.yaml', path: 'secrets.yaml', mode: 0o440 },
-                      { key: 'age.key', path: 'age.key', mode: 0o440 },
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-        ]),
-      },
+        },
+      ],
     },
   });
 });

@@ -4,10 +4,14 @@
 const args = process.argv.slice(2);
 
 if (args[0] === '--replies') {
-  const replies: Readonly<Record<string, string>> = await Bun.file(args[1] ?? '').json();
-  const reply = replies[args.at(-1) ?? ''];
+  const text = await Bun.file(args[1] ?? '').text();
+  const replies: unknown = JSON.parse(text);
+  const reply: unknown =
+    typeof replies === 'object' && replies !== null
+      ? Reflect.get(replies, args.at(-1) ?? '')
+      : null;
 
-  if (reply === undefined) {
+  if (typeof reply !== 'string') {
     process.stderr.write(`error: the stub has no reply for ${args.at(-1)}\n`);
     process.exit(1);
   }

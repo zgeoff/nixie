@@ -15,6 +15,8 @@ const live = parseLiveEnv(process.env);
 
 // Enrols a device with a code from the host command in nixie's pod, and revokes the device's
 // session when the test ends, so each run leaves no live session behind.
+type Page = Awaited<ReturnType<ReturnType<typeof buildLiveClient>['conversation']['read']>>;
+
 async function setupTest() {
   const url = requireLiveValue(live.url, 'NIXIE_LIVE_URL');
   const kubectl = requireLiveValue(live.kubectl, 'NIXIE_LIVE_KUBECONFIG');
@@ -57,7 +59,7 @@ test.skipIf(live.url === null || live.kubectl === null)(
       text,
       thread: 'conversation',
     });
-    const turn: { records: ReturnType<typeof findTurnRecords> } = { records: null };
+    const turn: { records: Readonly<Page['records']> | null } = { records: null };
 
     // a cold conversation imp starts before the turn, and the turn waits on the model and the page
     await waitForCondition(

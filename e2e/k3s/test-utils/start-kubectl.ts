@@ -20,7 +20,9 @@ export function startKubectl(target: KubectlTarget, args: readonly string[]): Ku
     stderr: 'ignore',
   });
   const lines: string[] = [];
-  const read = readLines(child.stdout, (line) => lines.push(line));
+  const read = readLines(child.stdout, (line) => {
+    lines.push(line);
+  });
   const exited = waitForExit(child.exited, read);
 
   return {
@@ -47,15 +49,24 @@ async function readLines(
   const pending = { text: '' };
 
   for await (const chunk of stream) {
-    pending.text += decoder.decode(chunk, { stream: true });
-
-    const parts = pending.text.split('\n');
-
-    pending.text = parts.pop() ?? '';
-    parts.forEach((line) => onLine(line));
+    pending.text = emitCompleteLines(
+      pending.text + decoder.decode(chunk, { stream: true }),
+      onLine,
+    );
   }
   pending.text += decoder.decode();
   if (pending.text !== '') {
     onLine(pending.text);
   }
+}
+
+// hands on every complete line and returns the partial line after the last newline
+function emitCompleteLines(text: string, onLine: (line: string) => void): string {
+  const parts = text.split('\n');
+  const rest = parts.pop() ?? '';
+
+  for (const line of parts) {
+    onLine(line);
+  }
+  return rest;
 }
