@@ -31,19 +31,19 @@ const testLog = await startTestLog({
 }).catch(stopWithError);
 const context = testLog.context;
 
-await createConversationTask(context);
+await createConversationTask(context).catch(stopWithError);
 await runRecovery(context, {
   writeUnknownOutcomes: () => writeUnknownOutcomes(context),
 
   // slice 2 cleans up the sandboxes of steps that no longer run
   sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
-});
+}).catch(stopWithError);
 
 // the oracle reads what this restart's recovery left, before any runner claims work
 await link.waitAtFaultPoint('test.recovered', { kind: 'recovery', id: null });
 
-const tools = await startTestTools(context, env.providerURL);
-const conversation = await startTestConversation(context, tools, env.modelURL);
+const tools = await startTestTools(context, env.providerURL).catch(stopWithError);
+const conversation = await startTestConversation(context, tools, env.modelURL).catch(stopWithError);
 const holder = `nixie-${process.pid}`;
 const tasks = startTaskRunners(context, {
   runStep: tools.trackSteps(runTestBuildStep),
