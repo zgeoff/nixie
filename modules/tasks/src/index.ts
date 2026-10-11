@@ -47,6 +47,7 @@ export type {
 } from './types';
 export { waitAtFaultPoint } from './wait-at-fault-point';
 export { writeInboxRecords } from './write-inbox-records';
+export { writeInboxRecordsInTransaction } from './write-inbox-records-in-transaction';
 export { writeStepCommit } from './write-step-commit';
 export type { StepErrorOptions } from './write-step-error';
 export { writeStepError } from './write-step-error';

@@ -1,0 +1,24 @@
+{
+  "name": "@heynixie/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/contract": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "@orpc/server": "catalog:",
+    "elysia": "catalog:",
+    "kysely": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*",
+    "@orpc/client": "catalog:"
+  }
+}

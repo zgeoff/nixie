@@ -36,6 +36,7 @@
       "@types/react-dom": "19.3.0",
       "@vitejs/plugin-react": "6.1.1",
       "@zgeoff/imp-client": "0.40.4",
+      "elysia": "1.4.30",
       "happy-dom": "20.14.5",
       "kysely": "0.29.6",
       "msw": "2.15.0",

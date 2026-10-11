@@ -5,10 +5,10 @@ The user reaches nixie through a client that calls one typed API, an oRPC contra
 schemas, types and pure functions and no server code, so every client depends on it and the server
 validates every input and output against it. The web client in `apps/web` is a TanStack Start server
 with its own process and image beside the API, and it renders the conversation from the log as it
-grows. The [client design](../../design/platform/channels/client.md) covers the API server that
-serves the contract and the Android app, and the web client's tests run it against a mock API built
-from the contract. [The architecture overview](../overview.md#the-client-path) shows where the two
-servers sit.
+grows. [The API](./api.md) covers the server that serves the contract, the
+[client design](../../design/platform/channels/client.md) covers the Android app, and the web
+client's tests run against a mock API built from the contract.
+[The architecture overview](../overview.md#the-client-path) shows where the two servers sit.
 
 ## The contract
 
@@ -16,9 +16,10 @@ The contract has three kinds of procedure: reads, which a client caches; checked
 change state; and the live stream of log records.
 
 - **Checked actions.** A client creates an ID once per action and sends it again on every retry, so
-  the server applies the action once and answers a retry with the first result. A message send uses
-  its client message ID as that ID. The server refuses an ID that arrives again with a different
-  input with `CLIENT_ACTION_ID_REUSED`.
+  the server applies the action once and answers a retry with the first result, or with a fresh
+  secret that replaces the first where nixie keeps only a hash
+  ([the API](./api.md#checked-actions)). A message send uses its client message ID as that ID. The
+  server refuses an ID that arrives again with a different input with `CLIENT_ACTION_ID_REUSED`.
 - **Sessions.** Every procedure except enrolment declares `UNAUTHORIZED` for a call without a valid
   device session. Enrolment turns a one-time code into a session, delivered as an `HttpOnly` cookie
   to a browser and in the response to the Android app. The server keeps only a hash of each token,

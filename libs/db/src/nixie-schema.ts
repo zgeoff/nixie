@@ -1,4 +1,5 @@
 import { actionsMigration } from './actions-migration';
+import { apiMigration } from './api-migration';
 import { definitionsMigration } from './definitions-migration';
 import { eventLogMigration } from './event-log-migration';
 import { sandboxesMigration } from './sandboxes-migration';
@@ -15,6 +16,7 @@ export const nixieSchema: BuildSchema = {
     sandboxesMigration,
     tasksMigration,
     actionsMigration,
+    apiMigration,
   ],
   oldestReader: 0,
 };

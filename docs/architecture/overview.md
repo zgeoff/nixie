@@ -66,7 +66,8 @@ flowchart LR
 The browser calls the API on its own origin, so one host-only session cookie reaches both servers
 and no call crosses origins. The web server holds no session of its own. When it renders a page, it
 forwards the browser's session to the API as a bearer token, so a render carries exactly the
-authority of the browser that asked for it.
+authority of the browser that asked for it. [The API](./channels/api.md) covers device sessions,
+message sends and the live stream on the server side.
 
 ## Topology
 
