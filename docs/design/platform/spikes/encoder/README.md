@@ -58,7 +58,8 @@ bun bench.ts leaf-ir-q8-ort        # one candidate, one JSON line
 | `potion-base-8m`  | `minishlab/potion-base-8M`                    | a static table in TypeScript | 31 MB   | MIT                |
 
 Weights count the ONNX or safetensors files plus the tokenizer files. MiniLM is the baseline from
-the retrieval spike. The spike measured 13 more variants:
+the retrieval spike. The spike measured 13 more variants, plus the vector sizes in
+[smaller vectors](#smaller-vectors):
 
 - `bge-small-en-v1.5` in fp32 and int8 on transformers.js, and in fastembed
 - `snowflake-arctic-embed-s` in fp32 on transformers.js and on `onnxruntime-web`, and int8 on
@@ -81,10 +82,12 @@ The 75 questions run in 2 forms, as you would type them and as recall-tool keywo
 | `gemma-q4`        | none    | 55.69   | 30/30    | 0.91     | 0.93        | 0.79      |
 | `potion-base-8m`  | none    | 31.11   | 24/30    | 0.71     | 0.85        | 0.61      |
 
-- **The public scores come from 2 kinds of source.** The `mdbr-leaf-ir` model card reports its
-  53.55, and nobody recomputed it. The arctic, MiniLM and potion v1 and v2 scores, and the
-  EmbeddingGemma v2 score, are means over the per-task results in the MTEB results repository, which
-  reproduce each model card's own figure where the card gives one.
+- **Each public score is a mean over the per-task results in the MTEB results repository.** Each
+  mean reproduces the model card's own figure. The publishers submitted the leaf-ir and arctic-s
+  BEIR runs themselves, and no third party has published a run of either.
+- **leaf-ir wins 11 of the 15 BEIR tasks against arctic-s.** arctic-s wins Quora duplicate questions
+  (87.5 against 86.2), Touche, FiQA and SciDocs by 0.3 to 1.7 points. leaf-ir has no runs on the
+  MTEB v2 retrieval tasks.
 - **The 30 pairs separate only the weakest models.** MiniLM and EmbeddingGemma found all 30, and
   every model found all 10 lexical questions. The pairs show that potion misses paraphrase: it found
   14 of 20, where the ONNX models found 17 to 20. The 75 questions carry the ranking.
@@ -95,6 +98,37 @@ The 75 questions run in 2 forms, as you would type them and as recall-tool keywo
   recall@5 by 2 points at most against fp32.
 - **bge-small and granite-r2 trail MiniLM here.** bge-small scored 0.67 typed with its instruction
   prefix, and granite-r2 scored 0.71, so neither is a candidate.
+
+## Smaller vectors
+
+leaf-ir inherits Matryoshka training from `snowflake-arctic-embed-m-v1.5`, the model it was
+distilled from, so the first numbers of each vector carry most of its meaning. The spike cuts each
+vector to its first `dims` numbers and normalises it again. The int8 rows store each number in one
+byte over the range -0.3 to 0.3, the range the parent's card gives, and rank by the stored values:
+
+| Candidate                 | Numbers | Bytes a vector | 20,000 items | 75 typed | 75 keywords | MRR typed |
+| ------------------------- | ------- | -------------- | ------------ | -------- | ----------- | --------- |
+| `leaf-ir-q8-ort`          | 768     | 3,072          | 61 MB        | 0.82     | 0.88        | 0.72      |
+| `leaf-ir-q8-ort-int8`     | 768     | 768            | 15 MB        | 0.82     | 0.88        | 0.72      |
+| `leaf-ir-q8-ort-384`      | 384     | 1,536          | 31 MB        | 0.83     | 0.87        | 0.70      |
+| `leaf-ir-q8-ort-256`      | 256     | 1,024          | 20 MB        | 0.82     | 0.87        | 0.71      |
+| `leaf-ir-q8-ort-256-int8` | 256     | 256            | 5 MB         | 0.82     | 0.88        | 0.71      |
+| `leaf-ir-q8-ort-128`      | 128     | 512            | 10 MB        | 0.77     | 0.84        | 0.69      |
+| `arctic-s-q8-ort`         | 384     | 1,536          | 31 MB        | 0.82     | 0.90        | 0.73      |
+| `arctic-s-q8-ort-int8`    | 384     | 384            | 8 MB         | 0.82     | 0.91        | 0.76      |
+
+- **leaf-ir keeps its recall down to 256 numbers in int8.** At 256 bytes a vector its index is a
+  twelfth of its full width and two thirds of arctic-s in int8. One question moves recall@5 by 1.3
+  points, so the rows from 768 down to 256 numbers tie.
+- **128 numbers is too few.** Typed recall fell to 0.77, the level of MiniLM.
+- **int8 storage cost neither model any recall.** arctic-s has no Matryoshka training, so 384
+  numbers are its minimum.
+- **The cut and int8 storage change only the index.** The model process held the same memory, 96 MB
+  loaded and 180 MB at peak on 2 cores, and embedding took the same time.
+
+The query vector goes through the same cut and quantisation as the stored vectors, as it would in
+the index. The spike dequantises before ranking, which orders results as an integer dot product
+does.
 
 ## Runtime and memory
 
@@ -177,14 +211,15 @@ Ship `mdbr-leaf-ir` with int8 weights, run by `onnxruntime-node` directly with
 - Its ONNX graph pools inside the model, so the code takes the `sentence_embedding` output and
   normalises it.
 
-The risks are its public score and its width. Its 53.55 is the publisher's own figure, unchecked.
-Its vectors have 768 dimensions, so 20,000 items hold about 61 MB in fp32, twice arctic-s.
+Store its vectors cut to 256 numbers in int8: 256 bytes a vector, 5 MB for 20,000 items, with no
+loss of recall on these questions. The risk is its public score, which comes from its publisher
+alone, as arctic-s's does.
 
-The runner-up is `snowflake-arctic-embed-s` int8 on the same runner. It matches leaf-ir on recall
-and has independently computed MTEB scores and 384 dimensions. It costs about a third more time per
-text and 11 MB more weights. Choose it if a checked benchmark and a smaller index count for more
-than speed. Moving between the two changes the model folder and the pooling: arctic-s takes the
-first token of `last_hidden_state`.
+The runner-up is `snowflake-arctic-embed-s` int8 on the same runner, with int8 vectors. It matches
+leaf-ir on recall and keeps 384 numbers a vector, 8 MB for 20,000 items. It costs about a third more
+time per text, 11 MB more weights and 68 MB more once loaded. Choose it if a longer public record
+counts for more than those costs. Moving between the two changes the model folder and the pooling:
+arctic-s takes the first token of `last_hidden_state`.
 
 The other options trade away more:
 
@@ -200,7 +235,6 @@ The other options trade away more:
 
 - **Questions you write.** Every item, pair and question here is synthetic, and one author wrote
   them with the items in view. The gain on your own questions is unmeasured.
-- Recall with leaf-ir's vectors cut to 256 dimensions, which its card offers.
 - Whether ONNX Runtime sends telemetry over the network; every container run had none.
 - An arm64 host, and a rebuild over long past messages.
 - Recall over a few thousand items, and with BM25 fused, as the retrieval spike ran it.

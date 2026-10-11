@@ -12,6 +12,14 @@ export const MODELS_DIR = path.resolve(process.env.MODELS_DIR ?? path.join(os.ho
 const THREADS = Number(process.env.THREADS ?? 0);
 
 export async function loadEncoder(candidate: Candidate): Promise<Embed> {
+  const embed = await loadRunner(candidate);
+  if (candidate.dims === undefined && candidate.vectors === undefined) {
+    return embed;
+  }
+  return async (texts) => (await embed(texts)).map((vector) => shrinkVector(vector, candidate));
+}
+
+async function loadRunner(candidate: Candidate): Promise<Embed> {
   switch (candidate.runner) {
     case 'transformers': {
       return loadTransformersEncoder(candidate);
@@ -220,6 +228,17 @@ async function loadSafetensors(filePath: string): Promise<{ table: Float32Array;
   const start = 8 + headerLength + entry.data_offsets[0],
     end = 8 + headerLength + entry.data_offsets[1];
   return { dims: entry.shape[1] ?? 0, table: new Float32Array(await file.slice(start, end).arrayBuffer()) };
+}
+
+// cuts and quantises a stored vector the way the index would hold it; ranking compares the
+// dequantised values, which orders results as an integer dot product would
+function shrinkVector(vector: Float32Array, candidate: Candidate): Float32Array {
+  const cut = normalizeVector(vector.slice(0, candidate.dims ?? vector.length));
+  if (candidate.vectors !== 'int8') {
+    return cut;
+  }
+  const range = 0.3;
+  return cut.map((value) => Math.round(Math.max(-1, Math.min(1, value / range)) * 127) / 127);
 }
 
 function splitRows(data: Float32Array, [rows, dims]: [number, number], normalize: boolean): Float32Array[] {

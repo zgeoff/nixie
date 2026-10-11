@@ -214,6 +214,8 @@ The memory store, its writes, how it reaches the model, and definition versionin
   first build
 - [0037: Moments](decisions/0037-moments.md) — kept spans of the event log with your note and the
   model's reflections, reached by tool call and by links from memory items
+- [0039: The local encoder](decisions/0039-local-encoder.md) — `mdbr-leaf-ir` int8 on ONNX Runtime,
+  with 256-number int8 vectors and weights pinned by checksum
 
 ### Skills
 

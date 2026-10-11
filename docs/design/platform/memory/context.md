@@ -4,7 +4,7 @@
   [0024](../../../decisions/0024-memory-in-context.md),
   [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
   [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
-  [0037](../../../decisions/0037-moments.md)
+  [0037](../../../decisions/0037-moments.md), [0039](../../../decisions/0039-local-encoder.md)
 
 The conversation runs on the Agent SDK's session and compaction. Memory reaches it 3 ways: a small
 pinned core in the system prompt, a few items retrieved for each turn, and 2 recall tools the model
@@ -49,8 +49,8 @@ the cache holds. The [pinned core spike](../spikes/sdk-pinned-core/README.md) is
 Per-turn retrieval and the recall tools share one retrieval service over active memory items and
 readable past messages. A small local encoder with pinned model assets produces semantic vectors,
 with no inference API call. SQLite FTS5 with BM25 serves word, name and reference lookup, and an
-exact item ID reads the item directly. The encoder and the ranking are configurable, and the encoder
-choice is open in [GEO-303](https://linear.app/zgeoff/issue/GEO-303).
+exact item ID reads the item directly. The encoder and the ranking are configurable, and
+[0039](../../../decisions/0039-local-encoder.md) picks the encoder and its vector size.
 
 ### The index
 
@@ -75,9 +75,9 @@ that removal.
 Neither index is written to disk, exported or backed up, and restart rebuilds them from readable
 records. **Why:** the [shredding spike](../spikes/memory-shred/README.md) found that a persisted
 FTS5 index keeps forgotten words. The [retrieval spike](../spikes/memory-retrieval/README.md) built
-the FTS5 index over 20,000 messages in 62 ms and measured embedding at 1.2 to 2.6 ms per item. A
-full semantic rebuild over that many messages is unmeasured, and keyword search covers the gap while
-it runs.
+the FTS5 index over 20,000 messages in 62 ms. The [encoder spike](../spikes/encoder/README.md) puts
+a semantic rebuild over 20,000 short texts at about 13 s on 2 cores, and keyword search covers the
+gap while it runs.
 
 Tool results, worker transcripts and compaction summaries stay out of the index. **Why:** they are
 outside content or model text written from it, and retrieving them would place that text beside your
