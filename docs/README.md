@@ -52,6 +52,10 @@ below, and planned work lives in Linear.
   the model sees
 - [The definitions](architecture/core/definitions.md) — sources, the content hash, the definitions
   format, the snapshot hash and seeding
+- [Model profiles](architecture/core/model-profiles.md) — profiles, the role map, credential
+  references and the model on each record
+- [Conversation turns](architecture/core/conversation-turns.md) — the guest, what a query holds,
+  resume and fork, inbox records as messages
 
 ### Policy
 

@@ -34,6 +34,32 @@ test('it carries your message with its text and spans', () => {
   });
 });
 
+test('it carries the model reply with its text', () => {
+  expect(
+    toContractRecord({
+      sequence: 9,
+      recordedAt: new Date('2026-10-10T12:00:01Z'),
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: { model: 'claude-test-1', profile: 'chat-direct' },
+      erasable: { status: 'readable', fields: { text: 'Hello.' } },
+    }),
+  ).toStrictEqual({
+    kind: 'model.reply',
+    message: { text: 'Hello.' },
+    recordedAt: new Date('2026-10-10T12:00:01Z'),
+    sequence: 9,
+    thread: 'conversation',
+  });
+});
+
 test('it keeps a forgotten message in place with no text', () => {
   expect(
     toContractRecord({

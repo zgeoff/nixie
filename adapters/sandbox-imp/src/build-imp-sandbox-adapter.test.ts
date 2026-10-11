@@ -393,3 +393,32 @@ test('copyOut refuses a guest file past 64 MiB', async () => {
     'copy out of /dev/zero failed: the file passes 67108864 bytes',
   );
 });
+
+test.each([
+  ['bearer', 'secret model-chat-1 gateway.example authorization bearer'],
+  ['x-api-key', 'secret model-chat-1 gateway.example x-api-key raw'],
+] as const)('it stores a %s secret for its one host', async (header, call) => {
+  const ctx = await setupImpAdapter();
+
+  await ctx.adapter.addSecret({
+    name: 'model-chat-1',
+    value: 'not-a-real-key',
+    host: 'gateway.example',
+    header,
+  });
+
+  expect(ctx.imp.calls).toStrictEqual([call]);
+});
+
+test('it stores no secret when one already has the name', async () => {
+  const ctx = await setupImpAdapter();
+
+  await ctx.adapter.addSecret({
+    name: 'model-default',
+    value: 'not-a-real-key',
+    host: 'api.anthropic.com',
+    header: 'x-api-key',
+  });
+
+  expect(ctx.imp.calls).toStrictEqual([]);
+});

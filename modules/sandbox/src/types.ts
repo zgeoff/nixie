@@ -18,6 +18,15 @@ export interface GrantSpec {
   readonly env: Readonly<Record<string, string>>;
 }
 
+// A credential that the adapter's injecting backend holds under a name, for a grant to name. The
+// backend sends it to one host only, in the header its endpoint takes.
+export interface SecretSpec {
+  readonly name: string;
+  readonly value: string;
+  readonly host: string;
+  readonly header: 'bearer' | 'x-api-key';
+}
+
 export interface SandboxLimits {
   readonly vcpus: number;
   readonly memoryMiB: number;
@@ -51,6 +60,10 @@ export interface SandboxAdapter {
 
   // every sandbox this adapter made for the owner that is not yet destroyed, for crash recovery
   readonly list: (owner: string) => Promise<readonly Sandbox[]>;
+
+  // stores a credential with the injecting backend unless one already has the name, so a caller
+  // names each value once and a changed value gets a new name
+  readonly addSecret: (secret: SecretSpec) => Promise<void>;
 }
 
 export interface ExecSpec {

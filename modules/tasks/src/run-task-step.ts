@@ -1,6 +1,7 @@
 import { StaleWriterError } from '@heynixie/log';
 import { LeaseLostError } from './lease-lost-error';
 import { readInbox } from './read-inbox';
+import { readSessionBoundary } from './read-session-boundary';
 import { startLeaseRenewal } from './start-lease-renewal';
 import type { RunStep, TaskClaim, TasksContext } from './types';
 import { writeStepCommit } from './write-step-commit';
@@ -45,11 +46,13 @@ async function tryCommitStep(
 ): Promise<{ readonly error: unknown } | null> {
   try {
     const inbox = await readInbox(context, claim.lease.workID);
+    const sessionBoundary = await readSessionBoundary(context, claim.lease.workID);
     const result = await options.runStep({
       taskID: claim.lease.workID,
       stepKey: claim.stepKey,
       lease: claim.lease,
       inbox,
+      sessionBoundary,
       signal: options.signal,
     });
 

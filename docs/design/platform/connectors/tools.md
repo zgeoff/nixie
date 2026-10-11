@@ -72,27 +72,7 @@ the call to its turn.
 
 ## Starting a model loop
 
-Every model loop starts with the same options, from the
-[placement spike](../spikes/sdk-placement/README.md), plus the base URL, model and effort of its
-role's [model profile](../core/models.md):
-
-- `tools: []`, `strictMcpConfig: true` and `settingSources: []`, so nothing comes from a settings
-  file
-- `skills: []`, `verbatimPrompts: true` and the setting `disableBundledSkills: true`, so no SDK
-  skill or slash command reaches the model, as [skills](../skills.md#no-skill-from-the-sdk) sets out
-- `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, which keeps Claude Code to the model API's host
-- a neutral working directory, because the system prompt carries it
-- `options.env` with each variable passed by name, because it replaces the CLI environment
-
-nixie stops the run when `init.mcp_servers` shows its server as anything but `connected`. **Why:** a
-failed MCP server still ends the run as `success`, and the model invents the tool's output.
-
-The CLI opens a `subscriptions/listen` stream and waits for its acknowledgement before it lists the
-tools, so nixie's relay passes each chunk on as it arrives. A buffering relay stalled the start of
-every run by 25 s in the tools endpoint spike.
-
-The SDK's in-process MCP server serves tool definitions with no network. The tests that run
-`query()` live in `guests/conversation`, the one package that imports the SDK, and use it to check
-the turn runner and the options above without an imp. Those tests serve stub tools, because a guest
-never imports a module. A whole-program test exercises the production handlers through the endpoint,
-with the sandbox double from the [crash tests](../core/crash-tests.md#the-harness).
+The conversation's model loop is built, and
+[conversation turns](../../../architecture/core/conversation-turns.md#what-a-query-holds) covers the
+options every query holds. A worker's model loop starts with the same options, on its role's
+[model profile](../core/models.md).

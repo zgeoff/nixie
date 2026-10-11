@@ -57,7 +57,14 @@ test('it runs the default tool to one note', async () => {
 
   const outcome = await definition.run(
     { callID: 'call-1', tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
-    { run: { runID: 'run-1', thread: 'task-1', tools: ['notes_read'] } },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'task-1',
+        tools: ['notes_read'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
   );
 
   expect(outcome).toStrictEqual({ status: 'ok', result: { text: 'a note' } });

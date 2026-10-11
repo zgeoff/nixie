@@ -1,5 +1,12 @@
+export { decodeTurnFrame } from './decode-turn-frame';
 export { encodeFrame } from './encode-frame';
+export { encodeTurnFrame } from './encode-turn-frame';
 export { frameHeaderBytes } from './frame-header-bytes';
 export { FrameTooLargeError } from './frame-too-large-error';
+export type { GuestFrame } from './guest-frame';
+export { guestFrameSchema } from './guest-frame';
+export type { HostFrame, InboxMessage, SessionPoint, TurnProfile } from './host-frame';
+export { hostFrameSchema } from './host-frame';
 export type { FrameDecoder } from './make-frame-decoder';
 export { makeFrameDecoder } from './make-frame-decoder';
+export { turnFrameLimitBytes } from './turn-frame-limit-bytes';

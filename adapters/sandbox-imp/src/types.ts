@@ -59,6 +59,15 @@ export interface ImpFeatures {
   readonly isEgressEnforced: boolean;
 }
 
+// A custom secret the broker sends to one host, in one header with its scheme.
+interface ImpSecretInput {
+  readonly name: string;
+  readonly value: string;
+  readonly host: string;
+  readonly header: string;
+  readonly scheme: 'bearer' | 'raw';
+}
+
 // The impd calls the adapter makes. buildImpPort implements it on imp's client; a test stands in
 // for impd with its own.
 export interface ImpPort {
@@ -73,6 +82,7 @@ export interface ImpPort {
   // the hosts a secret's broker rules cover, or null when no secret has the name
   readonly readSecretHosts: (secret: string) => Promise<readonly string[] | null>;
   readonly addGrant: (name: string, secret: string) => Promise<void>;
+  readonly addSecret: (secret: ImpSecretInput) => Promise<void>;
   readonly openExec: (
     name: string,
     argv: readonly string[],

@@ -19,4 +19,5 @@ export type {
   ToolOutcome,
   ToolRegistry,
   ToolRun,
+  ToolRunModel,
 } from './types';

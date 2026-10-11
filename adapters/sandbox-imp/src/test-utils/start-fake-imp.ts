@@ -82,8 +82,7 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
     },
     sleepImp: (name) => updateCallLog(`sleep ${name}`),
     wakeImp: (name) => updateCallLog(`wake ${name}`),
-    readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),
-    addGrant: (name, secret) => updateCallLog(`grant ${name} ${secret}`),
+    ...buildFakeSecretCalls(state, updateCallLog),
     openExec: (_name, argv, options) => {
       const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
 
@@ -255,4 +254,19 @@ function sendGroupSignal(pid: number, signal: NodeJS.Signals): void {
   } catch {
     // the group is gone already
   }
+}
+
+type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret'>;
+type UpdateCallLog = (call: string) => Promise<void>;
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own secret store
+function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeSecretCalls {
+  return {
+    readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),
+    addGrant: (name, secret) => updateCallLog(`grant ${name} ${secret}`),
+    addSecret: async (secret) => {
+      await updateCallLog(`secret ${secret.name} ${secret.host} ${secret.header} ${secret.scheme}`);
+      state.secrets.set(secret.name, [secret.host]);
+    },
+  };
 }

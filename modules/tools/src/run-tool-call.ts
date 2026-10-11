@@ -100,7 +100,7 @@ function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions
           kind: 'tool_called',
           definitions,
           thread: run.thread,
-          payload: { ...ids, tool: call.tool },
+          payload: { ...ids, tool: call.tool, model: run.model.model, profile: run.model.profile },
           erasable: { input: call.input },
           ...(policy === null ? {} : { decision: policy.decision }),
         },

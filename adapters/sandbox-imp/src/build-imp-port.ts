@@ -25,6 +25,14 @@ export function buildImpPort(connection: ImpConnection): ImpPort {
     addGrant: async (name, secret) => {
       await client.grants.add({ name, secret });
     },
+    addSecret: async (secret) => {
+      await client.secrets.add({
+        name: secret.name,
+        kind: 'custom',
+        value: secret.value,
+        rules: [{ host: secret.host, header: secret.header, scheme: secret.scheme }],
+      });
+    },
     openExec: makeExecOpener(client),
     openReverseForward: (name, guestPort, onConnection) =>
       openReverseForward({

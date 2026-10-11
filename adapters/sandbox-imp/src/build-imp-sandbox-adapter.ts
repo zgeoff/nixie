@@ -77,6 +77,25 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
 
       return rows.map((row) => getRowSandbox(row));
     },
+    addSecret: makeSecretAdder(options.port),
+  };
+}
+
+// A secret stays under its name once stored, because a sandbox's grant may name it; a caller with a
+// new value stores it under a new name.
+function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
+  return async (secret) => {
+    if ((await port.readSecretHosts(secret.name)) !== null) {
+      return;
+    }
+    await port.addSecret({
+      name: secret.name,
+      value: secret.value,
+      host: secret.host,
+      ...(secret.header === 'bearer'
+        ? { header: 'authorization', scheme: 'bearer' }
+        : { header: 'x-api-key', scheme: 'raw' }),
+    });
   };
 }
 

@@ -38,14 +38,19 @@ test('it returns an allowed direct call the typed result as structured content a
 
   const result = await runToolCall(
     { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_1' },
-    { runID: 'run-1', thread: 'task-1', tools: ['notes_read'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
   expect(result).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
 });
 
-test('it writes the call with its decision and the tool-use ID', async () => {
+test('it writes the call with its decision, the tool-use ID and the run model profile', async () => {
   const ctx = await setupTest({
     tools: [buildMockToolDefinition({ declaration: { effects: ['fetch'] } })],
     queue: { enqueue: mock(), waitForOutcome: mock() },
@@ -53,7 +58,12 @@ test('it writes the call with its decision and the tool-use ID', async () => {
 
   await runToolCall(
     { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_2' },
-    { runID: 'run-1', thread: 'task-1', tools: ['notes_read'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'glm-5.3', profile: 'chat-aggregator' },
+    },
     ctx.options,
   );
 
@@ -65,7 +75,13 @@ test('it writes the call with its decision and the tool-use ID', async () => {
     definitions: { snapshotHash: 'sha256:test' },
     thread: 'task-1',
     decision: { outcome: 'allow', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
-    payload: { runID: 'run-1', toolUseID: 'toolu_2', tool: 'notes_read' },
+    payload: {
+      runID: 'run-1',
+      toolUseID: 'toolu_2',
+      tool: 'notes_read',
+      model: 'glm-5.3',
+      profile: 'chat-aggregator',
+    },
     erasable: { status: 'readable', fields: { input: { query: 'milk' } } },
   });
 });
@@ -91,7 +107,12 @@ test('it writes the result with the source of each field, under the call it answ
 
   await runToolCall(
     { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_2' },
-    { runID: 'run-1', thread: 'task-1', tools: ['notes_read'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
@@ -133,7 +154,12 @@ test('it returns an allowed queued call the action outcome once the action is do
 
   const result = await runToolCall(
     { tool: 'test.send', input: { query: 'hello' }, toolUseID: 'toolu_3' },
-    { runID: 'run-1', thread: 'task-1', tools: ['test.send'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
@@ -155,14 +181,24 @@ test('it queues an allowed queued call with its call, its run and the sequence o
 
   await runToolCall(
     { tool: 'test.send', input: { query: 'hello' }, toolUseID: 'toolu_3' },
-    { runID: 'run-1', thread: 'task-1', tools: ['test.send'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
   expect(enqueue).toHaveBeenCalledOnce();
   expect(enqueue.mock.calls[0]?.[0]).toMatchObject({
     call: { tool: 'test.send', input: { query: 'hello' }, toolUseID: 'toolu_3' },
-    run: { runID: 'run-1', thread: 'task-1', tools: ['test.send'] },
+    run: {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     callSequence: 1,
   });
 });
@@ -182,7 +218,12 @@ test('it returns "queued as" the action ID when the action is still pending afte
 
   const result = await runToolCall(
     { tool: 'test.send', input: { query: 'hello' }, toolUseID: null },
-    { runID: 'run-1', thread: 'task-1', tools: ['test.send'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
   const actionID = enqueue.mock.calls[0]?.[0].actionID;
@@ -211,7 +252,12 @@ test('it returns a failed action outcome as text that is no tool error', async (
 
   const result = await runToolCall(
     { tool: 'test.send', input: { query: 'hello' }, toolUseID: null },
-    { runID: 'run-1', thread: 'task-1', tools: ['test.send'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
   const actionID = enqueue.mock.calls[0]?.[0].actionID;
@@ -236,7 +282,12 @@ test('it denies a listed send tool with the rule ID and sentence', async () => {
 
   const result = await runToolCall(
     { tool: 'gmail_send', input: { query: 'hello' }, toolUseID: 'toolu_4' },
-    { runID: 'run-1', thread: 'task-1', tools: ['gmail_send'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['gmail_send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
@@ -266,7 +317,12 @@ test('it records slice1.read-only as the deciding rule of a denied call, and que
 
   await runToolCall(
     { tool: 'gmail_send', input: { query: 'hello' }, toolUseID: 'toolu_4' },
-    { runID: 'run-1', thread: 'task-1', tools: ['gmail_send'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['gmail_send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
@@ -290,7 +346,12 @@ test('it rejects invalid input with the schema errors before the decision point'
 
   const result = await runToolCall(
     { tool: 'notes_read', input: { query: 7 }, toolUseID: 'toolu_5' },
-    { runID: 'run-1', thread: 'task-1', tools: ['notes_read'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
   const entries = await readRecords(ctx.log, { afterSequence: 0 });
@@ -314,7 +375,12 @@ test('it denies a tool the registry does not hold at the registry stage', async 
 
   const result = await runToolCall(
     { tool: 'shell', input: {}, toolUseID: null },
-    { runID: 'run-1', thread: 'task-1', tools: ['notes_read', 'shell'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read', 'shell'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
@@ -339,7 +405,12 @@ test("it returns a tool's error as an error and records it as outside content", 
 
   const result = await runToolCall(
     { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
-    { runID: 'run-1', thread: 'task-1', tools: ['notes_read'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
   const entries = await readRecords(ctx.log, { afterSequence: 0 });
@@ -363,7 +434,12 @@ test('it refuses a typed result outside the output schema', async () => {
 
   const result = await runToolCall(
     { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
-    { runID: 'run-1', thread: 'task-1', tools: ['notes_read'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
@@ -383,7 +459,12 @@ test('it writes a result record for a tool that throws, as outside content', asy
 
   const result = await runToolCall(
     { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
-    { runID: 'run-1', thread: 'task-1', tools: ['notes_read'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
   const entries = await readRecords(ctx.log, { afterSequence: 0 });
@@ -415,7 +496,12 @@ test('it returns "queued as" the action ID when the wait for the outcome fails',
 
   const result = await runToolCall(
     { tool: 'test.send', input: { query: 'hello' }, toolUseID: null },
-    { runID: 'run-1', thread: 'task-1', tools: ['test.send'] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
   const actionID = enqueue.mock.calls[0]?.[0].actionID;
@@ -434,7 +520,12 @@ test('it denies an unlisted tool at the scope stage without checking its input',
 
   const result = await runToolCall(
     { tool: 'notes_read', input: {}, toolUseID: null },
-    { runID: 'run-1', thread: 'task-1', tools: [] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: [],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
@@ -454,7 +545,12 @@ test('it records a scope denial, which repeats the tool name, as outside content
 
   await runToolCall(
     { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
-    { runID: 'run-1', thread: 'task-1', tools: [] },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: [],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
     ctx.options,
   );
 
