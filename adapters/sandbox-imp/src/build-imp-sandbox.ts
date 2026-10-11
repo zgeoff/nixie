@@ -6,7 +6,7 @@ import type {
   SandboxRecorder,
   SandboxSpec,
 } from '@heynixie/sandbox';
-import { collectOutput, mergeExecEnv, runCommand, startExecStream } from '@heynixie/sandbox';
+import { collectOutput, runCommand, startExecStream } from '@heynixie/sandbox';
 import type { RouteRegistry } from './build-route-registry';
 import { toProcessIO } from './to-process-io';
 import type { ImpPort } from './types';
@@ -64,13 +64,28 @@ async function startImpProcess(ctx: ImpSandboxContext, command: ExecSpec) {
   await startRoute(ctx);
 
   const exec = await ctx.port.openExec(ctx.id, command.argv, {
-    env: mergeExecEnv(ctx.spec, command.env),
+    env: buildImpExecEnv(ctx.spec, command.env),
     ...(command.cwd === undefined ? {} : { cwd: command.cwd }),
     killGraceMs: ctx.killGraceMs,
     requireBroker: ctx.spec.grants.length > 0,
   });
 
   return toProcessIO(exec, ctx.killGraceMs);
+}
+
+// Each grant's placeholders, then the command's own variables. impd sets the broker's variables for
+// an imp with a grant, NO_PROXY with the loopback among them, and refuses an exec whose env
+// replaces one, so the adapter adds no NO_PROXY of its own. An imp with no grant has no proxy.
+function buildImpExecEnv(
+  spec: SandboxSpec,
+  env: Readonly<Record<string, string>> | undefined,
+): Readonly<Record<string, string>> {
+  const merged: Record<string, string> = {};
+
+  for (const grant of spec.grants) {
+    Object.assign(merged, grant.env);
+  }
+  return { ...merged, ...env };
 }
 
 // Opening the forward and running an exec both wake a sleeping imp, so a call on an imp the adapter
