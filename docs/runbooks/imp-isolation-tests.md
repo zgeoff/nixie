@@ -43,11 +43,14 @@ direct TCP connection from a fetch sandbox to impd, to each host address and to 
 fails. The direct connections skip the fetcher's own address check, so only the network layer
 decides them. The tests skip unless the variables below are set.
 
-1. Build the fetch image from the repo root, and import it into impd:
+1. Build the fetch image into impd, with the repo root as the build folder:
 
    ```bash
-   docker build -f guests/fetch/Dockerfile -t nixie-fetch .
+   imp image build . --file=guests/fetch/Dockerfile --name=<fetch_image_name>
    ```
+
+   impd refuses a `FROM` line that names its image with a variable, so the Dockerfile writes out the
+   Bun version from `.bun-version`. When `.bun-version` changes, change both `FROM` lines to match.
 
 2. Run the tests from `apps/server`, whose `bunfig.toml` leaves out the web test preload:
 
