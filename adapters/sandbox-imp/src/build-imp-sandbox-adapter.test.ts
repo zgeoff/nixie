@@ -443,7 +443,7 @@ test('it adds nothing when impd holds the name at the same digest', async () => 
 
   ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', {
     digest,
-    ref: `ghcr.io/example/nixie-fetch@${digest}`,
+    ref: 'ghcr.io/example/nixie-fetch:0.1.0',
   });
 
   await ctx.adapter.addImage({
