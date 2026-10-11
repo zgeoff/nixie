@@ -1,0 +1,91 @@
+# Builds one image of a release from the release commit, pushes it to GHCR by digest, and attests
+# its build provenance. The release workflow calls it once per image; the version tag comes later,
+# in the release workflow's tag stage.
+name: Release image
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: The GHCR repository name, such as nixie-fetch
+        type: string
+        required: true
+      dockerfile:
+        type: string
+        required: true
+      sha:
+        description: The release commit
+        type: string
+        required: true
+      sandbox-manifest:
+        description: The sandbox manifest JSON that the nixie image carries; empty for other images
+        type: string
+        required: false
+        default: ''
+    outputs:
+      ref:
+        description: The pushed image as <repository>@sha256:<digest>
+        value: ${{ jobs.build.outputs.ref }}
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      ref: ${{ steps.result.outputs.ref }}
+    env:
+      REPOSITORY: ghcr.io/${{ github.repository_owner }}/${{ inputs.image }}
+    steps:
+      - name: Checkout the release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+
+      # no commit holds the manifest, so the nixie image comes from the same commit as its
+      # sandbox images
+      - name: Write the sandbox manifest
+        if: inputs.sandbox-manifest != ''
+        env:
+          SANDBOX_MANIFEST: ${{ inputs.sandbox-manifest }}
+        run: printf '%s\n' "$SANDBOX_MANIFEST" > apps/server/sandbox-manifest.json
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REPOSITORY }}
+          dockerfile: ${{ inputs.dockerfile }}
+
+      # a user-owned repository cannot hold artifact storage records
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.REPOSITORY }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Record the digest
+        id: result
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "ref=$REPOSITORY@$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "$REPOSITORY@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
