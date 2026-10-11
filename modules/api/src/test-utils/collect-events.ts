@@ -1,0 +1,19 @@
+// Reads the next count events of a live stream and returns them, leaving the stream open, so a
+// test reads a stream to a known point and never loops on its own.
+export async function collectEvents<T>(
+  stream: AsyncIterator<T, unknown>,
+  count: number,
+): Promise<readonly T[]> {
+  const events: T[] = [];
+
+  while (events.length < count) {
+    // oxlint-disable-next-line no-await-in-loop -- a stream yields one event at a time
+    const next = await stream.next();
+
+    if (next.done === true) {
+      throw new Error(`the stream ended after ${events.length} of ${count} events`);
+    }
+    events.push(next.value);
+  }
+  return events;
+}

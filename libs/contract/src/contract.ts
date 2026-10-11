@@ -107,7 +107,7 @@ export const contract = {
   sessions: {
     // Turns an enrolment code into a device session: an HttpOnly cookie for a browser, or a bearer
     // token in the output for the Android app. A retry with the same client action ID answers with
-    // the same session and, for a bearer, a fresh token that replaces the first.
+    // the same session and a fresh token, in the cookie or the output, that replaces the first.
     enrol: oc
       .errors(reusedIDErrors)
       .errors({
@@ -127,7 +127,7 @@ export const contract = {
       .output(z.object({ sessionID: z.uuid(), token: z.string().optional() })),
 
     // Issues a code that enrols one more device. It works once and lapses unused after 15 min by
-    // default.
+    // default. A retry answers with a fresh code that replaces the first, with the same lapse time.
     issueCode: checkedAction
       .input(z.object({ clientActionID: clientActionIDSchema }))
       .output(z.object({ code: z.string(), expiresAt: z.date() })),

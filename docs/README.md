@@ -69,6 +69,8 @@ below, and planned work lives in Linear.
 
 - [The client](architecture/channels/client.md) — the oRPC contract, session forwarding, the
   conversation view, the outbox and paste spans
+- [The API](architecture/channels/api.md) — device sessions and the identity record, checked
+  actions, refusals, message sends and the live stream
 
 ## Runbooks
 

@@ -1,0 +1,100 @@
+import type { TasksContext } from '@heynixie/tasks';
+import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
+
+// The tuning values of the API, each with a default in defaultAPISettings.
+export interface APISettings {
+  // how long an unused enrolment code works
+  readonly enrolmentCodeLifetimeMs: number;
+
+  // how long a device session lasts without a call before it lapses
+  readonly sessionIdleMs: number;
+
+  // the least time between 2 refusal records for one external ID
+  readonly refusalIntervalMs: number;
+
+  // the least time between 2 writes of a session's last seen time
+  readonly lastSeenIntervalMs: number;
+}
+
+// What every API entry point needs: the tasks context, whose log holds the API's projections and
+// whose clock times codes, sessions and refusals, and the tuning values.
+export interface APIContext extends TasksContext {
+  readonly settings: APISettings;
+}
+
+// What one call carries into the router: the device session's token, from the bearer header or
+// the session cookie, and where it came from, so only a browser's revoke clears its cookie.
+export interface APIRequestContext extends ResponseHeadersPluginContext {
+  readonly sessionToken: string | undefined;
+  readonly tokenSource: 'bearer' | 'cookie' | 'none';
+}
+
+// A channel identity that a call resolved to: one row of the identity record.
+export interface Identity {
+  readonly identityID: string;
+  readonly channel: string;
+  readonly label: string;
+  readonly pairedAt: number;
+  readonly lastSeenAt: number;
+}
+
+interface IdentityRow {
+  readonly identity_id: string;
+  readonly channel: string;
+  readonly external_id: string;
+  readonly label: string;
+  readonly token_hash: string | null;
+  readonly paired_at: number;
+  readonly last_seen_at: number;
+  readonly revoked_at: number | null;
+  readonly paired_sequence: number;
+}
+
+interface EnrolmentCodeRow {
+  readonly code_hash: string;
+  readonly issued_at: number;
+  readonly expires_at: number;
+  readonly issued_by: string | null;
+  readonly used_at: number | null;
+  readonly identity_id: string | null;
+}
+
+interface ClientActionRow {
+  readonly client_action_id: string;
+  readonly procedure: string;
+  readonly identity_id: string | null;
+  readonly input_hash: string | null;
+  readonly result: string;
+  readonly recorded_at: number;
+}
+
+interface RefusalRow {
+  readonly refusal_key: string;
+  readonly refused_at: number;
+  readonly refused_sequence: number;
+}
+
+interface TaskRow {
+  readonly task_id: string;
+  readonly state: string;
+}
+
+interface RecordRow {
+  readonly sequence: number;
+  readonly thread: string | null;
+}
+
+interface ThreadRow {
+  readonly thread: string;
+}
+
+// mapped types, because Kysely's table map needs the index signature an interface lacks
+export type APITables = Readonly<{
+  identities: IdentityRow;
+  enrolment_codes: EnrolmentCodeRow;
+  client_actions: ClientActionRow;
+  refusals: RefusalRow;
+  tasks: TaskRow;
+  records: RecordRow;
+  threads: ThreadRow;
+}>;
