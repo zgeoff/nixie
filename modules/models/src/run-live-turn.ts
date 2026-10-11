@@ -59,7 +59,6 @@ export async function runLiveTurn(
   }
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a sandbox handle has no readonly form
 async function requireToolRoute(sandbox: Sandbox): Promise<ToolRoute> {
   const route = await sandbox.toolRoute();
 

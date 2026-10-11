@@ -20,6 +20,8 @@ export interface CompletedTurn {
 // turn that failed throws, so the step retries from the boundary it started at.
 export function buildStepResult(
   source: ModelRecordSource,
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the rule reads a ReadonlySet's methods as mutable
   completed: CompletedTurn,
   before: readonly RecordInput[],
 ): StepResult {
