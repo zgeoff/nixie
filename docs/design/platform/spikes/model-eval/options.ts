@@ -1,6 +1,6 @@
 // Builds the session options from the command line, the persona text and a local profile.
 import { execSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
@@ -84,19 +84,35 @@ function readToken(profile: Profile): string {
 
 // The SDK replaces the child's environment, so pass only what it needs and one credential.
 // A profile runs in bare mode, which drops the environment, model, and date reminders, and goes
-// through the proxy, which drops the CLI's own system blocks.
-function buildEnv(profile: Profile | undefined): Record<string, string> {
-  const base = { HOME: process.env.HOME ?? '', PATH: process.env.PATH ?? '' };
+// through the proxy, which drops the CLI's own system blocks. A profile also gets an empty home, so
+// the owner's Claude Code settings, such as auto-mode rules, never reach another provider. The home
+// sits inside the session's working folder, so the caller's cleanup removes it.
+function buildEnv(profile: Profile | undefined, cwd: string): Record<string, string> {
+  const path = process.env.PATH ?? '';
   if (!profile) {
-    return { ...base, CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '' };
+    return {
+      CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '',
+      HOME: process.env.HOME ?? '',
+      PATH: path,
+    };
   }
+  const home = createEmptyHome(cwd);
   return {
-    ...base,
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     CLAUDE_CODE_SIMPLE: '1',
+    CLAUDE_CONFIG_DIR: join(home, '.claude'),
+    HOME: home,
+    PATH: path,
     ...profile.env,
     ANTHROPIC_AUTH_TOKEN: readToken(profile),
     ANTHROPIC_BASE_URL: startProxy(profile.baseUrl),
   };
+}
+
+function createEmptyHome(cwd: string): string {
+  const home = join(cwd, '.home');
+  mkdirSync(join(home, '.claude'), { recursive: true });
+  return home;
 }
 
 export function buildOptions(settings: Settings, persona: string): Options {
@@ -104,7 +120,7 @@ export function buildOptions(settings: Settings, persona: string): Options {
   return {
     allowedTools: settings.tools,
     cwd: settings.cwd,
-    env: buildEnv(profile),
+    env: buildEnv(profile, settings.cwd),
     includePartialMessages: true,
     model: settings.model || profile?.model || 'claude-sonnet-5-5',
     permissionMode: 'dontAsk',
