@@ -60,7 +60,7 @@ export interface ImpFeatures {
 }
 
 // A custom secret the broker sends to one host, in one header with its scheme.
-export interface ImpSecretInput {
+interface ImpSecretInput {
   readonly name: string;
   readonly value: string;
   readonly host: string;

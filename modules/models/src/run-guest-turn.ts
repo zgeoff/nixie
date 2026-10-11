@@ -13,7 +13,7 @@ export interface GuestCommand {
   readonly env: Readonly<Record<string, string>>;
 }
 
-export type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
+type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 type AssistantFrame = Extract<GuestFrame, { type: 'assistant' }>;
 type EndedFrame = Extract<GuestFrame, { type: 'ended' }>;
 type FailedFrame = Extract<GuestFrame, { type: 'failed' }>;

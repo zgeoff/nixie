@@ -1,6 +1,6 @@
 // One reply the stub model gives: a text block that ends the turn, or a tool_use block that asks
 // for a tool by its name as the model sees it, such as mcp__nixie__note_read.
-export type ScriptedReply =
+type ScriptedReply =
   | { readonly text: string }
   | {
       readonly toolUse: {
@@ -10,13 +10,13 @@ export type ScriptedReply =
     };
 
 // One request the stub model received, with its body parsed.
-export interface StubModelRequest {
+interface StubModelRequest {
   readonly path: string;
   readonly headers: Readonly<Record<string, string>>;
   readonly body: StubModelBody | null;
 }
 
-export interface StubModelBody {
+interface StubModelBody {
   readonly model?: string;
   readonly stream?: boolean;
   readonly messages?: readonly { readonly role: string; readonly content: unknown }[];

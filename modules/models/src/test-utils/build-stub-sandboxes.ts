@@ -12,12 +12,12 @@ import { decodeTurnFrame, encodeTurnFrame, hostFrameSchema } from '@heynixie/wir
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
 // The stub guest's side of one turn: the messages the host sent into it, one at a time.
-export interface StubGuest {
+interface StubGuest {
   readonly waitForMessage: () => Promise<InboxMessage>;
 }
 
 // Answers one turn frame with the guest frames the stub sends back before it exits.
-export type StubGuestScript = (
+type StubGuestScript = (
   turn: TurnFrame,
   guest: StubGuest,
 ) => Promise<readonly GuestFrame[]> | readonly GuestFrame[];

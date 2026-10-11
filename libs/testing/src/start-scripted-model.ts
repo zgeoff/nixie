@@ -16,7 +16,7 @@ export interface ScriptedModelRequest {
   readonly body: ScriptedModelBody | null;
 }
 
-export interface ScriptedModelBody {
+interface ScriptedModelBody {
   readonly model?: string;
   readonly stream?: boolean;
   readonly messages?: readonly { readonly role: string; readonly content: unknown }[];
