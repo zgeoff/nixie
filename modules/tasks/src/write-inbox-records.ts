@@ -6,8 +6,8 @@ import type { TasksContext, TasksTables } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
 // Writes records into tasks' inboxes, such as your messages, in one transaction. Each record must
-// be of an inbox kind and name an existing task as its thread. A waiting task becomes ready in the
-// same transaction, through the tasks projection.
+// be of an inbox kind and name a task that has not ended as its thread. A waiting task becomes
+// ready in the same transaction, through the tasks projection.
 export async function writeInboxRecords(
   context: Pick<TasksContext, 'log'>,
   inputs: readonly RecordInput[],
@@ -39,11 +39,14 @@ async function requireInboxTarget(db: Transaction<TasksTables>, input: RecordInp
 async function requireTask(db: Transaction<TasksTables>, taskID: string): Promise<void> {
   const row = await db
     .selectFrom('tasks')
-    .select('task_id')
+    .select('state')
     .where('task_id', '=', taskID)
     .executeTakeFirst();
 
   if (row === undefined) {
     throw new Error(`no task has the ID ${taskID}`);
+  }
+  if (row.state === 'done' || row.state === 'failed') {
+    throw new Error(`task ${taskID} is ${row.state} and takes no input`);
   }
 }

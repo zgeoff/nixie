@@ -73,6 +73,27 @@ test('it records the error when the step throws', async () => {
   expect(task).toMatchObject({ state: 'ready', step_errors: 1, read_cursor: 0 });
 });
 
+test('it records the error when the commit refuses what the step returned', async () => {
+  const ctx = await setupTest();
+
+  await runTaskStep(ctx.context, ctx.claim, {
+    runStep: () =>
+      Promise.resolve<StepResult>({
+        next: 'wait',
+        records: [],
+        acknowledged: [2],
+        timers: [{ dueAt: Number.NaN }],
+      }),
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+  });
+
+  const task = await ctx.readTask();
+
+  expect(task).toMatchObject({ state: 'ready', step_errors: 1, read_cursor: 0 });
+});
+
 test('it aborts the step and commits nothing once the lease is lost', async () => {
   const ctx = await setupTest();
   const seen = { aborted: false };

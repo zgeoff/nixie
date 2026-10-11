@@ -1,20 +1,19 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { createTask } from '@heynixie/tasks';
 import { waitForCondition } from '@heynixie/testing';
 import { createAllowedAction } from './create-allowed-action';
 import { startActionRunners } from './start-action-runners';
 import { buildStubConnector } from './test-utils/build-stub-connector';
+import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionCall, ActionsTables, ProviderResponse } from './types';
 
 async function setupTest() {
   const actions = await startTestActions();
   const db = actions.writer.db.$extendTables<ActionsTables>();
-  const taskID = await createTask(actions.context, 'send the weekly summary');
+  const step = await createTestStep(actions.context);
   const createQueuedAction = (hash: string) =>
     createAllowedAction(actions.context, {
-      taskID,
-      stepKey: `${taskID}:1`,
+      step,
       tool: 'test.send',
       actionHash: hash,
       arguments: { to: 'team' },

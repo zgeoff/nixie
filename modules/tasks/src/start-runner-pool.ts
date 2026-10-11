@@ -100,7 +100,12 @@ async function runClaim<W>(options: RunnerPoolOptions<W>, state: RunnerState): P
     if (work === null) {
       return false;
     }
-    await options.run(work);
+
+    // a claim that committed after a stop began never runs; its lease lapses, and recovery or the
+    // next claim takes the work back
+    if (!state.stopping.aborted) {
+      await options.run(work);
+    }
     return true;
   } finally {
     state.updateBusy(-1);

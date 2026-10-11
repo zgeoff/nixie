@@ -278,6 +278,27 @@ test('it refuses a step record that carries a step key', async () => {
   );
 });
 
+test('it refuses a timer that is due at no time', async () => {
+  const ctx = await setupTest();
+
+  const commit = writeStepCommit(ctx.context, ctx.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: Number.NaN }],
+  });
+
+  await commit.catch(() => {});
+
+  const task = await ctx.readTask();
+
+  expect(commit).rejects.toThrowWithMessage(
+    Error,
+    "a step's timer is due at NaN, which is no time",
+  );
+  expect(task.committed_steps).toBe(0);
+});
+
 test('it reaches step.commit.before and step.commit.after around the commit', async () => {
   const ctx = await setupTest();
   const reached: FaultPointID[] = [];

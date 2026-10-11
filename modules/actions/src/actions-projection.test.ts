@@ -1,17 +1,17 @@
 import { expect, test } from 'bun:test';
 import { runProjectionRebuild } from '@heynixie/log';
-import { createTask } from '@heynixie/tasks';
 import { claimAction } from './claim-action';
 import { createAllowedAction } from './create-allowed-action';
 import { runActionAttempt } from './run-action-attempt';
 import { buildStubConnector } from './test-utils/build-stub-connector';
+import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
 
 // 2 actions: one that a refusal returned to pending for a retry, and one that settled as done
 async function setupTest() {
   const actions = await startTestActions();
-  const taskID = await createTask(actions.context, 'send the weekly summary');
+  const step = await createTestStep(actions.context);
   const stub = buildStubConnector((call) =>
     call.arguments['to'] === 'team'
       ? { kind: 'refused_retryable', reason: 'rate limited' }
@@ -21,8 +21,7 @@ async function setupTest() {
   for (const to of ['team', 'owner']) {
     // oxlint-disable-next-line no-await-in-loop -- each action queues, then runs one attempt
     await createAllowedAction(actions.context, {
-      taskID,
-      stepKey: `${taskID}:1`,
+      step,
       tool: 'test.send',
       actionHash: `sha256:${to}`,
       arguments: { to },

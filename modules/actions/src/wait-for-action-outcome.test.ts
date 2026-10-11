@@ -1,20 +1,19 @@
 import { expect, test } from 'bun:test';
-import { createTask } from '@heynixie/tasks';
 import { waitForCondition } from '@heynixie/testing';
 import { claimAction } from './claim-action';
 import { createAllowedAction } from './create-allowed-action';
 import { runActionAttempt } from './run-action-attempt';
 import { buildStubConnector } from './test-utils/build-stub-connector';
+import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
 // a queued test.send action, not yet attempted
 async function setupTest() {
   const actions = await startTestActions();
-  const taskID = await createTask(actions.context, 'send the weekly summary');
+  const step = await createTestStep(actions.context);
   const queued = await createAllowedAction(actions.context, {
-    taskID,
-    stepKey: `${taskID}:1`,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },

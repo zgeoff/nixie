@@ -1,17 +1,16 @@
 import { expect, test } from 'bun:test';
-import { createTask } from '@heynixie/tasks';
 import { createAllowedAction } from '../create-allowed-action';
 import type { ActionsTables } from '../types';
+import { createTestStep } from './create-test-step';
 import { runStalledAttempt } from './run-stalled-attempt';
 import { startTestActions } from './start-test-actions';
 
 test('it leaves an attempt record with no result after one provider call', async () => {
   const ctx = await startTestActions();
-  const taskID = await createTask(ctx.context, 'send the weekly summary');
+  const step = await createTestStep(ctx.context);
 
   await createAllowedAction(ctx.context, {
-    taskID,
-    stepKey: `${taskID}:1`,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },

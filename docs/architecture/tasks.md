@@ -30,7 +30,8 @@ SQLite changes a check only by rebuilding the table, and a migration never chang
 A record is in a task's inbox when its thread is the task's ID and its kind is `owner_message`,
 `timer.fired` or `action.outcome`. Each one raises the task's last inbox sequence, and a waiting
 task becomes ready in the same transaction. `writeInboxRecords` writes your messages, and it refuses
-a record of another kind or for a task that does not exist.
+a record of another kind, for a task that does not exist, or for a task that is `done` or `failed`.
+**Why:** a finished task never runs again, so input to it would stay unread.
 
 A step reports the inbox sequences it read, and its commit moves the read cursor over the contiguous
 run of them, oldest first. A record read past a gap stays unread. **Why:** a step that crashed
@@ -48,7 +49,9 @@ key in its envelope, and the log holds that key unique, so a second commit for t
 with `StepAlreadyCommittedError`. The next state is `done` when the step returned `done`, `ready`
 when it returned `continue` or input stays unread, and `waiting` otherwise.
 
-A step that throws writes `task.step_errored`, and the task waits 30 s before its next claim.
+A step that throws writes `task.step_errored`, and the task waits 30 s before its next claim. A
+commit that refuses the step's result, such as a timer due at no time, counts as a step error too. A
+lost lease or a stale writer counts as no step error: the runner stops and commits nothing.
 
 ## Leases and the claim path
 

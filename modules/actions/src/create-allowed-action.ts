@@ -1,5 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { waitAtFaultPoint } from '@heynixie/tasks';
+import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { TasksContext } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import type { ActionRow, ActionStatus, ActionsTables, AllowedCall } from './types';
@@ -12,9 +12,9 @@ export interface QueuedAction {
   readonly isRepeat: boolean;
 }
 
-// Queues an allowed call as an action under a new ID, its queue key and idempotency key. A repeat
-// call with the same action hash, under the same step key or while an earlier action of the task is
-// pending or unknown, returns that action's status instead, so a rerun never queues twice.
+// Queues an allowed call as an action under a new ID, its queue key and idempotency key, only while
+// the step's lease stands. A repeat call with the same action hash, under the same step key or while
+// an earlier action of the task is pending or unknown, returns that action's status instead.
 export async function createAllowedAction(
   context: TasksContext,
   call: AllowedCall,
@@ -22,10 +22,14 @@ export async function createAllowedAction(
   if (call.decision.outcome !== 'allow') {
     throw new Error(`a call the decision point answered ${call.decision.outcome} queues nothing`);
   }
+  const taskID = call.step.lease.workID;
+
   if (NIXIE_TEST_BUILD) {
-    await waitAtFaultPoint('queue.commit.before', { kind: 'task', id: call.taskID });
+    await waitAtFaultPoint('queue.commit.before', { kind: 'task', id: taskID });
   }
   const queued = await withWriteTransaction(context.log.writer, async (tx) => {
+    await requireLease(tx, call.step.lease, context.clock.now());
+
     const earlier = await findRepeat(tx, call);
 
     if (earlier !== undefined) {
@@ -37,12 +41,12 @@ export async function createAllowedAction(
       {
         kind: 'action.queued',
         definitions: context.definitions(),
-        thread: call.taskID,
+        thread: taskID,
         decision: call.decision,
         payload: {
           actionID,
-          taskID: call.taskID,
-          stepKey: call.stepKey,
+          taskID,
+          stepKey: call.step.stepKey,
           tool: call.tool,
           actionHash: call.actionHash,
           nextAttemptAt: context.clock.now(),
@@ -67,10 +71,10 @@ function findRepeat(
     .$extendTables<ActionsTables>()
     .selectFrom('actions')
     .select(['action_id', 'status'])
-    .where('task_id', '=', call.taskID)
+    .where('task_id', '=', call.step.lease.workID)
     .where('action_hash', '=', call.actionHash)
     .where((eb) =>
-      eb.or([eb('step_key', '=', call.stepKey), eb('status', 'in', ['pending', 'unknown'])]),
+      eb.or([eb('step_key', '=', call.step.stepKey), eb('status', 'in', ['pending', 'unknown'])]),
     )
     .orderBy('queued_sequence', 'desc')
     .limit(1)

@@ -1,11 +1,12 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import type { FaultPointID } from '@heynixie/tasks';
-import { createTask, setFaultPointHandler } from '@heynixie/tasks';
+import { setFaultPointHandler } from '@heynixie/tasks';
 import { claimAction } from './claim-action';
 import { createAllowedAction } from './create-allowed-action';
 import { runActionAttempt } from './run-action-attempt';
 import { buildStubConnector } from './test-utils/build-stub-connector';
+import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
 
@@ -13,10 +14,9 @@ import type { ActionsTables } from './types';
 async function setupTest() {
   const actions = await startTestActions();
   const db = actions.writer.db.$extendTables<ActionsTables>();
-  const taskID = await createTask(actions.context, 'send the weekly summary');
+  const step = await createTestStep(actions.context);
   const queued = await createAllowedAction(actions.context, {
-    taskID,
-    stepKey: `${taskID}:1`,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -36,7 +36,15 @@ async function setupTest() {
       .filter((record) => record.kind === 'action.outcome');
   };
 
-  return { ...actions, db, taskID, actionID: queued.actionID, lease, readAction, readOutcomes };
+  return {
+    ...actions,
+    db,
+    taskID: step.lease.workID,
+    actionID: queued.actionID,
+    lease,
+    readAction,
+    readOutcomes,
+  };
 }
 
 test('it calls the provider with the action ID as the idempotency key', async () => {

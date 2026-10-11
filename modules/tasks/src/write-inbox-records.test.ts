@@ -59,6 +59,20 @@ test('it refuses a record for a task that does not exist', async () => {
   expect(write).rejects.toThrowWithMessage(Error, 'no task has the ID task-404');
 });
 
+test('it refuses a record for a task that is done', async () => {
+  const ctx = await setupTest();
+
+  await ctx.db.updateTable('tasks').set({ state: 'done' }).execute();
+
+  const write = writeInboxRecords(ctx.context, [
+    { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
+  ]);
+
+  await write.catch(() => {});
+
+  expect(write).rejects.toThrowWithMessage(Error, 'task conversation is done and takes no input');
+});
+
 test('it reaches inbox.write.after once the message commits', async () => {
   const ctx = await setupTest();
   const reached: { id: FaultPointID; context: FaultPointContext }[] = [];

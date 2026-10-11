@@ -1,18 +1,19 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import type { FaultPointID } from '@heynixie/tasks';
-import { createTask, setFaultPointHandler } from '@heynixie/tasks';
+import { LeaseLostError, setFaultPointHandler } from '@heynixie/tasks';
 import { createAllowedAction } from './create-allowed-action';
+import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables, AllowedCall } from './types';
 
 async function setupTest() {
   const actions = await startTestActions();
   const db = actions.writer.db.$extendTables<ActionsTables>();
-  const taskID = await createTask(actions.context, 'send the weekly summary');
+  const step = await createTestStep(actions.context);
+  const taskID = step.lease.workID;
   const call: AllowedCall = {
-    taskID,
-    stepKey: `${taskID}:1`,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team', body: 'the weekly summary' },
@@ -47,7 +48,7 @@ test('it records the decision and keeps the arguments in the erasable fields', a
 
   await createAllowedAction(ctx.context, ctx.call);
 
-  const entries = await readRecords(ctx.context.log, { afterSequence: 1 });
+  const entries = await readRecords(ctx.context.log, { afterSequence: 2 });
 
   expect(entries.map((entry) => entry.record)).toMatchObject([
     {
@@ -92,7 +93,7 @@ test('it returns the earlier action for a repeat call while that action is pendi
 
   const repeat = await createAllowedAction(ctx.context, {
     ...ctx.call,
-    stepKey: `${ctx.taskID}:2`,
+    step: { ...ctx.call.step, stepKey: `${ctx.taskID}:2` },
   });
 
   expect(repeat).toStrictEqual({ actionID: first.actionID, status: 'pending', isRepeat: true });
@@ -106,7 +107,7 @@ test('it returns the earlier action for a repeat call while that action is unkno
 
   const repeat = await createAllowedAction(ctx.context, {
     ...ctx.call,
-    stepKey: `${ctx.taskID}:2`,
+    step: { ...ctx.call.step, stepKey: `${ctx.taskID}:2` },
   });
 
   expect(repeat).toStrictEqual({ actionID: first.actionID, status: 'unknown', isRepeat: true });
@@ -118,10 +119,28 @@ test('it queues a new action when the same call settled under an earlier step', 
 
   await ctx.db.updateTable('actions').set({ status: 'done' }).execute();
 
-  const next = await createAllowedAction(ctx.context, { ...ctx.call, stepKey: `${ctx.taskID}:2` });
+  const next = await createAllowedAction(ctx.context, {
+    ...ctx.call,
+    step: { ...ctx.call.step, stepKey: `${ctx.taskID}:2` },
+  });
 
   expect(next.isRepeat).toBeFalse();
   expect(next.actionID).not.toBe(first.actionID);
+});
+
+test('it queues nothing once the step lost its lease', async () => {
+  const ctx = await setupTest();
+
+  ctx.clock.advance(60_000);
+
+  const create = createAllowedAction(ctx.context, ctx.call);
+
+  await create.catch(() => {});
+
+  const actions = await ctx.db.selectFrom('actions').select('action_id').execute();
+
+  expect(create).rejects.toThrow(LeaseLostError);
+  expect(actions).toStrictEqual([]);
 });
 
 test('it reaches queue.commit.before and queue.commit.after around the queue', async () => {

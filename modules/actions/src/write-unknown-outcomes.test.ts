@@ -1,8 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { startWriter } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
-import { claimTask, createTask, runRecovery, setFaultPointHandler } from '@heynixie/tasks';
+import { runRecovery, setFaultPointHandler } from '@heynixie/tasks';
 import { createAllowedAction } from './create-allowed-action';
+import { createTestStep } from './test-utils/create-test-step';
 import { runStalledAttempt } from './test-utils/run-stalled-attempt';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
@@ -13,14 +14,10 @@ import { writeUnknownOutcomes } from './write-unknown-outcomes';
 // the epoch, as a real restart does.
 async function setupTest() {
   const actions = await startTestActions();
-  const taskID = await createTask(actions.context, 'send the weekly summary');
-  const step = await claimTask(actions.context, { holder: 'old', leaseMs: 60_000 }).then(
-    (claim) => claim ?? Promise.reject(new Error('the setup claim found no task')),
-  );
+  const step = await createTestStep(actions.context);
 
   await createAllowedAction(actions.context, {
-    taskID,
-    stepKey: step.stepKey,
+    step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
@@ -35,7 +32,12 @@ async function setupTest() {
 
   const context: TasksContext = { ...actions.context, log: { ...actions.context.log, writer } };
 
-  return { ...actions, context, db: writer.db.$extendTables<ActionsTables>(), taskID };
+  return {
+    ...actions,
+    context,
+    db: writer.db.$extendTables<ActionsTables>(),
+    taskID: step.lease.workID,
+  };
 }
 
 test('it marks an action whose attempt record has no result unknown, with a record', async () => {

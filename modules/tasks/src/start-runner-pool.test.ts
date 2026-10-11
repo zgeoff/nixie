@@ -163,6 +163,29 @@ test('it reaches sigterm.grace when a stop finds work in flight', async () => {
   expect(reached).toStrictEqual(['sigterm.grace']);
 });
 
+test('it runs no work whose claim committed after a stop began', async () => {
+  const ctx = setupTest([]);
+  const claimed = Promise.withResolvers<string | null>();
+  const claim = mock(() => claimed.promise);
+  const pool = startRunnerPool(ctx.clock, {
+    size: 1,
+    pollMs: 1000,
+    claim,
+    run: ctx.run,
+    onError: () => {},
+  });
+
+  await waitForCondition(() => claim.mock.calls.length === 1);
+
+  const stopped = pool.stop();
+
+  claimed.resolve('a');
+  await stopped;
+
+  expect(ctx.running.size).toBe(0);
+  expect(ctx.finished).toStrictEqual([]);
+});
+
 test('it reports an error a run threw and stops claiming', async () => {
   const ctx = setupTest(['a', 'b']);
   const onError = mock<(error: unknown) => void>();

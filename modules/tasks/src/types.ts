@@ -54,6 +54,9 @@ export interface StepResult {
 export interface StepInput {
   readonly taskID: string;
   readonly stepKey: string;
+
+  // the step's lease, which every write the step makes, such as queuing an action, checks
+  readonly lease: Lease;
   readonly inbox: readonly LogRecord[];
 
   // aborts when the lease is lost, so the step stops work that can no longer commit

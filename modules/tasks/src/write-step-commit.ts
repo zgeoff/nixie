@@ -1,5 +1,4 @@
 import { DatabaseError } from '@heynixie/db';
-import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { isInboxRecord } from './is-inbox-record';
@@ -21,9 +20,7 @@ export async function writeStepCommit(
   const taskID = claim.lease.workID;
   const faultContext = { kind: 'task', id: taskID } as const;
 
-  for (const record of result.records) {
-    requireStepRecord(record);
-  }
+  requireStepResult(result);
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('step.commit.before', faultContext);
   }
@@ -93,20 +90,27 @@ async function readStepCursor(
   return { readCursor, hasUnread: task.last_inbox_sequence > readCursor };
 }
 
-// only the commit record carries the step key, which the log holds unique
-function requireStepRecord(record: RecordInput): void {
-  if (record.stepKey !== undefined) {
-    throw new Error(`a step's ${record.kind} record carries a step key; only its commit does`);
+// only the commit record carries the step key, which the log holds unique, and a timer's due time
+// must survive the record's JSON
+function requireStepResult(result: StepResult): void {
+  const keyed = result.records.find((record) => record.stepKey !== undefined);
+  const timer = result.timers?.find((candidate) => !Number.isFinite(candidate.dueAt));
+
+  if (keyed !== undefined) {
+    throw new Error(`a step's ${keyed.kind} record carries a step key; only its commit does`);
+  }
+  if (timer !== undefined) {
+    throw new Error(`a step's timer is due at ${timer.dueAt}, which is no time`);
   }
 }
 
-// A task with unread input is ready even when its step chose to wait, because a wait never blocks
-// the work in front of it.
+// A task with unread input is ready whatever its step chose, because input that arrived during the
+// step still needs a step to read it.
 function pickNextState(next: StepResult['next'], hasUnread: boolean): TaskState {
-  if (next === 'done') {
-    return 'done';
+  if (hasUnread || next === 'continue') {
+    return 'ready';
   }
-  return next === 'continue' || hasUnread ? 'ready' : 'waiting';
+  return next === 'done' ? 'done' : 'waiting';
 }
 
 function isStepKeyConflict(error: unknown): boolean {

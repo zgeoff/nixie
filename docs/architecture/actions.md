@@ -9,8 +9,10 @@ resumes the retry schedule where it stopped.
 ## From tool call to queue
 
 `createAllowedAction` queues a call that the decision point allowed, and refuses any other decision.
-It writes `action.queued` with a new action ID, which is the queue key and the idempotency key. The
-arguments sit in the record's erasable fields, and the decision sits on its envelope.
+The call carries the claim of the step that made it, and the queue transaction checks that step's
+lease first, so a runner that lost its lease queues nothing. It writes `action.queued` with a new
+action ID, which is the queue key and the idempotency key. The arguments sit in the record's
+erasable fields, and the decision sits on its envelope.
 
 A repeat call with the same action hash returns the earlier action and its status, and queues
 nothing, when the earlier action has the same step key or is still `pending` or `unknown`. **Why:**

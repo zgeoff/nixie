@@ -1,5 +1,5 @@
 import type { Decision, JSONObject } from '@heynixie/log';
-import type { TasksTables } from '@heynixie/tasks';
+import type { TaskClaim, TasksTables } from '@heynixie/tasks';
 
 // The 4 outcomes of an action. pending covers both a queued action and one waiting for a retry.
 export type ActionStatus = 'pending' | 'done' | 'failed' | 'unknown';
@@ -44,10 +44,9 @@ export type Outcome =
   | { readonly status: 'pending'; readonly reason: OutcomeReason; readonly delayMs: number }
   | { readonly status: 'unknown'; readonly reason: OutcomeReason };
 
-// An allowed tool call, which the tool queues as an action.
+// An allowed tool call, which the tool queues as an action, under the claim of the step that made it.
 export interface AllowedCall {
-  readonly taskID: string;
-  readonly stepKey: string;
+  readonly step: TaskClaim;
   readonly tool: string;
   readonly actionHash: string;
   readonly arguments: JSONObject;
