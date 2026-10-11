@@ -1,7 +1,7 @@
 import type { PartReport } from '@heynixie/ops';
 
 // What the start sequence and the runners have reported so far, which readiness reads.
-export interface StartReports {
+interface StartReports {
   // migrations finished and the integrity check at start passed
   readonly database: PartReport;
 
