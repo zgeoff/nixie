@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { LogRecord } from '@heynixie/log';
 import type { ScriptedModel } from '@heynixie/testing';
 import { startScriptedModel, waitForCondition } from '@heynixie/testing';
+import { z } from 'zod';
 import { readDataFiles } from './read-data-files';
 import { readTestRecords } from './read-test-records';
 import type { BootFiles } from './write-boot-files';
@@ -172,9 +173,11 @@ async function collectOutput(stream: ReadableStream<Uint8Array>, output: Output)
   }
 }
 
+const logLineSchema = z.record(z.string(), z.unknown()).readonly();
+
 function readLogLines(text: string): readonly Readonly<Record<string, unknown>>[] {
   return text
     .split('\n')
     .filter((line) => line.startsWith('{'))
-    .map((line) => JSON.parse(line) as Readonly<Record<string, unknown>>);
+    .map((line) => logLineSchema.parse(JSON.parse(line)));
 }
