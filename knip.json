@@ -10,6 +10,11 @@
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
     "libs/testing": { "entry": ["src/test-utils/run-stub-*.ts"] },
+    // the nixie image runs the bundle of main.ts, the image build runs the release build, and a test
+    // spawns the sops stand-in, so no import reaches them
+    "apps/server": {
+      "entry": ["src/main.ts", "src/run-release-build.ts", "src/test-utils/run-stub-sops.ts"]
+    },
     // the conversation image runs its guest's entry by its path, so no import reaches it
     "guests/conversation": { "entry": ["src/main.ts"] },
     // TanStack Router loads each route file by its path, so no import reaches it

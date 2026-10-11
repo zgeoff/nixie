@@ -64,6 +64,26 @@ export interface SandboxAdapter {
   // stores a credential with the injecting backend unless one already has the name, so a caller
   // names each value once and a changed value gets a new name
   readonly addSecret: (secret: SecretSpec) => Promise<void>;
+
+  // adds an image that the runtime pulls by its reference, under the name a spec's image gives,
+  // unless the runtime already holds that name at the same digest
+  readonly addImage: (image: SandboxImage) => Promise<void>;
+
+  // whether the runtime answers now, for the imp host's readiness
+  readonly checkRuntime: () => Promise<RuntimeReport>;
+}
+
+// An image for one kind of work, pinned by digest, such as
+// { name: 'nixie-fetch-0123456789ab', ref: 'ghcr.io/<owner>/nixie-fetch@sha256:<digest>' }.
+export interface SandboxImage {
+  readonly name: string;
+  readonly ref: string;
+}
+
+// reason says why the runtime is not ready, and is null when it is
+export interface RuntimeReport {
+  readonly isReady: boolean;
+  readonly reason: string | null;
 }
 
 export interface ExecSpec {

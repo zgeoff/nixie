@@ -76,10 +76,11 @@ database, and it holds an exclusive lock on its data directory for its whole lif
 such as the new pod of a rollout, exits instead of writing ([the database](./core/database.md)). It
 reaches impd, imp's daemon, which runs every sandbox as a microVM, through the sandbox adapter. The
 tool endpoint listens on Unix sockets in a directory only nixie's user may enter, and nothing
-reaches it except through a sandbox's reverse forward. The web server is the second process. The
-repo builds its image and the conversation's guest image, which runs in a sandbox. The
-[deployment design](../design/platform/deployment/deployment.md) covers the images, the reverse
-proxy and the host they run on.
+reaches it except through a sandbox's reverse forward. [The server](./deployment/server.md) covers
+how the nixie process starts, reports its health and stops, and the nixie image it ships in. The web
+server is the second process. The repo builds its image and the conversation's guest image, which
+runs in a sandbox. The [deployment design](../design/platform/deployment/deployment.md) covers the
+reverse proxy and the host they run on.
 
 ## Data
 

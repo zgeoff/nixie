@@ -1,5 +1,4 @@
-import { slice1ReadOnlyRule } from './slice1-read-only-rule';
-import { testAllowSendRule } from './test-allow-send-rule';
+import { getFixedRules } from './get-fixed-rules';
 import type {
   DecisionPoint,
   EffectDeclaration,
@@ -23,10 +22,7 @@ const fixedRuleStage = 3;
 // first that decides returns: the registry, then the scope, then the fixed rules, the last of which
 // decides every call.
 export function makeDecisionPoint(options: DecisionPointOptions): DecisionPoint {
-  // the release bundle defines NIXIE_TEST_BUILD as false and drops the test rule with its import
-  const rules: readonly FixedRule[] = NIXIE_TEST_BUILD
-    ? [testAllowSendRule, slice1ReadOnlyRule]
-    : [slice1ReadOnlyRule];
+  const rules = getFixedRules();
 
   return (call) => {
     const declaration = options.findDeclaration(call.tool);

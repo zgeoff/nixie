@@ -37,7 +37,7 @@ async function setupTest() {
         image: 'conversation',
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
         command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
-        systemPrompt: 'You are nixie.',
+        getSystemPrompt: () => 'You are nixie.',
       }),
     writeMessage: (text: string) =>
       writeInboxRecords(tasks.context, [

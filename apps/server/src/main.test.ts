@@ -1,0 +1,185 @@
+import { expect, test } from 'bun:test';
+import { join } from 'node:path';
+import type { ContractClient } from '@heynixie/contract';
+import { clientHeaderName } from '@heynixie/contract';
+import type { LogRecord } from '@heynixie/log';
+import { waitForCondition } from '@heynixie/testing';
+import { createORPCClient } from '@orpc/client';
+import { RPCLink } from '@orpc/client/fetch';
+import { startTestNixie } from './test-utils/start-test-nixie';
+
+// nixie in a test build at ready, with a device signed in through the code it printed at start
+async function setupTest() {
+  const nixie = await startTestNixie();
+  const listening = await nixie.waitForLogEvent('http.listening');
+  const issued = await nixie.waitForLogEvent('enrolment_code.issued');
+
+  await nixie.waitForLogEvent('ready');
+
+  const url = `http://127.0.0.1:${String(listening['port'])}`;
+  const signedOut = createORPCClient<ContractClient>(
+    new RPCLink({ url: `${url}/rpc`, headers: { [clientHeaderName]: 'test' } }),
+  );
+  const session = await signedOut.sessions.enrol({
+    clientActionID: crypto.randomUUID(),
+    code: String(issued['code']),
+    deviceName: 'laptop',
+    tokenDelivery: 'bearer',
+  });
+  const client = createORPCClient<ContractClient>(
+    new RPCLink({
+      url: `${url}/rpc`,
+      headers: { [clientHeaderName]: 'test', authorization: `Bearer ${session.token ?? ''}` },
+    }),
+  );
+
+  return { ...nixie, url, client, signedOut };
+}
+
+test('it keeps no message text in nixie.db, the key store or the logs', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Quince-reply-4ZT9' });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Plum-message-7QK2',
+    thread: 'conversation',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Quince-reply-4ZT9');
+  });
+  ctx.sendSignal('SIGTERM');
+  const run = await ctx.waitForExit();
+  const files = await ctx.readDataFiles();
+
+  expect(run.exitCode).toBe(0);
+  expect(
+    files.filter((file) => /Plum-message-7QK2|Quince-reply-4ZT9/u.test(file.text)),
+  ).toStrictEqual([]);
+  expect(
+    ['Plum-message-7QK2', 'Quince-reply-4ZT9'].filter((text) => ctx.readOutput().includes(text)),
+  ).toStrictEqual([]);
+}, 60_000);
+
+test('it puts the snapshot hash of the definitions in force on every record', async () => {
+  const ctx = await setupTest();
+  const seeded = await ctx.waitForLogEvent('definitions.seeded');
+
+  ctx.model.addReplies({ text: 'Quince-reply-4ZT9' });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Plum-message-7QK2',
+    thread: 'conversation',
+  });
+  await waitForCondition(() =>
+    ctx.model.requests.some((request) => request.path === '/v1/messages'),
+  );
+  ctx.sendSignal('SIGTERM');
+  const run = await ctx.waitForExit();
+
+  expect(run.records).toIncludeAllPartialMembers([
+    { kind: 'owner_message', erasable: expect.objectContaining({ status: 'readable' }) },
+    {
+      kind: 'model.reply',
+      erasable: { status: 'readable', fields: { text: 'Quince-reply-4ZT9' } },
+    },
+  ]);
+  expect(run.records).toSatisfyAll(
+    (record: LogRecord) => record.definitions.snapshotHash === seeded['snapshotHash'],
+  );
+}, 60_000);
+
+test('it answers liveness and readiness per part, with the slice 1 parts only', async () => {
+  const ctx = await setupTest();
+
+  const live = await fetch(`${ctx.url}/health/live`);
+  const liveReport: unknown = await live.json();
+  const ready = await fetch(`${ctx.url}/health/ready`);
+  const readyReport: unknown = await ready.json();
+
+  expect(live.status).toBe(200);
+  expect(liveReport).toStrictEqual({
+    status: 'ready',
+    parts: { process: { isReady: true, reason: null }, database: { isReady: true, reason: null } },
+  });
+  expect(ready.status).toBe(200);
+  expect(readyReport).toStrictEqual({
+    status: 'ready',
+    parts: {
+      database: { isReady: true, reason: null },
+      definitions: { isReady: true, reason: null },
+      imp_host: { isReady: true, reason: null },
+      conversation_imp: { isReady: true, reason: null },
+      disk: { isReady: true, reason: null },
+    },
+  });
+}, 60_000);
+
+test('on SIGTERM it stops claiming steps, lets the turn in flight commit and exits 0', async () => {
+  const ctx = await setupTest();
+  const gate = Promise.withResolvers<void>();
+
+  ctx.model.addReplies({ text: 'Held-reply', gate: gate.promise });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hello.',
+    thread: 'conversation',
+  });
+  await waitForCondition(() =>
+    ctx.model.requests.some((request) => request.path === '/v1/messages'),
+  );
+  await ctx.sendStopSignal();
+  gate.resolve();
+  const run = await ctx.waitForExit();
+
+  expect(run.exitCode).toBe(0);
+  expect(run.records).toIncludeAllPartialMembers([
+    { kind: 'model.reply', erasable: { status: 'readable', fields: { text: 'Held-reply' } } },
+  ]);
+}, 60_000);
+
+test('the enrol-code command issues a code from the running server', async () => {
+  const ctx = await setupTest();
+  const command = Bun.spawn(
+    [
+      process.execPath,
+      '--define',
+      'NIXIE_TEST_BUILD=true',
+      join(import.meta.dir, 'main.ts'),
+      'enrol-code',
+      '--config',
+      ctx.configPath,
+    ],
+    { stdout: 'pipe', stderr: 'pipe' },
+  );
+
+  const exitCode = await command.exited;
+  const output = await new Response(command.stdout).text();
+  const session = await ctx.signedOut.sessions.enrol({
+    clientActionID: crypto.randomUUID(),
+    code: output.split('\n')[0] ?? '',
+    deviceName: 'phone',
+    tokenDelivery: 'bearer',
+  });
+
+  expect(exitCode).toBe(0);
+  expect(session.token).toBeString();
+}, 60_000);
+
+test('it refuses to start on a key no module reads, and exits 1', async () => {
+  const nixie = await startTestNixie({ extraConfig: ['tasks:', '  runner: 5'] });
+
+  const exitCode = await nixie.exited;
+  const failure = await nixie.waitForLogEvent('command.failed');
+
+  expect(exitCode).toBe(1);
+  expect(failure).toMatchObject({
+    command: 'serve',
+    message: expect.toInclude('tasks: Unrecognized key: "runner"'),
+  });
+}, 60_000);

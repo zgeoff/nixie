@@ -18,7 +18,9 @@ export interface ConversationRun {
   readonly endpoint: Pick<RunEndpoint, 'token'>;
   readonly model: ToolRunModel;
   readonly command: GuestCommand;
-  readonly systemPrompt: string;
+
+  // the persona in force, read at each turn so a new seed reaches the next turn
+  readonly getSystemPrompt: () => string;
 }
 
 // Runs one turn in the guest on the step's inbox, up to the batch limit, resuming at the session
@@ -44,7 +46,7 @@ export async function runLiveTurn(
         profile: toTurnProfile(run.profile.profile),
         tools: { url: route.url, token: run.endpoint.token },
         resume,
-        systemPrompt: run.systemPrompt,
+        systemPrompt: run.getSystemPrompt(),
         input: batch.map((record) => toInboxMessage(record)),
       },
       messages: hasMore

@@ -11,18 +11,25 @@
   },
   "dependencies": {
     "@heynixie/actions": "workspace:*",
+    "@heynixie/api": "workspace:*",
     "@heynixie/connectors": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/definitions": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/models": "workspace:*",
+    "@heynixie/ops": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/sandbox-imp": "workspace:*",
     "@heynixie/sandbox-process": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
+    "elysia": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@heynixie/testing": "workspace:*"
+    "@heynixie/contract": "workspace:*",
+    "@heynixie/testing": "workspace:*",
+    "@orpc/client": "catalog:"
   }
 }

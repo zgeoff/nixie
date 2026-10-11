@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { modelsConfigSchema } from '@heynixie/models';
 import { claimTask, createConversationTask, runTaskStep, writeInboxRecords } from '@heynixie/tasks';
 import { startScriptedModel } from '@heynixie/testing';
-import { deploymentConfigSchema } from './deployment-config-schema';
 import { startConversation } from './start-conversation';
 import { startTestServer } from './test-utils/start-test-server';
 
@@ -50,25 +50,24 @@ test('it runs each turn in the conversation guest on the role profile and resume
   const ctx = await setupTest();
   const runner = await startConversation({
     context: ctx.context,
-    config: deploymentConfigSchema.parse({
-      models: {
-        profiles: {
-          'chat-direct': {
-            base_url: ctx.model.url,
-            credential: 'deployment:anthropic',
-            auth_header: 'x-api-key',
-            model: 'claude-test-1',
-            effort: 'low',
-          },
+    models: modelsConfigSchema.parse({
+      profiles: {
+        'chat-direct': {
+          base_url: ctx.model.url,
+          credential: 'deployment:anthropic',
+          auth_header: 'x-api-key',
+          model: 'claude-test-1',
+          effort: 'low',
         },
-        roles: { conversation: 'chat-direct' },
       },
+      roles: { conversation: 'chat-direct' },
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: ctx.sandboxes,
     tools: ctx.endpoint,
     toolNames: [],
-    systemPrompt: 'You are nixie.',
+    image: 'nixie-conversation-0123456789ab',
+    getSystemPrompt: () => 'You are nixie.',
   });
 
   ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });

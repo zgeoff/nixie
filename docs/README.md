@@ -80,6 +80,11 @@ below, and planned work lives in Linear.
 - [The API](architecture/channels/api.md) — device sessions and the identity record, checked
   actions, refusals, message sends and the live stream
 
+### Deployment
+
+- [The server](architecture/deployment/server.md) — configuration and secrets, the start sequence,
+  health per part, envelope-only logs, stopping, host commands and the nixie image
+
 ## Runbooks
 
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a

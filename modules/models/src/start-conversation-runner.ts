@@ -23,7 +23,9 @@ export interface ConversationRunnerOptions {
   readonly image: string;
   readonly limits: SandboxLimits;
   readonly command: GuestCommand;
-  readonly systemPrompt: string;
+
+  // the persona in force, read at each turn so a new seed reaches the next turn
+  readonly getSystemPrompt: () => string;
 }
 
 export interface ConversationRunner {

@@ -179,7 +179,7 @@ test('it refuses public egress without the deployment host addresses', async () 
   const ctx = await setupImpAdapter();
 
   expect(ctx.buildAdapter(null).create(fetchSpec)).rejects.toThrow(
-    new SandboxSpecRefusedError('public egress without the host addresses in IMP_HOST_ADDRESSES'),
+    new SandboxSpecRefusedError('public egress without the host addresses in imp.host_addresses'),
   );
 });
 
@@ -421,4 +421,73 @@ test('it stores no secret when one already has the name', async () => {
   });
 
   expect(ctx.imp.calls).toStrictEqual([]);
+});
+
+test('it adds an image by its reference under its name', async () => {
+  const ctx = await setupImpAdapter();
+  const digest = `sha256:${'a'.repeat(64)}`;
+
+  await ctx.adapter.addImage({
+    name: 'nixie-fetch-aaaaaaaaaaaa',
+    ref: `ghcr.io/example/nixie-fetch@${digest}`,
+  });
+
+  expect(ctx.imp.calls).toStrictEqual([
+    `image nixie-fetch-aaaaaaaaaaaa ghcr.io/example/nixie-fetch@${digest}`,
+  ]);
+});
+
+test('it adds nothing when impd holds the name at the same digest', async () => {
+  const ctx = await setupImpAdapter();
+  const digest = `sha256:${'a'.repeat(64)}`;
+
+  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', digest);
+
+  await ctx.adapter.addImage({
+    name: 'nixie-fetch-aaaaaaaaaaaa',
+    ref: `ghcr.io/example/nixie-fetch@${digest}`,
+  });
+
+  expect(ctx.imp.calls).toStrictEqual([]);
+});
+
+test('it refuses an image whose name impd holds at another digest', async () => {
+  const ctx = await setupImpAdapter();
+
+  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', `sha256:${'b'.repeat(64)}`);
+
+  expect(
+    ctx.adapter.addImage({
+      name: 'nixie-fetch-aaaaaaaaaaaa',
+      ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+    }),
+  ).rejects.toThrowWithMessage(Error, /impd holds the image nixie-fetch-aaaaaaaaaaaa at sha256:b/u);
+});
+
+test('it refuses an image reference with no digest', async () => {
+  const ctx = await setupImpAdapter();
+
+  expect(
+    ctx.adapter.addImage({ name: 'nixie-fetch', ref: 'ghcr.io/example/nixie-fetch:0.1.0' }),
+  ).rejects.toThrowWithMessage(Error, /is not pinned by digest/u);
+});
+
+test('it reports the runtime ready while impd answers', async () => {
+  const ctx = await setupImpAdapter();
+
+  const report = await ctx.adapter.checkRuntime();
+
+  expect(report).toStrictEqual({ isReady: true, reason: null });
+});
+
+test('it reports the runtime unready when impd does not answer', async () => {
+  const ctx = await setupImpAdapter();
+
+  ctx.imp.failFeatures = true;
+  const report = await ctx.adapter.checkRuntime();
+
+  expect(report).toStrictEqual({
+    isReady: false,
+    reason: 'impd does not answer: Error: connect ECONNREFUSED',
+  });
 });

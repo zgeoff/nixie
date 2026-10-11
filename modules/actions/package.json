@@ -12,7 +12,8 @@
   "dependencies": {
     "@heynixie/log": "workspace:*",
     "@heynixie/tasks": "workspace:*",
-    "kysely": "catalog:"
+    "kysely": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@heynixie/testing": "workspace:*"

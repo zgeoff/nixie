@@ -50,7 +50,6 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
       id,
       spec,
     });
-
   const getRowSandbox = (row: SandboxRow): Sandbox => {
     sleeping.setAsleep(row.sandboxID, row.state === 'sleeping');
     return getSandbox(row.sandboxID, row.spec);
@@ -78,6 +77,29 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
       return rows.map((row) => getRowSandbox(row));
     },
     addSecret: makeSecretAdder(options.port),
+    addImage: makeImageAdder(options.port),
+    checkRuntime: makeRuntimeChecker(options.port),
+  };
+}
+
+// impd keeps an image under its name, and a release names each image by its kind and digest, so an
+// image added once is never pulled again. A name impd holds at another digest is refused, because a
+// spec that names it would run an image the manifest never pinned.
+function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
+  return async (image) => {
+    const digest = /@(?<digest>sha256:[\da-f]{64})$/u.exec(image.ref)?.groups?.['digest'];
+
+    if (digest === undefined) {
+      throw new Error(`the image ${image.name} is not pinned by digest: ${image.ref}`);
+    }
+    const images = await port.listImages();
+    const held = images.find((row) => row.name === image.name);
+
+    if (held === undefined) {
+      await port.addImage({ name: image.name, digest, ref: image.ref });
+    } else if (held.digest !== digest) {
+      throw new Error(`impd holds the image ${image.name} at ${held.digest}, not ${digest}`);
+    }
   };
 }
 
@@ -153,4 +175,16 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
   }
   await sandbox.toolRoute();
   return sandbox;
+}
+
+// the runtime is ready while impd answers
+function makeRuntimeChecker(port: ImpPort): SandboxAdapter['checkRuntime'] {
+  return async () => {
+    try {
+      await port.readFeatures();
+      return { isReady: true, reason: null };
+    } catch (error) {
+      return { isReady: false, reason: `impd does not answer: ${String(error)}` };
+    }
+  };
 }

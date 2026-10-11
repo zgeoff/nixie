@@ -13,6 +13,7 @@
     "@heynixie/log": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/tools": "workspace:*",
-    "@heynixie/wire": "workspace:*"
+    "@heynixie/wire": "workspace:*",
+    "zod": "catalog:"
   }
 }
