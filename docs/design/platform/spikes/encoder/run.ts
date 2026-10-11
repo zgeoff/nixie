@@ -1,8 +1,8 @@
 /* oxlint-disable max-statements, no-await-in-loop -- a throwaway spike that runs each candidate in turn */
 // Runs bench.ts once per candidate per round in a fresh process, with every core and then pinned to
-// 2 cores, and prints the median of each timing. Pass candidate IDs to run only those. Run it once
-// with network access to fill the model folder; it then runs with OFFLINE=1, so a run proves every
-// model loads from local files.
+// 2 cores, and prints the median of each timing. Pass candidate IDs to run only those. It first
+// loads each candidate once with the network on to fill the model folder, then times every round
+// with OFFLINE=1, so a run proves every model loads from local files. A failed run exits nonzero.
 import path from 'node:path';
 import { CANDIDATES } from './candidates.ts';
 
@@ -12,6 +12,16 @@ const benchPath = path.join(import.meta.dir, 'bench.ts');
 
 type Result = Record<string, unknown> & { id: string; threads: number };
 const results: Result[] = [];
+let failed = false;
+
+for (const id of ids) {
+  const child = Bun.spawn(['bun', benchPath, id], { env: { ...process.env, PREFETCH: '1' }, stderr: 'pipe', stdout: 'ignore' });
+  const [err, code] = await Promise.all([new Response(child.stderr).text(), child.exited]);
+  if (code !== 0) {
+    console.error(`${id} failed to load:\n${err.slice(-2000)}`);
+    failed = true;
+  }
+}
 
 for (const cores of ['all', '2'] as const) {
   for (const id of ids) {
@@ -31,11 +41,13 @@ for (const cores of ['all', '2'] as const) {
       ]);
       if (code !== 0) {
         console.error(`${id} on ${cores} cores failed:\n${err.slice(-2000)}`);
+        failed = true;
         break;
       }
       runs.push(JSON.parse(out.trim().split('\n').at(-1) ?? '{}') as Result);
     }
-    if (runs.length > 0) {
+    // a candidate with a failed round reports nothing, never a median of the rounds that passed
+    if (runs.length === ROUNDS) {
       const merged = { ...runs[0], cores } as Result;
       for (const key of ['batchMsPerItem', 'loadMs', 'rssLoadedMB', 'rssPeakMB', 'singleMsMedian', 'singleMsP90']) {
         merged[key] = getMedian(runs.map((run) => Number(run[key])));
@@ -54,6 +66,10 @@ for (const row of results) {
   console.log(
     `| ${row.id} | ${String(row.cores)} | ${fix(row.loadMs, 0)} | ${fix(row.singleMsMedian, 1)} | ${fix(row.batchMsPerItem, 2)} | ${String(row.rssLoadedMB)} | ${String(row.rssPeakMB)} | ${fix(Number(row.pairRecall) * 30, 0)}/30 | ${fix(message.recall, 2)} | ${fix(keywords.recall, 2)} | ${fix(message.mrr, 2)} |`,
   );
+}
+
+if (failed) {
+  process.exit(1);
 }
 
 function getMedian(values: number[]): number {

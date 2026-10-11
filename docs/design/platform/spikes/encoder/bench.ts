@@ -20,6 +20,10 @@ const loadStart = performance.now();
 const embed = await loadEncoder(candidate);
 const loadMs = performance.now() - loadStart;
 const rssLoaded = process.memoryUsage().rss;
+// run.ts loads each candidate once with the network on, so the timed rounds can run offline
+if (process.env.PREFETCH === '1') {
+  process.exit(0);
+}
 
 const toDocs = (texts: string[]): string[] => texts.map((text) => candidate.docPrefix + text);
 const toQueries = (texts: string[]): string[] => texts.map((text) => candidate.queryPrefix + text);
