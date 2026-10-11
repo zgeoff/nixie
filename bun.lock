@@ -97,6 +97,13 @@
         "zod": "catalog:",
       },
     },
+    "guests/fetch": {
+      "name": "@heynixie/fetch",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/wire": "workspace:*",
+      },
+    },
     "libs/contract": {
       "name": "@heynixie/contract",
       "version": "0.0.0",
@@ -394,6 +401,8 @@
     "@heynixie/db": ["@heynixie/db@workspace:libs/db"],
 
     "@heynixie/definitions": ["@heynixie/definitions@workspace:modules/definitions"],
+
+    "@heynixie/fetch": ["@heynixie/fetch@workspace:guests/fetch"],
 
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
 
