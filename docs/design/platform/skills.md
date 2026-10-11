@@ -39,10 +39,10 @@ folder name.
 ### The definitions filter under `skills/`
 
 The [definitions source](connectors/definitions-source.md) filter admits every UTF-8 text file under
-`skills/`, whatever its extension, and keeps its other rules: no dot paths, no symlinks from outside
-the root, and the size limits. A file that fails to decode as UTF-8 fails the snapshot with its
-path. **Why:** scripts such as `fill.py` come with their skill, and a binary file is one a review
-cannot read.
+`skills/`, whatever its extension, and keeps its other rules: only the known definitions paths, no
+dot paths, no symlinks from outside the root, and the size limits. A file that fails to decode as
+UTF-8 fails the snapshot with its path. **Why:** scripts such as `fill.py` come with their skill,
+and a binary file is one a review cannot read.
 
 ### Vendored skills
 
