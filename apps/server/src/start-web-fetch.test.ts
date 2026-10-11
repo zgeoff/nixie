@@ -155,7 +155,7 @@ test.skipIf(!hasImpHost)(
         kind: 'fetch',
         image: fetchImage,
         owner: 'web_fetch',
-        limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+        limits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
       }),
     );
     ctx.stack.defer(() => sandbox.destroy());
@@ -185,7 +185,7 @@ test.skipIf(!hasImpHost)(
         kind: 'fetch',
         image: fetchImage,
         owner: 'web_fetch',
-        limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+        limits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
       }),
     );
     ctx.stack.defer(() => sandbox.destroy());
