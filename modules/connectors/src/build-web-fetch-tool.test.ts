@@ -22,7 +22,14 @@ test('it returns the page as the typed result, which the registry checks against
       input: { url: 'https://example.com/' },
       toolUseID: null,
     },
-    { run: { runID: 'run-1', thread: 'conversation', tools: ['web_fetch'] } },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
   );
 
   expect(outcome).toStrictEqual({
@@ -61,7 +68,14 @@ test('it returns a binary page with no text', async () => {
       input: { url: 'https://example.com/a.png' },
       toolUseID: null,
     },
-    { run: { runID: 'run-1', thread: 'conversation', tools: ['web_fetch'] } },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
   );
 
   expect(outcome).toMatchObject({ status: 'ok', result: { text: null } });
@@ -75,7 +89,14 @@ test.each([
 
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'http://example.com/' }, toolUseID: null },
-    { run: { runID: 'run-1', thread: 'conversation', tools: ['web_fetch'] } },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
   );
 
   expect(outcome).toStrictEqual({ status: 'error', message: reason });

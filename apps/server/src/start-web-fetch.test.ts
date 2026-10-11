@@ -67,7 +67,14 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox",
 
   const outcome = await webFetch.tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://localhost/' }, toolUseID: null },
-    { run: { runID: 'run-1', thread: 'conversation', tools: ['web_fetch'] } },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
   );
   const left = await ctx.recorder.list('process', 'web_fetch');
 
@@ -110,7 +117,14 @@ test.skipIf(!hasImpHost)(
         input: { url: 'https://example.com/' },
         toolUseID: null,
       },
-      { run: { runID: 'run-1', thread: 'conversation', tools: ['web_fetch'] } },
+      {
+        run: {
+          runID: 'run-1',
+          thread: 'conversation',
+          tools: ['web_fetch'],
+          model: { model: 'model-a', profile: 'chat-direct' },
+        },
+      },
     );
 
     expect(outcome).toMatchObject({
