@@ -26,8 +26,8 @@ interface FakeState {
   readonly execs: FakeExec[];
   readonly secrets: Map<string, readonly string[]>;
 
-  // each image impd holds, by name, with its digest
-  readonly images: Map<string, string>;
+  // each image impd holds, by name, with its digest and the reference it came from
+  readonly images: Map<string, { readonly digest: string; readonly ref: string }>;
   features: ImpFeatures;
   failFeatures: boolean;
   failCreate: boolean;
@@ -77,10 +77,12 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
         ? Promise.reject(new Error('connect ECONNREFUSED'))
         : Promise.resolve(state.features),
     listImages: () =>
-      Promise.resolve([...state.images].map(([name, digest]) => ({ name, digest }))),
+      Promise.resolve(
+        [...state.images].map(([name, held]) => ({ name, digest: held.digest, ref: held.ref })),
+      ),
     addImage: async (image) => {
       await updateCallLog(`image ${image.name} ${image.ref}`);
-      state.images.set(image.name, image.digest);
+      state.images.set(image.name, { digest: image.digest, ref: image.ref });
     },
     createImp: async (input) => {
       await updateCallLog(`create ${input.name}`);

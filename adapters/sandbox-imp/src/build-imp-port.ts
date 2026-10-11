@@ -36,7 +36,7 @@ export function buildImpPort(connection: ImpConnection): ImpPort {
     listImages: async () => {
       const images = await client.images.list();
 
-      return images.map((image) => ({ name: image.name, digest: image.digest }));
+      return images.map((image) => ({ name: image.name, digest: image.digest, ref: image.ref }));
     },
     addImage: async (image) => {
       await client.images.add({ ref: image.ref, name: image.name });

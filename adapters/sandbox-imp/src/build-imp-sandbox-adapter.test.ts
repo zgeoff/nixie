@@ -441,7 +441,27 @@ test('it adds nothing when impd holds the name at the same digest', async () => 
   const ctx = await setupImpAdapter();
   const digest = `sha256:${'a'.repeat(64)}`;
 
-  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', digest);
+  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', {
+    digest,
+    ref: `ghcr.io/example/nixie-fetch@${digest}`,
+  });
+
+  await ctx.adapter.addImage({
+    name: 'nixie-fetch-aaaaaaaaaaaa',
+    ref: `ghcr.io/example/nixie-fetch@${digest}`,
+  });
+
+  expect(ctx.imp.calls).toStrictEqual([]);
+});
+
+test('it adds nothing when impd built the name from a reference pinned at the same digest', async () => {
+  const ctx = await setupImpAdapter();
+  const digest = `sha256:${'a'.repeat(64)}`;
+
+  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', {
+    digest: `imp-build-${'c'.repeat(64)}`,
+    ref: `ghcr.io/example/nixie-fetch@${digest}`,
+  });
 
   await ctx.adapter.addImage({
     name: 'nixie-fetch-aaaaaaaaaaaa',
@@ -454,7 +474,10 @@ test('it adds nothing when impd holds the name at the same digest', async () => 
 test('it refuses an image whose name impd holds at another digest', async () => {
   const ctx = await setupImpAdapter();
 
-  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', `sha256:${'b'.repeat(64)}`);
+  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', {
+    digest: `sha256:${'b'.repeat(64)}`,
+    ref: `ghcr.io/example/nixie-fetch@sha256:${'b'.repeat(64)}`,
+  });
 
   expect(
     ctx.adapter.addImage({
@@ -462,6 +485,44 @@ test('it refuses an image whose name impd holds at another digest', async () => 
       ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
     }),
   ).rejects.toThrowWithMessage(Error, /impd holds the image nixie-fetch-aaaaaaaaaaaa at sha256:b/u);
+});
+
+test('it refuses an image impd built from a reference pinned at another digest', async () => {
+  const ctx = await setupImpAdapter();
+
+  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', {
+    digest: `imp-build-${'c'.repeat(64)}`,
+    ref: `ghcr.io/example/nixie-fetch@sha256:${'b'.repeat(64)}`,
+  });
+
+  expect(
+    ctx.adapter.addImage({
+      name: 'nixie-fetch-aaaaaaaaaaaa',
+      ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+    }),
+  ).rejects.toThrowWithMessage(
+    Error,
+    /impd holds the image nixie-fetch-aaaaaaaaaaaa at imp-build-c+ from ghcr\.io\/example\/nixie-fetch@sha256:b+, not sha256:a+$/u,
+  );
+});
+
+test('it refuses an image impd built from a reference with no digest', async () => {
+  const ctx = await setupImpAdapter();
+
+  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', {
+    digest: `imp-build-${'c'.repeat(64)}`,
+    ref: 'ghcr.io/example/nixie-fetch:0.1.0',
+  });
+
+  expect(
+    ctx.adapter.addImage({
+      name: 'nixie-fetch-aaaaaaaaaaaa',
+      ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+    }),
+  ).rejects.toThrowWithMessage(
+    Error,
+    /at imp-build-c+ from ghcr\.io\/example\/nixie-fetch:0\.1\.0/u,
+  );
 });
 
 test('it refuses an image reference with no digest', async () => {

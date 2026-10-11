@@ -62,6 +62,9 @@ export interface ImpFeatures {
 interface ImpImage {
   readonly name: string;
   readonly digest: string;
+
+  // the reference impd pulled the image from, such as ghcr.io/example/nixie-fetch@sha256:<hex>
+  readonly ref: string;
 }
 
 // A custom secret the broker sends to one host, in one header with its scheme.
@@ -89,11 +92,12 @@ export interface ImpPort {
   readonly addGrant: (name: string, secret: string) => Promise<void>;
   readonly addSecret: (secret: ImpSecretInput) => Promise<void>;
 
-  // the images impd holds, by name, each with its digest such as sha256:<hex>
+  // the images impd holds, by name. The digest is sha256:<hex> for a pulled image, and
+  // imp-build-<hex> for one impd built from the reference.
   readonly listImages: () => Promise<readonly ImpImage[]>;
 
   // impd pulls the image by its reference and keeps it under the name
-  readonly addImage: (image: ImpImage & { readonly ref: string }) => Promise<void>;
+  readonly addImage: (image: ImpImage) => Promise<void>;
   readonly openExec: (
     name: string,
     argv: readonly string[],
