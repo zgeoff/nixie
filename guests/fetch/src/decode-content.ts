@@ -15,13 +15,19 @@ export function decodeContent(body: Readable, contentEncoding: string | undefine
     }
     case 'gzip':
     case 'x-gzip': {
-      return pipeline(body, createGunzip(), () => null);
+      return pipeline(body, createGunzip(), () => {
+        // the reader sees the error on the decoder, which pipeline destroys with it
+      });
     }
     case 'deflate': {
-      return pipeline(body, createInflate(), () => null);
+      return pipeline(body, createInflate(), () => {
+        // the reader sees the error on the decoder, which pipeline destroys with it
+      });
     }
     case 'br': {
-      return pipeline(body, createBrotliDecompress(), () => null);
+      return pipeline(body, createBrotliDecompress(), () => {
+        // the reader sees the error on the decoder, which pipeline destroys with it
+      });
     }
     default: {
       throw new Error(`the page uses the content coding ${coding}, which the fetcher cannot read`);
