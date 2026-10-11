@@ -45,16 +45,10 @@ const fetchSpec: SandboxSpec = {
   limits,
 };
 
-// curl's limit on one probe, which a dropped connection waits out in full
-const probeLimitS = 5;
-
-// a test's time for each probe it runs: curl's limit, the exec's round trip to the guest, and room
-const probeBudgetMs = 10_000;
-
 // Runs curl in the guest and prints its HTTP status and exit code. With flags left out, curl skips
 // every proxy, so the connection is the guest's own.
 async function runProbe(sandbox: Sandbox, url: string, flags = '--noproxy "*"'): Promise<string> {
-  const script = `curl -sS -m ${probeLimitS} ${flags} -o /dev/null -w "status=%{http_code}" "${url}"; echo " exit=$?"`;
+  const script = `curl -sS -m 5 ${flags} -o /dev/null -w "status=%{http_code}" "${url}"; echo " exit=$?"`;
   const result = await sandbox.exec({ argv: ['sh', '-c', script] });
 
   return decoder.decode(result.stdout.bytes).trim();
@@ -82,28 +76,29 @@ describe.skipIf(!hasImpHost)('isolation on an imp host', () => {
   beforeAll(setupSuite, 120_000);
   afterAll(teardownSuite, 300_000);
 
-  // the tool call's curl takes up to 10 s, twice a probe's limit, before the anonymous probe
+  // A dropped connection waits out curl's whole -m limit, so each test takes 10 s for each 5 s of
+  // curl it can wait: the limit, the exec's round trip to the guest, and room.
   test(
     'the reverse forward reaches the tool endpoint, which checks the run token',
     checkToolRoute,
-    3 * probeBudgetMs,
+    30_000,
   );
   test(
     'the broker reaches the model host, which answers the dummy credential',
     checkModelHost,
-    probeBudgetMs,
+    10_000,
   );
-  test('the broker refuses any other host', checkOtherHost, probeBudgetMs);
+  test('the broker refuses any other host', checkOtherHost, 10_000);
   test.each([
     'https://1.1.1.1/',
     'http://169.254.169.254/',
     'http://100.100.100.100/',
     `https://${modelHost}/`,
-  ])('a direct connection to %s fails', checkDirectRefused, probeBudgetMs);
+  ])('a direct connection to %s fails', checkDirectRefused, 10_000);
   test(
     'a direct connection to impd fails, through its address and the gateway',
     checkImpdRefused,
-    2 * probeBudgetMs,
+    20_000,
   );
   test('the forward reopens after a sleep and a wake', checkRouteAfterWake, 60_000);
   test.skipIf(env.IMP_HOST_ADDRESSES === undefined)(
@@ -177,7 +172,7 @@ async function checkImpdRefused(): Promise<void> {
   const byAddress = await runProbe(getConversation(), `${impd.protocol}//${impd.host}/`);
   const byGateway = await runScript(
     getConversation(),
-    `gw=$(ip -4 route show default | awk '{print $3; exit}'); curl -sS -m ${probeLimitS} --noproxy "*" -o /dev/null -w "status=%{http_code}" "http://$gw:7070/"; echo " exit=$?"`,
+    'gw=$(ip -4 route show default | awk \'{print $3; exit}\'); curl -sS -m 5 --noproxy "*" -o /dev/null -w "status=%{http_code}" "http://$gw:7070/"; echo " exit=$?"',
   );
 
   expect(byAddress).toMatch(refused);
