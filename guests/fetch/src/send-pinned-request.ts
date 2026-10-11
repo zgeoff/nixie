@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- a URL has no readonly form
 import type { IncomingMessage } from 'node:http';
 import { Agent, request } from 'node:https';
 import type { LookupFunction } from 'node:net';
@@ -58,10 +59,8 @@ function makePinnedLookup(address: string): LookupFunction {
 
   return (_hostname, lookupOptions, answer) => {
     if (lookupOptions.all === true) {
-      // oxlint-disable-next-line promise/prefer-await-to-callbacks -- node's lookup contract is a callback
       answer(null, [{ address, family }]);
     } else {
-      // oxlint-disable-next-line promise/prefer-await-to-callbacks -- node's lookup contract is a callback
       answer(null, address, family);
     }
   };

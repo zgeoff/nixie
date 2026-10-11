@@ -34,6 +34,18 @@ test('it reads the text of a page cut off inside a tag', () => {
   expect(buildReadableText('<p>first</p><p>second <scr')).toBe('first\n\nsecond');
 });
 
+test('it reads past a self-closing svg or math element', () => {
+  expect(buildReadableText('<p>a<svg/>b</p><math/><p>visible</p>')).toBe('ab\n\nvisible');
+});
+
+test('it reads the body of a page that leaves out the end of its head', () => {
+  expect(buildReadableText('<head><title>t</title><body><p>body text</p>')).toBe('t\n\nbody text');
+});
+
+test('it decodes a reference to a lone surrogate as the replacement character', () => {
+  expect(buildReadableText('<p>&#xD800;</p>')).toBe('�');
+});
+
 test('it returns no text from a script left open', () => {
   expect(buildReadableText('<p>shown</p><script>var a = "hidden')).toBe('shown');
 });

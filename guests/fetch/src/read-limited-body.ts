@@ -8,6 +8,7 @@ export interface LimitedBody {
 }
 
 // Reads a body up to limit bytes, and stops reading at the limit.
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a node stream has no readonly form
 export async function readLimitedBody(body: Readable, limit: number): Promise<LimitedBody> {
   const chunks: Uint8Array[] = [];
   const read = { bytes: 0 };

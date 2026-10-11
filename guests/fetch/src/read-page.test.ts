@@ -381,6 +381,32 @@ test('it fails a fetch that passes the time limit', async () => {
   expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 200 ms' });
 });
 
+test('it fails a fetch whose compressed body stalls past the time limit', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    fetch: () =>
+      new Response(
+        new ReadableStream({
+          start: async (controller) => {
+            controller.enqueue(gzipSync('a'.repeat(1000)).subarray(0, 10));
+            await Bun.sleep(3000);
+            controller.close();
+          },
+        }),
+        { headers: { 'content-type': 'text/plain', 'content-encoding': 'gzip' } },
+      ),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 300, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
+});
+
 test('it fails a fetch whose DNS answer passes the time limit', async () => {
   const reply = await readPage('https://site.test/', {
     limits: { bodyBytes: 1_000_000, timeoutMs: 100, redirects: 5, textBytes: 1_000_000 },

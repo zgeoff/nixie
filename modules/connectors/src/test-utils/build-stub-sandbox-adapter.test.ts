@@ -4,7 +4,6 @@ import { encodeFrame } from '@heynixie/wire';
 import { buildStubSandboxAdapter } from './build-stub-sandbox-adapter';
 
 const encoder = new TextEncoder();
-const decoder = new TextDecoder();
 
 test('it runs each spawn as a guest behind frames and records it', async () => {
   const adapter = buildStubSandboxAdapter(async (stdin, stdout) => {
@@ -29,7 +28,7 @@ test('it runs each spawn as a guest behind frames and records it', async () => {
   const first = await stream.messages[Symbol.asyncIterator]().next();
   const exit = await stream.exit;
 
-  expect(decoder.decode(first.value)).toBe('echo');
+  expect(first).toStrictEqual({ done: false, value: encoder.encode('echo') });
   expect(exit).toMatchObject({ code: 0, signal: null });
   expect(adapter.spawned).toStrictEqual([{ sandboxID: sandbox.id, argv: ['fetcher'] }]);
 });

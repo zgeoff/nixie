@@ -1,8 +1,11 @@
 import type { Readable } from 'node:stream';
+import { pipeline } from 'node:stream';
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
 
 // The body after its content coding, so the body limit counts decoded bytes and a small compressed
-// body cannot expand past it. It throws for a coding the fetcher cannot read.
+// body cannot expand past it. It throws for a coding the fetcher cannot read. pipeline, unlike
+// pipe, passes an abort on the body to the decoder, so the time limit ends a stalled body.
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a node stream has no readonly form
 export function decodeContent(body: Readable, contentEncoding: string | undefined): Readable {
   const coding = (contentEncoding ?? 'identity').trim().toLowerCase();
 
@@ -12,13 +15,13 @@ export function decodeContent(body: Readable, contentEncoding: string | undefine
     }
     case 'gzip':
     case 'x-gzip': {
-      return body.pipe(createGunzip());
+      return pipeline(body, createGunzip(), () => null);
     }
     case 'deflate': {
-      return body.pipe(createInflate());
+      return pipeline(body, createInflate(), () => null);
     }
     case 'br': {
-      return body.pipe(createBrotliDecompress());
+      return pipeline(body, createBrotliDecompress(), () => null);
     }
     default: {
       throw new Error(`the page uses the content coding ${coding}, which the fetcher cannot read`);

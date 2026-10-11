@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the fetch sandbox's own state, and stream handles, which have no readonly form
 import type { ExecStream, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
@@ -18,12 +19,15 @@ export interface FetchSandboxOptions {
 
   // the time past the fetch's own limit that nixie waits for the reply before it stops the fetcher
   readonly replyGraceMs?: number;
+
+  // the longest nixie waits for the adapter to create, list or destroy a sandbox
+  readonly sandboxCallTimeoutMs?: number;
 }
 
 export interface FetchSandbox {
   readonly readPage: (url: string) => Promise<FetchReply>;
 
-  // waits for the fetch in flight, then destroys the sandbox
+  // fails every later fetch, waits for the fetch in flight, then destroys the sandbox
   readonly stop: () => Promise<void>;
 }
 
@@ -34,7 +38,12 @@ export const fetchSandboxOwner = 'web_fetch';
 // at a time in a new fetcher process, over its stdin and stdout and never the sandbox's network.
 // A new sandbox replaces it after fetchesPerSandbox fetches, or after a fetch with no page.
 export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
-  const state: FetchSandboxState = { sandbox: null, fetches: 0, queue: Promise.resolve() };
+  const state: FetchSandboxState = {
+    sandbox: null,
+    fetches: 0,
+    queue: Promise.resolve(),
+    isStopped: false,
+  };
 
   return {
     readPage: async (url) => {
@@ -44,14 +53,15 @@ export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
       state.queue = done.promise;
       try {
         await previous;
-        return await runFetch(options, state, url);
+        return state.isStopped ? stoppedReply : await runFetch(options, state, url);
       } finally {
         done.resolve();
       }
     },
     stop: async () => {
+      state.isStopped = true;
       await state.queue;
-      await removeSandbox(state);
+      await removeSandbox(options, state);
     },
   };
 }
@@ -60,9 +70,11 @@ interface FetchSandboxState {
   sandbox: Promise<Sandbox> | null;
   fetches: number;
   queue: Promise<void>;
+  isStopped: boolean;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fetch sandbox's own state
+const stoppedReply: FetchReply = { kind: 'failed', reason: 'the fetch sandbox is stopped' };
+
 async function runFetch(
   options: FetchSandboxOptions,
   state: FetchSandboxState,
@@ -72,20 +84,22 @@ async function runFetch(
 
   state.fetches += 1;
   if (reply.kind !== 'page' || state.fetches >= options.fetchesPerSandbox) {
-    await removeSandbox(state);
+    await removeSandbox(options, state);
   }
   return reply;
 }
 
 // the reply, or a failure when the sandbox or the fetcher went wrong
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fetch sandbox's own state
 async function tryRunFetcher(
   options: FetchSandboxOptions,
   state: FetchSandboxState,
   url: string,
 ): Promise<FetchReply> {
   try {
-    state.sandbox ??= createFetchSandbox(options);
+    state.sandbox ??= waitOrTimeOut(createFetchSandbox(options), {
+      timer: AbortSignal.timeout(options.sandboxCallTimeoutMs ?? defaultSandboxCallTimeoutMs),
+      message: sandboxCallTimeoutMessage,
+    });
 
     const sandbox = await state.sandbox;
 
@@ -112,24 +126,34 @@ async function createFetchSandbox(options: FetchSandboxOptions): Promise<Sandbox
   );
 }
 
-// A destroy that fails leaves the sandbox to the next create, which removes every sandbox of the
-// owner, so a failed destroy never stops the next fetch.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fetch sandbox's own state
-async function removeSandbox(state: FetchSandboxState): Promise<void> {
+const defaultSandboxCallTimeoutMs = 120_000;
+const sandboxCallTimeoutMessage = 'the sandbox call passed its time limit';
+
+// A destroy that fails or never ends leaves the sandbox to the next create, which removes every
+// sandbox of the owner, so a failed destroy never stops the next fetch.
+async function removeSandbox(
+  options: FetchSandboxOptions,
+  state: FetchSandboxState,
+): Promise<void> {
   const sandbox = state.sandbox;
+  const timer = AbortSignal.timeout(options.sandboxCallTimeoutMs ?? defaultSandboxCallTimeoutMs);
 
   state.sandbox = null;
   state.fetches = 0;
   try {
     const created = await sandbox;
 
-    await created?.destroy();
+    await waitOrTimeOut(created?.destroy() ?? Promise.resolve(), {
+      timer,
+      message: sandboxCallTimeoutMessage,
+    });
   } catch {
     // a create that failed made nothing to destroy
   }
 }
 
 const defaultReplyGraceMs = 5000;
+const fetcherTimeoutMessage = 'the fetcher passed its time limit';
 
 // JSON escapes a byte of text as at most 6 bytes, and the rest of a reply fits in 64 KiB
 const replyOverheadBytes = 65_536;
@@ -139,12 +163,15 @@ async function runFetcher(
   options: FetchSandboxOptions,
   url: string,
 ): Promise<FetchReply> {
-  const stream = await sandbox.spawn({
-    argv: options.argv,
-    maxMessageBytes: options.limits.textBytes * 6 + replyOverheadBytes,
-  });
   const timer = AbortSignal.timeout(
     options.limits.timeoutMs + (options.replyGraceMs ?? defaultReplyGraceMs),
+  );
+  const stream = await waitOrTimeOut(
+    sandbox.spawn({
+      argv: options.argv,
+      maxMessageBytes: options.limits.textBytes * 6 + replyOverheadBytes,
+    }),
+    { timer, message: fetcherTimeoutMessage },
   );
   const request = { url, limits: options.limits, deniedRanges: options.deniedRanges };
 
@@ -162,10 +189,13 @@ async function sendFetchRequest(
   request: Uint8Array,
   timer: AbortSignal,
 ): Promise<FetchReply> {
-  await waitOrTimeOut(stream.send(request), timer);
+  await waitOrTimeOut(stream.send(request), { timer, message: fetcherTimeoutMessage });
 
-  const reply = await waitOrTimeOut(readFirstMessage(stream.messages), timer);
-  const exit = await waitOrTimeOut(stream.exit, timer);
+  const reply = await waitOrTimeOut(readFirstMessage(stream.messages), {
+    timer,
+    message: fetcherTimeoutMessage,
+  });
+  const exit = await waitOrTimeOut(stream.exit, { timer, message: fetcherTimeoutMessage });
 
   if (exit.code !== 0) {
     throw new Error(`the fetcher exited with ${exit.code ?? exit.signal ?? 'no code'}`);
@@ -183,13 +213,21 @@ async function readFirstMessage(messages: AsyncIterable<Uint8Array>): Promise<Ui
   return first.done === true ? null : first.value;
 }
 
-async function waitOrTimeOut<T>(promise: Promise<T>, timer: AbortSignal): Promise<T> {
+interface TimeLimit {
+  readonly timer: AbortSignal;
+  readonly message: string;
+}
+
+async function waitOrTimeOut<T>(promise: Promise<T>, limit: TimeLimit): Promise<T> {
+  const timer = limit.timer;
   const timedOut = Promise.withResolvers<never>();
   const onTimeout = () => {
-    timedOut.reject(new Error('the fetcher passed its time limit'));
+    timedOut.reject(new Error(limit.message));
   };
 
-  timer.throwIfAborted();
+  if (timer.aborted) {
+    throw new Error(limit.message);
+  }
   timer.addEventListener('abort', onTimeout, { once: true });
   try {
     return await Promise.race([promise, timedOut.promise]);

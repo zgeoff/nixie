@@ -68,7 +68,7 @@ test('it creates one fetch sandbox with public egress, no grants and no tool rou
 
   expect(adapter.created).toStrictEqual([
     {
-      id: expect.any(String),
+      id: expect.toBeString(),
       spec: {
         kind: 'fetch',
         image: 'nixie-fetch',
@@ -370,6 +370,73 @@ test('it fails the fetch when the sandbox cannot be created, and tries again on 
     reason: 'the fetch sandbox failed: impd is down',
   });
   expect(second).toMatchObject({ kind: 'page', url: 'https://example.com/2' });
+});
+
+test('it fails a fetch whose sandbox never finishes creating, and serves the next fetch', async () => {
+  const adapter = buildStubSandboxAdapter(
+    makeStubFetcher((request) => ({
+      kind: 'page',
+      url: request.url,
+      status: 200,
+      contentType: 'text/plain',
+      text: 'hello',
+      isTruncated: false,
+    })),
+  );
+  const stuckAdapter = {
+    ...adapter,
+    create: mock(adapter.create).mockImplementationOnce(
+      () => Promise.withResolvers<never>().promise,
+    ),
+  };
+  const fetchSandbox = startFetchSandbox({
+    adapter: stuckAdapter,
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+    sandboxCallTimeoutMs: 50,
+  });
+  onTestFinished(() => fetchSandbox.stop());
+
+  const stuck = await fetchSandbox.readPage('https://example.com/1');
+  const next = await fetchSandbox.readPage('https://example.com/2');
+
+  expect(stuck).toStrictEqual({
+    kind: 'failed',
+    reason: 'the fetch sandbox failed: the sandbox call passed its time limit',
+  });
+  expect(next).toMatchObject({ kind: 'page', url: 'https://example.com/2' });
+});
+
+test('it fails a fetch after it stops, and creates no sandbox', async () => {
+  const adapter = buildStubSandboxAdapter(
+    makeStubFetcher((request) => ({
+      kind: 'page',
+      url: request.url,
+      status: 200,
+      contentType: 'text/plain',
+      text: 'hello',
+      isTruncated: false,
+    })),
+  );
+  const fetchSandbox = startFetchSandbox({
+    adapter,
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+  await fetchSandbox.stop();
+
+  const reply = await fetchSandbox.readPage('https://example.com/');
+
+  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch sandbox is stopped' });
+  expect(adapter.created).toStrictEqual([]);
 });
 
 test('it destroys the sandbox when it stops', async () => {

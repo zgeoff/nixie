@@ -41,9 +41,10 @@ test('it answers one request in a process of its own and leaves its temporary di
   ).toStrictEqual([
     {
       kind: 'refused',
-      reason: expect.stringMatching(
-        /^localhost resolves to (?:127\.0\.0\.1|::1), which is not a public address$/u,
-      ),
+      reason: expect.toBeOneOf([
+        'localhost resolves to 127.0.0.1, which is not a public address',
+        'localhost resolves to ::1, which is not a public address',
+      ]),
     },
   ]);
   expect(left).toStrictEqual([]);

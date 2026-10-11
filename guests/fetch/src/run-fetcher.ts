@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- an async iterable has no readonly form
 import type { FetchReply, FetchRequest } from '@heynixie/wire';
 import {
   decodeFetchRequest,

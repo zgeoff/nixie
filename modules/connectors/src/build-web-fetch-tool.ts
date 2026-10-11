@@ -49,7 +49,9 @@ export function buildWebFetchTool(readPage: (url: string) => Promise<FetchReply>
     },
     execution: 'direct',
     run: async (call) => {
-      const reply = await readPage(String(call.input['url']));
+      const input = call.input['url'];
+      const url = typeof input === 'string' ? input : '';
+      const reply = await readPage(url);
 
       return reply.kind === 'page'
         ? {

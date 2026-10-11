@@ -73,9 +73,10 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox",
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: expect.stringMatching(
-      /^localhost resolves to (?:127\.0\.0\.1|::1), which is not a public address$/u,
-    ),
+    message: expect.toBeOneOf([
+      'localhost resolves to 127.0.0.1, which is not a public address',
+      'localhost resolves to ::1, which is not a public address',
+    ]),
   });
   expect(left).toStrictEqual([]);
 });

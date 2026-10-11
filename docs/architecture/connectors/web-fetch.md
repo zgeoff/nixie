@@ -39,11 +39,13 @@ ranges the deployment lists as internal; nothing else nixie holds reaches the sa
 Fetches run one at a time. nixie replaces the sandbox after a configured number of fetches, and
 after any fetch that does not end in a page: a refusal, a failure the fetcher reports, a fetcher
 that exits non-zero or sends no reply, a reply nixie cannot decode, or a fetcher that outlives the
-fetch's time limit, which nixie stops. Until a replacement, the fetches in one sandbox share a
-boundary: a page that compromises the fetcher can see the URLs of later fetches and send them out
-over public egress. The URLs carry no credential and every result is outside content, so the first
-build accepts that boundary. Every fetch sandbox has the same owner, and a new one removes any fetch
-sandbox an earlier process left, so a crash never leaves two.
+fetch's time limit, which nixie stops. Every call nixie makes to the sandbox adapter has a time
+limit as well, so a create or a destroy that never ends fails one fetch and never blocks the fetches
+after it. Until a replacement, the fetches in one sandbox share a boundary: a page that compromises
+the fetcher can see the URLs of later fetches and send them out over public egress. The URLs carry
+no credential and every result is outside content, so the first build accepts that boundary. Every
+fetch sandbox has the same owner, and a new one removes any fetch sandbox an earlier process left,
+so a crash never leaves two.
 
 ## The fetcher
 

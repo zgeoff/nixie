@@ -1,5 +1,5 @@
-// the elements whose content a reader never sees
-const hiddenSelector = 'head, script, style, noscript, template, svg, math, iframe, object, canvas';
+// the elements whose content a reader never sees; the title is read on its own
+const hiddenSelector = 'title, script, style, noscript, template, svg, math, iframe';
 
 // the elements that start and end a block of text
 const blockSelector = [
@@ -22,6 +22,9 @@ export function buildReadableText(html: string): string {
     })
     .on(hiddenSelector, {
       element: (element) => {
+        if (!element.canHaveContent) {
+          return;
+        }
         hidden.depth += 1;
         element.onEndTag(() => {
           hidden.depth -= 1;
@@ -92,7 +95,10 @@ function decodeEntity(reference: string): string {
   const isHex = body[1] === 'x' || body[1] === 'X';
   const codePoint = isHex ? Number.parseInt(body.slice(2), 16) : Number(body.slice(1));
 
-  return codePoint > 0 && codePoint <= 0x10_ff_ff ? String.fromCodePoint(codePoint) : '\uFFFD';
+  const isScalar =
+    codePoint > 0 && codePoint <= 0x10_ff_ff && (codePoint < 0xd8_00 || codePoint > 0xdf_ff);
+
+  return isScalar ? String.fromCodePoint(codePoint) : '\uFFFD';
 }
 
 function normalizeWhitespace(text: string): string {

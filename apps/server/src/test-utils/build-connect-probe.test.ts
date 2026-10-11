@@ -11,7 +11,9 @@ test('it prints connected for a port that accepts the connection', async () => {
       },
     },
   });
-  onTestFinished(() => listener.stop(true));
+  onTestFinished(() => {
+    listener.stop(true);
+  });
   const probe = buildConnectProbe(process.execPath, '127.0.0.1', listener.port);
 
   const run = Bun.spawn([...probe.argv], { env: { ...probe.env }, stdout: 'pipe' });

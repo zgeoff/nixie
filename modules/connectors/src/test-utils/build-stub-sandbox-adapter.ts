@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- streams and their writers have no readonly form
 import type {
   ExecExit,
   ProcessIO,
