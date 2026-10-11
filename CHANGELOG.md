@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/zgeoff/nixie/compare/v0.1.0...v0.2.0) (2026-10-11)
+
+
+### Features
+
+* **geo-332:** add the kubernetes manifests and the k3s live checks ([#73](https://github.com/zgeoff/nixie/issues/73)) ([eec39c4](https://github.com/zgeoff/nixie/commit/eec39c4e623b8fb11160b95c1e1cc6f0d8a59410))
+
+
+### Bug Fixes
+
+* **geo-500:** match an image impd built by the digest its ref pins ([#75](https://github.com/zgeoff/nixie/issues/75)) ([4b7fbf3](https://github.com/zgeoff/nixie/commit/4b7fbf380c4447a332ab57819307a5e641757b65))
+
 ## 0.1.0 (2026-10-11)
 
 
