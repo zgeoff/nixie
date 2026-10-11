@@ -80,7 +80,12 @@ async function loadORTEncoder(candidate: Candidate): Promise<Embed> {
   // a model with external weights loads by path so the runtime finds the .onnx_data beside it
   const external = Bun.file(path.join(MODELS_DIR, candidate.model, `onnx/${fileName}_data`));
   if (!wasm && !(await external.exists()) && process.env.OFFLINE !== '1') {
-    await readModelFile(candidate.model, `onnx/${fileName}_data`).catch(() => undefined);
+    // most models keep their weights inside the .onnx file, so only a missing file is expected here
+    await readModelFile(candidate.model, `onnx/${fileName}_data`).catch((error: unknown) => {
+      if (!(error instanceof Error && error.message.endsWith('HTTP 404'))) {
+        throw error;
+      }
+    });
   }
   const modelPath = path.join(MODELS_DIR, candidate.model, `onnx/${fileName}`),
     options = wasm
