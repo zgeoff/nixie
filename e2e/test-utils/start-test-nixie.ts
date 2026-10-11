@@ -90,10 +90,10 @@ export async function startTestNixie(): Promise<TestNixie> {
   };
 }
 
-function startNixieHarness(
-  stack: AsyncDisposableStack,
-  env: Readonly<Record<string, string>>,
-): CrashHarness {
+type NixieEnv = Readonly<Record<string, string>>;
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the test's own cleanup
+function startNixieHarness(stack: AsyncDisposableStack, env: NixieEnv): CrashHarness {
   const harness = startCrashHarness({
     entry: join(import.meta.dir, '../nixie/main.ts'),
     startMs: 1_000_000,
@@ -148,6 +148,7 @@ async function readRecoveredState(
 // a turn runs the real SDK in a guest process, which takes a few seconds on a slow host
 const recordTimeoutMs = 30_000;
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the test's own cleanup
 function startDoubles(stack: AsyncDisposableStack): Pick<TestNixie, 'model' | 'provider'> {
   const model = startScriptedModel();
 
@@ -159,11 +160,11 @@ function startDoubles(stack: AsyncDisposableStack): Pick<TestNixie, 'model' | 'p
   return { model, provider };
 }
 
+type LogReader = Pick<TestNixie, 'readRecords' | 'readRows'>;
+
 // A read connection beside nixie, opened on the first read once nixie has made the database.
-function startLogReader(
-  dataDir: string,
-  stack: AsyncDisposableStack,
-): Pick<TestNixie, 'readRecords' | 'readRows'> {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the test's own cleanup
+function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader {
   const reader: { db: Database | null } = { db: null };
   const getReader = (): Database => {
     reader.db ??= startDatabase(join(dataDir, 'nixie.db'));

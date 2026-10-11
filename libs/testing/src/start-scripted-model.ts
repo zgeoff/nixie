@@ -80,11 +80,13 @@ async function readRequest(request: Request): Promise<ScriptedModelRequest> {
   };
 }
 
+interface RenderedResponse {
+  readonly response: Response;
+  readonly gate?: Promise<void>;
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the stub's own script
-function renderResponse(
-  request: ScriptedModelRequest,
-  script: ScriptedReply[],
-): { readonly response: Response; readonly gate?: Promise<void> } {
+function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]): RenderedResponse {
   if (request.path === '/v1/messages/count_tokens') {
     return { response: Response.json({ input_tokens: 10 }) };
   }

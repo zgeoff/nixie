@@ -72,7 +72,7 @@ test('it queues a call that a step makes under that step and returns its action 
       action_id: result.sessionBoundary,
       task_id: ctx.taskID,
       step_key: ctx.step.stepKey,
-      action_hash: expect.stringMatching(/^sha256:[\da-f]{64}$/u),
+      action_hash: `sha256:${new Bun.CryptoHasher('sha256').update('{"arguments":{"to":"team"},"tool":"test.send"}').digest('hex')}`,
       tool: 'test.send',
       status: 'pending',
     },

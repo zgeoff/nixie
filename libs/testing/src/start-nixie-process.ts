@@ -73,7 +73,13 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
       child.send({ type: 'release', arrivalID: arrival.arrivalID });
     },
     request: (operation, args) =>
-      channel.sendRequest((message) => child.send(message), operation, args),
+      channel.sendRequest(
+        (message) => {
+          child.send(message);
+        },
+        operation,
+        args,
+      ),
     kill: () => {
       const descendants = collectDescendants(child.pid);
 
@@ -108,10 +114,10 @@ function startChild(options: NixieProcessOptions, receive: (message: NixieMessag
 
 type NixieChild = ReturnType<typeof startChild>;
 
-async function waitForExit(
-  child: NixieChild,
-  onExit: (exit: NixieExit) => void,
-): Promise<NixieExit> {
+type OnExit = (exit: NixieExit) => void;
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a subprocess has no readonly form
+async function waitForExit(child: NixieChild, onExit: OnExit): Promise<NixieExit> {
   await child.exited;
 
   const exit = { code: child.exitCode, signal: child.signalCode };

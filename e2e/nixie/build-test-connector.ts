@@ -16,7 +16,10 @@ export function buildTestConnector(providerURL: string): ActionConnector {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the double's own JSON
       const body = (await response.json()) as ProviderBody;
 
-      return parseProviderResponse(response, body);
+      return parseProviderResponse(
+        { status: response.status, retryAfter: response.headers.get('retry-after-ms') },
+        body,
+      );
     },
   };
 }
@@ -26,18 +29,22 @@ interface ProviderBody {
   readonly reason?: string;
 }
 
-function parseProviderResponse(response: Response, body: ProviderBody): ProviderResponse {
-  if (response.status === 200) {
+// the status of the double's answer, and its retry-after-ms header when it sent one
+interface ProviderAnswer {
+  readonly status: number;
+  readonly retryAfter: string | null;
+}
+
+function parseProviderResponse(answer: ProviderAnswer, body: ProviderBody): ProviderResponse {
+  if (answer.status === 200) {
     return { kind: 'success', result: body.result ?? {} };
   }
-  const reason = body.reason ?? `the provider answered ${response.status}`;
+  const reason = body.reason ?? `the provider answered ${answer.status}`;
 
-  if (response.status === 429) {
-    const retryAfter = response.headers.get('retry-after-ms');
-
-    return retryAfter === null
+  if (answer.status === 429) {
+    return answer.retryAfter === null
       ? { kind: 'refused_retryable', reason }
-      : { kind: 'refused_retryable', reason, retryAfterMs: Number(retryAfter) };
+      : { kind: 'refused_retryable', reason, retryAfterMs: Number(answer.retryAfter) };
   }
-  return response.status === 422 ? { kind: 'refused', reason } : { kind: 'ambiguous', reason };
+  return answer.status === 422 ? { kind: 'refused', reason } : { kind: 'ambiguous', reason };
 }

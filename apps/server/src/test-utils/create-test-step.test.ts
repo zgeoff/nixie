@@ -41,12 +41,14 @@ test('it returns the first step of a new task that a runner claimed', async () =
 
   const step = await createTestStep(ctx.context);
 
+  const task = await ctx.db.selectFrom('tasks').select('task_id').executeTakeFirstOrThrow();
+
   expect(step).toStrictEqual({
-    taskID: expect.any(String),
-    stepKey: `${step.taskID}:1`,
+    taskID: task.task_id,
+    stepKey: `${task.task_id}:1`,
     lease: {
       kind: 'task',
-      workID: step.taskID,
+      workID: task.task_id,
       holder: 'runner-a',
       generation: 1,
       epoch: 1,
@@ -54,8 +56,9 @@ test('it returns the first step of a new task that a runner claimed', async () =
     },
     inbox: [],
     sessionBoundary: null,
-    signal: expect.any(AbortSignal),
+    signal: step.signal,
   });
+  expect(step.signal).toBeInstanceOf(AbortSignal);
 });
 
 test('it leaves the task running under the step', async () => {

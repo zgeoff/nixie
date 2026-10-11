@@ -36,10 +36,7 @@ export function startHarnessLink(
   const arrivals = { next: 1 };
 
   operations.set('advance', (args) => runAdvance(clock, args));
-  operations.set('arm', (args) => {
-    arms.push(buildHeldArm(args as FaultPointArm));
-    return null;
-  });
+  operations.set('arm', (args) => runArm(arms, args));
   channel.subscribe((message) => {
     if (message.type === 'release') {
       holds.get(message.arrivalID)?.();
@@ -103,10 +100,18 @@ function parseArms(text: string | undefined): HeldArm[] {
   return parsed.map((arm) => buildHeldArm(arm));
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the link's own arms
+function runArm(arms: HeldArm[], args: unknown): null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
+  arms.push(buildHeldArm(args as FaultPointArm));
+  return null;
+}
+
 function buildHeldArm(arm: FaultPointArm): HeldArm {
   return { arm, held: { remaining: arm.times ?? 1 } };
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the arm's own countdown
 function isArmMatch(candidate: HeldArm, point: string, work: FaultPointWork): boolean {
   const arm = candidate.arm;
 

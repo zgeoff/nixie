@@ -10,7 +10,7 @@ export function buildActionHash(tool: string, input: JSONObject): string {
 }
 
 function renderCanonicalJSON(value: JSONValue): string {
-  if (Array.isArray(value)) {
+  if (isJSONArray(value)) {
     return `[${value.map((item) => renderCanonicalJSON(item)).join(',')}]`;
   }
   if (typeof value === 'object' && value !== null) {
@@ -21,4 +21,9 @@ function renderCanonicalJSON(value: JSONValue): string {
     return `{${entries.join(',')}}`;
   }
   return JSON.stringify(value);
+}
+
+// Array.isArray narrows to any[], which loses the item type
+function isJSONArray(value: JSONValue): value is readonly JSONValue[] {
+  return Array.isArray(value);
 }

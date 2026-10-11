@@ -70,10 +70,11 @@ async function waitQuietly(promise: Promise<unknown>): Promise<void> {
   }
 }
 
-function applyReply(
-  requests: Map<number, PromiseWithResolvers<unknown>>,
-  reply: Extract<NixieMessage, { type: 'reply' }>,
-): void {
+type PendingRequests = Map<number, PromiseWithResolvers<unknown>>;
+type NixieReply = Extract<NixieMessage, { type: 'reply' }>;
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the channel's own requests
+function applyReply(requests: PendingRequests, reply: NixieReply): void {
   const pending = requests.get(reply.requestID);
 
   requests.delete(reply.requestID);

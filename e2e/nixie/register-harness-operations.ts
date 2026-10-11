@@ -7,6 +7,7 @@ import { createTask, writeInboxRecords } from '../../modules/tasks/src/index';
 // returns the sequence or the ID it made, and releaseWriterLock is the stale writer test's hook.
 export function registerHarnessOperations(link: HarnessLink, context: TasksContext): void {
   link.registerOperation('sendMessage', async (args) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
     const message = args as { readonly thread: string; readonly text: string };
     const [record] = await writeInboxRecords(context, [
       {
@@ -19,10 +20,14 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
 
     return record?.sequence ?? null;
   });
-  link.registerOperation('createTask', (args) =>
-    createTask(context, (args as { readonly brief: string }).brief),
-  );
+  link.registerOperation('createTask', (args) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
+    const task = args as { readonly brief: string };
+
+    return createTask(context, task.brief);
+  });
   link.registerOperation('finishTask', async (args) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
     const taskID = (args as { readonly taskID: string }).taskID;
     const [record] = await writeInboxRecords(context, [
       {

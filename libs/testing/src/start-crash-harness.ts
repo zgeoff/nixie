@@ -52,7 +52,7 @@ export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
         faultPoints,
       });
 
-      void updateTrackedProcesses(processes, nixie);
+      void updateTracked(processes, nixie);
       return nixie;
     },
     advance: async (ms, advanceOptions = {}) => {
@@ -83,10 +83,7 @@ interface TrackedProcesses {
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the harness's own sets
-async function updateTrackedProcesses(
-  processes: TrackedProcesses,
-  nixie: NixieProcess,
-): Promise<void> {
+async function updateTracked(processes: TrackedProcesses, nixie: NixieProcess): Promise<void> {
   processes.started.add(nixie);
   try {
     await nixie.ready;
