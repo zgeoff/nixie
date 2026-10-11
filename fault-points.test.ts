@@ -1,3 +1,4 @@
+// oxlint-disable zgeoff/test-beside-module -- tests the fault points in the tasks and actions bundles, which have no single module; GEO-436 moves it
 import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

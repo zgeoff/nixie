@@ -8,8 +8,10 @@ exact = true
 # supply-chain guard: only install versions published >= 7 days ago
 minimumReleaseAge = 604800
 
-# imp's client ships from the same owner as nixie, and nixie tracks its releases closely
-minimumReleaseAgeExcludes = ["@zgeoff/imp-client"]
+# imp's client and the shared lint config ship from the same owner as nixie, and
+# nixie tracks their releases closely; each pinned version's provenance is
+# checked before the pin
+minimumReleaseAgeExcludes = ["@zgeoff/imp-client", "@zgeoff/oxlint-config"]
 
 [test]
 # design spikes install and run on their own

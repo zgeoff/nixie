@@ -11,7 +11,7 @@
         "@types/bun": "1.4.2",
         "@zgeoff/bun-test-extended": "0.1.0",
         "@zgeoff/bun-test-react": "0.1.0",
-        "@zgeoff/oxlint-config": "0.1.0",
+        "@zgeoff/oxlint-config": "0.2.0",
         "knip": "6.39.0",
         "lefthook": "2.1.14",
         "oxfmt": "0.71.0",
@@ -779,7 +779,7 @@
 
     "@zgeoff/imp-client": ["@zgeoff/imp-client@0.40.4", "", { "dependencies": { "@orpc/client": "^1.14.15", "@orpc/contract": "^1.14.15", "zod": "^4.4.3" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-dD8A286GMNVHPxnHBrdcBzT+Ic7zv6TVxDq9N8aoScWF6xgCnodL526+yDiYFBGpo+piyICEAFW79vVOx7i+Rw=="],
 
-    "@zgeoff/oxlint-config": ["@zgeoff/oxlint-config@0.1.0", "", { "dependencies": { "@stylistic/eslint-plugin": "5.10.0" }, "peerDependencies": { "oxlint": ">=1.71.0" } }, "sha512-C8dKxUzoVv/Ol6Xp/CO8kPBZUa1mNOiqL0t/A7GmUzLYPozRxbR41Hc0M0xVB1XxRwgcvwRMHYEsIOcxiYc+sg=="],
+    "@zgeoff/oxlint-config": ["@zgeoff/oxlint-config@0.2.0", "", { "dependencies": { "@stylistic/eslint-plugin": "5.10.0" }, "peerDependencies": { "oxlint": ">=1.71.0" } }, "sha512-wdHEVoGxq447T3Pru4dJ8Up6DB/bhj19ew4XZ8r0kOkw5XmqDdxAAz+mkAwsjRVTMWyD4WJojm2oRYfvV8DlaA=="],
 
     "acorn": ["acorn@8.18.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ=="],
 

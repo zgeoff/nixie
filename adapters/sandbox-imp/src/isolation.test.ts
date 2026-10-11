@@ -1,3 +1,4 @@
+// oxlint-disable zgeoff/test-beside-module -- has no module of its own; GEO-436 moves it beside the module it tests
 // The reverse-forward spike's isolation control, run against a real impd on a host with /dev/kvm.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn it on.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
