@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@heynixie/actions": "workspace:*",
     "@heynixie/connectors": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/models": "workspace:*",

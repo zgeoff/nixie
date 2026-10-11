@@ -1,0 +1,47 @@
+import { join } from 'node:path';
+import type { ActionQueueBridge } from '../../apps/server/src/index';
+import { buildActionQueue } from '../../apps/server/src/index';
+import type { ActionConnector } from '../../modules/actions/src/index';
+import { makeDecisionPoint } from '../../modules/policy/src/index';
+import type { TasksContext } from '../../modules/tasks/src/index';
+import type { ToolEndpoint } from '../../modules/tools/src/index';
+import { buildToolRegistry, startToolEndpoint } from '../../modules/tools/src/index';
+import { buildTestConnector } from './build-test-connector';
+import { buildTestSendTool } from './build-test-send-tool';
+
+export interface TestTools {
+  readonly endpoint: ToolEndpoint;
+  readonly toolNames: readonly string[];
+  readonly trackSteps: ActionQueueBridge['trackSteps'];
+
+  // the test connector for each queued tool, by name
+  readonly connectors: ReadonlyMap<string, ActionConnector>;
+}
+
+// Starts the tool endpoint with test.send, which the decision point's test rule allows, the action
+// queue its allowed calls go to, and the test connector that sends them to the provider double.
+export async function startTestTools(
+  context: TasksContext,
+  providerURL: string,
+): Promise<TestTools> {
+  const testSend = buildTestSendTool();
+  const registry = buildToolRegistry([testSend]);
+  const bridge = buildActionQueue(context);
+  const endpoint = await startToolEndpoint({
+    socketDir: join(context.log.writer.dataDir, 'tools'),
+    registry,
+    decide: makeDecisionPoint({
+      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+    }),
+    log: context.log,
+    definitions: context.definitions,
+    queue: bridge.queue,
+  });
+
+  return {
+    endpoint,
+    toolNames: [testSend.name],
+    trackSteps: bridge.trackSteps,
+    connectors: new Map([[testSend.name, buildTestConnector(providerURL)]]),
+  };
+}

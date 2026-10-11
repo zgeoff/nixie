@@ -1,13 +1,15 @@
 // One reply the stub model gives: a text block that ends the turn, or a tool_use block that asks
-// for a tool by its name as the model sees it, such as mcp__nixie__note_read.
-export type ScriptedReply =
+// for a tool by its name as the model sees it, such as mcp__nixie__note_read. A gate holds the
+// reply until it resolves, so a test can keep a turn running.
+export type ScriptedReply = (
   | { readonly text: string }
   | {
       readonly toolUse: {
         readonly name: string;
         readonly input: Readonly<Record<string, unknown>>;
       };
-    };
+    }
+) & { readonly gate?: Promise<void> };
 
 // One request the stub model received, with its body parsed.
 export interface ScriptedModelRequest {
@@ -45,7 +47,11 @@ export function startScriptedModel(): ScriptedModel {
       const recorded = await readRequest(request);
 
       requests.push(recorded);
-      return renderResponse(recorded, script);
+
+      const response = renderResponse(recorded, script);
+
+      await response.gate;
+      return response.response;
     },
   });
 
@@ -74,28 +80,37 @@ async function readRequest(request: Request): Promise<ScriptedModelRequest> {
   };
 }
 
+interface RenderedResponse {
+  readonly response: Response;
+  readonly gate?: Promise<void>;
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the stub's own script
-function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]): Response {
+function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]): RenderedResponse {
   if (request.path === '/v1/messages/count_tokens') {
-    return Response.json({ input_tokens: 10 });
+    return { response: Response.json({ input_tokens: 10 }) };
   }
   if (request.path !== '/v1/messages' || request.body === null) {
-    return new Response('not found', { status: 404 });
+    return { response: new Response('not found', { status: 404 }) };
   }
   const reply = script.shift();
 
   if (reply === undefined) {
-    return Response.json(
-      {
-        type: 'error',
-        error: { type: 'invalid_request_error', message: 'the scripted model has no reply left' },
-      },
-      { status: 400 },
-    );
+    return {
+      response: Response.json(
+        {
+          type: 'error',
+          error: { type: 'invalid_request_error', message: 'the scripted model has no reply left' },
+        },
+        { status: 400 },
+      ),
+    };
   }
   const model = request.body.model ?? 'stub';
+  const response =
+    request.body.stream === true ? renderStream(reply, model) : renderWhole(reply, model);
 
-  return request.body.stream === true ? renderStream(reply, model) : renderWhole(reply, model);
+  return reply.gate === undefined ? { response } : { response, gate: reply.gate };
 }
 
 function renderWhole(reply: ScriptedReply, model: string): Response {

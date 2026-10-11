@@ -1,4 +1,4 @@
-import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
+import type { ContentSource, Decision, Definitions, JSONObject, Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import type { DecisionPoint, PolicyDecision } from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
@@ -201,11 +201,12 @@ function runDecidedCall(decided: DecidedCall): Promise<Settled> {
     return Promise.resolve(buildMessage('denied', message, { source }));
   }
 
-  return tryRunAllowedCall({ ...rest, registered });
+  return tryRunAllowedCall({ ...rest, registered, decision: policy.decision });
 }
 
 interface AllowedCall {
   readonly registered: RegisteredTool;
+  readonly decision: Decision;
   readonly call: ToolCall;
   readonly run: ToolRun;
 
@@ -264,11 +265,10 @@ function buildTypedResult(
 }
 
 async function runQueued(allowed: AllowedCall): Promise<Settled> {
-  const actionID = crypto.randomUUID();
-  await allowed.options.queue.enqueue({
-    actionID,
+  const actionID = await allowed.options.queue.enqueue({
     call: allowed.call,
     run: allowed.run,
+    decision: allowed.decision,
     callSequence: allowed.callSequence,
   });
 

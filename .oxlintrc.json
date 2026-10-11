@@ -100,6 +100,15 @@
   },
   "overrides": [
     {
+      // a crash test is one journey whose phases depend on the ones before it: start, hold at a
+      // fault point, kill, restart, then the oracle
+      "files": ["e2e/crash/*.test.ts"],
+      "rules": {
+        "max-statements": "off",
+        "max-lines-per-function": "off"
+      }
+    },
+    {
       // the web client passes browser and React handles, which no caller can make readonly
       "files": ["apps/web/**"],
       "rules": {

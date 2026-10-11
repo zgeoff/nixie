@@ -71,5 +71,5 @@ state it left, so the next start finishes a recovery that crashed part way throu
 Each transition a crash can interrupt has a named fault point, such as the moment after a claim
 commits or the moment before a step commit. In a test build, the crash harness installs a handler
 that holds the runner at a fault point, then kills the process or releases it
-([crash tests](../../design/platform/core/crash-tests.md)). Every fault point sits behind the
-test-build flag, so the release bundle holds none of them and no release code path can stop at one.
+([crash tests](./crash-tests.md)). Every fault point sits behind the test-build flag, so the release
+bundle holds none of them and no release code path can stop at one.

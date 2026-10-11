@@ -46,6 +46,7 @@
       "name": "@heynixie/server",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/actions": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/models": "workspace:*",

@@ -1,3 +1,5 @@
+export type { ActionQueueBridge } from './build-action-queue';
+export { buildActionQueue } from './build-action-queue';
 export type { SandboxAdapterOptions } from './build-sandbox-adapter';
 export { buildSandboxAdapter } from './build-sandbox-adapter';
 export type { DeploymentConfig } from './deployment-config-schema';
