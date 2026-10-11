@@ -34,9 +34,9 @@ const releasedText =
   args.values.released === undefined ? null : await readFile(args.values.released, 'utf8');
 const released = releasedText === null ? null : releasedSchema.parse(JSON.parse(releasedText));
 const dir = await mkdtemp(join(tmpdir(), 'nixie-migration-check-'));
-const check = await checkMigrations(nixieSchema, released, dir).finally(() =>
-  rm(dir, { recursive: true, force: true }),
-);
+const check = await checkMigrations(nixieSchema, released, dir);
+
+await rm(dir, { recursive: true, force: true });
 const notes = renderMigrationNotes(check, args.values['last-tag'] ?? null, marker);
 
 process.stdout.write(notes);

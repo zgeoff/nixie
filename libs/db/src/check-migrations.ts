@@ -88,7 +88,7 @@ async function runRecordedMigrations(
       copyDir: dir,
     });
     return await runAddedMigrations(
-      { db, statements },
+      { db, drainStatements: () => statements.splice(0) },
       migrations.slice(releasedCount),
       releasedCount,
     );
@@ -97,10 +97,10 @@ async function runRecordedMigrations(
   }
 }
 
-// the scratch database and the statements its log records since the last reset
+// the scratch database, and the statements its log recorded since the last drain
 interface StatementRecorder {
   readonly db: Kysely<unknown>;
-  readonly statements: string[];
+  readonly drainStatements: () => readonly string[];
 }
 
 // Runs each added migration in turn and takes the statements the log recorded for it.
@@ -112,14 +112,14 @@ async function runAddedMigrations(
   const recorded: RecordedMigration[] = [];
 
   for (const [index, migration] of added.entries()) {
-    recorder.statements.length = 0;
+    recorder.drainStatements();
 
     // oxlint-disable-next-line no-await-in-loop -- each migration builds on the one before it
     await recorder.db.transaction().execute((tx) => migration.up(tx));
     recorded.push({
       version: releasedCount + index + 1,
       name: migration.name,
-      statements: [...recorder.statements],
+      statements: recorder.drainStatements(),
     });
   }
   return recorded;
