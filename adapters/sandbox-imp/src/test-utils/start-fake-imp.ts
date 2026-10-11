@@ -81,6 +81,9 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
       const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
 
       state.execs.push(exec);
+      if (options.requireBroker) {
+        requireBrokerEnv(options.env);
+      }
       return Promise.resolve(startFakeExec(exec, stack));
     },
     openReverseForward: (name, guestPort, onConnection) => {
@@ -99,10 +102,36 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
   };
 }
 
+// the variables impd 0.40 sets for an exec in an imp with a grant, the placeholders of a preset kind
+// left out
+const brokerEnv: Readonly<Record<string, string>> = {
+  HTTPS_PROXY: 'http://broker.invalid:3128',
+  https_proxy: 'http://broker.invalid:3128',
+  NO_PROXY: 'localhost,127.0.0.1,::1',
+  no_proxy: 'localhost,127.0.0.1,::1',
+};
+
+// An exec that requires the broker gets these, and impd refuses one whose env replaces any.
+function requireBrokerEnv(env: Readonly<Record<string, string>>): void {
+  const replaced = Object.keys(brokerEnv).find(
+    (key) => env[key] !== undefined && env[key] !== brokerEnv[key],
+  );
+
+  if (replaced !== undefined) {
+    throw new Error(
+      `the broker is not ready for this exec: the exec's env sets ${replaced}, which the broker sets`,
+    );
+  }
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own exec log and cleanup
 function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
   const child = Bun.spawn([...exec.argv], {
-    env: { PATH: process.env['PATH'] ?? '/usr/bin:/bin', ...exec.options.env },
+    env: {
+      PATH: process.env['PATH'] ?? '/usr/bin:/bin',
+      ...(exec.options.requireBroker ? brokerEnv : {}),
+      ...exec.options.env,
+    },
     stdin: 'pipe',
     stdout: 'pipe',
     stderr: 'pipe',

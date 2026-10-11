@@ -222,7 +222,7 @@ test('it records a failed create as destroyed and removes the imp', async () => 
   expect(listed).toStrictEqual([]);
 });
 
-test('it cuts exec output past 1 MiB, with the broker required and NO_PROXY kept', async () => {
+test('it cuts exec output past 1 MiB, with the broker required and its NO_PROXY left alone', async () => {
   const ctx = await setupImpAdapter();
   const sandbox = await ctx.adapter.create(conversationSpec);
   const result = await sandbox.exec({
@@ -235,8 +235,18 @@ test('it cuts exec output past 1 MiB, with the broker required and NO_PROXY kept
     stderr: { isCut: false },
   });
   expect(result.stdout.bytes.byteLength).toBe(1_048_576);
-  expect(decoder.decode(result.stderr.bytes)).toBe('broker-placeholder 127.0.0.1,localhost\n');
+  expect(decoder.decode(result.stderr.bytes)).toBe('broker-placeholder localhost,127.0.0.1,::1\n');
   expect(ctx.imp.execs.at(0)?.options).toMatchObject({ killGraceMs: 5000, requireBroker: true });
+});
+
+test('an exec in an imp with no grant passes the command env alone, with no broker required', async () => {
+  const ctx = await setupImpAdapter();
+  const sandbox = await ctx.adapter.create(fetchSpec);
+
+  await sandbox.exec({ argv: ['true'], env: { FOO: 'bar' } });
+
+  expect(ctx.imp.execs.at(0)?.options).toMatchObject({ requireBroker: false });
+  expect(ctx.imp.execs.at(0)?.options.env).toStrictEqual({ FOO: 'bar' });
 });
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- an async iterable has no readonly form
