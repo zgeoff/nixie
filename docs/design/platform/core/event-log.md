@@ -121,8 +121,8 @@ database's WAL file, with polling as the fallback.
 ## The single writer
 
 One nixie process writes the database at a time, through the writer lock and the writer epoch that
-[the database and the single writer](../../../architecture/database.md#the-single-writer) covers.
-Every lease records the epoch it was claimed under.
+[the database and the single writer](../../../architecture/core/database.md#the-single-writer)
+covers. Every lease records the epoch it was claimed under.
 
 The restore and rollback commands run only while nixie is stopped. Each takes the same lock before
 it replaces the database, and refuses to run when it cannot, because SQLite gives no safe way to

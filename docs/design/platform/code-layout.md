@@ -138,7 +138,7 @@ Slice 1 also creates these packages:
 - `libs/contract`, the oRPC contract with the client code both clients share, under
   [the client](channels/client.md)
 - `libs/db`, nixie's Kysely dialect for `bun:sqlite` off the main thread, the migration runner and
-  the schema version from [the database](../../architecture/database.md#migrations), tagged
+  the schema version from [the database](../../architecture/core/database.md#migrations), tagged
   `server-only`
 - `libs/wire`, the message formats that cross a sandbox boundary, and later the snapshot set formats
   nixie shares with the backup sidecar

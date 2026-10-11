@@ -33,26 +33,42 @@ below, and planned work lives in Linear.
 
 ## Architecture
 
-- [Actions](architecture/actions.md) — the action queue, the repeat match by action hash, attempts
-  and outcomes, the retry schedule and what the model sees
-- [The client contract](architecture/contract.md) — the oRPC procedures, checked actions, the live
-  stream, the query helper and the paste-span logic
-- [The database and the single writer](architecture/database.md) — the connection, the writer lock
-  and epoch, migrations and the schema version, and random key store IDs
-- [The decision point](architecture/decision-point.md) — the registry and scope stages, the fixed
-  read-only rule, effect declarations and the test-build rule
-- [The definitions](architecture/definitions.md) — the path source, the content hash, the
-  definitions format, the snapshot hash and the persona seed
-- [The event log](architecture/event-log.md) — the record envelope, erasable fields and the key
-  store, projections and their rebuild, and reading by sequence
-- [Sandboxes](architecture/sandbox.md) — the sandbox interface and its kinds, the lifecycle records,
-  the imp adapter, running a command and the process double
-- [Tasks](architecture/tasks.md) — the task states, the inbox and its read cursor, steps, the one
-  lease claim path, timers, crash recovery, the runner pools and the fault points
-- [The tool endpoint](architecture/tools.md) — tool definitions, what the model sees, the call steps
-  and their records, and one endpoint per run
-- [The web client](architecture/web-client.md) — the Start server, session forwarding, the
-  conversation view, the outbox, health and the web image
+- [Architecture overview](architecture/overview.md) — the path of a tool call, the client path, the
+  topology, the data and the cross-cutting rules, on one page
+
+### Core
+
+- [The database and the single writer](architecture/core/database.md) — one SQLite file in a worker
+  thread, the writer lock and epoch, migrations and the oldest reader
+- [The event log](architecture/core/event-log.md) — records, appending, projections and their
+  rebuild, and reading by sequence
+- [Erasable fields](architecture/core/erasable-fields.md) — a key per record, the key store beside
+  the database, and forgetting by destroying a key
+- [Tasks](architecture/core/tasks.md) — task states, the inbox and its read cursor, steps and their
+  commit, and durable timers
+- [Leases and recovery](architecture/core/leases-and-recovery.md) — the one claim path, lease
+  generations, runner pools, crash recovery and fault points
+- [Actions](architecture/core/actions.md) — the action queue, outcomes, attempts, retries and what
+  the model sees
+- [The definitions](architecture/core/definitions.md) — sources, the content hash, the definitions
+  format, the snapshot hash and seeding
+
+### Policy
+
+- [The decision point](architecture/policy/decision-point.md) — the stages, the fixed read-only
+  rule, effect declarations and the test rule
+
+### Connectors
+
+- [Tool calls](architecture/connectors/tool-calls.md) — one endpoint per run, tool definitions, the
+  call steps, and the records of each call
+- [Sandboxes](architecture/connectors/sandboxes.md) — kinds of work, records and recovery, the tool
+  route, the imp adapter and the process double
+
+### Channels
+
+- [The client](architecture/channels/client.md) — the oRPC contract, session forwarding, the
+  conversation view, the outbox and paste spans
 
 ## Runbooks
 

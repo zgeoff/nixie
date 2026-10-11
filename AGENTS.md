@@ -130,7 +130,8 @@ writing rules, the size limits and the README contract.
   from the writer that `startWriter` in `modules/log` returns, and runs each write transaction
   through `withWriteTransaction`.
 - Every ID that keys the key store is random, from `crypto.randomUUID()`, and never a row number or
-  any other sequence. [The database](docs/architecture/database.md#key-store-ids) gives the reason.
+  any other sequence. [The database](docs/architecture/core/database.md#key-store-ids) gives the
+  reason.
 - A migration appends to `nixieSchema` and never changes a released one.
 
 ## Public repo

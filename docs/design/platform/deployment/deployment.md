@@ -241,10 +241,10 @@ and your deployment repo keeps its own version of them. One SQLite writer sets t
 - impd on each node that runs nixie, outside the cluster, with its API reachable from nixie's pod
 
 nixie keeps one writer itself, with the
-[writer lock and epoch](../../../architecture/database.md#the-single-writer), so a rollout's new pod
-waits on the lock until the old pod exits. The data volume is block storage on the node, mounted as
-nixie's data directory. It moves to another node only after the old node is powered off, as the
-single writer section explains. imp's client delivers each reverse-forward connection to nixie over
-nixie's own connection to impd, so the pod opens no inbound port for its tools. The
+[writer lock and epoch](../../../architecture/core/database.md#the-single-writer), so a rollout's
+new pod waits on the lock until the old pod exits. The data volume is block storage on the node,
+mounted as nixie's data directory. It moves to another node only after the old node is powered off,
+as the single writer section explains. imp's client delivers each reverse-forward connection to
+nixie over nixie's own connection to impd, so the pod opens no inbound port for its tools. The
 [pod reverse-forward spike](../spikes/pod-reverse-forward/README.md) runs that route from a pod to
 impd's tailnet HTTPS address, with the imp's egress `none`.

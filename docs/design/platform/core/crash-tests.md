@@ -23,9 +23,9 @@ committed rolls back. Other failures reduce to it or belong to a later slice:
   under [upgrades](../deployment/upgrades.md). A step still running at the deadline recovers as
   after a crash.
 - **A rollout or a second process** meets the
-  [writer lock](../../../architecture/database.md#the-single-writer). The second writer and stale
-  writer epoch tests below prove the lock and the epoch check in CI, and slice 1's live check on
-  Kubernetes confirms a rollout.
+  [writer lock](../../../architecture/core/database.md#the-single-writer). The second writer and
+  stale writer epoch tests below prove the lock and the epoch check in CI, and slice 1's live check
+  on Kubernetes confirms a rollout.
 - **An impd restart or a dead sandbox** fails the tool call that used it. The step reruns, and the
   action queue keeps the rerun from repeating an action.
 

@@ -1,7 +1,7 @@
 # Glossary
 
 These are the terms the docs and the code use. Each term means one thing. The docs address you, the
-one person a nixie deployment works for.
+one person a nixie deployment works for, and the architecture docs call that person the user.
 
 ## Work
 
