@@ -23,7 +23,7 @@ function decodeLimits(value: unknown): FetchLimits {
   if (typeof value !== 'object' || value === null) {
     throw new TypeError('a fetch request needs limits');
   }
-  const limits = new Map(Object.entries(value));
+  const limits: ReadonlyMap<string, unknown> = new Map(Object.entries(value));
 
   for (const name of limitNames) {
     const limit = limits.get(name);
