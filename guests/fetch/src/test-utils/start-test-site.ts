@@ -18,7 +18,7 @@ export interface TestSite {
 }
 
 // a request as it arrived, copied before the handler runs, since Bun reuses a Request after it
-export interface RecordedRequest {
+interface RecordedRequest {
   readonly url: string;
   readonly headers: Readonly<Record<string, string>>;
 }
