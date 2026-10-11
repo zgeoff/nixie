@@ -2,13 +2,13 @@ import type { LogRecord as ContractRecord, Span } from '@heynixie/contract';
 import type { LogRecord } from '@heynixie/log';
 
 // Turns a log record into the record a client renders, or null for a record that belongs to no
-// thread, such as a session or a refusal record, which no client view shows. Your message carries
-// its text and spans while its key exists; a forgotten message keeps its place with no text.
+// thread, such as a session or a refusal record, which no client view shows. Your message and the
+// model's reply carry their text while its key exists; a forgotten one keeps its place with none.
 export function toContractRecord(record: LogRecord): ContractRecord | null {
   if (record.thread === null) {
     return null;
   }
-  const message = record.kind === 'owner_message' ? toMessage(record) : undefined;
+  const message = messageKinds.has(record.kind) ? toMessage(record) : undefined;
 
   return {
     kind: record.kind,
@@ -18,6 +18,9 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
     thread: record.thread,
   };
 }
+
+// your message, and a reply from the conversation's model
+const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
 
 type Message = NonNullable<ContractRecord['message']>;
 

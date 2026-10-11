@@ -47,11 +47,17 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/log": "workspace:*",
+        "@heynixie/models": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/sandbox-imp": "workspace:*",
         "@heynixie/sandbox-process": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
       },
     },
     "apps/web": {

@@ -1,6 +1,7 @@
 import { runConversationGuest } from './run-conversation-guest';
 
-// The conversation image's entry: one turn over framed stdin and stdout.
+// The conversation image's entry: one turn over framed stdin and stdout. It exits once the turn
+// ends, because the host keeps its stdin open until then.
 const writer = Bun.stdout.writer();
 
 await runConversationGuest({
@@ -11,4 +12,4 @@ await runConversationGuest({
   },
   env: process.env,
 });
-await writer.end();
+process.exit(0);
