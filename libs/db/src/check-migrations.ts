@@ -170,20 +170,18 @@ const createIndex = /^create (?<unique>unique )?index (?:if not exists )?\S+ on 
 const addColumn = /^alter table (?<table>\S+) add (?:column )?(?<definition>.+)$/u;
 
 // the tables that the added migrations create, which the release before never reads or writes
-function collectCreatedTables(statements: readonly string[]): ReadonlySet<string> {
-  return new Set(
-    statements.flatMap((statement) => {
-      const table = createTable.exec(normalizeStatement(statement))?.groups?.['table'];
+function collectCreatedTables(statements: readonly string[]): string[] {
+  return statements.flatMap((statement) => {
+    const table = createTable.exec(normalizeStatement(statement))?.groups?.['table'];
 
-      return table === undefined ? [] : [normalizeTable(table)];
-    }),
-  );
+    return table === undefined ? [] : [normalizeTable(table)];
+  });
 }
 
 // A new table, an index the release before cannot trip, or a column the release before can leave
 // out of its inserts: it reads and writes around each of them. A unique index or a constrained
 // column passes only on a table the release creates.
-function isExpandStatement(statement: string, newTables: ReadonlySet<string>): boolean {
+function isExpandStatement(statement: string, newTables: readonly string[]): boolean {
   const normalized = normalizeStatement(statement);
   const index = createIndex.exec(normalized)?.groups;
   const column = addColumn.exec(normalized)?.groups;
@@ -192,11 +190,13 @@ function isExpandStatement(statement: string, newTables: ReadonlySet<string>): b
     return true;
   }
   if (index !== undefined) {
-    return index['unique'] === undefined || newTables.has(normalizeTable(index['table'] ?? ''));
+    return (
+      index['unique'] === undefined || newTables.includes(normalizeTable(index['table'] ?? ''))
+    );
   }
   if (column !== undefined) {
     return (
-      newTables.has(normalizeTable(column['table'] ?? '')) ||
+      newTables.includes(normalizeTable(column['table'] ?? '')) ||
       isOptionalColumn(column['definition'] ?? '')
     );
   }
