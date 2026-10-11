@@ -74,10 +74,11 @@ Expect `Verification succeeded!` and the release commit in the output. A private
 
 - **A stage failed.** Re-run the failed jobs of the run, as in the visibility steps. The run resumes
   from the stage that failed, and a partly tagged release finishes with the same digests.
-- **The run is gone or its digests are lost.** Start a manual run for the tag. It rebuilds every
-  image from the tag's commit, and it refuses when any image already carries the version, because a
-  deployment may pin it:
+- **The run is gone, its digests are lost, or it stopped because release-please tagged another
+  commit.** Start a manual run on the tag, so the attestations name the tag's commit. It rebuilds
+  every image from the tag's commit, and it refuses when any image already carries the version,
+  because a deployment may pin it:
 
   ```bash
-  gh workflow run release.yml --repo <owner>/nixie -f tag=v<version>
+  gh workflow run release.yml --repo <owner>/nixie --ref v<version>
   ```

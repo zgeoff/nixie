@@ -6,6 +6,7 @@ test('it lists each added migration and whether the last release reads its schem
     renderMigrationNotes(
       {
         changed: [],
+        changedObjects: [],
         added: [
           { version: 7, name: 'add the moments table', refused: [] },
           { version: 8, name: 'add a title to moments', refused: [] },
@@ -34,6 +35,7 @@ test('it marks the schema unreadable by the last release when the build declares
     renderMigrationNotes(
       {
         changed: [],
+        changedObjects: [],
         added: [{ version: 7, name: 'drop the legacy column', refused: [] }],
         readableByReleaseBefore: false,
       },
@@ -56,7 +58,7 @@ test('it marks the schema unreadable by the last release when the build declares
 test('it says the release adds no migration when the schema is unchanged', () => {
   expect(
     renderMigrationNotes(
-      { changed: [], added: [], readableByReleaseBefore: true },
+      { changed: [], changedObjects: [], added: [], readableByReleaseBefore: true },
       'v0.3.0',
       '<!-- marker -->',
     ),
@@ -74,6 +76,7 @@ test('it lists every migration without a readability column for the first releas
     renderMigrationNotes(
       {
         changed: [],
+        changedObjects: [],
         added: [{ version: 1, name: 'create the event log', refused: [] }],
         readableByReleaseBefore: true,
       },

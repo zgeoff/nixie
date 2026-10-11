@@ -10,10 +10,17 @@ import { checkMigrations } from './check-migrations';
 import { nixieSchema } from './nixie-schema';
 import { renderMigrationNotes } from './render-migration-notes';
 
-// the last release's schema, as the release workflow reads it from the release tag's own tree
+// the last release's schema, as run-schema-report.ts prints it in the release tag's own tree
+const schemaObject = z.strictObject({
+  type: z.string(),
+  name: z.string(),
+  tableName: z.string(),
+  sql: z.string().nullable(),
+});
 const releasedSchema = z.strictObject({
   migrations: z.array(z.string()),
   oldestReader: z.int().nonnegative(),
+  objects: z.array(schemaObject),
 });
 
 const marker = '<!-- nixie: migrations -->';
@@ -56,6 +63,9 @@ const refused = check.added.flatMap((migration) =>
 );
 const failures = [
   ...check.changed.map((name) => `the build changed or removed the released migration "${name}"`),
+  ...check.changedObjects.map(
+    (name) => `the released migrations build the schema object "${name}" differently in this build`,
+  ),
   ...refused,
 ];
 

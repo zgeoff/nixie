@@ -69,8 +69,9 @@ digests the earlier stages recorded.
 The tag stage copies each digest's manifest to the tag byte for byte, so the tag names the digest
 the build pushed. It refuses before it tags anything when a repository already gives the version to
 another digest, because a deployment may pin that tag. A tag already on its own digest stays as it
-is, so a re-run finishes a partly tagged release. A manual run of the workflow takes a release tag,
-rebuilds the release from its commit, and refuses a version that any image already carries.
+is, so a re-run finishes a partly tagged release. A manual run of the workflow starts on a release
+tag, because each attestation names the commit of the run that made it. The manual run rebuilds the
+release from that commit and refuses a version that any image already carries.
 
 The sandbox manifest maps each sandbox kind to its image by digest, and no commit holds it. A
 committed manifest would need a second commit after the images exist, so the nixie image would come
@@ -113,12 +114,19 @@ fails on a removed procedure, a removed or retyped output field, a new required 
 narrowed input type. A procedure that the last release marks deprecated may go, because the release
 that marked it stopped calling it.
 
-The migration check reads the last release's migration names from its own tree, then runs the
-migrations it released on a scratch database and records each statement of every migration added
-since. A build that keeps the schema readable by the release before adds only tables, columns and
-indexes, and the check fails on any other statement. A build declares that it breaks readability by
-raising its oldest reader past the last release's schema version, and the check then allows every
-statement. The check also fails when the build renames, removes or reorders a released migration.
+The migration check installs the last release's own tree and has it report its migration names and
+the schema they build. It then runs the released migrations of the pull request's build on a scratch
+database, and fails when they build any table, index or trigger differently, or when the build
+renames, removes or reorders a released migration. An edited released migration would leave a new
+database with a schema that no upgraded database holds.
+
+The check then records each statement of every migration added since the release. A build that keeps
+the schema readable by the release before adds only what an insert from that release still
+satisfies: a new table, a non-unique index, and a column that has a default or allows null and holds
+no check. A unique index or a constrained column passes only on a table the same release creates,
+because the release before never writes to it. The check fails on any other statement. A build
+declares that it breaks readability by raising its oldest reader past the last release's schema
+version, and the check then allows every statement.
 
 The release notes stage runs the same check against the release before, and adds its result to the
 GitHub release: each added migration with its schema version, and whether the release before reads
