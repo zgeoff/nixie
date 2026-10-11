@@ -11,9 +11,9 @@ The code is one Bun workspace, laid out by the [code layout](../design/platform/
 domain modules under `modules/`, adapters to outside systems under `adapters/`, shared libraries
 under `libs/`, and the deployables under `apps/`. Modules never import adapters and never form a
 cycle, so the server, as the composition root, passes each module what it needs from the others. The
-parts on this page are built and tested on their own, and the
-[tasks design](../design/platform/core/tasks.md) covers how the server joins them into a
-conversation that runs model turns.
+conversation runs each turn as a task step that spawns a model loop in its long-lived sandbox
+([conversation turns](./core/conversation-turns.md)), on the model profile that the deployment
+configuration maps to the conversation role ([model profiles](./core/model-profiles.md)).
 
 ## The path of a tool call
 
@@ -76,8 +76,8 @@ database, and it holds an exclusive lock on its data directory for its whole lif
 such as the new pod of a rollout, exits instead of writing ([the database](./core/database.md)). It
 reaches impd, imp's daemon, which runs every sandbox as a microVM, through the sandbox adapter. The
 tool endpoint listens on Unix sockets in a directory only nixie's user may enter, and nothing
-reaches it except through a sandbox's reverse forward. The web server is the second process, and its
-image is the one image the repo builds. The
+reaches it except through a sandbox's reverse forward. The web server is the second process. The
+repo builds its image and the conversation's guest image, which runs in a sandbox. The
 [deployment design](../design/platform/deployment/deployment.md) covers the images, the reverse
 proxy and the host they run on.
 

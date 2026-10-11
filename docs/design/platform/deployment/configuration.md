@@ -14,8 +14,8 @@ request like the pinned digests.
 The file holds every setting that a design leaves to the deployment. Each design owns the meaning of
 its own settings, and the file only carries them:
 
-- the [model profiles and the role map](../core/models.md#configuration), with each profile's
-  credential as a reference
+- the [model profiles and the role map](../../../architecture/core/model-profiles.md#the-role-map),
+  with each profile's credential as a reference
 - the internal address ranges and host addresses for
   [public egress](../connectors/sandbox-adapter.md#public-egress)
 - the [definitions source](../connectors/definitions-source.md) and its probe interval

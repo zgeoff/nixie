@@ -87,8 +87,10 @@ input in its erasable fields. Claude Code sends the tool-use ID with every call,
 joins to the model's turn. The result record holds the outcome, the action ID for a queued call, and
 the source of content of each result field, with the result or the message in its erasable fields.
 Both records sit on the run's thread and carry one snapshot hash, taken once per call, so a replay
-reads the decision under the definitions it ran under. The result record's parent is the call
-record.
+reads the decision under the definitions it ran under. The call record's plain payload holds the
+model ID and the profile's ID that the run started with, because the call is model output
+([model profiles](../core/model-profiles.md#records-of-model-output)). The result record's parent is
+the call record.
 
 The result record's source of content is the least trusted source among its fields. A message that
 repeats text the model chose counts as untrusted: the schema errors, and a registry or scope denial
