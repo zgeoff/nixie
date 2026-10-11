@@ -51,7 +51,7 @@ image other than its pin would break the commit as the record of what ran.
    kill nixie first. The next start recovers an interrupted step as after a crash, under
    [tasks](../core/tasks.md).
 2. **Lock.** nixie takes the writer lock and a new writer epoch, under
-   [the single writer](../../../architecture/database.md#the-single-writer).
+   [the single writer](../../../architecture/core/database.md#the-single-writer).
 3. **Copy.** When the release migrates the schema, nixie copies the database with `VACUUM INTO`
    before the first migration. It never copies the key store.
 4. **Migrate.** Each migration runs in one transaction with the schema version.
@@ -64,7 +64,7 @@ image other than its pin would break the commit as the record of what ran.
 
 ## Migrations
 
-[Migrations](../../../architecture/database.md#migrations) covers the schema version, the copy
+[Migrations](../../../architecture/core/database.md#migrations) covers the schema version, the copy
 before a migration and the refusal of a newer schema. The release notes list each migration and
 whether the release before can read the schema it leaves.
 

@@ -11,9 +11,10 @@ Load the shared `docs-writing` skill first. Where the two skills disagree, this 
 
 ## What each docs folder holds
 
-- **`docs/architecture/`** explains what is built: the parts, their boundaries, which part owns
-  which state, and the invariants, each with a `**Why:**` line. It leaves out what a reader can
-  infer from the code.
+- **`docs/architecture/`** explains what is built, so a reader can build a working model of it: the
+  parts, how they fit, which part owns which state, the mechanisms that cross packages, and the
+  rules that hold, with each reason in the sentence beside its fact. Its areas follow the design's:
+  `core/`, `policy/`, `connectors/` and `channels/`, beside the architecture overview.
 - **`docs/decisions/`** holds permanent records. A record states the choice, the alternatives it
   rejected and why, and keeps its date in the header. It never describes how the system works now. A
   changed decision is edited in place: the record keeps its number and states the decision as it now
@@ -47,9 +48,12 @@ unbuilt.
 
 ## Voice
 
-The docs address the reader as "you", the one person a nixie deployment works for. A sentence drops
-the actor where the actor adds nothing: "memory shows in 2 ways", not "you see memory in 2 ways".
-The docs never write "the owner".
+Guides, runbooks and design docs address the reader as "you", the one person a nixie deployment
+works for. A sentence drops the actor where the actor adds nothing: "memory shows in 2 ways", not
+"you see memory in 2 ways".
+
+Architecture docs are declarative and third person, and call that person "the user": "a task waits
+for the user's next message". The docs never write "the owner".
 
 Terms follow the [glossary](../../../docs/glossary.md), one meaning each. "Run" always takes its
 noun: job run, task run, worker run or code run.
