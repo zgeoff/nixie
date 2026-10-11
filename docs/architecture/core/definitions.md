@@ -81,7 +81,9 @@ give the same bytes.
 The policy holds the fixed rule and every tool declaration in the build's registry. The fixed rule
 decides by a tool's declared effects ([the decision point](../policy/decision-point.md)), so a
 replay needs the declarations that were in force. A release that changes a tool declaration
-therefore changes the snapshot hash over the same files.
+therefore changes the snapshot hash over the same files. A probe token follows the files alone, so
+the change enters with the next seed the release runs, which compares the snapshot hash as well as
+the revision.
 
 ## Seeding
 

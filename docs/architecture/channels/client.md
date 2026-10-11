@@ -54,12 +54,12 @@ When the API refuses the session as the page loads, the page renders the enrolme
 an error, and a successful enrolment loads the page again with the new cookie.
 
 The web server answers two health endpoints before Start sees the request. Liveness returns 200
-while the process serves requests. Readiness calls the API with no session, takes the API's typed
-refusal as proof that the API is up and speaks the contract, and returns 503 on any other outcome.
-Every page Start renders is marked private and uncacheable and varies by cookie, because a page
-holds the conversation of the session that asked for it. The build bundles every dependency into
-Start's server entry, so the web image holds Bun and the build output only, and it runs as an
-unprivileged user.
+while the process serves requests. Readiness calls the API with no session and returns 200 when the
+API answers, with a result or with its typed refusal, because either shows the API is up and speaks
+the contract. It returns 503 on any other outcome. Every page Start renders is marked private and
+uncacheable and varies by cookie, because a page holds the conversation of the session that asked
+for it. The build bundles every dependency into Start's server entry, so the web image holds Bun and
+the build output only, and it runs as an unprivileged user.
 
 ## The conversation view
 

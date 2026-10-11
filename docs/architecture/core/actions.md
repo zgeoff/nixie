@@ -36,10 +36,13 @@ runner that lost its lease queues nothing. Each action gets a random ID, which i
 and the idempotency key the connector sends to the provider. The call's arguments sit in the
 record's erasable fields, and the decision sits on its envelope.
 
-A step that crashed is run again from its start, and the rerun makes the same tool calls. A call
-whose action hash matches an earlier action of the same task therefore returns that action and
-queues nothing, when the earlier action came from the same step or is still pending or unknown. The
-same action can then never run twice, however many times its step reruns.
+A step that crashed is run again from its start, and the rerun makes the same tool calls. Each call
+arrives with an action hash that its caller builds from the call, and the queue compares calls by
+that hash alone, never by their arguments. A call whose action hash matches an earlier action of the
+same task returns that action and queues nothing, when the earlier action came from the same step or
+is still pending or unknown. A later step that repeats a call whose action is done or failed queues
+a new action, because the model asked for it again. The same action can then never run twice,
+however many times its step reruns.
 
 ## Attempts
 
@@ -79,10 +82,11 @@ attempt.
 ## What the model sees
 
 The model's turn waits a bounded time for the outcome, then sees one of four views: done with the
-connector's result, failed with the reason, pending with the action ID, or unknown with a note that
-the user is asked whether it happened. A result whose key was forgotten reads as no result, never as
-an empty success. The model has no tool that retries an action or sets an outcome, so only the queue
-settles one.
+connector's result, failed with the reason, pending with the action ID, or unknown with a message
+that says the user was asked whether it happened. The
+[actions design](../../design/platform/core/actions.md) covers how the user's answer settles an
+unknown action. A result whose key was forgotten reads as no result, never as an empty success. The
+model has no tool that retries an action or sets an outcome, so only the queue settles one.
 
 Action attempts run in a runner pool of their own, apart from the task runners, so a send goes out
 while every task runner is busy with a long turn.

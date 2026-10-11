@@ -2,19 +2,20 @@
 
 nixie runs untrusted work in sandboxes: the conversation's model loop, each worker, each code run,
 the fetch sandbox and each coding session. A sandbox gets only the network and the credentials its
-kind of work needs, and the caller names the kind, never the egress or the grants, so no caller can
-hand a model loop a route out by mistake. nixie reaches sandboxes through its own sandbox interface,
-under [0016](../../decisions/0016-own-interfaces.md). `modules/sandbox` holds the interface, the
-kinds and the lifecycle records. `adapters/sandbox-imp` runs each sandbox as an imp microVM and is
-the one package that imports imp's client, and `adapters/sandbox-process` is a test-build double
-that runs each guest as a local process. [Tool calls](./tool-calls.md) covers the endpoint a
-sandbox's tool route reaches.
+kind of work needs. The spec builder sets the egress, the grants and the tool route from the kind,
+so a caller that builds its spec there names only the kind of work. nixie reaches sandboxes through
+its own sandbox interface, under [0016](../../decisions/0016-own-interfaces.md). `modules/sandbox`
+holds the interface, the kinds and the lifecycle records. `adapters/sandbox-imp` runs each sandbox
+as an imp microVM and is the one package that imports imp's client, and `adapters/sandbox-process`
+is a test-build double that runs each guest as a local process. [Tool calls](./tool-calls.md) covers
+the endpoint a sandbox's tool route reaches.
 
 ## Kinds of work
 
 A sandbox spec holds the kind of work, the image, the owner, the egress, the grants, the tool route
-and the limits. The owner is the run or tool call the sandbox belongs to, which crash recovery
-reads. The kind alone sets the rest of the spec:
+and the limits. The owner is the task step or tool call the sandbox belongs to, which crash recovery
+reads, and for a model loop it is the ID of the loop's run. The spec builder sets the rest of the
+spec from the kind:
 
 | Kind         | Egress    | Model credential | Tool route |
 | ------------ | --------- | ---------------- | ---------- |

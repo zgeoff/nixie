@@ -1,6 +1,6 @@
 # Architecture overview
 
-nixie is one server process that keeps all of its state in one SQLite database and records
+nixie keeps all of its state in one SQLite database, which one process writes, and records
 everything it does in an append-only event log. Every model loop runs in a sandbox, an imp microVM
 with no network of its own, and acts on the world only by calling nixie's tools. The tools run on
 the host, outside the sandbox, and every call passes a decision point before it runs. A call whose
@@ -53,7 +53,7 @@ queue carries only the crash tests' send tool in a test build.
 
 The user talks to nixie through a client that calls one typed API, the oRPC contract in
 `libs/contract` ([the client](./channels/client.md)). The web client is a TanStack Start server of
-its own beside the API, and a reverse proxy puts both on one host name.
+its own beside the API, and the deployment design puts both behind a reverse proxy on one host name.
 
 ```mermaid
 flowchart LR
@@ -70,13 +70,15 @@ authority of the browser that asked for it.
 
 ## Topology
 
-A deployment runs four processes on one host: the nixie server, the web server, the reverse proxy,
-and impd, imp's daemon, which runs every sandbox as a microVM. The nixie server is the only process
-that writes the database. It holds an exclusive lock on its data directory for its whole life, so a
-second copy, such as the new pod of a rollout, exits instead of writing
-([the database](./core/database.md)). It reaches impd over impd's API with a token scoped to nixie's
-imps. The tool endpoint listens on Unix sockets in a directory only nixie's user may enter, and
-nothing reaches it except through a sandbox's reverse forward.
+The built parts run in two kinds of process. The nixie server is the one process that writes the
+database, and it holds an exclusive lock on its data directory for its whole life, so a second copy,
+such as the new pod of a rollout, exits instead of writing ([the database](./core/database.md)). It
+reaches impd, imp's daemon, which runs every sandbox as a microVM, through the sandbox adapter. The
+tool endpoint listens on Unix sockets in a directory only nixie's user may enter, and nothing
+reaches it except through a sandbox's reverse forward. The web server is the second process, and its
+image is the one image the repo builds. The
+[deployment design](../design/platform/deployment/deployment.md) covers the images, the reverse
+proxy and the host they run on.
 
 ## Data
 

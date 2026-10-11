@@ -59,23 +59,23 @@ Each call runs through five stages in order:
 5. It checks a typed result against the output schema, and records the result.
 
 A tool missing from the run's list skips the schema check, and the registry or scope stage denies
-it. The schema errors of an unlisted tool would otherwise show the model that the tool exists and
-what it takes. The action queue is an interface that the tools module declares and the actions
-module implements, so tools never imports actions.
+it, so the model receives the denied outcome. The schema errors of an unlisted tool would otherwise
+show the model that the tool exists and what it takes. The action queue is an interface that the
+tools module declares and its caller passes in, so tools never imports actions.
 
 A typed result reaches the model as structured content with no content blocks, and every other
 outcome as one text block:
 
-| Outcome            | What the model receives                   | Error |
-| ------------------ | ----------------------------------------- | ----- |
-| Allowed, direct    | The tool's typed result                   | No    |
-| Allowed, queued    | The action's typed result once it is done | No    |
-| Queued, not done   | The action ID, once the wait runs out     | No    |
-| Queued, failed     | The action ID and its reason              | No    |
-| Denied             | The decision point's sentence             | Yes   |
-| Invalid input      | The schema errors                         | Yes   |
-| Tool error         | The tool's message, or what it threw      | Yes   |
-| Outside the schema | A refusal with the tool's name            | Yes   |
+| Outcome           | What the model receives                   | Error |
+| ----------------- | ----------------------------------------- | ----- |
+| Allowed, direct   | The tool's typed result                   | No    |
+| Allowed, queued   | The action's typed result once it is done | No    |
+| Queued, not done  | The action ID, once the wait runs out     | No    |
+| Queued, failed    | The action ID and its reason              | No    |
+| Denied            | The decision point's sentence             | Yes   |
+| Invalid input     | The schema errors                         | Yes   |
+| Tool error        | The tool's message, or what it threw      | Yes   |
+| Result off schema | A refusal with the tool's name            | Yes   |
 
 An action that failed or went unknown is no tool error: the call was allowed and the action ran, so
 the model reads its outcome as a result.

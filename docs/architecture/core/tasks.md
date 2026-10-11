@@ -50,9 +50,9 @@ commit, or skipped a record, sees the rest again.
 The server supplies the step function, and the tasks module runs it. A claim takes a task's lease
 and records the step's start, with a step key made of the task's ID and the number of the step. The
 number counts committed steps, so a rerun of an interrupted step keeps its key, and the claim first
-records the lost step as interrupted. A step that runs a model turn returns the session boundary it
-reached, the last entry of the Agent SDK session, so a rerun after a crash forks the session there
-instead of replaying a turn that never committed.
+records the lost step as interrupted. A step that runs a model turn can return the session boundary
+it reached, the last entry of the Agent SDK session, and the commit stores it on the step's record.
+The [tasks design](../../design/platform/core/tasks.md) covers how a rerun forks the session there.
 
 A step commit writes the step's records, the moved read cursor, any timers the step asked for, and
 the task's next state, all in one transaction that checks the step's lease first and frees it last.
