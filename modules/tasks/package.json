@@ -1,0 +1,20 @@
+{
+  "name": "@heynixie/tasks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "kysely": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*"
+  }
+}

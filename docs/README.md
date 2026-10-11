@@ -33,6 +33,8 @@ below, and planned work lives in Linear.
 
 ## Architecture
 
+- [Actions](architecture/actions.md) — the action queue, the repeat match by action hash, attempts
+  and outcomes, the retry schedule and what the model sees
 - [The client contract](architecture/contract.md) — the oRPC procedures, checked actions, the live
   stream, the query helper and the paste-span logic
 - [The database and the single writer](architecture/database.md) — the SQLite dialect, the writer
@@ -45,6 +47,8 @@ below, and planned work lives in Linear.
   store, projections and their rebuild, and reading by sequence
 - [Sandboxes](architecture/sandbox.md) — the sandbox interface and its kinds, the lifecycle records,
   the imp adapter, running a command, the process double and the test build
+- [Tasks](architecture/tasks.md) — the task states, the inbox and its read cursor, steps, the one
+  lease claim path, timers, crash recovery, the runner pools, the clock and the fault points
 - [The tool endpoint](architecture/tools.md) — tool definitions, what the model sees, the call steps
   and their records, and one endpoint per run
 - [The web client](architecture/web-client.md) — the Start server, session forwarding, the
