@@ -49,14 +49,14 @@
   "scripts": {
     "audit": "bun audit",
     "boundaries": "turbo boundaries",
-    "build:agents": "bash scripts/build-agents-md.sh agents/shared.md agents/project.md AGENTS.md",
-    "check": "bun run audit && bun run deadcode && bun run format:check && bun run lint && bun run typecheck && bun run boundaries && bun run prose && bun run test",
+    "check": "bun run audit && bun run deadcode && bun run format:check && bun run lint:full && bun run typecheck && bun run boundaries && bun run prose && bun run test",
     "deadcode": "knip",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "lint": "oxlint --type-aware --report-unused-disable-directives-severity error",
+    "lint": "oxlint",
+    "lint:full": "oxlint --type-aware --report-unused-disable-directives-severity error",
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
-    "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md agents/project.md ':(glob)docs/**/*.md' .claude/skills/project-docs-writing",
+    "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md .claude/skills/code-style ':(glob)docs/**/*.md' .claude/skills/project-docs-writing",
     "test": "bun test",
     "typecheck": "tsc --noEmit && turbo run typecheck"
   },

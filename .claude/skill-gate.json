@@ -1,6 +1,7 @@
 {
   "ignore": ["node_modules/", "dist/"],
   "gates": [
+    { "match": "**/*.{ts,tsx}", "skills": ["code-style"] },
     {
       "match": "**/*.md",
       "skills": ["docs-writing", "project-docs-writing"]

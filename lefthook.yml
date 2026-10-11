@@ -32,7 +32,7 @@ pre-push:
     - name: lint
       files: git diff --name-only --diff-filter=ACMR origin/main...HEAD
       glob: '*.{js,mjs,cjs,ts,mts,cts}'
-      run: node_modules/.bin/oxlint --type-aware --no-error-on-unmatched-pattern {files}
+      run: node_modules/.bin/oxlint --no-error-on-unmatched-pattern {files}
     - name: typecheck
       run: bun run typecheck
     - name: boundaries
