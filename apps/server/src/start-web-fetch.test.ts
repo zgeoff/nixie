@@ -1,0 +1,216 @@
+import { expect, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { logProjections, startWriter } from '@heynixie/log';
+import { buildSandboxRecorder, buildSandboxSpec, sandboxesProjection } from '@heynixie/sandbox';
+import { buildImpPort, buildImpSandboxAdapter, parseImpConfig } from '@heynixie/sandbox-imp';
+import { buildSandboxAdapter } from './build-sandbox-adapter';
+import { fetchImageArgv, startWebFetch } from './start-web-fetch';
+import { buildConnectProbe } from './test-utils/build-connect-probe';
+
+// The imp tests run against a real impd on a host with /dev/kvm, with the fetch image imported.
+// docs/runbooks/imp-isolation-tests.md names the variables that turn them on.
+const impEnv = {
+  IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
+  IMP_TOKEN: process.env['NIXIE_IMP_TEST_TOKEN'],
+  IMP_HOST_ADDRESSES: process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'],
+  IMP_EGRESS_DENY: process.env['NIXIE_IMP_TEST_EGRESS_DENY'],
+};
+const fetchImage = process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '';
+const hasImpHost =
+  impEnv.IMP_URL !== undefined &&
+  impEnv.IMP_TOKEN !== undefined &&
+  impEnv.IMP_HOST_ADDRESSES !== undefined &&
+  fetchImage !== '';
+
+async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
+  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-web-fetch-'));
+
+  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
+
+  const writer = await startWriter({ dataDir });
+
+  stack.defer(() => writer.stop());
+
+  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
+    'wrapKey',
+    'unwrapKey',
+  ]);
+  const recorder = buildSandboxRecorder({
+    log: { writer, deploymentKey, projections: [...logProjections, sandboxesProjection] },
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+  });
+
+  return { dataDir, recorder, stack };
+}
+
+test("it fetches through a new fetcher process in a test build's fetch sandbox", async () => {
+  const ctx = await setupTest();
+  const adapter = buildSandboxAdapter({
+    recorder: ctx.recorder,
+    toolTarget: () => ({ path: '/nonexistent.sock' }),
+    env: {},
+    testRootDir: ctx.dataDir,
+  });
+  const webFetch = startWebFetch({
+    adapter,
+    image: 'fetch',
+    argv: [process.execPath, join(import.meta.dir, '../../../guests/fetch/src/main.ts')],
+    deniedRanges: [],
+  });
+  ctx.stack.defer(() => webFetch.stop());
+
+  const outcome = await webFetch.tool.run(
+    { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://localhost/' }, toolUseID: null },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
+  );
+  const left = await ctx.recorder.list('process', 'web_fetch');
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toBeOneOf([
+      'localhost resolves to 127.0.0.1, which is not a public address',
+      'localhost resolves to ::1, which is not a public address',
+    ]),
+  });
+  expect(left).toStrictEqual([]);
+});
+
+test.skipIf(!hasImpHost)(
+  'on an imp host, the fetch sandbox fetches a public page',
+  async () => {
+    const ctx = await setupTest();
+    const config = parseImpConfig(impEnv);
+    const adapter = buildImpSandboxAdapter({
+      port: buildImpPort(config),
+      recorder: ctx.recorder,
+      config,
+      toolTarget: () => ({ path: '/nonexistent.sock' }),
+    });
+    const webFetch = startWebFetch({
+      adapter,
+      image: fetchImage,
+      argv: fetchImageArgv,
+      deniedRanges: [
+        ...(config.publicEgress?.hostAddresses ?? []),
+        ...(config.publicEgress?.egressDeny ?? []),
+      ],
+    });
+    ctx.stack.defer(() => webFetch.stop());
+
+    const outcome = await webFetch.tool.run(
+      {
+        callID: 'call-1',
+        tool: 'web_fetch',
+        input: { url: 'https://example.com/' },
+        toolUseID: null,
+      },
+      {
+        run: {
+          runID: 'run-1',
+          thread: 'conversation',
+          tools: ['web_fetch'],
+          model: { model: 'model-a', profile: 'chat-direct' },
+        },
+      },
+    );
+
+    expect(outcome).toMatchObject({
+      status: 'ok',
+      result: {
+        url: 'https://example.com/',
+        status: 200,
+        text: expect.toInclude('Example Domain'),
+      },
+    });
+  },
+  120_000,
+);
+
+test.skipIf(!hasImpHost)(
+  'on an imp host, a fetch sandbox reaches the internet',
+  async () => {
+    const ctx = await setupTest();
+    const config = parseImpConfig(impEnv);
+    const adapter = buildImpSandboxAdapter({
+      port: buildImpPort(config),
+      recorder: ctx.recorder,
+      config,
+      toolTarget: () => ({ path: '/nonexistent.sock' }),
+    });
+    const sandbox = await adapter.create(
+      buildSandboxSpec({
+        kind: 'fetch',
+        image: fetchImage,
+        owner: 'web_fetch',
+        limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+      }),
+    );
+    ctx.stack.defer(() => sandbox.destroy());
+
+    const result = await sandbox.exec(
+      buildConnectProbe(fetchImageArgv[0] ?? 'bun', '1.1.1.1', 443),
+    );
+
+    expect(new TextDecoder().decode(result.stdout.bytes).trim()).toBe('connected');
+  },
+  120_000,
+);
+
+test.skipIf(!hasImpHost)(
+  'on an imp host, a fetch sandbox never reaches impd, the host or a tailnet address',
+  async () => {
+    const ctx = await setupTest();
+    const config = parseImpConfig(impEnv);
+    const adapter = buildImpSandboxAdapter({
+      port: buildImpPort(config),
+      recorder: ctx.recorder,
+      config,
+      toolTarget: () => ({ path: '/nonexistent.sock' }),
+    });
+    const sandbox = await adapter.create(
+      buildSandboxSpec({
+        kind: 'fetch',
+        image: fetchImage,
+        owner: 'web_fetch',
+        limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+      }),
+    );
+    ctx.stack.defer(() => sandbox.destroy());
+    const impd = new URL(config.url);
+    const impdPort =
+      impd.port === '' && impd.protocol === 'https:' ? 443 : Number(impd.port || '80');
+    const targets: readonly (readonly [string, number])[] = [
+      [impd.hostname, impdPort],
+      ...(config.publicEgress?.hostAddresses ?? []).map(
+        (range) => [range.split('/')[0] ?? '', impdPort] as const,
+      ),
+      [process.env['NIXIE_IMP_TEST_TAILNET_ADDRESS'] ?? '100.100.100.100', 53],
+    ];
+
+    const outcomes = await Promise.all(
+      targets.map(async ([host, port]) => {
+        const result = await sandbox.exec(
+          buildConnectProbe(fetchImageArgv[0] ?? 'bun', host, port),
+        );
+
+        return `${host}:${port} ${new TextDecoder().decode(result.stdout.bytes).trim()}`;
+      }),
+    );
+
+    expect(outcomes).toSatisfyAll((outcome: string) => /:\d+ failed /u.test(outcome));
+  },
+  120_000,
+);

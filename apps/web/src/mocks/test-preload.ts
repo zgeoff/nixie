@@ -15,11 +15,12 @@ faker.seed(321);
 (globalThis as unknown as Window).happyDOM.setURL(`${webOrigin}/`);
 
 server.listen({
-  // the web server suites call a stub API and the built Start server on loopback ports
+  // the web server suites call a stub API and the built Start server on loopback ports, and the
+  // fetcher's suites call test sites under the reserved .test domain, which no DNS answers
   onUnhandledRequest: (request, print) => {
     const hostname = new URL(request.url).hostname;
 
-    if (['127.0.0.1', '[::1]', 'localhost'].includes(hostname)) {
+    if (['127.0.0.1', '[::1]', 'localhost'].includes(hostname) || hostname.endsWith('.test')) {
       return;
     }
 

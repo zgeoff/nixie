@@ -34,3 +34,35 @@ The tests create one imp per egress kind and a secret named `nixie-test-<id>` wi
 They remove the imps first and the secret after, when they end, when a test fails, and when setup
 fails part way. A run that you stop with Ctrl-C skips that cleanup. Remove what it left with impd's
 API: the imps the run created, each named `nixie-<id>`, and the `nixie-test-<id>` secret.
+
+## The fetch sandbox tests
+
+The imp tests in `apps/server/src/start-web-fetch.test.ts` run the fetch sandbox on the fetch image.
+The web fetch tool fetches `https://example.com/`, a fetch sandbox reaches `1.1.1.1` over TCP, and a
+direct TCP connection from a fetch sandbox to impd, to each host address and to a tailnet address
+fails. The direct connections skip the fetcher's own address check, so only the network layer
+decides them. The tests skip unless the variables below are set.
+
+1. Build the fetch image from the repo root, and import it into impd:
+
+   ```bash
+   docker build -f guests/fetch/Dockerfile -t nixie-fetch .
+   ```
+
+2. Run the tests from `apps/server`, whose `bunfig.toml` leaves out the web test preload:
+
+   ```bash
+   cd apps/server
+   NIXIE_IMP_TEST_URL=<impd_url> \
+   NIXIE_IMP_TEST_TOKEN=<impd_token> \
+   NIXIE_IMP_TEST_HOST_ADDRESSES=<host_addresses> \
+   NIXIE_IMP_TEST_FETCH_IMAGE=<fetch_image_name> \
+   bun test src/start-web-fetch.test.ts
+   ```
+
+   `NIXIE_IMP_TEST_EGRESS_DENY` takes the list that impd reads from `IMP_EGRESS_DENY`, and
+   `NIXIE_IMP_TEST_TAILNET_ADDRESS` replaces the tailnet address probed, `100.100.100.100` by
+   default.
+
+Expect `0 fail`, with no skipped test. Each test destroys the imps it created when it ends; a run
+that you stop with Ctrl-C leaves them, each named `nixie-<id>`.

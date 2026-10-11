@@ -1,0 +1,5 @@
+# The imp tests in start-web-fetch.test.ts call a real impd, so this config leaves out the root's
+# web preload, whose mock server takes over fetch and WebSocket. Bun reads it from this folder, and
+# resolves each preload path from the folder it runs in.
+[test]
+preload = ["../../libs/testing/src/define-test-build.ts", "@zgeoff/bun-test-extended"]

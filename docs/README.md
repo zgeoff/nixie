@@ -68,6 +68,8 @@ below, and planned work lives in Linear.
   call steps, and the records of each call
 - [Sandboxes](architecture/connectors/sandboxes.md) — kinds of work, records and recovery, the tool
   route, the imp adapter and the process double
+- [Web fetch](architecture/connectors/web-fetch.md) — the fetch sandbox, the fetcher's address
+  checks, the limits and the result
 
 ### Channels
 

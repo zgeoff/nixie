@@ -1,6 +1,11 @@
+export { decodeFetchReply } from './decode-fetch-reply';
+export { decodeFetchRequest } from './decode-fetch-request';
 export { decodeTurnFrame } from './decode-turn-frame';
+export { encodeFetchMessage } from './encode-fetch-message';
 export { encodeFrame } from './encode-frame';
 export { encodeTurnFrame } from './encode-turn-frame';
+export type { FetchReply } from './fetch-reply';
+export type { FetchLimits, FetchRequest } from './fetch-request';
 export { frameHeaderBytes } from './frame-header-bytes';
 export { FrameTooLargeError } from './frame-too-large-error';
 export type { GuestFrame } from './guest-frame';
