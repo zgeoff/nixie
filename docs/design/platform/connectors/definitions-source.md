@@ -12,8 +12,9 @@ hash that is the same for the same files from any source. The
 ## The interface, the content hash and the filter
 
 [The definitions](../../../architecture/definitions.md#sources-and-snapshots) covers the interface,
-the content hash and the filter, which every source shares. The git source skips every symlink, so
-no file from outside the definitions reaches the seed.
+the content hash and the filter, which every source shares. The filter reads only the known
+definitions paths, so a git source lists the commit's other root entries as skipped and never reads
+them. The git source skips every symlink, so no file from outside the definitions reaches the seed.
 
 nixie calls `probe` every minute by default, and takes a snapshot only when the token changes.
 

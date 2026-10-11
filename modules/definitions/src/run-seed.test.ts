@@ -205,13 +205,14 @@ test('it keeps the last seed when the source refuses the snapshot', async () => 
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
   await writeFile(join(ctx.dir, 'secret.md'), 'outside\n');
-  await symlink(join(ctx.dir, 'secret.md'), join(ctx.root, 'escape.md'));
+  await mkdir(join(ctx.root, 'rules'));
+  await symlink(join(ctx.dir, 'secret.md'), join(ctx.root, 'rules', 'escape.md'));
 
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
   expect(result).toMatchObject({
     status: 'refused',
-    error: { name: 'SnapshotError', paths: ['escape.md'] },
+    error: { name: 'SnapshotError', paths: ['rules/escape.md'] },
     inForce: first.inForce,
   });
 });

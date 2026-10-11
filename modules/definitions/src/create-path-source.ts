@@ -4,6 +4,7 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { buildContentHash } from './build-content-hash';
 import { defaultSizeLimits } from './default-size-limits';
 import { isDefinitionsPath } from './is-definitions-path';
+import { isDefinitionsRootEntry } from './is-definitions-root-entry';
 import { normalizeLineEndings } from './normalize-line-endings';
 import { SnapshotError } from './snapshot-error';
 import type { DefinitionsSource, SizeLimits, Snapshot } from './types';
@@ -14,9 +15,9 @@ export interface PathSourceOptions {
   readonly limits?: SizeLimits;
 }
 
-// A definitions source that walks a directory. Its revision is the content hash, because a
-// directory has no commit. It fails at a symlink that leads outside the root and skips one that
-// stays inside, so it never reads a linked file.
+// A definitions source that walks the known definitions paths in a directory, with the content hash
+// as its revision. Within those paths it fails at a symlink that leads outside the root and skips
+// one that stays inside, so it never reads a linked file.
 export function createPathSource(options: PathSourceOptions): DefinitionsSource {
   const limits = options.limits ?? defaultSizeLimits;
 
@@ -76,7 +77,7 @@ async function collectEntries(base: string, dir: string): Promise<WalkEntries> {
 async function collectEntry(base: string, full: string): Promise<WalkEntries> {
   const path = toRootPath(base, full);
 
-  if (basename(full).startsWith('.')) {
+  if (basename(full).startsWith('.') || isOutsideLayout(path)) {
     return { files: [], skipped: [path], escapes: [] };
   }
   const stat = await lstat(full);
@@ -94,6 +95,11 @@ async function collectEntry(base: string, full: string): Promise<WalkEntries> {
 
 function toRootPath(base: string, full: string): string {
   return relative(base, full).split(sep).join('/');
+}
+
+// a root entry that is not a known definitions path is skipped by name and never entered
+function isOutsideLayout(path: string): boolean {
+  return !path.includes('/') && !isDefinitionsRootEntry(path);
 }
 
 // a link that resolves nowhere counts as outside, because nothing shows where it would lead

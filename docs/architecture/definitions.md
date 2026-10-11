@@ -20,19 +20,28 @@ because a directory has no commit. Its ID is `path:` plus the resolved directory
 
 ### What a source reads
 
-`isDefinitionsPath` holds the filter every source applies:
+A source reads only the known definitions paths, which `definitionsLayout` holds: `nixie.yaml` and
+`persona.md` at the root, and the `jobs/`, `rules/` and `skills/` folders. Every other entry at the
+root is skipped by name, without being read or entered, so it never enters the content hash, never
+has to parse, and never counts towards the size limits. **Why:** a definitions repo can then hold
+its own docs, readmes and scripts, and editing a readme never makes a new definitions version. The
+skipped list still names each skipped root entry, so a misnamed folder such as `rule/` shows in the
+seed result instead of its rules going unread without a trace.
+
+Within the known paths, `isDefinitionsPath` holds the filter every source applies:
 
 - no path with a part that starts with a dot, such as `.git`
 - under `skills/`, every file, whatever its extension
-- elsewhere, only `.md`, `.yaml`, `.yml` and `.json` files
+- under `jobs/` and `rules/`, only `.md`, `.yaml`, `.yml` and `.json` files
 
 **Why:** a skill brings its scripts, such as `fill.py`, as the
 [skills design](../design/platform/skills.md#the-definitions-filter-under-skills) sets out. Every
 kept file must decode as UTF-8, so a binary file under `skills/` fails the snapshot.
 
-The path source skips a dotted directory without entering it. A symlink that stays inside the root
-is skipped, and a symlink that leads outside the root, or resolves nowhere, fails the snapshot with
-`SnapshotError`. **Why:** no file from outside the definitions reaches the seed.
+The path source skips a dotted directory and an unknown root entry without entering either. Within
+the known paths, a symlink that stays inside the root is skipped, and a symlink that leads outside
+the root, or resolves nowhere, fails the snapshot with `SnapshotError`. **Why:** no file from
+outside the definitions reaches the seed.
 
 The path source checks each kept file again when it reads it, because a file can change after the
 walk. Its directory must still resolve inside the root, it opens with `O_NOFOLLOW`, and its size
