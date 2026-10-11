@@ -99,7 +99,7 @@ test('it resumes the retry schedule across a restart and fails the action on the
   expect(JSON.stringify(lastRequest?.body?.messages)).toInclude('retries_exhausted');
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -154,7 +154,7 @@ test('it marks a retry unknown when nixie dies after its attempt record, and nev
   ]);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],

@@ -49,7 +49,7 @@ test('it refuses a second process while the first holds the writer lock, and let
   expect(epochAfterB).toStrictEqual([{ id: 1, epoch: 2 }]);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -85,7 +85,7 @@ test('it refuses a second process while the first is frozen, and the first resum
   expect(epochAfterRefusal).toStrictEqual(epochBefore);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],

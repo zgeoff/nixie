@@ -29,13 +29,18 @@ a local child, so CI needs no `/dev/kvm` and no imp. The test-only parts are fou
 
 - The test connector declares one queued action, `test.send`, which the test rule allows. The
   production rule set stays read-only, so no release build can queue it.
-- A test task kind sets a durable timer on its first step and records which inbox entries each step
-  read, so a test can see a wake-up and a timer fire.
-- The action queue bridge maps the thread of a running step to that step's claim, and queues each
-  allowed call under it with an action hash built from the tool and its arguments. The bridge sorts
-  every object's keys before it hashes, so a rerun that sends the same arguments in another key
-  order matches the action it queued.
+- A test task kind sets a durable timer on its first step, records which inbox entries each step
+  read, and finishes when its inbox holds a finish request, so a test can see a wake-up, a timer
+  fire and a task that stays done.
 - A harness link connects the process to the test over an IPC channel.
+- The process kills every guest it started before it exits on its own, as on a graceful stop or a
+  stale writer epoch. A guest leads its own process group and would otherwise outlive nixie, which a
+  host that loses nixie never allows.
+
+The server's action queue bridge, which the test build composes like any other part, maps the thread
+of a running step to that step's claim. It queues each allowed call under that claim with an action
+hash built from the tool and its arguments. The bridge sorts every object's keys before it hashes,
+so a rerun that sends the same arguments in another key order matches the action it queued.
 
 ## The harness link
 
@@ -74,13 +79,16 @@ the call, so an unplanned call fails its test.
 
 ## The oracle
 
-The oracle runs recovery once more in the test process after the last kill, then checks:
+Each start of nixie holds at the end of its recovery, before any runner claims work, while the test
+reads the leases and the tasks that the recovery left. After the last kill, the oracle runs recovery
+once more in the test process, as a last restart, then checks:
 
-- Each step key has at most one commit, and each action ID has at most one queue entry.
-- Each provider call carries the idempotency key of an attempt that an action made.
-- No task holds a lease.
-- A running or waiting task with unread input and no hold is `ready`.
-- A task in an end state keeps it.
+- Each step key has at most one commit, and one step queues each call it makes as one action.
+- Each provider call carries the idempotency key of an action, and no key has more calls than the
+  action has attempts.
+- No task holds a lease after any start's recovery.
+- After any start's recovery, no task is running, and no waiting task has unread input.
+- A task that reached an end state keeps it in every later read.
 - Every projection table, rebuilt from the log, equals the live one.
 
 A test asserts that every list the oracle returns is empty. The scenario's own checks, such as the

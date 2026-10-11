@@ -52,7 +52,7 @@ test('it fires a timer that fell due while nixie was down once, into the task in
   ]);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -98,7 +98,7 @@ test('it leaves the timer unfired when nixie dies before the fire commits, and f
   ]);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],

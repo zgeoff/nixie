@@ -43,6 +43,16 @@ test('it advances the clock in every nixie still running', async () => {
   expect(ctx.harness.now()).toBe(1_060_000);
 });
 
+test('it refuses an advance while a nixie it started is not yet ready, which would miss it', () => {
+  const ctx = setupTest();
+
+  ctx.harness.start();
+
+  expect(ctx.harness.advance(1000)).rejects.toThrow(
+    'a nixie is not ready yet, so it would miss the advance',
+  );
+});
+
 test('it kills every nixie still running when the test finishes', async () => {
   const ctx = setupTest();
   const nixie = ctx.harness.start();

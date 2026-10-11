@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { buildNixieChannel } from './build-nixie-channel';
 import { collectDescendants } from './collect-descendants';
 import { harnessEnv } from './harness-env';
+import { stopProcesses } from './stop-processes';
 import type { FaultPointArm, FaultPointWork, NixieMessage } from './types';
 
 export interface NixieProcessOptions {
@@ -77,9 +78,7 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
       const descendants = collectDescendants(child.pid);
 
       child.kill('SIGKILL');
-      for (const pid of descendants) {
-        sendKill(pid);
-      }
+      stopProcesses(descendants);
       return exited;
     },
     signal: (signal) => {
@@ -135,15 +134,4 @@ function collectText(stream: ReadableStream<Uint8Array>): { readonly read: () =>
 
 function formatExit(exit: NixieExit): string {
   return exit.signal === null ? `code ${exit.code}` : `signal ${exit.signal}`;
-}
-
-// a guest is the leader of its own process group, so the group's kill reaches what it started
-function sendKill(pid: number): void {
-  for (const target of [-pid, pid]) {
-    try {
-      process.kill(target, 'SIGKILL');
-    } catch {
-      // the process or its group is already gone
-    }
-  }
 }

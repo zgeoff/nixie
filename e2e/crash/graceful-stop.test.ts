@@ -49,7 +49,7 @@ test('it commits a step that finishes inside the grace window once, and claims n
   ).toStrictEqual([]);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -112,7 +112,7 @@ test('it stops with a step still running at the deadline, which the restart reco
   expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],

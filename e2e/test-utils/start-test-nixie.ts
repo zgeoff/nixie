@@ -4,25 +4,23 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startDatabase } from '../../libs/db/src/index';
-import type { CrashHarness, ProviderDouble, ScriptedModel } from '../../libs/testing/src/index';
+import type {
+  CrashHarness,
+  FaultPointArrival,
+  NixieProcess,
+  ProviderDouble,
+  ScriptedModel,
+} from '../../libs/testing/src/index';
 import {
   startCrashHarness,
   startProviderDouble,
   startScriptedModel,
-  waitForCondition,
 } from '../../libs/testing/src/index';
+import { buildAdvanceHelpers } from './build-advance-helpers';
+import type { AdvanceSteps, MatchRecord, RecoveredState, TestRecord, TestRow } from './types';
+import { waitForMatch } from './wait-for-match';
 
-// One record of the log as the test reads it from the database: its envelope and its plain
-// payload, never its erasable fields.
-interface TestRecord {
-  readonly sequence: number;
-  readonly kind: string;
-  readonly thread: string | null;
-  readonly stepKey: string | null;
-  readonly payload: Readonly<Record<string, unknown>>;
-}
-
-type MatchRecord = (record: TestRecord) => boolean;
+export type { RecoveredState } from './types';
 
 export interface TestNixie {
   readonly dataDir: string;
@@ -45,8 +43,18 @@ export interface TestNixie {
     matches: MatchRecord,
   ) => Promise<TestRecord>;
 
+  // advances the clock by stepMs until nixie arrives at the fault point, at most maxSteps times
+  readonly advanceUntilArrival: (
+    nixie: NixieProcess,
+    point: string,
+    options: AdvanceSteps,
+  ) => Promise<FaultPointArrival>;
+
   // every row of a table, read beside the nixie that writes it
-  readonly readRows: (table: string) => Promise<readonly Readonly<Record<string, unknown>>[]>;
+  readonly readRows: (table: string) => Promise<readonly TestRow[]>;
+
+  // the leases and the tasks as each start's recovery left them, in the order the starts recovered
+  readonly readRecoveredStates: () => readonly RecoveredState[];
 }
 
 // Sets up a crash test: a fresh data directory, the scripted model and the provider double in the
@@ -62,32 +70,79 @@ export async function startTestNixie(): Promise<TestNixie> {
 
   const doubles = startDoubles(stack);
   const deploymentKey = randomBytes(32).toString('base64');
-  const harness = startCrashHarness({
-    entry: join(import.meta.dir, '../nixie/main.ts'),
-    startMs: 1_000_000,
-    env: {
-      NIXIE_DATA_DIR: dataDir,
-      NIXIE_TEST_DEPLOYMENT_KEY: deploymentKey,
-      NIXIE_TEST_MODEL_URL: doubles.model.url,
-      NIXIE_TEST_PROVIDER_URL: doubles.provider.url,
-    },
+  const crashHarness = startNixieHarness(stack, {
+    NIXIE_DATA_DIR: dataDir,
+    NIXIE_TEST_DEPLOYMENT_KEY: deploymentKey,
+    NIXIE_TEST_MODEL_URL: doubles.model.url,
+    NIXIE_TEST_PROVIDER_URL: doubles.provider.url,
   });
-
-  // the disposals run in reverse, so every nixie dies before its data directory goes
-  stack.defer(() => harness.stop());
-
   const reader = startLogReader(dataDir, stack);
+  const recovery = startRecoveryReads(crashHarness, reader.readRows);
 
   return {
     dataDir,
     deploymentKey,
-    harness,
+    ...recovery,
     ...doubles,
     ...reader,
     waitForRecord: (matches) => waitForMatch(reader.readRecords, matches, recordTimeoutMs),
-    advanceUntilRecord: (stepMs, maxSteps, matches) =>
-      runAdvances({ harness, readRecords: reader.readRecords, stepMs, matches }, maxSteps),
+    ...buildAdvanceHelpers(recovery.harness, reader.readRecords),
   };
+}
+
+function startNixieHarness(
+  stack: AsyncDisposableStack,
+  env: Readonly<Record<string, string>>,
+): CrashHarness {
+  const harness = startCrashHarness({
+    entry: join(import.meta.dir, '../nixie/main.ts'),
+    startMs: 1_000_000,
+    env,
+  });
+
+  // the disposals run in reverse, so every nixie dies before its data directory goes
+  stack.defer(() => harness.stop());
+  return harness;
+}
+
+// Wraps the harness so each start holds at the end of its recovery while the test reads the leases
+// and the tasks it left, then lets its runners start.
+function startRecoveryReads(
+  crashHarness: CrashHarness,
+  readRows: TestNixie['readRows'],
+): Pick<TestNixie, 'harness' | 'readRecoveredStates'> {
+  const states: RecoveredState[] = [];
+
+  return {
+    harness: {
+      ...crashHarness,
+      start: (faultPoints = []) => {
+        const nixie = crashHarness.start([...faultPoints, { point: 'test.recovered' }]);
+
+        void readRecoveredState(nixie, readRows, (state) => {
+          states.push(state);
+        });
+        return nixie;
+      },
+    },
+    readRecoveredStates: () => states,
+  };
+}
+
+// A start that exits before its recovery ends, such as one that finds the writer lock held, leaves
+// no state.
+async function readRecoveredState(
+  nixie: NixieProcess,
+  readRows: TestNixie['readRows'],
+  onState: (state: RecoveredState) => void,
+): Promise<void> {
+  const arrival = await nixie.waitForArrival('test.recovered').catch(() => null);
+
+  if (arrival === null) {
+    return;
+  }
+  onState({ leases: await readRows('leases'), tasks: await readRows('tasks') });
+  nixie.release(arrival);
 }
 
 // a turn runs the real SDK in a guest process, which takes a few seconds on a slow host
@@ -152,47 +207,4 @@ interface RecordRow {
   readonly thread: string | null;
   readonly step_key: string | null;
   readonly payload: string;
-}
-
-async function waitForMatch(
-  readRecords: TestNixie['readRecords'],
-  matches: MatchRecord,
-  timeoutMs: number,
-): Promise<TestRecord> {
-  const found: { record: TestRecord | null } = { record: null };
-
-  await waitForCondition(
-    async () => {
-      const records = await readRecords();
-
-      found.record = records.find((record) => matches(record)) ?? null;
-      return found.record !== null;
-    },
-    { timeoutMs },
-  );
-  if (found.record === null) {
-    throw new Error('the wait found no record');
-  }
-  return found.record;
-}
-
-interface Advances {
-  readonly harness: CrashHarness;
-  readonly readRecords: TestNixie['readRecords'];
-  readonly stepMs: number;
-  readonly matches: MatchRecord;
-}
-
-async function runAdvances(advances: Advances, remaining: number): Promise<TestRecord> {
-  await advances.harness.advance(advances.stepMs);
-
-  const found = await waitForMatch(advances.readRecords, advances.matches, 1000).catch(() => null);
-
-  if (found !== null) {
-    return found;
-  }
-  if (remaining <= 1) {
-    throw new Error(`no record matched after the last advance of ${advances.stepMs} ms`);
-  }
-  return runAdvances(advances, remaining - 1);
 }

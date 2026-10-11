@@ -52,7 +52,7 @@ test('it lets runner B take an expired lease at the next generation, and commits
   expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -115,7 +115,7 @@ test('it lets runner B claim only once the renewed lease expires, never before',
   ).toStrictEqual(['conversation:1']);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -124,11 +124,20 @@ test('it lets runner B claim only once the renewed lease expires, never before',
   });
 }, 120_000);
 
-test('it expires the lease of a killed nixie on restart, and runs the task once', async () => {
+test('it expires the lease of a killed nixie on restart, runs the task once, and leaves a finished task done', async () => {
   const ctx = await setupTest();
-  const first = ctx.nixie.harness.start([{ point: 'claim.after', kind: 'task' }]);
+  const first = ctx.nixie.harness.start([
+    { point: 'claim.after', kind: 'task', workID: 'conversation' },
+  ]);
 
   await first.ready;
+
+  const created = await first.request('createTask', { brief: 'Finish at once.' });
+  const finishedID = String(created);
+
+  await ctx.nixie.waitForRecord((record) => record.stepKey === `${finishedID}:1`);
+  await first.request('finishTask', { taskID: finishedID });
+  await ctx.nixie.waitForRecord((record) => record.stepKey === `${finishedID}:2`);
   void first.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
   await first.waitForArrival('claim.after', 'conversation');
   await first.kill();
@@ -141,12 +150,14 @@ test('it expires the lease of a killed nixie on restart, and runs the task once'
   await second.kill();
 
   const records = await ctx.nixie.readRecords();
+  const tasks = await ctx.nixie.readRows('tasks');
 
   const oracle = await runOracle(ctx.nixie);
 
   expect(
     records
       .filter((record) => ['task.step_started', 'task.lease_expired'].includes(record.kind))
+      .filter((record) => record.thread === 'conversation')
       .map((record) => [record.kind, record.payload['generation'] ?? null]),
   ).toStrictEqual([
     ['task.step_started', 1],
@@ -157,11 +168,12 @@ test('it expires the lease of a killed nixie on restart, and runs the task once'
     records
       .filter((record) => record.kind === 'task.step_committed')
       .map((record) => record.stepKey),
-  ).toStrictEqual(['conversation:1']);
+  ).toStrictEqual([`${finishedID}:1`, `${finishedID}:2`, 'conversation:1']);
+  expect(tasks).toPartiallyContain({ task_id: finishedID, state: 'done' });
   expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],

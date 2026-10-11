@@ -49,7 +49,7 @@ test('it wakes the conversation for a message written just before nixie died, an
   expect(JSON.stringify(lastRequest?.body?.messages).split('Are you there?')).toHaveLength(2);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -99,7 +99,7 @@ test('it wakes a task for a timer that fired just before nixie died, and reads i
   ]);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -158,7 +158,7 @@ test('it wakes the conversation for an action outcome written just before nixie 
   expect(JSON.stringify(lastRequest?.body?.messages).split('An action settled')).toHaveLength(2);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -198,7 +198,7 @@ test('it reaches a task with input that arrives while its step runs, before the 
   ]);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],

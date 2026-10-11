@@ -3,9 +3,8 @@ import type { HarnessLink } from '../../libs/testing/src/index';
 import type { TasksContext } from '../../modules/tasks/src/index';
 import { createTask, writeInboxRecords } from '../../modules/tasks/src/index';
 
-// Registers the operations a crash test asks the test build of nixie to run: sendMessage writes your
-// message into a task's inbox and returns its sequence, createTask creates a test task and returns
-// its ID, and releaseWriterLock is the stale writer test's hook.
+// Registers the operations a crash test asks the test build of nixie to run, by name. Each write
+// returns the sequence or the ID it made, and releaseWriterLock is the stale writer test's hook.
 export function registerHarnessOperations(link: HarnessLink, context: TasksContext): void {
   link.registerOperation('sendMessage', async (args) => {
     const message = args as { readonly thread: string; readonly text: string };
@@ -23,6 +22,19 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
   link.registerOperation('createTask', (args) =>
     createTask(context, (args as { readonly brief: string }).brief),
   );
+  link.registerOperation('finishTask', async (args) => {
+    const taskID = (args as { readonly taskID: string }).taskID;
+    const [record] = await writeInboxRecords(context, [
+      {
+        kind: 'owner_message',
+        definitions: context.definitions(),
+        thread: taskID,
+        payload: { finish: true },
+      },
+    ]);
+
+    return record?.sequence ?? null;
+  });
 
   // closes the descriptor that holds the writer lock without stopping nixie, as a bug would, so
   // another process takes the lock while this one still writes

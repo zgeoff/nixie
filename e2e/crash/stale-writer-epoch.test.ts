@@ -14,14 +14,13 @@ async function setupTest() {
 test('it stops the stale writer at its first write, and the new writer expires its lease', async () => {
   const ctx = await setupTest();
   const processA = ctx.nixie.harness.start();
+  const lateReply = Promise.withResolvers<void>();
 
   await processA.ready;
 
-  // A's turn waits on a reply that never comes, so its step still runs when B starts
-  ctx.nixie.model.addReplies(
-    { text: 'Late.', gate: Promise.withResolvers<void>().promise },
-    { text: 'Hi.' },
-  );
+  // A's turn waits on a reply that comes only once B holds the lock, so its step still runs when B
+  // starts and then tries to commit
+  ctx.nixie.model.addReplies({ text: 'Late.', gate: lateReply.promise }, { text: 'Hi.' });
   void processA.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
   await waitForCondition(() =>
     ctx.nixie.model.requests.some((request) => request.path === '/v1/messages'),
@@ -31,6 +30,7 @@ test('it stops the stale writer at its first write, and the new writer expires i
   const processB = ctx.nixie.harness.start();
 
   await processB.ready;
+  lateReply.resolve();
 
   const exitA = await processA.exited;
 
@@ -61,7 +61,7 @@ test('it stops the stale writer at its first write, and the new writer expires i
   expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],

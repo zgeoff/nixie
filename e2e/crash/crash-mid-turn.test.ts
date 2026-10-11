@@ -46,8 +46,7 @@ test('it sends once when nixie dies after the action queued, before any attempt'
   const outcome = await ctx.nixie.waitForRecord((record) => record.kind === 'action.outcome');
 
   // ends the turn's wait for the outcome, which polls on the one clock
-  await ctx.nixie.harness.advance(10_000);
-  await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:2');
+  await ctx.nixie.advanceUntilRecord(10_000, 3, (record) => record.stepKey === 'conversation:2');
   await second.kill();
 
   const records = await ctx.nixie.readRecords();
@@ -73,7 +72,7 @@ test('it sends once when nixie dies after the action queued, before any attempt'
   expect(JSON.stringify(rerunRequest?.body?.messages)).not.toInclude('tool_use');
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -133,7 +132,7 @@ test('it leaves the action unknown and calls no provider when nixie dies after t
   expect(JSON.stringify(rerunRequest?.body?.messages)).not.toInclude('tool_use');
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -196,7 +195,7 @@ test('it leaves the action unknown and calls the provider once when nixie dies b
   expect(JSON.stringify(rerunRequest?.body?.messages)).not.toInclude('tool_use');
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],
@@ -227,8 +226,7 @@ test('it returns the done action to the rerun and sends once when nixie dies bef
   await ctx.nixie.waitForRecord((record) => record.kind === 'action.outcome');
 
   // ends the turn's wait for the outcome, which polls on the one clock
-  await ctx.nixie.harness.advance(10_000);
-  await first.waitForArrival('step.commit.before');
+  await ctx.nixie.advanceUntilArrival(first, 'step.commit.before', { stepMs: 10_000, maxSteps: 3 });
   await first.kill();
 
   const rerunFrom = ctx.nixie.model.requests.length;
@@ -269,7 +267,7 @@ test('it returns the done action to the rerun and sends once when nixie dies bef
   expect(JSON.stringify(rerunRequest?.body?.messages)).not.toInclude('tool_use');
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
-    repeatedActionIDs: [],
+    repeatedActions: [],
     strayCalls: [],
     heldLeases: [],
     unreadyTasks: [],

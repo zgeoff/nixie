@@ -1,4 +1,4 @@
-import { startHarnessLink } from '../../libs/testing/src/index';
+import { collectDescendants, startHarnessLink, stopProcesses } from '../../libs/testing/src/index';
 import { startActionRunners, writeUnknownOutcomes } from '../../modules/actions/src/index';
 import { StaleWriterError, subscribeToRecords } from '../../modules/log/src/index';
 import type { RunnerPool, StepInput, StepResult } from '../../modules/tasks/src/index';
@@ -39,6 +39,9 @@ await runRecovery(context, {
   sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
 });
 
+// the oracle reads what this restart's recovery left, before any runner claims work
+await link.waitAtFaultPoint('test.recovered', { kind: 'recovery', id: null });
+
 const tools = await startTestTools(context, env.providerURL);
 const conversation = await startTestConversation(context, tools, env.modelURL);
 const holder = `nixie-${process.pid}`;
@@ -76,7 +79,7 @@ async function stopGracefully(): Promise<void> {
   await conversation.stop();
   await tools.endpoint.stop();
   await testLog.writer.stop();
-  process.exit(0);
+  stopProcessTree(0);
 }
 
 // A failure that stops nixie, such as a writer lock another process holds or a stale writer epoch,
@@ -85,7 +88,14 @@ function stopWithError(error: unknown): never {
   const kind = error instanceof StaleWriterError ? 'stale writer' : 'nixie stopped';
 
   process.stderr.write(`${kind}: ${error instanceof Error ? error.message : String(error)}\n`);
-  process.exit(1);
+  stopProcessTree(1);
+}
+
+// A guest leads its own process group, so it outlives a nixie that exits. A host that loses nixie
+// loses its sandboxes too, so the test build kills every process it started before it exits.
+function stopProcessTree(code: number): never {
+  stopProcesses(collectDescendants(process.pid));
+  process.exit(code);
 }
 
 // The test build's stand-in for the commit wake that the server wires: a record that changed a
