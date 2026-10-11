@@ -197,7 +197,10 @@ test.skipIf(!hasImpHost)(
       ...(config.publicEgress?.hostAddresses ?? []).map(
         (range) => [range.split('/')[0] ?? '', impdPort] as const,
       ),
-      [process.env['NIXIE_IMP_TEST_TAILNET_ADDRESS'] ?? '100.100.100.100', 53],
+
+      // imp sends every guest IPv4 packet for port 53 to impd's own resolver, so a connect on 53
+      // succeeds whatever the address and shows nothing about tailnet reach
+      [process.env['NIXIE_IMP_TEST_TAILNET_ADDRESS'] ?? '100.100.100.100', 443],
     ];
 
     const outcomes = await Promise.all(
