@@ -1,0 +1,116 @@
+# Rehearses the release's image stages on every pull request, against a registry that lives only
+# for the job: it builds each image as the release does, writes the sandbox manifest from the
+# sandbox digests, checks that the nixie image carries it, then runs the release's pull check and
+# tag stage. A broken Dockerfile or a changed checksum then fails the pull request, never a release.
+name: Images
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+
+# an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  rehearse:
+    runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+        ports:
+          - 5000:5000
+    env:
+      REGISTRY: localhost:5000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # the builder shares the host network, so it reaches the job's registry on localhost
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: network=host
+
+      - name: Build the conversation image
+        id: conversation
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-conversation
+          dockerfile: guests/conversation/Dockerfile
+          cache-scope: conversation
+
+      - name: Build the fetch image
+        id: fetch
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-fetch
+          dockerfile: guests/fetch/Dockerfile
+          cache-scope: fetch
+
+      - name: Write the sandbox manifest
+        id: manifest
+        env:
+          CONVERSATION:
+            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
+          FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
+        run: |
+          .github/scripts/build-sandbox-manifest.sh "$CONVERSATION" "$FETCH" > apps/server/sandbox-manifest.json
+          cat apps/server/sandbox-manifest.json
+
+      - name: Build the nixie image
+        id: nixie
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie
+          dockerfile: apps/server/Dockerfile
+          cache-scope: nixie
+
+      - name: Build the web image
+        id: web
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-web
+          dockerfile: apps/web/Dockerfile
+          cache-scope: web
+
+      - name: Check that the nixie image carries the sandbox manifest
+        env:
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+        run: |
+          docker run --rm --entrypoint cat "$NIXIE" /app/sandbox-manifest.json > "$RUNNER_TEMP/carried.json"
+          cat "$RUNNER_TEMP/carried.json"
+          diff <(jq -S . apps/server/sandbox-manifest.json) <(jq -S . "$RUNNER_TEMP/carried.json")
+
+      - name: Pull each sandbox image with no credentials
+        env:
+          CONVERSATION:
+            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
+          FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
+        run: .github/scripts/check-public-pulls.sh "$CONVERSATION" "$FETCH"
+
+      - name: Tag every image, twice, and keep each digest
+        env:
+          CONVERSATION:
+            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
+          FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+          WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
+        run: |
+          .github/scripts/tag-images.sh 0.0.0-rehearsal "$CONVERSATION" "$FETCH" "$WEB" "$NIXIE"
+          .github/scripts/tag-images.sh 0.0.0-rehearsal "$CONVERSATION" "$FETCH" "$WEB" "$NIXIE"
+          {
+            echo '| Image | Digest |'
+            echo '| ----- | ------ |'
+            printf '| `%s` | `%s` |\n' "${CONVERSATION%@*}" "${CONVERSATION#*@}" "${FETCH%@*}" "${FETCH#*@}" \
+              "${WEB%@*}" "${WEB#*@}" "${NIXIE%@*}" "${NIXIE#*@}"
+          } >> "$GITHUB_STEP_SUMMARY"

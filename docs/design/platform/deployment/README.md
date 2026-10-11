@@ -10,7 +10,7 @@ records the split between the nixie repo, the definitions repo and the deploymen
   it is mounted
 - [Backup and restore](backup-and-restore.md) — the backup sidecar, Restic snapshots, the key repo
   and forget, the offsite replica, and restoring on a new host
-- [Release pipeline](release-pipeline.md) — versioning, the build order, registry publishing,
-  attestations, pinned binaries and the compatibility checks
+- [Release pipeline](release-pipeline.md) — the worker, code and backup images, pinned binary
+  updates, the rollback test, Renovate and attestation verification
 - [Upgrades](upgrades.md) — the pin and the bot, delivery to the host, a release on the host,
   migrations, and rollback

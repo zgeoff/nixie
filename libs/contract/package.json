@@ -8,12 +8,15 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "openapi": "bun src/run-openapi-document.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
+    "@orpc/openapi": "catalog:",
     "@orpc/tanstack-query": "catalog:",
+    "@orpc/zod": "catalog:",
     "@tanstack/query-core": "catalog:",
     "zod": "catalog:"
   }

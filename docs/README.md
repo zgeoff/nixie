@@ -84,9 +84,13 @@ below, and planned work lives in Linear.
 
 - [The server](architecture/deployment/server.md) — configuration and secrets, the start sequence,
   health per part, envelope-only logs, stopping, host commands and the nixie image
+- [The release pipeline](architecture/deployment/release-pipeline.md) — versions, the release
+  stages, the sandbox manifest, publishing, attestations and the compatibility checks
 
 ## Runbooks
 
+- [Releasing](runbooks/releasing.md) — the release App, cutting a release, making a sandbox image
+  public, checking an attestation and repairing a failed release
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
   public imp reach, on a host with impd
 
@@ -169,8 +173,8 @@ rests on.
   holds, its schema, and how it is mounted
 - [Backup and restore](design/platform/deployment/backup-and-restore.md) — the backup sidecar,
   Restic snapshots, the key repo and forget, the offsite replica, and restoring on a new host
-- [Release pipeline](design/platform/deployment/release-pipeline.md) — versioning, the build order,
-  registry publishing, attestations, pinned binaries and the compatibility checks
+- [Release pipeline](design/platform/deployment/release-pipeline.md) — the worker, code and backup
+  images, pinned binary updates, the rollback test, Renovate and attestation verification
 - [Upgrades](design/platform/deployment/upgrades.md) — the pin and the bot, delivery to the host, a
   release on the host, migrations, and rollback
 

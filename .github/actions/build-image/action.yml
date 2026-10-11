@@ -1,0 +1,42 @@
+# Builds one nixie image for linux/amd64 from the checkout and pushes it by digest only, with no
+# tag. Buildx's own provenance and SBOM stay off, so the push is a single image manifest with one
+# digest for impd, Renovate and the attestation subject. The caller sets up Buildx and logs in.
+name: Build an image
+description: Build one nixie image and push it by digest
+
+inputs:
+  repository:
+    description: The image repository with no tag, such as ghcr.io/<owner>/nixie-fetch
+    required: true
+  dockerfile:
+    description: The Dockerfile, relative to the repository root, which is the build context
+    required: true
+  cache-scope:
+    description: A GitHub Actions cache scope for the layers; empty builds with no cache
+    required: false
+    default: ''
+
+outputs:
+  digest:
+    description: The digest of the pushed image manifest
+    value: ${{ steps.build.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build and push by digest
+      id: build
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: .
+        file: ${{ inputs.dockerfile }}
+        platforms: linux/amd64
+        provenance: false
+        sbom: false
+        outputs:
+          type=image,name=${{ inputs.repository }},push-by-digest=true,name-canonical=true,push=true
+        cache-from:
+          ${{ inputs.cache-scope != '' && format('type=gha,scope={0}', inputs.cache-scope) || '' }}
+        cache-to:
+          ${{ inputs.cache-scope != '' && format('type=gha,mode=max,scope={0}', inputs.cache-scope)
+          || '' }}
