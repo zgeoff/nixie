@@ -176,10 +176,12 @@ test.skipIf(!hasImpHost)(
     );
     ctx.stack.defer(() => sandbox.destroy());
     const impd = new URL(config.url);
+    const impdPort =
+      impd.port === '' && impd.protocol === 'https:' ? 443 : Number(impd.port || '80');
     const targets: readonly (readonly [string, number])[] = [
-      [impd.hostname, Number(impd.port || '80')],
+      [impd.hostname, impdPort],
       ...(config.publicEgress?.hostAddresses ?? []).map(
-        (range) => [range.split('/')[0] ?? '', Number(impd.port || '80')] as const,
+        (range) => [range.split('/')[0] ?? '', impdPort] as const,
       ),
       [process.env['NIXIE_IMP_TEST_TAILNET_ADDRESS'] ?? '100.100.100.100', 53],
     ];
