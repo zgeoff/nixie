@@ -67,7 +67,7 @@ comes from, and server rendering grants no authority beyond the cookie the brows
 2. **Start holds nothing.** Start sent no `Set-Cookie` header, and a restarted Start server rendered
    the same session at once.
 3. **A refused session renders signed out.** The route loader catches the API's `UNAUTHORIZED` and
-   renders a signed-out page, so Start never answers with an error page for a lapsed session.
+   renders a signed-out page, so Start never renders an error page for a lapsed session.
 4. **The bundle holds only the public side.** The client build holds the public API URL and the
    custom header name. It holds no private URL, cookie name, bearer handling, Elysia or oRPC server
    code. The same search finds the private strings in the server build, so the search works.
