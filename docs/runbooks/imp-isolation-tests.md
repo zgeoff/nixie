@@ -9,14 +9,15 @@ the variables below are set, and they need a host with `/dev/kvm` and impd.
 
 1. Start an impd that you can create imps and secrets on, and get a token with manage scope for it.
 2. Import an image that holds `sh`, `curl` and `ip`, such as `ubuntu:24.04` with `curl` installed.
-3. Run the tests from the repo root:
+3. Run the tests from `adapters/sandbox-imp`:
 
    ```bash
+   cd adapters/sandbox-imp
    NIXIE_IMP_TEST_URL=<impd_url> \
    NIXIE_IMP_TEST_TOKEN=<impd_token> \
    NIXIE_IMP_TEST_IMAGE=<image_name> \
    NIXIE_IMP_TEST_HOST_ADDRESSES=<host_addresses> \
-   bun test --config=adapters/sandbox-imp/bunfig.toml adapters/sandbox-imp/src/isolation.test.ts
+   bun test src/isolation.test.ts
    ```
 
    Leave out `NIXIE_IMP_TEST_HOST_ADDRESSES` to skip the public egress test. It takes the same list
@@ -24,12 +25,12 @@ the variables below are set, and they need a host with `/dev/kvm` and impd.
 
 Expect `0 fail`, with no skipped test.
 
-Keep `--config=` with its `=`. The package's config leaves out the web test preload, whose mock
-server and DOM take over `fetch` and `WebSocket`, so no call would reach impd. Bun reads
-`--config <path>` with a space as no config flag at all and loads the root `bunfig.toml`. The suite
-then fails at once with `the web test preload is loaded`.
+The package's `bunfig.toml` leaves out the web test preload, whose mock server and DOM take over
+`fetch` and `WebSocket`, so no call would reach impd. Bun reads `bunfig.toml` only from the folder
+it runs in. From the repo root, Bun loads the web preload, and the suite fails at once with
+`the web test preload is loaded`.
 
 The tests create one imp per egress kind and a secret named `nixie-test-<id>` with a dummy value.
 They remove the imps first and the secret after, when they end, when a test fails, and when setup
 fails part way. A run that you stop with Ctrl-C skips that cleanup. Remove what it left with impd's
-API: each imp of owner `isolation-test` and the `nixie-test-<id>` secret.
+API: the imps the run created, each named `nixie-<id>`, and the `nixie-test-<id>` secret.

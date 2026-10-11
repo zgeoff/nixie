@@ -60,7 +60,10 @@ async function runScript(sandbox: Sandbox, script: string): Promise<string> {
   return decoder.decode(result.stdout.bytes).trim();
 }
 
-const state: { suite: IsolationSuite | null } = { suite: null };
+const state: { setup: Promise<IsolationSuite> | null; suite: IsolationSuite | null } = {
+  setup: null,
+  suite: null,
+};
 
 function getConversation(): Sandbox {
   if (state.suite === null) {
@@ -71,7 +74,7 @@ function getConversation(): Sandbox {
 
 describe.skipIf(!hasImpHost)('isolation on an imp host', () => {
   beforeAll(setupSuite, 120_000);
-  afterAll(teardownSuite);
+  afterAll(teardownSuite, 300_000);
   test('the reverse forward reaches the tool endpoint, which checks the run token', checkToolRoute);
   test('the broker reaches the model host, which answers the dummy credential', checkModelHost);
   test('the broker refuses any other host', checkOtherHost);
@@ -94,23 +97,28 @@ async function setupSuite(): Promise<void> {
   // the web preload's mock server and DOM take over fetch and WebSocket, so impd never sees a call
   if ('happyDOM' in globalThis) {
     throw new Error(
-      'the web test preload is loaded; run the file with --config=adapters/sandbox-imp/bunfig.toml',
+      'the web test preload is loaded; run the file from adapters/sandbox-imp, whose bunfig leaves it out',
     );
   }
 
   const config = parseImpConfig(env);
 
-  state.suite = await setupIsolationSuite({
+  state.setup = setupIsolationSuite({
     port: buildImpPort(config),
     publicEgress: config.publicEgress,
     secret: buildDummySecret(config.url, config.token),
     conversationSpec,
     toolToken,
   });
+  state.suite = await state.setup;
 }
 
+// A setup that outlives beforeAll's timeout goes on creating, so teardown waits for it to settle. A
+// setup that failed removed what it made.
 async function teardownSuite(): Promise<void> {
-  await state.suite?.teardown();
+  const suite = await state.setup?.catch(() => null);
+
+  await suite?.teardown();
 }
 
 async function checkToolRoute(): Promise<void> {
