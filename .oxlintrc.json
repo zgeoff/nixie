@@ -102,7 +102,7 @@
     {
       // a crash test is one journey whose phases depend on the ones before it: start, hold at a
       // fault point, kill, restart, then the oracle
-      "files": ["e2e/crash/*.test.ts"],
+      "files": ["e2e/crash/*.test.ts", "e2e/k3s/*.test.ts"],
       "rules": {
         "max-statements": "off",
         "max-lines-per-function": "off"

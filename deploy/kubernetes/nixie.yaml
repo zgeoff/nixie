@@ -1,0 +1,172 @@
+# nixie's server: one replica in a StatefulSet on a ReadWriteOnce volume, because SQLite takes one
+# writer. A rolling update deletes the old pod and creates the new one only once the old pod is
+# gone, and the writer lock in the data directory holds a second process off the database besides.
+# impd runs on the node, outside the cluster, and the pod reaches it outbound by the URL in
+# nixie-config, so the pod opens no port for its tools.
+apiVersion: v1
+kind: Service
+metadata:
+  name: nixie
+  labels:
+    app.kubernetes.io/name: nixie
+    app.kubernetes.io/component: server
+spec:
+  selector:
+    app.kubernetes.io/name: nixie
+    app.kubernetes.io/component: server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# the governing Service the StatefulSet's pod takes its DNS name from
+apiVersion: v1
+kind: Service
+metadata:
+  name: nixie-pods
+  labels:
+    app.kubernetes.io/name: nixie
+    app.kubernetes.io/component: server
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: nixie
+    app.kubernetes.io/component: server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nixie
+  labels:
+    app.kubernetes.io/name: nixie
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  serviceName: nixie-pods
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nixie
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nixie
+        app.kubernetes.io/component: server
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      # past the runner pools' 30 s grace, with room for the parts that stop after the runners
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nixie
+          image: ghcr.io/zgeoff/nixie:0.1.0@sha256:06d8802f4aac382106d53be0915887e86e36c6960e2404e19af6611a4c01b309
+          args: ['serve']
+          env:
+            # sops finds the age key here when nixie decrypts its secrets file at start
+            - name: SOPS_AGE_KEY_FILE
+              value: /etc/nixie/age.key
+          ports:
+            - name: http
+              containerPort: 8080
+          # the start copies and migrates the database before the health endpoint listens
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ['ALL']
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: etc
+              mountPath: /etc/nixie
+              readOnly: true
+            - name: definitions
+              mountPath: /definitions/nixie.yaml
+              subPath: nixie.yaml
+              readOnly: true
+            - name: definitions
+              mountPath: /definitions/persona.md
+              subPath: persona.md
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # the configuration, the encrypted secrets file and its age key, all read-only
+        - name: etc
+          projected:
+            sources:
+              - configMap:
+                  name: nixie-config
+                  items:
+                    - key: config.yaml
+                      path: config.yaml
+              # 288 is mode 0440, written in decimal because YAML 1.1 and 1.2 parse 0440 apart
+              - secret:
+                  name: nixie-secrets
+                  items:
+                    - key: secrets.yaml
+                      path: secrets.yaml
+                      mode: 288
+                    - key: age.key
+                      path: age.key
+                      mode: 288
+        - name: definitions
+          configMap:
+            name: nixie-definitions
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/name: nixie
+          app.kubernetes.io/component: server
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 10Gi

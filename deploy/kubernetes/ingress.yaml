@@ -1,0 +1,32 @@
+# One host name for the web client and the API: /rpc goes to nixie, and every other path to the
+# web server. The ingress terminates HTTPS with the certificate in nixie-tls, and the deployment
+# repo sets the host name and, where the cluster has more than one, the ingress class.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nixie
+  labels:
+    app.kubernetes.io/name: nixie
+spec:
+  tls:
+    - hosts:
+        - nixie.example.com
+      secretName: nixie-tls
+  rules:
+    - host: nixie.example.com
+      http:
+        paths:
+          - path: /rpc
+            pathType: Prefix
+            backend:
+              service:
+                name: nixie
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nixie-web
+                port:
+                  name: http

@@ -9,3 +9,7 @@ export type { ConversationOptions } from './start-conversation';
 export { startConversation } from './start-conversation';
 export type { Server, ServerOptions } from './start-server';
 export { startServer } from './start-server';
+export type { SandboxImages } from './load-sandbox-manifest';
+export { loadSandboxManifest } from './load-sandbox-manifest';
+export type { WebFetch, WebFetchOptions } from './start-web-fetch';
+export { fetchImageArgv, startWebFetch } from './start-web-fetch';
