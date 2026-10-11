@@ -79,8 +79,9 @@ tool endpoint listens on Unix sockets in a directory only nixie's user may enter
 reaches it except through a sandbox's reverse forward. [The server](./deployment/server.md) covers
 how the nixie process starts, reports its health and stops, and the nixie image it ships in. The web
 server is the second process. The repo builds its image and the conversation's guest image, which
-runs in a sandbox. The [deployment design](../design/platform/deployment/deployment.md) covers the
-reverse proxy and the host they run on.
+runs in a sandbox. [Kubernetes](./deployment/kubernetes.md) covers the reference manifests that run
+both processes in a cluster, and the
+[deployment design](../design/platform/deployment/deployment.md) covers the host they run on.
 
 ## Data
 

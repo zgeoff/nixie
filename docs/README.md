@@ -86,6 +86,8 @@ below, and planned work lives in Linear.
   health per part, envelope-only logs, stopping, host commands and the nixie image
 - [The release pipeline](architecture/deployment/release-pipeline.md) — versions, the release
   stages, the sandbox manifest, publishing, attestations and the compatibility checks
+- [Kubernetes](architecture/deployment/kubernetes.md) — the reference manifests, nixie's pod and its
+  mounts, impd and the address ranges, the ingress, and the live checks
 
 ## Runbooks
 
@@ -93,6 +95,8 @@ below, and planned work lives in Linear.
   public, checking an attestation and repairing a failed release
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
   public imp reach, on a host with impd
+- [Run the live checks](runbooks/live-checks.md) — the conversation, the rollout and the fetch
+  sandbox, against nixie deployed on Kubernetes
 
 ## Design
 

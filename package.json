@@ -66,6 +66,8 @@
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
+    "@orpc/client": "catalog:",
+    "@orpc/server": "catalog:",
     "@stylistic/eslint-plugin": "5.10.0",
     "@tsconfig/strictest": "2.0.8",
     "@types/bun": "1.4.2",

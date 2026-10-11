@@ -1,0 +1,56 @@
+# nixie's deployment configuration, which nixie reads once at start from /etc/nixie/config.yaml and
+# refuses when its schema does. It holds no secret: model credentials are deployment:<name>
+# references into the secrets file. Every value below is a placeholder for the deployment repo.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nixie-config
+  labels:
+    app.kubernetes.io/name: nixie
+    app.kubernetes.io/component: server
+data:
+  config.yaml: |
+    server:
+      data_dir: /data
+      port: 8080
+      secrets_file: /etc/nixie/secrets.yaml
+    models:
+      profiles:
+        chat:
+          base_url: https://api.anthropic.com
+          credential: deployment:anthropic
+          auth_header: x-api-key
+          model: claude-sonnet-5-5
+          effort: medium
+      roles:
+        conversation: chat
+    imp:
+      # impd runs on the node, outside the cluster, and nixie's pod reaches it by this URL
+      url: https://impd.example.com
+      # every address of the node that runs impd; 192.0.2.0/24 is a documentation range
+      host_addresses:
+        - 192.0.2.10/32
+      # the ranges the node forwards to: k3s's default pod and service ranges
+      egress_deny:
+        - 10.42.0.0/16
+        - 10.43.0.0/16
+    definitions:
+      source:
+        kind: path
+        path: /definitions
+---
+# The definitions the path source seeds from. A deployment that keeps its definitions in a repo
+# replaces this ConfigMap with its own copy of that repo. The pod mounts each file by itself,
+# because the path source skips the links a ConfigMap volume holds.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nixie-definitions
+  labels:
+    app.kubernetes.io/name: nixie
+    app.kubernetes.io/component: server
+data:
+  nixie.yaml: |
+    format: 1
+  persona.md: |
+    You are nixie, a personal assistant that works for one person.
