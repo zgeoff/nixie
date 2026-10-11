@@ -67,7 +67,10 @@ function startEmptyToolEndpoint(context: TasksContext, socketDir: string): Promi
     definitions: context.definitions,
 
     // no tool is registered, so nothing reaches the queue
-    queue: { enqueue: () => Promise.resolve(), waitForOutcome: () => Promise.resolve(null) },
+    queue: {
+      enqueue: () => Promise.reject(new Error('no tool is registered, so nothing is queued')),
+      waitForOutcome: () => Promise.resolve(null),
+    },
   });
 }
 

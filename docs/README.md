@@ -56,6 +56,8 @@ below, and planned work lives in Linear.
   references and the model on each record
 - [Conversation turns](architecture/core/conversation-turns.md) — the guest, what a query holds,
   resume and fork, inbox records as messages
+- [Crash tests](architecture/core/crash-tests.md) — the test build, the harness link and its clock,
+  the scripted model, the provider double and the oracle
 
 ### Policy
 

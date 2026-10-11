@@ -1,4 +1,4 @@
-import type { ContentSource, JSONObject } from '@heynixie/log';
+import type { ContentSource, Decision, JSONObject } from '@heynixie/log';
 import type { EffectDeclaration } from '@heynixie/policy';
 import type { SandboxRef, ToolTarget } from '@heynixie/sandbox';
 
@@ -85,10 +85,11 @@ export interface ToolRunModel {
 
 // An allowed queued call, as the endpoint hands it to the action queue.
 export interface QueuedAction {
-  // the action ID, which is also the proposal ID, the queue key and the idempotency key
-  readonly actionID: string;
   readonly call: ToolCall;
   readonly run: ToolRun;
+
+  // the decision that allowed the call, which the action's record carries too
+  readonly decision: Decision;
 
   // the sequence of the call's record, which holds the decision that allowed it
   readonly callSequence: number;
@@ -101,7 +102,9 @@ export type ActionOutcome =
 
 // The action queue the endpoint hands allowed queued calls to, which the actions module implements.
 export interface ActionQueue {
-  readonly enqueue: (action: QueuedAction) => Promise<void>;
+  // queues the call and returns its action ID, which is also the proposal ID, the queue key and the
+  // idempotency key; a call that repeats an earlier action returns that action's ID
+  readonly enqueue: (action: QueuedAction) => Promise<string>;
 
   // the action's outcome once it settles, or null when it is still pending after timeoutMs
   readonly waitForOutcome: (actionID: string, timeoutMs: number) => Promise<ActionOutcome | null>;

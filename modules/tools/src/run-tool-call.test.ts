@@ -147,7 +147,7 @@ test('it returns an allowed queued call the action outcome once the action is do
       }),
     ],
     queue: {
-      enqueue: () => Promise.resolve(),
+      enqueue: () => Promise.resolve('action-1'),
       waitForOutcome: () => Promise.resolve({ outcome: 'done', result: { delivered: true } }),
     },
   });
@@ -166,8 +166,8 @@ test('it returns an allowed queued call the action outcome once the action is do
   expect(result).toStrictEqual({ content: [], structuredContent: { delivered: true } });
 });
 
-test('it queues an allowed queued call with its call, its run and the sequence of its decision', async () => {
-  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve());
+test('it queues an allowed queued call with its call, its run, its decision and the sequence of its record', async () => {
+  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve('action-1'));
   const ctx = await setupTest({
     tools: [
       buildMockToolDefinition({
@@ -199,12 +199,13 @@ test('it queues an allowed queued call with its call, its run and the sequence o
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
+    decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
     callSequence: 1,
   });
 });
 
 test('it returns "queued as" the action ID when the action is still pending after the wait', async () => {
-  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve());
+  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve('action-1'));
   const ctx = await setupTest({
     tools: [
       buildMockToolDefinition({
@@ -226,16 +227,14 @@ test('it returns "queued as" the action ID when the action is still pending afte
     },
     ctx.options,
   );
-  const actionID = enqueue.mock.calls[0]?.[0].actionID;
-
   expect(result).toStrictEqual({
-    content: [{ type: 'text', text: `queued as ${String(actionID)}` }],
+    content: [{ type: 'text', text: 'queued as action-1' }],
     isError: false,
   });
 });
 
 test('it returns a failed action outcome as text that is no tool error', async () => {
-  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve());
+  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve('action-1'));
   const ctx = await setupTest({
     tools: [
       buildMockToolDefinition({
@@ -260,10 +259,8 @@ test('it returns a failed action outcome as text that is no tool error', async (
     },
     ctx.options,
   );
-  const actionID = enqueue.mock.calls[0]?.[0].actionID;
-
   expect(result).toStrictEqual({
-    content: [{ type: 'text', text: `action ${String(actionID)} failed: the address bounced` }],
+    content: [{ type: 'text', text: 'action action-1 failed: the address bounced' }],
     isError: false,
   });
 });
@@ -303,7 +300,7 @@ test('it denies a listed send tool with the rule ID and sentence', async () => {
 });
 
 test('it records slice1.read-only as the deciding rule of a denied call, and queues nothing', async () => {
-  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve());
+  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve('action-1'));
   const ctx = await setupTest({
     tools: [
       buildMockToolDefinition({
@@ -482,7 +479,7 @@ test('it writes a result record for a tool that throws, as outside content', asy
 });
 
 test('it returns "queued as" the action ID when the wait for the outcome fails', async () => {
-  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve());
+  const enqueue = mock<ActionQueue['enqueue']>(() => Promise.resolve('action-1'));
   const ctx = await setupTest({
     tools: [
       buildMockToolDefinition({
@@ -504,10 +501,8 @@ test('it returns "queued as" the action ID when the wait for the outcome fails',
     },
     ctx.options,
   );
-  const actionID = enqueue.mock.calls[0]?.[0].actionID;
-
   expect(result).toStrictEqual({
-    content: [{ type: 'text', text: `queued as ${String(actionID)}` }],
+    content: [{ type: 'text', text: 'queued as action-1' }],
     isError: false,
   });
 });

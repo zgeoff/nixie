@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { startScriptedModel } from './start-scripted-model';
+import { waitForCondition } from './wait-for-condition';
 
 function setupTest() {
   const model = startScriptedModel();
@@ -84,4 +85,27 @@ test('it records every request with its path, headers and body', async () => {
       body: { model: 'model-a', messages: [{ role: 'user', content: 'hi' }] },
     },
   ]);
+});
+
+test('it holds a gated reply until its gate resolves', async () => {
+  const ctx = setupTest();
+  const gate = Promise.withResolvers<void>();
+
+  ctx.model.addReplies({ text: 'held', gate: gate.promise });
+
+  const response = fetch(`${ctx.model.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  await waitForCondition(() => ctx.model.requests.length === 1);
+
+  const statusBeforeGate = Bun.peek.status(response);
+
+  gate.resolve();
+
+  const answered = await response;
+
+  expect(statusBeforeGate).toBe('pending');
+  expect(answered.json()).resolves.toMatchObject({ content: [{ type: 'text', text: 'held' }] });
 });
