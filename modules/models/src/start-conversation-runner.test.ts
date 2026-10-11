@@ -331,7 +331,7 @@ test('it stores the profile credential and grants it to the conversation sandbox
 
   expect(ctx.sandboxes.secrets).toStrictEqual([
     {
-      name: expect.stringMatching(/^model-chat-direct-[\da-f]{16}$/u),
+      name: expect.toSatisfy((name: string) => /^model-chat-direct-[\da-f]{16}$/u.test(name)),
       value: 'not-a-real-key',
       host: 'api.anthropic.com',
       header: 'x-api-key',
@@ -352,6 +352,49 @@ test('it stores the profile credential and grants it to the conversation sandbox
       ],
     },
   ]);
+});
+
+test('it opens a turn with at most the batch limit of inbox records and leaves the rest for the next step', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner(ctx.config);
+
+  await Promise.all(Array.from({ length: 66 }, (_, index) => ctx.writeMessage(`Note ${index}.`)));
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+
+  expect(ctx.sandboxes.turns.map((turn) => turn.input.length)).toStrictEqual([64, 2]);
+  expect(task.state).toBe('waiting');
+});
+
+test('it keeps the session boundary and runs no turn for a step with nothing unread', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner(ctx.config);
+
+  const result = await runner.runStep({
+    taskID: 'conversation',
+    stepKey: 'conversation:4',
+    lease: {
+      kind: 'task',
+      workID: 'conversation',
+      holder: 'runner-1',
+      generation: 1,
+      epoch: 1,
+      expiresAt: Date.now() + 60_000,
+    },
+    inbox: [],
+    sessionBoundary: '{"sessionID":"s","messageID":"m"}',
+    signal: new AbortController().signal,
+  });
+
+  expect(result).toStrictEqual({
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    sessionBoundary: '{"sessionID":"s","messageID":"m"}',
+  });
+  expect(ctx.sandboxes.turns).toStrictEqual([]);
 });
 
 test('it keeps the conversation sandbox across restarts on one profile and replaces it on another', async () => {

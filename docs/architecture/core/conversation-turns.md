@@ -54,6 +54,15 @@ each turn a new session that copies the history up to the boundary, so a turn th
 its commit leaves its partial messages in a session no later turn resumes. A rerun of the step
 therefore starts from the same point as the first try, and the model never sees the lost attempt.
 
+Each fork copies the whole history, so the guest removes every session on its disk but the one it
+resumes before the turn starts. The disk then holds at most the resumed session and the fork the
+turn writes, rather than a growing copy per turn.
+
+A guest can die after one result and before the next, once a message that landed mid-turn started a
+second model call. The step then counts only the replies and reads that came before the last result,
+because the next turn resumes at that result's boundary, and a record read after it stays unread for
+the next step to send again.
+
 A sandbox that lost its disk, such as one replaced after a profile change, no longer holds the
 session. The guest reports a lost session, and the step runs the turn again on a fresh session and
 writes a session reset record that names the lost session. The fresh session starts without the
@@ -67,11 +76,18 @@ the record's log sequence. The guest decodes the IDs the SDK acknowledges, and t
 matching sequences as read, so the read cursor moves only over records the model received. A record
 the turn never reached stays unread, and the next step sends it again.
 
-A message the user sends while a turn runs reaches the same turn. The host watches the conversation
-thread for inbox records that land after the step started and writes each one to the guest as a
-message frame, and the guest passes it into the running query. The SDK acknowledges a message it
-folds into a running turn in a different form from the turn's opening messages, and the guest counts
-both forms as a read.
+A turn opens with no more inbox records than the SDK lists on the reply that consumed them, because
+a record past that list would have no ID to acknowledge it by, and the turn would wait for it
+forever. A step that leaves records past the limit asks to continue, so the next step takes them at
+once.
+
+A message the user sends while a turn runs reaches the same turn, when that turn took the whole
+inbox. A turn that left records for the next step takes no live message, so the read cursor never
+meets a gap and no record reaches the model twice. The host watches the conversation thread for
+inbox records that land after the step started and writes each one to the guest as a message frame,
+and the guest passes it into the running query. The SDK acknowledges a message it folds into a
+running turn in a different form from the turn's opening messages, and the guest counts both forms
+as a read.
 
 ## Records of a turn
 

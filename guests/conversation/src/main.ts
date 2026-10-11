@@ -7,7 +7,7 @@ const writer = Bun.stdout.writer();
 await runConversationGuest({
   input: Bun.stdin.stream(),
   write: async (bytes) => {
-    writer.write(bytes);
+    await writer.write(bytes);
     await writer.flush();
   },
   env: process.env,

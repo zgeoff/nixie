@@ -1,10 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import type { GuestFrame, InboxMessage } from '@heynixie/wire';
+import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import { runTurn } from './run-turn';
 import { buildStubToolServer } from './test-utils/build-stub-tool-server';
 import { startStubModel } from './test-utils/start-stub-model';
@@ -80,7 +80,7 @@ test('it gives every query() nixie tools alone and no settings, skills or memory
       mcpServers: { nixie: ctx.tools.config },
       systemPrompt: 'You are nixie.',
       cwd: join(ctx.home, 'conversation'),
-      env: expect.any(Object),
+      env: expect.toBeObject(),
     },
   ]);
 });
@@ -191,21 +191,23 @@ test('it reports each inbox message the model read, then the turn end at the las
     ctx.deps,
   );
 
+  const reply = ctx.frames.at(2);
+
+  if (reply?.type !== 'assistant') {
+    throw new Error('the third frame is not an assistant frame');
+  }
   expect(ctx.frames).toStrictEqual([
     { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
     {
       type: 'assistant',
-      messageID: expect.any(String),
+      messageID: expect.toBeString(),
       text: '',
-      toolUses: [{ id: expect.any(String), name: 'mcp__nixie__note_read' }],
+      toolUses: [{ id: expect.toBeString(), name: 'mcp__nixie__note_read' }],
     },
-    { type: 'assistant', messageID: expect.any(String), text: 'You need milk.', toolUses: [] },
+    { type: 'assistant', messageID: expect.toBeString(), text: 'You need milk.', toolUses: [] },
     {
       type: 'ended',
-      boundary: {
-        sessionID: expect.any(String),
-        messageID: Reflect.get(ctx.frames.at(2) ?? {}, 'messageID'),
-      },
+      boundary: { sessionID: expect.toBeString(), messageID: reply.messageID },
       subtype: 'success',
       stopReason: 'end_turn',
       turns: 2,
@@ -254,7 +256,7 @@ test('it passes a message into the running turn at the next tool boundary and re
 
 test('it resumes at a boundary on a new session that holds nothing after the boundary', async () => {
   const ctx = await setupTest();
-  const runTurnAt = async (text: string, resume: GuestFrame | undefined) => {
+  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
     await runTurn(
       {
         type: 'turn',
@@ -265,18 +267,20 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
           authHeader: 'x-api-key',
         },
         tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-        resume: resume?.type === 'ended' ? resume.boundary : null,
+        resume,
         systemPrompt: 'You are nixie.',
         input: [{ uuid: crypto.randomUUID(), text }],
       },
       { ...ctx.deps, toolServer: buildStubToolServer().config },
     );
-    return ctx.frames.at(-1);
+    const last = ctx.frames.at(-1);
+
+    return last?.type === 'ended' ? last.boundary : null;
   };
 
   ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' }, { text: 'CHERRY' });
 
-  const first = await runTurnAt('one', undefined);
+  const first = await runTurnAt('one', null);
 
   await runTurnAt('two', first);
 
@@ -284,10 +288,8 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
 
   expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude('APPLE');
   expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).not.toInclude('BANANA');
-  expect(rerun).toMatchObject({ type: 'ended', subtype: 'success' });
-  expect(rerun).not.toMatchObject({
-    boundary: { sessionID: Reflect.get(Reflect.get(first ?? {}, 'boundary') ?? {}, 'sessionID') },
-  });
+  expect(rerun).toStrictEqual({ sessionID: expect.toBeString(), messageID: expect.toBeString() });
+  expect(rerun?.sessionID).not.toBe(first?.sessionID);
 });
 
 test('it reports a session to resume that is not on the guest disk as missing', async () => {
@@ -315,4 +317,40 @@ test('it reports a session to resume that is not on the guest disk as missing', 
       detail: 'No conversation found with session ID: 7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
     },
   ]);
+});
+
+test('it keeps only the session it resumes and the fork it writes on the guest disk', async () => {
+  const ctx = await setupTest();
+  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
+    await runTurn(
+      {
+        type: 'turn',
+        profile: {
+          model: 'model-a',
+          baseURL: ctx.model.url,
+          effort: 'low',
+          authHeader: 'x-api-key',
+        },
+        tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+        resume,
+        systemPrompt: 'You are nixie.',
+        input: [{ uuid: crypto.randomUUID(), text }],
+      },
+      { ...ctx.deps, toolServer: buildStubToolServer().config },
+    );
+    const last = ctx.frames.at(-1);
+
+    return last?.type === 'ended' ? last.boundary : null;
+  };
+
+  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' }, { text: 'CHERRY' });
+
+  const first = await runTurnAt('one', null);
+  const second = await runTurnAt('two', first);
+  const third = await runTurnAt('three', second);
+  const files = await readdir(join(ctx.home, '.claude', 'projects'), { recursive: true });
+
+  expect(
+    files.filter((path) => path.endsWith('.jsonl')).map((path) => basename(path)),
+  ).toIncludeSameMembers([`${second?.sessionID}.jsonl`, `${third?.sessionID}.jsonl`]);
 });

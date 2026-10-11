@@ -17,6 +17,7 @@ export interface QueryContext {
 // Builds the options of every query(): nixie's tools are the only tools, and nothing comes from a
 // settings file, a skill, the SDK's own memory or another MCP config. options.env replaces the
 // CLI's environment, so each variable goes in by name, with the profile's URL, model and effort.
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the SDK's MCP config has no readonly form
 export function buildQueryOptions(turn: TurnFrame, context: QueryContext): Options {
   const home = getHome(context.env);
 

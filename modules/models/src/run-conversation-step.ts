@@ -12,7 +12,7 @@ export async function runConversationStep(
   input: StepInput,
 ): Promise<StepResult> {
   if (input.inbox.length === 0) {
-    return { next: 'wait', records: [], acknowledged: [] };
+    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: input.sessionBoundary };
   }
   const source = { definitions: run.context.definitions, model: run.model };
   const resume = parseSessionBoundary(input.sessionBoundary);

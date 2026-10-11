@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- an async iterable or iterator has no readonly form
 import type { McpServerConfig } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, HostFrame, InboxMessage } from '@heynixie/wire';
 import {

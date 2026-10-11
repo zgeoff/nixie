@@ -10,6 +10,9 @@ export interface CompletedTurn {
 
   // the sequence of every inbox record the turn took
   readonly sent: ReadonlySet<number>;
+
+  // whether the turn left unread inbox records past its batch for the next step
+  readonly hasMore: boolean;
 }
 
 // Builds the step's result from a turn the guest ended: a record per reply and one for the turn's
@@ -29,7 +32,7 @@ export function buildStepResult(
     );
   }
   return {
-    next: 'wait',
+    next: completed.hasMore ? 'continue' : 'wait',
     records: [
       ...before,
       ...completed.turn.assistants

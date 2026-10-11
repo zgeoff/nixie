@@ -256,11 +256,11 @@ function sendGroupSignal(pid: number, signal: NodeJS.Signals): void {
   }
 }
 
+type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret'>;
+type UpdateCallLog = (call: string) => Promise<void>;
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own secret store
-function buildFakeSecretCalls(
-  state: FakeState,
-  updateCallLog: (call: string) => Promise<void>,
-): Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret'> {
+function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeSecretCalls {
   return {
     readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),
     addGrant: (name, secret) => updateCallLog(`grant ${name} ${secret}`),

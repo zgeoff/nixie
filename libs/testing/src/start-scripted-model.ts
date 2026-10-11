@@ -68,6 +68,8 @@ async function readRequest(request: Request): Promise<ScriptedModelRequest> {
   return {
     path: new URL(request.url).pathname,
     headers: Object.fromEntries(request.headers),
+
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the CLI's own request body
     body: text === '' ? null : (JSON.parse(text) as ScriptedModelBody),
   };
 }

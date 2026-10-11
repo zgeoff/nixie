@@ -42,6 +42,7 @@ export interface GuestTurn {
 // Runs one turn in the conversation guest: it starts the guest, sends the turn frame and then each
 // live message, and collects the guest's frames until it exits. A guest that exits without ending
 // or failing its turn, or that sends a frame the schema refuses, throws.
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a sandbox handle and an async iterable have no readonly form
 export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
   const stream = await spec.sandbox.spawn({
     argv: spec.command.argv,
@@ -65,14 +66,13 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
   }
 }
 
+type LiveMessages = GuestTurnSpec['messages'];
+
 // a message that comes after the guest stopped reading stays unread in the inbox for the next step
-async function sendMessages(
-  stream: ExecStream,
-  messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
-): Promise<void> {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle and an async iterable have no readonly form
+async function sendMessages(stream: ExecStream, messages: LiveMessages): Promise<void> {
   try {
     for await (const message of messages) {
-      // oxlint-disable-next-line no-await-in-loop -- messages reach the guest in inbox order
       await stream.send(encodeTurnFrame({ type: 'message', message }));
     }
   } catch {
@@ -80,16 +80,28 @@ async function sendMessages(
   }
 }
 
-// the turn as collectTurn fills it in, frame by frame
+// the turn as collectTurn fills it in, frame by frame, with the count of assistant frames and read
+// uuids that came before its last ended frame
 interface MutableTurn {
   readonly assistants: AssistantFrame[];
   readonly read: string[];
   readonly ended: EndedFrame[];
   failure: FailedFrame | null;
+  settled: { readonly assistants: number; readonly read: number };
 }
 
+// Only the frames up to the last ended frame count, because the next turn resumes at that frame's
+// boundary: a reply or a read after it, from a guest that died before its next result, belongs to a
+// session no turn resumes, so its inbox records stay unread and the next step sends them again.
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
 async function collectTurn(stream: ExecStream): Promise<GuestTurn> {
-  const turn: MutableTurn = { assistants: [], read: [], ended: [], failure: null };
+  const turn: MutableTurn = {
+    assistants: [],
+    read: [],
+    ended: [],
+    failure: null,
+    settled: { assistants: 0, read: 0 },
+  };
 
   for await (const message of stream.messages) {
     updateTurn(turn, decodeTurnFrame(guestFrameSchema, message));
@@ -97,7 +109,12 @@ async function collectTurn(stream: ExecStream): Promise<GuestTurn> {
   const exit = await stream.exit;
 
   requireTurnEnd(turn, exit);
-  return turn;
+  return {
+    assistants: turn.assistants.slice(0, turn.settled.assistants),
+    read: turn.read.slice(0, turn.settled.read),
+    ended: turn.ended,
+    failure: turn.failure,
+  };
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the turn this collects
@@ -108,6 +125,7 @@ function updateTurn(turn: MutableTurn, frame: GuestFrame): void {
     turn.read.push(...frame.uuids);
   } else if (frame.type === 'ended') {
     turn.ended.push(frame);
+    turn.settled = { assistants: turn.assistants.length, read: turn.read.length };
   } else {
     turn.failure = frame;
   }

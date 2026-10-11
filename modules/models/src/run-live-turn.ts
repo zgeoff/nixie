@@ -1,8 +1,9 @@
-import type { Sandbox } from '@heynixie/sandbox';
+import type { Sandbox, ToolRoute } from '@heynixie/sandbox';
 import type { StepInput, TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
-import type { SessionPoint } from '@heynixie/wire';
+import type { SessionPoint, TurnProfile } from '@heynixie/wire';
 import type { CompletedTurn } from './build-step-result';
+import { inboxBatchLimit } from './inbox-batch-limit';
 import { readLiveInbox } from './read-live-inbox';
 import type { GuestCommand } from './run-guest-turn';
 import { runGuestTurn } from './run-guest-turn';
@@ -20,21 +21,19 @@ export interface ConversationRun {
   readonly systemPrompt: string;
 }
 
-// Runs one turn in the guest on the step's inbox, resuming at the session point when there is
-// one, and passes in each inbox record that lands while the turn runs.
+// Runs one turn in the guest on the step's inbox, up to the batch limit, resuming at the session
+// point when there is one. Only a turn that took the whole inbox takes the records that land while
+// it runs, so the read cursor never meets a gap and no record reaches the model twice.
 export async function runLiveTurn(
   run: ConversationRun,
   input: StepInput,
   resume: SessionPoint | null,
 ): Promise<CompletedTurn> {
-  const route = await run.sandbox.toolRoute();
-
-  if (route === null) {
-    throw new Error('the conversation sandbox has no tool route');
-  }
-  const sent = new Set(input.inbox.map((record) => record.sequence));
+  const route = await requireToolRoute(run.sandbox);
+  const batch = input.inbox.slice(0, inboxBatchLimit);
+  const sent = new Set(batch.map((record) => record.sequence));
   const live = new AbortController();
-  const profile = run.profile.profile;
+  const hasMore = input.inbox.length > batch.length;
 
   try {
     const turn = await runGuestTurn({
@@ -42,23 +41,40 @@ export async function runLiveTurn(
       command: run.command,
       turn: {
         type: 'turn',
-        profile: {
-          model: profile.model,
-          baseURL: profile.baseURL,
-          effort: profile.effort,
-          authHeader: profile.authHeader,
-        },
+        profile: toTurnProfile(run.profile.profile),
         tools: { url: route.url, token: run.endpoint.token },
         resume,
         systemPrompt: run.systemPrompt,
-        input: input.inbox.map((record) => toInboxMessage(record)),
+        input: batch.map((record) => toInboxMessage(record)),
       },
-      messages: readLiveInbox(run.context, { taskID: input.taskID, sent, signal: live.signal }),
+      messages: hasMore
+        ? []
+        : readLiveInbox(run.context, { taskID: input.taskID, sent, signal: live.signal }),
       signal: input.signal,
     });
 
-    return { turn, sent };
+    return { turn, sent, hasMore };
   } finally {
     live.abort();
   }
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a sandbox handle has no readonly form
+async function requireToolRoute(sandbox: Sandbox): Promise<ToolRoute> {
+  const route = await sandbox.toolRoute();
+
+  if (route === null) {
+    throw new Error('the conversation sandbox has no tool route');
+  }
+  return route;
+}
+
+// the profile as the guest needs it, with no credential reference and no prices
+function toTurnProfile(profile: ResolvedProfile['profile']): TurnProfile {
+  return {
+    model: profile.model,
+    baseURL: profile.baseURL,
+    effort: profile.effort,
+    authHeader: profile.authHeader,
+  };
 }

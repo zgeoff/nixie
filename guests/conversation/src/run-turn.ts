@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's message and MCP types, an async iterable and the turn's own state have no readonly form
 import { mkdir } from 'node:fs/promises';
 import type {
   McpServerConfig,
@@ -9,6 +10,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import type { TurnFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
+import { removeStaleSessions } from './remove-stale-sessions';
 import { toolServerName } from './tool-server-name';
 
 export interface TurnDependencies {
@@ -30,6 +32,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
   const options = buildQueryOptions(turn, { env: deps.env, toolServer: deps.toolServer });
 
   await mkdir(options.cwd ?? '', { recursive: true });
+  await removeStaleSessions(options.env?.['CLAUDE_CONFIG_DIR'], turn.resume?.sessionID ?? null);
 
   const state: TurnState = { pending: new Set(), boundary: null, ended: Promise.withResolvers() };
   const session = (deps.runQuery ?? query)({ prompt: readInput(turn, deps, state), options });
@@ -48,7 +51,6 @@ async function drainSession(
   state: TurnState,
 ): Promise<void> {
   for await (const message of session) {
-    // oxlint-disable-next-line no-await-in-loop -- frames go to the host in the order they came
     const outcome = await emitMessageFrames(message, deps, state);
 
     if (outcome === 'stop' || (outcome === 'result' && state.pending.size === 0)) {
@@ -116,26 +118,20 @@ function emitMessageFrames(
   deps: TurnDependencies,
   state: TurnState,
 ): Promise<MessageOutcome> {
-  switch (message.type) {
-    case 'system': {
-      return message.subtype === 'init'
-        ? emitInit(message, deps)
-        : emitCommandRead(message, deps, state);
-    }
-    case 'assistant': {
-      return emitAssistant(message, deps, state);
-    }
-    case 'user': {
-      updateUserBoundary(message, state);
-      return Promise.resolve('continue');
-    }
-    case 'result': {
-      return emitResult(message, deps, state);
-    }
-    default: {
-      return emitCommandRead(message, deps, state);
-    }
+  if (message.type === 'system' && message.subtype === 'init') {
+    return emitInit(message, deps);
   }
+  if (message.type === 'assistant') {
+    return emitAssistant(message, deps, state);
+  }
+  if (message.type === 'user') {
+    updateUserBoundary(message, state);
+    return Promise.resolve('continue');
+  }
+  if (message.type === 'result') {
+    return emitResult(message, deps, state);
+  }
+  return emitCommandRead(message, deps, state);
 }
 
 type InitMessage = Extract<SDKMessage, { type: 'system'; subtype: 'init' }>;

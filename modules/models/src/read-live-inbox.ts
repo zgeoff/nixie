@@ -16,6 +16,8 @@ export interface LiveInbox {
 // so the turn takes each at its next tool boundary.
 export async function* readLiveInbox(
   context: Pick<TasksContext, 'log'>,
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the turn's own set, which this fills in
   live: LiveInbox,
 ): AsyncGenerator<InboxMessage> {
   const entries = subscribeToRecords(context.log, {

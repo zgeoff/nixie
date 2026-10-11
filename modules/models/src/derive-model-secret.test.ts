@@ -17,7 +17,7 @@ test('it derives a secret for the profile host and header, named by the profile'
   });
 
   expect(secret).toStrictEqual({
-    name: expect.stringMatching(/^model-chat-[\da-f]{16}$/u),
+    name: expect.toSatisfy((name: string) => /^model-chat-[\da-f]{16}$/u.test(name)),
     value: 'not-a-real-token',
     host: 'gateway.example',
     header: 'bearer',
