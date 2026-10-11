@@ -15,8 +15,7 @@
     "apps/server": {
       "entry": ["src/main.ts", "src/run-release-build.ts", "src/test-utils/run-stub-sops.ts"]
     },
-    // the release workflows run these entry scripts by their paths, so no import reaches them
-    "libs/contract": { "entry": ["src/run-openapi-document.ts"] },
+    // the release workflows run the migration check by its path, so no import reaches it
     "libs/db": { "entry": ["src/run-migration-check.ts"] },
     // the conversation image runs its guest's entry by its path, so no import reaches it
     "guests/conversation": { "entry": ["src/main.ts"] },

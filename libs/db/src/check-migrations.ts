@@ -11,7 +11,7 @@ export interface ReleasedSchema {
   readonly oldestReader: number;
 }
 
-export interface AddedMigration {
+interface AddedMigration {
   // the schema version the migration leaves
   readonly version: number;
   readonly name: string;
