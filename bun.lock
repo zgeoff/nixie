@@ -161,6 +161,16 @@
         "@orpc/client": "catalog:",
       },
     },
+    "modules/connectors": {
+      "name": "@heynixie/connectors",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/log": "workspace:*",
+        "@heynixie/sandbox": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+      },
+    },
     "modules/definitions": {
       "name": "@heynixie/definitions",
       "version": "0.0.0",
@@ -393,6 +403,8 @@
     "@heynixie/actions": ["@heynixie/actions@workspace:modules/actions"],
 
     "@heynixie/api": ["@heynixie/api@workspace:modules/api"],
+
+    "@heynixie/connectors": ["@heynixie/connectors@workspace:modules/connectors"],
 
     "@heynixie/contract": ["@heynixie/contract@workspace:libs/contract"],
 
