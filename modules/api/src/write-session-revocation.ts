@@ -1,7 +1,9 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { buildInputHash } from './build-input-hash';
+import type { ClientAction } from './find-client-action';
 import { findClientAction } from './find-client-action';
+import { isLiveIdentity } from './is-live-identity';
 import type { APIContext, APITables, Identity } from './types';
 import { writeClientAction } from './write-client-action';
 
@@ -13,7 +15,8 @@ interface RevocationInput {
 type RevocationResult =
   | { readonly status: 'revoked'; readonly revokedAt: number }
   | { readonly status: 'not_found' }
-  | { readonly status: 'reused' };
+  | { readonly status: 'reused' }
+  | { readonly status: 'unauthorized' };
 
 // Revokes a device session, a checked action of a signed-in device. The revoked row keeps its
 // token hash, so a later call with the token resolves to the row and is refused. Revoking a revoked
@@ -24,13 +27,16 @@ export function writeSessionRevocation(
   input: RevocationInput,
 ): Promise<RevocationResult> {
   return withWriteTransaction(context.log.writer, async (tx) => {
-    const inputHash = buildInputHash({ sessionID: input.sessionID });
-    const earlier = await findClientAction(tx, input.clientActionID);
+    const [live, earlier] = await Promise.all([
+      isLiveIdentity(tx, context, caller.identityID),
+      findClientAction(tx, input.clientActionID),
+    ]);
 
-    if (earlier !== null) {
-      return earlier.procedure === 'sessions.revoke' && earlier.inputHash === inputHash
-        ? { status: 'revoked', revokedAt: Number(earlier.result['revokedAt']) }
-        : { status: 'reused' };
+    const inputHash = buildInputHash({ sessionID: input.sessionID });
+    const settled = pickSettledRevocation({ live, earlier, inputHash });
+
+    if (settled !== null) {
+      return settled;
     }
     const revokedAt = await updateRevokedAt(tx, context, { caller, sessionID: input.sessionID });
 
@@ -47,6 +53,27 @@ export function writeSessionRevocation(
     });
     return { status: 'revoked', revokedAt };
   });
+}
+
+interface RevocationState {
+  readonly live: boolean;
+  readonly earlier: ClientAction | null;
+  readonly inputHash: string;
+}
+
+// the answer a call gets without a write: refused for a caller no longer live, and for an ID that
+// came before, its first result or a refusal as reused
+function pickSettledRevocation(state: RevocationState): RevocationResult | null {
+  if (!state.live) {
+    return { status: 'unauthorized' };
+  }
+  if (state.earlier === null) {
+    return null;
+  }
+  return state.earlier.procedure === 'sessions.revoke' &&
+    state.earlier.inputHash === state.inputHash
+    ? { status: 'revoked', revokedAt: Number(state.earlier.result['revokedAt']) }
+    : { status: 'reused' };
 }
 
 interface Revocation {

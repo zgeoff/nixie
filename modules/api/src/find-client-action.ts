@@ -1,8 +1,9 @@
 import type { Transaction } from 'kysely';
 import type { APITables } from './types';
 
-interface ClientAction {
+export interface ClientAction {
   readonly procedure: string;
+  readonly identityID: string | null;
   readonly inputHash: string | null;
   readonly result: Readonly<Record<string, unknown>>;
 }
@@ -15,7 +16,7 @@ export async function findClientAction(
   const row = await tx
     .$extendTables<APITables>()
     .selectFrom('client_actions')
-    .select(['procedure', 'input_hash', 'result'])
+    .select(['procedure', 'identity_id', 'input_hash', 'result'])
     .where('client_action_id', '=', clientActionID)
     .executeTakeFirst();
 
@@ -26,5 +27,10 @@ export async function findClientAction(
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- writeClientAction wrote an object
   const result = JSON.parse(row.result) as Readonly<Record<string, unknown>>;
 
-  return { procedure: row.procedure, inputHash: row.input_hash, result };
+  return {
+    procedure: row.procedure,
+    identityID: row.identity_id,
+    inputHash: row.input_hash,
+    result,
+  };
 }

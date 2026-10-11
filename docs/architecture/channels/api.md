@@ -40,32 +40,39 @@ record reaches it.
 
 The identity record, the enrolment codes and the checked-action results are plain tables, not
 projections, because a call moves a session's last seen time without a record. Each change an audit
-needs writes a record in the same transaction: a code issued, a session enrolled with its label
-encrypted, and a session revoked.
+needs writes a record in the same transaction: a code issued, a session enrolled, and a session
+revoked. The enrolment record encrypts the device name, while the identity row keeps it in plain
+text, because the session list shows it on every device and a session's label is no message.
+
+Each checked action checks inside its own write transaction that the caller's session is still live,
+so a revoke that commits after the call resolved its session still stops the action.
 
 ## Checked actions
 
 Enrolment, code issue, revoke and message send share one table of client action IDs, which holds the
 first result of each action and a hash of its input. A retry with the same ID and input gets the
-first result, and the same ID with another procedure or input gets `CLIENT_ACTION_ID_REUSED`. Two
-results hold secrets that nixie keeps only as hashes, so their retries answer with fresh values that
-replace the first:
+first result, and the same ID with another procedure, input or caller gets
+`CLIENT_ACTION_ID_REUSED`. Two results hold secrets that nixie keeps only as hashes, so their
+retries answer with fresh values that replace the first:
 
 - The API answers an enrolment retry with the same session and a fresh token, and the first token
   stops working. It works only while the code it used would still work.
 - The API answers a code issue retry with a fresh code that keeps the first code's lapse time, so
-  one action never leaves 2 codes working.
+  one action never leaves 2 codes working. Once the first code is used or lapsed the action is over,
+  and a retry gets `CLIENT_ACTION_ID_REUSED`.
 
 ## Refusals
 
 A call whose token resolves to nobody gets a refusal record, which holds the channel, the external
 ID and the time and none of the call's content, because a stranger's input is untrusted content
-nobody asked nixie to keep. A revoked or lapsed session is refused under its session ID, and a token
-nixie never issued under the token's hash, never the token itself. A refusals projection keeps the
-last refusal time for each external ID from the record's payload, and nixie writes at most one
-refusal per external ID per refusal interval, so a stranger who keeps calling cannot fill the log. A
-call with no token at all is only signed out and writes nothing, because every signed-out page load
-and the web server's readiness check make such calls.
+nobody asked nixie to keep. A revoked or lapsed session is refused under its session ID. Every token
+nixie never issued shares one external ID, so a stranger who sends fresh random tokens still gets
+one refusal per interval, and the record never holds the token. A refusals projection keeps the last
+refusal time for each external ID from the record's payload, and nixie writes at most one refusal
+per external ID per refusal interval, so a stranger who keeps calling cannot fill the log. nixie
+reads that time before it opens a write transaction, so a refused call inside the interval writes
+nothing. A call with no token at all is only signed out and writes nothing, because every signed-out
+page load and the web server's readiness check make such calls.
 
 ## Sending a message
 

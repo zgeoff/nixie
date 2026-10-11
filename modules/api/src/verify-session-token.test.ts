@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { deriveSecretHash } from './derive-secret-hash';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { APITables } from './types';
@@ -108,7 +107,7 @@ test('it treats a call with no token as signed out and writes no refusal', async
   expect(refusals).toStrictEqual([]);
 });
 
-test('it writes a refusal for an unknown token under the token hash, never the token', async () => {
+test('it writes a refusal for an unknown token under one shared ID, never the token', async () => {
   const ctx = await setupTest();
 
   await verifySessionToken(ctx.context, 'a-token-nixie-never-issued');
@@ -123,7 +122,7 @@ test('it writes a refusal for an unknown token under the token hash, never the t
     {
       payload: JSON.stringify({
         channel: 'client',
-        externalID: deriveSecretHash('a-token-nixie-never-issued'),
+        externalID: 'unknown-token',
         refusedAt: 1_000_000,
       }),
       key_id: null,
@@ -163,15 +162,18 @@ test('it writes a refusal for a revoked session under its session ID', async () 
   ]);
 });
 
-test('it writes one refusal per external ID per hour', async () => {
+test('it writes one refusal an hour for every token nixie never issued', async () => {
   const ctx = await setupTest();
 
-  await verifySessionToken(ctx.context, 'a-token-nixie-never-issued');
+  await Promise.all(
+    Array.from({ length: 20 }, (_, index) =>
+      verifySessionToken(ctx.context, `a-random-token-${index}`),
+    ),
+  );
   ctx.clock.advance(59 * 60 * 1000);
-  await verifySessionToken(ctx.context, 'a-token-nixie-never-issued');
-  await verifySessionToken(ctx.context, 'another-token-nixie-never-issued');
+  await verifySessionToken(ctx.context, 'another-random-token');
   ctx.clock.advance(60 * 1000);
-  await verifySessionToken(ctx.context, 'a-token-nixie-never-issued');
+  await verifySessionToken(ctx.context, 'a-last-random-token');
 
   const refusals = await ctx.db
     .selectFrom('records')
@@ -181,20 +183,35 @@ test('it writes one refusal per external ID per hour', async () => {
     .execute();
 
   expect(refusals.map((refusal) => JSON.parse(refusal.payload))).toStrictEqual([
-    {
-      channel: 'client',
-      externalID: deriveSecretHash('a-token-nixie-never-issued'),
-      refusedAt: 1_000_000,
-    },
-    {
-      channel: 'client',
-      externalID: deriveSecretHash('another-token-nixie-never-issued'),
-      refusedAt: 1_000_000 + 59 * 60 * 1000,
-    },
-    {
-      channel: 'client',
-      externalID: deriveSecretHash('a-token-nixie-never-issued'),
-      refusedAt: 1_000_000 + 60 * 60 * 1000,
-    },
+    { channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 },
+    { channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 + 60 * 60 * 1000 },
+  ]);
+});
+
+test('it refuses a revoked session and an unknown token each under its own ID', async () => {
+  const ctx = await setupTest();
+
+  const session = await createDeviceSession(ctx.context, 'laptop');
+  const caller = await verifySessionToken(ctx.context, session.token);
+
+  if (caller === null) {
+    throw new Error('the session failed to resolve');
+  }
+  await writeSessionRevocation(ctx.context, caller, {
+    clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    sessionID: session.sessionID,
+  });
+  await verifySessionToken(ctx.context, 'a-token-nixie-never-issued');
+  await verifySessionToken(ctx.context, session.token);
+
+  const refusals = await ctx.db
+    .selectFrom('records')
+    .select('payload')
+    .where('kind', '=', 'identity.refused')
+    .execute();
+
+  expect(refusals.map((refusal) => JSON.parse(refusal.payload).externalID)).toStrictEqual([
+    'unknown-token',
+    session.sessionID,
   ]);
 });

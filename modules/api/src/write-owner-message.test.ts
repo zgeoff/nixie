@@ -227,3 +227,22 @@ test('it labels the whole message unknown when its spans leave a gap', async () 
     fields: { text: 'hello PASTED', spans: [{ start: 0, end: 12, source: 'unknown' }] },
   });
 });
+
+test('it refuses a caller whose session was revoked after the call resolved it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.db
+    .updateTable('identities')
+    .set({ revoked_at: 1_000_000 })
+    .where('identity_id', '=', ctx.caller.identityID)
+    .execute();
+
+  const result = await writeOwnerMessage(ctx.context, ctx.caller, {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'hello',
+    spans: [{ start: 0, end: 5, source: 'typed' }],
+  });
+
+  expect(result).toStrictEqual({ status: 'unauthorized' });
+});

@@ -4,6 +4,7 @@ import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import { findClientAction } from './find-client-action';
+import { isLiveIdentity } from './is-live-identity';
 import { normalizeSpans } from './normalize-spans';
 import type { APIContext, APITables, Identity } from './types';
 import { writeClientAction } from './write-client-action';
@@ -18,7 +19,8 @@ interface OwnerMessageInput {
 type OwnerMessageResult =
   | { readonly status: 'written'; readonly duplicate: boolean; readonly sequence: number }
   | { readonly status: 'thread_not_found' }
-  | { readonly status: 'reused' };
+  | { readonly status: 'reused' }
+  | { readonly status: 'unauthorized' };
 
 // Writes your message once per client message ID into the inbox of the task its thread names, with
 // the text and spans encrypted together. A retry answers with the first sequence, and the same ID
@@ -29,6 +31,11 @@ export async function writeOwnerMessage(
   input: OwnerMessageInput,
 ): Promise<OwnerMessageResult> {
   const written = await withWriteTransaction(context.log.writer, async (tx) => {
+    const live = await isLiveIdentity(tx, context, caller.identityID);
+
+    if (!live) {
+      return { status: 'unauthorized' } as const;
+    }
     const earlier = await findClientAction(tx, input.clientMessageId);
 
     if (earlier !== null) {

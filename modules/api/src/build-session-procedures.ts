@@ -18,6 +18,9 @@ export function buildSessionProcedures(context: APIContext) {
       if (result.status === 'reused') {
         throw options.errors.CLIENT_ACTION_ID_REUSED();
       }
+      if (result.status === 'unauthorized') {
+        throw options.errors.UNAUTHORIZED();
+      }
       return { code: result.code, expiresAt: new Date(result.expiresAt) };
     }),
 
@@ -32,11 +35,12 @@ export function buildSessionProcedures(context: APIContext) {
       const caller = await requireCaller(context, options.context, options.errors.UNAUTHORIZED);
       const result = await writeSessionRevocation(context, caller, options.input);
 
-      if (result.status === 'not_found') {
-        throw options.errors.SESSION_NOT_FOUND();
-      }
-      if (result.status === 'reused') {
-        throw options.errors.CLIENT_ACTION_ID_REUSED();
+      if (result.status !== 'revoked') {
+        throw {
+          not_found: options.errors.SESSION_NOT_FOUND,
+          reused: options.errors.CLIENT_ACTION_ID_REUSED,
+          unauthorized: options.errors.UNAUTHORIZED,
+        }[result.status]();
       }
 
       // a browser that revokes its own session drops the cookie with it

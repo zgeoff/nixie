@@ -1,7 +1,8 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import { subscribeToRecords } from '@heynixie/log';
+import { sql } from 'kysely';
 import { toContractRecord } from './to-contract-record';
-import type { APIContext, Identity } from './types';
+import type { APIContext, APITables, Identity } from './types';
 
 interface ThreadRecordsOptions {
   readonly afterSequence: number;
@@ -20,8 +21,16 @@ export async function* subscribeToThreadRecords(
   caller: Identity,
   options: ThreadRecordsOptions,
 ): AsyncGenerator<ContractRecord, void, undefined> {
+  const head = await context.log.writer.db
+    .$extendTables<APITables>()
+    .selectFrom('records')
+    .select(sql<number>`coalesce(max(sequence), 0)`.as('sequence'))
+    .executeTakeFirstOrThrow();
+
+  // a start past the head would skip the record that revokes the caller, so the stream reads from
+  // the head at most
   const entries = subscribeToRecords(context.log, {
-    afterSequence: options.afterSequence,
+    afterSequence: Math.min(options.afterSequence, head.sequence),
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
 

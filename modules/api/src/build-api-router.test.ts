@@ -412,3 +412,63 @@ test('#log.follow ends with UNAUTHORIZED once the session is revoked', async () 
   expect(isDefinedError(ended)).toBeTrue();
   expect(ended).toMatchObject({ code: 'UNAUTHORIZED' });
 });
+
+test('#log.follow started past the head still ends once the session is revoked', async () => {
+  const ctx = await setupTest();
+
+  const stream = await ctx.client.log.follow({ afterSequence: 1_000_000, thread: 'conversation' });
+  const reading = collectEvents(stream, Number.POSITIVE_INFINITY);
+
+  await ctx.client.sessions.revoke({
+    clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    sessionID: ctx.session.sessionID,
+  });
+
+  const ended = await reading.then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  expect(ended).toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
+test('#sessions.issueCode refuses a retry once its code enrolled a device', async () => {
+  const ctx = await setupTest();
+
+  const issued = await ctx.client.sessions.issueCode({
+    clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+  });
+
+  await ctx.signedOut.sessions.enrol({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    code: issued.code,
+    deviceName: 'phone',
+    tokenDelivery: 'bearer',
+  });
+
+  const retry = await safe(
+    ctx.client.sessions.issueCode({ clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60' }),
+  );
+
+  expect(retry.error).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+});
+
+test("#sessions.issueCode refuses another session's retry of the action", async () => {
+  const ctx = await setupTest();
+
+  const other = await createDeviceSession(ctx.context, 'phone');
+  const phone = createORPCClient<ContractClient>(
+    new RPCLink({
+      url: `${ctx.url}/rpc`,
+      headers: { [clientHeaderName]: 'test', authorization: `Bearer ${other.token}` },
+    }),
+  );
+
+  await ctx.client.sessions.issueCode({ clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60' });
+
+  const retry = await safe(
+    phone.sessions.issueCode({ clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60' }),
+  );
+
+  expect(retry.error).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+});

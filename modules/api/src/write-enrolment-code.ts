@@ -5,7 +5,7 @@ import { deriveSecretHash } from './derive-secret-hash';
 import { normalizeEnrolmentCode } from './normalize-enrolment-code';
 import type { APIContext, APITables } from './types';
 
-interface IssuedCode {
+export interface IssuedCode {
   readonly code: string;
   readonly codeHash: string;
   readonly expiresAt: number;

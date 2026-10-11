@@ -3,9 +3,9 @@ import { deriveSecretHash } from './derive-secret-hash';
 import type { APIContext, APITables, Identity } from './types';
 import { writeRefusal } from './write-refusal';
 
-// Resolves a device session token to its row of the identity record, or null. A token that resolves
-// to nobody gets a refusal record under its session's ID, or under its hash when nixie never issued
-// it, and never the token itself. A call with no token is only signed out.
+// Resolves a device session token to its row of the identity record, or null. A revoked or lapsed
+// session is refused under its session's ID. Every token nixie never issued shares one external ID,
+// so a stranger with fresh random tokens still gets one refusal an interval.
 export async function verifySessionToken(
   context: APIContext,
   token: string | undefined,
@@ -19,7 +19,7 @@ export async function verifySessionToken(
   if (row === undefined || !isLive(context, row)) {
     await writeRefusal(context, {
       channel: row?.channel ?? 'client',
-      externalID: row?.external_id ?? tokenHash,
+      externalID: row?.external_id ?? unknownTokenID,
     });
     return null;
   }
@@ -33,6 +33,9 @@ export async function verifySessionToken(
     lastSeenAt,
   };
 }
+
+// the external ID of every token nixie never issued, which no session ID can equal
+const unknownTokenID = 'unknown-token';
 
 type IdentityRow = APITables['identities'];
 

@@ -29,6 +29,9 @@ export function buildConversationProcedures(context: APIContext) {
       if (result.status === 'reused') {
         throw options.errors.CLIENT_ACTION_ID_REUSED();
       }
+      if (result.status === 'unauthorized') {
+        throw options.errors.UNAUTHORIZED();
+      }
       return { duplicate: result.duplicate, sequence: result.sequence };
     }),
   };
