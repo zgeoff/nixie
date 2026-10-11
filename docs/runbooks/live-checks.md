@@ -4,11 +4,11 @@ The live checks in `e2e/k3s/` run against a nixie deployed on Kubernetes from th
 [reference manifests](../architecture/deployment/kubernetes.md). They reach nixie by its URL and the
 cluster by a kubeconfig, and each suite skips until the variables it needs are set:
 
-| Suite                   | Checks                                                         | Needs                                  |
-| ----------------------- | -------------------------------------------------------------- | -------------------------------------- |
-| `conversation.test.ts`  | enrol, send a message, and get a reply that used the web fetch | the URL and the kubeconfig             |
-| `rollout.test.ts`       | the old pod stops before the new pod opens the database        | the kubeconfig and an image to roll to |
-| `fetch-sandbox.test.ts` | a fetch sandbox reaches public pages and nothing internal      | the kubeconfig and an impd token       |
+| Suite                   | Checks                                                         | Needs                                              |
+| ----------------------- | -------------------------------------------------------------- | -------------------------------------------------- |
+| `conversation.test.ts`  | enrol, send a message, and get a reply that used the web fetch | the URL and the kubeconfig                         |
+| `rollout.test.ts`       | the old pod stops before the new pod opens the database        | the kubeconfig and an image to roll to             |
+| `fetch-sandbox.test.ts` | a fetch sandbox reaches public pages and nothing internal      | the kubeconfig, an impd token and a tailnet target |
 
 The conversation check calls the model of the conversation's profile, which its provider bills. The
 rollout check restarts nixie twice.
@@ -30,15 +30,15 @@ rollout check restarts nixie twice.
 
 ## Set the variables
 
-| Variable                     | Holds                                                                      |
-| ---------------------------- | -------------------------------------------------------------------------- |
-| `NIXIE_LIVE_URL`             | the origin the ingress serves nixie on, such as `https://<host>`           |
-| `NIXIE_LIVE_KUBECONFIG`      | the path of the kubeconfig                                                 |
-| `NIXIE_LIVE_NAMESPACE`       | nixie's namespace, `nixie` when unset                                      |
-| `NIXIE_LIVE_KUBECTL`         | the kubectl binary, `kubectl` from the path when unset                     |
-| `NIXIE_LIVE_ROLL_IMAGE`      | a nixie image by digest that the StatefulSet does not run                  |
-| `NIXIE_LIVE_IMPD_TOKEN`      | an impd token with manage scope on `nixie-*`                               |
-| `NIXIE_LIVE_TAILNET_ADDRESS` | a tailnet address with a listener on port 80, `100.100.100.100` when unset |
+| Variable                    | Holds                                                                         |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `NIXIE_LIVE_URL`            | the origin the ingress serves nixie on, such as `https://<host>`              |
+| `NIXIE_LIVE_KUBECONFIG`     | the path of the kubeconfig                                                    |
+| `NIXIE_LIVE_NAMESPACE`      | nixie's namespace, `nixie` when unset                                         |
+| `NIXIE_LIVE_KUBECTL`        | the kubectl binary, `kubectl` from the path when unset                        |
+| `NIXIE_LIVE_ROLL_IMAGE`     | a nixie image by digest that the StatefulSet does not run                     |
+| `NIXIE_LIVE_IMPD_TOKEN`     | an impd token with manage scope on `nixie-*`                                  |
+| `NIXIE_LIVE_TAILNET_TARGET` | a tailnet address and port that this machine reaches, such as `100.64.0.5:80` |
 
 A variable that is set but malformed, such as a roll image with no digest, fails the run at once
 instead of skipping a suite.
@@ -91,8 +91,11 @@ variables.
   `stopped` line means the runtime killed nixie before it stopped: compare the pod's stop grace with
   the runner pools' grace in [the server](../architecture/deployment/server.md#stopping).
 - **The fetch sandbox check** fails when an address of the cluster falls outside the configuration's
-  `imp.host_addresses` and `imp.egress_deny`, when a probe connects, or when the control probe to
-  `1.1.1.1` fails. Each failed probe line holds its host and port.
+  `imp.host_addresses` and `imp.egress_deny`, when a sandbox probe connects, or when the control
+  probe to `1.1.1.1` fails. It also fails when a target does not answer a trusted probe, because a
+  target with no listener refuses the sandbox too and would pass as isolation. nixie's pod probes
+  impd, each node address on the kubelet's port, and nixie's pod and Service, and this machine
+  probes the tailnet target. Each probe line holds its host and port.
 
 ## Clean up
 

@@ -6,10 +6,12 @@ import { findUncoveredAddresses } from './test-utils/find-uncovered-addresses';
 import { loadLiveDeployment } from './test-utils/load-live-deployment';
 import { parseLiveEnv } from './test-utils/parse-live-env';
 import { requireLiveValue } from './test-utils/require-live-value';
+import type { TrustedProbeTarget } from './test-utils/run-trusted-probe';
+import { runTrustedProbe } from './test-utils/run-trusted-probe';
 import { startLiveSandboxAdapter } from './test-utils/start-live-sandbox-adapter';
 
 // A live check against a deployed nixie, which docs/runbooks/live-checks.md runs. It skips unless
-// the kubeconfig and an impd token are set, and builds its own fetch sandboxes as nixie does.
+// the kubeconfig and an impd token are set, and the isolation test needs a tailnet target too.
 const live = parseLiveEnv(process.env);
 
 async function setupTest() {
@@ -23,6 +25,7 @@ async function setupTest() {
   });
 
   return {
+    kubectl,
     adapter: sandboxes.adapter,
     stack: sandboxes.stack,
     deployment,
@@ -93,7 +96,7 @@ test.skipIf(!hasLiveTarget)(
   180_000,
 );
 
-test.skipIf(!hasLiveTarget)(
+test.skipIf(!hasLiveTarget || live.tailnetTarget === null)(
   'it lets a fetch sandbox reach the internet and never impd, the node, the pod and service ranges or the tailnet',
   async () => {
     const ctx = await setupTest();
@@ -112,31 +115,45 @@ test.skipIf(!hasLiveTarget)(
     const impdPort =
       impd.port === '' && impd.protocol === 'https:' ? 443 : Number(impd.port || '80');
 
-    // the guest cannot resolve impd's name, so this machine resolves it; each target holds a
-    // listener, so only the network can refuse the guest's connection
+    // the guest cannot resolve impd's name, so this machine resolves it and the guest probes each
+    // address; each host address is probed on the kubelet's port, which listens on every node
     const impdAddresses = await Bun.dns.lookup(impd.hostname);
-    const hostAddresses = ctx.deployment.config.imp.publicEgress?.hostAddresses ?? [];
-    const targets: readonly (readonly [string, number])[] = [
-      ...impdAddresses.map((entry) => [entry.address, impdPort] as const),
-      ...hostAddresses.map((range) => [range.split('/')[0] ?? '', impdPort] as const),
-
-      // the kubelet listens on every node, and nixie on its pod and its Service
-      ...ctx.deployment.nodeAddresses.map((address) => [address, 10_250] as const),
-      [ctx.deployment.podAddress, 8080],
-      [ctx.deployment.serviceAddress, 8080],
-
-      // imp sends every guest packet for port 53 to impd's resolver, so the tailnet probe uses 80
-      [live.tailnetAddress, 80],
+    const hostAddresses = (ctx.deployment.config.imp.publicEgress?.hostAddresses ?? [])
+      .filter((range) => !range.includes('/') || /\/(?:32|128)$/u.test(range))
+      .map((range) => range.replace(/\/\d+$/u, ''));
+    const targets: readonly TrustedProbeTarget[] = [
+      ...impdAddresses.map((entry) => ({
+        host: entry.address,
+        port: impdPort,
+        from: 'pod' as const,
+      })),
+      ...[...new Set([...hostAddresses, ...ctx.deployment.nodeAddresses])].map((host) => ({
+        host,
+        port: 10_250,
+        from: 'pod' as const,
+      })),
+      { host: ctx.deployment.podAddress, port: 8080, from: 'pod' },
+      { host: ctx.deployment.serviceAddress, port: 8080, from: 'pod' },
+      { ...requireLiveValue(live.tailnetTarget, 'NIXIE_LIVE_TAILNET_TARGET'), from: 'local' },
     ];
-    const runProbe = async ([host, port]: readonly [string, number]) => {
-      const result = await sandbox.exec(buildConnectProbe(fetchImageArgv[0] ?? 'bun', host, port));
+    const runSandboxProbe = async (target: TrustedProbeTarget) => {
+      const probe = buildConnectProbe(fetchImageArgv[0] ?? 'bun', target.host, target.port);
+      const result = await sandbox.exec(probe);
 
-      return `${host}:${port} ${new TextDecoder().decode(result.stdout.bytes).trim()}`;
+      return `${target.host}:${target.port} ${new TextDecoder().decode(result.stdout.bytes).trim()}`;
     };
 
-    const control = await runProbe(['1.1.1.1', 443]);
-    const outcomes = await Promise.all(targets.map((target) => runProbe(target)));
+    // a target with no listener refuses every network alike, so each must answer a trusted probe
+    const listeners = await Promise.all(
+      targets.map(
+        async (target) =>
+          `${target.host}:${target.port} ${await runTrustedProbe(ctx.kubectl, target)}`,
+      ),
+    );
+    const control = await runSandboxProbe({ host: '1.1.1.1', port: 443, from: 'local' });
+    const outcomes = await Promise.all(targets.map((target) => runSandboxProbe(target)));
 
+    expect(listeners).toSatisfyAll((outcome: string) => outcome.endsWith(' connected'));
     expect(control).toBe('1.1.1.1:443 connected');
     expect(outcomes).toSatisfyAll((outcome: string) => /:\d+ failed /u.test(outcome));
   },

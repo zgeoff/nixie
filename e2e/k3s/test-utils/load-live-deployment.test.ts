@@ -32,6 +32,7 @@ test('it loads the pod’s configuration and manifest and the cluster’s addres
       ].join(''),
       'jsonpath={.items[*].status.addresses[?(@.type=="InternalIP")].address}':
         '192.0.2.10 192.0.2.11',
+      'jsonpath={.items[*].status.addresses[?(@.type=="ExternalIP")].address}': '203.0.113.7',
       'jsonpath={.status.podIP}': '10.42.0.7',
       'jsonpath={.spec.clusterIP}': '10.43.0.20\n',
     }),
@@ -56,7 +57,7 @@ test('it loads the pod’s configuration and manifest and the cluster’s addres
         ref: 'ghcr.io/zgeoff/nixie-fetch@sha256:2222222222222222222222222222222222222222222222222222222222222222',
       },
     },
-    nodeAddresses: ['192.0.2.10', '192.0.2.11'],
+    nodeAddresses: ['192.0.2.10', '192.0.2.11', '203.0.113.7'],
     podAddress: '10.42.0.7',
     serviceAddress: '10.43.0.20',
   });
@@ -71,6 +72,7 @@ test('it refuses a configuration the schema refuses', async () => {
       '/etc/nixie/config.yaml': 'models: {}\n',
       '/app/sandbox-manifest.json': '{}',
       'jsonpath={.items[*].status.addresses[?(@.type=="InternalIP")].address}': '',
+      'jsonpath={.items[*].status.addresses[?(@.type=="ExternalIP")].address}': '',
       'jsonpath={.status.podIP}': '',
       'jsonpath={.spec.clusterIP}': '',
     }),

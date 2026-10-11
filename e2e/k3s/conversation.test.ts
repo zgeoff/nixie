@@ -1,48 +1,39 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { waitForCondition } from '../../libs/testing/src/index';
-import { buildLiveClient } from './test-utils/build-live-client';
+import type { LiveSession } from './test-utils/create-live-session';
+import { createLiveSession } from './test-utils/create-live-session';
 import { findTurnRecords } from './test-utils/find-turn-records';
 import { hasKindsInOrder } from './test-utils/has-kinds-in-order';
-import { parseEnrolmentCode } from './test-utils/parse-enrolment-code';
+import { isStepInFlight } from './test-utils/is-step-in-flight';
 import { parseLiveEnv } from './test-utils/parse-live-env';
 import { requireLiveValue } from './test-utils/require-live-value';
-import { runKubectl } from './test-utils/run-kubectl';
 
 // A live check against a deployed nixie, which docs/runbooks/live-checks.md runs. It skips unless
 // the URL and the kubeconfig are set.
 const live = parseLiveEnv(process.env);
 
-// Enrols a device with a code from the host command in nixie's pod, and revokes the device's
-// session when the test ends, so each run leaves no live session behind.
-type Page = Awaited<ReturnType<ReturnType<typeof buildLiveClient>['conversation']['read']>>;
+type Page = Awaited<ReturnType<LiveSession['client']['conversation']['read']>>;
 
+// Enrols a device and revokes its session when the test ends, then waits until no step of the
+// conversation is in flight, so the first step that starts after the check's message takes it.
 async function setupTest() {
-  const url = requireLiveValue(live.url, 'NIXIE_LIVE_URL');
-  const kubectl = requireLiveValue(live.kubectl, 'NIXIE_LIVE_KUBECONFIG');
-  const issued = await runKubectl(kubectl, [
-    'exec',
-    'nixie-0',
-    '--container',
-    'nixie',
-    '--',
-    'bun',
-    '/app/main.js',
-    'enrol-code',
-  ]);
-  const enrolled = await buildLiveClient(url, null).sessions.enrol({
-    clientActionID: randomUUID(),
-    code: parseEnrolmentCode(issued),
-    deviceName: 'live check',
-    tokenDelivery: 'bearer',
-  });
-  const client = buildLiveClient(url, requireLiveValue(enrolled.token ?? null, 'a bearer token'));
-
-  onTestFinished(() =>
-    client.sessions.revoke({ clientActionID: randomUUID(), sessionID: enrolled.sessionID }),
+  const session = await createLiveSession(
+    requireLiveValue(live.url, 'NIXIE_LIVE_URL'),
+    requireLiveValue(live.kubectl, 'NIXIE_LIVE_KUBECONFIG'),
   );
 
-  return { client, sessionID: enrolled.sessionID };
+  onTestFinished(() => session.revoke());
+  await waitForCondition(
+    async () => {
+      const page = await session.client.conversation.read({ thread: 'conversation', limit: 200 });
+
+      return !isStepInFlight(page.records);
+    },
+    { timeoutMs: 300_000, intervalMs: 2000 },
+  );
+
+  return { client: session.client, sessionID: session.sessionID };
 }
 
 test.skipIf(live.url === null || live.kubectl === null)(

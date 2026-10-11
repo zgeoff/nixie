@@ -76,15 +76,17 @@ upgrade changes the nixie and web digests in one pull request in the deployment 
 The live checks run from a workstation against a deployed nixie, by its URL and a kubeconfig, and
 each suite skips until its variables are set. Each one checks one guarantee of the deployment:
 
-- **The conversation.** A device enrols with a code from the host command in nixie's pod, sends a
-  message, and receives a reply that used the web fetch, with the message, the step, the tool call,
-  its result, the reply and the step's commit in order on the conversation's thread.
+- **The conversation.** A device enrols with a code from the host command in nixie's pod, waits
+  until no step is in flight, sends a message, and receives a reply that used the web fetch, with
+  the message, the step, the tool call, its result, the reply and the step's commit in order on the
+  conversation's thread.
 - **The rollout.** The StatefulSet rolls to another digest, and the old pod's last log line and its
   exit come before the new pod's writer opens the database, under a higher writer epoch.
 - **The fetch sandbox.** A fetch sandbox built from the configuration and the sandbox manifest in
   nixie's pod fetches a public page and reaches the internet. A direct connection from it to impd,
-  each node address, nixie's pod and Service, and a tailnet address fails. Every node, pod and
-  Service address falls inside the ranges the configuration lists as internal.
+  each node address, nixie's pod and Service, and a tailnet address fails, while the same target
+  answers from nixie's pod or, for the tailnet, from the machine that runs the check. Every node,
+  pod and Service address falls inside the ranges the configuration lists as internal.
 
 The checks build their own fetch sandboxes and record them in their own scratch database, so they
 never list or remove nixie's sandboxes.

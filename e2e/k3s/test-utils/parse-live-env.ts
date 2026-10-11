@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 // Where the live checks find a deployed nixie: its URL, and kubectl with a kubeconfig and the
 // namespace nixie runs in. A suite skips when a value it needs is null.
 export interface LiveEnv {
@@ -10,8 +12,13 @@ export interface LiveEnv {
   // an impd token with manage scope on nixie's sandboxes, for the fetch sandbox check
   readonly impdToken: string | null;
 
-  // a tailnet address with a listener on port 80, which the fetch sandbox must not reach
-  readonly tailnetAddress: string;
+  // a tailnet address and a port with a listener on it, which the fetch sandbox must not reach
+  readonly tailnetTarget: ProbeTarget | null;
+}
+
+export interface ProbeTarget {
+  readonly host: string;
+  readonly port: number;
 }
 
 export interface KubectlTarget {
@@ -41,7 +48,7 @@ export function parseLiveEnv(env: Env): LiveEnv {
           },
     rollImage: parseRollImage(findValue(env, 'NIXIE_LIVE_ROLL_IMAGE')),
     impdToken: findValue(env, 'NIXIE_LIVE_IMPD_TOKEN'),
-    tailnetAddress: findValue(env, 'NIXIE_LIVE_TAILNET_ADDRESS') ?? '100.100.100.100',
+    tailnetTarget: parseTailnetTarget(findValue(env, 'NIXIE_LIVE_TAILNET_TARGET')),
   };
 }
 
@@ -67,4 +74,19 @@ function parseRollImage(value: string | null): string | null {
     throw new Error(`NIXIE_LIVE_ROLL_IMAGE must name an image by its digest, not ${value}`);
   }
   return value;
+}
+
+// an address and a port, such as 100.64.0.5:80, or [fd7a:115c:a1e0::5]:80 for IPv6
+function parseTailnetTarget(value: string | null): ProbeTarget | null {
+  if (value === null) {
+    return null;
+  }
+  const match = /^(?:\[(?<v6>[\da-f:]+)\]|(?<v4>[\d.]+)):(?<port>\d{1,5})$/iu.exec(value);
+  const host = match?.groups?.['v6'] ?? match?.groups?.['v4'];
+  const port = Number(match?.groups?.['port']);
+
+  if (host === undefined || isIP(host) === 0 || port < 1 || port > 65_535) {
+    throw new Error(`NIXIE_LIVE_TAILNET_TARGET must be an address and a port, not ${value}`);
+  }
+  return { host, port };
 }

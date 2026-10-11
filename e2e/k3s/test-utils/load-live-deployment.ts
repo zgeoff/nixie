@@ -7,8 +7,8 @@ import type { KubectlTarget } from './parse-live-env';
 import { runKubectl } from './run-kubectl';
 
 // What the fetch sandbox check reads from a deployed nixie: the configuration and the sandbox
-// manifest in its running pod, and the addresses of the cluster's nodes, of nixie's pod and of
-// nixie's Service.
+// manifest in its running pod, and the addresses of the cluster's nodes, internal and external, of
+// nixie's pod and of nixie's Service.
 export interface LiveDeployment {
   readonly config: DeploymentConfig;
   readonly images: SandboxImages;
@@ -28,6 +28,12 @@ export async function loadLiveDeployment(kubectl: KubectlTarget): Promise<LiveDe
     '--output',
     'jsonpath={.items[*].status.addresses[?(@.type=="InternalIP")].address}',
   ]);
+  const externalAddresses = await runKubectl(kubectl, [
+    'get',
+    'nodes',
+    '--output',
+    'jsonpath={.items[*].status.addresses[?(@.type=="ExternalIP")].address}',
+  ]);
   const podAddress = await runKubectl(kubectl, [
     'get',
     'pod',
@@ -46,7 +52,9 @@ export async function loadLiveDeployment(kubectl: KubectlTarget): Promise<LiveDe
   return {
     config: deploymentConfigSchema.parse(Bun.YAML.parse(configText)),
     images: await loadManifestText(manifestText),
-    nodeAddresses: nodeAddresses.split(/\s+/u).filter((address) => address !== ''),
+    nodeAddresses: `${nodeAddresses} ${externalAddresses}`
+      .split(/\s+/u)
+      .filter((address) => address !== ''),
     podAddress: podAddress.trim(),
     serviceAddress: serviceAddress.trim(),
   };

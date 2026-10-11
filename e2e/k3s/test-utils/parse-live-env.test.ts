@@ -7,7 +7,7 @@ test('it leaves every value null when no variable is set', () => {
     kubectl: null,
     rollImage: null,
     impdToken: null,
-    tailnetAddress: '100.100.100.100',
+    tailnetTarget: null,
   });
 });
 
@@ -20,7 +20,7 @@ test('it reads every variable', () => {
       NIXIE_LIVE_NAMESPACE: 'assistant',
       NIXIE_LIVE_ROLL_IMAGE: `ghcr.io/zgeoff/nixie:0.1.1@sha256:${'a'.repeat(64)}`,
       NIXIE_LIVE_IMPD_TOKEN: 'impd-token',
-      NIXIE_LIVE_TAILNET_ADDRESS: '100.64.0.1',
+      NIXIE_LIVE_TAILNET_TARGET: '100.64.0.1:80',
     }),
   ).toStrictEqual({
     url: 'https://nixie.example.com',
@@ -31,7 +31,7 @@ test('it reads every variable', () => {
     },
     rollImage: `ghcr.io/zgeoff/nixie:0.1.1@sha256:${'a'.repeat(64)}`,
     impdToken: 'impd-token',
-    tailnetAddress: '100.64.0.1',
+    tailnetTarget: { host: '100.64.0.1', port: 80 },
   });
 });
 
@@ -65,3 +65,22 @@ test('it refuses a roll image that names no digest', () => {
     'NIXIE_LIVE_ROLL_IMAGE must name an image by its digest, not ghcr.io/zgeoff/nixie:0.1.1',
   );
 });
+
+test('it reads an IPv6 tailnet target in brackets', () => {
+  expect(
+    parseLiveEnv({ NIXIE_LIVE_TAILNET_TARGET: '[fd7a:115c:a1e0::5]:8080' }).tailnetTarget,
+  ).toStrictEqual({
+    host: 'fd7a:115c:a1e0::5',
+    port: 8080,
+  });
+});
+
+test.each([['100.64.0.1'], ['tailnet-host:80'], ['100.64.0.1:0'], ['999.1.1.1:80']])(
+  'it refuses the tailnet target %s',
+  (value) => {
+    expect(() => parseLiveEnv({ NIXIE_LIVE_TAILNET_TARGET: value })).toThrowWithMessage(
+      Error,
+      `NIXIE_LIVE_TAILNET_TARGET must be an address and a port, not ${value}`,
+    );
+  },
+);
