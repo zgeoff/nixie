@@ -12,10 +12,11 @@ state; and the live stream of log records.
 
 - **Checked actions.** The client creates an ID once per action and sends it on every retry, so the
   server applies the action once. A message send uses the client message ID as that ID. The server
-  refuses an ID that arrives again with a different input.
-- **Sessions.** Every procedure except enrolment needs a session. Enrolment delivers the token as an
-  `HttpOnly` cookie to a browser and in the response to the Android app. The server keeps only a
-  hash of each token, so a retried bearer enrolment receives a fresh token for the same session.
+  refuses an ID that arrives again with a different input with `CLIENT_ACTION_ID_REUSED`.
+- **Sessions.** Every procedure except enrolment declares `UNAUTHORIZED` for a call without a valid
+  session. Enrolment delivers the token as an `HttpOnly` cookie to a browser and in the response to
+  the Android app. The server keeps only a hash of each token, so a retried bearer enrolment
+  receives a fresh token for the same session.
 - **The client header.** Every call carries a custom client header, and the API refuses a call
   without it. **Why:** a cross-site form cannot send a custom header.
 - **The live stream.** A conversation read returns a page of records with the log sequence it read
@@ -32,7 +33,8 @@ keeps calling the newer server.
 
 The query helper wraps a client for TanStack Query, with every query key under `nixie`. Each client
 builds its own oRPC client and link, so the transport and the session handling stay in the client. A
-client that imports only the helpers and the contract types bundles none of the schemas.
+client that imports only the helpers and the contract types bundles none of the schemas, because the
+package declares itself free of side effects.
 
 ## Paste spans
 

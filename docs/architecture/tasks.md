@@ -37,9 +37,9 @@ before its commit, or skipped a record, then sees the rest again.
 
 ## Steps
 
-A claim takes a ready task, or a running task whose lease expired, and records the step's start
-under a step key of the task and the step number. A rerun of an interrupted step keeps its key, and
-the claim first marks the lost step interrupted.
+A claim takes a ready task, or a running task whose lease expired, and records the step's start with
+a step key of the task and the step number. A rerun of an interrupted step keeps its key, and the
+claim first marks the lost step interrupted.
 
 A step commit writes the step's records and the next state in one transaction, moves the read cursor
 and frees the lease. The commit record carries the step key, which the log holds unique, so a second

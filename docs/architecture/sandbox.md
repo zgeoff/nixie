@@ -51,9 +51,9 @@ and an allowlist onto imp's matching egress policies.
   list is empty, or when imp cannot enforce public egress. **Why:** a host address the lists leave
   out is reachable from a public imp.
 - **The tool route.** A sandbox with a tool route gets a reverse forward to a fixed loopback port in
-  the imp. The adapter relays each connection to the tool target that the server resolves from the
-  sandbox's ID and owner. imp binds the forward to its own imp, so the target never depends on what
-  the guest claims.
+  the imp. The adapter relays each connection to the tool target that the tool endpoint resolves
+  from the sandbox's ID and owner. imp binds the forward to its own imp, so the target never depends
+  on what the guest claims.
 - **Sleep and wake.** A sleep closes the forward before imp sleeps the imp, and a wake opens it
   again. Every command opens the forward first when it has closed, so the route stands again after a
   sleep that imp took on its own.
@@ -69,8 +69,8 @@ the proxy bypass list. **Why:** the tool route then skips the broker's proxy. On
 a grant starts only once imp has set the broker's variables, which exempt the loopback, and imp
 refuses a command whose env replaces any of them.
 
-A stop sends SIGTERM once, and the process is killed after a grace period. On imp, the guest agent
-kills the command's cgroup.
+A stop sends SIGTERM once, and the adapter kills the process after a grace period. On imp, the guest
+agent kills the command's cgroup.
 
 ## The process double
 

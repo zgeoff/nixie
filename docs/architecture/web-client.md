@@ -73,8 +73,8 @@ The web server answers 2 health endpoints before Start sees the request:
 The readiness check takes the API's typed refusal as proof that the API is up, and returns 503 on
 any other outcome.
 
-Every page that Start renders is private and never stored, and it varies by cookie. **Why:** a page
-holds the conversation of the session that asked for it, so no shared cache may serve it to another
+Start marks every page it renders private and uncacheable, varying by cookie. **Why:** a page holds
+the conversation of the session that asked for it, so no shared cache may serve it to another
 browser.
 
 The build bundles every dependency into Start's server entry, so the web image holds Bun and the

@@ -25,8 +25,8 @@ own, outside the transaction and its writer epoch check.
 
 ## The single writer
 
-One nixie process writes the database at a time. The writer takes 3 steps before any migration runs,
-and a failure at any step releases what the start took:
+One nixie process writes the database at a time. The writer takes 3 steps before any migration runs.
+A failure at any step releases what the earlier steps took:
 
 1. **The filesystem check.** nixie refuses to start on a network filesystem. **Why:** the writer
    lock and SQLite's own locks hold only between processes on one kernel.
@@ -46,6 +46,9 @@ second process write, and the epoch stops that process at its next write. The wr
 epoch raise against write transactions: a write that began before the raise commits first, and no
 write under the older epoch commits after it.
 
+The writer epoch's table exists before any migration, because the epoch rises before the first
+migration runs.
+
 ## Migrations
 
 The migration runner brings the database to the schema the build writes. The build's migrations form
@@ -64,12 +67,13 @@ that list and never changes a released one.
   rename waits until the release before no longer needs that shape.
 
 The schema version is stored with its oldest reader: the oldest schema version whose build can still
-read and write the database. A build that meets a newer schema runs on it unchanged when its own
-version reaches the oldest reader. Otherwise it refuses to start, and the error points at the newest
-pre-migration copy it can read, or at a backup when no copy exists. **Why:** a release that keeps
-the schema readable leaves the oldest reader where it was, so reverting one release needs no restore
-and loses no writes. A release that breaks the release before raises the oldest reader, and its pull
-request says so.
+read and write the database. A failed upgrade leaves an oldest reader no newer than the version it
+reached, so the build before can still open it. A build that meets a newer schema runs on it
+unchanged when its own version reaches the oldest reader. Otherwise it refuses to start, and the
+error points at the newest pre-migration copy it can read, or at a backup when no copy exists.
+**Why:** a release that keeps the schema readable leaves the oldest reader where it was, so
+reverting one release needs no restore and loses no writes. A release that breaks the release before
+raises the oldest reader.
 
 ## Key store IDs
 

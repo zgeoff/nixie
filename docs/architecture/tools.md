@@ -13,7 +13,7 @@ declaration, how the tool runs, and its code. The registry refuses a definition 
 these rules:
 
 - A name appears once.
-- The input schema and the output are objects.
+- The input schema and the output schema both describe objects.
 - Every top-level output field has a source of content in the declaration.
 - A tool whose effects reach outside nixie, such as a write, a send or a spend, runs queued as an
   [action](actions.md), and every other tool runs direct. **Why:** a read retried after a crash
@@ -51,8 +51,9 @@ Each call runs in order:
 1. The endpoint checks the input of a listed tool against the input schema.
 2. It asks the decision point, with the run's tool list.
 3. It records the call with the decision, before the tool runs.
-4. It runs an allowed direct tool, or queues an allowed queued call as an action and waits for its
-   outcome.
+4. It runs an allowed direct tool, or passes an allowed queued call to the action queue and waits
+   for its outcome. The action queue is an interface that the actions module implements, so tools
+   never imports actions.
 5. It checks a typed result against the output schema and records the result.
 
 ### Records
@@ -72,8 +73,8 @@ count as your data.
 
 The socket a connection arrives on decides its run, and the bearer token is a second check:
 
-- The sandbox adapter resolves a sandbox's owner, which is its run, to that run's socket, and relays
-  each guest connection there, so a guest never picks its run.
+- The tool endpoint resolves a sandbox's owner, which is its run, to that run's socket. The sandbox
+  adapter relays each guest connection there, so a guest never picks its run.
 - A request with another token, another run's token included, gets a 401.
 - Stopping a run revokes its token, closes every open stream and removes the socket. A run started
   again under the same ID gets a new token.

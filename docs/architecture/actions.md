@@ -14,9 +14,9 @@ runner that lost its lease queues nothing. Each action gets a random ID, which i
 and the idempotency key the connector sends. The arguments sit in the record's erasable fields, and
 the decision sits on its envelope.
 
-A repeat call with the same action hash returns the earlier action and queues nothing, when the
-earlier action came from the same step or is still pending or unknown. **Why:** the rerun of a
-crashed step makes the same calls again, and an action that ran must never run twice.
+A repeat call with the same action hash returns the earlier action of the same task and queues
+nothing, when that action came from the same step or is still pending or unknown. **Why:** the rerun
+of a crashed step makes the same calls again, and an action that ran must never run twice.
 
 ## Attempts and outcomes
 
@@ -53,8 +53,7 @@ outage, and an action still failing after that needs you more than another attem
 
 The model's turn waits a bounded time for the outcome, then sees one of 4 views: done with the
 connector's result, failed with the reason, pending with the action ID, or unknown with a note that
-you were asked whether the action happened. The model has no tool that retries an action or sets an
-outcome.
+the action may have happened. The model has no tool that retries an action or sets an outcome.
 
 ## Runners and recovery
 

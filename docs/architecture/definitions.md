@@ -5,7 +5,7 @@ database, and builds the snapshot hash that every record carries. A source retur
 files with a content hash. The seed parses the snapshot and puts its persona in force under a
 snapshot hash. The content hash covers the source files, and the snapshot hash covers the
 definitions in force, so the 2 hashes differ for the same files. A local path is the one source
-built.
+built, and it lives in the module because it reaches nothing outside nixie.
 
 ## Sources and snapshots
 

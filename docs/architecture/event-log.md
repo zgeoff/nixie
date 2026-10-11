@@ -42,11 +42,11 @@ would keep every key deleted after it.
 The key commits before its record. A failed record write therefore leaves an unused key, and never a
 record whose key is missing.
 
-Removing a key checkpoints the key store, so neither the file nor its write-ahead log holds the
-wrapped key afterwards. A reader that holds the key store open blocks the checkpoint, and the
-removal fails until a retry finishes it. The record keeps its envelope and payload, and its erasable
-fields read as shredded. The database holds no full-text index over erasable fields, because an
-index would keep the plaintext after its key is gone.
+Removing a key checks the writer epoch first, then checkpoints the key store, so neither the file
+nor its write-ahead log holds the wrapped key afterwards. A connection that holds a read on the key
+store blocks the checkpoint, and the removal fails until a retry finishes it. The record keeps its
+envelope and payload, and its erasable fields read as shredded. The database holds no full-text
+index over erasable fields, because an index would keep the plaintext after its key is gone.
 
 ## Projections
 
