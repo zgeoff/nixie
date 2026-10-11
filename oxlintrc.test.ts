@@ -1,3 +1,4 @@
+// oxlint-disable zgeoff/test-beside-module -- tests .oxlintrc.json, a dot-file the rule does not match; GEO-436 renames it
 import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
