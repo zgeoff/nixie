@@ -11,6 +11,10 @@ export interface Candidate {
   pooling?: 'mean' | 'cls' | 'none';
   queryPrefix: string;
   docPrefix: string;
+  // keep the first `dims` numbers of each vector and normalise again, as Matryoshka training allows
+  dims?: number;
+  // store each number as int8 over [-0.3, 0.3], the range the arctic-embed-m-v1.5 card gives
+  vectors?: 'int8';
 }
 
 const BGE_QUERY = 'Represent this sentence for searching relevant passages: ';
@@ -170,5 +174,70 @@ export const CANDIDATES: Candidate[] = [
     pooling: 'cls',
     queryPrefix: BGE_QUERY,
     runner: 'ort-node',
+  },
+  {
+    dims: 512,
+    docPrefix: '',
+    dtype: 'q8',
+    id: 'leaf-ir-q8-ort-512',
+    model: 'MongoDB/mdbr-leaf-ir',
+    queryPrefix: BGE_QUERY,
+    runner: 'ort-node',
+  },
+  {
+    dims: 384,
+    docPrefix: '',
+    dtype: 'q8',
+    id: 'leaf-ir-q8-ort-384',
+    model: 'MongoDB/mdbr-leaf-ir',
+    queryPrefix: BGE_QUERY,
+    runner: 'ort-node',
+  },
+  {
+    dims: 256,
+    docPrefix: '',
+    dtype: 'q8',
+    id: 'leaf-ir-q8-ort-256',
+    model: 'MongoDB/mdbr-leaf-ir',
+    queryPrefix: BGE_QUERY,
+    runner: 'ort-node',
+  },
+  {
+    dims: 128,
+    docPrefix: '',
+    dtype: 'q8',
+    id: 'leaf-ir-q8-ort-128',
+    model: 'MongoDB/mdbr-leaf-ir',
+    queryPrefix: BGE_QUERY,
+    runner: 'ort-node',
+  },
+  {
+    dims: 256,
+    docPrefix: '',
+    dtype: 'q8',
+    id: 'leaf-ir-q8-ort-256-int8',
+    model: 'MongoDB/mdbr-leaf-ir',
+    queryPrefix: BGE_QUERY,
+    runner: 'ort-node',
+    vectors: 'int8',
+  },
+  {
+    docPrefix: '',
+    dtype: 'q8',
+    id: 'leaf-ir-q8-ort-int8',
+    model: 'MongoDB/mdbr-leaf-ir',
+    queryPrefix: BGE_QUERY,
+    runner: 'ort-node',
+    vectors: 'int8',
+  },
+  {
+    docPrefix: '',
+    dtype: 'q8',
+    id: 'arctic-s-q8-ort-int8',
+    model: 'Snowflake/snowflake-arctic-embed-s',
+    pooling: 'cls',
+    queryPrefix: BGE_QUERY,
+    runner: 'ort-node',
+    vectors: 'int8',
   },
 ];
