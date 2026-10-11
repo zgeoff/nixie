@@ -1,7 +1,7 @@
 // Reads the next count events of a live stream and returns them, leaving the stream open, so a
 // test reads a stream to a known point and never loops on its own.
 export async function collectEvents<T>(
-  stream: AsyncIterator<T, unknown>,
+  stream: Readonly<{ next: () => Promise<IteratorResult<T, unknown>> }>,
   count: number,
 ): Promise<readonly T[]> {
   const events: T[] = [];

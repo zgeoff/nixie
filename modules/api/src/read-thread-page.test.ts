@@ -40,11 +40,9 @@ test('it reads the page before a sequence, newest last', async () => {
     limit: 1,
   });
 
-  expect(page).toStrictEqual({
-    hasEarlier: true,
-    readAtSequence: three.sequence,
-    records: [expect.objectContaining({ message: expect.objectContaining({ text: 'two' }) })],
-  });
+  expect(page?.hasEarlier).toBeTrue();
+  expect(page?.readAtSequence).toBe(three.sequence);
+  expect(page?.records.map((record) => record.message?.text)).toStrictEqual(['two']);
 });
 
 test('it reads a whole short thread with no earlier page', async () => {

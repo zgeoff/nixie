@@ -9,7 +9,7 @@ import { writeOwnerMessage } from './write-owner-message';
 export function buildConversationProcedures(context: APIContext) {
   return {
     read: apiImplementer.conversation.read.handler(async (options) => {
-      await requireCaller(context, options.context, options.errors.UNAUTHORIZED);
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       const page = await readThreadPage(context, options.input);
 
@@ -20,7 +20,11 @@ export function buildConversationProcedures(context: APIContext) {
     }),
 
     send: apiImplementer.conversation.send.handler(async (options) => {
-      const caller = await requireCaller(context, options.context, options.errors.UNAUTHORIZED);
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
       const result = await writeOwnerMessage(context, caller, options.input);
 
       if (result.status === 'thread_not_found') {

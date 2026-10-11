@@ -19,6 +19,8 @@ export function buildAPIApp(context: APIContext) {
 
   return new Elysia().all(
     '/rpc*',
+
+    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
     async (route: RouteContext) => {
       const request = route.request;
 
@@ -37,6 +39,7 @@ export function buildAPIApp(context: APIContext) {
 }
 
 // a bearer token wins over the cookie, so a server render forwards exactly the browser's session
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Headers has no readonly form
 function findSessionToken(headers: Headers): APIRequestContext {
   const bearer = /^Bearer (?<token>\S+)$/u.exec(headers.get('authorization') ?? '');
 

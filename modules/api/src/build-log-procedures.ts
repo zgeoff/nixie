@@ -9,7 +9,11 @@ import type { APIContext } from './types';
 export function buildLogProcedures(context: APIContext) {
   return {
     follow: apiImplementer.log.follow.handler(async function* followLog(options) {
-      const caller = await requireCaller(context, options.context, options.errors.UNAUTHORIZED);
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
       const records = subscribeToThreadRecords(context, caller, {
         afterSequence: pickAfterSequence(options.input.afterSequence, options.lastEventId),
         thread: options.input.thread,

@@ -8,10 +8,8 @@ test('it issues a code that lapses in 15 minutes', async () => {
 
   const result = await createEnrolmentCode(ctx.context);
 
-  expect(result).toStrictEqual({
-    code: expect.stringMatching(/^[0-9A-Z]{5}-[0-9A-Z]{5}$/u),
-    expiresAt: new Date(1_000_000 + 15 * 60 * 1000),
-  });
+  expect(result.code).toMatch(/^[0-9A-Z]{5}-[0-9A-Z]{5}$/u);
+  expect(result.expiresAt).toStrictEqual(new Date(1_000_000 + 15 * 60 * 1000));
 });
 
 test('it records the code as issued by the host, without the code', async () => {

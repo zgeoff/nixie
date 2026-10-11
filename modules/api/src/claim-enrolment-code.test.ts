@@ -182,7 +182,10 @@ test('it replaces the first token with the token a retry answers', async () => {
     verifySessionToken(ctx.context, retry.token),
   ]);
 
-  expect(callers).toStrictEqual([null, expect.objectContaining({ identityID: first.sessionID })]);
+  expect(callers.map((caller) => caller?.identityID ?? null)).toStrictEqual([
+    null,
+    first.sessionID,
+  ]);
 });
 
 test('it refuses a retry once the code it used has lapsed', async () => {

@@ -182,9 +182,13 @@ test('it writes one refusal an hour for every token nixie never issued', async (
     .orderBy('sequence')
     .execute();
 
-  expect(refusals.map((refusal) => JSON.parse(refusal.payload))).toStrictEqual([
-    { channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 },
-    { channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 + 60 * 60 * 1000 },
+  expect(refusals.map((refusal) => refusal.payload)).toStrictEqual([
+    JSON.stringify({ channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 }),
+    JSON.stringify({
+      channel: 'client',
+      externalID: 'unknown-token',
+      refusedAt: 1_000_000 + 60 * 60 * 1000,
+    }),
   ]);
 });
 
@@ -210,8 +214,8 @@ test('it refuses a revoked session and an unknown token each under its own ID', 
     .where('kind', '=', 'identity.refused')
     .execute();
 
-  expect(refusals.map((refusal) => JSON.parse(refusal.payload).externalID)).toStrictEqual([
-    'unknown-token',
-    session.sessionID,
+  expect(refusals.map((refusal) => refusal.payload)).toStrictEqual([
+    JSON.stringify({ channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 }),
+    JSON.stringify({ channel: 'client', externalID: session.sessionID, refusedAt: 1_000_000 }),
   ]);
 });
