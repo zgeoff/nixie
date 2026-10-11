@@ -65,9 +65,12 @@ decides them. The tests skip unless the variables below are set.
 
    `NIXIE_IMP_TEST_EGRESS_DENY` takes the list that impd reads from `IMP_EGRESS_DENY`, and
    `NIXIE_IMP_TEST_TAILNET_ADDRESS` replaces the tailnet address probed, `100.100.100.100` by
-   default. The test probes that address on port 443. imp sends every IPv4 packet that a guest sends
-   to port 53 to impd's own resolver, so a connection on port 53 succeeds whatever the address, and
-   it shows nothing about whether the sandbox reaches the tailnet.
+   default. The test probes that address on port 80, where the tailnet's resolver answers HTTP. imp
+   sends every IPv4 packet that a guest sends to port 53 to impd's own resolver, so a connection on
+   port 53 succeeds whatever the address, and it shows nothing about whether the sandbox reaches the
+   tailnet. A replacement address needs a listener on port 80, because a refused connection passes
+   the test whether the network or the peer refused it. The test resolves impd's name on the machine
+   that runs it and probes each address, because the guest cannot resolve that name.
 
 Expect `0 fail`, with no skipped test. Each test destroys the imps it created when it ends; a run
 that you stop with Ctrl-C leaves them, each named `nixie-<id>`.
