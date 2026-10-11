@@ -302,3 +302,18 @@ test('an exec that stops reading stdin early still reports its exit', async () =
 
   expect(result).toMatchObject({ code: 0, stdout: { totalBytes: 1 } });
 });
+
+test('it accepts a secret and records nothing, because the double injects no grant', async () => {
+  const ctx = await setupProcessAdapter();
+
+  await ctx.adapter.addSecret({
+    name: 'model-chat-1',
+    value: 'not-a-real-key',
+    host: 'api.anthropic.com',
+    header: 'x-api-key',
+  });
+
+  const records = await ctx.readSandboxRecords();
+
+  expect(records).toStrictEqual([]);
+});

@@ -1,0 +1,17 @@
+import type { TasksContext, TasksTables } from './types';
+
+// Reads the session boundary that a task's last committed step recorded, or null before its first
+// commit.
+export async function readSessionBoundary(
+  context: Pick<TasksContext, 'log'>,
+  taskID: string,
+): Promise<string | null> {
+  const task = await context.log.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('session_boundary')
+    .where('task_id', '=', taskID)
+    .executeTakeFirstOrThrow();
+
+  return task.session_boundary;
+}

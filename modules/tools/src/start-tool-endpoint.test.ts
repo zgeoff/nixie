@@ -45,6 +45,7 @@ test("it lists only the run's tools, each with its name, description and input s
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
   const client = await startRunClient(run);
 
@@ -75,6 +76,7 @@ test('it denies a registered tool missing from the run list at the scope stage w
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
   const client = await startRunClient(run);
 
@@ -96,6 +98,7 @@ test('it records the tool-use ID that the call carries in _meta', async () => {
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
   const client = await startRunClient(run);
 
@@ -121,6 +124,7 @@ test('it returns a typed result to the client as structured content with no text
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
   const client = await startRunClient(run);
 
@@ -135,6 +139,7 @@ test('it refuses a request with no bearer token', async () => {
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
 
   const response = await Bun.fetch('http://localhost/mcp', {
@@ -153,11 +158,13 @@ test("it refuses another run's token on this run's socket", async () => {
     runID: 'run-a',
     thread: 'task-a',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
   const runB = await ctx.endpoint.startRun({
     runID: 'run-b',
     thread: 'task-b',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
 
   const response = await Bun.fetch('http://localhost/mcp', {
@@ -176,6 +183,7 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
 
   await ended.stop();
@@ -184,6 +192,7 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
   const response = await Bun.fetch('http://localhost/mcp', {
     method: 'POST',
@@ -202,6 +211,7 @@ test('it stops listening on the run socket when the run ends', async () => {
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
 
   await run.stop();
@@ -221,6 +231,7 @@ test('it gives a sandbox the socket of the run that owns it', async () => {
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
 
   expect(ctx.endpoint.getToolTarget({ id: 'nixie-0123', owner: 'run-1' })).toStrictEqual(
@@ -234,6 +245,7 @@ test('it sends the listen acknowledgement while the listen stream stays open', a
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
   });
   const response = await Bun.fetch('http://localhost/mcp', {
     method: 'POST',

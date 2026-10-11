@@ -53,9 +53,45 @@ test('it gives the step its unread inbox and commits what the step returns', asy
       taskID: 'conversation',
       stepKey: 'conversation:1',
       inbox: [{ sequence: 2, erasable: { fields: { text: 'what is on today?' } } }],
+      sessionBoundary: null,
     },
   ]);
   expect(task).toMatchObject({ state: 'waiting', read_cursor: 2 });
+});
+
+test('it gives the next step the session boundary the last commit recorded', async () => {
+  const ctx = await setupTest();
+  const inputs: StepInput[] = [];
+
+  await runTaskStep(ctx.context, ctx.claim, {
+    runStep: () =>
+      Promise.resolve<StepResult>({
+        next: 'continue',
+        records: [],
+        acknowledged: [2],
+        sessionBoundary: 'boundary-1',
+      }),
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+  });
+
+  const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  if (next === null) {
+    throw new Error('the second claim found no task');
+  }
+  await runTaskStep(ctx.context, next, {
+    runStep: (input) => {
+      inputs.push(input);
+      return Promise.resolve<StepResult>({ next: 'wait', records: [], acknowledged: [] });
+    },
+    leaseMs: 60_000,
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+  });
+
+  expect(inputs).toMatchObject([{ stepKey: 'conversation:2', sessionBoundary: 'boundary-1' }]);
 });
 
 test('it records the error when the step throws', async () => {

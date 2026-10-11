@@ -61,6 +61,9 @@ export function buildProcessSandboxAdapter(options: ProcessSandboxOptions): Sand
 
       return rows.map((row) => getSandbox(row.sandboxID, row.spec));
     },
+
+    // the double injects no grant, so it holds no secret
+    addSecret: () => Promise.resolve(),
   };
 }
 

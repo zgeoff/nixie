@@ -59,6 +59,10 @@ export interface StepInput {
   readonly lease: Lease;
   readonly inbox: readonly LogRecord[];
 
+  // the session boundary the last committed step recorded, where a turn resumes; null before the
+  // first commit
+  readonly sessionBoundary: string | null;
+
   // aborts when the lease is lost, so the step stops work that can no longer commit
   readonly signal: AbortSignal;
 }

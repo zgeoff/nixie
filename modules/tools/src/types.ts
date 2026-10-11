@@ -71,6 +71,16 @@ export interface ToolRun {
   // the caller's tool list: the job's list for a job run, the conversation's list for the
   // conversation, and the subset the caller passed for a worker
   readonly tools: readonly string[];
+
+  // the model profile in force for the run's model loop, which every call's record carries
+  readonly model: ToolRunModel;
+}
+
+// The model ID and the profile name of a run, set from the profile nixie started the run with and
+// never from anything the model sends.
+export interface ToolRunModel {
+  readonly model: string;
+  readonly profile: string;
 }
 
 // An allowed queued call, as the endpoint hands it to the action queue.

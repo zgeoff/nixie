@@ -106,7 +106,8 @@ async function setupTest() {
 
 test("a test build's tool route takes a guest to its run's endpoint and passes each chunk as it arrives", async () => {
   const ctx = await setupTest();
-  const run = await ctx.endpoint.startRun({ runID: 'run-1', thread: 'task-1', tools: [] });
+  const model = { model: 'model-a', profile: 'chat-direct' };
+  const run = await ctx.endpoint.startRun({ runID: 'run-1', thread: 'task-1', tools: [], model });
   const sandbox = await ctx.adapter.create({
     kind: 'conversation',
     image: 'conversation',

@@ -34,6 +34,7 @@ export type {
   SandboxRef,
   SandboxRow,
   SandboxSpec,
+  SecretSpec,
   SpawnSpec,
   StreamExit,
   Suspension,
