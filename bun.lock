@@ -108,6 +108,18 @@
       "name": "@heynixie/wire",
       "version": "0.0.0",
     },
+    "modules/actions": {
+      "name": "@heynixie/actions",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/log": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "kysely": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+      },
+    },
     "modules/definitions": {
       "name": "@heynixie/definitions",
       "version": "0.0.0",
@@ -138,6 +150,18 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
+      },
+    },
+    "modules/tasks": {
+      "name": "@heynixie/tasks",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "kysely": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
       },
     },
     "modules/tools": {
@@ -285,6 +309,8 @@
 
     "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.14.5", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.14.5" } }, "sha512-B05ID9DhSwLs6mlm1fzlkAtTIvB3duCvjJjfr19LBrlTK7VZtRjDqoTRIVv13GuYuNdhByu8LSZgThwV3Rkj7g=="],
 
+    "@heynixie/actions": ["@heynixie/actions@workspace:modules/actions"],
+
     "@heynixie/contract": ["@heynixie/contract@workspace:libs/contract"],
 
     "@heynixie/db": ["@heynixie/db@workspace:libs/db"],
@@ -302,6 +328,8 @@
     "@heynixie/sandbox-process": ["@heynixie/sandbox-process@workspace:adapters/sandbox-process"],
 
     "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
+
+    "@heynixie/tasks": ["@heynixie/tasks@workspace:modules/tasks"],
 
     "@heynixie/testing": ["@heynixie/testing@workspace:libs/testing"],
 
