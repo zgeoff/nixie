@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startNixieProcess } from './start-nixie-process';
+import { isProcessGone } from './test-utils/is-process-gone';
 import { waitForCondition } from './wait-for-condition';
 
 function setupTest() {
@@ -81,14 +81,10 @@ test('it kills nixie and every process nixie started', async () => {
 
   const exit = await nixie.kill();
 
-  // the killed child stays a zombie until its new parent reaps it
-  await waitForCondition(
-    () =>
-      !existsSync(`/proc/${childPID}`) ||
-      readFileSync(`/proc/${childPID}/stat`, 'utf8').includes(') Z '),
-  );
+  await waitForCondition(() => isProcessGone(childPID)).catch(() => null);
 
   expect(exit).toStrictEqual({ code: null, signal: 'SIGKILL' });
+  expect(isProcessGone(childPID)).toBe(true);
 });
 
 test('it rejects a request that a kill cut short', async () => {

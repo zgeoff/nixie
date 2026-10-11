@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { existsSync, readFileSync } from 'node:fs';
 import { collectDescendants } from './collect-descendants';
 import { stopProcesses } from './stop-processes';
+import { isProcessGone } from './test-utils/is-process-gone';
 import { waitForCondition } from './wait-for-condition';
 
 test('it kills a process and every member of the group it leads', async () => {
@@ -20,15 +20,10 @@ test('it kills a process and every member of the group it leads', async () => {
   stopProcesses([leader.pid]);
   await leader.exited;
 
-  // a killed member stays a zombie until init reaps it
-  const isMemberGone = (): boolean =>
-    !existsSync(`/proc/${memberPID}`) ||
-    readFileSync(`/proc/${memberPID}/stat`, 'utf8').includes(') Z ');
-
-  await waitForCondition(isMemberGone).catch(() => null);
+  await waitForCondition(() => isProcessGone(Number(memberPID))).catch(() => null);
 
   expect(leader.signalCode).toBe('SIGKILL');
-  expect(isMemberGone()).toBe(true);
+  expect(isProcessGone(Number(memberPID))).toBe(true);
 });
 
 test('it skips a process that is already gone', async () => {
