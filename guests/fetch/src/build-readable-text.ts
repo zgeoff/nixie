@@ -8,12 +8,18 @@ const blockSelector = [
   'summary, table, tbody, thead, tfoot, tr, td, th, ul',
 ].join(', ');
 
-// Builds an HTML page's readable text: the text nodes outside hidden elements, with entities
-// decoded, a line break around each block and each br, and runs of white space collapsed.
+// Builds an HTML page's readable text: its title, then the text nodes outside hidden elements, with
+// entities decoded, a line break around each block and each br, and runs of white space collapsed.
 export function buildReadableText(html: string): string {
   const parts: string[] = [];
+  const title: string[] = [];
   const hidden = { depth: 0 };
   const rewriter = new HTMLRewriter()
+    .on('title', {
+      text: (text) => {
+        title.push(text.text);
+      },
+    })
     .on(hiddenSelector, {
       element: (element) => {
         hidden.depth += 1;
@@ -46,7 +52,7 @@ export function buildReadableText(html: string): string {
     });
 
   rewriter.transform(html);
-  return normalizeWhitespace(decodeEntities(parts.join('')));
+  return normalizeWhitespace(decodeEntities(`${title.join(' ')}\n\n${parts.join('')}`));
 }
 
 const namedEntities: Readonly<Record<string, string>> = {

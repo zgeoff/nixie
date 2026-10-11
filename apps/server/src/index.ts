@@ -5,3 +5,5 @@ export { deploymentConfigSchema } from './deployment-config-schema';
 export { loadDeploymentConfig } from './load-deployment-config';
 export type { ConversationOptions } from './start-conversation';
 export { startConversation } from './start-conversation';
+export type { WebFetch, WebFetchOptions } from './start-web-fetch';
+export { fetchImageArgv, startWebFetch } from './start-web-fetch';

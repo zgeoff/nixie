@@ -29,7 +29,7 @@ test('it returns the readable text of an HTML page over a connection to the chec
     url: `https://site.test:${site.port}/page?q=1`,
     status: 200,
     contentType: 'text/html; charset=utf-8',
-    text: 'Hello\n\nworld',
+    text: 't\n\nHello\n\nworld',
     isTruncated: false,
   });
   expect(resolveHost).toHaveBeenCalledExactlyOnceWith('site.test');

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildReadableText } from './build-readable-text';
 
-test('it returns the readable text of a page', () => {
+test('it returns the title and the readable text of a page', () => {
   const html = `<!doctype html>
 <html>
   <head><title>Example</title><style>p { color: red }</style></head>
@@ -16,7 +16,7 @@ test('it returns the readable text of a page', () => {
 </html>`;
 
   expect(buildReadableText(html)).toBe(
-    'Example Domain\n\nThis domain is for use in examples.\nSecond line.\n\none\n\ntwo',
+    'Example\n\nExample Domain\n\nThis domain is for use in examples.\nSecond line.\n\none\n\ntwo',
   );
 });
 
