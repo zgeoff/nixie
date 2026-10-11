@@ -84,19 +84,32 @@ function readToken(profile: Profile): string {
 
 // The SDK replaces the child's environment, so pass only what it needs and one credential.
 // A profile runs in bare mode, which drops the environment, model, and date reminders, and goes
-// through the proxy, which drops the CLI's own system blocks.
+// through the proxy, which drops the CLI's own system blocks. A profile also gets an empty home, so
+// the owner's Claude Code settings, such as auto-mode rules, never reach another provider.
 function buildEnv(profile: Profile | undefined): Record<string, string> {
-  const base = { HOME: process.env.HOME ?? '', PATH: process.env.PATH ?? '' };
+  const path = process.env.PATH ?? '';
   if (!profile) {
-    return { ...base, CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '' };
+    return {
+      CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '',
+      HOME: process.env.HOME ?? '',
+      PATH: path,
+    };
   }
+  const home = createEmptyHome();
   return {
-    ...base,
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     CLAUDE_CODE_SIMPLE: '1',
+    CLAUDE_CONFIG_DIR: join(home, '.claude'),
+    HOME: home,
+    PATH: path,
     ...profile.env,
     ANTHROPIC_AUTH_TOKEN: readToken(profile),
     ANTHROPIC_BASE_URL: startProxy(profile.baseUrl),
   };
+}
+
+function createEmptyHome(): string {
+  return mkdtempSync(join(tmpdir(), 'model-eval-home-'));
 }
 
 export function buildOptions(settings: Settings, persona: string): Options {
