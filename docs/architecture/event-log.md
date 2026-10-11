@@ -1,102 +1,82 @@
 # The event log
 
-`modules/log` writes every record nixie keeps to the `records` table in `nixie.db`, and nothing
-changes a record once it is written. Each record carries a plaintext envelope and a plain payload of
-structured data. Its free-text fields are encrypted under a key of its own, which lives in a key
-store apart from the database. The projections that answer questions about the log change in the
-same transaction as the record that changes them, and a reader follows the log by sequence with the
-projection rows each record changed.
+`modules/log` writes every record nixie keeps to one append-only table, and nothing changes a record
+once it is written. Each record carries a plaintext envelope and a plain payload of structured data.
+Its free-text fields are encrypted under a key of its own, which lives in a key store apart from the
+database. Projections change in the same transaction as the record that changes them, and a reader
+follows the log by sequence together with the projection rows each record changed.
 
 ## What a record holds
 
-`writeRecords` is the append API. It takes one or more records and writes them in one write
-transaction through `withWriteTransaction`, so the writer epoch check opens it.
-`writeRecordsInTransaction` appends inside a write transaction the caller already holds, so a
-module's own rows and the records that describe them commit together, as the
-[definitions seed](definitions.md#seeding) does.
+The envelope holds what a replay or an audit reads without the free text: the sequence, the time,
+the kind, the thread, the step key, the parent record, the source of content, the decision, the
+prompt cause, the definitions in force and the approval. The payload holds the kind's structured
+data. The erasable fields hold the kind's free text.
 
-| Part              | Holds                                                                  |
-| ----------------- | ---------------------------------------------------------------------- |
-| Sequence          | The integer primary key, which orders the record in the log            |
-| Time              | When nixie wrote the record                                            |
-| Kind              | Such as `owner_message` or `tool_called`                               |
-| Thread            | The conversation or the task the record belongs to, or none            |
-| Step key          | The task step that wrote it, unique so a step commits once             |
-| Parent            | The sequence of the record that caused it                              |
-| Source of content | `owner`, `owner_data` or `untrusted`                                   |
-| Decision          | Outcome, stage, rule and revision, destinations, consent and auto-mode |
-| Prompt cause      | One of the 6 prompt causes                                             |
-| Definitions       | The snapshot hash, and the persona and job versions the task pins      |
-| Approval          | Proposal ID, approval ID and action hash                               |
-| Payload           | The kind's structured data, in plain JSON                              |
-| Erasable fields   | The kind's free text, as AES-256-GCM ciphertext under the record's key |
+- **Sequence.** The sequence orders the log. SQLite allows one writer, so the sequence grows in
+  commit order, and a reader that asks for the records after a sequence misses none.
+- **Step key.** The step key is unique across the log, so a task step commits once
+  ([tasks](tasks.md#steps)).
+- **Definitions.** The log refuses a batch with a record that carries no snapshot hash, before it
+  writes any key or row. **Why:** a replay of a decision needs the definitions that were in force.
+- **Corrections.** Triggers refuse every update and delete. A correction is a new record whose
+  parent is the record it corrects.
 
-`writeRecords` refuses the whole batch with `MissingDefinitionsError` when a record carries no
-snapshot hash, before it writes any key or row. **Why:** a replay of a decision needs the
-definitions that were in force, and the caller takes the hash from the writer's context.
-
-Triggers on `records` refuse every update and delete with `records are append-only`. A correction is
-a new record whose parent is the record it corrects.
+A batch of records commits in one write transaction behind the writer epoch check. A module can
+append inside a write transaction it already holds, so its own rows and the records that describe
+them commit together, as the [definitions seed](definitions.md#seeding) does.
 
 ## Erasable fields and the key store
 
-A caller puts every free-text field, such as message text, tool arguments and tool results, in
-`erasable`, never in `payload`. For a record with erasable fields, `writeRecords` creates a random
-AES-256-GCM key, wraps it with the deployment key through AES-KW, and writes it to `keys.db` under a
-key ID from `crypto.randomUUID()`. It then encrypts the fields with the key ID as additional data,
-so a ciphertext copied to another record fails to decrypt.
+Every free-text field, such as message text, tool arguments and tool results, goes in the erasable
+fields, never in the payload. Each record with erasable fields gets a random key, wrapped with the
+deployment key, under a random key ID ([key store IDs](database.md#key-store-ids)). The record's
+fields are encrypted with the key ID bound in, so a ciphertext copied to another record fails to
+decrypt.
 
-`keys.db` is its own SQLite file beside `nixie.db`, and `startWriter` opens it after the migrations.
-**Why:** a database backup then holds only ciphertext, and a key deleted from the key store never
-returns with a restore of `nixie.db`. The key store runs with `secure_delete` on and has no
-migrations, because a copy taken before a migration would keep every key deleted after it.
+The key store is its own SQLite file beside the database. **Why:** a database backup then holds only
+ciphertext, and a key deleted from the key store never returns with a restore of the database. The
+key store overwrites deleted content and has no migrations, because a copy taken before a migration
+would keep every key deleted after it.
 
 The key commits before its record. A failed record write therefore leaves an unused key, and never a
 record whose key is missing.
 
-`removeRecordKey` checks the writer epoch, deletes one key, and checkpoints the key store, so
-neither `keys.db` nor its WAL holds the wrapped key afterwards. When another connection holds a read
-on `keys.db`, the checkpoint cannot finish, and `removeRecordKey` throws `KeyStoreBusyError`. A
-retry finishes the checkpoint. The record keeps its envelope and its plain payload, and a read
-returns its erasable fields as `shredded`. The database holds no full-text index over erasable
-fields.
+Removing a key checkpoints the key store, so neither the file nor its write-ahead log holds the
+wrapped key afterwards. A reader that holds the key store open blocks the checkpoint, and the
+removal fails until a retry finishes it. The record keeps its envelope and payload, and its erasable
+fields read as shredded. The database holds no full-text index over erasable fields, because an
+index would keep the plaintext after its key is gone.
 
 ## Projections
 
-A projection is a table with a key column and a `fold` that applies one record to it and returns the
-key of every row it changed. `fold` receives the envelope and the plain payload, never the erasable
-fields. **Why:** a fold after a forget then gives the same rows as the fold before it.
+A projection is a table that folds one record at a time and reports the keys of the rows it changed.
+A fold reads the envelope and the payload, never the erasable fields. **Why:** a fold after a forget
+then gives the same rows as the fold before it.
 
-For each record, `writeRecords` runs every projection's fold in the record's transaction. It then
-writes each changed row, as the row stands after that record, to `projection_changes`, or a null row
-when the record removed it. A failed fold rolls back the whole batch.
+Every projection folds each record inside that record's transaction, and a failed fold rolls back
+the whole batch. The log keeps each changed row, as it stands after that record, beside the record's
+sequence, with a null row for a removed one. The log owns one projection of its own, one row per
+thread. A module adds its projections where the server builds the log.
 
-`logProjections` lists the projections the log owns: `threads`, one row per thread with its first
-and last sequence, its record count and the time of its last record. A module with its own
-projections adds them to that list where the server builds the log.
-
-`runProjectionRebuild` empties every projection and `projection_changes`, then folds the log from
-the first record, all in one write transaction. The fold test in `run-projection-rebuild.test.ts`
-drops every projection, rebuilds it, and compares the result with the live tables.
+A rebuild empties every projection and the changed rows, then folds the log from the first record in
+one write transaction. A rebuild gives the same tables as the live fold, which makes the log the
+source of truth for every projection.
 
 ## Reading by sequence
 
-`readRecords` returns the records after a sequence, oldest first, each with its decrypted erasable
-fields and the `projection_changes` rows of its own sequence. A record whose key fails to unwrap, or
-whose ciphertext fails to decrypt, reads as `unreadable` with its envelope intact, so it never stops
-a reader at its sequence. A reader that applies the record and its rows together, then moves its
-cursor, sees the rows as of each record, never current rows under an older sequence. SQLite allows
-one writer, so the sequence grows in commit order and a reader that asks for the records after N
-misses none.
+A read returns the records after a sequence, oldest first, each with its decrypted erasable fields
+and the projection rows of its own sequence. A reader that applies a record and its rows together,
+then moves its cursor, sees the rows as of each record, never current rows under an older sequence.
+A record whose key fails to unwrap, or whose ciphertext fails to decrypt, reads as unreadable with
+its envelope intact, so it never stops a reader at its sequence.
 
-`subscribeToRecords` yields the same entries as an async iterator and then waits for a wake:
+A subscription yields the same entries and then waits for one of 3 wakes:
 
-- **A WAL change.** `subscribeToWAL` watches the data directory for writes to `nixie.db-wal`. SQLite
-  writes a commit's frames before it publishes the commit, so each change wakes the reader at once
-  and again after 10, 50 and 250 ms.
-- **A poll.** A timer wakes the reader every second by default, for a change the watcher misses or a
-  filesystem that cannot watch.
-- **The abort signal,** which ends the iterator and stops the watcher and the poll at once.
+- a change to the database's write-ahead log, which the subscription rechecks a few times on a short
+  backoff, because SQLite writes a commit's frames before it publishes the commit
+- a poll, for a change the watcher misses or a filesystem that cannot watch
+- the abort signal, which ends the subscription and stops the watcher and the poll
 
-The iterator marks every earlier wake as seen before each read. A commit that lands during a read
-therefore wakes the next read at once.
+The subscription marks every earlier wake as seen before each read, so a commit that lands during a
+read wakes the next read at once.
