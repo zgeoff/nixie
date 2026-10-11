@@ -75,16 +75,31 @@ function getConversation(): Sandbox {
 describe.skipIf(!hasImpHost)('isolation on an imp host', () => {
   beforeAll(setupSuite, 120_000);
   afterAll(teardownSuite, 300_000);
-  test('the reverse forward reaches the tool endpoint, which checks the run token', checkToolRoute);
-  test('the broker reaches the model host, which answers the dummy credential', checkModelHost);
-  test('the broker refuses any other host', checkOtherHost);
+
+  // A dropped connection waits out curl's whole -m limit, so each test takes 10 s for each 5 s of
+  // curl it can wait: the limit, the exec's round trip to the guest, and room.
+  test(
+    'the reverse forward reaches the tool endpoint, which checks the run token',
+    checkToolRoute,
+    30_000,
+  );
+  test(
+    'the broker reaches the model host, which answers the dummy credential',
+    checkModelHost,
+    10_000,
+  );
+  test('the broker refuses any other host', checkOtherHost, 10_000);
   test.each([
     'https://1.1.1.1/',
     'http://169.254.169.254/',
     'http://100.100.100.100/',
     `https://${modelHost}/`,
-  ])('a direct connection to %s fails', checkDirectRefused);
-  test('a direct connection to impd fails, through its address and the gateway', checkImpdRefused);
+  ])('a direct connection to %s fails', checkDirectRefused, 10_000);
+  test(
+    'a direct connection to impd fails, through its address and the gateway',
+    checkImpdRefused,
+    20_000,
+  );
   test('the forward reopens after a sleep and a wake', checkRouteAfterWake, 60_000);
   test.skipIf(env.IMP_HOST_ADDRESSES === undefined)(
     'a public imp reaches the internet, and never the host or impd',
