@@ -174,13 +174,12 @@ test.skipIf(!hasImpHost)(
   async () => {
     const ctx = await setupTest();
     const config = parseImpConfig(impEnv);
-    const adapter = buildImpSandboxAdapter({
+    const sandbox = await buildImpSandboxAdapter({
       port: buildImpPort(config),
       recorder: ctx.recorder,
       config,
       toolTarget: () => ({ path: '/nonexistent.sock' }),
-    });
-    const sandbox = await adapter.create(
+    }).create(
       buildSandboxSpec({
         kind: 'fetch',
         image: fetchImage,
@@ -192,12 +191,19 @@ test.skipIf(!hasImpHost)(
     const impd = new URL(config.url);
     const impdPort =
       impd.port === '' && impd.protocol === 'https:' ? 443 : Number(impd.port || '80');
+
+    // the guest cannot resolve impd's name, so a probe of the name fails on the lookup and shows
+    // nothing about reach; the test host resolves it, and the guest probes each address
+    const impdAddresses = await Bun.dns.lookup(impd.hostname);
     const targets: readonly (readonly [string, number])[] = [
-      [impd.hostname, impdPort],
+      ...impdAddresses.map((entry) => [entry.address, impdPort] as const),
       ...(config.publicEgress?.hostAddresses ?? []).map(
         (range) => [range.split('/')[0] ?? '', impdPort] as const,
       ),
-      [process.env['NIXIE_IMP_TEST_TAILNET_ADDRESS'] ?? '100.100.100.100', 53],
+
+      // imp sends every guest IPv4 packet for port 53 to impd's own resolver, so the probe uses
+      // port 80, where the tailnet's resolver answers HTTP when the sandbox reaches it
+      [process.env['NIXIE_IMP_TEST_TAILNET_ADDRESS'] ?? '100.100.100.100', 80],
     ];
 
     const outcomes = await Promise.all(
