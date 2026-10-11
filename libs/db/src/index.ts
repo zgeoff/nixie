@@ -5,4 +5,5 @@ export type { MigrationReport, RunMigrationsOptions } from './run-migrations';
 export { runMigrations } from './run-migrations';
 export { startDatabase } from './start-database';
 export { SchemaTooNewError } from './schema-too-new-error';
+export { sqliteWorkerEntry } from './sqlite-worker-entry';
 export type { BuildSchema, DatabaseOptions, Migration } from './types';

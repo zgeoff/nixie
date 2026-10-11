@@ -12,7 +12,52 @@ async function setupTest() {
   return { path: join(dir, 'config.yaml') };
 }
 
-test('it reads the model profiles and the role map from the file', async () => {
+test('it reads every section, with the default of each setting the file leaves out', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+    ].join('\n'),
+  );
+
+  const { models, ...rest } = await loadDeploymentConfig(ctx.path);
+
+  // a model profile's fields have a test of their own
+  expect(models.roles).toStrictEqual({ conversation: 'chat-direct' });
+  expect(rest).toStrictEqual({
+    server: {
+      dataDir: '/data',
+      hostname: '0.0.0.0',
+      port: 8080,
+      secretsFile: '/etc/nixie/secrets.yaml',
+    },
+    imp: {
+      url: 'http://127.0.0.1:7070',
+      publicEgress: { hostAddresses: ['192.0.2.10/32'], egressDeny: [] },
+    },
+    definitions: {
+      source: { kind: 'path', path: '/etc/nixie/definitions' },
+      probeIntervalMs: 300_000,
+    },
+    web_fetch: {
+      limits: { bodyBytes: 2_097_152, timeoutMs: 15_000, redirects: 5, textBytes: 262_144 },
+      fetchesPerSandbox: 50,
+      sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
+    },
+    tasks: { runners: 3 },
+    actions: { runners: 4 },
+  });
+});
+
+test('it reads a model profile, with the default of each setting it leaves out', async () => {
   const ctx = await setupTest();
 
   await writeFile(
@@ -28,26 +73,25 @@ test('it reads the model profiles and the role map from the file', async () => {
       '      effort: medium',
       '  roles:',
       '    conversation: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
     ].join('\n'),
   );
 
   const config = await loadDeploymentConfig(ctx.path);
 
-  expect(config).toStrictEqual({
-    models: {
-      profiles: {
-        'chat-direct': {
-          id: 'chat-direct',
-          baseURL: 'https://api.anthropic.com',
-          credential: 'deployment:anthropic',
-          authHeader: 'x-api-key',
-          model: 'claude-test-1',
-          effort: 'medium',
-          providerPin: null,
-          prices: null,
-        },
-      },
-      roles: { conversation: 'chat-direct' },
+  expect(config.models.profiles).toStrictEqual({
+    'chat-direct': {
+      id: 'chat-direct',
+      baseURL: 'https://api.anthropic.com',
+      credential: 'deployment:anthropic',
+      authHeader: 'x-api-key',
+      model: 'claude-test-1',
+      effort: 'medium',
+      providerPin: null,
+      prices: null,
     },
   });
 });
@@ -68,6 +112,10 @@ test('it refuses to start with the conversation role unset', async () => {
       '      effort: medium',
       '  roles:',
       '    task: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
     ].join('\n'),
   );
 
@@ -92,9 +140,53 @@ test('it refuses a key no module reads', async () => {
       '      effort: medium',
       '  roles:',
       '    conversation: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
       'modles: {}',
     ].join('\n'),
   );
 
   expect(loadDeploymentConfig(ctx.path)).rejects.toThrow('Unrecognized key: "modles"');
+});
+
+test('it refuses an unknown key inside a module’s section', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '  roles:',
+      '    conversation: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+      'tasks:',
+      '  runner: 5',
+    ].join('\n'),
+  );
+
+  expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
+    `nixie refuses the deployment configuration in ${ctx.path}:\ntasks: Unrecognized key: "runner"`,
+  );
+});
+
+test('it refuses a file that is not YAML', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.path, 'models: [unclosed');
+
+  expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
+    `nixie refuses the deployment configuration in ${ctx.path}: it is not YAML`,
+  );
 });

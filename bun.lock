@@ -27,6 +27,7 @@
       "dependencies": {
         "@heynixie/sandbox": "workspace:*",
         "@zgeoff/imp-client": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@heynixie/log": "workspace:*",
@@ -47,19 +48,26 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/actions": "workspace:*",
+        "@heynixie/api": "workspace:*",
         "@heynixie/connectors": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/definitions": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/ops": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/sandbox-imp": "workspace:*",
         "@heynixie/sandbox-process": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "elysia": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/contract": "workspace:*",
         "@heynixie/testing": "workspace:*",
+        "@orpc/client": "catalog:",
       },
     },
     "apps/web": {
@@ -142,6 +150,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "kysely": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
@@ -171,6 +180,7 @@
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
+        "zod": "catalog:",
       },
     },
     "modules/definitions": {
@@ -179,6 +189,7 @@
       "dependencies": {
         "@heynixie/log": "workspace:*",
         "kysely": "catalog:",
+        "zod": "catalog:",
       },
     },
     "modules/log": {
@@ -205,6 +216,17 @@
         "kysely": "catalog:",
       },
     },
+    "modules/ops": {
+      "name": "@heynixie/ops",
+      "version": "0.0.0",
+      "dependencies": {
+        "elysia": "catalog:",
+        "kysely": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/log": "workspace:*",
+      },
+    },
     "modules/policy": {
       "name": "@heynixie/policy",
       "version": "0.0.0",
@@ -228,6 +250,7 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "kysely": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
@@ -421,6 +444,8 @@
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
 
     "@heynixie/models": ["@heynixie/models@workspace:modules/models"],
+
+    "@heynixie/ops": ["@heynixie/ops@workspace:modules/ops"],
 
     "@heynixie/policy": ["@heynixie/policy@workspace:modules/policy"],
 

@@ -30,27 +30,6 @@ export function buildStubSandboxAdapter(guest: StubGuest): StubSandboxAdapter {
   const destroyed: string[] = [];
   const spawned: { sandboxID: string; argv: readonly string[] }[] = [];
   const live = new Map<string, Sandbox>();
-  const buildSandbox = (id: string, spec: SandboxSpec): Sandbox => ({
-    id,
-    spec,
-    exec: () => Promise.reject(new Error('the stub runs no exec')),
-    spawn: (command: SpawnSpec) => {
-      if (!live.has(id)) {
-        return Promise.reject(new Error(`sandbox ${id} is destroyed`));
-      }
-      spawned.push({ sandboxID: id, argv: command.argv });
-      return Promise.resolve(startExecStream(startGuest(guest), command.maxMessageBytes));
-    },
-    copyIn: () => Promise.resolve(),
-    copyOut: () => Promise.resolve([]),
-    toolRoute: () => Promise.resolve(null),
-    suspension: { kind: 'none' },
-    destroy: () => {
-      live.delete(id);
-      destroyed.push(id);
-      return Promise.resolve();
-    },
-  });
 
   return {
     id: 'stub',
@@ -63,7 +42,7 @@ export function buildStubSandboxAdapter(guest: StubGuest): StubSandboxAdapter {
       requireSandboxSpec(spec);
 
       const id = crypto.randomUUID();
-      const sandbox = buildSandbox(id, spec);
+      const sandbox = buildStubSandbox(id, spec, { guest, live, spawned, destroyed });
 
       live.set(id, sandbox);
       created.push({ id, spec });
@@ -73,6 +52,39 @@ export function buildStubSandboxAdapter(guest: StubGuest): StubSandboxAdapter {
     list: (owner) =>
       Promise.resolve([...live.values()].filter((sandbox) => sandbox.spec.owner === owner)),
     addSecret: () => Promise.resolve(),
+    addImage: () => Promise.resolve(),
+    checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
+  };
+}
+
+interface StubState {
+  readonly guest: StubGuest;
+  readonly live: Map<string, Sandbox>;
+  readonly spawned: { sandboxID: string; argv: readonly string[] }[];
+  readonly destroyed: string[];
+}
+
+function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sandbox {
+  return {
+    id,
+    spec,
+    exec: () => Promise.reject(new Error('the stub runs no exec')),
+    spawn: (command: SpawnSpec) => {
+      if (!state.live.has(id)) {
+        return Promise.reject(new Error(`sandbox ${id} is destroyed`));
+      }
+      state.spawned.push({ sandboxID: id, argv: command.argv });
+      return Promise.resolve(startExecStream(startGuest(state.guest), command.maxMessageBytes));
+    },
+    copyIn: () => Promise.resolve(),
+    copyOut: () => Promise.resolve([]),
+    toolRoute: () => Promise.resolve(null),
+    suspension: { kind: 'none' },
+    destroy: () => {
+      state.live.delete(id);
+      state.destroyed.push(id);
+      return Promise.resolve();
+    },
   };
 }
 

@@ -23,7 +23,7 @@ async function requirePublicEgress(
 ): Promise<void> {
   if (publicEgress === null || publicEgress.hostAddresses.length === 0) {
     throw new SandboxSpecRefusedError(
-      'public egress without the host addresses in IMP_HOST_ADDRESSES',
+      'public egress without the host addresses in imp.host_addresses',
     );
   }
   const features = await port.readFeatures();

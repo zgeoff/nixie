@@ -1,5 +1,10 @@
 import { join } from 'node:path';
-import type { ConversationRunner, GuestCommand, ModelSecrets } from '@heynixie/models';
+import type {
+  ConversationRunner,
+  GuestCommand,
+  ModelSecrets,
+  ModelsConfig,
+} from '@heynixie/models';
 import {
   resolveModelCredentials,
   resolveRoleProfile,
@@ -8,23 +13,27 @@ import {
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
-import type { DeploymentConfig } from './deployment-config-schema';
 
 export interface ConversationOptions {
   readonly context: TasksContext;
-  readonly config: DeploymentConfig;
+  readonly models: ModelsConfig;
   readonly secrets: ModelSecrets;
   readonly sandboxes: SandboxAdapter;
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
   readonly toolNames: readonly string[];
-  readonly systemPrompt: string;
+
+  // the conversation image's name in impd, from the sandbox manifest
+  readonly image: string;
+
+  // the persona in force, read at each turn
+  readonly getSystemPrompt: () => string;
 }
 
 // Starts the conversation on the conversation role's profile. Every profile's credential resolves
 // first, so a reference the secrets file lacks stops nixie at start.
 export function startConversation(options: ConversationOptions): Promise<ConversationRunner> {
-  const credentials = resolveModelCredentials(options.config.models, options.secrets);
-  const profile = resolveRoleProfile(options.config.models, 'conversation');
+  const credentials = resolveModelCredentials(options.models, options.secrets);
+  const profile = resolveRoleProfile(options.models, 'conversation');
   const resolved = credentials[profile.id];
 
   if (resolved === undefined) {
@@ -36,10 +45,10 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     sandboxes: options.sandboxes,
     tools: options.tools,
     toolNames: options.toolNames,
-    image: 'conversation',
+    image: options.image,
     limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
     command: buildGuestCommand(),
-    systemPrompt: options.systemPrompt,
+    getSystemPrompt: options.getSystemPrompt,
   });
 }
 

@@ -64,6 +64,12 @@ export function buildProcessSandboxAdapter(options: ProcessSandboxOptions): Sand
 
     // the double injects no grant, so it holds no secret
     addSecret: () => Promise.resolve(),
+
+    // the double runs each guest from the workspace, so it pulls no image
+    addImage: () => Promise.resolve(),
+
+    // the double's runtime is this process, which answers while it runs
+    checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
   };
 }
 

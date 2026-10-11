@@ -25,7 +25,11 @@ interface FakeState {
   readonly created: ImpCreateInput[];
   readonly execs: FakeExec[];
   readonly secrets: Map<string, readonly string[]>;
+
+  // each image impd holds, by name, with its digest
+  readonly images: Map<string, string>;
   features: ImpFeatures;
+  failFeatures: boolean;
   failCreate: boolean;
   failRemove: boolean;
   failExitOnStop: boolean;
@@ -49,7 +53,9 @@ export async function startFakeImp(): Promise<FakeImp> {
     created: [],
     execs: [],
     secrets: new Map([['model-default', ['api.anthropic.com']]]),
+    images: new Map(),
     features: { publicEgress: true, isEgressEnforced: true },
+    failFeatures: false,
     failCreate: false,
     failRemove: false,
     failExitOnStop: false,
@@ -66,7 +72,16 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
   };
 
   return {
-    readFeatures: () => Promise.resolve(state.features),
+    readFeatures: () =>
+      state.failFeatures
+        ? Promise.reject(new Error('connect ECONNREFUSED'))
+        : Promise.resolve(state.features),
+    listImages: () =>
+      Promise.resolve([...state.images].map(([name, digest]) => ({ name, digest }))),
+    addImage: async (image) => {
+      await updateCallLog(`image ${image.name} ${image.ref}`);
+      state.images.set(image.name, image.digest);
+    },
     createImp: async (input) => {
       await updateCallLog(`create ${input.name}`);
       if (state.failCreate) {
@@ -92,19 +107,7 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
       }
       return Promise.resolve(startFakeExec(exec, stack));
     },
-    openReverseForward: (name, guestPort, onConnection) => {
-      state.calls.push(`forward ${name} ${guestPort}`);
-      return startFakeForward(
-        {
-          port: state.guestToolPort,
-          onConnection,
-          onStop: () => {
-            state.calls.push(`forward-stopped ${name}`);
-          },
-        },
-        stack,
-      );
-    },
+    ...buildFakeForwardCall(state, stack),
   };
 }
 
@@ -183,6 +186,27 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
 async function waitForExit<T>(exited: Promise<number>, readExit: () => T): Promise<T> {
   await exited;
   return readExit();
+}
+
+type ForwardPort = Pick<ImpPort, 'openReverseForward'>;
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own log and cleanup
+function buildFakeForwardCall(state: FakeState, stack: AsyncDisposableStack): ForwardPort {
+  return {
+    openReverseForward: (name, guestPort, onConnection) => {
+      state.calls.push(`forward ${name} ${guestPort}`);
+      return startFakeForward(
+        {
+          port: state.guestToolPort,
+          onConnection,
+          onStop: () => {
+            state.calls.push(`forward-stopped ${name}`);
+          },
+        },
+        stack,
+      );
+    },
+  };
 }
 
 interface FakeForwardOptions {

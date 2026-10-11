@@ -33,6 +33,14 @@ export function buildImpPort(connection: ImpConnection): ImpPort {
         rules: [{ host: secret.host, header: secret.header, scheme: secret.scheme }],
       });
     },
+    listImages: async () => {
+      const images = await client.images.list();
+
+      return images.map((image) => ({ name: image.name, digest: image.digest }));
+    },
+    addImage: async (image) => {
+      await client.images.add({ ref: image.ref, name: image.name });
+    },
     openExec: makeExecOpener(client),
     openReverseForward: (name, guestPort, onConnection) =>
       openReverseForward({

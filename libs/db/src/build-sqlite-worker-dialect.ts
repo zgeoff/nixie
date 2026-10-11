@@ -1,6 +1,7 @@
 import type { DatabaseConnection, Dialect, Driver, QueryResult, TransactionSettings } from 'kysely';
 import { CompiledQuery, SqliteAdapter, SqliteIntrospector, SqliteQueryCompiler } from 'kysely';
 import { DatabaseError } from './database-error';
+import { getSqliteWorkerFile } from './get-sqlite-worker-file';
 import type { DatabaseOptions, WorkerQueryResult, WorkerRequest, WorkerResponse } from './types';
 
 // nixie's Kysely dialect for bun:sqlite. One worker holds the one connection, so no query blocks
@@ -64,7 +65,7 @@ interface PendingRequest {
 function startSqliteWorker(): SqliteWorker {
   const ids = { next: 0 },
     pending = new Map<number, PendingRequest>(),
-    worker = new Worker(new URL('sqlite-worker.ts', import.meta.url).href);
+    worker = new Worker(new URL(getSqliteWorkerFile(), import.meta.url).href);
 
   worker.addEventListener('message', (event: MessageEvent<WorkerResponse>) => {
     const request = pending.get(event.data.id);

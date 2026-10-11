@@ -6,6 +6,8 @@ export { collectOutput } from './collect-output';
 export { createSandboxID } from './create-sandbox-id';
 export { execOutputLimitBytes } from './exec-output-limit-bytes';
 export { mergeExecEnv } from './merge-exec-env';
+export type { StaleSandboxesOptions } from './remove-stale-sandboxes';
+export { removeStaleSandboxes } from './remove-stale-sandboxes';
 export { requireSandboxSpec } from './require-sandbox-spec';
 export { runCommand } from './run-command';
 export type { SandboxKindRule } from './sandbox-kinds';
@@ -25,9 +27,11 @@ export type {
   FileSpec,
   GrantSpec,
   RunSpec,
+  RuntimeReport,
   Sandbox,
   SandboxAdapter,
   SandboxEvent,
+  SandboxImage,
   SandboxKind,
   SandboxLimits,
   SandboxRecorder,

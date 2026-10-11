@@ -92,6 +92,8 @@ export function buildStubSandboxes(): StubSandboxes {
         state.secrets.push(secret);
         return Promise.resolve();
       },
+      addImage: () => Promise.resolve(),
+      checkRuntime: () => Promise.resolve({ isReady: true, reason: null }),
     },
     secrets: state.secrets,
     created: state.created,

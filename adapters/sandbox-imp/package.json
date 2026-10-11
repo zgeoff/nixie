@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@heynixie/sandbox": "workspace:*",
-    "@zgeoff/imp-client": "catalog:"
+    "@zgeoff/imp-client": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@heynixie/log": "workspace:*"

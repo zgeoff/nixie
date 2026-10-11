@@ -1,3 +1,5 @@
+export type { ActionsConfig } from './actions-config-schema';
+export { actionsConfigSchema } from './actions-config-schema';
 export { actionsProjection } from './actions-projection';
 export { buildModelView } from './build-model-view';
 export type { ClaimActionOptions } from './claim-action';

@@ -1,11 +1,14 @@
 import type { SandboxAdapter, SandboxRecorder, ToolTargetResolver } from '@heynixie/sandbox';
-import { buildImpPort, buildImpSandboxAdapter, parseImpConfig } from '@heynixie/sandbox-imp';
+import type { ImpSection } from '@heynixie/sandbox-imp';
+import { buildImpPort, buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
 import { buildProcessSandboxAdapter } from '@heynixie/sandbox-process';
 
 export interface SandboxAdapterOptions {
   readonly recorder: SandboxRecorder;
   readonly toolTarget: ToolTargetResolver;
-  readonly env: Readonly<Record<string, string | undefined>>;
+
+  // impd's URL and public egress ranges from the configuration, and its token from the secrets
+  readonly imp: ImpSection & { readonly token: string };
 
   // where a test build's process double keeps each sandbox's directory
   readonly testRootDir: string;
@@ -21,12 +24,10 @@ export function buildSandboxAdapter(options: SandboxAdapterOptions): SandboxAdap
       toolTarget: options.toolTarget,
     });
   }
-  const config = parseImpConfig(options.env);
-
   return buildImpSandboxAdapter({
-    port: buildImpPort(config),
+    port: buildImpPort({ url: options.imp.url, token: options.imp.token }),
     recorder: options.recorder,
-    config,
+    config: { publicEgress: options.imp.publicEgress },
     toolTarget: options.toolTarget,
   });
 }

@@ -1,0 +1,5 @@
+# The binaries the nixie image holds, one per line: name, version, download URL and SHA-256. The
+# image build downloads each one and checks it with sha256sum -c before it adds it. An update
+# changes the version and the checksum together, after checking the file against the upstream
+# release's checksum file and its signature.
+sops 3.13.3 https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64 e5bec3346a873ae91d871550f3e698c1aad962aff462a080e40f25fde17fef6b

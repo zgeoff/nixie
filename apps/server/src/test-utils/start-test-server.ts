@@ -52,7 +52,7 @@ export async function startTestServer(): Promise<TestServer> {
     sandboxes: buildSandboxAdapter({
       recorder: buildSandboxRecorder({ log: context.log, definitions: context.definitions }),
       toolTarget: endpoint.getToolTarget,
-      env: {},
+      imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
       testRootDir: join(dataDir, 'sandboxes'),
     }),
   };

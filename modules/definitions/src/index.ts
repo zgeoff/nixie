@@ -4,6 +4,8 @@ export { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 export type { PathSourceOptions } from './create-path-source';
 export { createPathSource } from './create-path-source';
 export { defaultSizeLimits } from './default-size-limits';
+export type { DefinitionsConfig } from './definitions-config-schema';
+export { definitionsConfigSchema } from './definitions-config-schema';
 export type { ParseProblem } from './definitions-parse-error';
 export { DefinitionsParseError } from './definitions-parse-error';
 export { findDefinitionsInForce } from './find-definitions-in-force';

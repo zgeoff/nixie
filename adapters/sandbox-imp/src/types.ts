@@ -59,6 +59,11 @@ export interface ImpFeatures {
   readonly isEgressEnforced: boolean;
 }
 
+interface ImpImage {
+  readonly name: string;
+  readonly digest: string;
+}
+
 // A custom secret the broker sends to one host, in one header with its scheme.
 interface ImpSecretInput {
   readonly name: string;
@@ -83,6 +88,12 @@ export interface ImpPort {
   readonly readSecretHosts: (secret: string) => Promise<readonly string[] | null>;
   readonly addGrant: (name: string, secret: string) => Promise<void>;
   readonly addSecret: (secret: ImpSecretInput) => Promise<void>;
+
+  // the images impd holds, by name, each with its digest such as sha256:<hex>
+  readonly listImages: () => Promise<readonly ImpImage[]>;
+
+  // impd pulls the image by its reference and keeps it under the name
+  readonly addImage: (image: ImpImage & { readonly ref: string }) => Promise<void>;
   readonly openExec: (
     name: string,
     argv: readonly string[],

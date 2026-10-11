@@ -25,3 +25,7 @@ Thumbs.db
 
 # turbo cache and logs
 .turbo
+
+# the release workflow writes the sandbox manifest into the nixie image build context, and no commit
+# holds it
+apps/server/sandbox-manifest.json

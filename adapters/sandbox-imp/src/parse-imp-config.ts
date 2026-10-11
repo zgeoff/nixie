@@ -1,3 +1,5 @@
+import { rangePattern } from './range-pattern';
+
 // The deployment's ranges for public egress, the same lists impd reads, which the adapter takes as
 // config. Without host addresses the adapter refuses public egress, because a host address the
 // list leaves out is reachable from a public imp.
@@ -34,10 +36,6 @@ export function parseImpConfig(env: Readonly<Record<string, string | undefined>>
     publicEgress: hostAddresses.length === 0 ? null : { hostAddresses, egressDeny },
   };
 }
-
-// an IPv4 or IPv6 address with an optional prefix length
-const rangePattern =
-  /^(?:\d{1,3}(?:\.\d{1,3}){3}(?:\/\d{1,2})?|[\da-f:]*:[\da-f:.]*(?:\/\d{1,3})?)$/iu;
 
 function splitRanges(name: string, value: string | undefined): readonly string[] {
   const ranges = (value ?? '').split(/[\s,]+/u).filter((range) => range.length > 0);

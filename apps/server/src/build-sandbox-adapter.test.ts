@@ -12,7 +12,7 @@ const entry = join(import.meta.dir, 'index.ts');
 
 // a string only the process double holds, and one only the imp adapter holds
 const processMarker = 'the tool relay has no TCP address';
-const impMarker = 'public egress without the host addresses in IMP_HOST_ADDRESSES';
+const impMarker = 'public egress without the host addresses in imp.host_addresses';
 
 async function buildBundle(isTestBuild: boolean): Promise<string> {
   const outdir = await mkdtemp(join(tmpdir(), 'nixie-server-bundle-'));
@@ -43,7 +43,7 @@ test('a test build wires the process double', () => {
   const adapter = buildSandboxAdapter({
     recorder,
     toolTarget: () => ({ path: '/nonexistent.sock' }),
-    env: {},
+    imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
     testRootDir: tmpdir(),
   });
 
@@ -101,7 +101,7 @@ async function setupTest() {
         list: () => Promise.resolve([]),
       },
       toolTarget: endpoint.getToolTarget,
-      env: {},
+      imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
       testRootDir: dataDir,
     }),
   };
