@@ -18,6 +18,8 @@
     ],
     "catalog": {
       "@faker-js/faker": "10.6.0",
+      "@modelcontextprotocol/client": "2.3.0",
+      "@modelcontextprotocol/server": "2.3.0",
       "@msw/data": "1.1.8",
       "@orpc/client": "1.15.4",
       "@orpc/contract": "1.15.4",
