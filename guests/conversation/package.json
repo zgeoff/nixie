@@ -1,0 +1,17 @@
+{
+  "name": "@heynixie/conversation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "catalog:",
+    "@heynixie/wire": "workspace:*",
+    "zod": "catalog:"
+  }
+}
