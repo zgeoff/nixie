@@ -1,0 +1,4 @@
+# The isolation tests call a real impd, so this config leaves out the root's web preload, whose mock
+# server and DOM take over fetch and WebSocket. docs/runbooks/imp-isolation-tests.md runs with it.
+[test]
+preload = ["../../libs/testing/src/define-test-build.ts", "@zgeoff/bun-test-extended"]

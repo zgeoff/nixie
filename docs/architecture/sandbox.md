@@ -71,10 +71,13 @@ total bytes and whether it cut. `spawn` starts a process whose stdin and stdout 
 messages: a 4-byte big-endian length, then the payload, from `libs/wire`. A frame past the caller's
 `maxMessageBytes` stops the process and ends the stream with `FrameTooLargeError`.
 
-Both pass the environment by name. `mergeExecEnv` adds each grant's placeholders and keeps
-`127.0.0.1` and `localhost` on `NO_PROXY`. **Why:** the tool route then skips the broker's proxy. On
-imp, an exec with a grant requires the broker, so the command starts only once impd set the broker's
-variables for the boot.
+Both pass the environment by name, with each grant's placeholders added. The process double's
+`mergeExecEnv` keeps `127.0.0.1` and `localhost` on `NO_PROXY`. **Why:** the tool route then skips
+the broker's proxy.
+
+On imp, an exec with a grant requires the broker, so the command starts only once impd set the
+broker's variables for the boot. impd's variables hold `NO_PROXY` with the loopback, and impd
+refuses an exec whose env replaces any of them, so the imp adapter sets no `NO_PROXY` of its own.
 
 A stop sends SIGTERM once. On imp, the guest agent kills the exec's cgroup 5 s later, from
 `killGraceMs`. The process double kills the process group instead.

@@ -27,6 +27,7 @@ interface FakeState {
   readonly secrets: Map<string, readonly string[]>;
   features: ImpFeatures;
   failCreate: boolean;
+  failRemove: boolean;
   failExitOnStop: boolean;
 }
 
@@ -50,6 +51,7 @@ export async function startFakeImp(): Promise<FakeImp> {
     secrets: new Map([['model-default', ['api.anthropic.com']]]),
     features: { publicEgress: true, isEgressEnforced: true },
     failCreate: false,
+    failRemove: false,
     failExitOnStop: false,
   };
 
@@ -72,7 +74,12 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
       }
       state.created.push(input);
     },
-    removeImp: (name) => updateCallLog(`remove ${name}`),
+    removeImp: async (name) => {
+      await updateCallLog(`remove ${name}`);
+      if (state.failRemove) {
+        throw new Error('INTERNAL_SERVER_ERROR');
+      }
+    },
     sleepImp: (name) => updateCallLog(`sleep ${name}`),
     wakeImp: (name) => updateCallLog(`wake ${name}`),
     readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),

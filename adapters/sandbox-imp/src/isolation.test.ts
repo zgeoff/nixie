@@ -1,15 +1,12 @@
 // The reverse-forward spike's isolation control, run against a real impd on a host with /dev/kvm.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn it on.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
-import { createImpClient } from '@zgeoff/imp-client';
+import { ORPCError, createImpClient } from '@zgeoff/imp-client';
 import { buildImpPort } from './build-imp-port';
-import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
 import { parseImpConfig } from './parse-imp-config';
-import { setupTestRecorder } from './test-utils/setup-test-recorder';
+import type { IsolationSecret, IsolationSuite } from './test-utils/setup-isolation-suite';
+import { setupIsolationSuite } from './test-utils/setup-isolation-suite';
 
 const env = {
   IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
@@ -63,19 +60,13 @@ async function runScript(sandbox: Sandbox, script: string): Promise<string> {
   return decoder.decode(result.stdout.bytes).trim();
 }
 
-interface Suite {
-  adapter: SandboxAdapter | null;
-  conversation: Sandbox | null;
-  readonly cleanup: (() => Promise<unknown>)[];
-}
-
-const suite: Suite = { adapter: null, conversation: null, cleanup: [] };
+const state: { suite: IsolationSuite | null } = { suite: null };
 
 function getConversation(): Sandbox {
-  if (suite.conversation === null) {
+  if (state.suite === null) {
     throw new Error('the suite made no conversation imp');
   }
-  return suite.conversation;
+  return state.suite.conversation;
 }
 
 describe.skipIf(!hasImpHost)('isolation on an imp host', () => {
@@ -100,31 +91,26 @@ describe.skipIf(!hasImpHost)('isolation on an imp host', () => {
 });
 
 async function setupSuite(): Promise<void> {
-  const config = parseImpConfig(env);
-  const dir = await mkdtemp(join(tmpdir(), 'nixie-isolation-'));
-  const removeSecret = await createDummySecret(config.url, config.token);
-  const ctx = await setupTestRecorder();
+  // the web preload's mock server and DOM take over fetch and WebSocket, so impd never sees a call
+  if ('happyDOM' in globalThis) {
+    throw new Error(
+      'the web test preload is loaded; run the file with --config=adapters/sandbox-imp/bunfig.toml',
+    );
+  }
 
-  suite.cleanup.push(
-    () => rm(dir, { recursive: true, force: true }),
-    startToolEndpoint(join(dir, 'tools.sock')),
-    removeSecret,
-  );
-  suite.adapter = buildImpSandboxAdapter({
+  const config = parseImpConfig(env);
+
+  state.suite = await setupIsolationSuite({
     port: buildImpPort(config),
-    recorder: ctx.recorder,
-    config,
-    toolTarget: () => ({ path: join(dir, 'tools.sock') }),
+    publicEgress: config.publicEgress,
+    secret: buildDummySecret(config.url, config.token),
+    conversationSpec,
+    toolToken,
   });
-  suite.conversation = await suite.adapter.create(conversationSpec);
 }
 
 async function teardownSuite(): Promise<void> {
-  await suite.conversation?.destroy();
-  for (const cleanup of suite.cleanup.toReversed()) {
-    // oxlint-disable-next-line no-await-in-loop -- undoes the setup in reverse order
-    await cleanup();
-  }
+  await state.suite?.teardown();
 }
 
 async function checkToolRoute(): Promise<void> {
@@ -188,11 +174,9 @@ async function checkRouteAfterWake(): Promise<void> {
   expect(call).toBe('status=200');
 }
 
+// the teardown destroys the public imp with the conversation, as both share the suite's owner
 async function checkPublicEgress(): Promise<void> {
   const fetchSandbox = await getAdapter().create(fetchSpec);
-
-  suite.cleanup.push(() => fetchSandbox.destroy());
-
   const internet = await runProbe(fetchSandbox, 'https://1.1.1.1/', '');
   const inside = await Promise.all(buildInsideURLs().map((url) => runProbe(fetchSandbox, url, '')));
 
@@ -201,10 +185,10 @@ async function checkPublicEgress(): Promise<void> {
 }
 
 function getAdapter(): SandboxAdapter {
-  if (suite.adapter === null) {
+  if (state.suite === null) {
     throw new Error('the suite made no adapter');
   }
-  return suite.adapter;
+  return state.suite.adapter;
 }
 
 // every host address the deployment lists, and impd itself
@@ -220,27 +204,28 @@ function buildInsideURLs(): readonly string[] {
   ];
 }
 
-function startToolEndpoint(socketPath: string): () => Promise<void> {
-  const tools = Bun.serve({
-    unix: socketPath,
-    fetch: (request) =>
-      request.headers.get('authorization') === `Bearer ${toolToken}`
-        ? Response.json({ result: { sum: 42 } })
-        : new Response('refused', { status: 401 }),
-  });
-
-  return () => tools.stop(true);
-}
-
-// a custom secret for the model host alone, holding a dummy value; the result removes it
-async function createDummySecret(url: string, token: string): Promise<() => Promise<unknown>> {
+// a custom secret for the model host alone, holding a dummy value; a secret gone already counts as
+// removed, so a teardown after a failed add succeeds
+function buildDummySecret(url: string, token: string): IsolationSecret {
   const client = createImpClient({ url, token });
 
-  await client.secrets.add({
-    name: secret,
-    kind: 'custom',
-    value: 'nixie-isolation-dummy',
-    rules: [{ host: modelHost, header: 'x-api-key', scheme: 'raw' }],
-  });
-  return () => client.secrets.delete({ name: secret });
+  return {
+    add: async () => {
+      await client.secrets.add({
+        name: secret,
+        kind: 'custom',
+        value: 'nixie-isolation-dummy',
+        rules: [{ host: modelHost, header: 'x-api-key', scheme: 'raw' }],
+      });
+    },
+    remove: async () => {
+      try {
+        await client.secrets.delete({ name: secret });
+      } catch (error) {
+        if (!(error instanceof ORPCError && error.code === 'NOT_FOUND')) {
+          throw error;
+        }
+      }
+    },
+  };
 }
