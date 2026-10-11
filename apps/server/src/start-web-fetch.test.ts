@@ -9,7 +9,7 @@ import { buildSandboxAdapter } from './build-sandbox-adapter';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
 import { buildConnectProbe } from './test-utils/build-connect-probe';
 
-// The imp tests run against a real impd on a host with /dev/kvm, with the fetch image imported.
+// The imp tests run against a real impd on a host with /dev/kvm, with the fetch image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on.
 const impEnv = {
   IMP_URL: process.env['NIXIE_IMP_TEST_URL'],
