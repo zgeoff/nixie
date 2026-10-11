@@ -41,3 +41,22 @@ test('it stops a part at once when it registers after the stop began', async () 
   expect(stopped).toStrictEqual(['conversation']);
   expect(cleanup.signal.aborted).toBeTrue();
 });
+
+test('it keeps a part that registers after an abort for the stop, in its order', async () => {
+  const cleanup = buildCleanup();
+  const stopped: string[] = [];
+
+  await cleanup.defer(() => {
+    stopped.push('writer');
+  });
+  cleanup.abort();
+  await cleanup.defer(() => {
+    stopped.push('conversation');
+  });
+  const stoppedAtAbort = [...stopped];
+  await cleanup.stop();
+
+  expect(cleanup.signal.aborted).toBeTrue();
+  expect(stoppedAtAbort).toStrictEqual([]);
+  expect(stopped).toStrictEqual(['conversation', 'writer']);
+});

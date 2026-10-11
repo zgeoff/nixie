@@ -3,6 +3,17 @@
 import { makeLogger } from '@heynixie/ops';
 import { runCLI } from './run-cli';
 
+// The handlers exist before the command starts, so a signal during the start, such as one that
+// arrives while migrations run, still stops nixie once the start reaches the stop.
+const received = Promise.withResolvers<string>();
+
+process.once('SIGTERM', () => {
+  received.resolve('SIGTERM');
+});
+process.once('SIGINT', () => {
+  received.resolve('SIGINT');
+});
+
 const exitCode = await runCLI(process.argv.slice(2), {
   log: makeLogger((line) => {
     process.stdout.write(line);
@@ -10,17 +21,7 @@ const exitCode = await runCLI(process.argv.slice(2), {
   print: (text) => {
     process.stdout.write(`${text}\n`);
   },
-  waitForSignal: () => {
-    const received = Promise.withResolvers<string>();
-
-    process.once('SIGTERM', () => {
-      received.resolve('SIGTERM');
-    });
-    process.once('SIGINT', () => {
-      received.resolve('SIGINT');
-    });
-    return received.promise;
-  },
+  waitForSignal: () => received.promise,
 });
 
 process.exit(exitCode);

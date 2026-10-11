@@ -6,18 +6,22 @@ export function buildCleanup(): Cleanup {
   const stopping = new AbortController();
   const stops: (() => Promise<void> | void)[] = [];
   const stopped: { pending: Promise<void> | null } = { pending: null };
+  const reason = new Error('nixie is stopping');
 
   return {
     signal: stopping.signal,
+    abort: () => {
+      stopping.abort(reason);
+    },
     defer: async (stop) => {
-      if (stopping.signal.aborted) {
-        await stop();
-      } else {
+      if (stopped.pending === null) {
         stops.push(stop);
+      } else {
+        await stop();
       }
     },
     stop: () => {
-      stopping.abort(new Error('nixie is stopping'));
+      stopping.abort(reason);
       stopped.pending ??= runStops(stops);
       return stopped.pending;
     },

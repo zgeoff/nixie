@@ -25,14 +25,16 @@ test('it keeps the deployment key, the impd token and the model credentials', as
     `deployment_key: ${key}\nimpd_token: impd-token\nmodel_credentials:\n  anthropic: model-key\n`,
   );
 
-  const secrets = await loadSecrets({ path: ctx.path, sopsArgv: ctx.sopsArgv });
+  const { deploymentKey, ...rest } = await loadSecrets({
+    path: ctx.path,
+    sopsArgv: ctx.sopsArgv,
+  });
 
-  expect(secrets).toStrictEqual({
-    deploymentKey: expect.any(CryptoKey),
+  expect(rest).toStrictEqual({
     impdToken: 'impd-token',
     models: { model_credentials: { anthropic: 'model-key' } },
   });
-  expect(secrets.deploymentKey.algorithm).toMatchObject({ name: 'AES-KW', length: 256 });
+  expect(deploymentKey.algorithm).toMatchObject({ name: 'AES-KW', length: 256 });
 });
 
 test('it refuses a deployment key that is not 32 bytes, and never names the value', async () => {

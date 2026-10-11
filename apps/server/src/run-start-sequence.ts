@@ -13,7 +13,7 @@ export async function runStartSequence(parts: ServerParts): Promise<void> {
   const retry = { signal: parts.cleanup.signal, log: parts.log };
 
   // every record carries a snapshot hash, so a first start seeds before anything else writes
-  if (parts.inForce.current === null) {
+  if (parts.inForce.read() === null) {
     await runWithRetry(() => requireSeeded(parts), { ...retry, step: 'first_seed' });
   }
   await runWithRetry(() => runRecoverySteps(parts), { ...retry, step: 'recovery' });

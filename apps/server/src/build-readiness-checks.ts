@@ -11,19 +11,19 @@ export function buildReadinessChecks(
   dataDir: string,
 ): Readonly<Record<HealthPart, PartCheck>> {
   return {
-    database: () => Promise.resolve(state.database),
-    definitions: () => Promise.resolve(state.definitions),
+    database: () => Promise.resolve(state.read().database),
+    definitions: () => Promise.resolve(state.read().definitions),
     imp_host: async () => {
       const runtime = await adapter.checkRuntime();
 
       if (!runtime.isReady) {
         return runtime;
       }
-      return state.areImagesAdded
+      return state.read().areImagesAdded
         ? { isReady: true, reason: null }
         : { isReady: false, reason: 'the images in the sandbox manifest are not all added' };
     },
-    conversation_imp: () => Promise.resolve(state.conversation),
+    conversation_imp: () => Promise.resolve(state.read().conversation),
     disk: () => checkDisk(dataDir),
   };
 }

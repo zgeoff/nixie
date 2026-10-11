@@ -11,18 +11,12 @@ export interface DefinitionsPoll {
   readonly stop: () => Promise<void>;
 }
 
-// the probe token the last seed ran for
-interface PollState {
-  token: string | null;
-}
-
 // Probes the definitions source every interval and seeds again on a new probe token. Each probe
 // and seed finishes before the next starts, so 2 seeds never overlap and an older revision never
 // commits after a newer one.
 export function startDefinitionsPoll(options: DefinitionsPollOptions): DefinitionsPoll {
   const stopping = new AbortController();
-  const state: PollState = { token: null };
-  const loop = runPoll(options, state, stopping.signal);
+  const loop = runPoll(options, stopping.signal);
 
   return {
     stop: async () => {
@@ -32,29 +26,38 @@ export function startDefinitionsPoll(options: DefinitionsPollOptions): Definitio
   };
 }
 
-async function runPoll(
-  options: DefinitionsPollOptions,
-  state: PollState,
-  signal: AbortSignal,
-): Promise<void> {
+async function runPoll(options: DefinitionsPollOptions, signal: AbortSignal): Promise<void> {
+  // the probe token the last seed ran for
+  const state: { token: string | null } = { token: null };
+
   while (!signal.aborted) {
     // oxlint-disable-next-line no-await-in-loop -- the poll waits between probes
     await waitForInterval(options.intervalMs, signal);
     if (signal.aborted) {
       return;
     }
-    try {
-      // oxlint-disable-next-line no-await-in-loop -- one probe at a time
-      const token = await options.probe();
 
-      if (token !== state.token) {
-        // oxlint-disable-next-line no-await-in-loop -- one seed at a time
-        await options.seed();
-        state.token = token;
-      }
-    } catch (error) {
-      options.onError(error);
+    // oxlint-disable-next-line no-await-in-loop -- one probe and seed at a time
+    state.token = await runProbe(options, state.token);
+  }
+}
+
+// Probes once and seeds on a new token. It returns the token the last good seed ran for, so a
+// failed probe or seed probes the same token again next interval.
+async function runProbe(
+  options: DefinitionsPollOptions,
+  lastToken: string | null,
+): Promise<string | null> {
+  try {
+    const token = await options.probe();
+
+    if (token !== lastToken) {
+      await options.seed();
     }
+    return token;
+  } catch (error) {
+    options.onError(error);
+    return lastToken;
   }
 }
 

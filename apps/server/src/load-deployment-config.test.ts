@@ -28,18 +28,16 @@ test('it reads every section, with the default of each setting the file leaves o
     ].join('\n'),
   );
 
-  expect(loadDeploymentConfig(ctx.path)).resolves.toStrictEqual({
+  const { models, ...rest } = await loadDeploymentConfig(ctx.path);
+
+  // a model profile's fields have a test of their own
+  expect(models.roles).toStrictEqual({ conversation: 'chat-direct' });
+  expect(rest).toStrictEqual({
     server: {
       dataDir: '/data',
       hostname: '0.0.0.0',
       port: 8080,
       secretsFile: '/etc/nixie/secrets.yaml',
-    },
-
-    // a model profile's fields have a test of their own
-    models: {
-      profiles: { 'chat-direct': expect.any(Object) },
-      roles: { conversation: 'chat-direct' },
     },
     imp: {
       url: 'http://127.0.0.1:7070',

@@ -56,12 +56,11 @@ test('it keeps no message text in nixie.db, the key store or the logs', async ()
   const files = await ctx.readDataFiles();
 
   expect(run.exitCode).toBe(0);
-  expect(
-    files.filter((file) => /Plum-message-7QK2|Quince-reply-4ZT9/u.test(file.text)),
-  ).toStrictEqual([]);
-  expect(
-    ['Plum-message-7QK2', 'Quince-reply-4ZT9'].filter((text) => ctx.readOutput().includes(text)),
-  ).toStrictEqual([]);
+  expect(files.map((file) => file.name)).toIncludeAllMembers(['nixie.db', 'keys.db']);
+  expect({
+    files: files.filter((file) => /Plum-message-7QK2|Quince-reply-4ZT9/u.test(file.text)),
+    logs: /Plum-message-7QK2|Quince-reply-4ZT9/u.test(ctx.readOutput()),
+  }).toStrictEqual({ files: [], logs: false });
 }, 60_000);
 
 test('it puts the snapshot hash of the definitions in force on every record', async () => {
@@ -82,12 +81,19 @@ test('it puts the snapshot hash of the definitions in force on every record', as
   const run = await ctx.waitForExit();
 
   expect(run.records).toIncludeAllPartialMembers([
-    { kind: 'owner_message', erasable: expect.objectContaining({ status: 'readable' }) },
+    {
+      kind: 'owner_message',
+      erasable: {
+        status: 'readable',
+        fields: { text: 'Plum-message-7QK2', spans: [{ start: 0, end: 17, source: 'unknown' }] },
+      },
+    },
     {
       kind: 'model.reply',
       erasable: { status: 'readable', fields: { text: 'Quince-reply-4ZT9' } },
     },
   ]);
+  expect(seeded['snapshotHash']).toMatch(/^[0-9a-f]{64}$/u);
   expect(run.records).toSatisfyAll(
     (record: LogRecord) => record.definitions.snapshotHash === seeded['snapshotHash'],
   );

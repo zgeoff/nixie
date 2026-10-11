@@ -17,7 +17,13 @@ export async function buildServerContext(
   writer: Writer,
   deploymentKey: CryptoKey,
 ): Promise<ServerContext> {
-  const inForce: InForce = { current: await findDefinitionsInForce(writer.db) };
+  const current = { inForce: await findDefinitionsInForce(writer.db) };
+  const inForce: InForce = {
+    read: () => current.inForce,
+    set: (next) => {
+      current.inForce = next;
+    },
+  };
 
   return {
     inForce,
@@ -26,7 +32,7 @@ export async function buildServerContext(
       clock: systemClock,
 
       // an empty hash before the first seed, which the log refuses, so nothing writes until a seed
-      definitions: () => ({ snapshotHash: inForce.current?.snapshotHash ?? '' }),
+      definitions: () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' }),
       settings: defaultAPISettings,
     },
   };

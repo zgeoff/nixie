@@ -488,6 +488,6 @@ test('it reports the runtime unready when impd does not answer', async () => {
 
   expect(report).toStrictEqual({
     isReady: false,
-    reason: 'impd does not answer: Error: connect ECONNREFUSED',
+    reason: 'impd does not answer',
   });
 });

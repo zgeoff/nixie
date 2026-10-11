@@ -1,4 +1,4 @@
-import { checkDatabaseIntegrity } from '@heynixie/ops';
+import { checkDatabaseIntegrity, toErrorFields } from '@heynixie/ops';
 import { buildSeedInputs } from './build-seed-inputs';
 import { buildServerContext } from './build-server-context';
 import { buildStartState } from './build-start-state';
@@ -13,10 +13,8 @@ import type { ServerParts } from './types';
 // the API, and the control socket. The rest of the start runs in the background, behind the health
 // endpoint.
 export async function startServerParts(options: ServerPartsOptions): Promise<Server> {
-  const state = buildStartState();
-
-  state.database = await checkDatabaseIntegrity(options.writer.db);
-
+  const database = await checkDatabaseIntegrity(options.writer.db);
+  const state = buildStartState(database);
   const base = await buildServerContext(options.writer, options.secrets.deploymentKey);
   const tools = await startTools({
     ...options,
@@ -40,29 +38,44 @@ export async function startServerParts(options: ServerPartsOptions): Promise<Ser
     onFailure: failed.resolve,
   });
 
-  return { port, ready, failed: failed.promise, stop: makeStop(options) };
+  return { port, ready, failed: failed.promise, stop: makeStop(options, ready) };
 }
 
-// A stop that cuts the start short rejects the start sequence, which a caller need not read.
+// A step that fails outside the retries ends the server, so the container runtime restarts it
+// instead of leaving it live with no runners. A stop that cuts the start short is no failure.
 function startInBackground(parts: ServerParts): Promise<void> {
   const ready = runStartSequence(parts);
 
-  void waitForSettled(ready);
+  void waitForStartFailure(ready, parts);
   return ready;
+}
+
+async function waitForStartFailure(ready: Promise<void>, parts: ServerParts): Promise<void> {
+  try {
+    await ready;
+  } catch (error) {
+    if (!parts.cleanup.signal.aborted) {
+      parts.log('start.failed', toErrorFields(error));
+      parts.onFailure(error);
+    }
+  }
+}
+
+// The stop ends the start sequence and waits for its step in flight, so no part closes under it.
+function makeStop(options: ServerPartsOptions, ready: Promise<void>): Server['stop'] {
+  return async () => {
+    options.log('stopping');
+    options.cleanup.abort();
+    await waitForSettled(ready);
+    await options.cleanup.stop();
+    options.log('stopped');
+  };
 }
 
 async function waitForSettled(ready: Promise<void>): Promise<void> {
   try {
     await ready;
   } catch {
-    // the caller that reads ready sees the rejection
+    // the start failure report reads the rejection
   }
-}
-
-function makeStop(options: ServerPartsOptions): Server['stop'] {
-  return async () => {
-    options.log('stopping');
-    await options.cleanup.stop();
-    options.log('stopped');
-  };
 }

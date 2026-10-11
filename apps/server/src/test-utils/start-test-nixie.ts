@@ -97,9 +97,10 @@ interface TestNixieParts {
   readonly child: Bun.Subprocess<'ignore', 'pipe', 'pipe'>;
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a subprocess handle has no readonly form
 function buildTestNixie(parts: TestNixieParts): TestNixie {
-  const output = { text: '' };
-  const waitForLogEvent = makeLogEventWaiter(parts.child, output);
+  const output = buildOutput();
+  const waitForLogEvent = makeLogEventWaiter(() => parts.child.exitCode, output);
 
   void collectOutput(parts.child.stdout, output);
   void collectOutput(parts.child.stderr, output);
@@ -107,7 +108,7 @@ function buildTestNixie(parts: TestNixieParts): TestNixie {
     ...parts.files,
     dir: parts.dir,
     model: parts.model,
-    readOutput: () => output.text,
+    readOutput: output.read,
     waitForLogEvent,
     sendSignal: (signal) => {
       parts.child.kill(signal);
@@ -127,24 +128,37 @@ function buildTestNixie(parts: TestNixieParts): TestNixie {
   };
 }
 
+// everything nixie wrote to stdout and stderr, in the order it arrived
 interface Output {
-  text: string;
+  readonly read: () => string;
+  readonly append: (text: string) => void;
+}
+
+function buildOutput(): Output {
+  const current = { text: '' };
+
+  return {
+    read: () => current.text,
+    append: (text) => {
+      current.text += text;
+    },
+  };
 }
 
 function makeLogEventWaiter(
-  child: TestNixieParts['child'],
+  readExitCode: () => number | null,
   output: Output,
 ): TestNixie['waitForLogEvent'] {
   return async (event) => {
-    const findLine = () => readLogLines(output.text).find((line) => line['event'] === event);
+    const findLine = () => readLogLines(output.read()).find((line) => line['event'] === event);
 
-    await waitForCondition(() => findLine() !== undefined || child.exitCode !== null, {
+    await waitForCondition(() => findLine() !== undefined || readExitCode() !== null, {
       timeoutMs: 30_000,
     });
     const line = findLine();
 
     if (line === undefined) {
-      throw new Error(`nixie exited without the log event ${event}:\n${output.text}`);
+      throw new Error(`nixie exited without the log event ${event}:\n${output.read()}`);
     }
     return line;
   };
@@ -154,7 +168,7 @@ async function collectOutput(stream: ReadableStream<Uint8Array>, output: Output)
   const decoder = new TextDecoder();
 
   for await (const chunk of stream) {
-    output.text += decoder.decode(chunk, { stream: true });
+    output.append(decoder.decode(chunk, { stream: true }));
   }
 }
 
@@ -162,5 +176,5 @@ function readLogLines(text: string): readonly Readonly<Record<string, unknown>>[
   return text
     .split('\n')
     .filter((line) => line.startsWith('{'))
-    .map((line): Readonly<Record<string, unknown>> => JSON.parse(line));
+    .map((line) => JSON.parse(line) as Readonly<Record<string, unknown>>);
 }

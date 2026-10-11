@@ -1,26 +1,40 @@
 import type { PartReport } from '@heynixie/ops';
 
 // What the start sequence and the runners have reported so far, which readiness reads.
-export interface StartState {
+export interface StartReports {
   // migrations finished and the integrity check at start passed
-  database: PartReport;
+  readonly database: PartReport;
 
   // the last seed applied, with no refused snapshot pending
-  definitions: PartReport;
+  readonly definitions: PartReport;
 
   // every image in the sandbox manifest is added
-  areImagesAdded: boolean;
+  readonly areImagesAdded: boolean;
 
   // the conversation's sandbox stands, and its last turn did not fail
-  conversation: PartReport;
+  readonly conversation: PartReport;
 }
 
-// The state before the start sequence reaches each part.
-export function buildStartState(): StartState {
+export interface StartState {
+  readonly read: () => StartReports;
+  readonly update: (reports: Partial<StartReports>) => void;
+}
+
+// The state before the start sequence reaches each part, from the database check at start.
+export function buildStartState(database: PartReport): StartState {
+  const current: { reports: StartReports } = {
+    reports: {
+      database,
+      definitions: { isReady: false, reason: 'no seed has applied yet' },
+      areImagesAdded: false,
+      conversation: { isReady: false, reason: 'the conversation imp has not started' },
+    },
+  };
+
   return {
-    database: { isReady: false, reason: 'the database has not started' },
-    definitions: { isReady: false, reason: 'no seed has applied yet' },
-    areImagesAdded: false,
-    conversation: { isReady: false, reason: 'the conversation imp has not started' },
+    read: () => current.reports,
+    update: (reports) => {
+      current.reports = { ...current.reports, ...reports };
+    },
   };
 }

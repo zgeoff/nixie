@@ -13,6 +13,9 @@ export interface Cleanup {
   // aborts when a stop begins, which ends the start sequence at its next step
   readonly signal: AbortSignal;
 
+  // aborts the signal without stopping a part, so the start sequence ends before parts close
+  readonly abort: () => void;
+
   // registers a part's stop, or runs it at once when the stop has begun
   readonly defer: (stop: () => Promise<void> | void) => Promise<void>;
 
@@ -22,7 +25,8 @@ export interface Cleanup {
 
 // The definitions in force, which every record's snapshot hash and each turn's persona read.
 export interface InForce {
-  current: DefinitionsInForce | null;
+  readonly read: () => DefinitionsInForce | null;
+  readonly set: (inForce: DefinitionsInForce) => void;
 }
 
 // Everything the start steps behind the health endpoint use.

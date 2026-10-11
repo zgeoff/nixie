@@ -7,5 +7,5 @@ export async function registerSandboxImages(parts: ServerParts): Promise<void> {
     await parts.tools.adapter.addImage(image);
     parts.log('image.added', { name: image.name });
   }
-  parts.state.areImagesAdded = true;
+  parts.state.update({ areImagesAdded: true });
 }

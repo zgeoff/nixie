@@ -11,11 +11,15 @@ export async function runDefinitionsSeed(parts: ServerParts): Promise<SeedResult
     policy: parts.policy,
   });
 
-  parts.inForce.current = result.inForce ?? parts.inForce.current;
-  parts.state.definitions =
-    result.status === 'refused'
-      ? { isReady: false, reason: `the last snapshot was refused: ${result.error.name}` }
-      : { isReady: true, reason: null };
+  if (result.inForce !== null) {
+    parts.inForce.set(result.inForce);
+  }
+  parts.state.update({
+    definitions:
+      result.status === 'refused'
+        ? { isReady: false, reason: `the last snapshot was refused: ${result.error.name}` }
+        : { isReady: true, reason: null },
+  });
   parts.log('definitions.seeded', {
     status: result.status,
     snapshotHash: result.inForce?.snapshotHash ?? null,

@@ -188,11 +188,10 @@ async function waitForExit<T>(exited: Promise<number>, readExit: () => T): Promi
   return readExit();
 }
 
+type ForwardPort = Pick<ImpPort, 'openReverseForward'>;
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own log and cleanup
-function buildFakeForwardCall(
-  state: FakeState,
-  stack: AsyncDisposableStack,
-): Pick<ImpPort, 'openReverseForward'> {
+function buildFakeForwardCall(state: FakeState, stack: AsyncDisposableStack): ForwardPort {
   return {
     openReverseForward: (name, guestPort, onConnection) => {
       state.calls.push(`forward ${name} ${guestPort}`);

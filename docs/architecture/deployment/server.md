@@ -62,10 +62,13 @@ conversation imp then starts on its image from the manifest, and the sandbox ada
 sandbox when the image or the model profile changed. The seed runs after the conversation imp, so a
 release's new definitions apply to the turns it runs. Only then do the runners claim work.
 
-A step after the health endpoint that fails waits and runs again, with a log line per attempt. nixie
-therefore stays live and unready while impd is down or the definitions refuse to seed, and the
-container runtime sees why in the readiness report instead of a restart loop. A stop during the
-sequence cuts it short at the next step.
+The first seed, recovery, adding the images and starting the conversation imp each wait and run
+again when they fail, with a log line per attempt. nixie therefore stays live and unready while impd
+is down or the definitions refuse to seed, and the container runtime sees why in the readiness
+report instead of a restart loop. Any other failure in the sequence logs the error and ends the
+process, so the container runtime restarts it instead of leaving it live with no runners. A stop
+during the sequence ends it at the next step, and waits for the step in flight before any part
+closes.
 
 ## Health
 
@@ -99,12 +102,15 @@ event's fields, so a field can never overwrite the event name or the time.
 ## Stopping
 
 nixie handles SIGTERM and SIGINT itself, because Bun running as PID 1 ignores a signal that the
-process does not handle. On the signal, every runner pool stops claiming at once, and each step in
-flight gets the pool's grace period to commit. The server then stops its parts in the reverse of
-their start order: the runners, the conversation imp, the HTTP and control sockets, and the writer
-last. A step that misses its grace keeps its lease, and the next start's recovery settles it. The
-process exits 0 after a clean stop and 1 when a part failed, such as another process taking the
-writer.
+process does not handle. The handlers exist before the start begins, so a signal that arrives during
+migrations stops nixie once the writer is open. On the signal, every runner pool stops claiming at
+once, and each step in flight gets the pool's grace period to commit. The server then stops its
+parts in the reverse of their start order: the runners, the conversation imp, the HTTP and control
+sockets, and the writer last. A step that misses its grace keeps its lease, and the next start's
+recovery settles it. The process exits 0 after a clean stop and 1 when a part failed, such as
+another process taking the writer. The container runtime's stop grace must exceed the runner pools'
+grace, with room for the parts that stop after the runners, or the runtime kills nixie before the
+writer closes.
 
 ## Host commands
 

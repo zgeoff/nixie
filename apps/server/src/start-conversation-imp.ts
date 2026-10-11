@@ -14,19 +14,19 @@ export async function startConversationImp(parts: ServerParts): Promise<RunStep>
     tools: parts.tools.endpoint,
     toolNames: [parts.tools.webFetch.tool.name],
     image: parts.images.conversation.name,
-    getSystemPrompt: () => parts.inForce.current?.persona ?? '',
+    getSystemPrompt: () => parts.inForce.read()?.persona ?? '',
   });
 
   await parts.cleanup.defer(() => conversation.stop());
-  parts.state.conversation = { isReady: true, reason: null };
+  parts.state.update({ conversation: { isReady: true, reason: null } });
   return async (input) => {
     try {
       const result = await conversation.runStep(input);
 
-      parts.state.conversation = { isReady: true, reason: null };
+      parts.state.update({ conversation: { isReady: true, reason: null } });
       return result;
     } catch (error) {
-      parts.state.conversation = { isReady: false, reason: 'the last turn failed' };
+      parts.state.update({ conversation: { isReady: false, reason: 'the last turn failed' } });
       throw error;
     }
   };

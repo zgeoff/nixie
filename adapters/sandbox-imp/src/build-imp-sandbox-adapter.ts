@@ -183,8 +183,9 @@ function makeRuntimeChecker(port: ImpPort): SandboxAdapter['checkRuntime'] {
     try {
       await port.readFeatures();
       return { isReady: true, reason: null };
-    } catch (error) {
-      return { isReady: false, reason: `impd does not answer: ${String(error)}` };
+    } catch {
+      // the health endpoint answers without a session, so the reason never quotes impd's error
+      return { isReady: false, reason: 'impd does not answer' };
     }
   };
 }

@@ -1,20 +1,31 @@
-// The IDs that only a test build may hold: every slice 1 fault point in the crash tests design, and
-// the test rule's ID. trigger.deliver.before waits for the trigger source in slice 6, and
-// recovery.step.<n> is one template over the 5 recovery steps.
+import type { FaultPointID } from '@heynixie/tasks';
+
+// The text each fault point leaves in a test build. The record covers every fault point ID, so a
+// new fault point fails the typecheck until it is listed here. recovery.step.<n> is one template
+// over the recovery steps.
+const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
+  'claim.after': 'claim.after',
+  'renew.before': 'renew.before',
+  'renew.after': 'renew.after',
+  'step.commit.before': 'step.commit.before',
+  'step.commit.after': 'step.commit.after',
+  'queue.commit.before': 'queue.commit.before',
+  'queue.commit.after': 'queue.commit.after',
+  'attempt.record.after': 'attempt.record.after',
+  'attempt.result.before': 'attempt.result.before',
+  'attempt.result.after': 'attempt.result.after',
+  'timer.fire.before': 'timer.fire.before',
+  'inbox.write.after': 'inbox.write.after',
+  'recovery.step.1': 'recovery.step.',
+  'recovery.step.2': 'recovery.step.',
+  'recovery.step.3': 'recovery.step.',
+  'recovery.step.4': 'recovery.step.',
+  'recovery.step.5': 'recovery.step.',
+  'sigterm.grace': 'sigterm.grace',
+};
+
+// The IDs that only a test build may hold: every fault point, and the test rule's ID.
 export const testBuildIDs: readonly string[] = [
-  'claim.after',
-  'renew.before',
-  'renew.after',
-  'step.commit.before',
-  'step.commit.after',
-  'queue.commit.before',
-  'queue.commit.after',
-  'attempt.record.after',
-  'attempt.result.before',
-  'attempt.result.after',
-  'timer.fire.before',
-  'inbox.write.after',
-  'recovery.step.',
-  'sigterm.grace',
+  ...new Set(Object.values(faultPointTexts)),
   'test.allow-send',
 ];

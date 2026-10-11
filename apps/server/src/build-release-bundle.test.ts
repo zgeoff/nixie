@@ -69,7 +69,7 @@ test('the release bundle starts live behind its health endpoint and stops on SIG
   expect(live.status).toBe(200);
   expect(ready.status).toBe(503);
   expect(ready.json()).resolves.toMatchObject({
-    parts: { imp_host: { isReady: false, reason: expect.toStartWith('impd does not answer') } },
+    parts: { imp_host: { isReady: false, reason: 'impd does not answer' } },
   });
   expect(nixie.exited).resolves.toBe(0);
 }, 60_000);
