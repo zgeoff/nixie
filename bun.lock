@@ -164,6 +164,22 @@
         "kysely": "catalog:",
       },
     },
+    "modules/models": {
+      "name": "@heynixie/models",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/log": "workspace:*",
+        "@heynixie/sandbox": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+        "kysely": "catalog:",
+      },
+    },
     "modules/policy": {
       "name": "@heynixie/policy",
       "version": "0.0.0",
@@ -374,6 +390,8 @@
     "@heynixie/definitions": ["@heynixie/definitions@workspace:modules/definitions"],
 
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
+
+    "@heynixie/models": ["@heynixie/models@workspace:modules/models"],
 
     "@heynixie/policy": ["@heynixie/policy@workspace:modules/policy"],
 
