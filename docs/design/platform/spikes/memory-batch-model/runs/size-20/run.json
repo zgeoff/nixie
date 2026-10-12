@@ -1,0 +1,1072 @@
+{
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "plan": [
+    {
+      "end": 20,
+      "start": 0,
+      "startedAt": null,
+      "trigger": "size"
+    },
+    {
+      "end": 40,
+      "start": 20,
+      "startedAt": null,
+      "trigger": "size"
+    }
+  ],
+  "samples": [
+    {
+      "batches": [
+        {
+          "apiMs": 5873,
+          "candidates": 6,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 20,
+            "start": 0,
+            "startedAt": null,
+            "trigger": "size"
+          },
+          "reportedUSD": 0.00113757,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1801,
+            "input": 2,
+            "output": 1533
+          },
+          "wallMs": 11942
+        },
+        {
+          "apiMs": 5582,
+          "candidates": 7,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 40,
+            "start": 20,
+            "startedAt": null,
+            "trigger": "size"
+          },
+          "reportedUSD": 0.0010402699999999998,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1812,
+            "input": 2,
+            "output": 1334
+          },
+          "wallMs": 6754
+        }
+      ],
+      "candidates": [
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm vegetarian now, since last month",
+          "sourceID": 3,
+          "text": "The owner has been vegetarian since last month.",
+          "batch": 0,
+          "index": 0,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "Priya is my manager by the way",
+          "sourceID": 7,
+          "text": "Priya is the owner's manager.",
+          "batch": 0,
+          "index": 1,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't drink coffee any more btw, only tea",
+          "sourceID": 15,
+          "text": "The owner does not drink coffee and only drinks tea.",
+          "batch": 0,
+          "index": 2,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm allergic to cashews",
+          "sourceID": 27,
+          "text": "The owner is allergic to cashews.",
+          "batch": 0,
+          "index": 3,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "new address from the 1st is 7 Quay Street, Bristol BS1 4DJ",
+          "sourceID": 33,
+          "text": "The owner is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st.",
+          "batch": 0,
+          "index": 4,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i2",
+          "op": "revise",
+          "quote": "I've switched dentist, it's Dr Mensah at Clifton Smiles now",
+          "sourceID": 39,
+          "text": "The owner's dentist is Dr Mensah at Clifton Smiles.",
+          "batch": 0,
+          "index": 5,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "use r.moss.appointments@example.com for appointments from now on",
+          "sourceID": 41,
+          "text": "The owner uses r.moss.appointments@example.com for appointments.",
+          "batch": 1,
+          "index": 6,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my partner Jo hates early starts",
+          "sourceID": 49,
+          "text": "The owner's partner is Jo.",
+          "batch": 1,
+          "index": 7,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't have a car, so it needs to be by bus or train",
+          "sourceID": 53,
+          "text": "The owner does not have a car and travels by bus or train.",
+          "batch": 1,
+          "index": 8,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "long ones wipe me out",
+          "sourceID": 57,
+          "text": "The owner finds long walks and hikes exhausting.",
+          "batch": 1,
+          "index": 9,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i3",
+          "op": "revise",
+          "quote": "I prefer afternoon meetings these days, mornings are for focus work",
+          "sourceID": 61,
+          "text": "The owner prefers afternoon meetings and keeps mornings for focus work.",
+          "batch": 1,
+          "index": 10,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm working from home tuesdays and thursdays from now on",
+          "sourceID": 67,
+          "text": "The owner works from home on Tuesdays and Thursdays.",
+          "batch": 1,
+          "index": 11,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my handle on the team chat is @rmoss-ops",
+          "sourceID": 69,
+          "text": "The owner's handle on the team chat is @rmoss-ops.",
+          "batch": 1,
+          "index": 12,
+          "outcome": "applied",
+          "reason": null
+        }
+      ],
+      "history": [
+        {
+          "active": true,
+          "id": "i1",
+          "versions": [
+            "The owner lives at 14 Elm Row, Bristol."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i2",
+          "versions": [
+            "The owner's dentist is Dr Okafor at Harbour Dental.",
+            "The owner's dentist is Dr Mensah at Clifton Smiles."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i3",
+          "versions": [
+            "The owner prefers morning meetings.",
+            "The owner prefers afternoon meetings and keeps mornings for focus work."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n1",
+          "versions": [
+            "The owner has been vegetarian since last month."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n2",
+          "versions": [
+            "Priya is the owner's manager."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n3",
+          "versions": [
+            "The owner does not drink coffee and only drinks tea."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n4",
+          "versions": [
+            "The owner is allergic to cashews."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n5",
+          "versions": [
+            "The owner is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n6",
+          "versions": [
+            "The owner uses r.moss.appointments@example.com for appointments."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n7",
+          "versions": [
+            "The owner's partner is Jo."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n8",
+          "versions": [
+            "The owner does not have a car and travels by bus or train."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n9",
+          "versions": [
+            "The owner finds long walks and hikes exhausting."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n10",
+          "versions": [
+            "The owner works from home on Tuesdays and Thursdays."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n11",
+          "versions": [
+            "The owner's handle on the team chat is @rmoss-ops."
+          ]
+        }
+      ],
+      "judge": {
+        "candidates": [
+          {
+            "index": 0,
+            "label": "gold",
+            "ref": "g1"
+          },
+          {
+            "index": 1,
+            "label": "gold",
+            "ref": "g2"
+          },
+          {
+            "index": 2,
+            "label": "gold",
+            "ref": "g4"
+          },
+          {
+            "index": 3,
+            "label": "gold",
+            "ref": "g6"
+          },
+          {
+            "index": 4,
+            "label": "unsupported",
+            "ref": null
+          },
+          {
+            "index": 5,
+            "label": "gold",
+            "ref": "g8"
+          },
+          {
+            "index": 6,
+            "label": "gold",
+            "ref": "g9"
+          },
+          {
+            "index": 7,
+            "label": "gold",
+            "ref": "g11"
+          },
+          {
+            "index": 8,
+            "label": "gold",
+            "ref": "g12"
+          },
+          {
+            "index": 9,
+            "label": "acceptable",
+            "ref": null
+          },
+          {
+            "index": 10,
+            "label": "gold",
+            "ref": "g13"
+          },
+          {
+            "index": 11,
+            "label": "gold",
+            "ref": "g14"
+          },
+          {
+            "index": 12,
+            "label": "gold",
+            "ref": "g15"
+          }
+        ],
+        "error": null,
+        "usage": {
+          "cacheRead": 599,
+          "cacheWrite": 2838,
+          "input": 2,
+          "output": 664
+        }
+      },
+      "sample": 0
+    },
+    {
+      "batches": [
+        {
+          "apiMs": 6144,
+          "candidates": 7,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 20,
+            "start": 0,
+            "startedAt": null,
+            "trigger": "size"
+          },
+          "reportedUSD": 0.00118507,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1801,
+            "input": 2,
+            "output": 1628
+          },
+          "wallMs": 12207
+        },
+        {
+          "apiMs": 4798,
+          "candidates": 6,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 40,
+            "start": 20,
+            "startedAt": null,
+            "trigger": "size"
+          },
+          "reportedUSD": 0.00096707,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1841,
+            "input": 2,
+            "output": 1176
+          },
+          "wallMs": 6264
+        }
+      ],
+      "candidates": [
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm vegetarian now, since last month",
+          "sourceID": 3,
+          "text": "The owner is vegetarian.",
+          "batch": 0,
+          "index": 0,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "Priya is my manager by the way, she likes short updates",
+          "sourceID": 7,
+          "text": "The owner's manager is Priya, and she prefers short updates.",
+          "batch": 0,
+          "index": 1,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't drink coffee any more btw, only tea",
+          "sourceID": 15,
+          "text": "The owner no longer drinks coffee and only drinks tea.",
+          "batch": 0,
+          "index": 2,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm allergic to cashews",
+          "sourceID": 27,
+          "text": "The owner is allergic to cashews.",
+          "batch": 0,
+          "index": 3,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "the usual is Green Fork on Mill Lane",
+          "sourceID": 25,
+          "text": "The owner's usual lunch place is Green Fork on Mill Lane.",
+          "batch": 0,
+          "index": 4,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i1",
+          "op": "revise",
+          "quote": "new address from the 1st is 7 Quay Street, Bristol BS1 4DJ",
+          "sourceID": 33,
+          "text": "The owner lives at 14 Elm Row, Bristol, and is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st.",
+          "batch": 0,
+          "index": 5,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i2",
+          "op": "revise",
+          "quote": "I've switched dentist, it's Dr Mensah at Clifton Smiles now",
+          "sourceID": 39,
+          "text": "The owner's dentist is Dr Mensah at Clifton Smiles.",
+          "batch": 0,
+          "index": 6,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "use r.moss.appointments@example.com for appointments from now on",
+          "sourceID": 41,
+          "text": "The owner wants appointment bookings sent to r.moss.appointments@example.com.",
+          "batch": 1,
+          "index": 7,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my partner Jo hates early starts so nothing before 10",
+          "sourceID": 49,
+          "text": "The owner's partner is Jo, who dislikes early starts.",
+          "batch": 1,
+          "index": 8,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i3",
+          "op": "revise",
+          "quote": "I prefer afternoon meetings these days, mornings are for focus work",
+          "sourceID": 61,
+          "text": "The owner prefers afternoon meetings and keeps mornings for focus work.",
+          "batch": 1,
+          "index": 9,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm working from home tuesdays and thursdays from now on",
+          "sourceID": 67,
+          "text": "The owner works from home on Tuesdays and Thursdays.",
+          "batch": 1,
+          "index": 10,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my handle on the team chat is @rmoss-ops if anyone asks",
+          "sourceID": 69,
+          "text": "The owner's team chat handle is @rmoss-ops.",
+          "batch": 1,
+          "index": 11,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "long ones wipe me out",
+          "sourceID": 57,
+          "text": "The owner finds long walks and hikes exhausting.",
+          "batch": 1,
+          "index": 12,
+          "outcome": "applied",
+          "reason": null
+        }
+      ],
+      "history": [
+        {
+          "active": true,
+          "id": "i1",
+          "versions": [
+            "The owner lives at 14 Elm Row, Bristol.",
+            "The owner lives at 14 Elm Row, Bristol, and is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i2",
+          "versions": [
+            "The owner's dentist is Dr Okafor at Harbour Dental.",
+            "The owner's dentist is Dr Mensah at Clifton Smiles."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i3",
+          "versions": [
+            "The owner prefers morning meetings.",
+            "The owner prefers afternoon meetings and keeps mornings for focus work."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n1",
+          "versions": [
+            "The owner is vegetarian."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n2",
+          "versions": [
+            "The owner's manager is Priya, and she prefers short updates."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n3",
+          "versions": [
+            "The owner no longer drinks coffee and only drinks tea."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n4",
+          "versions": [
+            "The owner is allergic to cashews."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n5",
+          "versions": [
+            "The owner's usual lunch place is Green Fork on Mill Lane."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n6",
+          "versions": [
+            "The owner wants appointment bookings sent to r.moss.appointments@example.com."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n7",
+          "versions": [
+            "The owner's partner is Jo, who dislikes early starts."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n8",
+          "versions": [
+            "The owner works from home on Tuesdays and Thursdays."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n9",
+          "versions": [
+            "The owner's team chat handle is @rmoss-ops."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n10",
+          "versions": [
+            "The owner finds long walks and hikes exhausting."
+          ]
+        }
+      ],
+      "judge": {
+        "candidates": [
+          {
+            "index": 0,
+            "label": "gold",
+            "ref": "g1"
+          },
+          {
+            "index": 1,
+            "label": "gold",
+            "ref": "g2"
+          },
+          {
+            "index": 2,
+            "label": "gold",
+            "ref": "g4"
+          },
+          {
+            "index": 3,
+            "label": "gold",
+            "ref": "g6"
+          },
+          {
+            "index": 4,
+            "label": "gold",
+            "ref": "g5"
+          },
+          {
+            "index": 5,
+            "label": "gold",
+            "ref": "g7"
+          },
+          {
+            "index": 6,
+            "label": "gold",
+            "ref": "g8"
+          },
+          {
+            "index": 7,
+            "label": "gold",
+            "ref": "g9"
+          },
+          {
+            "index": 8,
+            "label": "gold",
+            "ref": "g11"
+          },
+          {
+            "index": 9,
+            "label": "gold",
+            "ref": "g13"
+          },
+          {
+            "index": 10,
+            "label": "gold",
+            "ref": "g14"
+          },
+          {
+            "index": 11,
+            "label": "gold",
+            "ref": "g15"
+          },
+          {
+            "index": 12,
+            "label": "acceptable",
+            "ref": null
+          }
+        ],
+        "error": null,
+        "usage": {
+          "cacheRead": 599,
+          "cacheWrite": 2899,
+          "input": 2,
+          "output": 485
+        }
+      },
+      "sample": 1
+    },
+    {
+      "batches": [
+        {
+          "apiMs": 5635,
+          "candidates": 6,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 20,
+            "start": 0,
+            "startedAt": null,
+            "trigger": "size"
+          },
+          "reportedUSD": 0.00107307,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1801,
+            "input": 2,
+            "output": 1404
+          },
+          "wallMs": 11701
+        },
+        {
+          "apiMs": 4840,
+          "candidates": 5,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 40,
+            "start": 20,
+            "startedAt": null,
+            "trigger": "size"
+          },
+          "reportedUSD": 0.0009225699999999999,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1816,
+            "input": 2,
+            "output": 1097
+          },
+          "wallMs": 6376
+        }
+      ],
+      "candidates": [
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm vegetarian now, since last month",
+          "sourceID": 3,
+          "text": "The owner is vegetarian.",
+          "batch": 0,
+          "index": 0,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "Priya is my manager by the way, she likes short updates",
+          "sourceID": 7,
+          "text": "The owner's manager is Priya, who prefers short updates.",
+          "batch": 0,
+          "index": 1,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't drink coffee any more btw, only tea",
+          "sourceID": 15,
+          "text": "The owner no longer drinks coffee and drinks only tea.",
+          "batch": 0,
+          "index": 2,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm allergic to cashews, tell them when booking",
+          "sourceID": 27,
+          "text": "The owner is allergic to cashews.",
+          "batch": 0,
+          "index": 3,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i1",
+          "op": "revise",
+          "quote": "new address from the 1st is 7 Quay Street, Bristol BS1 4DJ",
+          "sourceID": 33,
+          "text": "The owner is moving to 7 Quay Street, Bristol BS1 4DJ, from the 1st of the month (previously lived at 14 Elm Row, Bristol).",
+          "batch": 0,
+          "index": 4,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i2",
+          "op": "revise",
+          "quote": "actually I've switched dentist, it's Dr Mensah at Clifton Smiles now",
+          "sourceID": 39,
+          "text": "The owner's dentist is Dr Mensah at Clifton Smiles.",
+          "batch": 0,
+          "index": 5,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "use r.moss.appointments@example.com for appointments from now on",
+          "sourceID": 41,
+          "text": "The owner wants appointment bookings made with the address r.moss.appointments@example.com.",
+          "batch": 1,
+          "index": 6,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my partner Jo hates early starts",
+          "sourceID": 49,
+          "text": "The owner's partner is Jo, who dislikes early starts.",
+          "batch": 1,
+          "index": 7,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i3",
+          "op": "revise",
+          "quote": "I prefer afternoon meetings these days",
+          "sourceID": 61,
+          "text": "The owner prefers afternoon meetings, keeping mornings for focus work.",
+          "batch": 1,
+          "index": 8,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm working from home tuesdays and thursdays from now on",
+          "sourceID": 67,
+          "text": "The owner works from home on Tuesdays and Thursdays.",
+          "batch": 1,
+          "index": 9,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my handle on the team chat is @rmoss-ops",
+          "sourceID": 69,
+          "text": "The owner's handle on the team chat is @rmoss-ops.",
+          "batch": 1,
+          "index": 10,
+          "outcome": "applied",
+          "reason": null
+        }
+      ],
+      "history": [
+        {
+          "active": true,
+          "id": "i1",
+          "versions": [
+            "The owner lives at 14 Elm Row, Bristol.",
+            "The owner is moving to 7 Quay Street, Bristol BS1 4DJ, from the 1st of the month (previously lived at 14 Elm Row, Bristol)."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i2",
+          "versions": [
+            "The owner's dentist is Dr Okafor at Harbour Dental.",
+            "The owner's dentist is Dr Mensah at Clifton Smiles."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i3",
+          "versions": [
+            "The owner prefers morning meetings.",
+            "The owner prefers afternoon meetings, keeping mornings for focus work."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n1",
+          "versions": [
+            "The owner is vegetarian."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n2",
+          "versions": [
+            "The owner's manager is Priya, who prefers short updates."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n3",
+          "versions": [
+            "The owner no longer drinks coffee and drinks only tea."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n4",
+          "versions": [
+            "The owner is allergic to cashews."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n5",
+          "versions": [
+            "The owner wants appointment bookings made with the address r.moss.appointments@example.com."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n6",
+          "versions": [
+            "The owner's partner is Jo, who dislikes early starts."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n7",
+          "versions": [
+            "The owner works from home on Tuesdays and Thursdays."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n8",
+          "versions": [
+            "The owner's handle on the team chat is @rmoss-ops."
+          ]
+        }
+      ],
+      "judge": {
+        "candidates": [
+          {
+            "index": 0,
+            "label": "gold",
+            "ref": "g1"
+          },
+          {
+            "index": 1,
+            "label": "gold",
+            "ref": "g2"
+          },
+          {
+            "index": 2,
+            "label": "gold",
+            "ref": "g4"
+          },
+          {
+            "index": 3,
+            "label": "gold",
+            "ref": "g6"
+          },
+          {
+            "index": 4,
+            "label": "gold",
+            "ref": "g7"
+          },
+          {
+            "index": 5,
+            "label": "gold",
+            "ref": "g8"
+          },
+          {
+            "index": 6,
+            "label": "gold",
+            "ref": "g9"
+          },
+          {
+            "index": 7,
+            "label": "gold",
+            "ref": "g11"
+          },
+          {
+            "index": 8,
+            "label": "gold",
+            "ref": "g13"
+          },
+          {
+            "index": 9,
+            "label": "gold",
+            "ref": "g14"
+          },
+          {
+            "index": 10,
+            "label": "gold",
+            "ref": "g15"
+          }
+        ],
+        "error": null,
+        "usage": {
+          "cacheRead": 599,
+          "cacheWrite": 2722,
+          "input": 2,
+          "output": 330
+        }
+      },
+      "sample": 2
+    }
+  ]
+}
