@@ -130,6 +130,7 @@
                 "name": [
                   "AbortSignal",
                   "Date",
+                  "Element",
                   "Error",
                   "Headers",
                   "InputEvent",

@@ -101,3 +101,34 @@ test('it clips a long result and shows the rest on demand', async () => {
   expect(clipped).not.toInclude('the end');
   expect(call).toHaveTextContent('the end');
 });
+
+test('it closes an opened result again from a control above the text', async () => {
+  const user = userEvent.setup();
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { text: `${'x'.repeat(2000)}the end` } },
+            input: { url: 'https://example.com/' },
+            outcome: 'result',
+            tool: 'web_fetch',
+          },
+        ],
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText('web fetch: example.com'));
+  await user.click(rendered.getByRole('button', { name: /^Show all 2,0\d\d characters$/u }));
+
+  const showLess = rendered.getByRole('button', { name: 'Show less' });
+  const text = rendered.getByText(/the end/u);
+
+  await user.click(showLess);
+
+  expect(showLess.compareDocumentPosition(text)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  expect(rendered.getByRole('region', { name: 'web_fetch' })).not.toHaveTextContent('the end');
+  expect(rendered.getByRole('group')).toHaveAttribute('open');
+});

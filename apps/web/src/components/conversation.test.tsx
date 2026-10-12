@@ -91,6 +91,22 @@ test('it shows a reply that arrives on the live stream', async () => {
   expect(reply).toBeInTheDocument();
 });
 
+test('it shows a spinner while a reply is pending and removes it when the reply arrives', async () => {
+  const ctx = await setupTest();
+  const rendered = render(<Conversation thread="conversation" />);
+  const textBox = await rendered.findByRole('textbox', { name: 'Message' });
+
+  await ctx.user.type(textBox, 'Is it raining?{Enter}');
+
+  const spinner = await rendered.findByRole('progressbar', { name: 'nixie is working' });
+
+  await store.records.create({ kind: 'assistant_message', message: { text: 'Not yet.' } });
+  await rendered.findByText('Not yet.');
+
+  expect(spinner).not.toBeInTheDocument();
+  expect(rendered.queryByRole('progressbar', { name: 'nixie is working' })).toBeNull();
+});
+
 test('it shows an unsent message as not sent', async () => {
   const ctx = await setupTest();
 
