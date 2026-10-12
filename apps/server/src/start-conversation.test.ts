@@ -284,6 +284,31 @@ test('it resumes the session on a sandbox that a new image replaced between two 
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
 }, 30_000);
 
+test('it resumes the session on a sandbox that replaced a retired one between two turns', async () => {
+  const ctx = await setupTest();
+  const [before] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+
+  // as the imp adapter retires an imp that impd still backs up
+  const retired = await ctx.retireSandboxes(conversationTaskID);
+  const after = await ctx.startRunner({ image: 'nixie-conversation-0123456789ab' });
+
+  await sendTestMessage(ctx.context, after.runStep, 'Another.');
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'sandbox.destroyed')
+      .map((record) => record.payload['sandboxID']),
+  ).toStrictEqual([...retired]);
+  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toStrictEqual([]);
+}, 30_000);
+
 test('it takes the session into a replacement that a stopped start left beside the old sandbox', async () => {
   const ctx = await setupTest();
   const [before] = await Promise.all([

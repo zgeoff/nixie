@@ -121,7 +121,7 @@ test('it lists every sandbox of the owner until it is destroyed', async () => {
   expect(after.map((sandbox) => sandbox.id)).toStrictEqual([second.id]);
 });
 
-test('it creates the imp with policy none and leaves the grant to the broker', async () => {
+test('it creates the imp with policy none, out of every backup, and leaves the grant to the broker', async () => {
   const ctx = await setupTest();
   const grant = buildMockGrantSpec();
 
@@ -144,8 +144,60 @@ test('it creates the imp with policy none and leaves the grant to the broker', a
       memoryMib: 2048,
       diskMib: 4096,
       policy: { mode: 'none', allow: [] },
+      backup: false,
     },
   ]);
+});
+
+test('it refuses a sandbox on an impd that would back it up', async () => {
+  const ctx = await setupTest();
+
+  ctx.imp.features = { publicEgress: true, isEgressEnforced: true, hasBackupOptOut: false };
+
+  expect(ctx.adapter.create(buildMockSandboxSpec({ grants: [] }))).rejects.toThrow(
+    new SandboxSpecRefusedError('a sandbox on an impd that would back it up'),
+  );
+  expect(ctx.imp.calls).toStrictEqual([]);
+});
+
+test('it lists a sandbox whose imp impd still backs up as retired', async () => {
+  const ctx = await setupTest();
+
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
+  const created = ctx.imp.created.at(0);
+
+  invariant(created);
+
+  // an imp made before the opt-out, which impd backs up for its life
+  ctx.imp.created[0] = { ...created, backup: true };
+
+  const listed = await ctx.adapter.list(sandbox.spec.owner);
+
+  expect(listed.map((row) => [row.id, row.isRetired])).toStrictEqual([[sandbox.id, true]]);
+});
+
+test('it lists a sandbox whose imp stays out of the backups as kept', async () => {
+  const ctx = await setupTest();
+
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
+
+  const listed = await ctx.adapter.list(sandbox.spec.owner);
+
+  expect(listed.map((row) => [row.id, row.isRetired])).toStrictEqual([[sandbox.id, false]]);
+});
+
+test('it gets a sandbox whose imp impd still backs up as retired', async () => {
+  const ctx = await setupTest();
+
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
+  const created = ctx.imp.created.at(0);
+
+  invariant(created);
+  ctx.imp.created[0] = { ...created, backup: true };
+
+  const found = await ctx.adapter.get(sandbox.id);
+
+  expect(found?.isRetired).toBeTrue();
 });
 
 test.each([
@@ -215,7 +267,7 @@ test('it refuses public egress on an impd that does not enforce it', async () =>
     publicEgress: { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] },
   });
 
-  ctx.imp.features = { publicEgress: true, isEgressEnforced: false };
+  ctx.imp.features = { publicEgress: true, isEgressEnforced: false, hasBackupOptOut: true };
 
   expect(
     adapter.create(buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] })),

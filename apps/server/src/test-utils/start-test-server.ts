@@ -4,12 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { SandboxAdapter } from '@heynixie/sandbox';
-import { buildSandboxRecorder } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { systemClock } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
-import { buildSandboxAdapter } from '../build-sandbox-adapter';
+import { buildTestSandboxes } from './build-test-sandboxes';
 import { startTestLog } from './start-test-log';
 
 export interface TestServer {
@@ -18,13 +17,16 @@ export interface TestServer {
   readonly endpoint: ToolEndpoint;
   readonly sandboxes: SandboxAdapter;
 
+  // retires every sandbox the owner holds, so the owner replaces it, and returns their IDs
+  readonly retireSandboxes: (owner: string) => Promise<readonly string[]>;
+
   // stops a part the test starts on the server before the server's own parts stop
   readonly defer: (stop: () => Promise<void>) => void;
 }
 
 // Starts the parts of a test build the conversation runs on: a writer on a fresh data directory, a
-// tool endpoint with no tools, and the process double that runs each guest as a local process. It
-// stops them, after every part the test deferred, when the test finishes.
+// tool endpoint with no tools, and the process double that runs each guest as a local process, whose
+// sandboxes a test can retire. It stops them, after every part the test deferred, when it finishes.
 export async function startTestServer(): Promise<TestServer> {
   const stack = new AsyncDisposableStack();
 
@@ -51,11 +53,11 @@ export async function startTestServer(): Promise<TestServer> {
     dataDir,
     context,
     endpoint,
-    sandboxes: buildSandboxAdapter({
-      recorder: buildSandboxRecorder({ log: context.log, definitions: context.definitions }),
+    ...buildTestSandboxes({
+      log: context.log,
+      definitions: context.definitions,
       toolTarget: endpoint.getToolTarget,
-      imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
-      testRootDir: join(dataDir, 'sandboxes'),
+      rootDir: join(dataDir, 'sandboxes'),
     }),
     defer: (stop) => {
       stack.defer(stop);

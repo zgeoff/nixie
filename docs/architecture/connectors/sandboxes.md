@@ -90,6 +90,12 @@ egress and an allowlist onto imp's matching egress policies.
 - **Credentials at start.** A command in an imp with a grant starts only once impd has set the
   broker's variables for that boot, and impd refuses a command whose environment replaces one of
   them.
+- **Backups.** A sandbox's disk holds the user's conversation, so a copy of it in impd's backups
+  would outlive a forget. The adapter creates every imp with impd's backup opt-out, which holds for
+  the imp's life, and refuses to create one on an impd that would ignore it. An imp made before the
+  opt-out stays backed up, so the adapter marks one it lists as retired. Its owner then replaces it
+  as it does for a changed spec, and the conversation's sandbox carries its session into the
+  replacement.
 
 ## Running a command
 

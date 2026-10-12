@@ -105,6 +105,7 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
     copyOut: () => Promise.resolve([]),
     toolRoute: () => Promise.resolve(null),
     suspension: { kind: 'none' },
+    isRetired: false,
     destroy: () => {
       state.live.delete(id);
       state.destroyed.push(id);

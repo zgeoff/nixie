@@ -47,7 +47,7 @@ export async function startFakeImp(): Promise<FakeImp> {
     execs: [],
     secrets: new Map(),
     images: new Map(),
-    features: { publicEgress: true, isEgressEnforced: true },
+    features: { publicEgress: true, isEgressEnforced: true, hasBackupOptOut: true },
     failFeatures: false,
     failCreate: false,
     failRemove: false,
@@ -69,14 +69,7 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
       state.failFeatures
         ? Promise.reject(new Error('connect ECONNREFUSED'))
         : Promise.resolve(state.features),
-    listImages: () =>
-      Promise.resolve(
-        [...state.images].map(([name, held]) => ({ name, digest: held.digest, ref: held.ref })),
-      ),
-    addImage: async (image) => {
-      await updateCallLog(`image ${image.name} ${image.ref}`);
-      state.images.set(image.name, { digest: image.digest, ref: image.ref });
-    },
+    ...buildFakeImageCalls(state, updateCallLog),
     createImp: async (input) => {
       await updateCallLog(`create ${input.name}`);
       if (state.failCreate) {
@@ -84,6 +77,10 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
       }
       state.created.push(input);
     },
+
+    // the backup flag of the imp's newest create, as impd holds it
+    readImpBackup: (name) =>
+      Promise.resolve(state.created.findLast((input) => input.name === name)?.backup ?? null),
     removeImp: async (name) => {
       await updateCallLog(`remove ${name}`);
       if (state.failRemove) {
@@ -235,8 +232,24 @@ function sendGroupSignal(pid: number, signal: NodeJS.Signals): void {
   }
 }
 
-type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret'>;
+type FakeImageCalls = Pick<ImpPort, 'listImages' | 'addImage'>;
 type UpdateCallLog = (call: string) => Promise<void>;
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own image store
+function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeImageCalls {
+  return {
+    listImages: () =>
+      Promise.resolve(
+        [...state.images].map(([name, held]) => ({ name, digest: held.digest, ref: held.ref })),
+      ),
+    addImage: async (image) => {
+      await updateCallLog(`image ${image.name} ${image.ref}`);
+      state.images.set(image.name, { digest: image.digest, ref: image.ref });
+    },
+  };
+}
+
+type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret'>;
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own secret store
 function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeSecretCalls {

@@ -181,6 +181,10 @@ export interface Sandbox {
   readonly toolRoute: () => Promise<ToolRoute | null>;
   readonly suspension: Suspension;
   readonly destroy: () => Promise<void>;
+
+  // the adapter asks the owner to replace the sandbox, as a changed spec does, such as an imp that
+  // impd still backs up because it was made before the opt-out
+  readonly isRetired: boolean;
 }
 
 // One lifecycle event of a sandbox, which the recorder writes as a record of kind sandbox.<event>.
