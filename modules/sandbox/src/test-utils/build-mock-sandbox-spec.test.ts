@@ -4,8 +4,8 @@ import { buildMockSandboxSpec } from './build-mock-sandbox-spec';
 test('it builds a default sandbox spec', () => {
   expect(buildMockSandboxSpec()).toStrictEqual({
     kind: 'worker',
-    image: expect.any(String),
-    owner: expect.any(String),
+    image: expect.toBeString(),
+    owner: expect.toBeString(),
     egress: { kind: 'none' },
     grants: [],
     toolRoute: true,
