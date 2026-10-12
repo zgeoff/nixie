@@ -123,6 +123,51 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 200
+                          },
+                          "task": {
+                            "type": "object",
+                            "properties": {
+                              "stepKey": {
+                                "type": "string"
+                              },
+                              "taskID": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "taskID"
+                            ]
+                          },
+                          "toolCall": {
+                            "type": "object",
+                            "properties": {
+                              "callID": {
+                                "type": "string"
+                              },
+                              "content": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {}
+                              },
+                              "input": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {}
+                              },
+                              "outcome": {
+                                "type": "string"
+                              },
+                              "tool": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "callID"
+                            ]
                           }
                         },
                         "required": [
@@ -653,6 +698,51 @@
                                   "type": "string",
                                   "minLength": 1,
                                   "maxLength": 200
+                                },
+                                "task": {
+                                  "type": "object",
+                                  "properties": {
+                                    "stepKey": {
+                                      "type": "string"
+                                    },
+                                    "taskID": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "taskID"
+                                  ]
+                                },
+                                "toolCall": {
+                                  "type": "object",
+                                  "properties": {
+                                    "callID": {
+                                      "type": "string"
+                                    },
+                                    "content": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string"
+                                      },
+                                      "additionalProperties": {}
+                                    },
+                                    "input": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string"
+                                      },
+                                      "additionalProperties": {}
+                                    },
+                                    "outcome": {
+                                      "type": "string"
+                                    },
+                                    "tool": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "callID"
+                                  ]
                                 }
                               },
                               "required": [

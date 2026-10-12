@@ -1,5 +1,5 @@
 import type { LogRecord as ContractRecord, Span } from '@heynixie/contract';
-import type { LogRecord } from '@heynixie/log';
+import type { JSONObject, JSONValue, LogRecord } from '@heynixie/log';
 
 // Turns a log record into the record a client renders, or null for a record that belongs to no
 // thread, such as a session or a refusal record, which no client view shows. Your message and the
@@ -9,6 +9,8 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
     return null;
   }
   const message = messageKinds.has(record.kind) ? toMessage(record) : undefined;
+  const task = record.kind.startsWith('task.') ? toTask(record) : undefined;
+  const toolCall = toolKinds.has(record.kind) ? toToolCall(record) : undefined;
 
   return {
     kind: record.kind,
@@ -16,6 +18,8 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
     recordedAt: record.recordedAt,
     sequence: record.sequence,
     thread: record.thread,
+    ...(task === undefined ? {} : { task }),
+    ...(toolCall === undefined ? {} : { toolCall }),
   };
 }
 
@@ -43,4 +47,51 @@ function toMessage(record: LogRecord): Message | undefined {
     ...(spans === undefined ? {} : { spans: [...spans] }),
     text,
   };
+}
+
+type Task = NonNullable<ContractRecord['task']>;
+
+// A step's start names its step in the payload, and its commit in the record's own step key.
+function toTask(record: LogRecord): Task | undefined {
+  const taskID = record.payload['taskID'];
+  const payloadKey = record.payload['stepKey'];
+  const stepKey = typeof payloadKey === 'string' ? payloadKey : record.stepKey;
+
+  if (typeof taskID !== 'string') {
+    return undefined;
+  }
+
+  return { ...(typeof stepKey === 'string' ? { stepKey } : {}), taskID };
+}
+
+// a tool call, and the result that answers it
+const toolKinds: ReadonlySet<string> = new Set(['tool_called', 'tool_result']);
+
+type ToolCall = NonNullable<ContractRecord['toolCall']>;
+
+// The call's record holds its input as its one erasable field, and the result's record holds the
+// content the tool returned. A forgotten call keeps its tool and outcome with no content.
+function toToolCall(record: LogRecord): ToolCall | undefined {
+  const callID = record.payload['callID'];
+  const tool = record.payload['tool'];
+  const outcome = record.payload['outcome'];
+
+  if (typeof callID !== 'string') {
+    return undefined;
+  }
+  const fields = record.erasable.status === 'readable' ? record.erasable.fields : undefined;
+  const input = record.kind === 'tool_called' ? fields?.['input'] : undefined;
+  const content = record.kind === 'tool_result' ? fields : undefined;
+
+  return {
+    callID,
+    ...(content === undefined ? {} : { content: { ...content } }),
+    ...(isJSONObject(input) ? { input: { ...input } } : {}),
+    ...(typeof outcome === 'string' ? { outcome } : {}),
+    ...(typeof tool === 'string' ? { tool } : {}),
+  };
+}
+
+function isJSONObject(value: JSONValue | undefined): value is JSONObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

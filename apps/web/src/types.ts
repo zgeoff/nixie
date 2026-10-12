@@ -13,11 +13,13 @@ export interface RouterContext extends NixieClient {
   readonly queryClient: QueryClient;
 }
 
-// A value the code reads and never changes, down to its nested arrays and objects. Functions and
-// dates stay as they are.
-export type ReadonlyDeep<T> = T extends Date | ((...args: readonly never[]) => unknown)
+// A value the code reads and never changes, down to its nested arrays and objects. Functions,
+// dates and unknown values stay as they are.
+export type ReadonlyDeep<T> = unknown extends T
   ? T
-  : { readonly [Key in keyof T]: ReadonlyDeep<T[Key]> };
+  : T extends Date | ((...args: readonly never[]) => unknown)
+    ? T
+    : { readonly [Key in keyof T]: ReadonlyDeep<T[Key]> };
 
 // A message this device sends, kept on the device until the server confirms it.
 export interface OutboxMessage {

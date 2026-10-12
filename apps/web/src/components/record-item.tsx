@@ -6,21 +6,13 @@ export interface RecordItemProps {
   readonly record: LiveRecord;
 }
 
-// One record of the conversation. A record shows its message, and a kind with no message shows
-// its name.
+// One message of the conversation: yours, or a reply. A message the log forgot keeps its place
+// with no text.
 export function RecordItem(props: RecordItemProps): ReactNode {
-  if (props.record.message === undefined) {
-    return (
-      <li className={css({ color: 'gray.500', fontSize: 'sm' })}>
-        <em>{props.record.kind}</em>
-      </li>
-    );
-  }
-
   return (
     <li>
       <strong className={speaker}>{props.record.kind === 'owner_message' ? 'You' : 'nixie'}</strong>{' '}
-      <span className={message}>{props.record.message.text}</span>
+      <span className={message}>{props.record.message?.text ?? ''}</span>
     </li>
   );
 }

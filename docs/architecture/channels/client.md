@@ -30,10 +30,13 @@ change state; and the live stream of log records.
   at. The client follows the log from that sequence, and each streamed event's ID is its record's
   sequence, so a reconnect resumes with no gap and no repeat.
 
-A client renders a record by its kind, and shows a kind it does not know by its name. Once released,
-the contract only grows: a release adds procedures, optional input fields, output fields and enum
-members, and never removes or renames one, because a client from an older release keeps calling the
-newer server.
+A client renders a record by its kind, and shows a kind it does not know by its name. Beside its
+kind, a record carries what a client shows of it: a message's text, the task and step of a task
+record, and the tool and input of a tool call or the outcome and content of its result, joined by
+the call's ID. Text and content arrive only while their key exists, so a forgotten tool call keeps
+its tool and outcome with no content. Once released, the contract only grows: a release adds
+procedures, optional input fields, output fields and enum members, and never removes or renames one,
+because a client from an older release keeps calling the newer server.
 
 The contract package also holds the TanStack Query helper, with every query key under `nixie`. Each
 client builds its own oRPC client and link, so the transport and the session handling stay in the
@@ -78,6 +81,13 @@ its upstream, so the client watches for that. The API writes a keepalive into a 
 the client fails a stream that misses three keepalives in a row and follows again. A page that
 becomes visible again, or a browser that comes back online, ends the open connection and follows
 again at once, because those are the moments a connection most often died unseen.
+
+Each message stands on its own line, and every other record folds into the step it belongs to, from
+the step's start to its end. A record before a step, such as the task's creation, folds into the
+step that follows it. A step shows as one collapsed line that names each tool it called with its
+targets, such as the host of each page a web fetch read, and opening it shows the task, the step's
+records, and each call with its input and its result. A long value shows its start and opens in full
+on demand, because a fetched page's text runs to many kilobytes.
 
 The view fills the window. The list scrolls in a reversed column, which starts at its end and stays
 there as records arrive unless the user scrolled up to read, and the message box stays in view below
