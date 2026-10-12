@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { makeGatedCall } from '@heynixie/testing';
 import { setupIsolationAdapter } from './setup-isolation-adapter';
 import { startFakeImp } from './start-fake-imp';
 
@@ -119,29 +120,22 @@ test('it destroys an imp whose failed create could not roll it back', async () =
 test('it removes a secret whose add was still running when the test finished', async () => {
   const ctx = await setupTest();
   const removeSecret = mock(() => Promise.resolve());
-  const started = Promise.withResolvers<void>();
-  const release = Promise.withResolvers<void>();
 
-  // the add stores the secret only once the test has finished, as one does that outlives a timeout
+  // the add stores the secret only 50 ms after the test has finished, as one that outlives a
+  // timeout does
+  const addSecret = makeGatedCall(ctx.imp.port.addSecret, { delayMs: 50 });
+
   onTestFinished(() => {
-    release.resolve();
+    addSecret.release();
   });
   void setupIsolationAdapter({
-    port: {
-      ...ctx.imp.port,
-      addSecret: async (secret) => {
-        started.resolve();
-        await release.promise;
-        await Bun.sleep(50);
-        await ctx.imp.port.addSecret(secret);
-      },
-    },
+    port: { ...ctx.imp.port, addSecret: addSecret.call },
     removeSecret,
     publicEgress: null,
     guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   });
-  await started.promise;
+  await addSecret.started;
 
   onTestFinished(() => {
     expect(removeSecret).toHaveBeenCalledWith('nixie-test-a');

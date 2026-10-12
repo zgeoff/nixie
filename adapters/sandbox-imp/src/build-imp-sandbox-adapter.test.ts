@@ -34,12 +34,7 @@ async function setupTest() {
     buildImpSandboxAdapter({
       port: imp.port,
       recorder: recorder.recorder,
-      config: {
-        publicEgress:
-          config.publicEgress === undefined
-            ? { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] }
-            : config.publicEgress,
-      },
+      config: { publicEgress: config.publicEgress ?? null },
       toolTarget: () => config.toolTarget ?? { path: join(dir, 'tools.sock') },
       guestToolPort: imp.guestToolPort,
     });
@@ -203,8 +198,11 @@ test('it gives a coding session a box policy with its hosts beside its grant', a
 
 test('it makes a public imp with imp public policy', async () => {
   const ctx = await setupTest();
+  const adapter = ctx.buildAdapter({
+    publicEgress: { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] },
+  });
 
-  await ctx.adapter.create(
+  await adapter.create(
     buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] }),
   );
 
@@ -213,13 +211,14 @@ test('it makes a public imp with imp public policy', async () => {
 
 test('it refuses public egress on an impd that does not enforce it', async () => {
   const ctx = await setupTest();
+  const adapter = ctx.buildAdapter({
+    publicEgress: { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] },
+  });
 
   ctx.imp.features = { publicEgress: true, isEgressEnforced: false };
 
   expect(
-    ctx.adapter.create(
-      buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] }),
-    ),
+    adapter.create(buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] })),
   ).rejects.toThrow(
     new SandboxSpecRefusedError('public egress on an impd that does not enforce it'),
   );
@@ -227,10 +226,11 @@ test('it refuses public egress on an impd that does not enforce it', async () =>
 
 test('it refuses public egress without the deployment host addresses', async () => {
   const ctx = await setupTest();
-  const adapter = ctx.buildAdapter({ publicEgress: null });
 
   expect(
-    adapter.create(buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] })),
+    ctx.adapter.create(
+      buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] }),
+    ),
   ).rejects.toThrow(
     new SandboxSpecRefusedError('public egress without the host addresses in imp.host_addresses'),
   );
@@ -315,7 +315,10 @@ test('it cuts exec output past 1 MiB, with the broker required and its NO_PROXY 
 
 test('it passes the command env alone to an exec in an imp with no grant, with no broker required', async () => {
   const ctx = await setupTest();
-  const sandbox = await ctx.adapter.create(
+  const adapter = ctx.buildAdapter({
+    publicEgress: { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] },
+  });
+  const sandbox = await adapter.create(
     buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] }),
   );
 
@@ -418,7 +421,7 @@ test('it lets a restarted adapter list and destroy what the last one made, for r
   const ctx = await setupTest();
   const spec = buildMockSandboxSpec({ owner: 'conversation:step-7' });
   const made = await ctx.adapter.create(spec);
-  const restarted = ctx.buildAdapter({ publicEgress: null });
+  const restarted = ctx.buildAdapter();
   const [orphan] = await restarted.list('conversation:step-7');
 
   await orphan?.destroy();

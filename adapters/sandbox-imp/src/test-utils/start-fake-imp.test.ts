@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { startFakeImp } from './start-fake-imp';
 
 test('it holds no secret until a test adds one', async () => {
@@ -133,6 +133,32 @@ test('it listens for a reverse forward on its guest tool port and logs its stop'
 
   expect(port).toBe(imp.guestToolPort);
   expect(imp.calls).toStrictEqual(['forward nixie-a 8901', 'forward-stopped nixie-a']);
+});
+
+test('it kills each exec process group and closes each forward when the test finishes', async () => {
+  const imp = await startFakeImp();
+
+  // the shell prints its pid, which leads the exec's own process group, then becomes the sleep
+  const exec = await imp.port.openExec('nixie-a', ['sh', '-c', 'echo $$; exec sleep 60'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
+  const port = await forward.listening;
+  const read = await exec.stdout.getReader().read();
+  const pid = Number(new TextDecoder().decode(read.value).trim());
+
+  onTestFinished(async () => {
+    await exec.exit;
+
+    expect(() => process.kill(-pid, 0)).toThrow();
+    expect(
+      Bun.connect({ hostname: '127.0.0.1', port: Number(port), socket: { data: () => {} } }),
+    ).rejects.toThrow();
+  });
+
+  expect(pid).toBeGreaterThan(0);
 });
 
 test('it lists each image it holds with its digest and reference', async () => {
