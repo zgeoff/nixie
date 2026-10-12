@@ -83,14 +83,17 @@ async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCal
   const cost = { usd: 0 };
   const check = makeChecker({
     model,
-    ask: async (request) => {
+    ask: async (request, signal) => {
       const reply = await runCheckQuery(
         {
           profile: { model, baseURL: 'https://api.anthropic.com', effort, authHeader: 'x-api-key' },
           systemPrompt: request.prompt,
           input: request.input,
         },
-        { env: { HOME: guestHome, ANTHROPIC_API_KEY: 'unused' }, runQuery: runLoggedInQuery },
+        {
+          env: { HOME: guestHome, ANTHROPIC_API_KEY: 'unused' },
+          runQuery: makeLoggedInQuery(signal),
+        },
       );
 
       if (reply.kind === 'failed') {
@@ -114,18 +117,30 @@ async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCal
   };
 }
 
-// the guest's options with the local login in place of the placeholder key the host would broker
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the SDK's query parameters are mutable
-function runLoggedInQuery(params: Parameters<typeof query>[0]): ReturnType<typeof query> {
-  const { ANTHROPIC_API_KEY: _placeholder, ...env } = params.options?.env ?? {};
+// Makes a query with the guest's options and the local login in place of the placeholder key the
+// host would broker. The checker's timeout aborts the signal, which closes the query, so a timed-out
+// call never runs on beside the next one or spends what the report leaves out.
+function makeLoggedInQuery(signal: AbortSignal): typeof query {
+  return (params) => {
+    const { ANTHROPIC_API_KEY: _placeholder, ...env } = params.options?.env ?? {};
+    const session = query({
+      ...params,
+      options: {
+        ...params.options,
+        env: { ...env, CLAUDE_CONFIG_DIR: join(homedir(), '.claude'), PATH: process.env['PATH'] },
+      },
+    });
 
-  return query({
-    ...params,
-    options: {
-      ...params.options,
-      env: { ...env, CLAUDE_CONFIG_DIR: join(homedir(), '.claude'), PATH: process.env['PATH'] },
-    },
-  });
+    // the SDK's abort controller lets a query in flight finish and bill its answer; close ends it
+    signal.addEventListener(
+      'abort',
+      () => {
+        session.close();
+      },
+      { once: true },
+    );
+    return session;
+  };
 }
 
 function buildSHA256(text: string): string {
