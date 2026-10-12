@@ -1,6 +1,6 @@
 import type { Logger } from '@heynixie/ops';
 import type { Sandbox, SandboxAdapter, SandboxLimits, SecretSpec } from '@heynixie/sandbox';
-import { buildSandboxSpec } from '@heynixie/sandbox';
+import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import { buildModelGrant } from './build-model-grant';
@@ -18,9 +18,9 @@ export interface ConversationSandboxSpec {
   readonly log: Logger;
 }
 
-// Keeps the conversation's sandbox while its spec matches, and otherwise starts a replacement before
-// the old sandbox goes and copies in the session the conversation resumes, so a deploy that changes
-// the image, the grant or the limits keeps it. The sandbox outlives each step of the conversation.
+// Keeps the conversation's sandbox while it stays kept, and otherwise starts a replacement before the
+// old sandbox goes and copies in the session the conversation resumes, so a changed spec or a
+// retired sandbox keeps the session. The sandbox outlives each step of the conversation.
 export async function setupConversationSandbox(
   options: ConversationSandboxSpec,
   secret: SecretSpec,
@@ -33,7 +33,7 @@ export async function setupConversationSandbox(
     modelGrant: buildModelGrant(secret),
   });
   const existing = await options.sandboxes.list(conversationTaskID);
-  const kept = existing.find((sandbox) => Bun.deepEquals(sandbox.spec, spec));
+  const kept = findKeptSandbox(existing, spec);
   const replaced = existing.filter((sandbox) => sandbox !== kept);
   const target = await (kept ?? options.sandboxes.create(spec));
 

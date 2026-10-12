@@ -20,6 +20,9 @@ export interface ImpSandboxContext {
   readonly id: string;
   readonly spec: SandboxSpec;
 
+  // impd still backs the imp up, so its owner replaces it
+  readonly isRetired: boolean;
+
   // whether the adapter last put this imp to sleep, so a later call records the wake it causes
   readonly sleeping: SleepRegistry;
 }
@@ -57,6 +60,7 @@ export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
       await ctx.port.removeImp(ctx.id);
       await ctx.recorder.write({ event: 'destroyed', sandboxID: ctx.id, reason: 'destroyed' });
     },
+    isRetired: ctx.isRetired,
   };
 }
 

@@ -1,5 +1,5 @@
 import type { Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
-import { buildSandboxSpec } from '@heynixie/sandbox';
+import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -136,7 +136,7 @@ async function setupSessionSandbox(
     modelGrant: grant,
   });
   const existing = await options.sandboxes.list(options.taskID);
-  const kept = existing.find((sandbox) => Bun.deepEquals(sandbox.spec, spec));
+  const kept = findKeptSandbox(existing, spec);
 
   await Promise.all(
     existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),

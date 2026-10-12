@@ -5,6 +5,7 @@ export { buildSandboxSpec } from './build-sandbox-spec';
 export { collectOutput } from './collect-output';
 export { createSandboxID } from './create-sandbox-id';
 export { execOutputLimitBytes } from './exec-output-limit-bytes';
+export { findKeptSandbox } from './find-kept-sandbox';
 export { mergeExecEnv } from './merge-exec-env';
 export type { StaleSandboxesOptions } from './remove-stale-sandboxes';
 export { removeStaleSandboxes } from './remove-stale-sandboxes';

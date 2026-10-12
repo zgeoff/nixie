@@ -8,6 +8,7 @@ import type {
 } from '@heynixie/sandbox';
 import { createSandboxID, stopGraceMs } from '@heynixie/sandbox';
 import { buildImpPolicy } from './build-imp-policy';
+import type { SleepRegistry } from './build-imp-sandbox';
 import { buildImpSandbox } from './build-imp-sandbox';
 import { buildRouteRegistry } from './build-route-registry';
 import { buildSleepRegistry } from './build-sleep-registry';
@@ -30,7 +31,7 @@ export interface ImpSandboxOptions {
 
 // The sandbox adapter on imp: each sandbox is one imp named by its sandbox ID. The broker injects
 // each grant from the host, and the route to nixie's tools is a reverse forward from the imp's
-// loopback over impd, never an allow entry.
+// loopback over impd, never an allow entry. Every imp it creates stays out of impd's backups.
 export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapter {
   const guestToolPort = options.guestToolPort ?? 8901;
   const routes = buildRouteRegistry({
@@ -39,7 +40,7 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
     guestToolPort,
   });
   const sleeping = buildSleepRegistry();
-  const getSandbox = (id: string, spec: SandboxSpec): Sandbox =>
+  const getSandbox = (id: string, spec: SandboxSpec, isRetired = false): Sandbox =>
     buildImpSandbox({
       sleeping,
       port: options.port,
@@ -49,11 +50,9 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
       killGraceMs: options.killGraceMs ?? stopGraceMs,
       id,
       spec,
+      isRetired,
     });
-  const getRowSandbox = (row: SandboxRow): Sandbox => {
-    sleeping.setAsleep(row.sandboxID, row.state === 'sleeping');
-    return getSandbox(row.sandboxID, row.spec);
-  };
+  const getRowSandbox = makeRowSandboxReader(options.port, sleeping, getSandbox);
 
   return {
     id: 'imp',
@@ -74,11 +73,25 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
     list: async (owner) => {
       const rows = await options.recorder.list('imp', owner);
 
-      return rows.map((row) => getRowSandbox(row));
+      return Promise.all(rows.map((row) => getRowSandbox(row)));
     },
     addSecret: makeSecretAdder(options.port),
     addImage: makeImageAdder(options.port),
     checkRuntime: makeRuntimeChecker(options.port),
+  };
+}
+
+// A recorded sandbox's handle, retired when impd still backs its imp up, so its owner replaces it
+function makeRowSandboxReader(
+  port: ImpPort,
+  sleeping: SleepRegistry,
+  getSandbox: (id: string, spec: SandboxSpec, isRetired: boolean) => Sandbox,
+): (row: SandboxRow) => Promise<Sandbox> {
+  return async (row) => {
+    const isBackedUp = await port.readImpBackup(row.sandboxID);
+
+    sleeping.setAsleep(row.sandboxID, row.state === 'sleeping');
+    return getSandbox(row.sandboxID, row.spec, isBackedUp === true);
   };
 }
 
@@ -166,6 +179,7 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
     memoryMib: sandbox.spec.limits.memoryMiB,
     diskMib: sandbox.spec.limits.diskMiB,
     policy: buildImpPolicy(sandbox.spec),
+    backup: false,
   });
   for (const grant of sandbox.spec.grants) {
     // oxlint-disable-next-line no-await-in-loop -- one grant and its record at a time, in order

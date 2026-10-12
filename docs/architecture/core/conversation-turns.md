@@ -19,10 +19,12 @@ sandbox. The conversation image holds the guest and its production dependencies,
 unprivileged user whose home holds the SDK's session transcripts.
 
 At start, nixie stores the conversation profile's credential with the sandbox backend and keeps the
-conversation's sandbox when its spec matches the one the profile gives. A changed spec, such as a
-new image or a rotated credential, replaces the sandbox, so a turn never runs with a grant for a
-profile nixie no longer uses. The sandbox's owner is the conversation task, which never finishes, so
-the sandbox outlives each step and the transcripts on its disk outlive each turn.
+conversation's sandbox when its spec matches the one the profile gives and its adapter has not
+retired it. A changed spec, such as a new image or a rotated credential, replaces the sandbox, so a
+turn never runs with a grant for a profile nixie no longer uses. nixie replaces a retired sandbox
+the same way, such as an imp that the sandbox backend still backs up. The sandbox's owner is the
+conversation task, which never finishes, so the sandbox outlives each step and the transcripts on
+its disk outlive each turn.
 
 A replacement keeps the session. nixie creates the new sandbox before it destroys the old one, and
 copies the session that the conversation resumes, its transcript and its side folder, from the old

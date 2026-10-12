@@ -56,7 +56,7 @@ export function buildImpPort(connection: ImpConnection): ImpPort {
 
 type LifecycleCalls = Pick<
   ImpPort,
-  'readFeatures' | 'createImp' | 'removeImp' | 'sleepImp' | 'wakeImp'
+  'readFeatures' | 'createImp' | 'readImpBackup' | 'removeImp' | 'sleepImp' | 'wakeImp'
 >;
 
 function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
@@ -67,6 +67,17 @@ function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
         ...input,
         policy: { mode: input.policy.mode, allow: [...input.policy.allow] },
       });
+    },
+    readImpBackup: async (name) => {
+      try {
+        const imp = await client.imps.get({ name });
+
+        // impd leaves the flag out for an imp it backs up
+        return imp.backup !== false;
+      } catch (error) {
+        requireNotFound(error);
+        return null;
+      }
     },
     removeImp: async (name) => {
       try {
@@ -93,6 +104,7 @@ async function readFeatures(client: ImpClient): ReturnType<ImpPort['readFeatures
   return {
     publicEgress: info.features?.publicEgress === true,
     isEgressEnforced: info.egress?.isEnforced === true,
+    hasBackupOptOut: info.features?.backupOptOut === true,
   };
 }
 

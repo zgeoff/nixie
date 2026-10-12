@@ -39,10 +39,44 @@ test('it logs a create, then refuses it as impd does without the RAM, when told 
       memoryMib: 512,
       diskMib: 1024,
       policy: { mode: 'none', allow: [] },
+      backup: false,
     }),
   ).rejects.toThrow('RAM_BUDGET_EXCEEDED');
   expect(imp.calls).toStrictEqual(['create nixie-a']);
   expect(imp.created).toStrictEqual([]);
+});
+
+test('it reads the backup flag of the newest create of the name', async () => {
+  const imp = await startFakeImp();
+
+  imp.created.push(
+    {
+      name: 'nixie-a',
+      image: 'conversation',
+      vcpus: 1,
+      memoryMib: 512,
+      diskMib: 1024,
+      policy: { mode: 'none', allow: [] },
+      backup: true,
+    },
+    {
+      name: 'nixie-a',
+      image: 'conversation',
+      vcpus: 1,
+      memoryMib: 512,
+      diskMib: 1024,
+      policy: { mode: 'none', allow: [] },
+      backup: false,
+    },
+  );
+
+  expect(imp.port.readImpBackup('nixie-a')).resolves.toBeFalse();
+});
+
+test('it reads no backup flag for a name it never created', async () => {
+  const imp = await startFakeImp();
+
+  expect(imp.port.readImpBackup('nixie-a')).resolves.toBeNull();
 });
 
 test('it logs a remove, then fails it, when told to', async () => {

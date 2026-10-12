@@ -71,6 +71,115 @@ test('it refuses to read the features of an impd whose version the client does n
   expect(port.readFeatures()).rejects.toThrow(/^impd 0\.39\.0 does not speak imp client /u);
 });
 
+test('it reads the backup opt-out among the features of an impd that has it', () => {
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: () =>
+      Response.json({ json: { version: '0.42.0', features: { backupOptOut: true }, egress: {} } }),
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: true });
+});
+
+test('it reads an imp that impd shows with no backup flag as backed up', () => {
+  // impd shows the flag only for an imp created with backup off; dates travel in the RPC meta
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: () =>
+      Response.json({
+        json: {
+          id: '01a130ab-7d6b-7664-ae89-f93646cd7e2a',
+          name: 'nixie-a',
+          image: 'conversation',
+          state: 'running',
+          vcpus: 1,
+          memoryMib: 512,
+          diskMib: 1024,
+          ip: '10.0.0.2',
+          slot: 2,
+          port: 2222,
+          httpPort: 8080,
+          url: 'https://nixie-a.imps.example',
+          createdAt: '2026-10-12T05:10:00.428Z',
+          lastActiveAt: '2026-10-12T05:10:00.428Z',
+          cpu: { limit: null, weight: 100 },
+        },
+        meta: [
+          [1, 'createdAt'],
+          [1, 'lastActiveAt'],
+        ],
+      }),
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readImpBackup('nixie-a')).resolves.toBeTrue();
+});
+
+test('it reads an imp created with backup off as left out of the backups', () => {
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: () =>
+      Response.json({
+        json: {
+          id: '01a130ab-7d6b-7664-ae89-f93646cd7e2a',
+          name: 'nixie-a',
+          image: 'conversation',
+          state: 'running',
+          vcpus: 1,
+          memoryMib: 512,
+          diskMib: 1024,
+          backup: false,
+          ip: '10.0.0.2',
+          slot: 2,
+          port: 2222,
+          httpPort: 8080,
+          url: 'https://nixie-a.imps.example',
+          createdAt: '2026-10-12T05:10:00.428Z',
+          lastActiveAt: '2026-10-12T05:10:00.428Z',
+          cpu: { limit: null, weight: 100 },
+        },
+        meta: [
+          [1, 'createdAt'],
+          [1, 'lastActiveAt'],
+        ],
+      }),
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readImpBackup('nixie-a')).resolves.toBeFalse();
+});
+
+test('it reads no backup flag for an imp that impd does not hold', () => {
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: () =>
+      Response.json(
+        { json: { defined: false, code: 'NOT_FOUND', status: 404, message: 'no imp nixie-a' } },
+        { status: 404 },
+      ),
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readImpBackup('nixie-a')).resolves.toBeNull();
+});
+
 // A dropped connection waits out curl's whole limit, so each test allows for the imp's boot and
 // for each probe's limit.
 test.skipIf(!hasImpHost)(

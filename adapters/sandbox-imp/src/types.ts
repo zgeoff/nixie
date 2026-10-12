@@ -32,6 +32,9 @@ export interface ImpCreateInput {
   readonly memoryMib: number;
   readonly diskMib: number;
   readonly policy: ImpPolicy;
+
+  // false leaves the imp's disk out of every backup impd takes, for the imp's life
+  readonly backup: boolean;
 }
 
 // One connection the guest opened on the forward's port, which the adapter relays.
@@ -57,6 +60,9 @@ export interface ImpForward {
 export interface ImpFeatures {
   readonly publicEgress: boolean;
   readonly isEgressEnforced: boolean;
+
+  // impd honours a create's backup opt-out; an impd without it ignores the field
+  readonly hasBackupOptOut: boolean;
 }
 
 interface ImpImage {
@@ -81,6 +87,9 @@ interface ImpSecretInput {
 export interface ImpPort {
   readonly readFeatures: () => Promise<ImpFeatures>;
   readonly createImp: (input: ImpCreateInput) => Promise<void>;
+
+  // whether impd backs the imp up, or null when no imp has the name
+  readonly readImpBackup: (name: string) => Promise<boolean | null>;
 
   // an imp that is gone already counts as removed
   readonly removeImp: (name: string) => Promise<void>;

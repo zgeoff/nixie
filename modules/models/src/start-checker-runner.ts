@@ -1,5 +1,5 @@
 import type { Sandbox, SandboxAdapter, SandboxLimits, SandboxSpec } from '@heynixie/sandbox';
-import { buildSandboxSpec } from '@heynixie/sandbox';
+import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
 import { buildModelGrant } from './build-model-grant';
 import { deriveModelSecret } from './derive-model-secret';
 import { makeChecker } from './make-checker';
@@ -57,13 +57,13 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
   });
 }
 
-// keeps the one sandbox whose spec matches and destroys the rest, or creates one when none matches
+// keeps the one sandbox whose spec matches and its adapter has not retired, destroys the rest, or creates one when none matches
 async function createCheckerSandbox(
   sandboxes: SandboxAdapter,
   spec: SandboxSpec,
 ): Promise<Sandbox> {
   const existing = await sandboxes.list(checkerOwner);
-  const kept = existing.find((sandbox) => Bun.deepEquals(sandbox.spec, spec));
+  const kept = findKeptSandbox(existing, spec);
 
   await Promise.all(
     existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),

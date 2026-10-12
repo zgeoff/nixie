@@ -69,6 +69,7 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
       await ctx.remove();
       await ctx.recorder.write({ event: 'destroyed', sandboxID: ctx.id, reason: 'destroyed' });
     },
+    isRetired: false,
   };
 }
 
