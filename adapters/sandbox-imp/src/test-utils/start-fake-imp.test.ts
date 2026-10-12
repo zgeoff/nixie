@@ -125,7 +125,7 @@ test('it rejects the exit of a session it loses on a stop, when told to', async 
 
 test('it listens for a reverse forward on its guest tool port and logs its stop', async () => {
   const imp = await startFakeImp();
-  const forward = imp.port.openReverseForward('nixie-a', 8901, () => null);
+  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
 
   const port = await forward.listening;
 

@@ -278,11 +278,12 @@ test('it records a failed create as destroyed and removes the imp', async () => 
   const listed = await ctx.adapter.list('conversation:step-7');
   const id = records.at(0)?.payload['sandboxID'];
 
+  invariant(typeof id === 'string');
   expect(records.map((record) => [record.kind, record.payload['reason'] ?? null])).toStrictEqual([
     ['sandbox.created', null],
     ['sandbox.destroyed', 'create_failed'],
   ]);
-  expect(ctx.imp.calls).toStrictEqual([`create ${String(id)}`, `remove ${String(id)}`]);
+  expect(ctx.imp.calls).toStrictEqual([`create ${id}`, `remove ${id}`]);
   expect(listed).toStrictEqual([]);
 });
 
