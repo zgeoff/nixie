@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react';
-import { buildActivity } from '../build-activity';
+import { useState } from 'react';
 import { css } from '../styled-system/css';
 import { useConversationPage } from '../use-conversation-page';
 import type { LiveRecord } from '../use-live-records';
 import { useLiveRecords } from '../use-live-records';
 import { useOutbox } from '../use-outbox';
 import { Composer } from './composer';
-import { OutboxItem } from './outbox-item';
-import { RecordItem } from './record-item';
-import { StepGroup } from './step-group';
+import { ConversationList } from './conversation-list';
+import { ConversationScroller } from './conversation-scroller';
 
 export interface ConversationProps {
   readonly thread: string;
@@ -21,6 +20,7 @@ export function Conversation(props: ConversationProps): ReactNode {
   const page = useConversationPage(props.thread);
   const liveRecords = useLiveRecords(props.thread, page.data?.readAtSequence);
   const outbox = useOutbox();
+  const [sends, setSends] = useState(0);
 
   if (page.isPending) {
     return <p>Loading the conversation…</p>;
@@ -30,33 +30,16 @@ export function Conversation(props: ConversationProps): ReactNode {
   }
 
   const records = mergeRecords(page.data.records, liveRecords);
-  const shown = new Set(records.map((record) => record.message?.clientMessageId));
 
   return (
     <main className={layout}>
-      <div className={scroller}>
-        <ol aria-label="Conversation" className={messages}>
-          {buildActivity(records).map((item) =>
-            item.kind === 'message' ? (
-              <RecordItem key={item.record.sequence} record={item.record} />
-            ) : (
-              <StepGroup key={item.key} step={item} />
-            ),
-          )}
-          {outbox.entries
-            .filter((entry) => !shown.has(entry.message.clientMessageId))
-            .map((entry) => (
-              <OutboxItem
-                entry={entry}
-                key={entry.message.clientMessageId}
-                onRetry={outbox.retry}
-              />
-            ))}
-        </ol>
-      </div>
+      <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
+        <ConversationList entries={outbox.entries} onRetry={outbox.retry} records={records} />
+      </ConversationScroller>
       <div className={composerBar}>
         <Composer
           onSend={(message) => {
+            setSends(sends + 1);
             outbox.add({ ...message, clientMessageId: crypto.randomUUID(), thread: props.thread });
           }}
         />
@@ -68,30 +51,11 @@ export function Conversation(props: ConversationProps): ReactNode {
 // The page fills the window: the messages scroll, and the composer stays below them in view.
 const layout = css({ display: 'flex', flexDirection: 'column', height: '100dvh' });
 
-// A reversed column starts scrolled to its end and stays there as messages arrive, unless you
-// scrolled up to read.
-const scroller = css({
-  display: 'flex',
-  flex: '1',
-  flexDirection: 'column-reverse',
-  overflowY: 'auto',
+const composerBar = css({
+  borderTopWidth: '1px',
+  paddingBlock: '3',
+  '& > form': { marginInline: 'auto', maxWidth: '3xl', paddingInline: '4', width: 'full' },
 });
-
-const column = {
-  marginInline: 'auto',
-  maxWidth: '3xl',
-  paddingInline: '4',
-  width: 'full',
-} as const;
-
-const messages = css(column, {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '3',
-  paddingBlock: '4',
-});
-
-const composerBar = css({ borderTopWidth: '1px', paddingBlock: '3', '& > form': column });
 
 // The page and the live stream can both hold a record, so each sequence shows once, in order.
 function mergeRecords(

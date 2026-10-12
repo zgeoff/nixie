@@ -87,7 +87,9 @@ the step's start to its end. A record before a step, such as the task's creation
 step that follows it. A step shows as one collapsed line that names each tool it called with its
 targets, such as the host of each page a web fetch read, and opening it shows the task, the step's
 records, and each call with its input and its result. A long value shows its start and opens in full
-on demand, because a fetched page's text runs to many kilobytes.
+on demand, because a fetched page's text runs to many kilobytes. Its toggle sits above the text and
+sticks to the top of the view while the text scrolls past, so the user closes an open value without
+scrolling back to find the control.
 
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol
@@ -95,11 +97,15 @@ such as `javascript:` as plain text, and shows an image as a link to it, because
 would tell the page's host that the user read the reply. Every link to another page opens in a new
 tab with no opener and no referrer, and a footnote link jumps within the reply.
 
-The view fills the window. The list scrolls in a reversed column, which starts at its end and stays
-there as records arrive unless the user scrolled up to read, and the message box stays in view below
-it. Styles come from Panda CSS with its own presets and no theme of nixie's, and they set only what
-reading needs: a readable column width, spacing between records, and wrapping for a long word or
-link. The build runs the React Compiler, so no component memoizes by hand.
+The view fills the window, and the message box stays in view below the list. The list opens at its
+end. When a record or a message arrives, the view moves to the end if the user was at or near it
+when they last scrolled, and stays in place if they scrolled up to read. The user's own message
+always brings the view to the end. Below the list, a small spinner shows while nixie works: from a
+sent message until a reply follows it, and while any step runs. The spinner keeps its slot when it
+goes, so the list never jumps. A message that failed to send stops the spinner, because it waits on
+the user and not on nixie. Styles come from Panda CSS with its own presets and no theme of nixie's,
+and they set only what reading needs: a readable column width, spacing between records, and wrapping
+for a long word or link. The build runs the React Compiler, so no component memoizes by hand.
 
 ## The outbox
 
