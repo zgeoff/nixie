@@ -141,26 +141,37 @@ for (const { path, run } of runs) {
   );
 }
 
-const tokenFit = fitLine(points.map((point) => ({ turns: point.turns, value: point.tokens })));
-const costFit = fitLine(points.map((point) => ({ turns: point.turns, value: point.usd })));
-const wallFit = fitLine(points.map((point) => ({ turns: point.turns, value: point.wallMs })));
-// A longer turn adds its extra tokens to the batch text, which Claude Code writes to the cache.
-const longTurnUSD = ((LONG_TURN_TOKENS - tokenFit.slope) * PRICES.cacheWrite) / 1e6;
-console.log(
-  `\n## Backfill of ${LONG_LOG_TURNS} turns\n\nFit over ${points.length} batches: ${Math.round(tokenFit.intercept)} input tokens per batch + ${Math.round(tokenFit.slope)} per turn; $${costFit.intercept.toFixed(6)} per batch + $${costFit.slope.toFixed(6)} per turn; ${Math.round(wallFit.intercept)} ms per batch + ${Math.round(wallFit.slope)} ms per turn.\n`,
-);
-console.log(
-  `| Turns per batch | Batches | Input tokens | Cost | Serial time | Cost at ${LONG_TURN_TOKENS}-token turns |`,
-);
-console.log('| --- | --- | --- | --- | --- | --- |');
-for (const size of [4, 20, 40]) {
-  const batches = Math.ceil(LONG_LOG_TURNS / size);
-  const tokens = batches * tokenFit.intercept + LONG_LOG_TURNS * tokenFit.slope;
-  const cost = batches * costFit.intercept + LONG_LOG_TURNS * costFit.slope;
-  const hours = (batches * wallFit.intercept + LONG_LOG_TURNS * wallFit.slope) / 3.6e6;
+// A straight-line fit needs batches of at least 2 sizes; one fixed-size run has none to fit.
+if (new Set(points.map((point) => point.turns)).size < 2) {
   console.log(
-    `| ${size} | ${batches} | ${formatMillions(tokens)} | $${cost.toFixed(2)} | ${hours.toFixed(1)} h | $${(cost + LONG_LOG_TURNS * longTurnUSD).toFixed(2)} |`,
+    `\n## Backfill of ${LONG_LOG_TURNS} turns\n\nSkipped: the runs hold only one batch size, so no per-turn cost can be fitted. Pass a live run or runs of 2 sizes.`,
   );
+} else {
+  printBackfill(points);
+}
+
+function printBackfill(data: typeof points): void {
+  const tokenFit = fitLine(data.map((point) => ({ turns: point.turns, value: point.tokens })));
+  const costFit = fitLine(data.map((point) => ({ turns: point.turns, value: point.usd })));
+  const wallFit = fitLine(data.map((point) => ({ turns: point.turns, value: point.wallMs })));
+  // A longer turn adds its extra tokens to the batch text, which Claude Code writes to the cache.
+  const longTurnUSD = ((LONG_TURN_TOKENS - tokenFit.slope) * PRICES.cacheWrite) / 1e6;
+  console.log(
+    `\n## Backfill of ${LONG_LOG_TURNS} turns\n\nFit over ${data.length} batches: ${Math.round(tokenFit.intercept)} input tokens per batch + ${Math.round(tokenFit.slope)} per turn; $${costFit.intercept.toFixed(6)} per batch + $${costFit.slope.toFixed(6)} per turn; ${Math.round(wallFit.intercept)} ms per batch + ${Math.round(wallFit.slope)} ms per turn.\n`,
+  );
+  console.log(
+    `| Turns per batch | Batches | Input tokens | Cost | Serial time | Cost at ${LONG_TURN_TOKENS}-token turns |`,
+  );
+  console.log('| --- | --- | --- | --- | --- | --- |');
+  for (const size of [4, 20, 40]) {
+    const batches = Math.ceil(LONG_LOG_TURNS / size);
+    const tokens = batches * tokenFit.intercept + LONG_LOG_TURNS * tokenFit.slope;
+    const cost = batches * costFit.intercept + LONG_LOG_TURNS * costFit.slope;
+    const hours = (batches * wallFit.intercept + LONG_LOG_TURNS * wallFit.slope) / 3.6e6;
+    console.log(
+      `| ${size} | ${batches} | ${formatMillions(tokens)} | $${cost.toFixed(2)} | ${hours.toFixed(1)} h | $${(cost + LONG_LOG_TURNS * longTurnUSD).toFixed(2)} |`,
+    );
+  }
 }
 
 function toSoloUsage(usage: Usage): Usage {

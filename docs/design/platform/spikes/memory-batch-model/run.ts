@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { checkQuote, checkWrite } from '../memory-checks/checks.ts';
 import type { OwnerMessage, Span } from '../memory-checks/checks.ts';
+import { buildJudgeInput } from './build-judge-input.ts';
 import { conversation } from './conversation.ts';
 import type { Item } from './conversation.ts';
 import { planBatches } from './plan-batches.ts';
@@ -160,20 +161,10 @@ async function runSample(sample: number): Promise<{
   }
 
   const history = [...store.values()];
-  const judge = await runJudge(
-    conversation,
-    {
-      candidates: gated.map((candidate) => ({
-        index: candidate.index,
-        op: candidate.itemID === null ? candidate.op : `${candidate.op} ${candidate.itemID}`,
-        outcome:
-          candidate.reason === null ? candidate.outcome : `${candidate.outcome}: ${candidate.reason}`,
-        quote: candidate.quote,
-        text: candidate.text,
-      })),
-    },
-    { cwd, token: writerOptions.token },
-  );
+  const judge = await runJudge(conversation, buildJudgeInput(gated), {
+    cwd,
+    token: writerOptions.token,
+  });
   console.log(`sample ${sample}: ${gated.length} candidates, ${batches.length} batches`);
   return { batches, candidates: gated, history, judge, sample };
 }

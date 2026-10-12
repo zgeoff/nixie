@@ -14,7 +14,15 @@ export interface Verdicts {
 }
 
 export interface JudgeInput {
-  candidates: { index: number; op: string; outcome: string; quote: string; text: string | null }[];
+  candidates: {
+    index: number;
+    op: string;
+    outcome: string;
+    quote: string;
+    source: string;
+    sourceID: number;
+    text: string | null;
+  }[];
 }
 
 // An Opus judge labels every candidate against the gold facts and traps. Code, not the judge, scores
@@ -33,11 +41,11 @@ ${formatRecord(conversation.traps)}
 Seed items that existed before the conversation:
 ${conversation.seed.map((item) => `- ${item.id}: ${item.text}`).join('\n')}
 
-Every candidate the writer produced, with the host's outcome (applied, proposal with a reason, or no-op):
-${input.candidates.map((candidate) => `- #${candidate.index} ${candidate.op} [${candidate.outcome}] text=${JSON.stringify(candidate.text)} quote=${JSON.stringify(candidate.quote)}`).join('\n')}
+Every candidate the writer produced, with the host's outcome (applied, proposal with a reason, or no-op), and the owner message it cites, with the quote between ⟪ ⟫ and pasted text between ⟦ ⟧:
+${input.candidates.map((candidate) => `- #${candidate.index} ${candidate.op} [${candidate.outcome}] text=${JSON.stringify(candidate.text)} quote=${JSON.stringify(candidate.quote)}\n  source [${candidate.sourceID}]: ${JSON.stringify(candidate.source)}`).join('\n')}
 
 
-Label every candidate: "gold" with the gold ID it captures (a revise or retire that carries out a gold change counts, even when a detail of the gold wording differs), "trap" with the trap ID, "duplicate" if it repeats a fact an earlier candidate or a seed item already holds, "acceptable" for a true, durable owner fact that is not in the gold list, or "unsupported" for anything else. Judge the candidate itself, whatever its outcome.`;
+Label every candidate: "gold" with the gold ID it captures (a revise or retire that carries out a gold change counts, even when a detail of the gold wording differs), "trap" with the trap ID, "duplicate" if it repeats a fact an earlier candidate or a seed item already holds, "acceptable" for a true, durable owner fact that is not in the gold list, or "unsupported" for anything else. Read the whole source message to decide what the quote means. Judge the candidate itself, whatever its outcome.`;
   const child = Bun.spawn(
     [
       'claude',

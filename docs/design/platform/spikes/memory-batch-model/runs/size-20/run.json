@@ -379,9 +379,9 @@
         "error": null,
         "usage": {
           "cacheRead": 599,
-          "cacheWrite": 2261,
+          "cacheWrite": 2838,
           "input": 2,
-          "output": 654
+          "output": 664
         }
       },
       "sample": 0
@@ -736,16 +736,16 @@
           },
           {
             "index": 12,
-            "label": "unsupported",
+            "label": "acceptable",
             "ref": null
           }
         ],
         "error": null,
         "usage": {
           "cacheRead": 599,
-          "cacheWrite": 2326,
+          "cacheWrite": 2899,
           "input": 2,
-          "output": 586
+          "output": 485
         }
       },
       "sample": 1
@@ -1061,9 +1061,9 @@
         "error": null,
         "usage": {
           "cacheRead": 599,
-          "cacheWrite": 2222,
+          "cacheWrite": 2722,
           "input": 2,
-          "output": 747
+          "output": 330
         }
       },
       "sample": 2

@@ -50,7 +50,8 @@ bun report.ts runs/live/run.json runs/size-20/run.json runs/size-40/run.json
   `memory.remember`, `memory.retire` and `memory.recall`, and the host gives it every active item.
 - [run.ts](run.ts) gates each candidate, applies those that pass and asks the judge to label every
   candidate. [report.ts](report.ts) prints the tables below from the recorded runs in
-  [runs/](runs/).
+  [runs/](runs/), and [rejudge.ts](rejudge.ts) labels a recorded run again without calling the
+  writer.
 
 A gold fact counts as captured when an applied candidate carries it and no active item still states
 its older form, such as the old address with no mention of the move. The judge labels candidates
@@ -61,11 +62,12 @@ only; code scores the final memory.
 ### Capture quality
 
 Each row is 3 samples over the same 40 turns. "Bad applied" counts applied candidates the judge
-labelled unsupported, a trap or a duplicate.
+labelled unsupported, a trap or a duplicate. The judge reads each candidate beside its whole source
+message, so it can tell what a short quote refers to.
 
 | Batches            | Gold captured | Bad applied | Traps proposed | Extra true facts |
 | ------------------ | ------------- | ----------- | -------------- | ---------------- |
-| Live, 4 turns      | 14, 14, 14    | 0, 0, 0     | 0              | 1, 1, 1          |
+| Live, 4 turns      | 14, 14, 14    | 1, 0, 0     | 0              | 0, 1, 1          |
 | Backfill, 20 turns | 11, 12, 11    | 1, 1, 0     | 0              | 1, 0, 0          |
 | Backfill, 40 turns | 13, 12, 12    | 0, 0, 2     | 0              | 1, 1, 0          |
 
@@ -73,17 +75,19 @@ The live writer captured the same 14 of 15 facts in every sample, revised all 3 
 and retired the pottery class when it ended. It never proposed a trap: no candidate quoted pasted
 text, the hypothetical move, Sam's quoted line, the denied peanut allergy, the drafted sick note or
 a fact only the assistant stated. Its one miss, in all 9 samples across all sizes, was "sign it with
-just my initials, R.M.", which it treated as a one-off instruction. The extra true fact was "long
-hikes wipe me out", a fair memory outside the gold list.
+just my initials, R.M.", which it treated as a one-off instruction. Each sample also stored "I
+wouldn't say I hate hiking, but long ones wipe me out". Two samples stored it as "The owner finds
+long hikes exhausting.", a fair memory outside the gold list, and one added "and does not like
+them", which the message denies.
 
 Larger batches lost facts. Across 6 samples they missed the usual lunch place 3 times and "I don't
 have a car" twice, and twice they added the new address as a second item while "14 Elm Row" stayed
 active, so memory held 2 contradicting addresses. They also never stored the pottery class, because
 it starts and ends inside one batch; the final memory is correct there, so that miss costs nothing.
-Of the 4 bad-applied candidates, 2 are the duplicate address. The other 2 are the hiking fact, which
-the judge labelled acceptable in 7 samples and unsupported in 2, so they show judge noise, not
-writer errors. No batch at any size needed the clash retry. Every one of the 126 candidates passed
-the code checks, so the writer's quotes were exact and the checks never had to stop a writer error.
+Of their 3 bad-applied candidates, 2 are the duplicate address, and the third is the hiking fact
+with "keeps walks under 10 km", a detail only the assistant's reply states. No batch at any size
+needed the clash retry. Every one of the 126 candidates passed the code checks, so the writer's
+quotes were exact and the checks never had to stop a writer error.
 
 ### Capture delay
 
