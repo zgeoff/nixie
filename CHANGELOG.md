@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/zgeoff/nixie/compare/v0.3.0...v0.4.0) (2026-10-12)
+
+
+### Features
+
+* **geo-524:** add a spinner, follow-scroll and a top output toggle ([#110](https://github.com/zgeoff/nixie/issues/110)) ([5f39b29](https://github.com/zgeoff/nixie/commit/5f39b295395cf45fc9dcd464c63bc31328031f37))
+* **geo-525:** read a page's main content and report a bot challenge ([#111](https://github.com/zgeoff/nixie/issues/111)) ([be2df08](https://github.com/zgeoff/nixie/commit/be2df08c2722073d8cd44c3cc375e0c90d11b9ed))
+
+
+### Bug Fixes
+
+* **geo-523:** keep live updates working behind content blockers ([#109](https://github.com/zgeoff/nixie/issues/109)) ([fb10593](https://github.com/zgeoff/nixie/commit/fb10593f86d5a4483ee8dac3ba4473599583d63e))
+* **geo-538:** keep each sticky toggle inside its own value ([#113](https://github.com/zgeoff/nixie/issues/113)) ([96730a5](https://github.com/zgeoff/nixie/commit/96730a58ccc4596e567a60647b9c27254f513414))
+
 ## [0.3.0](https://github.com/zgeoff/nixie/compare/v0.2.0...v0.3.0) (2026-10-12)
 
 
