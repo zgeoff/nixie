@@ -71,6 +71,46 @@ test('it destroys an imp whose create was still running when the test finished',
   });
 });
 
+test('it destroys an imp whose failed create could not roll it back', async () => {
+  const imp = await startFakeImp();
+
+  // the rollback's removal fails, and the removal at teardown succeeds
+  imp.failRemove = true;
+  onTestFinished(() => {
+    imp.failRemove = false;
+  });
+
+  const isolation = await setupIsolationAdapter({
+    port: {
+      ...imp.port,
+      addGrant: () => Promise.reject(new Error('NOT_FOUND')),
+    },
+    removeSecret: mock(),
+    publicEgress: null,
+    guestToolPort: imp.guestToolPort,
+    secret: 'nixie-test-a',
+  });
+  const created = isolation.createSandbox(
+    buildMockSandboxSpec({
+      kind: 'conversation',
+      grants: [buildMockGrantSpec({ secret: 'nixie-test-a', host: 'api.anthropic.com' })],
+    }),
+  );
+
+  await created.catch(() => {});
+
+  onTestFinished(() => {
+    const name = imp.created.at(0)?.name;
+
+    expect(imp.calls.filter((call) => call.startsWith('remove '))).toStrictEqual([
+      `remove ${name}`,
+      `remove ${name}`,
+    ]);
+  });
+
+  expect(created).rejects.toThrow('INTERNAL_SERVER_ERROR');
+});
+
 test('it removes a secret whose add was still running when the test finished', async () => {
   const imp = await startFakeImp();
   const removeSecret = mock(() => Promise.resolve());

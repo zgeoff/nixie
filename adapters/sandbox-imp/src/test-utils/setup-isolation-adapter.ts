@@ -24,56 +24,94 @@ interface IsolationAdapter {
 }
 
 // Sets up the imp adapter on a fresh recorder and the stub tool endpoint, and adds the model-host
-// secret with a dummy value. The stack's hook registers first and waits for every create still
-// running; hooks run first in, first out, so each imp goes before the writer stops.
-export async function setupIsolationAdapter(
-  options: IsolationAdapterOptions,
-): Promise<IsolationAdapter> {
+// secret with a dummy value. The stack's hook registers first and waits for a setup that outlives
+// the test; hooks run first in, first out, so each imp goes before the writer stops.
+export function setupIsolationAdapter(options: IsolationAdapterOptions): Promise<IsolationAdapter> {
   const stack = new AsyncDisposableStack();
-  const creating = new Set<Promise<unknown>>();
+  const started: Promise<unknown>[] = [];
 
   onTestFinished(async () => {
-    await Promise.allSettled(creating);
+    await Promise.allSettled(started);
     await stack.disposeAsync();
   });
 
+  const setup = buildIsolationAdapter(options, (cleanup) => {
+    stack.defer(cleanup);
+  });
+
+  started.push(setup);
+  return setup;
+}
+
+async function buildIsolationAdapter(
+  options: IsolationAdapterOptions,
+  defer: (cleanup: () => Promise<void>) => void,
+): Promise<IsolationAdapter> {
   const recorder = await setupTestRecorder();
   const dir = await mkdtemp(join(tmpdir(), 'nixie-isolation-'));
 
-  stack.defer(() => rm(dir, { recursive: true, force: true }));
+  defer(() => rm(dir, { recursive: true, force: true }));
   startStubToolEndpoint(join(dir, 'tools.sock'));
 
   await createTestSecret(options);
 
-  const adapter = buildImpSandboxAdapter({
-    port: options.port,
-    recorder: recorder.recorder,
-    config: { publicEgress: options.publicEgress },
-    toolTarget: () => ({ path: join(dir, 'tools.sock') }),
-    ...(options.guestToolPort === undefined ? {} : { guestToolPort: options.guestToolPort }),
-  });
+  const sandboxes = buildSandboxTracker(
+    buildImpSandboxAdapter({
+      port: options.port,
+      recorder: recorder.recorder,
+      config: { publicEgress: options.publicEgress },
+      toolTarget: () => ({ path: join(dir, 'tools.sock') }),
+      ...(options.guestToolPort === undefined ? {} : { guestToolPort: options.guestToolPort }),
+    }),
+  );
+
+  defer(() => sandboxes.removeAll());
+
+  return { createSandbox: sandboxes.create };
+}
+
+interface SandboxTracker {
+  readonly create: (spec: SandboxSpec) => Promise<Sandbox>;
+
+  // waits for every create still running, then destroys every imp of an owner the test used
+  readonly removeAll: () => Promise<void>;
+}
+
+function buildSandboxTracker(adapter: SandboxAdapter): SandboxTracker {
+  const creating = new Set<Promise<unknown>>();
+  const owners = new Set<string>();
 
   return {
-    createSandbox: (spec) => {
-      const created = createOwnedSandbox(adapter, spec, (sandbox) => {
-        stack.defer(() => sandbox.destroy());
-      });
+    create: (spec) => {
+      const created = adapter.create(spec);
 
+      owners.add(spec.owner);
       creating.add(created);
       return created;
+    },
+    removeAll: async () => {
+      await Promise.allSettled(creating);
+      await removeOwnedSandboxes(adapter, [...owners]);
     },
   };
 }
 
-async function createOwnedSandbox(
+// Destroys every imp the recorder holds for the owners. A create whose rollback failed leaves its
+// imp recorded, so the sweep reaches it. Each failure is reported once all have run.
+async function removeOwnedSandboxes(
   adapter: SandboxAdapter,
-  spec: SandboxSpec,
-  onCreated: (sandbox: Sandbox) => void,
-): Promise<Sandbox> {
-  const sandbox = await adapter.create(spec);
+  owners: readonly string[],
+): Promise<void> {
+  const listed = await Promise.all(owners.map((owner) => adapter.list(owner)));
+  const sandboxes = listed.flat();
+  const results = await Promise.allSettled(sandboxes.map((sandbox) => sandbox.destroy()));
+  const errors = results.flatMap((result): unknown[] =>
+    result.status === 'rejected' ? [result.reason] : [],
+  );
 
-  onCreated(sandbox);
-  return sandbox;
+  if (errors.length > 0) {
+    throw new AggregateError(errors, `${errors.length} isolation imps failed to destroy`);
+  }
 }
 
 // A name impd holds already is not this run's, so the add refuses it. Once the run has seen the
