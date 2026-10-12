@@ -1,7 +1,8 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
 import { makeAddressCheck } from './make-address-check';
 import { readPage } from './read-page';
+import { buildStubResolver } from './test-utils/build-stub-resolver';
 import { startTestSite } from './test-utils/start-test-site';
 
 test('it returns the readable text of an HTML page over a connection to the checked address', async () => {
@@ -15,12 +16,12 @@ test('it returns the readable text of an HTML page over a connection to the chec
         },
       ),
   });
-  const resolveHost = mock(() => Promise.resolve(['127.0.0.1']));
+  const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1']] } });
 
   const reply = await readPage(`https://site.test:${site.port}/page?q=1#part`, {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
-    resolveHost,
+    resolveHost: resolver.resolveHost,
     ca: site.ca,
   });
 
@@ -32,25 +33,23 @@ test('it returns the readable text of an HTML page over a connection to the chec
     text: 't\n\nHello\n\nworld',
     isTruncated: false,
   });
-  expect(resolveHost).toHaveBeenCalledExactlyOnceWith('site.test');
+  expect(resolver.hosts).toStrictEqual(['site.test']);
   expect(site.requests).toMatchObject([{ headers: { host: `site.test:${site.port}` } }]);
 });
 
 test('it connects to the checked address and never resolves the host a second time', async () => {
   const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('pinned') });
-  const answers = [['127.0.0.1'], ['10.0.0.1']];
-  const resolveHost = mock(() => Promise.resolve(answers.shift() ?? []));
+  const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1'], ['10.0.0.1']] } });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
-    resolveHost,
+    resolveHost: resolver.resolveHost,
     ca: site.ca,
   });
 
   expect(reply).toMatchObject({ kind: 'page', status: 200 });
-  expect(resolveHost).toHaveBeenCalledOnce();
-  expect(answers).toStrictEqual([['10.0.0.1']]);
+  expect(resolver.hosts).toStrictEqual(['site.test']);
 });
 
 test('it refuses a certificate that does not cover the host name it sent', async () => {
@@ -86,19 +85,19 @@ test.each([
   ['file:///etc/passwd', 'file:'],
   ['ws://site.test/', 'ws:'],
 ])('it refuses %s without resolving it', async (url, scheme) => {
-  const resolveHost = mock(() => Promise.resolve(['127.0.0.1']));
+  const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1']] } });
 
   const reply = await readPage(url, {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: () => true,
-    resolveHost,
+    resolveHost: resolver.resolveHost,
   });
 
   expect(reply).toStrictEqual({
     kind: 'refused',
     reason: `only https URLs are fetched, not ${scheme}`,
   });
-  expect(resolveHost).not.toHaveBeenCalled();
+  expect(resolver.hosts).toStrictEqual([]);
 });
 
 test('it refuses text that is not a URL', async () => {
@@ -147,19 +146,19 @@ test('it refuses a host that resolves to a private address under the production 
 });
 
 test('it checks an address literal in the URL', async () => {
-  const resolveHost = mock(() => Promise.resolve(['93.184.215.14']));
+  const resolver = buildStubResolver({ answers: { '::ffff:a00:1': [['93.184.215.14']] } });
 
   const reply = await readPage('https://[::ffff:10.0.0.1]/', {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: makeAddressCheck([]),
-    resolveHost,
+    resolveHost: resolver.resolveHost,
   });
 
   expect(reply).toStrictEqual({
     kind: 'refused',
     reason: '::ffff:a00:1 resolves to ::ffff:a00:1, which is not a public address',
   });
-  expect(resolveHost).not.toHaveBeenCalled();
+  expect(resolver.hosts).toStrictEqual([]);
 });
 
 test('it refuses a host that resolves to no address', async () => {
@@ -177,16 +176,14 @@ test('it resolves and checks the host of each redirect before it connects', asyn
     names: ['site.test', 'inside.test'],
     fetch: () => Response.redirect('https://inside.test/admin', 302),
   });
-  const answers: Readonly<Record<string, readonly string[]>> = {
-    'site.test': ['127.0.0.1'],
-    'inside.test': ['10.0.0.5'],
-  };
-  const resolveHost = mock((host: string) => Promise.resolve(answers[host] ?? []));
+  const resolver = buildStubResolver({
+    answers: { 'site.test': [['127.0.0.1']], 'inside.test': [['10.0.0.5']] },
+  });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
-    resolveHost,
+    resolveHost: resolver.resolveHost,
     ca: site.ca,
   });
 
@@ -194,7 +191,7 @@ test('it resolves and checks the host of each redirect before it connects', asyn
     kind: 'refused',
     reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
   });
-  expect(resolveHost.mock.calls).toStrictEqual([['site.test'], ['inside.test']]);
+  expect(resolver.hosts).toStrictEqual(['site.test', 'inside.test']);
   expect(site.requests).toHaveLength(1);
 });
 
@@ -366,30 +363,55 @@ test('it fails a fetch that passes the time limit', async () => {
   const site = await startTestSite({
     names: ['site.test'],
     fetch: async () => {
-      await Bun.sleep(2000);
+      // the fault: the site answers well after the limit
+      await Bun.sleep(800);
       return new Response('late');
     },
   });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
-    limits: { bodyBytes: 1_000_000, timeoutMs: 200, redirects: 5, textBytes: 1_000_000 },
+    limits: { bodyBytes: 1_000_000, timeoutMs: 300, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => address === '127.0.0.1',
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     ca: site.ca,
   });
 
-  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 200 ms' });
+  expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
+});
+
+test('it returns the page of a slow site that answers within the time limit', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    fetch: async () => {
+      // the same slow site as the time limit's, under a limit it fits in
+      await Bun.sleep(800);
+      return new Response('late');
+    },
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toMatchObject({ kind: 'page', text: 'late' });
 });
 
 test('it fails a fetch whose compressed body stalls past the time limit', async () => {
+  const body = gzipSync('a'.repeat(1000));
   const site = await startTestSite({
     names: ['site.test'],
     fetch: () =>
       new Response(
         new ReadableStream({
           start: async (controller) => {
-            controller.enqueue(gzipSync('a'.repeat(1000)).subarray(0, 10));
-            await Bun.sleep(3000);
+            controller.enqueue(body.subarray(0, 10));
+
+            // the fault: the body stalls well after the limit
+            await Bun.sleep(800);
+            controller.enqueue(body.subarray(10));
             controller.close();
           },
         }),
@@ -407,14 +429,63 @@ test('it fails a fetch whose compressed body stalls past the time limit', async 
   expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 300 ms' });
 });
 
+test('it returns a compressed body that stalls and finishes within the time limit', async () => {
+  const body = gzipSync('a'.repeat(1000));
+  const site = await startTestSite({
+    names: ['site.test'],
+    fetch: () =>
+      new Response(
+        new ReadableStream({
+          start: async (controller) => {
+            controller.enqueue(body.subarray(0, 10));
+
+            // the same stall as the time limit's, under a limit it fits in
+            await Bun.sleep(800);
+            controller.enqueue(body.subarray(10));
+            controller.close();
+          },
+        }),
+        { headers: { 'content-type': 'text/plain', 'content-encoding': 'gzip' } },
+      ),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toMatchObject({ kind: 'page', text: 'a'.repeat(1000) });
+});
+
 test('it fails a fetch whose DNS answer passes the time limit', async () => {
+  // the fault: the DNS answer comes well after the limit
+  const resolver = buildStubResolver({ answers: { 'site.test': [['10.0.0.1']] }, delayMs: 300 });
+
   const reply = await readPage('https://site.test/', {
     limits: { bodyBytes: 1_000_000, timeoutMs: 100, redirects: 5, textBytes: 1_000_000 },
-    checkAddress: () => true,
-    resolveHost: () => Promise.withResolvers<readonly string[]>().promise,
+    checkAddress: () => false,
+    resolveHost: resolver.resolveHost,
   });
 
   expect(reply).toStrictEqual({ kind: 'failed', reason: 'the fetch passed 100 ms' });
+});
+
+test('it checks a slow DNS answer that arrives within the time limit', async () => {
+  // the same slow answer as the time limit's, under a limit it fits in
+  const resolver = buildStubResolver({ answers: { 'site.test': [['10.0.0.1']] }, delayMs: 300 });
+
+  const reply = await readPage('https://site.test/', {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: () => false,
+    resolveHost: resolver.resolveHost,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'refused',
+    reason: 'site.test resolves to 10.0.0.1, which is not a public address',
+  });
 });
 
 test('it returns a binary type with no body', async () => {

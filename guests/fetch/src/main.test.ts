@@ -32,6 +32,10 @@ test('it answers one request in a process of its own and leaves its temporary di
     stderr: 'pipe',
   });
 
+  onTestFinished(() => {
+    fetcher.kill('SIGKILL');
+  });
+
   const [code, stdout] = await Promise.all([fetcher.exited, new Response(fetcher.stdout).bytes()]);
   const left = await readdir(ctx.root);
 
@@ -57,6 +61,10 @@ test('it exits non-zero with no reply for a malformed request', async () => {
     stdin: encodeFrame(new TextEncoder().encode('{"url":"https://example.com/"}')),
     stdout: 'pipe',
     stderr: 'pipe',
+  });
+
+  onTestFinished(() => {
+    fetcher.kill('SIGKILL');
   });
 
   const [code, stdout] = await Promise.all([fetcher.exited, new Response(fetcher.stdout).bytes()]);
