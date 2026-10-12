@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { useLayoutEffect, useRef } from 'react';
 import { css } from '../styled-system/css';
 
@@ -13,8 +13,8 @@ export interface ConversationScrollerProps {
 }
 
 // The scrolling part of the conversation. An arrival brings the view to its end when it was at or
-// near the end, and leaves it in place when you scrolled up to read. Your own message always
-// brings the view to its end.
+// near the end, and leaves it in place when you scrolled up to read, and so does a resize of the
+// view. Your own message always brings the view to its end.
 export function ConversationScroller(props: ConversationScrollerProps): ReactNode {
   const scrollerRef = useRef<HTMLDivElement>(null);
 
@@ -34,6 +34,8 @@ export function ConversationScroller(props: ConversationScrollerProps): ReactNod
     }
   }, [props.arrivals, props.sends]);
 
+  useFollowOnResize(scrollerRef, isFollowing);
+
   return (
     <div
       className={css({ flex: '1', overflowY: 'auto' })}
@@ -47,10 +49,40 @@ export function ConversationScroller(props: ConversationScrollerProps): ReactNod
   );
 }
 
+// A growing message box shrinks the view without a scroll, so a view at its end stays there.
+function useFollowOnResize(
+  scrollerRef: Readonly<RefObject<HTMLDivElement | null>>,
+  isFollowing: Readonly<RefObject<boolean>>,
+): void {
+  useLayoutEffect(() => {
+    const observer = new ResizeObserver((entries) => {
+      const scroller = entries[0]?.target;
+
+      if (scroller !== undefined && isFollowing.current) {
+        scroller.scrollTop = scroller.scrollHeight;
+      }
+    });
+
+    if (scrollerRef.current !== null) {
+      observer.observe(scrollerRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isFollowing, scrollerRef]);
+}
+
 // How close to the end, in pixels, still counts as at the end, so a stray pixel of scroll does
 // not stop the view following.
 const nearEnd = 48;
 
-function isNearEnd(element: HTMLElement): boolean {
+interface ScrollPosition {
+  readonly clientHeight: number;
+  readonly scrollHeight: number;
+  readonly scrollTop: number;
+}
+
+function isNearEnd(element: ScrollPosition): boolean {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= nearEnd;
 }
