@@ -37,6 +37,7 @@ test('it refuses an unknown key', () => {
   const result = webFetchConfigSchema.safeParse({ body_byte: 1024 });
 
   expect(result.error?.issues).toPartiallyContain({
+    path: [],
     code: 'unrecognized_keys',
     keys: ['body_byte'],
   });

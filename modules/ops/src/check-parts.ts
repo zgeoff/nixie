@@ -1,14 +1,17 @@
+import type { Clock } from '@heynixie/tasks';
+import { systemClock } from '@heynixie/tasks';
 import type { HealthReport, PartCheck, PartReport } from './types';
 
 // Runs every part's check at once and reports each part, with a check that throws or outlasts
-// timeoutMs reported unready, so one stuck part never stalls the endpoint.
+// timeoutMs on the clock reported unready, so one stuck part never stalls the endpoint.
 export async function checkParts(
   checks: Readonly<Record<string, PartCheck>>,
   timeoutMs: number,
+  clock: Clock = systemClock,
 ): Promise<HealthReport> {
   const entries = await Promise.all(
     Object.entries(checks).map(
-      async ([part, check]) => [part, await runCheck(check, timeoutMs)] as const,
+      async ([part, check]) => [part, await runCheck(check, timeoutMs, clock)] as const,
     ),
   );
   const parts = Object.fromEntries(entries);
@@ -19,20 +22,26 @@ export async function checkParts(
   };
 }
 
-async function runCheck(check: PartCheck, timeoutMs: number): Promise<PartReport> {
-  const timer = Promise.withResolvers<PartReport>();
-  const timeout = setTimeout(timer.resolve, timeoutMs, {
-    isReady: false,
-    reason: `the check took longer than ${timeoutMs} ms`,
-  });
+async function runCheck(check: PartCheck, timeoutMs: number, clock: Clock): Promise<PartReport> {
+  const stopped = new AbortController();
 
   try {
-    return await Promise.race([check(), timer.promise]);
+    return await Promise.race([check(), waitForTimeout(clock, timeoutMs, stopped.signal)]);
   } catch (error) {
     return { isReady: false, reason: `the check failed: ${toErrorName(error)}` };
   } finally {
-    clearTimeout(timeout);
+    // ends the sleep of a check that settled in time
+    stopped.abort();
   }
+}
+
+async function waitForTimeout(
+  clock: Clock,
+  timeoutMs: number,
+  signal: AbortSignal,
+): Promise<PartReport> {
+  await clock.sleep(timeoutMs, signal);
+  return { isReady: false, reason: `the check took longer than ${timeoutMs} ms` };
 }
 
 function toErrorName(error: unknown): string {

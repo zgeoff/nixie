@@ -1,21 +1,34 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildToolRegistry } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
 import { buildWebFetchTool } from './build-web-fetch-tool';
+import { startFetchSandbox } from './start-fetch-sandbox';
+import { buildStubSandboxAdapter } from './test-utils/build-stub-sandbox-adapter';
+import { makeStubFetcher } from './test-utils/make-stub-fetcher';
 
-test('it returns the page as the typed result, which the registry checks against the output schema', async () => {
-  const readPage = mock(() =>
-    Promise.resolve({
-      kind: 'page' as const,
-      url: 'https://example.com/',
-      status: 200,
-      contentType: 'text/html',
-      text: 'Example Domain',
-      isTruncated: false,
-    }),
-  );
-  const registered = buildToolRegistry([buildWebFetchTool(readPage)]).findTool('web_fetch');
+test('it returns the page the fetch sandbox reads at the URL as the typed result', async () => {
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => ({
+        kind: 'page',
+        url: request.url,
+        status: 200,
+        contentType: 'text/html',
+        text: 'Example Domain',
+        isTruncated: false,
+      })),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+  onTestFinished(() => fetchSandbox.stop());
+  const tool = buildWebFetchTool(fetchSandbox.readPage);
 
-  const outcome = await registered?.definition.run(
+  const outcome = await tool.run(
     {
       callID: 'call-1',
       tool: 'web_fetch',
@@ -42,24 +55,75 @@ test('it returns the page as the typed result, which the registry checks against
       isTruncated: false,
     },
   });
-  expect(readPage).toHaveBeenCalledExactlyOnceWith('https://example.com/');
-  if (outcome?.status !== 'ok') {
-    throw new Error('the call returned no result');
-  }
-  expect(registered?.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
+});
+
+test('it returns a page result that the registry checks against the output schema', async () => {
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => ({
+        kind: 'page',
+        url: request.url,
+        status: 200,
+        contentType: 'text/html',
+        text: 'Example Domain',
+        isTruncated: false,
+      })),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+  onTestFinished(() => fetchSandbox.stop());
+  const registered = buildToolRegistry([buildWebFetchTool(fetchSandbox.readPage)]).findTool(
+    'web_fetch',
+  );
+  invariant(registered);
+
+  const outcome = await registered.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'web_fetch',
+      input: { url: 'https://example.com/' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+    },
+  );
+
+  invariant(outcome.status === 'ok');
+  expect(registered.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });
 
 test('it returns a binary page with no text', async () => {
-  const tool = buildWebFetchTool(() =>
-    Promise.resolve({
-      kind: 'page',
-      url: 'https://example.com/a.png',
-      status: 200,
-      contentType: 'image/png',
-      text: null,
-      isTruncated: false,
-    }),
-  );
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => ({
+        kind: 'page',
+        url: request.url,
+        status: 200,
+        contentType: 'image/png',
+        text: null,
+        isTruncated: false,
+      })),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+  onTestFinished(() => fetchSandbox.stop());
+  const tool = buildWebFetchTool(fetchSandbox.readPage);
 
   const outcome = await tool.run(
     {
@@ -85,7 +149,17 @@ test.each([
   ['refused', 'only https URLs are fetched, not http:'],
   ['failed', 'the fetch passed 15000 ms'],
 ] as const)('it returns a %s fetch as an error with its reason', async (kind, reason) => {
-  const tool = buildWebFetchTool(() => Promise.resolve({ kind, reason }));
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(makeStubFetcher(() => ({ kind, reason }))),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+  onTestFinished(() => fetchSandbox.stop());
+  const tool = buildWebFetchTool(fetchSandbox.readPage);
 
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'http://example.com/' }, toolUseID: null },
@@ -103,7 +177,7 @@ test.each([
 });
 
 test('it declares only the fetch effect and no destination, so it runs direct', () => {
-  const tool = buildWebFetchTool(() => Promise.resolve({ kind: 'failed', reason: 'unused' }));
+  const tool = buildWebFetchTool(mock());
 
   expect(tool.execution).toBe('direct');
   expect(tool.declaration).toMatchObject({
@@ -115,7 +189,7 @@ test('it declares only the fetch effect and no destination, so it runs direct', 
 });
 
 test('it marks every result field as outside content', () => {
-  const tool = buildWebFetchTool(() => Promise.resolve({ kind: 'failed', reason: 'unused' }));
+  const tool = buildWebFetchTool(mock());
 
   expect(tool.declaration.results).toStrictEqual({
     url: 'untrusted',
@@ -127,7 +201,8 @@ test('it marks every result field as outside content', () => {
 });
 
 test('it endorses only the status code and the truncated mark', () => {
-  const tool = buildWebFetchTool(() => Promise.resolve({ kind: 'failed', reason: 'unused' }));
+  const tool = buildWebFetchTool(mock());
+
   expect(tool.output['properties']).toStrictEqual({
     url: { type: 'string' },
     status: { type: 'integer', 'x-endorsed': true },
@@ -138,7 +213,7 @@ test('it endorses only the status code and the truncated mark', () => {
 });
 
 test('it is a tool the registry accepts', () => {
-  const tool = buildWebFetchTool(() => Promise.resolve({ kind: 'failed', reason: 'unused' }));
+  const tool = buildWebFetchTool(mock());
 
   expect(() => buildToolRegistry([tool])).not.toThrow();
 });

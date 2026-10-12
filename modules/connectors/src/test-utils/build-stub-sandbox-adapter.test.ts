@@ -142,6 +142,65 @@ test('it refuses a spec a real adapter refuses', () => {
   expect(adapter.created).toStrictEqual([]);
 });
 
+test('it refuses a create with the message its failure names, and records no sandbox', () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    createFailures: [{ kind: 'reject', message: 'impd is down' }],
+  });
+
+  expect(
+    adapter.create({
+      kind: 'fetch',
+      image: 'fetch',
+      owner: 'web_fetch',
+      egress: { kind: 'public' },
+      grants: [],
+      toolRoute: false,
+      limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+    }),
+  ).rejects.toThrowWithMessage(Error, 'impd is down');
+  expect(adapter.created).toStrictEqual([]);
+});
+
+test('it never answers a create whose failure hangs', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    createFailures: [{ kind: 'hang' }],
+  });
+  const create = adapter.create({
+    kind: 'fetch',
+    image: 'fetch',
+    owner: 'web_fetch',
+    egress: { kind: 'public' },
+    grants: [],
+    toolRoute: false,
+    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+
+  const first = await Promise.race([create, adapter.list('web_fetch').then(() => 'pending')]);
+
+  expect(first).toBe('pending');
+  expect(adapter.created).toStrictEqual([]);
+});
+
+test('it creates a sandbox once the named failures are spent', async () => {
+  const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
+    createFailures: [{ kind: 'reject', message: 'impd is down' }],
+  });
+  const spec = {
+    kind: 'fetch' as const,
+    image: 'fetch',
+    owner: 'web_fetch',
+    egress: { kind: 'public' as const },
+    grants: [],
+    toolRoute: false,
+    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  };
+  await adapter.create(spec).catch(() => null);
+
+  const sandbox = await adapter.create(spec);
+
+  expect(adapter.created).toStrictEqual([{ id: sandbox.id, spec }]);
+});
+
 test('it ends the messages with none when the guest exits partway through a frame', async () => {
   const adapter = buildStubSandboxAdapter(async (_stdin, stdout) => {
     await stdout.write(encodeFrame(encoder.encode('framed')).slice(0, 5));

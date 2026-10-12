@@ -34,6 +34,17 @@ test('it answers one request frame with the reply it picks', async () => {
   ]);
 });
 
+test('it rejects when stdin closes before a request', () => {
+  const ctx = setupTest();
+  const answer = mock(() => ({ kind: 'refused' as const, reason: 'no' }));
+
+  expect(makeStubFetcher(answer)(new Blob([]).stream(), ctx.writer)).rejects.toThrowWithMessage(
+    Error,
+    'stdin closed before a request',
+  );
+  expect(answer).not.toHaveBeenCalled();
+});
+
 test('it exits 1 with no reply for a crash', async () => {
   const ctx = setupTest();
   const frame = encodeFrame(

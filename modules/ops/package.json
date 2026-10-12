@@ -10,10 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@heynixie/tasks": "workspace:*",
     "elysia": "catalog:",
     "kysely": "catalog:"
   },
   "devDependencies": {
-    "@heynixie/log": "workspace:*"
+    "@heynixie/log": "workspace:*",
+    "@heynixie/testing": "workspace:*"
   }
 }

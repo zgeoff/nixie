@@ -202,9 +202,14 @@
       "dependencies": {
         "@heynixie/log": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+        "tiny-invariant": "catalog:",
       },
     },
     "modules/definitions": {
@@ -250,11 +255,13 @@
       "name": "@heynixie/ops",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/tasks": "workspace:*",
         "elysia": "catalog:",
         "kysely": "catalog:",
       },
       "devDependencies": {
         "@heynixie/log": "workspace:*",
+        "@heynixie/testing": "workspace:*",
       },
     },
     "modules/policy": {
