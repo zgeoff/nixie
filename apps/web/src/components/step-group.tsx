@@ -53,8 +53,8 @@ function formatJSON(value: unknown): string {
 }
 
 // A page's text can run to many kilobytes, so a long value shows its start and opens in full on
-// demand. Its toggle sits above the text and sticks to the top of the view while the text
-// scrolls past, so an open value closes again without a scroll back to find the control.
+// demand. Its toggle sticks to the top of the view until its own text ends, so an open value
+// closes again without a scroll back to find the control.
 const clipLength = 600;
 
 interface ClippedTextProps {
@@ -66,7 +66,7 @@ function ClippedText(props: ClippedTextProps): ReactNode {
   const isLong = props.text.length > clipLength;
 
   return (
-    <>
+    <div>
       {isLong ? (
         <button
           className={css({
@@ -87,6 +87,6 @@ function ClippedText(props: ClippedTextProps): ReactNode {
       <pre className={css({ overflowX: 'auto', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' })}>
         {isLong && !isOpen ? `${props.text.slice(0, clipLength)}…` : props.text}
       </pre>
-    </>
+    </div>
   );
 }
