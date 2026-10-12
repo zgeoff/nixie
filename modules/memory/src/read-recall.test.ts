@@ -213,6 +213,36 @@ test('it records every version that a history recall delivered', async () => {
   });
 });
 
+test('it holds a forget until a recall that checked the item has recorded its delivery', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const hold = startFaultPointHold('memory.recall.checked');
+  const recall = ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  await hold.reached;
+
+  const forget = ctx.memory.store.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  hold.release();
+
+  await Promise.all([recall, forget]);
+
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(records.map((entry) => entry.record)).toMatchObject([
+    { kind: 'memory.version_added' },
+    { kind: 'memory.recalled', payload: { items: [{ itemID: item.itemID, version: 1 }] } },
+    { kind: 'memory.forget_started' },
+    { kind: 'memory.forgotten' },
+  ]);
+});
+
 test('it never delivers an item that a forget removed while the recall ranked it', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

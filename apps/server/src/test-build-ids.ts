@@ -23,6 +23,7 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'recovery.step.5': 'recovery.step.',
   'sigterm.grace': 'sigterm.grace',
   'memory.recall.ranked': 'memory.recall.ranked',
+  'memory.recall.checked': 'memory.recall.checked',
   'memory.forget.key_removed': 'memory.forget.key_removed',
 };
 

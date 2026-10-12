@@ -34,6 +34,9 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
       includeHistory: request.includeHistory === true,
     });
 
+    if (NIXIE_TEST_BUILD) {
+      await waitAtFaultPoint('memory.recall.checked', { kind: 'memory', id: null });
+    }
     await writeRecallRecord(parts, request, items);
     return { items, next: candidates.next };
   });

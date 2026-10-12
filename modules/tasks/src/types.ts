@@ -96,6 +96,7 @@ export type FaultPointID =
   | 'recovery.step.5'
   | 'sigterm.grace'
   | 'memory.recall.ranked'
+  | 'memory.recall.checked'
   | 'memory.forget.key_removed';
 
 // Which work reached a fault point: a task or an action by ID, recovery, a runner pool, or a memory
