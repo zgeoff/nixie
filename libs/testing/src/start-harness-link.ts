@@ -126,10 +126,12 @@ function isArmMatch(candidate: HeldArm, point: string, work: FaultPointWork): bo
 interface AdvanceArgs {
   readonly ms: number;
   readonly settle?: boolean;
+
+  // how long an advance waits for the sleepers it woke to sleep again
+  readonly settleTimeoutMs?: number;
 }
 
-// how long an advance waits for the sleepers it woke to sleep again
-const settleTimeoutMs = 5000;
+const defaultSettleTimeoutMs = 5000;
 
 async function runAdvance(clock: TestClock, args: unknown): Promise<{ readonly settled: boolean }> {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
@@ -140,7 +142,7 @@ async function runAdvance(clock: TestClock, args: unknown): Promise<{ readonly s
   if (advance.settle !== true) {
     return { settled: false };
   }
-  const deadline = Date.now() + settleTimeoutMs;
+  const deadline = Date.now() + (advance.settleTimeoutMs ?? defaultSettleTimeoutMs);
 
   while (clock.countSleepers() < before && Date.now() < deadline) {
     // oxlint-disable-next-line no-await-in-loop -- polls the woken sleepers on the real clock

@@ -30,6 +30,19 @@ test('it lists each added migration and whether the last release reads its schem
   `);
 });
 
+test('it renders the same notes from the same check', () => {
+  const check = {
+    changed: [],
+    changedObjects: [],
+    added: [{ version: 7, name: 'add the moments table', refused: [] }],
+    readableByReleaseBefore: true,
+  };
+
+  expect(renderMigrationNotes(check, 'v0.3.0', '<!-- marker -->')).toBe(
+    renderMigrationNotes(check, 'v0.3.0', '<!-- marker -->'),
+  );
+});
+
 test('it marks the schema unreadable by the last release when the build declares the break', () => {
   expect(
     renderMigrationNotes(

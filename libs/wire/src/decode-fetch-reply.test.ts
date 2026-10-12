@@ -1,39 +1,61 @@
 import { expect, test } from 'bun:test';
 import { decodeFetchReply } from './decode-fetch-reply';
-import { encodeFetchMessage } from './encode-fetch-message';
 
 const encoder = new TextEncoder();
 
-test('it returns the page that encodeFetchMessage wrote', () => {
-  const reply = {
-    kind: 'page' as const,
+test('it returns a page with its text', () => {
+  const bytes = encoder.encode(
+    JSON.stringify({
+      kind: 'page',
+      url: 'https://example.com/',
+      status: 200,
+      contentType: 'text/html',
+      text: 'Example Domain',
+      isTruncated: false,
+    }),
+  );
+
+  expect(decodeFetchReply(bytes)).toStrictEqual({
+    kind: 'page',
     url: 'https://example.com/',
     status: 200,
     contentType: 'text/html',
     text: 'Example Domain',
     isTruncated: false,
-  };
-
-  expect(decodeFetchReply(encodeFetchMessage(reply))).toStrictEqual(reply);
+  });
 });
 
 test('it returns a binary page with no text', () => {
-  const reply = {
-    kind: 'page' as const,
+  const bytes = encoder.encode(
+    JSON.stringify({
+      kind: 'page',
+      url: 'https://example.com/a.png',
+      status: 200,
+      contentType: null,
+      text: null,
+      isTruncated: false,
+    }),
+  );
+
+  expect(decodeFetchReply(bytes)).toStrictEqual({
+    kind: 'page',
     url: 'https://example.com/a.png',
     status: 200,
     contentType: null,
     text: null,
     isTruncated: false,
-  };
-
-  expect(decodeFetchReply(encodeFetchMessage(reply))).toStrictEqual(reply);
+  });
 });
 
 test('it returns a refusal with its reason', () => {
-  const reply = { kind: 'refused' as const, reason: 'only https URLs are fetched' };
+  const bytes = encoder.encode(
+    JSON.stringify({ kind: 'refused', reason: 'only https URLs are fetched' }),
+  );
 
-  expect(decodeFetchReply(encodeFetchMessage(reply))).toStrictEqual(reply);
+  expect(decodeFetchReply(bytes)).toStrictEqual({
+    kind: 'refused',
+    reason: 'only https URLs are fetched',
+  });
 });
 
 test('it drops a field that a well-formed reply does not hold', () => {

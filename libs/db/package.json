@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
     "zod": "catalog:"
   }
 }

@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { startNixieProcess } from './start-nixie-process';
+import { stopProcesses } from './stop-processes';
 import { isProcessGone } from './test-utils/is-process-gone';
 import { waitForCondition } from './wait-for-condition';
 
@@ -24,6 +25,8 @@ test('it rejects ready with the stderr of a nixie that exits first', async () =>
     env: { STUB_NIXIE_REFUSE: '1' },
     clockMs: 0,
   });
+
+  onTestFinished(() => nixie.kill());
 
   expect(nixie.ready).rejects.toThrow('nixie exited with code 3: the stub refused to start');
   const exit = await nixie.exited;
@@ -74,17 +77,20 @@ test('it kills nixie and every process nixie started', async () => {
   const ctx = setupTest();
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });
 
+  onTestFinished(() => nixie.kill());
   await nixie.ready;
 
   const started = await nixie.request('startChild', null);
   const childPID = Number(started);
 
+  onTestFinished(() => {
+    stopProcesses([childPID]);
+  });
+
   const exit = await nixie.kill();
 
-  await waitForCondition(() => isProcessGone(childPID)).catch(() => null);
-
   expect(exit).toStrictEqual({ code: null, signal: 'SIGKILL' });
-  expect(isProcessGone(childPID)).toBe(true);
+  await expect(waitForCondition(() => isProcessGone(childPID))).toResolve();
 });
 
 test('it rejects a request that a kill cut short', async () => {
@@ -96,6 +102,7 @@ test('it rejects a request that a kill cut short', async () => {
     faultPoints: [{ point: 'stub.point' }],
   });
 
+  onTestFinished(() => nixie.kill());
   await nixie.ready;
 
   const held = nixie.request('hold', 'work-1');
