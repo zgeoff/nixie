@@ -7,7 +7,7 @@ import { checkQuote, checkWrite } from '../memory-checks/checks.ts';
 import type { OwnerMessage, Span } from '../memory-checks/checks.ts';
 import { buildJudgeInput } from './build-judge-input.ts';
 import { conversation } from './conversation.ts';
-import type { Item } from './conversation.ts';
+import type { Item, Turn } from './conversation.ts';
 import { planBatches } from './plan-batches.ts';
 import type { PlannedBatch } from './plan-batches.ts';
 import { runJudge } from './run-judge.ts';
@@ -20,6 +20,7 @@ import type { BatchMessage, Usage, WriterCandidate } from './run-writer.ts';
 const { values } = parseArgs({
   options: {
     effort: { default: 'low', type: 'string' },
+    input: { type: 'string' },
     model: { default: 'claude-haiku-5-5', type: 'string' },
     out: { type: 'string' },
     persona: { type: 'string' },
@@ -35,8 +36,12 @@ if (token === undefined || token === '') {
   throw new Error('CLAUDE_CODE_OAUTH_TOKEN is not set');
 }
 
+// An input file replaces the fixture's seed items and turns. It has no gold facts or traps, so the
+// judge does not run and the run records the writer's batches and candidates only.
+const source: { seed: Item[]; turns: Turn[] } =
+  values.input === undefined ? conversation : loadInput(values.input);
 const plan = planBatches(
-  conversation.turns,
+  source.turns,
   values.size === undefined
     ? { count: 4, idleMinutes: 5, maxAgeMinutes: 20 }
     : { size: Number(values.size) },
@@ -54,7 +59,14 @@ try {
   writeFileSync(
     join(values.out, 'run.json'),
     `${JSON.stringify(
-      { model: values.model, effort: values.effort, persona: persona !== null, plan, samples },
+      {
+        model: values.model,
+        effort: values.effort,
+        input: values.input !== undefined,
+        persona: persona !== null,
+        plan,
+        samples,
+      },
       null,
       2,
     )}\n`,
@@ -62,6 +74,22 @@ try {
   console.log(`wrote ${join(values.out, 'run.json')}`);
 } finally {
   rmSync(cwd, { force: true, recursive: true });
+}
+
+// Reads a JSON file of { seed, turns } in the fixture's shape: seed items with an id and text, and
+// turns with a time in minutes, the owner text with pasted spans in ⟦ ⟧, and the reply.
+function loadInput(path: string): { seed: Item[]; turns: Turn[] } {
+  const raw = JSON.parse(readFileSync(path, 'utf8')) as { seed?: Item[]; turns?: Turn[] };
+  if (!Array.isArray(raw.turns) || raw.turns.length === 0) {
+    throw new Error(`${path} holds no turns`);
+  }
+  const seed = raw.seed ?? [];
+  // A remember creates n1, n2 and on, so a seed item under one of those IDs would be overwritten.
+  const clash = seed.find((item) => /^n\d+$/u.test(item.id));
+  if (clash !== undefined) {
+    throw new Error(`${path} has seed item ${clash.id}; n<number> IDs are kept for new items`);
+  }
+  return { seed, turns: raw.turns };
 }
 
 interface StoredItem {
@@ -93,11 +121,11 @@ async function runSample(sample: number): Promise<{
   batches: BatchRecord[];
   candidates: GatedCandidate[];
   history: StoredItem[];
-  judge: Verdicts;
+  judge: Verdicts | null;
   sample: number;
 }> {
   const store = new Map<string, StoredItem>(
-    conversation.seed.map((item) => [item.id, { active: true, id: item.id, versions: [item.text] }]),
+    source.seed.map((item) => [item.id, { active: true, id: item.id, versions: [item.text] }]),
   );
   const batches: BatchRecord[] = [];
   const gated: GatedCandidate[] = [];
@@ -168,10 +196,10 @@ async function runSample(sample: number): Promise<{
   }
 
   const history = [...store.values()];
-  const judge = await runJudge(conversation, buildJudgeInput(gated), {
-    cwd,
-    token: writerOptions.token,
-  });
+  const judge =
+    values.input === undefined
+      ? await runJudge(conversation, buildJudgeInput(gated), { cwd, token: writerOptions.token })
+      : null;
   console.log(`sample ${sample}: ${gated.length} candidates, ${batches.length} batches`);
   return { batches, candidates: gated, history, judge, sample };
 }
@@ -180,7 +208,7 @@ async function runSample(sample: number): Promise<{
 function buildBatchMessages(batch: PlannedBatch): BatchMessage[] {
   const messages: BatchMessage[] = [];
   for (let index = batch.start; index < batch.end; index += 1) {
-    const turn = conversation.turns[index]!;
+    const turn = source.turns[index]!;
     messages.push({ id: index * 2 + 1, role: 'owner', shown: turn.owner });
     messages.push({ id: index * 2 + 2, role: 'assistant', shown: turn.reply });
   }
@@ -238,7 +266,7 @@ function gateCandidate(
   ) {
     return { outcome: 'no-op', reason: 'exact repeat of an active item' };
   }
-  const message = buildOwnerMessage(conversation.turns[turnIndex]!.owner);
+  const message = buildOwnerMessage(source.turns[turnIndex]!.owner);
   const verdict =
     candidate.op === 'retire'
       ? checkQuote(message, candidate.quote)
