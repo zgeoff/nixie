@@ -79,8 +79,9 @@ dropped stream reconnects from the last sequence it delivered.
 A live stream can die without the browser seeing it close, as when a phone sleeps or a proxy loses
 its upstream, so the client watches for that. The API writes a keepalive into a quiet stream, and
 the client fails a stream that misses three keepalives in a row and follows again. A page that
-becomes visible again, or a browser that comes back online, ends the open connection and follows
-again at once, because those are the moments a connection most often died unseen.
+becomes visible again, or a browser that comes back online, ends the open connection or the pause
+before a reconnect and follows again at once, because those are the moments a connection most often
+died unseen or the network came back.
 
 A stream that fails attempt after attempt backs off: the pause before each reconnect doubles up to a
 cap. The API checks the session before it opens the stream, so a stream that opens is one the API
