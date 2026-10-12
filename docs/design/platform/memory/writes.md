@@ -143,6 +143,9 @@ counts as unsure. **Why:** a negation ("I don't use old@example.com any more"), 
 quoted remark all pass the code checks, and only a model reading the whole message tells them from a
 statement.
 
+The [memory checker spike](../spikes/memory-checker/README.md) measured the checker's
+wrong-confirmation and miss rates on paired messages.
+
 The checker shares its implementation with the consent checker in the
 [decision point](../policy/decision-point.md), with its own prompt, which is part of the policy
 snapshot.
