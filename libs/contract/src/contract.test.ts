@@ -78,7 +78,11 @@ test('it declares a missing device session and an unknown thread for a read', ()
   ]);
 });
 
-test('it declares a missing device session for a log follow', () => {
+test('it declares a missing device session for a records follow', () => {
+  expect(contract.records.follow['~orpc'].errorMap).toContainAllKeys(['UNAUTHORIZED']);
+});
+
+test('it declares a missing device session for the deprecated log follow', () => {
   expect(contract.log.follow['~orpc'].errorMap).toContainAllKeys(['UNAUTHORIZED']);
 });
 
@@ -158,7 +162,7 @@ test('it streams each record of the live stream as one event', () => {
   };
 
   expect(
-    getEventIteratorSchemaDetails(contract.log.follow['~orpc'].outputSchema)?.yields[
+    getEventIteratorSchemaDetails(contract.records.follow['~orpc'].outputSchema)?.yields[
       '~standard'
     ].validate({ record }),
   ).toStrictEqual({ value: { record } });
@@ -169,11 +173,23 @@ test('it generates an OpenAPI document with one operation for each procedure', (
     paths: {
       '/conversation/read': { post: { operationId: 'conversation.read' } },
       '/conversation/send': { post: { operationId: 'conversation.send' } },
-      '/log/follow': { post: { operationId: 'log.follow' } },
+      '/log/follow': { post: { deprecated: true, operationId: 'log.follow' } },
+      '/records/follow': { post: { operationId: 'records.follow' } },
       '/sessions/enrol': { post: { operationId: 'sessions.enrol' } },
       '/sessions/issueCode': { post: { operationId: 'sessions.issueCode' } },
       '/sessions/list': { post: { operationId: 'sessions.list' } },
       '/sessions/revoke': { post: { operationId: 'sessions.revoke' } },
     },
   });
+});
+
+// EasyPrivacy blocks /rpc/log/* and /rpc/log? on every domain, so a browser with a content blocker
+// never reaches a procedure whose path holds a log segment.
+test('it keeps a log segment out of the path of every procedure that is not deprecated', async () => {
+  const document = await buildOpenAPIDocument();
+  const current = Object.entries(document.paths ?? {})
+    .filter(([, item]) => item?.post?.deprecated !== true)
+    .map(([path]) => path);
+
+  expect(current).toSatisfyAll((path: string) => !/\/log(?:[/?]|$)/u.test(path));
 });

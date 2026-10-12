@@ -82,10 +82,14 @@ const reusedIDErrors = {
 
 const checkedAction = signedIn.errors(reusedIDErrors);
 
+const followRecords = signedIn
+  .input(z.object({ afterSequence: sequenceSchema, thread: threadSchema.optional() }))
+  .output(eventIterator(z.object({ record: recordSchema })));
+
 export const contract = {
   conversation: {
     // Returns one page of a thread, newest last, and the log sequence the page was read at, which
-    // a client passes to log.follow so it misses no record and repeats none.
+    // a client passes to records.follow so it misses no record and repeats none.
     read: signedIn
       .errors({ THREAD_NOT_FOUND: { message: 'No thread has this ID', status: 404 } })
       .input(
@@ -118,11 +122,15 @@ export const contract = {
       .output(z.object({ duplicate: z.boolean(), sequence: sequenceSchema })),
   },
   log: {
+    // The live stream under its first name, kept for the clients of earlier releases. A content
+    // blocker's generic rule for /rpc/log/ stops a browser from calling it, so the web client
+    // calls records.follow, and a later release may remove this one.
+    follow: followRecords.route({ deprecated: true }),
+  },
+  records: {
     // The live stream. Each event's ID is its record's sequence, so a client that reconnects with
     // Last-Event-ID receives exactly the records it missed.
-    follow: signedIn
-      .input(z.object({ afterSequence: sequenceSchema, thread: threadSchema.optional() }))
-      .output(eventIterator(z.object({ record: recordSchema }))),
+    follow: followRecords,
   },
   sessions: {
     // Turns an enrolment code into a device session: an HttpOnly cookie for a browser, or a bearer

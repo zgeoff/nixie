@@ -1,28 +1,29 @@
 import { expect, mock, test } from 'bun:test';
-import { waitFor } from '@testing-library/react';
-import { HttpResponse, http } from 'msw';
+import { act, waitFor } from '@testing-library/react';
+import { HttpResponse, delay, http } from 'msw';
 import { server } from './mocks/node';
 import { store } from './mocks/store';
+import { buildStubTimer } from './test-utils/build-stub-timer';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { renderHook } from './test-utils/render-hook';
 import { useLiveRecords } from './use-live-records';
 
 async function setupTest() {
   // the API streams the log only to a signed-in browser
-  await createDeviceSession();
+  const session = await createDeviceSession();
 
   // records each follow request's input, and lets the mock API answer it
   const follows = mock<(body: unknown) => void>();
 
   server.use(
-    http.post('*/rpc/log/follow', async (info) => {
+    http.post('*/rpc/records/follow', async (info) => {
       const body: unknown = await info.request.clone().json();
 
       follows(body);
     }),
   );
 
-  return { follows };
+  return { follows, session, timer: buildStubTimer() };
 }
 
 test('it delivers a tool call and its result within a second of the API recording them', async () => {
@@ -35,7 +36,7 @@ test('it delivers a tool call and its result within a second of the API recordin
 
   await waitFor(
     () => {
-      expect(hook.result.current.map((record) => record.kind)).toStrictEqual([
+      expect(hook.result.current.records.map((record) => record.kind)).toStrictEqual([
         'tool_called',
         'tool_result',
       ]);
@@ -50,11 +51,11 @@ test('it catches up after the stream drops, with no gap and no repeat', async ()
   const one = await store.records.create({ kind: 'tool_called' });
 
   await waitFor(() => {
-    expect(hook.result.current).toHaveLength(1);
+    expect(hook.result.current.records).toHaveLength(1);
   });
 
   // the browser comes back online, which ends the open connection, and the next attempt fails
-  server.use(http.post('*/rpc/log/follow', () => HttpResponse.error(), { once: true }));
+  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
   globalThis.dispatchEvent(new Event('online'));
 
   const two = await store.records.create({ kind: 'tool_result' });
@@ -62,7 +63,7 @@ test('it catches up after the stream drops, with no gap and no repeat', async ()
   // the client pauses before it follows again after a failed attempt
   await waitFor(
     () => {
-      expect(hook.result.current.map((record) => record.sequence)).toStrictEqual([
+      expect(hook.result.current.records.map((record) => record.sequence)).toStrictEqual([
         one.sequence,
         two.sequence,
       ]);
@@ -81,7 +82,7 @@ test('it follows the log again at once when the page becomes visible', async () 
   // the first connection opens and then delivers nothing, as one that died unseen does
   server.use(
     http.post(
-      '*/rpc/log/follow',
+      '*/rpc/records/follow',
       () => {
         stalled();
 
@@ -103,9 +104,192 @@ test('it follows the log again at once when the page becomes visible', async () 
 
   await waitFor(
     () => {
-      expect(hook.result.current.map((record) => record.kind)).toStrictEqual(['tool_called']);
+      expect(hook.result.current.records.map((record) => record.kind)).toStrictEqual([
+        'tool_called',
+      ]);
     },
     { timeout: 500 },
   );
   expect(ctx.follows).toHaveBeenCalledOnce();
+});
+
+test('it waits twice as long after each failed attempt in a row', async () => {
+  const ctx = await setupTest();
+
+  // every attempt fails, as one behind a content blocker does
+  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
+  renderHook(() => useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }));
+
+  const first = await ctx.timer.advanceToNext();
+  const second = await ctx.timer.advanceToNext();
+  const third = await ctx.timer.advanceToNext();
+
+  expect(first).toBe(1000);
+  expect(second).toBe(2000);
+  expect(third).toBe(4000);
+});
+
+test('it waits the shortest time again after a failure that follows a connection', async () => {
+  const ctx = await setupTest();
+
+  await store.records.create({ kind: 'tool_called' });
+
+  // the first attempt fails and the second connects
+  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
+
+  const hook = renderHook(() =>
+    useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }),
+  );
+
+  await ctx.timer.advanceToNext();
+  await waitFor(() => {
+    expect(hook.result.current.records).toHaveLength(1);
+  });
+
+  // the browser comes back online, which ends the connection, and the next attempt fails
+  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
+  globalThis.dispatchEvent(new Event('online'));
+
+  expect(ctx.timer.advanceToNext()).resolves.toBe(1000);
+});
+
+test('it backs off from a revoked session, as from a stream that never opens', async () => {
+  const ctx = await setupTest();
+
+  // the API refuses each attempt before it opens the stream
+  await store.sessions.update(ctx.session, {
+    data(draft) {
+      draft.revokedAt = new Date();
+    },
+  });
+  renderHook(() => useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }));
+
+  const first = await ctx.timer.advanceToNext();
+  const second = await ctx.timer.advanceToNext();
+
+  expect(first).toBe(1000);
+  expect(second).toBe(2000);
+});
+
+test('it keeps reporting live updates unavailable while the API refuses a revoked session', async () => {
+  const ctx = await setupTest();
+  const reported: boolean[] = [];
+
+  await store.sessions.update(ctx.session, {
+    data(draft) {
+      draft.revokedAt = new Date();
+    },
+  });
+
+  // each refusal takes a round trip, as over a network, so React renders any state between
+  server.use(
+    http.post('*/rpc/records/follow', async () => {
+      await delay(20);
+    }),
+  );
+  renderHook(() => {
+    const live = useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer });
+
+    reported.push(live.unavailable);
+
+    return live;
+  });
+
+  // the fourth advance waits for the fourth refusal, one past the notice
+  await ctx.timer.advanceToNext();
+  await ctx.timer.advanceToNext();
+  await ctx.timer.advanceToNext();
+  await ctx.timer.advanceToNext();
+
+  expect(reported.slice(reported.indexOf(true))).toSatisfyAll(
+    (unavailable: boolean) => unavailable,
+  );
+});
+
+test('it backs off from a stream that opens and then ends with UNAUTHORIZED', async () => {
+  const ctx = await setupTest();
+
+  // a server that checks the session after it opens the stream sends these bytes
+  server.use(
+    http.post(
+      '*/rpc/records/follow',
+      () =>
+        new HttpResponse(
+          ': \n\nevent: error\ndata: {"json":{"defined":true,"code":"UNAUTHORIZED","status":401,"message":"The device session is missing, lapsed or revoked"}}\n\n',
+          { headers: { 'content-type': 'text/event-stream' } },
+        ),
+    ),
+  );
+  renderHook(() => useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }));
+
+  const first = await ctx.timer.advanceToNext();
+  const second = await ctx.timer.advanceToNext();
+
+  expect(first).toBe(1000);
+  expect(second).toBe(2000);
+});
+
+test('it keeps live updates available after two failed attempts in a row', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
+
+  const hook = renderHook(() =>
+    useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }),
+  );
+
+  await ctx.timer.advanceToNext();
+
+  // the second failure starts the second pause
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(1);
+  });
+
+  // lets React render whatever the second failure set before the test reads it
+  await act(() => Promise.resolve());
+
+  expect(hook.result.current.unavailable).toBeFalse();
+});
+
+test('it reports live updates unavailable after three failed attempts in a row', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
+
+  const hook = renderHook(() =>
+    useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }),
+  );
+
+  await ctx.timer.advanceToNext();
+  await ctx.timer.advanceToNext();
+
+  await waitFor(() => {
+    expect(hook.result.current.unavailable).toBeTrue();
+  });
+});
+
+test('it clears the unavailable report once the stream connects again', async () => {
+  const ctx = await setupTest();
+
+  // three attempts fail and the fourth connects
+  server.use(
+    http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
+    http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
+    http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
+  );
+
+  const hook = renderHook(() =>
+    useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }),
+  );
+
+  await ctx.timer.advanceToNext();
+  await ctx.timer.advanceToNext();
+  await waitFor(() => {
+    expect(hook.result.current.unavailable).toBeTrue();
+  });
+  await ctx.timer.advanceToNext();
+
+  await waitFor(() => {
+    expect(hook.result.current.unavailable).toBeFalse();
+  });
 });
