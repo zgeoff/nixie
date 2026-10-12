@@ -1,11 +1,10 @@
-import { constants } from 'node:fs';
-import { lstat, open, readdir, realpath } from 'node:fs/promises';
-import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { lstat, readdir, realpath } from 'node:fs/promises';
+import { basename, join, relative, resolve, sep } from 'node:path';
 import { buildContentHash } from './build-content-hash';
 import { defaultSizeLimits } from './default-size-limits';
 import { isDefinitionsPath } from './is-definitions-path';
 import { isDefinitionsRootEntry } from './is-definitions-root-entry';
-import { normalizeLineEndings } from './normalize-line-endings';
+import { readKeptFile } from './read-kept-file';
 import { SnapshotError } from './snapshot-error';
 import type { DefinitionsSource, SizeLimits, Snapshot } from './types';
 
@@ -142,46 +141,4 @@ async function readFiles(
   const read = await Promise.all(files.map((file) => readKeptFile(base, file.path, maxFileBytes)));
 
   return new Map(read);
-}
-
-// re-checks what the walk saw, because a file can change between the walk and the read
-async function readKeptFile(
-  base: string,
-  path: string,
-  maxFileBytes: number,
-): Promise<readonly [string, Uint8Array]> {
-  const full = join(base, path);
-  const dir = await realpath(dirname(full));
-
-  if (dir !== base && !dir.startsWith(`${base}${sep}`)) {
-    throw new SnapshotError('a symlink leads outside the definitions root', [path]);
-  }
-  const bytes = await readNoFollow(full, maxFileBytes);
-
-  if (bytes === null) {
-    throw new SnapshotError('a file changed while the snapshot read it', [path]);
-  }
-  return [path, normalizeLineEndings(bytes)];
-}
-
-// O_NOFOLLOW refuses a file swapped for a symlink, and the size comes from the open handle; null
-// when the file is no longer a regular file within the per-file limit
-async function readNoFollow(full: string, maxFileBytes: number): Promise<Uint8Array | null> {
-  const handle = await open(full, constants.O_RDONLY | constants.O_NOFOLLOW).catch(() => null);
-
-  if (handle === null) {
-    return null;
-  }
-  try {
-    const stat = await handle.stat();
-
-    if (!stat.isFile() || stat.size > maxFileBytes) {
-      return null;
-    }
-    const bytes = await handle.readFile();
-
-    return new Uint8Array(bytes);
-  } finally {
-    await handle.close();
-  }
 }

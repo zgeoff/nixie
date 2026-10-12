@@ -2,16 +2,17 @@
 name: project-testing
 description:
   nixie's test harness facts — the runs and their gates, the preloads, the test build, the shared
-  harnesses in libs/testing, what an invariant() call means for error coverage, and the two recorded
-  exceptions to the testing skill. Load it with the testing skill whenever you design, write, run,
-  or review tests in this repo.
+  harnesses in libs/testing, what an invariant() call means for error coverage, how the testing
+  skill's rules apply to this repo's harnesses, and the four recorded exceptions to the testing
+  skill. Load it with the testing skill whenever you design, write, run, or review tests in this
+  repo.
 ---
 
 # nixie test harnesses
 
 This skill lists the runs, preloads, and harnesses that exist in this repo, with the paths and
 variables that drive them. It describes the code as it is. The rules for writing tests live in the
-shared testing skill. Nothing here relaxes them except the two cases that [Exceptions](#exceptions)
+shared testing skill. Nothing here relaxes them except the four cases that [Exceptions](#exceptions)
 records.
 
 ## Runs
@@ -75,18 +76,45 @@ declares no error to a caller, so the testing skill's rule that each declared er
 does not reach it, and no test forces it. A guard that real input or a real failure can trip is a
 declared error: it throws its own error, and a test reaches it through that input or failure.
 
+## How the shared rules apply here
+
+These cases follow from rules the testing skill states, applied to this repo's harnesses.
+
+- **A parent record is arrangement.** A record that the unit needs and no test varies or reads
+  beyond the handles it returns, such as the claimed step an action hangs under, is an earlier act
+  that `setupTest()` creates. A value from it that a test's outcome depends on, such as when the
+  step's lease expires, stays visible in that test.
+- **The crash harness's settle window runs on real time.** It is the harness's deadline for a child
+  process to sleep again, and the crash suites never inject a clock. Its tests use the shortest
+  faithful settle timeout and pair a settled control with an unsettled one, as the native-timer rule
+  asks.
+- **A helper that takes the scenario is called from the test body.** A shared `start*` helper whose
+  arguments select the scenario, such as `startTestSite` with its certificate names and response
+  handler, stays out of `setupTest()`, because setup never carries scenario data. `setupTest()`
+  wraps only a helper that takes no scenario, such as `startFakeImp()`.
+
 ## Exceptions
 
-The testing skill holds two rules that this repo relaxes:
+The testing skill holds four rules that this repo relaxes:
 
 - **A fixed-value stand-in stays inline.** A stand-in that only returns a fixed value, resolves,
   rejects, or never settles, such as `mock(() => new Response('start'))` or a health check that
   resolves `{ isReady: true, reason: null }`, stays in the test that uses it. It models no behaviour
   of the thing it replaces, so a tested file in `src/test-utils/` would only repeat the literal. A
   stand-in that reads its arguments or models a sequence moves to `src/test-utils/` with its own
-  tests, as the testing skill requires.
+  tests, as the testing skill requires. Inline data, such as a fixed answer, a recorder or an answer
+  table, stays in the test. Inline logic, such as a sequence, a counter, a gate, state, a branch or
+  a delay, moves to a tested util, and so does a wrapper that gates, delays or counts calls to a
+  tested stand-in.
 - **A committed generated reference file is its own golden.** A test that regenerates a reference
   file the repo commits, such as the OpenAPI document, and compares the result with the committed
   file keeps that file as its golden instead of an inline snapshot. Other tools read the committed
   file, such as the compatibility check that reads the OpenAPI document at the last release tag, so
   the test proves that file matches the code, and an inline copy would only duplicate it.
+- **A probe listener stopped on the next line needs no fallback cleanup.** A listener that a test
+  opens only to learn a free port, and stops on the statement after it reads the port, never
+  outlives the test, because nothing between the two statements can throw.
+- **A helper whose cleanup acts only after a failed test needs no cleanup-proof test.** When a
+  shared helper's cleanup stops work that outlives only a failed test, such as the kill of a web
+  build that is still running, a passing test always finishes that work first. A proof would have to
+  abandon the real work partway, so the helper's tests leave the cleanup unproved.

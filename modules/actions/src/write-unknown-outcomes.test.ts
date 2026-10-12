@@ -64,6 +64,12 @@ test('it writes the unknown outcome to the task inbox', async () => {
   });
   await runStalledAttempt(ctx);
 
+  const before = await ctx.writer.db
+    .$extendTables<ActionsTables>()
+    .selectFrom('records')
+    .select(['kind', 'thread'])
+    .where('kind', '=', 'action.outcome')
+    .execute();
   const next = await startNextTestWriter(ctx);
 
   await writeUnknownOutcomes(next.context);
@@ -75,6 +81,7 @@ test('it writes the unknown outcome to the task inbox', async () => {
     .where('kind', '=', 'action.outcome')
     .execute();
 
+  expect(before).toStrictEqual([]);
   expect(records).toStrictEqual([{ kind: 'action.outcome', thread: ctx.step.lease.workID }]);
 });
 
@@ -115,7 +122,7 @@ test('it runs as recovery step 3, between the interrupted steps and the late tim
   ]);
 });
 
-test('it frees the step and the action leases and readies the task through recovery', async () => {
+test('it frees the step and the action leases through recovery', async () => {
   const ctx = await setupTest();
 
   await createAllowedAction(ctx.context, {
@@ -127,6 +134,11 @@ test('it frees the step and the action leases and readies the task through recov
   });
   await runStalledAttempt(ctx);
 
+  const held = await ctx.writer.db
+    .$extendTables<ActionsTables>()
+    .selectFrom('leases')
+    .select('holder')
+    .execute();
   const next = await startNextTestWriter(ctx);
 
   await runRecovery(next.context, {
@@ -134,12 +146,48 @@ test('it frees the step and the action leases and readies the task through recov
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });
 
-  const db = next.writer.db.$extendTables<ActionsTables>();
-  const task = await db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
-  const leases = await db.selectFrom('leases').select('holder').execute();
+  const leases = await next.writer.db
+    .$extendTables<ActionsTables>()
+    .selectFrom('leases')
+    .select('holder')
+    .execute();
 
-  expect(task.state).toBe('ready');
+  expect(held).toStrictEqual([{ holder: expect.toBeString() }, { holder: expect.toBeString() }]);
   expect(leases).toStrictEqual([{ holder: null }, { holder: null }]);
+});
+
+test('it readies the task through recovery', async () => {
+  const ctx = await setupTest();
+
+  await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+  await runStalledAttempt(ctx);
+
+  const before = await ctx.writer.db
+    .$extendTables<ActionsTables>()
+    .selectFrom('tasks')
+    .select('state')
+    .executeTakeFirstOrThrow();
+  const next = await startNextTestWriter(ctx);
+
+  await runRecovery(next.context, {
+    writeUnknownOutcomes: () => writeUnknownOutcomes(next.context),
+    sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
+  });
+
+  const task = await next.writer.db
+    .$extendTables<ActionsTables>()
+    .selectFrom('tasks')
+    .select('state')
+    .executeTakeFirstOrThrow();
+
+  expect(before.state).toBe('running');
+  expect(task.state).toBe('ready');
 });
 
 test('it leaves an action with no open attempt as it was', async () => {

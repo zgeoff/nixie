@@ -105,6 +105,12 @@ test('it returns a task running under the older epoch to ready', async () => {
 test('it records the step that started without a commit as interrupted', async () => {
   const ctx = await setupTest();
   const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+  const before = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('records')
+    .select(['kind', 'thread'])
+    .where('kind', 'in', ['task.lease_expired', 'task.step_interrupted'])
+    .execute();
   const next = await startNextTestWriter(ctx);
 
   await runRecovery(next.context, {
@@ -119,6 +125,7 @@ test('it records the step that started without a commit as interrupted', async (
     .where('kind', 'in', ['task.lease_expired', 'task.step_interrupted'])
     .execute();
 
+  expect(before).toStrictEqual([]);
   expect(records).toStrictEqual([
     { kind: 'task.lease_expired', thread: claim.lease.workID },
     { kind: 'task.step_interrupted', thread: claim.lease.workID },
@@ -136,6 +143,11 @@ test('it fires the timers that fell due while nixie was down', async () => {
     timers: [{ dueAt: 1_060_000 }],
   });
 
+  const before = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('timers')
+    .select(['due_at', 'fired_at'])
+    .executeTakeFirstOrThrow();
   const next = await startNextTestWriter(ctx);
 
   next.clock.advance(120_000);
@@ -151,6 +163,7 @@ test('it fires the timers that fell due while nixie was down', async () => {
     .select(['due_at', 'fired_at'])
     .executeTakeFirstOrThrow();
 
+  expect(before).toStrictEqual({ due_at: 1_060_000, fired_at: null });
   expect(timer).toStrictEqual({ due_at: 1_060_000, fired_at: 1_120_000 });
 });
 
@@ -165,6 +178,11 @@ test('it wakes a task whose timer fell due while nixie was down', async () => {
     timers: [{ dueAt: 1_060_000 }],
   });
 
+  const before = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('state')
+    .executeTakeFirstOrThrow();
   const next = await startNextTestWriter(ctx);
 
   next.clock.advance(120_000);
@@ -180,6 +198,7 @@ test('it wakes a task whose timer fell due while nixie was down', async () => {
     .select('state')
     .executeTakeFirstOrThrow();
 
+  expect(before.state).toBe('waiting');
   expect(task.state).toBe('ready');
 });
 
