@@ -32,7 +32,11 @@ const recallInput = {
     },
     includeRetired: { type: 'boolean', description: 'also return retired items' },
     includeHistory: { type: 'boolean', description: 'also return every version of each item' },
-    after: { type: 'string', description: 'the next cursor from the page before' },
+    after: {
+      type: 'string',
+      pattern: '^[0-9]+$',
+      description: 'the next cursor from the page before',
+    },
     limit: { type: 'integer', minimum: 1, maximum: 100 },
   },
   additionalProperties: false,

@@ -27,8 +27,9 @@ SDK transcript is a cache that a task rebuilds from the event log, as
 
 A sandbox backend never backs up nixie's sandboxes, whatever snapshot or backup feature the backend
 offers. A sandbox holds the SDK transcript and other working copies of what the model read, so a
-backup of one would keep forgotten memory text where no forget reaches it, and a lost sandbox costs
-only a session rebuild from the event log.
+backup of one would keep forgotten memory text where no forget reaches it. The event log owns
+history and task state, so a lost conversation or worker sandbox costs a session rebuild from it, as
+[memory context](../memory/context.md#rebuilding-a-session) describes.
 
 ## nixie and the backup sidecar
 

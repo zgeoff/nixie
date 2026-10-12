@@ -168,6 +168,7 @@ test.each([
   ['a remember with no text', 'memory.remember', { itemID: 'item-a', version: 1 }],
   ['a retire with no version', 'memory.retire', { itemID: 'item-a' }],
   ['a recall with an unknown argument', 'memory.recall', { everything: true }],
+  ['a recall with a cursor no page returned', 'memory.recall', { after: 'abc' }],
 ])('it refuses %s', async (_label, name, input) => {
   const ctx = await setupTest();
 

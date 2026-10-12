@@ -1,5 +1,6 @@
 export { buildMemoryTools } from './build-memory-tools';
 export { memoryProjections } from './memory-projections';
+export { InvalidCursorError } from './invalid-cursor-error';
 export { MemoryItemNotFoundError } from './memory-item-not-found-error';
 export { MemoryStateError } from './memory-state-error';
 export { StaleVersionError } from './stale-version-error';

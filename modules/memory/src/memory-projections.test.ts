@@ -85,10 +85,7 @@ test('it rebuilds pinned, unpinned and forgotten items equal to the live rows', 
 
   const rebuilt = await readMemoryRows(ctx.db);
 
-  expect(live.items).toMatchObject([
-    { state: expect.toBeOneOf(['active', 'forgotten']) },
-    { state: expect.toBeOneOf(['active', 'forgotten']) },
-  ]);
+  expect(live.items.map((row) => row.state)).toIncludeSameMembers(['active', 'forgotten']);
   expect(rebuilt).toStrictEqual(live);
 });
 

@@ -2,6 +2,7 @@ import { findRecordKeys, withWriteTransaction, writeRecordsInTransaction } from 
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { Kysely } from 'kysely';
 import { decodeVersionText } from './decode-version-text';
+import { InvalidCursorError } from './invalid-cursor-error';
 import type {
   MemoryItemRow,
   MemoryState,
@@ -66,7 +67,7 @@ async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise
     .selectFrom('memory_items')
     .select(['item_id', 'created_sequence'])
     .where('state', 'in', query.states)
-    .where('created_sequence', '>', Number(request.after ?? 0))
+    .where('created_sequence', '>', parseCursor(request.after))
     .orderBy('created_sequence')
     .limit(query.limit + 1)
     .execute();
@@ -77,6 +78,17 @@ async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise
     itemIDs: page.map((row) => row.item_id),
     next: rows.length > query.limit && last !== undefined ? String(last.created_sequence) : null,
   };
+}
+
+// a cursor is the creation sequence of the last item on a page
+function parseCursor(after: string | undefined): number {
+  if (after === undefined) {
+    return 0;
+  }
+  if (!/^\d+$/u.test(after) || !Number.isSafeInteger(Number(after))) {
+    throw new InvalidCursorError(after);
+  }
+  return Number(after);
 }
 
 interface DeliverableQuery {

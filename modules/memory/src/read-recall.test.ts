@@ -99,6 +99,16 @@ test('it lists every active item a page at a time', async () => {
   });
 });
 
+test('it rejects a cursor that no page returned', async () => {
+  const ctx = await setupTest();
+
+  const recall = ctx.memory.store.recall({ after: 'abc' });
+
+  await recall.catch(() => {});
+
+  expect(recall).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+});
+
 test('it leaves a retired item out unless asked for retired items', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({
