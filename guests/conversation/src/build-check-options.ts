@@ -31,13 +31,14 @@ export function buildCheckOptions(
   };
 }
 
+// the reason comes first, so the model writes its reasoning before it commits to a verdict
 const verdictSchema = {
   type: 'object',
   properties: {
-    verdict: { type: 'string', enum: ['asserted', 'not_asserted', 'unsure'] },
     reason: { type: 'string' },
+    verdict: { type: 'string', enum: ['asserted', 'not_asserted', 'unsure'] },
   },
-  required: ['verdict', 'reason'],
+  required: ['reason', 'verdict'],
   additionalProperties: false,
 };
 

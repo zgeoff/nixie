@@ -73,11 +73,10 @@ that may repeat the memory, so it reaches only the sealed proposal.
 Each checker prompt joins the policy snapshot as the SHA-256 of its text, so a release that changes
 a prompt changes the snapshot hash that every record carries. The
 [memory checker eval](../../../evals/memory-checker/README.md) replays a labelled corpus through the
-production prompt and the input the gate renders. Its committed run on Sonnet 5.5 gave every pair of
-the tuning corpus its labelled verdict on every call the checker answered. On held-out cases written
-after the tuning, it confirmed 2 memories the message does not assert, so the checker narrows what
-applies at once without closing every case, and the quote and token checks keep their place in front
-of it.
+production prompt and the input the gate renders. The checker writes its reason before its verdict,
+so the verdict follows from the reasoning. On cases written after the tuning, it confirmed a fact
+that a question only presupposes, so the checker narrows what applies at once without closing every
+case, and the quote and token checks keep their place in front of it.
 
 ## Retirement intent
 

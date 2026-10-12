@@ -33,10 +33,10 @@ test('it gives a checker query no tools, no MCP server, no settings and no saved
       schema: {
         type: 'object',
         properties: {
-          verdict: { type: 'string', enum: ['asserted', 'not_asserted', 'unsure'] },
           reason: { type: 'string' },
+          verdict: { type: 'string', enum: ['asserted', 'not_asserted', 'unsure'] },
         },
-        required: ['verdict', 'reason'],
+        required: ['reason', 'verdict'],
         additionalProperties: false,
       },
     },
@@ -73,6 +73,27 @@ test('it gives a checker query the profile and the auth placeholder, and no othe
     CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
     DISABLE_AUTOUPDATER: '1',
   });
+});
+
+test('it asks for the reason before the verdict', () => {
+  const options = buildCheckOptions(
+    {
+      profile: {
+        model: 'claude-sonnet-5-5',
+        baseURL: 'https://api.anthropic.com',
+        effort: 'low',
+        authHeader: 'x-api-key',
+      },
+      systemPrompt: 'You check one candidate memory.',
+      input: 'the input',
+    },
+    { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+  );
+
+  expect(Object.keys(options.outputFormat?.schema['properties'] ?? {})).toStrictEqual([
+    'reason',
+    'verdict',
+  ]);
 });
 
 test('it refuses a guest with no HOME', () => {
