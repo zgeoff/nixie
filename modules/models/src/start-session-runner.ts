@@ -114,6 +114,11 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
       `the ${run.taskID} session failed: ${turn.failure?.reason ?? 'no result'}: ${turn.failure?.detail ?? ''}`,
     );
   }
+
+  // a session the model API's error ended has no result the writer can trust
+  if (turn.ended.some((frame) => frame.isError === true)) {
+    throw new Error(`the ${run.taskID} session ended at a model API error`);
+  }
   return countSessionUsage(turn.ended);
 }
 

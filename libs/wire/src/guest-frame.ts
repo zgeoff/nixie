@@ -39,13 +39,14 @@ const usageSchema = z
   .readonly();
 
 // a model turn ended at a result; boundary is the session's last chain entry, where the next turn
-// resumes
+// resumes, and isError marks a result the model API's error ended, such as a refused request
 const endedFrameSchema = z
   .object({
     type: z.literal('ended'),
     boundary: sessionPointSchema,
     subtype: z.string(),
     stopReason: z.string().nullable(),
+    isError: z.boolean().optional(),
     turns: z.int().nonnegative(),
     usage: usageSchema,
   })
