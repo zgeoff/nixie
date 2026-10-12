@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkDisk } from './check-disk';
+import { makeStubDiskStats } from './test-utils/make-stub-disk-stats';
 
 test('it reads the data volume through statfs', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'nixie-ops-'));
@@ -18,13 +19,13 @@ test('it reads the data volume through statfs', async () => {
 });
 
 test('it reports ready under 90% full', async () => {
-  const report = await checkDisk('/data', () => Promise.resolve({ blocks: 1000, bavail: 101 }));
+  const report = await checkDisk('/data', makeStubDiskStats({ blocks: 1000, bavail: 101 }));
 
   expect(report).toStrictEqual({ isReady: true, reason: null });
 });
 
 test('it reports unready at 90% full', async () => {
-  const report = await checkDisk('/data', () => Promise.resolve({ blocks: 1000, bavail: 100 }));
+  const report = await checkDisk('/data', makeStubDiskStats({ blocks: 1000, bavail: 100 }));
 
   expect(report).toStrictEqual({ isReady: false, reason: 'the data volume is 90% full' });
 });

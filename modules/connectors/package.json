@@ -12,8 +12,13 @@
   "dependencies": {
     "@heynixie/log": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*",
+    "tiny-invariant": "catalog:"
   }
 }

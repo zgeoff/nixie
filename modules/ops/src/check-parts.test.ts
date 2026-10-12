@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { checkParts } from './check-parts';
 
 test('it reports ready when every part is ready', async () => {
@@ -50,10 +51,42 @@ test('it reports a check that throws as unready with the error name alone', asyn
 });
 
 test('it reports a check that never settles as unready once the timeout passes', async () => {
-  const report = await checkParts({ imp_host: () => Promise.withResolvers<never>().promise }, 20);
+  const clock = buildTestClock(0);
+  const pending = checkParts(
+    { imp_host: () => Promise.withResolvers<never>().promise },
+    2000,
+    clock,
+  );
+  await waitForCondition(() => clock.countSleepers() === 1);
+
+  clock.advance(2000);
+  const report = await pending;
 
   expect(report.parts['imp_host']).toStrictEqual({
     isReady: false,
-    reason: 'the check took longer than 20 ms',
+    reason: 'the check took longer than 2000 ms',
   });
+});
+
+test('it waits on a check that never settles until the timeout passes', async () => {
+  const clock = buildTestClock(0);
+  const pending = checkParts(
+    { imp_host: () => Promise.withResolvers<never>().promise },
+    2000,
+    clock,
+  );
+  await waitForCondition(() => clock.countSleepers() === 1);
+
+  clock.advance(1999);
+
+  expect(clock.countSleepers()).toBe(1);
+  expect(Bun.peek.status(pending)).toBe('pending');
+});
+
+test('it ends the timeout of a check that settles in time', async () => {
+  const clock = buildTestClock(0);
+
+  await checkParts({ disk: () => Promise.resolve({ isReady: true, reason: null }) }, 2000, clock);
+
+  expect(clock.countSleepers()).toBe(0);
 });

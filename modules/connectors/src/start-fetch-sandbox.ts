@@ -1,6 +1,8 @@
 // oxlint-disable typescript/prefer-readonly-parameter-types -- the fetch sandbox's own state, and stream handles, which have no readonly form
 import type { ExecStream, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec } from '@heynixie/sandbox';
+import type { Clock } from '@heynixie/tasks';
+import { systemClock } from '@heynixie/tasks';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
 import { decodeFetchReply, encodeFetchMessage } from '@heynixie/wire';
 
@@ -22,6 +24,9 @@ export interface FetchSandboxOptions {
 
   // the longest nixie waits for the adapter to create, list or destroy a sandbox
   readonly sandboxCallTimeoutMs?: number;
+
+  // the clock whose sleep times every time limit, the system clock by default
+  readonly clock?: Clock;
 }
 
 export interface FetchSandbox {
@@ -96,10 +101,7 @@ async function tryRunFetcher(
   url: string,
 ): Promise<FetchReply> {
   try {
-    state.sandbox ??= waitOrTimeOut(createFetchSandbox(options), {
-      timer: AbortSignal.timeout(options.sandboxCallTimeoutMs ?? defaultSandboxCallTimeoutMs),
-      message: sandboxCallTimeoutMessage,
-    });
+    state.sandbox ??= waitOrTimeOut(createFetchSandbox(options), buildSandboxCallLimit(options));
 
     const sandbox = await state.sandbox;
 
@@ -126,8 +128,17 @@ async function createFetchSandbox(options: FetchSandboxOptions): Promise<Sandbox
   );
 }
 
+function buildSandboxCallLimit(options: FetchSandboxOptions): TimeLimit {
+  const clock = options.clock ?? systemClock;
+
+  return {
+    clock,
+    deadline: clock.now() + (options.sandboxCallTimeoutMs ?? defaultSandboxCallTimeoutMs),
+    message: 'the sandbox call passed its time limit',
+  };
+}
+
 const defaultSandboxCallTimeoutMs = 120_000;
-const sandboxCallTimeoutMessage = 'the sandbox call passed its time limit';
 
 // A destroy that fails or never ends leaves the sandbox to the next create, which removes every
 // sandbox of the owner, so a failed destroy never stops the next fetch.
@@ -136,24 +147,20 @@ async function removeSandbox(
   state: FetchSandboxState,
 ): Promise<void> {
   const sandbox = state.sandbox;
-  const timer = AbortSignal.timeout(options.sandboxCallTimeoutMs ?? defaultSandboxCallTimeoutMs);
+  const limit = buildSandboxCallLimit(options);
 
   state.sandbox = null;
   state.fetches = 0;
   try {
     const created = await sandbox;
 
-    await waitOrTimeOut(created?.destroy() ?? Promise.resolve(), {
-      timer,
-      message: sandboxCallTimeoutMessage,
-    });
+    await waitOrTimeOut(created?.destroy() ?? Promise.resolve(), limit);
   } catch {
     // a create that failed made nothing to destroy
   }
 }
 
 const defaultReplyGraceMs = 5000;
-const fetcherTimeoutMessage = 'the fetcher passed its time limit';
 
 // JSON escapes a byte of text as at most 6 bytes, and the rest of a reply fits in 64 KiB
 const replyOverheadBytes = 65_536;
@@ -163,20 +170,24 @@ async function runFetcher(
   options: FetchSandboxOptions,
   url: string,
 ): Promise<FetchReply> {
-  const timer = AbortSignal.timeout(
-    options.limits.timeoutMs + (options.replyGraceMs ?? defaultReplyGraceMs),
-  );
+  const clock = options.clock ?? systemClock;
+  const limit = {
+    clock,
+    deadline:
+      clock.now() + options.limits.timeoutMs + (options.replyGraceMs ?? defaultReplyGraceMs),
+    message: 'the fetcher passed its time limit',
+  };
   const stream = await waitOrTimeOut(
     sandbox.spawn({
       argv: options.argv,
       maxMessageBytes: options.limits.textBytes * 6 + replyOverheadBytes,
     }),
-    { timer, message: fetcherTimeoutMessage },
+    limit,
   );
   const request = { url, limits: options.limits, deniedRanges: options.deniedRanges };
 
   try {
-    return await sendFetchRequest(stream, encodeFetchMessage(request), timer);
+    return await sendFetchRequest(stream, encodeFetchMessage(request), limit);
   } catch (error) {
     await stream.stop();
     throw error;
@@ -187,15 +198,12 @@ async function runFetcher(
 async function sendFetchRequest(
   stream: ExecStream,
   request: Uint8Array,
-  timer: AbortSignal,
+  limit: TimeLimit,
 ): Promise<FetchReply> {
-  await waitOrTimeOut(stream.send(request), { timer, message: fetcherTimeoutMessage });
+  await waitOrTimeOut(stream.send(request), limit);
 
-  const reply = await waitOrTimeOut(readFirstMessage(stream.messages), {
-    timer,
-    message: fetcherTimeoutMessage,
-  });
-  const exit = await waitOrTimeOut(stream.exit, { timer, message: fetcherTimeoutMessage });
+  const reply = await waitOrTimeOut(readFirstMessage(stream.messages), limit);
+  const exit = await waitOrTimeOut(stream.exit, limit);
 
   if (exit.code !== 0) {
     throw new Error(`the fetcher exited with ${exit.code ?? exit.signal ?? 'no code'}`);
@@ -214,24 +222,26 @@ async function readFirstMessage(messages: AsyncIterable<Uint8Array>): Promise<Ui
 }
 
 interface TimeLimit {
-  readonly timer: AbortSignal;
+  readonly clock: Clock;
+
+  // the clock time, in milliseconds since the epoch, that the call must settle by
+  readonly deadline: number;
   readonly message: string;
 }
 
 async function waitOrTimeOut<T>(promise: Promise<T>, limit: TimeLimit): Promise<T> {
-  const timer = limit.timer;
-  const timedOut = Promise.withResolvers<never>();
-  const onTimeout = () => {
-    timedOut.reject(new Error(limit.message));
-  };
+  const settled = new AbortController();
 
-  if (timer.aborted) {
-    throw new Error(limit.message);
-  }
-  timer.addEventListener('abort', onTimeout, { once: true });
   try {
-    return await Promise.race([promise, timedOut.promise]);
+    return await Promise.race([promise, waitForDeadline(limit, settled.signal)]);
   } finally {
-    timer.removeEventListener('abort', onTimeout);
+    // ends the clock's sleep, so a call that settled in time leaves no sleeper behind
+    settled.abort();
   }
+}
+
+// rejects with the limit's message once the clock reaches its deadline
+async function waitForDeadline(limit: TimeLimit, settled: AbortSignal): Promise<never> {
+  await limit.clock.sleep(limit.deadline - limit.clock.now(), settled);
+  throw new Error(limit.message);
 }
