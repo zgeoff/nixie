@@ -13,6 +13,8 @@ const selectors = [
 // their own runners' imports, so they miss every one of these in a bun:test file.
 const testMessages = {
   describe: 'Write each test as a top-level test() call; describe is banned.',
+  it: 'Write each test as a test() call; it, the alias Bun gives test, is banned.',
+  rename: 'Import bun:test bindings by their own names, so the test-shape checks see each call.',
   hook: 'Per-test setup belongs to setupTest() and cleanup to onTestFinished(); {{name}} is banned.',
   title: 'A test title starts with "it " or with a "#<unit> " prefix.',
   toEqual: 'Use toStrictEqual, or toMatchObject for a partial match; toEqual is banned.',
@@ -51,6 +53,8 @@ function checkCall(context, node) {
 
   if (name === 'describe') {
     context.report({ node, messageId: 'describe' });
+  } else if (name === 'it') {
+    context.report({ node, messageId: 'it' });
   } else if (hooks.has(name)) {
     context.report({ node, messageId: 'hook', data: { name } });
   } else if (isTestCallee(callee)) {
@@ -82,6 +86,16 @@ const plugin = {
           },
           "MemberExpression[property.name='toEqual']": (node) => {
             context.report({ node: node.property, messageId: 'toEqual' });
+          },
+
+          // the checks match calls by name, so a renamed or namespace binding would hide them
+          "ImportDeclaration[source.value='bun:test'] ImportNamespaceSpecifier": (node) => {
+            context.report({ node, messageId: 'rename' });
+          },
+          "ImportDeclaration[source.value='bun:test'] ImportSpecifier": (node) => {
+            if (node.imported.name !== node.local.name) {
+              context.report({ node, messageId: 'rename' });
+            }
           },
         };
       },
