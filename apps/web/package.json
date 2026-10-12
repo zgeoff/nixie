@@ -19,6 +19,8 @@
     "@tanstack/react-start": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-markdown": "catalog:",
+    "remark-gfm": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

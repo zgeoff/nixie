@@ -89,6 +89,11 @@ targets, such as the host of each page a web fetch read, and opening it shows th
 records, and each call with its input and its result. A long value shows its start and opens in full
 on demand, because a fetched page's text runs to many kilobytes.
 
+A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
+web text, so the renderer drops raw HTML, shows a link with an unsafe protocol such as `javascript:`
+as plain text, and shows an image as a link to it, because a loaded image would tell the page's host
+that the user read the reply. Every link opens in a new tab with no opener and no referrer.
+
 The view fills the window. The list scrolls in a reversed column, which starts at its end and stays
 there as records arrive unless the user scrolled up to read, and the message box stays in view below
 it. Styles come from Panda CSS with its own presets and no theme of nixie's, and they set only what
