@@ -75,10 +75,10 @@ then compacts the session within the cap, and the next turn resumes the compacte
 builds no compaction of its own.
 
 The guest sets every compaction control in the query's settings rather than leaving it at the SDK's
-default, so an SDK upgrade cannot change it. Auto-compaction stays on, and precomputed compaction
-stays off, because it would change the session outside a step. A step's commit records the session's
-last message as the point that [crash recovery](./leases-and-recovery.md) resumes at, so the session
-changes only inside a step that holds the task's lease.
+default, so an SDK upgrade cannot change it. Auto-compaction stays on. Precomputed compaction and
+idle compaction stay off, because each would change the session outside a step. A step's commit
+records the session's last message as the point that [crash recovery](./leases-and-recovery.md)
+resumes at, so the session changes only inside a step that holds the task's lease.
 
 The CLI compacts between model calls inside a turn, and the guest reports each compaction with its
 trigger and its token counts before and after. The step writes one compacted record per compaction,

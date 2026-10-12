@@ -73,6 +73,7 @@ test('it gives every query() nixie tools alone, no settings, skills or SDK memor
         autoCompactEnabled: true,
         autoCompactWindow: 200_000,
         precomputeCompactionEnabled: false,
+        idleCompaction: false,
       },
       mcpServers: { nixie: ctx.tools.config },
       systemPrompt: { type: 'custom', prompt: 'You are nixie.', snapshot: false },

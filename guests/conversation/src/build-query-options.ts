@@ -42,6 +42,9 @@ export function buildQueryOptions(turn: TurnFrame, context: QueryContext): Optio
       // the profile's context cap, which the CLI compacts within instead of the model's own window
       autoCompactWindow: turn.profile.contextTokens ?? defaultCompactWindow,
       precomputeCompactionEnabled: false,
+
+      // a compaction runs only inside a turn, so its record lands with that turn's
+      idleCompaction: false,
     },
     mcpServers: { [toolServerName]: context.toolServer },
     systemPrompt: { type: 'custom', prompt: turn.systemPrompt, snapshot: false },
