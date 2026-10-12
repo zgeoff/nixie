@@ -1,37 +1,28 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { makeWatchedFetch } from './make-watched-fetch';
+import { buildStubTimer } from './test-utils/build-stub-timer';
 
-interface SetupConfig {
-  readonly body: () => ReadableStream<Uint8Array> | string;
-  readonly contentType: string;
-}
+// The stub timer that the watch's idle timer runs on, and a stream whose bytes the test writes.
+function setupTest() {
+  const events = new TransformStream<Uint8Array, Uint8Array>();
 
-// A real server on a loopback port that answers with the body the test gives it.
-function setupTest(config: SetupConfig) {
-  const server = Bun.serve({
-    fetch: () => new Response(config.body(), { headers: { 'content-type': config.contentType } }),
-    hostname: '127.0.0.1',
-    port: 0,
-  });
-
-  onTestFinished(() => server.stop(true));
-
-  return { url: `http://127.0.0.1:${server.port}/` };
+  return { events, writer: events.writable.getWriter(), timer: buildStubTimer() };
 }
 
 test('it fails an event stream that sends nothing for the idle period', async () => {
-  const ctx = setupTest({
-    body: () =>
-      new ReadableStream({
-        start: (controller) => {
-          controller.enqueue(new TextEncoder().encode('data: {"first":true}\n\n'));
-        },
-      }),
-    contentType: 'text/event-stream',
+  const ctx = setupTest();
+  const watchedFetch = makeWatchedFetch({
+    fetch: () =>
+      Promise.resolve(
+        new Response(ctx.events.readable, { headers: { 'content-type': 'text/event-stream' } }),
+      ),
+    idleMs: 100,
+    startTimer: ctx.timer.startTimer,
   });
-  const watchedFetch = makeWatchedFetch({ idleMs: 100 });
+  const response = await watchedFetch(new Request('http://127.0.0.1/events'));
 
-  const response = await watchedFetch(new Request(ctx.url));
+  ctx.timer.advance(100);
 
   expect(response.text()).rejects.toThrowWithMessage(
     Error,
@@ -39,39 +30,49 @@ test('it fails an event stream that sends nothing for the idle period', async ()
   );
 });
 
-test('it keeps an event stream open while its keepalives arrive', async () => {
-  const ctx = setupTest({
-    body: () =>
-      new ReadableStream({
-        start: async (controller) => {
-          for (let beat = 0; beat < 6; beat += 1) {
-            controller.enqueue(new TextEncoder().encode(': keepalive\n\n'));
-
-            // oxlint-disable-next-line no-await-in-loop -- the keepalive rate is the scenario
-            await Bun.sleep(40);
-          }
-          controller.enqueue(new TextEncoder().encode('data: {"last":true}\n\n'));
-          controller.close();
-        },
-      }),
-    contentType: 'text/event-stream',
+test('it keeps an event stream open while its keepalives arrive within the idle period', async () => {
+  const ctx = setupTest();
+  const watchedFetch = makeWatchedFetch({
+    fetch: () =>
+      Promise.resolve(
+        new Response(ctx.events.readable, { headers: { 'content-type': 'text/event-stream' } }),
+      ),
+    idleMs: 100,
+    startTimer: ctx.timer.startTimer,
   });
-  const watchedFetch = makeWatchedFetch({ idleMs: 100 });
+  const response = await watchedFetch(new Request('http://127.0.0.1/events'));
 
-  const response = await watchedFetch(new Request(ctx.url));
+  invariant(response.body);
+  const reader = response.body.getReader();
 
-  const body = await response.text();
+  // a read returns once the watch passed the chunk on, so its idle timer restarted first; the two
+  // waits add up past the idle period, and neither reaches it alone
+  ctx.timer.advance(60);
+  await Promise.all([ctx.writer.write(new TextEncoder().encode(': keepalive\n\n')), reader.read()]);
+  ctx.timer.advance(60);
+  const [, last] = await Promise.all([
+    ctx.writer.write(new TextEncoder().encode('data: {"last":true}\n\n')),
+    reader.read(),
+  ]);
 
-  expect(body).toEndWith('data: {"last":true}\n\n');
+  expect(new TextDecoder().decode(last.value)).toBe('data: {"last":true}\n\n');
 });
 
 test('it passes a response that is not an event stream through unwatched', async () => {
-  const ctx = setupTest({ body: () => '{"ok":true}', contentType: 'application/json' });
-  const watchedFetch = makeWatchedFetch({ idleMs: 1 });
+  const ctx = setupTest();
+  const watchedFetch = makeWatchedFetch({
+    fetch: () =>
+      Promise.resolve(
+        new Response('{"ok":true}', { headers: { 'content-type': 'application/json' } }),
+      ),
+    idleMs: 100,
+    startTimer: ctx.timer.startTimer,
+  });
 
-  const response = await watchedFetch(new Request(ctx.url));
+  const response = await watchedFetch(new Request('http://127.0.0.1/state'));
 
   const body: unknown = await response.json();
 
   expect(body).toStrictEqual({ ok: true });
+  expect(ctx.timer.countPending()).toBe(0);
 });

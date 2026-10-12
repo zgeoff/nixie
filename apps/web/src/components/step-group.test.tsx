@@ -1,12 +1,13 @@
 import { expect, test } from 'bun:test';
 import userEvent from '@testing-library/user-event';
+import { buildMockStepActivity } from '../test-utils/build-mock-step-activity';
 import { render } from '../test-utils/render';
 import { StepGroup } from './step-group';
 
 test('it shows a step with three web fetches as one collapsed line naming the tool and its targets', () => {
   const rendered = render(
     <StepGroup
-      step={{
+      step={buildMockStepActivity({
         calls: [
           {
             callID: 'a',
@@ -27,12 +28,8 @@ test('it shows a step with three web fetches as one collapsed line naming the to
             tool: 'web_fetch',
           },
         ],
-        key: 1,
-        kind: 'step',
-        records: [],
-        status: 'done',
         taskID: 'conversation',
-      }}
+      })}
     />,
   );
   const summary = rendered.getByText(
@@ -49,7 +46,7 @@ test('it shows the task and each call with its input and result once opened', as
   const user = userEvent.setup();
   const rendered = render(
     <StepGroup
-      step={{
+      step={buildMockStepActivity({
         calls: [
           {
             callID: 'a',
@@ -59,13 +56,9 @@ test('it shows the task and each call with its input and result once opened', as
             tool: 'web_fetch',
           },
         ],
-        key: 1,
-        kind: 'step',
-        records: [],
-        status: 'done',
         stepKey: 'step-3',
         taskID: 'conversation',
-      }}
+      })}
     />,
   );
 
@@ -84,7 +77,7 @@ test('it clips a long result and shows the rest on demand', async () => {
   const user = userEvent.setup();
   const rendered = render(
     <StepGroup
-      step={{
+      step={buildMockStepActivity({
         calls: [
           {
             callID: 'a',
@@ -94,11 +87,7 @@ test('it clips a long result and shows the rest on demand', async () => {
             tool: 'web_fetch',
           },
         ],
-        key: 1,
-        kind: 'step',
-        records: [],
-        status: 'done',
-      }}
+      })}
     />,
   );
 

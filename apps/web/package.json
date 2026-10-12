@@ -40,6 +40,7 @@
     "babel-plugin-react-compiler": "catalog:",
     "happy-dom": "catalog:",
     "msw": "catalog:",
+    "tiny-invariant": "catalog:",
     "vite": "catalog:"
   }
 }
