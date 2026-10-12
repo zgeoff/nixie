@@ -3,7 +3,7 @@ export type SandboxKind = 'conversation' | 'worker' | 'code_run' | 'fetch' | 'co
 
 // What the sandbox reaches past its host, enforced at the network layer outside the guest. public
 // reaches the global internet only, never the host, the runtime's API, other sandboxes, or a
-// private, link-local, tailnet or deployment-listed range.
+// private, link-local, shared address space or deployment-listed range.
 export type Egress =
   | { readonly kind: 'none' }
   | { readonly kind: 'public' }

@@ -83,7 +83,7 @@ empties `results/` first, so a summary never mixes runs.
    chmod +x <bin_dir>/imp
    ```
 
-2. Start a dev instance off the tailnet, with its data directory on a disk filesystem:
+2. Start a dev instance off the private network, with its data directory on a disk filesystem:
 
    ```bash
    export IMP_DEV_NAME=nixie-spike-worker IMP_DEV_PORT_OFFSET=500 IMP_DEV_DATA=<data_dir>

@@ -20,12 +20,10 @@ records.
 | ---------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
 | Unit and package tests | `bun test` at the root                                     | Bun; the gated suites below skip                                        |
 | imp isolation          | `bun test src/isolation.test.ts` in `adapters/sandbox-imp` | An impd on a host with `/dev/kvm`, and the `NIXIE_IMP_TEST_*` variables |
-| Live checks            | `bun test <suite>` in `e2e/k3s`                            | A deployed nixie, a kubeconfig, and the variables each suite reads      |
 
-The [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) and the
-[live checks runbook](../../../docs/runbooks/live-checks.md) give each run's variables and steps.
-The design spikes under `docs/design/` install and run on their own, so the root `bunfig.toml` skips
-them.
+The [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) gives that run's
+variables and steps. The design spikes under `docs/design/` install and run on their own, so the
+root `bunfig.toml` skips them.
 
 Plain `bun test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
 `e2e/nixie/main.ts` as a child process and drive it through the crash harness.
@@ -44,9 +42,6 @@ The root `bunfig.toml` preloads, in order:
 The MSW server passes a request to a loopback host or to a host under the reserved `.test` domain
 through to the network, and fails every other unmatched request. The web server suites call stub
 APIs on loopback ports, and the fetcher's suites call test sites under `.test`.
-
-`e2e/k3s/bunfig.toml` preloads only the first two. The live checks call a deployed nixie over the
-network, which the web preload's MSW server would intercept.
 
 ## The test build
 

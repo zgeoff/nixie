@@ -3,9 +3,9 @@
 The isolation tests in `adapters/sandbox-imp/src/build-imp-port.test.ts` check what a conversation
 imp reaches through the imp adapter on the real impd port. Through the reverse forward it reaches
 the tool endpoint. Through the broker it reaches only the model host. Every direct connection fails:
-the internet, the model host, impd, the gateway, the metadata service and the tailnet's resolver.
-With the host addresses set, a further test checks that a public imp reaches the internet and never
-a host address or impd. The tests skip unless the variables below are set, and they need a host with
+the internet, the model host, impd, the gateway, the metadata service and `100.100.100.100`. With
+the host addresses set, a further test checks that a public imp reaches the internet and never a
+host address or impd. The tests skip unless the variables below are set, and they need a host with
 `/dev/kvm` and impd.
 
 A guest cannot resolve impd's name or the model host's, so a probe of either name fails at the
@@ -48,9 +48,9 @@ it left with impd's API: the imps the run created, each named `nixie-<id>`, and 
 
 The imp tests in `apps/server/src/start-web-fetch.test.ts` run the fetch sandbox on the fetch image.
 The web fetch tool fetches `https://example.com/`, a fetch sandbox reaches `1.1.1.1` over TCP, and a
-direct TCP connection from a fetch sandbox to impd, to each host address and to a tailnet address
-fails. The direct connections skip the fetcher's own address check, so only the network layer
-decides them. The tests skip unless the variables below are set.
+direct TCP connection from a fetch sandbox to impd or to each host address fails. The direct
+connections skip the fetcher's own address check, so only the network layer decides them. The tests
+skip unless the variables below are set.
 
 1. Build the fetch image into impd, with the repo root as the build folder:
 
@@ -72,14 +72,9 @@ decides them. The tests skip unless the variables below are set.
    bun test src/start-web-fetch.test.ts
    ```
 
-   `NIXIE_IMP_TEST_EGRESS_DENY` takes the list that impd reads from `IMP_EGRESS_DENY`, and
-   `NIXIE_IMP_TEST_TAILNET_ADDRESS` replaces the tailnet address probed, `100.100.100.100` by
-   default. The test probes that address on port 80, where the tailnet's resolver answers HTTP. imp
-   sends every IPv4 packet that a guest sends to port 53 to impd's own resolver, so a connection on
-   port 53 succeeds whatever the address, and it shows nothing about whether the sandbox reaches the
-   tailnet. A replacement address needs a listener on port 80, because a refused connection passes
-   the test whether the network or the peer refused it. The test resolves impd's name on the machine
-   that runs it and probes each address, because the guest cannot resolve that name.
+   `NIXIE_IMP_TEST_EGRESS_DENY` takes the list that impd reads from `IMP_EGRESS_DENY`. The test
+   resolves impd's name on the machine that runs it and probes each address, because the guest
+   cannot resolve that name.
 
 Expect `0 fail`, with no skipped test. Each test destroys the imps it created when it ends; a run
 that you stop with Ctrl-C leaves them, each named `nixie-<id>`.

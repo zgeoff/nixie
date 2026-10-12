@@ -21,7 +21,7 @@ test.each([
   ['a 192.168/16 private address', '192.168.1.1'],
   ['the cloud metadata service', '169.254.169.254'],
   ['a shared address space address', '100.64.0.1'],
-  ['a Tailscale address', '100.100.100.100'],
+  ['another shared address space address', '100.100.100.100'],
   ['an IPv4 multicast address', '224.0.0.1'],
   ['the IPv4 broadcast address', '255.255.255.255'],
   ['a reserved IPv4 address', '240.0.0.1'],

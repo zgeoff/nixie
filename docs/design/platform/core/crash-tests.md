@@ -24,8 +24,7 @@ committed rolls back. Other failures reduce to it or belong to a later slice:
   after a crash.
 - **A rollout or a second process** meets the
   [writer lock](../../../architecture/core/database.md#the-single-writer). The second writer and
-  stale writer epoch tests below prove the lock and the epoch check in CI, and slice 1's live check
-  on Kubernetes confirms a rollout.
+  stale writer epoch tests below prove the lock and the epoch check in CI.
 - **An impd restart or a dead sandbox** fails the tool call that used it. The step reruns, and the
   action queue keeps the rerun from repeating an action.
 
@@ -51,7 +50,7 @@ test process, outside the nixie process that a test kills, so their records surv
 3. **The sandbox double.** nixie runs every sandbox through `adapters/sandbox-process`, which starts
    each guest as a local child process with no isolation. The conversation guest runs the real SDK
    against the scripted model and reaches nixie's tool endpoint over a local route. **Why:** CI then
-   needs no `/dev/kvm` and no impd. The live checks on Kubernetes and Compose cover imp itself.
+   needs no `/dev/kvm` and no impd. The imp isolation tests cover imp itself.
 4. **The clock.** Leases, timers, lapses and retry delays all read one clock, which the test sets
    and advances. A test never sleeps to let time pass.
 5. **The test connector.** It declares one action, `test.send`, and calls a provider double that
