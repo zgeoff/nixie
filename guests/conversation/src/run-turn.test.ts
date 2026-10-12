@@ -2,10 +2,10 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import type { Options } from '@anthropic-ai/claude-agent-sdk';
-import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
+import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import { runTurn } from './run-turn';
+import { buildQueryRecorder } from './test-utils/build-query-recorder';
 import { buildStubToolServer } from './test-utils/build-stub-tool-server';
 import { startStubModel } from './test-utils/start-stub-model';
 
@@ -19,15 +19,15 @@ async function setupTest() {
   onTestFinished(() => model.stop());
 
   const frames: GuestFrame[] = [];
-  const options: Options[] = [];
   const tools = buildStubToolServer();
+  const recorder = buildQueryRecorder();
 
   return {
     home,
     model,
     tools,
     frames,
-    options,
+    recorder,
 
     // the host's side of the running turn's message stream
     channel: new TransformStream<InboxMessage, InboxMessage>(),
@@ -40,10 +40,7 @@ async function setupTest() {
         frames.push(frame);
         return Promise.resolve();
       },
-      runQuery: ((params) => {
-        options.push(params.options ?? {});
-        return query(params);
-      }) satisfies typeof query,
+      runQuery: recorder.runQuery,
     },
   };
 }
@@ -56,18 +53,11 @@ test('it gives every query() nixie tools alone and no settings, skills or memory
     { text: 'You need milk.' },
   );
   await runTurn(
-    {
-      type: 'turn',
-      profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-      resume: null,
-      systemPrompt: 'You are nixie.',
-      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
-    },
+    buildMockTurnFrame({ profile: { baseURL: ctx.model.url }, systemPrompt: 'You are nixie.' }),
     ctx.deps,
   );
 
-  expect(ctx.options).toStrictEqual([
+  expect(ctx.recorder.options).toStrictEqual([
     {
       tools: [],
       allowedTools: ['mcp__nixie'],
@@ -90,18 +80,13 @@ test('it gives every query() the profile base URL, model and effort in its env',
 
   ctx.model.addReplies({ text: 'Hello.' });
   await runTurn(
-    {
-      type: 'turn',
+    buildMockTurnFrame({
       profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-      resume: null,
-      systemPrompt: 'You are nixie.',
-      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
-    },
+    }),
     ctx.deps,
   );
 
-  expect(ctx.options.map((options) => options.env)).toStrictEqual([
+  expect(ctx.recorder.options.map((options) => options.env)).toStrictEqual([
     {
       PATH: process.env['PATH'] ?? '',
       HOME: ctx.home,
@@ -124,14 +109,9 @@ test('it offers the model nixie tools alone, on the profile model, with the plac
 
   ctx.model.addReplies({ text: 'Hello.' });
   await runTurn(
-    {
-      type: 'turn',
-      profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-      resume: null,
-      systemPrompt: 'You are nixie.',
-      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
-    },
+    buildMockTurnFrame({
+      profile: { model: 'model-a', baseURL: ctx.model.url, authHeader: 'x-api-key' },
+    }),
     ctx.deps,
   );
 
@@ -150,22 +130,12 @@ test('it stops the turn with no model output when nixie tool server is not conne
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'The note says to buy milk.' });
-  await runTurn(
-    {
-      type: 'turn',
-      profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
-      tools: { url: 'http://127.0.0.1:9', token: 'run-token' },
-      resume: null,
-      systemPrompt: 'You are nixie.',
-      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
-    },
-    {
-      ...ctx.deps,
+  await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+    ...ctx.deps,
 
-      // nothing listens on the discard port, so the server fails to connect
-      toolServer: { type: 'http', url: 'http://127.0.0.1:9/mcp', alwaysLoad: true },
-    },
-  );
+    // nothing listens on the discard port, so the server fails to connect
+    toolServer: { type: 'http', url: 'http://127.0.0.1:9/mcp', alwaysLoad: true },
+  });
 
   expect(ctx.frames).toStrictEqual([
     { type: 'failed', reason: 'tools_not_connected', detail: "nixie's tool server is failed" },
@@ -180,14 +150,10 @@ test('it reports each inbox message the model read, then the turn end at the las
     { text: 'You need milk.' },
   );
   await runTurn(
-    {
-      type: 'turn',
-      profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-      resume: null,
-      systemPrompt: 'You are nixie.',
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
       input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
-    },
+    }),
     ctx.deps,
   );
 
@@ -225,25 +191,24 @@ test('it passes a message into the running turn at the next tool boundary and re
   );
 
   const turn = runTurn(
-    {
-      type: 'turn',
-      profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-      resume: null,
-      systemPrompt: 'You are nixie.',
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
       input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Watch my note.' }],
-    },
+    }),
     { ...ctx.deps, messages: ctx.channel.readable },
   );
 
+  onTestFinished(async () => {
+    ctx.tools.release();
+    await turn;
+  });
   await ctx.tools.waitForHeldCall();
-  void ctx.channel.writable
-    .getWriter()
-    .write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' });
-
-  // a scenario offset: the CLI must queue the message while the call is held, and nothing in the
-  // SDK reports the queueing to the test
-  await Bun.sleep(500);
+  await Promise.all([
+    ctx.channel.writable
+      .getWriter()
+      .write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' }),
+    ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002'),
+  ]);
   ctx.tools.release();
   await turn;
 
@@ -254,28 +219,38 @@ test('it passes a message into the running turn at the next tool boundary and re
   expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude('Also buy eggs.');
 });
 
+test('it fails the turn with the error its host message stream throws', async () => {
+  const ctx = await setupTest();
+  const writer = ctx.channel.writable.getWriter();
+
+  ctx.model.addReplies({ text: 'Hello.' });
+  void writer.abort(new Error('a turn is already running'));
+
+  expect(
+    runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+      ...ctx.deps,
+      messages: ctx.channel.readable,
+    }),
+  ).rejects.toThrow('a turn is already running');
+});
+
 test('it resumes at a boundary on a new session that holds nothing after the boundary', async () => {
   const ctx = await setupTest();
   const runTurnAt = async (text: string, resume: SessionPoint | null) => {
     await runTurn(
-      {
-        type: 'turn',
-        profile: {
-          model: 'model-a',
-          baseURL: ctx.model.url,
-          effort: 'low',
-          authHeader: 'x-api-key',
-        },
-        tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+      buildMockTurnFrame({
+        profile: { baseURL: ctx.model.url },
         resume,
-        systemPrompt: 'You are nixie.',
         input: [{ uuid: crypto.randomUUID(), text }],
-      },
+      }),
       { ...ctx.deps, toolServer: buildStubToolServer().config },
     );
     const last = ctx.frames.at(-1);
 
-    return last?.type === 'ended' ? last.boundary : null;
+    if (last?.type !== 'ended') {
+      throw new Error('the turn did not end');
+    }
+    return last.boundary;
   };
 
   ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' }, { text: 'CHERRY' });
@@ -285,28 +260,25 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
   await runTurnAt('two', first);
 
   const rerun = await runTurnAt('three', first);
+  const messages = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
 
-  expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude('APPLE');
-  expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).not.toInclude('BANANA');
-  expect(rerun).toStrictEqual({ sessionID: expect.toBeString(), messageID: expect.toBeString() });
-  expect(rerun?.sessionID).not.toBe(first?.sessionID);
+  // toInclude fails on a missing request, so the negative check below reads a real one
+  expect(messages).toInclude('APPLE');
+  expect(messages).not.toInclude('BANANA');
+  expect(rerun.sessionID).not.toBe(first.sessionID);
 });
 
 test('it reports a session to resume that is not on the guest disk as missing', async () => {
   const ctx = await setupTest();
 
   await runTurn(
-    {
-      type: 'turn',
-      profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
       resume: {
         sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
       },
-      systemPrompt: 'You are nixie.',
-      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
-    },
+    }),
     ctx.deps,
   );
 
@@ -323,24 +295,19 @@ test('it keeps only the session it resumes and the fork it writes on the guest d
   const ctx = await setupTest();
   const runTurnAt = async (text: string, resume: SessionPoint | null) => {
     await runTurn(
-      {
-        type: 'turn',
-        profile: {
-          model: 'model-a',
-          baseURL: ctx.model.url,
-          effort: 'low',
-          authHeader: 'x-api-key',
-        },
-        tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+      buildMockTurnFrame({
+        profile: { baseURL: ctx.model.url },
         resume,
-        systemPrompt: 'You are nixie.',
         input: [{ uuid: crypto.randomUUID(), text }],
-      },
+      }),
       { ...ctx.deps, toolServer: buildStubToolServer().config },
     );
     const last = ctx.frames.at(-1);
 
-    return last?.type === 'ended' ? last.boundary : null;
+    if (last?.type !== 'ended') {
+      throw new Error('the turn did not end');
+    }
+    return last.boundary;
   };
 
   ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' }, { text: 'CHERRY' });
@@ -352,5 +319,5 @@ test('it keeps only the session it resumes and the fork it writes on the guest d
 
   expect(
     files.filter((path) => path.endsWith('.jsonl')).map((path) => basename(path)),
-  ).toIncludeSameMembers([`${second?.sessionID}.jsonl`, `${third?.sessionID}.jsonl`]);
+  ).toIncludeSameMembers([`${second.sessionID}.jsonl`, `${third.sessionID}.jsonl`]);
 });

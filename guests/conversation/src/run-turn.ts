@@ -34,7 +34,12 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
   await mkdir(options.cwd ?? '', { recursive: true });
   await removeStaleSessions(options.env?.['CLAUDE_CONFIG_DIR'], turn.resume?.sessionID ?? null);
 
-  const state: TurnState = { pending: new Set(), boundary: null, ended: Promise.withResolvers() };
+  const state: TurnState = {
+    pending: new Set(),
+    boundary: null,
+    inputError: null,
+    ended: Promise.withResolvers(),
+  };
   const session = (deps.runQuery ?? query)({ prompt: readInput(turn, deps, state), options });
 
   try {
@@ -51,6 +56,9 @@ async function drainSession(
   state: TurnState,
 ): Promise<void> {
   for await (const message of session) {
+    if (state.inputError !== null) {
+      throw state.inputError;
+    }
     const outcome = await emitMessageFrames(message, deps, state);
 
     if (outcome === 'stop' || (outcome === 'result' && state.pending.size === 0)) {
@@ -65,6 +73,9 @@ interface TurnState {
 
   // the session's last chain entry so far
   boundary: SessionPoint | null;
+
+  // the error the host's message stream threw, which fails the turn at the next SDK message
+  inputError: Error | null;
   readonly ended: PromiseWithResolvers<void>;
 }
 
@@ -81,13 +92,27 @@ async function* readInput(
 
   for (;;) {
     // oxlint-disable-next-line no-await-in-loop -- each message waits for the host to send it
-    const next = await Promise.race([iterator.next(), state.ended.promise.then(() => null)]);
+    const next = await readNextMessage(iterator, state);
 
     if (next === null || next.done === true) {
       return;
     }
     state.pending.add(next.value.uuid);
     yield buildUserMessage(next.value);
+  }
+}
+
+// The SDK aborts on an error from its input stream, yet the CLI still answers the message it
+// holds, so the turn keeps the error to fail on instead of passing it to the SDK.
+async function readNextMessage(
+  iterator: AsyncIterator<InboxMessage>,
+  state: TurnState,
+): Promise<IteratorResult<InboxMessage> | null> {
+  try {
+    return await Promise.race([iterator.next(), state.ended.promise.then(() => null)]);
+  } catch (error) {
+    state.inputError = error instanceof Error ? error : new Error(String(error));
+    return null;
   }
 }
 
