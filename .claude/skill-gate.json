@@ -2,6 +2,10 @@
   "ignore": ["node_modules/", "dist/"],
   "gates": [
     { "match": "**/*.{ts,tsx}", "skills": ["code-style"] },
+    { "match": "**/*.test.{ts,tsx}", "skills": ["testing", "project-testing"] },
+    { "match": "**/test-utils/**", "skills": ["testing", "project-testing"] },
+    { "match": "e2e/**", "skills": ["testing", "project-testing"] },
+    { "match": "**/bunfig.toml", "skills": ["testing", "project-testing"] },
     {
       "match": "**/*.md",
       "skills": ["docs-writing", "project-docs-writing"]
