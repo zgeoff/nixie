@@ -1,8 +1,10 @@
 import type { WriteGroup } from './build-write-group';
 import { buildWriteGroup } from './build-write-group';
 import { findNewestMessage } from './find-newest-message';
+import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { ContentGateResult, GatedRememberRequest, WriteOutcome } from './gate-types';
 import { requireItem } from './require-item';
+import { requireLiveEvidence } from './require-live-evidence';
 import { runContentGate } from './run-content-gate';
 import type { MemoryTables, StoreParts } from './types';
 import { writeMemoryProposal } from './write-memory-proposal';
@@ -32,23 +34,62 @@ export async function writeGatedRemember(
   const group = buildWriteGroup(request.caller, newest);
 
   if (gate.status === 'pass') {
-    return applyRemember(parts, request, { gate, group });
+    return applyPassedRemember(parts, request, { gate, group });
   }
+  return writeRememberProposal(parts, request, { review: gate, group });
+}
+
+interface ReviewedRemember {
+  readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
+  readonly group: WriteGroup;
+}
+
+async function writeRememberProposal(
+  parts: StoreParts,
+  request: GatedRememberRequest,
+  reviewed: ReviewedRemember,
+): Promise<WriteOutcome> {
+  const review = reviewed.review;
   const proposalID = await writeMemoryProposal(parts, {
     operation: 'remember',
     target: request.target ?? null,
     isPinned: request.isPinned === true,
     text: request.text,
     quote: request.quote ?? null,
-    reason: gate.reason,
-    evidence: gate.evidence,
-    checks: gate.checks,
-    checkerReason: gate.checkerReason,
+    reason: review.reason,
+    evidence: review.evidence,
+    checks: review.checks,
+    checkerReason: review.checkerReason,
     caller: request.caller,
-    group,
+    group: reviewed.group,
   });
 
-  return { status: 'proposed', proposalID, reason: gate.reason };
+  return { status: 'proposed', proposalID, reason: review.reason };
+}
+
+// a forget that completed while the checker answered turns a passing write into a proposal
+async function applyPassedRemember(
+  parts: StoreParts,
+  request: GatedRememberRequest,
+  passed: PassedRemember,
+): Promise<WriteOutcome> {
+  try {
+    return await applyRemember(parts, request, passed);
+  } catch (error) {
+    if (!(error instanceof ForgottenEvidenceError)) {
+      throw error;
+    }
+    const gate = passed.gate;
+    const review = {
+      status: 'review' as const,
+      reason: 'forgotten_evidence' as const,
+      evidence: gate.evidence,
+      checks: gate.checks,
+      checkerReason: null,
+    };
+
+    return writeRememberProposal(parts, request, { review, group: passed.group });
+  }
 }
 
 interface PassedRemember {
@@ -82,7 +123,12 @@ async function applyRemember(
         ? {}
         : { evidence, evidenceQuote: request.quote }),
     },
-    { noticeKey: passed.group.noticeKey },
+    {
+      noticeKey: passed.group.noticeKey,
+      ...(evidence === null
+        ? {}
+        : { requireInTransaction: (db) => requireLiveEvidence(db, evidence.recordSequence) }),
+    },
   );
 
   return { status: 'applied', itemID: ref.itemID, version: ref.version };

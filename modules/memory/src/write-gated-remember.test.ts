@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { makeChecker } from '@heynixie/models';
+import { makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
@@ -241,6 +242,39 @@ test('it proposes a write that cites the evidence message of an item you forgot'
   });
 
   expect(again).toMatchObject({ status: 'proposed', reason: 'forgotten_evidence' });
+});
+
+test('it proposes a write whose evidence message backed an item you forgot while the checker answered', async () => {
+  const checker = makeGatedCall(() => buildMockCheckerAnswer());
+  const memory = await startTestMemory({ gate: { check: checker.call } });
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+  const forgotten = await memory.store.remember({
+    text: 'Takes coffee black',
+    evidenceQuote: 'I take my coffee black',
+    evidence: { recordSequence: sequence, start: 0, end: 22 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'Drinks black coffee',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  await checker.started;
+  await memory.store.forget({
+    target: forgotten,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  checker.release();
+
+  const outcome = await write;
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'forgotten_evidence' });
 });
 
 test('it proposes a write for another item that cites a message a forgotten item shared', async () => {

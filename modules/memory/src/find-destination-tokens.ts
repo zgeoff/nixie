@@ -65,15 +65,12 @@ const patterns: readonly TokenPattern[] = [
     kind: 'account',
     pattern: /\b[A-Z]{2}\d{2}(?:\s?[A-Z\d]{4}){2,7}(?:\s?[A-Z\d]{1,4})?\b/gu,
   },
-  { kind: 'phone', pattern: /\+?\d[\d\s().-]{5,}\d/gu },
-  {
-    kind: 'domain',
-    pattern: /\b(?:[\p{L}\p{N}-]+\.)+(?:com|net|org|io|dev|app|ai|co|me|uk|au|nz|de|fr|info)\b/giu,
-  },
+  { kind: 'phone', pattern: /\+?\d[\d \t().-]{5,}\d/gu },
+  { kind: 'domain', pattern: /\b(?:[\p{L}\p{N}-]+\.)+\p{L}{2,63}\b/gu },
 ];
 
 // Phone and account numbers compare by their digits and letters, a URL by its scheme and host
-// without case and its path exactly, and every other kind without case.
+// without case and its path, query and fragment exactly, and every other kind without case.
 function buildTokenKey(kind: DestinationToken['kind'], raw: string): string {
   const cleaned = raw.normalize('NFC').replace(trailing, '');
 
@@ -81,7 +78,7 @@ function buildTokenKey(kind: DestinationToken['kind'], raw: string): string {
     return cleaned.replaceAll(/[^\d+A-Z]/gu, '');
   }
   if (kind === 'url') {
-    const match = /^(?<scheme>https?:\/\/)?(?<host>[^/]+)(?<path>.*)$/iu.exec(cleaned);
+    const match = /^(?<scheme>https?:\/\/)?(?<host>[^/?#]+)(?<path>.*)$/iu.exec(cleaned);
     const groups = match?.groups;
 
     return groups === undefined

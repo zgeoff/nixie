@@ -29,7 +29,7 @@ function getHost(token: DestinationToken): string {
     return token.key.slice(token.key.indexOf('@') + 1);
   }
   if (token.kind === 'url') {
-    return token.key.replace(/^https?:\/\//u, '').split('/')[0] ?? '';
+    return token.key.replace(/^https?:\/\//u, '').split(/[/?#]/u)[0] ?? '';
   }
   return token.key;
 }

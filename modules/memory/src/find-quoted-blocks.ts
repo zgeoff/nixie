@@ -40,15 +40,35 @@ function collectLines(text: string): readonly Line[] {
   });
 }
 
-// fence markers pair up in order, and an unclosed fence runs to the end of the message
+// a fence closes on a run of its own character at least as long as its opening run, with nothing
+// after it, and an unclosed fence runs to the end of the message
 function collectFences(lines: readonly Line[], length: number): readonly TextRange[] {
-  const markers = lines.filter(
-    (line) => line.trimmed.startsWith('```') || line.trimmed.startsWith('~~~'),
-  );
+  const fences: TextRange[] = [];
+  let open: OpenFence | null = null;
 
-  return markers.flatMap((marker, index) =>
-    index % 2 === 0 ? [{ start: marker.start, end: markers[index + 1]?.end ?? length }] : [],
-  );
+  for (const line of lines) {
+    const run = /^(?:`{3,}|~{3,})/u.exec(line.trimmed)?.[0];
+
+    if (open === null && run !== undefined) {
+      open = { start: line.start, run };
+    } else if (open !== null && run !== undefined && isClosingFence(line.trimmed, open.run)) {
+      fences.push({ start: open.start, end: line.end });
+      open = null;
+    }
+  }
+  return open === null ? fences : [...fences, { start: open.start, end: length }];
+}
+
+interface OpenFence {
+  readonly start: number;
+  readonly run: string;
+}
+
+// a run of the same character at least as long as the opening run starts with the opening run
+function isClosingFence(trimmed: string, opening: string): boolean {
+  const closing = /^(?<run>`+|~+)\s*$/u.exec(trimmed)?.groups?.['run'];
+
+  return closing !== undefined && closing.startsWith(opening);
 }
 
 function isReplyHeader(line: string): boolean {
