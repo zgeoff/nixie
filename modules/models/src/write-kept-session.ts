@@ -26,10 +26,40 @@ export async function writeKeptSession(spec: KeptSessionSpec): Promise<void> {
     configProjectsDir,
     buildProjectName(join(target.home, workDirName)),
   );
+  const transcript = `${spec.sessionID}.jsonl`;
 
+  // the transcript lands under a staged name, so a copy that fails partway leaves no session to
+  // resume; the guest removes the staged file with the other stale sessions
   await spec.to.copyIn(
-    files.map((file) => ({ path: join(targetDir, file.path), content: file.content })),
+    files.map((file) => {
+      const name = file.path === transcript ? `${transcript}${stagedSuffix}` : file.path;
+
+      return { path: join(targetDir, name), content: file.content };
+    }),
   );
+  await applyStagedTranscript(spec, targetDir, transcript);
+}
+
+const stagedSuffix = '.copy';
+
+// Renames the staged transcript to the name the CLI resumes, in one step inside the guest, once
+// every file of the session has landed.
+async function applyStagedTranscript(
+  spec: KeptSessionSpec,
+  targetDir: string,
+  transcript: string,
+): Promise<void> {
+  const result = await spec.to.exec({
+    argv: ['mv', '-f', '--', `${transcript}${stagedSuffix}`, transcript],
+    env: spec.command.env,
+    cwd: targetDir,
+  });
+
+  if (result.code !== 0) {
+    const stderr = new TextDecoder().decode(result.stderr.bytes);
+
+    throw new Error(`the sandbox ${spec.to.id} did not publish the session transcript: ${stderr}`);
+  }
 }
 
 // the CLI's projects folder under the guest's home, as the guest sets CLAUDE_CONFIG_DIR

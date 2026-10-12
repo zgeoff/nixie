@@ -31,8 +31,10 @@ guest. The CLI names a session's project folder after the working directory, so 
 files from the old guest's home and writes them under the folder that the new guest's own home
 names. A start that stops before it destroys the old sandbox leaves both, so the next start copies
 again into the sandbox it keeps and overwrites what the stopped copy wrote. No turn runs while an
-old sandbox remains, so the old copy is never behind. The copy tries each old sandbox in turn. When
-every copy fails, nixie logs a warning and the start goes on, so a deploy never fails on the copy.
+old sandbox remains, so the old copy is never behind. The copy writes the transcript under a staged
+name and renames it once every file has landed, so a copy that fails partway leaves no session to
+resume. The copy tries each old sandbox in turn. When every copy fails, nixie logs a warning and the
+start goes on, so a deploy never fails on the copy.
 
 Each step spawns the guest in the sandbox for one turn. The host writes a turn frame to the guest's
 standard input, and the guest writes its own frames to standard output. Both directions use the wire
