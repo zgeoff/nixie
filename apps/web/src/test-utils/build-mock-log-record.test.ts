@@ -6,7 +6,7 @@ test('it builds a default log record', () => {
     kind: 'model.turn_ended',
     recordedAt: expect.toBeValidDate(),
     sequence: expect.toBeWithin(1, 1_000_001),
-    thread: expect.any(String),
+    thread: expect.toBeString(),
   });
 });
 
@@ -21,7 +21,7 @@ test('it applies overrides on top of the defaults', () => {
     kind: 'tool_called',
     recordedAt: expect.toBeValidDate(),
     sequence: 4,
-    thread: expect.any(String),
+    thread: expect.toBeString(),
     toolCall: { callID: 'call-1', tool: 'web_fetch' },
   });
 });
