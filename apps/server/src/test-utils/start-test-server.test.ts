@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
 import { startTestServer } from './start-test-server';
 
-test('it starts a log with the tasks and sandboxes projections, an endpoint and the process double', async () => {
+test('it starts a log with the tasks, sandboxes and memory projections, an endpoint and the process double', async () => {
   const server = await startTestServer();
 
   expect(server.context.log.projections.map((projection) => projection.table)).toStrictEqual([
@@ -10,11 +10,34 @@ test('it starts a log with the tasks and sandboxes projections, an endpoint and 
     'tasks',
     'timers',
     'sandboxes',
+    'memory_items',
+    'memory_versions',
+    'memory_writer',
   ]);
   expect(server.sandboxes).toMatchObject({ id: 'process', boundary: 'process' });
   expect(server.endpoint.getToolTarget({ id: 's-1', owner: 'conversation' })).toMatchObject({
     path: expect.toStartWith(server.dataDir),
   });
+});
+
+test('it stops a deferred part while the log is still open', async () => {
+  const server = await startTestServer();
+  const seen: { count: number | null } = { count: null };
+
+  server.defer(async () => {
+    const rows = await server.context.log.writer.db
+      .$extendTables<{ tasks: { task_id: string } }>()
+      .selectFrom('tasks')
+      .select('task_id')
+      .execute();
+
+    seen.count = rows.length;
+  });
+  onTestFinished(() => {
+    expect(seen.count).toBe(0);
+  });
+
+  expect(server.defer).toBeFunction();
 });
 
 test('it removes the data directory when the test finishes', async () => {

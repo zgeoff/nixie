@@ -4,8 +4,12 @@ import { readIndexEntries } from './read-index-entries';
 import { runPendingForgets } from './run-pending-forgets';
 import { startMemoryIndex } from './start-memory-index';
 import type { MemoryContext, MemoryStore, StoreParts } from './types';
+import type { BatchPublication, PublishResult } from './write-memory-batch';
+import { writeMemoryBatch } from './write-memory-batch';
 
 export interface StartedMemoryStore extends MemoryStore {
+  // publishes one memory writer batch with its cursor in one transaction
+  readonly writeBatch: (publication: BatchPublication) => Promise<PublishResult>;
   readonly stop: () => Promise<void>;
 }
 
@@ -25,5 +29,9 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
     await index.stop();
     throw error;
   }
-  return { ...buildMemoryStore(parts), stop: () => parts.lock(() => index.stop()) };
+  return {
+    ...buildMemoryStore(parts),
+    writeBatch: (publication) => writeMemoryBatch(parts, publication),
+    stop: () => parts.lock(() => index.stop()),
+  };
 }

@@ -7,7 +7,7 @@ import { buildModelGrant } from './build-model-grant';
 import { deriveModelSecret } from './derive-model-secret';
 import { runConversationStep } from './run-conversation-step';
 import type { GuestCommand } from './run-guest-turn';
-import type { ResolvedProfile } from './types';
+import type { ConversationRun, ResolvedProfile } from './types';
 
 export interface ConversationRunnerOptions {
   readonly context: TasksContext;
@@ -26,6 +26,7 @@ export interface ConversationRunnerOptions {
 
   // the persona in force, read at each turn so a new seed reaches the next turn
   readonly getSystemPrompt: () => string;
+  readonly readTurnNote?: NonNullable<ConversationRun['readTurnNote']>;
 }
 
 export interface ConversationRunner {

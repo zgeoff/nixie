@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import { resolveRoleProfile } from './resolve-role-profile';
+import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
 import { buildMockModelsConfig } from './test-utils/build-mock-models-config';
 import { buildStubSandboxes } from './test-utils/build-stub-sandboxes';
@@ -13,6 +14,7 @@ interface RunnerConfig {
   readonly models: ReturnType<typeof buildMockModelsConfig>;
   readonly credential: string;
   readonly toolNames: readonly string[];
+  readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote'>;
 }
 
 // the conversation task, and the stub sandboxes and tool endpoint
@@ -41,6 +43,7 @@ async function setupTest() {
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
         command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
         getSystemPrompt: () => 'You are nixie.',
+        ...config.memory,
       }),
     writeMessage: (text: string) =>
       writeInboxRecords(tasks.context, [
@@ -516,4 +519,89 @@ test('it keeps the conversation sandbox across restarts on one profile and repla
     'gateway.example',
   ]);
   expect(ctx.sandboxes.destroyed).toHaveLength(1);
+});
+
+test('it puts the memory note before the first message of the turn and leaves the rest as sent', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    memory: {
+      readTurnNote: () =>
+        Promise.resolve({ text: 'Memory changed: you moved to Lisbon.', throughSequence: 7 }),
+    },
+  });
+
+  await ctx.writeMessage('First.');
+  await ctx.writeMessage('Second.');
+  await ctx.runNextStep(runner);
+
+  expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
+    {
+      uuid: '6e697869-0000-8000-8000-000000000002',
+      text: 'Memory changed: you moved to Lisbon.\n\nFirst.',
+    },
+    { uuid: '6e697869-0000-8000-8000-000000000003', text: 'Second.' },
+  ]);
+});
+
+test('it records the sequence the memory note covers on the turn end', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    memory: {
+      readTurnNote: () =>
+        Promise.resolve({ text: 'Memory changed: you moved to Lisbon.', throughSequence: 7 }),
+    },
+  });
+
+  await ctx.writeMessage('Hi.');
+  await ctx.runNextStep(runner);
+
+  const records = await ctx.readKinds('model.turn_ended');
+
+  expect(records).toMatchObject([{ payload: { memoryNotedThrough: 7 } }]);
+});
+
+test('it records the sequence a turn with no memory changes covers and sends the message as is', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    memory: { readTurnNote: () => Promise.resolve({ text: null, throughSequence: 4 }) },
+  });
+
+  await ctx.writeMessage('Hi.');
+  await ctx.runNextStep(runner);
+
+  const records = await ctx.readKinds('model.turn_ended');
+
+  expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
+    { uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' },
+  ]);
+  expect(records).toMatchObject([{ payload: { memoryNotedThrough: 4 } }]);
+});
+
+test('it records no noted sequence on the turn end of a runner with no memory note', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.writeMessage('Hi.');
+  await ctx.runNextStep(runner);
+
+  const records = await ctx.readKinds('model.turn_ended');
+
+  expect(records).toStrictEqual([
+    expect.objectContaining({
+      payload: expect.toSatisfy((payload: object) => !('memoryNotedThrough' in payload)),
+    }),
+  ]);
 });

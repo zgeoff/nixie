@@ -59,6 +59,10 @@ const recordSchema = z.object({
   toolCall: toolCallSchema.optional(),
 });
 
+const writerErrorSchema = z
+  .object({ at: z.date(), code: z.string(), message: z.string().nullable() })
+  .nullable();
+
 const sessionSchema = z.object({
   createdAt: z.date(),
   current: z.boolean(),
@@ -120,6 +124,22 @@ export const contract = {
         }),
       )
       .output(z.object({ duplicate: z.boolean(), sequence: sequenceSchema })),
+  },
+  memory: {
+    // The memory writer's progress: its cursor over the event log, how many of your messages wait
+    // for it, whether its catch-up over the log from before memory is still running, and its last
+    // error with when it tries again. The writer never stops on an error; it backs off.
+    writerStatus: signedIn.output(
+      z.object({
+        backlog: z.int().nonnegative(),
+        batches: z.int().nonnegative(),
+        cursor: sequenceSchema,
+        failures: z.int().nonnegative(),
+        isCatchingUp: z.boolean(),
+        lastError: writerErrorSchema,
+        retryAt: z.date().nullable(),
+      }),
+    ),
   },
   log: {
     // The live stream under its first name, kept for the clients of earlier releases. A content

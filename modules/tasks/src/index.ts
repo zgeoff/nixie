@@ -4,6 +4,7 @@ export type { ClaimTaskOptions } from './claim-task';
 export { claimTask } from './claim-task';
 export { conversationTaskID } from './conversation-task-id';
 export { createConversationTask } from './create-conversation-task';
+export { createSystemTask } from './create-system-task';
 export { createTask } from './create-task';
 export { isInboxRecord } from './is-inbox-record';
 export { LeaseLostError } from './lease-lost-error';

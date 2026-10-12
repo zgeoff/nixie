@@ -2,27 +2,29 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Log } from '@heynixie/log';
-import { logProjections, startWriter } from '@heynixie/log';
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { SandboxAdapter } from '@heynixie/sandbox';
-import { buildSandboxRecorder, sandboxesProjection } from '@heynixie/sandbox';
+import { buildSandboxRecorder } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
-import { systemClock, tasksProjections } from '@heynixie/tasks';
+import { systemClock } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildSandboxAdapter } from '../build-sandbox-adapter';
+import { startTestLog } from './start-test-log';
 
 export interface TestServer {
   readonly dataDir: string;
   readonly context: TasksContext;
   readonly endpoint: ToolEndpoint;
   readonly sandboxes: SandboxAdapter;
+
+  // stops a part the test starts on the server before the server's own parts stop
+  readonly defer: (stop: () => Promise<void>) => void;
 }
 
-// Starts the parts of a test build the conversation runs on: a writer on a fresh data directory
-// with the log's, the tasks and the sandboxes projections, a tool endpoint with no tools, and the
-// process double that runs each guest as a local process. It stops them when the test finishes.
+// Starts the parts of a test build the conversation runs on: a writer on a fresh data directory, a
+// tool endpoint with no tools, and the process double that runs each guest as a local process. It
+// stops them, after every part the test deferred, when the test finishes.
 export async function startTestServer(): Promise<TestServer> {
   const stack = new AsyncDisposableStack();
 
@@ -32,12 +34,12 @@ export async function startTestServer(): Promise<TestServer> {
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const writer = await startWriter({ dataDir });
+  const log = await startTestLog(dataDir);
 
-  stack.defer(() => writer.stop());
+  stack.defer(() => log.writer.stop());
 
   const context = {
-    log: await buildTestLog(writer),
+    log,
     clock: systemClock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
@@ -55,6 +57,9 @@ export async function startTestServer(): Promise<TestServer> {
       imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
       testRootDir: join(dataDir, 'sandboxes'),
     }),
+    defer: (stop) => {
+      stack.defer(stop);
+    },
   };
 }
 
@@ -72,17 +77,4 @@ function startEmptyToolEndpoint(context: TasksContext, socketDir: string): Promi
       waitForOutcome: () => Promise.resolve(null),
     },
   });
-}
-
-async function buildTestLog(writer: Log['writer']): Promise<Log> {
-  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
-    'wrapKey',
-    'unwrapKey',
-  ]);
-
-  return {
-    writer,
-    deploymentKey,
-    projections: [...logProjections, ...tasksProjections, sandboxesProjection],
-  };
 }

@@ -236,6 +236,7 @@ function buildEnded(
     boundary,
     subtype: message.subtype,
     stopReason: message.stop_reason,
+    isError: message.is_error,
     turns: message.num_turns,
     usage: {
       inputTokens: message.usage.input_tokens,

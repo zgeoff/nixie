@@ -24,15 +24,8 @@ Memory has 2 write paths, and SDK compaction stays in place:
   tools are `memory.recall`, `memory.remember` and `memory.retire`, and it supplies an exact quote
   for each candidate.
 
-The writer starts a batch on a count of unprocessed messages, idle time or the age of the oldest
-unprocessed message. The defaults are 4 messages, 5 minutes idle and 20 minutes maximum age, all
-configurable. The age limit keeps capture moving while replies keep a conversation busy. A summary
-is never evidence for a memory.
-
-The writer runs in its own imp like any worker, under
-[0026](../../../decisions/0026-where-workers-and-the-conversation-run.md), because the replies it
-reads can carry outside content. It runs in the background and never delays a reply. Its model comes
-from the `memory-writer` role's [model profile](../core/models.md#roles).
+[The memory writer](../../../architecture/memory/writer.md) describes the built writer: its batch
+triggers, its sandbox, its sessions and how it publishes.
 
 A write whose text matches an active item exactly returns that item and writes nothing. A
 near-duplicate is the model's job: the writer sees the items retrieval found and revises one instead
@@ -42,22 +35,9 @@ separates a current fact from the one it superseded, so the store never holds bo
 
 ### Batch boundaries and recovery
 
-A batch covers the committed turns after the writer's cursor, up to a fixed record sequence.
-Messages that arrive while it runs wait for the next batch. The host gives the writer the eligible
-messages with their record IDs. A candidate's evidence holds the ID of one of those records, and the
-host resolves it and sets provenance itself.
-
-The writer's tools stage candidates instead of applying them. A batch holds at most one revision per
-item, and 2 candidates that revise the same item reject the batch and retry with that feedback. The
-host runs the gate outside the database transaction. It then publishes the writes or proposals,
-their notices and the advanced cursor in one transaction, after it checks that every source is still
-readable and every revised item is still at the version read. A source forgotten during extraction
-never publishes.
-
-A crash before publication retries the batch, and a crash after it resumes from the committed
-cursor, so extraction can repeat but its effects never do. A failed check produces a proposal, and
-the cursor never skips a candidate. The [offline batch spike](../spikes/memory-batch/) tests this
-cursor under process kills.
+[The memory writer](../../../architecture/memory/writer.md#publishing) describes how a batch
+publishes in one transaction and how a crash at any point leaves it published once. The
+[offline batch spike](../spikes/memory-batch/) tested this cursor under process kills.
 
 ## The content gate
 

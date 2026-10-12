@@ -12,6 +12,7 @@ test('it starts a store over a log that folds the memory projections, with no re
     'threads',
     'memory_items',
     'memory_versions',
+    'memory_writer',
   ]);
   expect(records).toStrictEqual([]);
 });

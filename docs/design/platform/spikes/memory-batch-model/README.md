@@ -38,6 +38,16 @@ env -u ANTHROPIC_API_KEY bun --no-env-file run.ts --samples 3 --size 40 --out ru
 bun report.ts runs/live/run.json runs/size-20/run.json runs/size-40/run.json
 ```
 
+The persona comparison runs the live batches twice, once with the persona in force before the
+writer's rules. The persona file stays outside the repo, and the run records only whether one was
+given.
+
+```bash
+env -u ANTHROPIC_API_KEY bun --no-env-file run.ts --samples 3 --out runs/persona-plain
+env -u ANTHROPIC_API_KEY bun --no-env-file run.ts --samples 3 --persona <persona_file> --out runs/persona
+bun report.ts runs/persona-plain/run.json runs/persona/run.json
+```
+
 - [conversation.ts](conversation.ts) holds 3 seed items, 40 turns with times, 15 gold facts and 8
   traps: a pasted message, a hypothetical, a quoted line from someone else, a denial, 2 facts only
   the assistant states, a message drafted for others and a repeat. Three gold facts change a seed
@@ -112,6 +122,24 @@ price table in [report.ts](report.ts).
 The samples ran in parallel, so 5 first batches read a cached prompt that another sample wrote. The
 report reprices that read as a write, as a lone writer pays it; the recorded figure was $0.0044 a
 conversation.
+
+### Persona in the system prompt
+
+The shipped writer puts the persona in force before its own rules, so the persona's voice and its
+picture of the user frame what the writer stores. A rerun of the live batches checked that the
+persona costs no capture. Each arm is 3 samples of 11 batches, recorded in
+[runs/persona-plain/](runs/persona-plain/) and [runs/persona/](runs/persona/).
+
+| Writer prompt  | Gold captured | Bad applied | Traps proposed | Extra true facts | Input tokens a sample | Cost a sample |
+| -------------- | ------------- | ----------- | -------------- | ---------------- | --------------------- | ------------- |
+| Rules only     | 14, 14, 14    | 0, 0, 0     | 0              | 1, 1, 1          | 23,498                | $0.0048       |
+| Persona, rules | 14, 14, 14    | 0, 0, 0     | 0              | 1, 1, 1          | 34,346                | $0.0071       |
+
+The persona left capture unchanged: both arms missed only the initials, and neither applied a bad
+candidate or proposed a trap. It adds about 46% to the input, because every batch sends the persona
+again. The cost column reprices the persona arm's cache reads as writes, as a lone writer pays them;
+its recorded cost was $0.0053. The rerun used this spike's JSON prompt, so it does not measure the
+shipped writer's staging tools or its rule against storing short-lived plans.
 
 ### Backfill of a long log
 

@@ -29,6 +29,9 @@ export interface TestNixie {
   readonly deploymentKey: string;
   readonly harness: CrashHarness;
   readonly model: ScriptedModel;
+
+  // the memory writer's own scripted model
+  readonly writerModel: ScriptedModel;
   readonly provider: ProviderDouble;
   readonly readRecords: () => Promise<readonly TestRecord[]>;
 
@@ -57,9 +60,14 @@ export interface TestNixie {
   readonly readRecoveredStates: () => readonly RecoveredState[];
 }
 
+export interface TestNixieOptions {
+  // starts memory's writer in each nixie, on the writer's own scripted model
+  readonly memoryWriter?: boolean;
+}
+
 // Sets up a crash test: a fresh data directory, the scripted model and the provider double in the
 // test process, where their records survive every kill, and the crash harness at 1,000,000 ms.
-export async function startTestNixie(): Promise<TestNixie> {
+export async function startTestNixie(options: TestNixieOptions = {}): Promise<TestNixie> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -75,6 +83,9 @@ export async function startTestNixie(): Promise<TestNixie> {
     NIXIE_TEST_DEPLOYMENT_KEY: deploymentKey,
     NIXIE_TEST_MODEL_URL: doubles.model.url,
     NIXIE_TEST_PROVIDER_URL: doubles.provider.url,
+    ...(options.memoryWriter === true
+      ? { NIXIE_TEST_WRITER_MODEL_URL: doubles.writerModel.url }
+      : {}),
   });
   const reader = startLogReader(dataDir, stack);
   const recovery = startRecoveryReads(crashHarness, reader.readRows);
@@ -148,16 +159,22 @@ async function readRecoveredState(
 // a turn runs the real SDK in a guest process, which takes a few seconds on a slow host
 const recordTimeoutMs = 30_000;
 
+type TestDoubles = Pick<TestNixie, 'model' | 'provider' | 'writerModel'>;
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the test's own cleanup
-function startDoubles(stack: AsyncDisposableStack): Pick<TestNixie, 'model' | 'provider'> {
+function startDoubles(stack: AsyncDisposableStack): TestDoubles {
   const model = startScriptedModel();
 
   stack.defer(() => model.stop());
 
+  const writerModel = startScriptedModel();
+
+  stack.defer(() => writerModel.stop());
+
   const provider = startProviderDouble();
 
   stack.defer(() => provider.stop());
-  return { model, provider };
+  return { model, writerModel, provider };
 }
 
 type LogReader = Pick<TestNixie, 'readRecords' | 'readRows'>;

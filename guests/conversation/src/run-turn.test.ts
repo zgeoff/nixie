@@ -208,8 +208,45 @@ test('it reports each inbox message the model read, then the turn end at the las
       boundary: { sessionID: expect.toBeString(), messageID: reply.messageID },
       subtype: 'success',
       stopReason: 'end_turn',
+      isError: false,
       turns: 2,
       usage: { inputTokens: 20, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+});
+
+test('it marks the turn end as an error when the model API refuses the request', async () => {
+  const ctx = await setupTest();
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  const reply = ctx.frames.at(1);
+
+  if (reply?.type !== 'assistant') {
+    throw new Error('the second frame is not an assistant frame');
+  }
+  expect(ctx.frames).toStrictEqual([
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
+    {
+      type: 'assistant',
+      messageID: expect.toBeString(),
+      text: 'API Error: 400 the stub model has no reply left',
+      toolUses: [],
+    },
+    {
+      type: 'ended',
+      boundary: { sessionID: expect.toBeString(), messageID: reply.messageID },
+      subtype: 'success',
+      stopReason: 'stop_sequence',
+      isError: true,
+      turns: 1,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
   ]);
 });

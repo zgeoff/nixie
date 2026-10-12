@@ -187,6 +187,7 @@
       "dependencies": {
         "@heynixie/contract": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/memory": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@orpc/server": "catalog:",
         "elysia": "catalog:",

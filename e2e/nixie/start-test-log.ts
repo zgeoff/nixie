@@ -1,6 +1,7 @@
 import { actionsProjection } from '../../modules/actions/src/index';
 import { logProjections, startWriter } from '../../modules/log/src/index';
 import type { Writer } from '../../modules/log/src/index';
+import { memoryProjections } from '../../modules/memory/src/index';
 import { sandboxesProjection } from '../../modules/sandbox/src/index';
 import type { Clock, TasksContext } from '../../modules/tasks/src/index';
 import { tasksProjections } from '../../modules/tasks/src/index';
@@ -19,7 +20,8 @@ export interface TestLog {
 }
 
 // Takes the writer on the data directory and builds the context that the test build of nixie and
-// the crash tests' oracle share: every slice 1 projection, the deployment key and the clock.
+// the crash tests' oracle share: every slice 1 projection, memory's, the deployment key and the
+// clock.
 export async function startTestLog(options: TestLogOptions): Promise<TestLog> {
   const writer = await startWriter({ dataDir: options.dataDir });
   const deploymentKey = await crypto.subtle.importKey(
@@ -41,6 +43,7 @@ export async function startTestLog(options: TestLogOptions): Promise<TestLog> {
           ...tasksProjections,
           actionsProjection,
           sandboxesProjection,
+          ...memoryProjections,
         ],
       },
       clock: options.clock,

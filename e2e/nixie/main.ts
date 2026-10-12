@@ -3,7 +3,6 @@ import { startActionRunners, writeUnknownOutcomes } from '../../modules/actions/
 import { StaleWriterError, subscribeToRecords } from '../../modules/log/src/index';
 import type { RunnerPool, StepInput, StepResult } from '../../modules/tasks/src/index';
 import {
-  conversationTaskID,
   createConversationTask,
   runRecovery,
   setFaultPointHandler,
@@ -12,13 +11,13 @@ import {
 import { readNixieEnv } from './read-nixie-env';
 import { registerHarnessOperations } from './register-harness-operations';
 import { runTestTaskStep } from './run-test-task-step';
-import { startTestConversation } from './start-test-conversation';
 import { startTestLog } from './start-test-log';
+import { startTestSessions } from './start-test-sessions';
 import { startTestTools } from './start-test-tools';
 
 // The test build of nixie that the crash tests run as a child process, on the paths and endpoints
-// the harness passes: the writer, recovery, the conversation against the scripted model, the tool
-// endpoint with test.send, and the task and action runners, on the harness's one clock.
+// the harness passes: the writer, recovery, the conversation and memory's writer on scripted
+// models, the tool endpoint with test.send, and the runners, on the harness's one clock.
 const env = readNixieEnv(process.env);
 const link = startHarnessLink();
 
@@ -43,7 +42,10 @@ await runRecovery(context, {
 await link.waitAtFaultPoint('test.recovered', { kind: 'recovery', id: null });
 
 const tools = await startTestTools(context, env.providerURL).catch(stopWithError);
-const conversation = await startTestConversation(context, tools, env.modelURL).catch(stopWithError);
+const sessions = await startTestSessions(context, tools, {
+  modelURL: env.modelURL,
+  writerModelURL: env.writerModelURL,
+}).catch(stopWithError);
 const holder = `nixie-${process.pid}`;
 const tasks = startTaskRunners(context, {
   runStep: tools.trackSteps(runTestBuildStep),
@@ -67,16 +69,19 @@ process.once('SIGTERM', () => {
 });
 link.sendReady();
 
-// the conversation runs its turns in its guest, and every other task is a test task
+// the conversation and the memory writer run their sessions in guests, and every other task is a
+// test task
 function runTestBuildStep(input: StepInput): Promise<StepResult> {
-  return input.taskID === conversationTaskID
-    ? conversation.runStep(input)
-    : Promise.resolve(runTestTaskStep(link.clock, input));
+  const runStep = sessions.steps[input.taskID];
+
+  return runStep === undefined
+    ? Promise.resolve(runTestTaskStep(link.clock, input))
+    : runStep(input);
 }
 
 async function stopGracefully(): Promise<void> {
   await Promise.all([tasks.stop(), actions.stop()]);
-  await conversation.stop();
+  await sessions.stop();
   await tools.endpoint.stop();
   await testLog.writer.stop();
   stopProcessTree(0);
