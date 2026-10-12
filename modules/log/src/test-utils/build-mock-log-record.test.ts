@@ -6,7 +6,9 @@ test('it builds a default log record', () => {
     sequence: expect.toBeWithin(1, 1_000_001),
     recordedAt: expect.toBeValidDate(),
     kind: 'owner_message',
-    definitions: { snapshotHash: expect.stringMatching(/^sha256:[\da-f]{64}$/u) },
+    definitions: {
+      snapshotHash: expect.toSatisfy((hash: string) => /^sha256:[\da-f]{64}$/u.test(hash)),
+    },
     thread: null,
     stepKey: null,
     parent: null,
@@ -32,7 +34,9 @@ test('it applies overrides on top of the defaults', () => {
     sequence: 7,
     recordedAt: expect.toBeValidDate(),
     kind: 'model.reply',
-    definitions: { snapshotHash: expect.stringMatching(/^sha256:[\da-f]{64}$/u) },
+    definitions: {
+      snapshotHash: expect.toSatisfy((hash: string) => /^sha256:[\da-f]{64}$/u.test(hash)),
+    },
     thread: 'conversation',
     stepKey: null,
     parent: null,
@@ -47,7 +51,7 @@ test('it applies overrides on top of the defaults', () => {
 
 test('it merges a definitions override into the default snapshot hash', () => {
   expect(buildMockLogRecord({ definitions: { personaVersion: 'p3' } }).definitions).toStrictEqual({
-    snapshotHash: expect.stringMatching(/^sha256:[\da-f]{64}$/u),
+    snapshotHash: expect.toSatisfy((hash: string) => /^sha256:[\da-f]{64}$/u.test(hash)),
     personaVersion: 'p3',
   });
 });

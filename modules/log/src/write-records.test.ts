@@ -168,13 +168,13 @@ test('it gives each record with erasable fields its own random key in keys.db', 
   invariant(second);
   expect(records.rows).toStrictEqual([
     {
-      key_id: expect.stringMatching(
-        /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u,
+      key_id: expect.toSatisfy((keyID: string) =>
+        /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u.test(keyID),
       ),
     },
     {
-      key_id: expect.stringMatching(
-        /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u,
+      key_id: expect.toSatisfy((keyID: string) =>
+        /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u.test(keyID),
       ),
     },
     { key_id: null },
