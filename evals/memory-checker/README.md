@@ -14,10 +14,12 @@ written before any model saw a case.
 
 The run calls the production checker with the production prompt, on the input the content gate
 renders for each pair, 3 times each, through the check guest's query and your local Claude Code
-login. It rewrites [report.json](report.json), which `bun test` then checks.
+login. It rewrites the corpus's report, such as [corpus-report.json](corpus-report.json), which
+`bun test` then checks.
 
 ```bash
-env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts
+env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts corpus
+env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts held-out
 bun test evals
 ```
 
@@ -47,6 +49,19 @@ later run missed a one-off event the checker judged not worth keeping, so the pr
 judge the assertion alone. Its examples are written for the prompt and share no topic with a corpus
 case. The prompt was revised against this corpus, so this run measures the cases it was tuned on,
 and a corpus written later would measure it fresh.
+
+## Held-out cases
+
+[held-out.json](held-out.json) holds 16 messages and 26 pairs written after the prompt was tuned,
+and labelled before any model saw them. The pass rule, set before the run, was no wrong
+confirmation. The run failed it: 4 wrong confirmations in 42 calls, and 0 misses in 36.
+
+- "The owner should stretch more", from "My coach keeps saying I should stretch more, which, fair.",
+  was confirmed on all 3 calls, because the checker read "which, fair" as accepting the advice.
+- "The plumber charged the owner", which a question only presupposes, was confirmed on 1 of 3 calls.
+
+The prompt before its last revisions scored 3 wrong confirmations and 4 misses on the same cases.
+The suite checks that the held-out report is current, and gates nothing on its counts.
 
 The first measurement, before the prompt took the evidence mark and the rule that a memory may keep
 the message's own condition or attribution, ran Haiku 5.5, Sonnet 5.5 and Opus 5.5 over the same

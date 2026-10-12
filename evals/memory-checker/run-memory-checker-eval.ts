@@ -2,7 +2,7 @@
 
 // Runs each corpus pair through the production checker, prompt and gate input, and writes the
 // report the eval suite checks. It calls the model with the local Claude Code login, so CI never
-// runs it: env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts
+// runs it: env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts <corpus|held-out>
 import { mkdtemp } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -28,7 +28,8 @@ interface PlannedCall {
 }
 
 const dir = import.meta.dir;
-const corpus = await loadCheckerCorpus(join(dir, 'corpus.json'));
+const name = process.argv[2] ?? 'corpus';
+const corpus = await loadCheckerCorpus(join(dir, `${name}.json`));
 const home = await mkdtemp(join(tmpdir(), 'nixie-checker-eval-'));
 const planned = corpus.samples.flatMap((sample) => planSampleCalls(sample));
 const calls = await runPlannedCalls(planned, home);
@@ -40,7 +41,7 @@ const report: CheckerReport = {
   calls,
 };
 
-await Bun.write(join(dir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
+await Bun.write(join(dir, `${name}-report.json`), `${JSON.stringify(report, null, 2)}\n`);
 
 function planSampleCalls(sample: CheckerSample): readonly PlannedCall[] {
   return sample.pairs.flatMap((pair, index) =>

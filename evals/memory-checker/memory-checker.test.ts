@@ -7,50 +7,61 @@ import { collectLabelledCalls } from '../test-utils/collect-labelled-calls';
 import { loadCheckerCorpus } from '../test-utils/load-checker-corpus';
 import { loadCheckerReport } from '../test-utils/load-checker-report';
 
-// the committed corpus and the committed report of its last run
-async function setupTest() {
-  const corpus = await loadCheckerCorpus(join(import.meta.dir, 'corpus.json'));
-  const report = await loadCheckerReport(join(import.meta.dir, 'report.json'));
+interface SetupConfig {
+  // the corpus file's name, which names its report too
+  readonly name: 'corpus' | 'held-out';
+}
+
+// a committed corpus and the committed report of its last run
+async function setupTest(config: SetupConfig) {
+  const corpus = await loadCheckerCorpus(join(import.meta.dir, `${config.name}.json`));
+  const report = await loadCheckerReport(join(import.meta.dir, `${config.name}-report.json`));
 
   return { corpus, report };
 }
 
-test('it checks a report that the checker prompt in force produced', async () => {
-  const ctx = await setupTest();
+test.each(['corpus', 'held-out'] as const)(
+  'it checks a %s report that the checker prompt in force produced',
+  async (name) => {
+    const ctx = await setupTest({ name });
 
-  const promptHash = new Bun.CryptoHasher('sha256').update(memoryCheckerPrompt).digest('hex');
+    const promptHash = new Bun.CryptoHasher('sha256').update(memoryCheckerPrompt).digest('hex');
 
-  expect(ctx.report.prompt).toBe(`sha256:${promptHash}`);
-});
+    expect(ctx.report.prompt).toBe(`sha256:${promptHash}`);
+  },
+);
 
-test('it checks a report that ran every corpus pair, on the input the gate renders, each repeat', async () => {
-  const ctx = await setupTest();
+test.each(['corpus', 'held-out'] as const)(
+  'it checks a %s report that ran every pair, on the input the gate renders, each repeat',
+  async (name) => {
+    const ctx = await setupTest({ name });
 
-  const expected = ctx.corpus.samples.flatMap((sample) =>
-    sample.pairs.flatMap((pair, index) => {
-      const input = buildCheckerEvalInput(sample, pair);
-      const inputHash = new Bun.CryptoHasher('sha256').update(input).digest('hex');
+    const expected = ctx.corpus.samples.flatMap((sample) =>
+      sample.pairs.flatMap((pair, index) => {
+        const input = buildCheckerEvalInput(sample, pair);
+        const inputHash = new Bun.CryptoHasher('sha256').update(input).digest('hex');
 
-      return Array.from({ length: ctx.report.repeats }, (_, repeat) => ({
-        sample: sample.id,
-        pair: index,
-        repeat,
-        input: `sha256:${inputHash}`,
-      }));
-    }),
-  );
-  const ran = ctx.report.calls.map((call) => ({
-    sample: call.sample,
-    pair: call.pair,
-    repeat: call.repeat,
-    input: call.input,
-  }));
+        return Array.from({ length: ctx.report.repeats }, (_, repeat) => ({
+          sample: sample.id,
+          pair: index,
+          repeat,
+          input: `sha256:${inputHash}`,
+        }));
+      }),
+    );
+    const ran = ctx.report.calls.map((call) => ({
+      sample: call.sample,
+      pair: call.pair,
+      repeat: call.repeat,
+      input: call.input,
+    }));
 
-  expect(ran).toIncludeSameMembers(expected);
-});
+    expect(ran).toIncludeSameMembers(expected);
+  },
+);
 
 test('it never confirms a memory that the message does not assert', async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ name: 'corpus' });
 
   const unasserted = collectLabelledCalls(ctx.corpus, ctx.report).filter(
     (labelled) => !labelled.pair.asserted,
@@ -61,7 +72,7 @@ test('it never confirms a memory that the message does not assert', async () => 
 });
 
 test('it confirms every memory that the message asserts, on every call the checker answered', async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ name: 'corpus' });
 
   const asserted = collectLabelledCalls(ctx.corpus, ctx.report).filter(
     (labelled) => labelled.pair.asserted && labelled.call.failure === null,
@@ -72,7 +83,7 @@ test('it confirms every memory that the message asserts, on every call the check
 });
 
 test('it gives no verdict of its own on at most 1 call in 100', async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ name: 'corpus' });
 
   const failed = ctx.report.calls.filter((call) => call.failure !== null);
 
