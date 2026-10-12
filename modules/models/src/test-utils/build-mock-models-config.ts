@@ -4,7 +4,7 @@ import { buildMockModelProfile } from './build-mock-model-profile';
 
 // profiles replaces the default profile: each entry builds from fresh profile defaults, with its
 // key as its ID. roles merges into the default role map.
-export interface ModelsConfigOverrides {
+interface ModelsConfigOverrides {
   readonly profiles?: Readonly<Record<string, Partial<ModelProfile>>>;
   readonly roles?: Partial<ModelsConfig['roles']>;
 }
