@@ -95,7 +95,8 @@ as references, not text. Per-turn retrieval never places a moment's title, note 
 
 ### The recall tools
 
-- **`memory.recall`** returns memory items, as [the store](store.md#recall) covers.
+- **`memory.recall`** returns memory items, as
+  [the store](../../../architecture/memory/store.md#recall) covers.
 - **`log.search`** returns your past messages and the replies word for word, each with its thread,
   record sequence and date. It declares `read`.
 

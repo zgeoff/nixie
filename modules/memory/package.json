@@ -1,0 +1,24 @@
+{
+  "name": "@heynixie/memory",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "@heynixie/tools": "workspace:*",
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*"
+  }
+}

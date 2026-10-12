@@ -94,11 +94,15 @@ export type FaultPointID =
   | 'recovery.step.3'
   | 'recovery.step.4'
   | 'recovery.step.5'
-  | 'sigterm.grace';
+  | 'sigterm.grace'
+  | 'memory.recall.ranked'
+  | 'memory.recall.checked'
+  | 'memory.forget.key_removed';
 
-// Which work reached a fault point: a task or an action by ID, recovery, or a runner pool.
+// Which work reached a fault point: a task or an action by ID, recovery, a runner pool, or a memory
+// item.
 export interface FaultPointContext {
-  readonly kind: LeaseKind | 'recovery' | 'pool';
+  readonly kind: LeaseKind | 'recovery' | 'pool' | 'memory';
   readonly id: string | null;
 }
 

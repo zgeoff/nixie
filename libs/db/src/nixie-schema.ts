@@ -2,6 +2,7 @@ import { actionsMigration } from './actions-migration';
 import { apiMigration } from './api-migration';
 import { definitionsMigration } from './definitions-migration';
 import { eventLogMigration } from './event-log-migration';
+import { memoryMigration } from './memory-migration';
 import { sandboxesMigration } from './sandboxes-migration';
 import { tasksMigration } from './tasks-migration';
 import type { BuildSchema } from './types';
@@ -17,6 +18,7 @@ export const nixieSchema: BuildSchema = {
     tasksMigration,
     actionsMigration,
     apiMigration,
+    memoryMigration,
   ],
   oldestReader: 0,
 };

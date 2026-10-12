@@ -90,9 +90,10 @@ The data directory sits on a local volume and holds two SQLite files:
 - **`nixie.db`** holds the event log, the projections that fold it into tables, the definitions in
   force, and the state that lives outside the log: the leases runners hold, the writer epoch and the
   schema version. Before a release migrates it, nixie writes a copy of it beside it.
-- **`keys.db`** is the key store. It holds one key per record that has free text, wrapped by the
-  deployment key, so a backup of `nixie.db` holds only ciphertext, and deleting a key forgets that
-  record's text in every copy ([erasable fields](./core/erasable-fields.md)).
+- **`keys.db`** is the key store. It holds one key per record that has free text and one per memory
+  item, each wrapped by the deployment key, so a backup of `nixie.db` holds only ciphertext, and
+  deleting a key forgets that record's or that item's text in every copy
+  ([erasable fields](./core/erasable-fields.md), [the memory store](./memory/store.md)).
 
 Every fact nixie keeps is a record first. A projection, such as the tasks table or the actions
 table, changes in the same transaction as the record that changes it, and a rebuild from the first

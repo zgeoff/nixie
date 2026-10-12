@@ -16,10 +16,13 @@ key wraps it with AES-KW before it reaches the key store, so the key store alone
 The record's fields are encrypted with the key ID bound in as additional data, so a ciphertext
 copied onto another record fails to decrypt. A record with no free text gets no key.
 
-The payload never holds free text, and no projection reads the erasable fields. A projection rebuilt
-after a forget therefore gives the same rows as before, and nothing outside the erasable fields
-keeps a copy of the text. The database holds no full-text index over erasable fields for the same
-reason: an index would keep the plaintext after its key is gone.
+The payload never holds free text, and no projection reads the erasable fields. One kind of value in
+a payload is ciphertext and not free text: a memory version's text, sealed under its item's key,
+which the [memory store](../memory/store.md#items-and-versions) folds into its versions table. A
+forget destroys that key, so the payload's copy is unreadable with every other copy. A projection
+rebuilt after a forget therefore gives the same rows as before, and nothing outside the erasable
+fields keeps a copy of the text. The database holds no full-text index over erasable fields for the
+same reason: an index would keep the plaintext after its key is gone.
 
 ## The key store
 
