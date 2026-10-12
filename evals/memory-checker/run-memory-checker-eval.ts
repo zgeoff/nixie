@@ -139,6 +139,11 @@ function makeLoggedInQuery(signal: AbortSignal): typeof query {
       },
       { once: true },
     );
+
+    // a timeout that fired before the query started finds no listener, so the query closes here
+    if (signal.aborted) {
+      session.close();
+    }
     return session;
   };
 }

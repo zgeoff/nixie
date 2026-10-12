@@ -27,6 +27,8 @@ export async function runSandboxCheck(check: SandboxCheck): Promise<unknown> {
 
   check.signal.addEventListener('abort', stopGuest, { once: true });
   try {
+    // a timeout that fired while the guest started finds no listener, so the guest stops here
+    check.signal.throwIfAborted();
     await stream.send(new TextEncoder().encode(JSON.stringify(check.request)));
     return await readCheckOutput(stream.messages);
   } finally {
