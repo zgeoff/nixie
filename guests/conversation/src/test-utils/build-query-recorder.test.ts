@@ -27,7 +27,7 @@ async function setupTest() {
 
   // the turn holds in note_wait, then ends at a text reply once the call returns
   model.addReplies({ toolUse: { name: 'mcp__nixie__note_wait', input: {} } }, { text: 'Noted.' });
-  stack.adopt(
+  void stack.adopt(
     runTurn(buildMockTurnFrame({ profile: { baseURL: model.url } }), {
       // the guest's own environment: its home, its path, and the placeholder the grant replaces
       env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },

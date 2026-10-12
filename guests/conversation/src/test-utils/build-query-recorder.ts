@@ -53,6 +53,7 @@ export function buildQueryRecorder(): QueryRecorder {
   };
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the SDK's message types have no readonly form
 function findQueuedUUID(message: SDKMessage): string | null {
   const lifecycle = message as { type: string; state?: unknown; command_uuid?: unknown };
 
