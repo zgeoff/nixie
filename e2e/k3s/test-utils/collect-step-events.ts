@@ -10,6 +10,10 @@ export interface ReceivedEvent {
   readonly lagMs: number;
 }
 
+type EventStream = AsyncIterator<{ readonly record: StreamedRecord }>;
+
+type Events = readonly ReceivedEvent[];
+
 const stepEnds: ReadonlySet<string> = new Set([
   'task.step_committed',
   'task.step_errored',
@@ -18,10 +22,8 @@ const stepEnds: ReadonlySet<string> = new Set([
 
 // Reads a live stream through the end of the next step, and notes when each record arrived. The
 // stream stays open for the caller to end.
-export async function collectStepEvents(
-  stream: AsyncIterator<{ readonly record: StreamedRecord }>,
-  now: () => number,
-): Promise<readonly ReceivedEvent[]> {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- an iterator has no readonly form
+export async function collectStepEvents(stream: EventStream, now: () => number): Promise<Events> {
   const received: ReceivedEvent[] = [];
 
   for (;;) {

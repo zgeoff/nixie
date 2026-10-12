@@ -1,6 +1,8 @@
 export interface WatchedFetchOptions {
   // How long an event stream may go without a byte before the client treats it as dead.
   readonly idleMs: number;
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
   readonly fetch?: (request: Request, init?: RequestInit) => Promise<Response>;
 }
 
@@ -10,6 +12,7 @@ export interface WatchedFetchOptions {
 export function makeWatchedFetch(options: WatchedFetchOptions) {
   const send = options.fetch ?? ((request, init) => fetch(request, init));
 
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
   return async (request: Request, init?: RequestInit): Promise<Response> => {
     const response = await send(request, init);
 
@@ -28,12 +31,14 @@ export function makeWatchedFetch(options: WatchedFetchOptions) {
   };
 }
 
+type Bytes = ReadableStream<Uint8Array>;
+
 // Passes the body through, and fails it once no chunk arrives within the idle period.
-function startBodyWatch(
-  body: ReadableStream<Uint8Array>,
-  idleMs: number,
-): ReadableStream<Uint8Array> {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream has no readonly form
+function startBodyWatch(body: Bytes, idleMs: number): Bytes {
   const watch: { timer: ReturnType<typeof setTimeout> | undefined } = { timer: undefined };
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream controller has no readonly form
   const resetIdleTimer = (controller: TransformStreamDefaultController<Uint8Array>): void => {
     clearTimeout(watch.timer);
     watch.timer = setTimeout(() => {
