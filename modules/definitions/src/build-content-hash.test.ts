@@ -2,6 +2,25 @@ import { expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { buildContentHash } from './build-content-hash';
 
+test('it hashes a snapshot of two files to its frozen value', () => {
+  const hash = buildContentHash(
+    new Map([
+      ['persona.md', new TextEncoder().encode('# Persona\n')],
+      ['rules/rule-0.yaml', new TextEncoder().encode('id: rule-0\n')],
+    ]),
+  );
+
+  expect(hash).toMatchInlineSnapshot(
+    `"915751679a423e22c60c69120eb40b5b78ca659889dd89c0a87669a85396bfbf"`,
+  );
+});
+
+test('it gives the same hash for the same files', () => {
+  const files = new Map([['persona.md', new TextEncoder().encode('# Persona\n')]]);
+
+  expect(buildContentHash(files)).toBe(buildContentHash(files));
+});
+
 test('it gives the same hash for the same files in any order', () => {
   const persona = new TextEncoder().encode('# Persona\n');
   const rule = new TextEncoder().encode('id: rule-0\n');
@@ -32,10 +51,10 @@ test('it hashes the version line, then each path with its length and its own has
   );
 });
 
-test('it hashes an empty snapshot as the version line alone', () => {
-  const versionLine = createHash('sha256').update('nixie-definitions-v1\n').digest('hex');
-
-  expect(buildContentHash(new Map())).toBe(versionLine);
+test('it hashes an empty snapshot to its frozen value', () => {
+  expect(buildContentHash(new Map())).toMatchInlineSnapshot(
+    `"86a17a94e2d0e243516b49c2570850f40fbccbc82171beccad12f364c667059e"`,
+  );
 });
 
 test('it gives a different hash when one byte of a file changes', () => {

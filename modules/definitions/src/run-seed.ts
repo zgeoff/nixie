@@ -1,6 +1,7 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { findDefinitionsInForce } from './find-definitions-in-force';
 import { parseDefinitions } from './parse-definitions';
@@ -170,9 +171,8 @@ async function writeSeedRecord(
     },
   ]);
 
-  if (record === undefined) {
-    throw new Error('the log wrote no definitions_seeded record');
-  }
+  // the log writes one record for each input
+  invariant(record);
   return record;
 }
 

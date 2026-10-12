@@ -1,15 +1,24 @@
 import { expect, test } from 'bun:test';
+import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import { renderInboxMessage } from './render-inbox-message';
-import { buildMockLogRecord } from './test-utils/build-mock-log-record';
 
 test('it renders your message as you wrote it', () => {
-  expect(renderInboxMessage(buildMockLogRecord())).toBe('Buy milk.');
+  expect(
+    renderInboxMessage(
+      buildMockLogRecord({
+        kind: 'owner_message',
+        erasable: { status: 'readable', fields: { text: 'Buy milk.' } },
+      }),
+    ),
+  ).toBe('Buy milk.');
 });
 
 test('it renders a note in place of a message whose text was forgotten', () => {
-  expect(renderInboxMessage(buildMockLogRecord({ erasable: { status: 'shredded' } }))).toBe(
-    '[a message you sent, since forgotten]',
-  );
+  expect(
+    renderInboxMessage(
+      buildMockLogRecord({ kind: 'owner_message', erasable: { status: 'shredded' } }),
+    ),
+  ).toBe('[a message you sent, since forgotten]');
 });
 
 test('it renders a fired timer', () => {

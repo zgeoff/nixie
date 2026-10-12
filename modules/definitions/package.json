@@ -12,6 +12,7 @@
   "dependencies": {
     "@heynixie/log": "workspace:*",
     "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
     "zod": "catalog:"
   }
 }

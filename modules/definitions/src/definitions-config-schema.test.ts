@@ -18,7 +18,10 @@ test('it takes the probe interval the file names', () => {
     probe_interval_ms: 60_000,
   });
 
-  expect(result.data?.probeIntervalMs).toBe(60_000);
+  expect(result.data).toStrictEqual({
+    source: { kind: 'path', path: '/etc/nixie/definitions' },
+    probeIntervalMs: 60_000,
+  });
 });
 
 test('it refuses a source kind that no slice has built', () => {
@@ -36,6 +39,7 @@ test('it refuses an unknown key', () => {
   });
 
   expect(result.error?.issues).toPartiallyContain({
+    path: [],
     code: 'unrecognized_keys',
     keys: ['probe_intervall_ms'],
   });
