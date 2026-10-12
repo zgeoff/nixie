@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
 import { deriveModelSecret } from './derive-model-secret';
+import { buildMockModelProfile } from './test-utils/build-mock-model-profile';
 
-test('it derives a secret for the profile host and header, named by the profile', () => {
+test('it derives the frozen secret for a profile host and header, named by the profile', () => {
   const secret = deriveModelSecret({
     profile: {
       id: 'chat',
@@ -16,29 +17,27 @@ test('it derives a secret for the profile host and header, named by the profile'
     credential: 'not-a-real-token',
   });
 
-  expect(secret).toStrictEqual({
-    name: expect.toSatisfy((name: string) => /^model-chat-[\da-f]{16}$/u.test(name)),
-    value: 'not-a-real-token',
-    host: 'gateway.example',
-    header: 'bearer',
-  });
+  expect(secret).toMatchInlineSnapshot(`
+    {
+      "header": "bearer",
+      "host": "gateway.example",
+      "name": "model-chat-db9f864fa9852890",
+      "value": "not-a-real-token",
+    }
+  `);
 });
 
-test('it gives a changed credential a new name and the same credential the same one', () => {
-  const profile = {
-    id: 'chat',
-    baseURL: 'https://api.anthropic.com',
-    credential: 'deployment:anthropic',
-    authHeader: 'x-api-key',
-    model: 'claude-test-1',
-    effort: 'medium',
-    providerPin: null,
-    prices: null,
-  } as const;
+test('it derives the same secret for the same profile and credential', () => {
+  const resolved = { profile: buildMockModelProfile(), credential: 'key-one' };
+
+  expect(deriveModelSecret(resolved)).toStrictEqual(deriveModelSecret(resolved));
+});
+
+test('it gives a changed credential a new name', () => {
+  const profile = buildMockModelProfile();
+
   const first = deriveModelSecret({ profile, credential: 'key-one' });
-  const again = deriveModelSecret({ profile, credential: 'key-one' });
   const rotated = deriveModelSecret({ profile, credential: 'key-two' });
 
-  expect(again.name).toBe(first.name);
   expect(rotated.name).not.toBe(first.name);
 });

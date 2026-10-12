@@ -105,10 +105,14 @@ test('it gives definitions with docs and a broken file beside them the same cont
 
   const plain = join(ctx.dir, 'plain');
 
-  await mkdir(plain);
-  await writeFile(join(plain, 'persona.md'), '# Persona\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await writeNonDefinitions(ctx.root, plain);
+  await Promise.all([
+    Bun.write(join(plain, 'persona.md'), '# Persona\n'),
+    Bun.write(join(ctx.root, 'persona.md'), '# Persona\n'),
+    Bun.write(join(ctx.root, 'readme.md'), '# Definitions\n'),
+    Bun.write(join(ctx.root, 'docs', 'readme.md'), '# Docs\n'),
+    Bun.write(join(ctx.root, 'notes', 'bad.json'), '{ not json'),
+  ]);
+  await symlink(plain, join(ctx.root, 'docs', 'outside'));
 
   const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
   const without = await createPathSource({ dir: plain }).snapshot();
@@ -278,13 +282,3 @@ test('it gives the same directory written with a trailing slash the same source 
 
   expect(slashed.id).toBe(plain.id);
 });
-
-// a readme, docs with a symlink that leaves the root, and a file that fails to parse
-async function writeNonDefinitions(root: string, outside: string): Promise<void> {
-  await writeFile(join(root, 'readme.md'), '# Definitions\n');
-  await mkdir(join(root, 'docs'));
-  await writeFile(join(root, 'docs', 'readme.md'), '# Docs\n');
-  await symlink(outside, join(root, 'docs', 'outside'));
-  await mkdir(join(root, 'notes'));
-  await writeFile(join(root, 'notes', 'bad.json'), '{ not json');
-}

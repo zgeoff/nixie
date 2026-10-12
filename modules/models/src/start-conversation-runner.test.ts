@@ -9,7 +9,7 @@ import { readRecordsByKind } from './test-utils/read-records-by-kind';
 import { runNextStep } from './test-utils/run-next-step';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
-// the conversation task, the stub sandboxes and tool endpoint, and two model profiles
+// the conversation task, and the stub sandboxes and tool endpoint
 async function setupTest() {
   const tasks = await startTestTasks();
   const sandboxes = buildStubSandboxes();
@@ -21,9 +21,6 @@ async function setupTest() {
     ...tasks,
     sandboxes,
     runs: tools.runs,
-
-    // boot data: the runner cannot start without a profile for the conversation role
-    config: buildMockModelsConfig(),
     startRunner: (models: ReturnType<typeof buildMockModelsConfig>) =>
       startConversationRunner({
         context: tasks.context,
@@ -56,7 +53,9 @@ async function setupTest() {
 
 test('it records each reply with the model and the profile in force, never what the model claims', async () => {
   const ctx = await setupTest();
-  const runner = await ctx.startRunner(ctx.config);
+  const runner = await ctx.startRunner(
+    buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
+  );
 
   ctx.sandboxes.setGuestScript(() => [
     {
@@ -97,15 +96,27 @@ test('it records each reply with the model and the profile in force, never what 
 
 test('it records the new model on the next reply once the conversation role points at another profile', async () => {
   const ctx = await setupTest();
-  const before = await ctx.startRunner(ctx.config);
+  const before = await ctx.startRunner(
+    buildMockModelsConfig({
+      profiles: {
+        'chat-direct': { model: 'claude-test-1' },
+        'chat-aggregator': { model: 'glm-5.3' },
+      },
+    }),
+  );
 
   await ctx.writeMessage('Hi.');
   await ctx.runNextStep(before);
 
-  const after = await ctx.startRunner({
-    ...ctx.config,
-    roles: { conversation: 'chat-aggregator' },
-  });
+  const after = await ctx.startRunner(
+    buildMockModelsConfig({
+      profiles: {
+        'chat-direct': { model: 'claude-test-1' },
+        'chat-aggregator': { model: 'glm-5.3' },
+      },
+      roles: { conversation: 'chat-aggregator' },
+    }),
+  );
 
   await ctx.writeMessage('Hi again.');
   await ctx.runNextStep(after);
@@ -124,7 +135,9 @@ test('it records the new model on the next reply once the conversation role poin
 
 test('it records the model and the profile on the turn end and on every tool call', async () => {
   const ctx = await setupTest();
-  const runner = await ctx.startRunner(ctx.config);
+  const runner = await ctx.startRunner(
+    buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
+  );
 
   ctx.sandboxes.setGuestScript(() => [
     {
@@ -167,7 +180,7 @@ test('it records the model and the profile on the turn end and on every tool cal
 
 test('it commits the session boundary and resumes the next turn at it', async () => {
   const ctx = await setupTest();
-  const runner = await ctx.startRunner(ctx.config);
+  const runner = await ctx.startRunner(buildMockModelsConfig());
 
   ctx.sandboxes.setGuestScript(() => [
     {
@@ -187,7 +200,10 @@ test('it commits the session boundary and resumes the next turn at it', async ()
   await ctx.writeMessage('What was the word?');
   await ctx.runNextStep(runner);
 
-  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select('session_boundary')
+    .executeTakeFirstOrThrow();
 
   expect(task.session_boundary).toBe(
     '{"sessionID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001","messageID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002"}',
@@ -203,7 +219,7 @@ test('it commits the session boundary and resumes the next turn at it', async ()
 
 test('it sends each inbox record with its sequence as the message uuid and acknowledges what the model read', async () => {
   const ctx = await setupTest();
-  const runner = await ctx.startRunner(ctx.config);
+  const runner = await ctx.startRunner(buildMockModelsConfig());
 
   ctx.sandboxes.setGuestScript((turn) => [
     { type: 'read', uuids: [turn.input[0]?.uuid ?? ''] },
@@ -222,18 +238,23 @@ test('it sends each inbox record with its sequence as the message uuid and ackno
 
   await ctx.runNextStep(runner);
 
-  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'read_cursor'])
+    .executeTakeFirstOrThrow();
 
   expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
     { uuid: '6e697869-0000-8000-8000-000000000002', text: 'First.' },
     { uuid: '6e697869-0000-8000-8000-000000000003', text: 'Second.' },
   ]);
-  expect(task).toMatchObject({ state: 'ready', read_cursor: 2 });
+  expect(task).toStrictEqual({ state: 'ready', read_cursor: 2 });
 });
 
 test('it starts a fresh session and records the reset when the guest has lost the session', async () => {
   const ctx = await setupTest();
-  const runner = await ctx.startRunner(ctx.config);
+  const runner = await ctx.startRunner(
+    buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
+  );
 
   ctx.sandboxes.setGuestScript((turn) =>
     turn.resume === null
@@ -277,7 +298,7 @@ test('it starts a fresh session and records the reset when the guest has lost th
 
 test('it fails the step and records no reply when nixie tool server is not connected', async () => {
   const ctx = await setupTest();
-  const runner = await ctx.startRunner(ctx.config);
+  const runner = await ctx.startRunner(buildMockModelsConfig());
 
   ctx.sandboxes.setGuestScript(() => [
     { type: 'assistant', messageID: crypto.randomUUID(), text: 'Made up.', toolUses: [] },
@@ -286,17 +307,20 @@ test('it fails the step and records no reply when nixie tool server is not conne
   await ctx.writeMessage('Hi.');
   await ctx.runNextStep(runner);
 
-  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'step_errors', 'read_cursor'])
+    .executeTakeFirstOrThrow();
 
   const records = await ctx.readKinds('model.reply');
 
   expect(records).toStrictEqual([]);
-  expect(task).toMatchObject({ state: 'ready', step_errors: 1, read_cursor: 0 });
+  expect(task).toStrictEqual({ state: 'ready', step_errors: 1, read_cursor: 0 });
 });
 
 test('it passes a message that lands during the turn into it and acknowledges it', async () => {
   const ctx = await setupTest();
-  const runner = await ctx.startRunner(ctx.config);
+  const runner = await ctx.startRunner(buildMockModelsConfig());
   const live = { sequence: 0 };
 
   ctx.sandboxes.setGuestScript(async (turn, guest) => {
@@ -319,15 +343,24 @@ test('it passes a message that lands during the turn into it and acknowledges it
   await ctx.writeMessage('Buy milk.');
   await ctx.runNextStep(runner);
 
-  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select(['state', 'read_cursor'])
+    .executeTakeFirstOrThrow();
 
-  expect(task).toMatchObject({ state: 'waiting', read_cursor: live.sequence });
+  expect(task).toStrictEqual({ state: 'waiting', read_cursor: live.sequence });
 });
 
 test('it stores the profile credential and grants it to the conversation sandbox alone', async () => {
   const ctx = await setupTest();
 
-  await ctx.startRunner(ctx.config);
+  await ctx.startRunner(
+    buildMockModelsConfig({
+      profiles: {
+        'chat-direct': { baseURL: 'https://api.anthropic.com', authHeader: 'x-api-key' },
+      },
+    }),
+  );
 
   expect(ctx.sandboxes.secrets).toStrictEqual([
     {
@@ -356,13 +389,13 @@ test('it stores the profile credential and grants it to the conversation sandbox
 
 test('it opens a turn with at most the batch limit of inbox records and leaves the rest for the next step', async () => {
   const ctx = await setupTest();
-  const runner = await ctx.startRunner(ctx.config);
+  const runner = await ctx.startRunner(buildMockModelsConfig());
 
   await Promise.all(Array.from({ length: 66 }, (_, index) => ctx.writeMessage(`Note ${index}.`)));
   await ctx.runNextStep(runner);
   await ctx.runNextStep(runner);
 
-  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+  const task = await ctx.db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
 
   expect(ctx.sandboxes.turns.map((turn) => turn.input.length)).toStrictEqual([64, 2]);
   expect(task.state).toBe('waiting');
@@ -370,7 +403,7 @@ test('it opens a turn with at most the batch limit of inbox records and leaves t
 
 test('it keeps the session boundary and runs no turn for a step with nothing unread', async () => {
   const ctx = await setupTest();
-  const runner = await ctx.startRunner(ctx.config);
+  const runner = await ctx.startRunner(buildMockModelsConfig());
 
   const result = await runner.runStep({
     taskID: 'conversation',
@@ -399,10 +432,16 @@ test('it keeps the session boundary and runs no turn for a step with nothing unr
 
 test('it keeps the conversation sandbox across restarts on one profile and replaces it on another', async () => {
   const ctx = await setupTest();
+  const profiles = {
+    'chat-direct': { baseURL: 'https://api.anthropic.com' },
+    'chat-aggregator': { baseURL: 'https://gateway.example/anthropic' },
+  };
 
-  await ctx.startRunner(ctx.config);
-  await ctx.startRunner(ctx.config);
-  await ctx.startRunner({ ...ctx.config, roles: { conversation: 'chat-aggregator' } });
+  await ctx.startRunner(buildMockModelsConfig({ profiles }));
+  await ctx.startRunner(buildMockModelsConfig({ profiles }));
+  await ctx.startRunner(
+    buildMockModelsConfig({ profiles, roles: { conversation: 'chat-aggregator' } }),
+  );
 
   expect(ctx.sandboxes.created.map((spec) => spec.grants[0]?.host)).toStrictEqual([
     'api.anthropic.com',

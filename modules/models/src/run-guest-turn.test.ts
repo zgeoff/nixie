@@ -1,28 +1,18 @@
 import { expect, test } from 'bun:test';
+import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import type { InboxMessage } from '@heynixie/wire';
 import { runGuestTurn } from './run-guest-turn';
 import { buildStubSandboxes } from './test-utils/build-stub-sandboxes';
 
-// a conversation sandbox on the stub adapter
-async function setupTest() {
-  const stub = buildStubSandboxes();
-  const sandbox = await stub.adapter.create({
-    kind: 'conversation',
-    image: 'conversation',
-    owner: 'conversation',
-    egress: { kind: 'none' },
-    grants: [],
-    toolRoute: true,
-    limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
-  });
-
-  return { stub, sandbox };
+function setupTest() {
+  return { stub: buildStubSandboxes() };
 }
 
 test('it collects the frames the guest sent for the turn', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
   const turn = await runGuestTurn({
-    sandbox: ctx.sandbox,
+    sandbox,
     command: { argv: ['guest'], env: {} },
     turn: {
       type: 'turn',
@@ -52,7 +42,8 @@ test('it collects the frames the guest sent for the turn', async () => {
 });
 
 test('it drops the reads and replies a guest sent after its last result when it dies before the next', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
   const replyID = '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01';
 
@@ -72,7 +63,7 @@ test('it drops the reads and replies a guest sent after its last result when it 
   ]);
 
   const turn = await runGuestTurn({
-    sandbox: ctx.sandbox,
+    sandbox,
     command: { argv: ['guest'], env: {} },
     turn: {
       type: 'turn',
@@ -100,7 +91,8 @@ test('it drops the reads and replies a guest sent after its last result when it 
 });
 
 test('it passes each live message into the running turn', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
   const live: InboxMessage[] = [{ uuid: '6e697869-0000-8000-8000-000000000003', text: 'And?' }];
 
   ctx.stub.setGuestScript(async (_turn, guest) => {
@@ -110,7 +102,7 @@ test('it passes each live message into the running turn', async () => {
   });
 
   const turn = await runGuestTurn({
-    sandbox: ctx.sandbox,
+    sandbox,
     command: { argv: ['guest'], env: {} },
     turn: {
       type: 'turn',
@@ -133,13 +125,14 @@ test('it passes each live message into the running turn', async () => {
 });
 
 test('it throws when the guest exits before it ends or fails its turn', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
   ctx.stub.setGuestScript(() => []);
 
   expect(
     runGuestTurn({
-      sandbox: ctx.sandbox,
+      sandbox,
       command: { argv: ['guest'], env: {} },
       turn: {
         type: 'turn',
@@ -163,7 +156,8 @@ test('it throws when the guest exits before it ends or fails its turn', async ()
 });
 
 test('it stops the guest when the step signal aborts', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
   const lease = new AbortController();
 
   ctx.stub.setGuestScript(async (_turn, guest) => {
@@ -174,7 +168,7 @@ test('it stops the guest when the step signal aborts', async () => {
 
   expect(
     runGuestTurn({
-      sandbox: ctx.sandbox,
+      sandbox,
       command: { argv: ['guest'], env: {} },
       turn: {
         type: 'turn',

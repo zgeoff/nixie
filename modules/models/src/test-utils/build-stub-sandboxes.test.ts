@@ -1,31 +1,19 @@
 import { expect, test } from 'bun:test';
-import type { GuestFrame } from '@heynixie/wire';
+import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { decodeTurnFrame, encodeTurnFrame, guestFrameSchema } from '@heynixie/wire';
 import { buildStubSandboxes } from './build-stub-sandboxes';
 
-// a conversation sandbox on the stub adapter, with its guest started
-async function setupTest() {
-  const stub = buildStubSandboxes();
-  const sandbox = await stub.adapter.create({
-    kind: 'conversation',
-    image: 'conversation',
-    owner: 'conversation',
-    egress: { kind: 'none' },
-    grants: [],
-    toolRoute: true,
-    limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
-  });
-  const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
-
-  return { stub, sandbox, stream };
+function setupTest() {
+  return { stub: buildStubSandboxes() };
 }
 
 test('it answers a turn frame with the script frames, then exits', async () => {
-  const ctx = await setupTest();
-  const frames: GuestFrame[] = [];
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+  const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
 
   ctx.stub.setGuestScript((turn) => [{ type: 'read', uuids: [turn.input[0]?.uuid ?? ''] }]);
-  await ctx.stream.send(
+  await stream.send(
     encodeTurnFrame({
       type: 'turn',
       profile: {
@@ -40,31 +28,33 @@ test('it answers a turn frame with the script frames, then exits', async () => {
       input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
     }),
   );
-  for await (const message of ctx.stream.messages) {
-    frames.push(decodeTurnFrame(guestFrameSchema, message));
-  }
+  const messages = await Array.fromAsync(stream.messages);
+  const exit = await stream.exit;
 
-  const exit = await ctx.stream.exit;
-
-  expect(frames).toStrictEqual([{ type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] }]);
+  expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toStrictEqual([
+    { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] },
+  ]);
   expect(exit).toMatchObject({ code: 0, signal: null });
 });
 
 test('it lists a sandbox by its owner until it is destroyed', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' }),
+  );
   const listed = await ctx.stub.adapter.list('conversation');
 
-  await ctx.sandbox.destroy();
+  await sandbox.destroy();
 
   const after = await ctx.stub.adapter.list('conversation');
 
-  expect(listed).toStrictEqual([ctx.sandbox]);
+  expect(listed).toStrictEqual([sandbox]);
   expect(after).toStrictEqual([]);
-  expect(ctx.stub.destroyed).toStrictEqual([ctx.sandbox.id]);
+  expect(ctx.stub.destroyed).toStrictEqual([sandbox.id]);
 });
 
 test('it records each secret it is given', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
   const secret = {
     name: 'model-chat-1',
     value: 'not-a-real-key',
