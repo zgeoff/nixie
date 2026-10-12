@@ -87,7 +87,7 @@ test('it seeds again on a new probe token', async () => {
 
 test('it reports a probe that throws and keeps polling', async () => {
   const ctx = setupTest();
-  const onError = mock();
+  const onError = mock<(error: unknown) => void>();
   const poll = startDefinitionsPoll({
     probe: () => Promise.reject(new Error('the definitions directory is gone')),
     seed: () => Promise.resolve(),
