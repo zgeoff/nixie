@@ -7,9 +7,9 @@ export interface ReplyTextProps {
   readonly text: string;
 }
 
-// A reply rendered as Markdown. A reply can quote fetched web text, so the renderer drops raw HTML,
-// a link with an unsafe protocol shows as plain text, and every other link opens in a new tab with
-// no opener and no referrer.
+// A reply rendered as Markdown. A reply can quote fetched web text, so raw HTML never becomes
+// markup, a link with an unsafe protocol shows as plain text, and every other link opens in a new
+// tab with no opener and no referrer.
 export function ReplyText(props: ReplyTextProps): ReactNode {
   return (
     <div className={reply}>

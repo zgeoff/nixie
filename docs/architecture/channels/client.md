@@ -90,9 +90,10 @@ records, and each call with its input and its result. A long value shows its sta
 on demand, because a fetched page's text runs to many kilobytes.
 
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
-web text, so the renderer drops raw HTML, shows a link with an unsafe protocol such as `javascript:`
-as plain text, and shows an image as a link to it, because a loaded image would tell the page's host
-that the user read the reply. Every link opens in a new tab with no opener and no referrer.
+web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol
+such as `javascript:` as plain text, and shows an image as a link to it, because a loaded image
+would tell the page's host that the user read the reply. Every link opens in a new tab with no
+opener and no referrer.
 
 The view fills the window. The list scrolls in a reversed column, which starts at its end and stays
 there as records arrive unless the user scrolled up to read, and the message box stays in view below
