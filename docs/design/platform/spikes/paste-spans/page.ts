@@ -79,11 +79,12 @@ document.querySelector('#copy')?.addEventListener('click', () => {
 
 function writeEntry(entry: LogEntry): void {
   log.push(entry);
+  const sequence = log.length;
   if (view) {
     view.textContent = log.map((line) => JSON.stringify(line)).join('\n');
   }
   if (location.protocol === 'http:') {
-    void fetch('/log', { body: JSON.stringify({ case: caseName, ...entry }), method: 'POST' });
+    void fetch('/log', { body: JSON.stringify({ case: caseName, sequence, ...entry }), method: 'POST' });
   }
 }
 

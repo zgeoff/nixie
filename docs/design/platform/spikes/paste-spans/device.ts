@@ -12,9 +12,14 @@ if (logPath === undefined) {
 
 const built = await Bun.build({ entrypoints: [`${import.meta.dir}/page.ts`], target: 'browser' });
 const script = await built.outputs[0]?.text();
-const html = `<!doctype html><meta name="viewport" content="width=device-width">
-<button id="copy">copy</button><textarea rows="4" style="width:95%;font-size:20px"></textarea>
-<pre id="log" style="font-size:10px;white-space:pre-wrap"></pre><script>${script}</script>`;
+// The page turns off text autosizing, so the layout holds still as the log grows and a tap at a
+// fixed point keeps landing in the text box.
+const html = `<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1">
+<body style="text-size-adjust:none;-webkit-text-size-adjust:none">
+<button id="copy" style="font-size:20px">copy</button>
+<textarea rows="4" style="width:95%;font-size:20px"></textarea>
+<pre id="log" style="font-size:10px;white-space:pre-wrap;user-select:none"></pre>
+<script>${script}</script></body>`;
 
 Bun.serve({
   hostname: '0.0.0.0',
