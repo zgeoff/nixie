@@ -13,16 +13,19 @@ export type StageResult =
   | { readonly status: 'refused'; readonly reason: string };
 
 // The writer's staging area: the batch the open session stages into, and the writes it staged. One
-// batch is open at a time, because the writer runs one batch at a time.
+// batch is open at a time; opening one replaces any batch a lost step left open.
 export interface WriterStaging {
-  readonly open: (batch: StagingBatch) => void;
-
-  // closes the open batch and returns its writes in the order the session staged them
-  readonly close: () => readonly StagedWrite[];
+  readonly open: (batch: StagingBatch) => StagingHandle;
 
   // records an item a recall showed the session, at the version it showed
   readonly show: (itemID: string, version: number) => void;
   readonly stage: (write: StagedWriteRequest) => StageResult;
+}
+
+export interface StagingHandle {
+  // closes this batch, if it is still the open one, and returns its writes in the order the
+  // session staged them
+  readonly close: () => readonly StagedWrite[];
 }
 
 // A write as the session asks for it: a change names its item, and the host binds the version.
@@ -49,18 +52,22 @@ export function createWriterStaging(): WriterStaging {
 
   return {
     open: (batch) => {
-      state.batch = {
+      const opened: OpenBatch = {
         sources: batch.sources,
         shown: new Map(batch.shown),
         writes: [],
         touched: new Set(),
       };
-    },
-    close: () => {
-      const writes = state.batch?.writes ?? [];
 
-      state.batch = null;
-      return writes;
+      state.batch = opened;
+      return {
+        close: () => {
+          if (state.batch === opened) {
+            state.batch = null;
+          }
+          return opened.writes;
+        },
+      };
     },
     show: (itemID, version) => {
       state.batch?.shown.set(itemID, version);

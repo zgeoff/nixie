@@ -174,3 +174,47 @@ test('it streams the records written after the sequence a client follows from', 
 
   expect(first.value).toMatchObject({ record: { message: { text: 'new' }, sequence: 2 } });
 });
+
+test('it reports a memory writer caught up with the newest record', async () => {
+  const ctx = setupTest();
+  const session = await store.sessions.create({});
+  const client = ctx.buildClient({
+    authorization: `Bearer ${session.token}`,
+    'x-nixie-client': 'web',
+  });
+
+  await store.records.create({ message: { text: 'first' } });
+  await store.records.create({ kind: 'assistant_message', message: { text: 'second' } });
+
+  const status = await client.memory.writerStatus();
+
+  expect(status).toStrictEqual({
+    backlog: 0,
+    batches: 0,
+    cursor: 2,
+    failures: 0,
+    isCatchingUp: false,
+    lastError: null,
+    retryAt: null,
+  });
+});
+
+test('it reports the memory writer cursor at the start of an empty log', async () => {
+  const ctx = setupTest();
+  const session = await store.sessions.create({});
+  const client = ctx.buildClient({
+    authorization: `Bearer ${session.token}`,
+    'x-nixie-client': 'web',
+  });
+
+  const status = await client.memory.writerStatus();
+
+  expect(status.cursor).toBe(0);
+});
+
+test('it refuses the memory writer status to a caller with no session', () => {
+  const ctx = setupTest();
+  const client = ctx.buildClient({ 'x-nixie-client': 'web' });
+
+  expect(client.memory.writerStatus()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});

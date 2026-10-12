@@ -1,4 +1,5 @@
 import { waitAtFaultPoint } from '@heynixie/tasks';
+import type { StagingHandle } from './create-writer-staging';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import { readShownItems } from './read-shown-items';
 import type { WriterBatch } from './read-writer-batch';
@@ -35,13 +36,12 @@ export async function runWriterExtraction(
     thread: memoryWriterTaskID,
   });
 
-  parts.staging.open({
+  const staged = parts.staging.open({
     sources: batch.sources,
     shown: new Map(shown.items.map((item) => [item.itemID, item.version])),
   });
-
   const prompt = renderWriterPrompt({ ...shown, messages: buildBatchMessages(batch) });
-  const session = await runSession(parts, { prompt, signal });
+  const session = await runSession(parts, { prompt, signal, staged });
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('writer.batch.extracted', { kind: 'task', id: memoryWriterTaskID });
@@ -64,9 +64,11 @@ function buildBatchMessages(batch: WriterBatch): readonly BatchMessage[] {
 interface SessionRequest {
   readonly prompt: string;
   readonly signal: AbortSignal;
+  readonly staged: StagingHandle;
 }
 
-// the staging closes whether the session ends or fails, so a failed batch leaves nothing staged
+// the batch closes whether the session ends or fails, so a failed batch leaves nothing staged, and
+// a step that lost its lease closes only its own batch, never a newer step's
 async function runSession(
   parts: WriterParts,
   session: SessionRequest,
@@ -78,9 +80,9 @@ async function runSession(
       signal: session.signal,
     });
 
-    return { writes: parts.staging.close(), usage };
+    return { writes: session.staged.close(), usage };
   } catch (error) {
-    parts.staging.close();
+    session.staged.close();
     throw error;
   }
 }

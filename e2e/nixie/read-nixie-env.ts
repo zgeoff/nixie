@@ -2,6 +2,9 @@ interface NixieEnv {
   readonly dataDir: string;
   readonly deploymentKey: string;
   readonly modelURL: string;
+
+  // the memory writer's own scripted model, or null when the crash test runs no writer
+  readonly writerModelURL: string | null;
   readonly providerURL: string;
 }
 
@@ -11,6 +14,7 @@ export function readNixieEnv(env: Readonly<Record<string, string | undefined>>):
     dataDir: requireValue(env, 'NIXIE_DATA_DIR'),
     deploymentKey: requireValue(env, 'NIXIE_TEST_DEPLOYMENT_KEY'),
     modelURL: requireValue(env, 'NIXIE_TEST_MODEL_URL'),
+    writerModelURL: env['NIXIE_TEST_WRITER_MODEL_URL'] ?? null,
     providerURL: requireValue(env, 'NIXIE_TEST_PROVIDER_URL'),
   };
 }

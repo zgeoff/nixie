@@ -103,12 +103,13 @@ interface TurnGroup {
 }
 
 // The batch's last record: whole turns, up to the batch size, and a turn that would take the batch
-// past its token budget starts the next batch. The first turn always goes in, however long.
+// past its token budget starts the next batch. The first turn always goes in, however long. A
+// catch-up batch stops at the sequence where memory started, so a live message gets its notice.
 function planBatchEnd(input: BatchPlanInput): number {
   const config = input.config;
   const taken = { owners: 0, tokens: 0, end: input.cursor };
 
-  for (const group of splitTurnGroups(input.messages)) {
+  for (const group of splitTurnGroups(collectBatchMessages(input))) {
     const isOverBudget = taken.owners > 0 && taken.tokens + group.tokens > config.batchTokens;
 
     if (group.hasOwner && (taken.owners >= config.batchMessages || isOverBudget)) {
@@ -119,6 +120,13 @@ function planBatchEnd(input: BatchPlanInput): number {
     taken.end = group.end;
   }
   return taken.end;
+}
+
+// the records the batch may take: a catch-up batch takes none past the start sequence
+function collectBatchMessages(input: BatchPlanInput): readonly PlannedMessage[] {
+  const isCatchUp = input.cursor < input.startSequence;
+
+  return input.messages.filter((message) => !isCatchUp || message.sequence <= input.startSequence);
 }
 
 function splitTurnGroups(messages: readonly PlannedMessage[]): readonly TurnGroup[] {
