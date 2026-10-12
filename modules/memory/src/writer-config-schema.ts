@@ -19,14 +19,14 @@ export const writerConfigSchema = z
   .transform((config): WriterConfig => ({
     batchMessages: config.batch_messages,
     batchTokens: config.batch_tokens,
-    idleMs: config.idle_minutes * 60_000,
-    maxAgeMs: config.max_age_minutes * 60_000,
+    idleMs: Math.round(config.idle_minutes * 60_000),
+    maxAgeMs: Math.round(config.max_age_minutes * 60_000),
     paceMs: Math.ceil(3_600_000 / config.batches_per_hour),
     itemListTokens: config.item_list_tokens,
     topItems: config.top_items,
     proposalCap: config.proposal_cap,
-    firstBackoffMs: config.first_backoff_seconds * 1000,
-    maxBackoffMs: config.max_backoff_minutes * 60_000,
+    firstBackoffMs: Math.max(1, Math.round(config.first_backoff_seconds * 1000)),
+    maxBackoffMs: Math.max(1, Math.round(config.max_backoff_minutes * 60_000)),
   }));
 
 export interface WriterConfig {

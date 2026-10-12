@@ -44,6 +44,17 @@ test('it turns a full configuration into the writer config', () => {
   });
 });
 
+test('it rounds each time to whole milliseconds, never below 1 ms for a backoff', () => {
+  const result = writerConfigSchema.safeParse({
+    idle_minutes: 0.00001,
+    max_age_minutes: 0.00001,
+    first_backoff_seconds: 0.0004,
+    max_backoff_minutes: 0.000001,
+  });
+
+  expect(result.data).toMatchObject({ idleMs: 1, maxAgeMs: 1, firstBackoffMs: 1, maxBackoffMs: 1 });
+});
+
 test('it rejects a top items count over 100', () => {
   const result = writerConfigSchema.safeParse({
     batch_messages: 6,

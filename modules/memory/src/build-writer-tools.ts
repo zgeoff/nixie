@@ -78,7 +78,7 @@ function buildRecallTool(
       });
 
       for (const item of result.items) {
-        staging.show(item.itemID, item.version);
+        staging.show(item.itemID, item.version, item.text);
       }
       return {
         status: 'ok',

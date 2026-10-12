@@ -74,9 +74,10 @@ test('it records where memory started once across two starts', async () => {
   expect(entries.filter((entry) => entry.record.kind === 'memory.writer_started')).toHaveLength(1);
 });
 
-test('it wakes the writer at start for the head of the log', async () => {
+test('it wakes the writer at start with no message, so an earlier message counts as due', async () => {
   const ctx = await setupTest();
-  const [message] = await writeRecords(ctx.log, [
+
+  await writeRecords(ctx.log, [
     {
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -92,10 +93,7 @@ test('it wakes the writer at start for the head of the log', async () => {
   const entries = await readRecords(ctx.log, { afterSequence: 0, thread: 'memory-writer' });
   const wakes = entries.filter((entry) => entry.record.kind === 'task.wake');
 
-  invariant(message);
-  expect(wakes.map((entry) => entry.record.payload)).toStrictEqual([
-    { messageSequence: message.sequence, at: 1_000_000 },
-  ]);
+  expect(wakes.map((entry) => entry.record.payload)).toStrictEqual([{ at: 1_000_000 }]);
 });
 
 test('it wakes the writer for each later message of yours and never for a reply', async () => {
@@ -136,7 +134,7 @@ test('it wakes the writer for each later message of yours and never for a reply'
 
   invariant(first && second);
   expect(wakes.map((entry) => entry.record.payload['messageSequence'])).toStrictEqual([
-    expect.toBeNumber(),
+    undefined,
     first.sequence,
     second.sequence,
   ]);

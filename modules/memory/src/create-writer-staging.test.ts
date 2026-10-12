@@ -79,7 +79,7 @@ test('it binds a change to an item a recall showed the session', () => {
     shown: new Map(),
   });
 
-  staging.show('item-bike', 5);
+  staging.show('item-bike', 5, 'The owner rides a red bike.');
   staging.stage({ op: 'retire', quote: 'I sold the bike', sourceSequence: 7, itemID: 'item-bike' });
 
   expect(staged.close()).toStrictEqual([
@@ -212,6 +212,18 @@ test('it refuses a write once the batch closes', () => {
   });
 
   expect(result).toStrictEqual({ status: 'refused', reason: 'no batch is open' });
+});
+
+test('it keeps the text of each item a recall showed the batch', () => {
+  const staging = createWriterStaging();
+  const staged = staging.open({
+    sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
+    shown: new Map(),
+  });
+
+  staging.show('item-bike', 5, 'The owner rides a red bike.');
+
+  expect(staged.readRecalledTexts()).toStrictEqual(new Set(['The owner rides a red bike.']));
 });
 
 test('it keeps a newer batch open when an older batch closes', () => {

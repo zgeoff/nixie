@@ -29,7 +29,7 @@ export async function startMemoryWriter(options: MemoryWriterOptions): Promise<M
 
   await createSystemTask(context, memoryWriterTaskID);
   await writeWriterStarted(context, head);
-  await writeWake(context, head);
+  await writeWake(context, {});
 
   const stopping = new AbortController();
   const watching = runMessageWakes(context, {
@@ -82,13 +82,19 @@ async function writeWriterStarted(context: TasksContext, head: number): Promise<
   });
 }
 
-async function writeWake(context: TasksContext, messageSequence: number): Promise<void> {
+// A wake for one of your messages records when it arrived. The wake at start names no message,
+// because a message from before the start has waited long enough already.
+interface WakeMessage {
+  readonly messageSequence?: number;
+}
+
+async function writeWake(context: TasksContext, message: WakeMessage): Promise<void> {
   await writeInboxRecords(context, [
     {
       kind: 'task.wake',
       definitions: context.definitions(),
       thread: memoryWriterTaskID,
-      payload: { messageSequence, at: context.clock.now() },
+      payload: { ...message, at: context.clock.now() },
     },
   ]);
 }
@@ -109,7 +115,7 @@ async function runMessageWakes(context: TasksContext, wakes: MessageWakes): Prom
       signal: wakes.signal,
     })) {
       if (entry.record.kind === 'owner_message') {
-        await writeWake(context, entry.record.sequence);
+        await writeWake(context, { messageSequence: entry.record.sequence });
       }
     }
   } catch (error) {

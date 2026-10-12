@@ -15,7 +15,7 @@ export interface WriterExtraction {
   // the session's token counts, or null when the batch needed no session
   readonly usage: WriterUsage | null;
 
-  // the current text of every item the session was first shown
+  // the current text of every item the session was shown, in its prompt or through a recall
   readonly shownTexts: ReadonlySet<string>;
 }
 
@@ -46,7 +46,12 @@ export async function runWriterExtraction(
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('writer.batch.extracted', { kind: 'task', id: memoryWriterTaskID });
   }
-  return { ...session, shownTexts: new Set(shown.items.map((item) => item.text)) };
+
+  // a recall during the session shows more items, and a repeat of any of them writes nothing
+  return {
+    ...session,
+    shownTexts: new Set([...shown.items.map((item) => item.text), ...staged.readRecalledTexts()]),
+  };
 }
 
 // each readable record, with your pasted spans marked

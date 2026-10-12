@@ -23,6 +23,11 @@ export async function runWriterStep(parts: WriterParts, input: StepInput): Promi
     if (error instanceof LeaseLostError || error instanceof StaleWriterError) {
       throw error;
     }
-    return { ...buildWriterFailure(parts, { row, now, error }), acknowledged };
+
+    // the backoff counts from the failure, so a slow batch still waits the whole delay
+    return {
+      ...buildWriterFailure(parts, { row, now: parts.context.clock.now(), error }),
+      acknowledged,
+    };
   }
 }

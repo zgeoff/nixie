@@ -17,8 +17,8 @@ type StageResult =
 export interface WriterStaging {
   readonly open: (batch: StagingBatch) => StagingHandle;
 
-  // records an item a recall showed the session, at the version it showed
-  readonly show: (itemID: string, version: number) => void;
+  // records an item a recall showed the session, at the version and with the text it showed
+  readonly show: (itemID: string, version: number, text: string) => void;
   readonly stage: (write: StagedWriteRequest) => StageResult;
 }
 
@@ -26,6 +26,9 @@ export interface StagingHandle {
   // closes this batch, if it is still the open one, and returns its writes in the order the
   // session staged them
   readonly close: () => readonly StagedWrite[];
+
+  // the text of every item a recall showed this batch's session
+  readonly readRecalledTexts: () => ReadonlySet<string>;
 }
 
 // A write as the session asks for it: a change names its item, and the host binds the version.
@@ -57,6 +60,7 @@ export function createWriterStaging(): WriterStaging {
         shown: new Map(batch.shown),
         writes: [],
         touched: new Set(),
+        recalledTexts: new Set(),
       };
 
       state.batch = opened;
@@ -67,10 +71,12 @@ export function createWriterStaging(): WriterStaging {
           }
           return opened.writes;
         },
+        readRecalledTexts: () => opened.recalledTexts,
       };
     },
-    show: (itemID, version) => {
+    show: (itemID, version, text) => {
       state.batch?.shown.set(itemID, version);
+      state.batch?.recalledTexts.add(text);
     },
     stage: (request) => {
       if (state.batch === null) {
@@ -86,6 +92,7 @@ interface OpenBatch {
   readonly shown: Map<string, number>;
   readonly writes: StagedWrite[];
   readonly touched: Set<string>;
+  readonly recalledTexts: Set<string>;
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the batch this stages into
