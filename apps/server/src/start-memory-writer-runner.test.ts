@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { readMemoryChangeNote } from '@heynixie/memory';
+import { writeInboxRecords } from '@heynixie/tasks';
 import { buildRememberReply } from './test-utils/build-remember-reply';
 import { removeMessageKeyAfter } from './test-utils/remove-message-key-after';
+import { startTestConversation } from './test-utils/start-test-conversation';
 import { startTestMemoryWriter } from './test-utils/start-test-memory-writer';
 import { startTestServer } from './test-utils/start-test-server';
 import { writeOwnerMessages } from './test-utils/write-owner-messages';
@@ -11,8 +14,49 @@ import { writeOwnerMessages } from './test-utils/write-owner-messages';
 async function setupTest() {
   const server = await startTestServer();
 
-  return { memory: await startTestMemoryWriter(server) };
+  return { server, memory: await startTestMemoryWriter(server) };
 }
+
+test('it carries the note of a live batch, cut to its cap, on the next conversation turn', async () => {
+  const ctx = await setupTest();
+  const conversation = await startTestConversation(ctx.server, {
+    context: ctx.memory.context,
+    readTurnNote: () => readMemoryChangeNote(ctx.memory.context.log, ctx.memory.store, 5),
+  });
+
+  await ctx.memory.start();
+
+  const [sequence] = await writeOwnerMessages(ctx.memory.context.log, [
+    'My pets are Ash, Birch, Cedar, Dune, Elm and Fern.',
+  ]);
+
+  ctx.memory.model.addReplies(
+    ...['Ash', 'Birch', 'Cedar', 'Dune', 'Elm', 'Fern'].map((name) =>
+      buildRememberReply({
+        text: `You have a pet called ${name}.`,
+        quote: name,
+        sourceID: sequence,
+      }),
+    ),
+    { text: 'Staged.' },
+    { text: 'Nothing to remember.' },
+  );
+  conversation.model.addReplies({ text: 'Hello.' });
+  await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
+  await writeInboxRecords(ctx.memory.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Hi.' },
+    },
+  ]);
+  await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
+
+  expect(JSON.stringify(conversation.model.requests.at(-1)?.body?.messages)).toMatch(
+    /(?<listed>- Remembered \[[^\]]+\]: You have a pet called \w+\.\\n){5}and 1 more\\n<\/memory-changes>\\n\\nHi\./u,
+  );
+}, 60_000);
 
 test('it ends a catch-up over a changed address with one active item that holds the new address', async () => {
   const ctx = await setupTest();
