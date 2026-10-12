@@ -230,6 +230,12 @@ interface TimeLimit {
 }
 
 async function waitOrTimeOut<T>(promise: Promise<T>, limit: TimeLimit): Promise<T> {
+  // a call already settled would win the race below, so a deadline that passed between calls fails
+  // here first
+  if (limit.deadline <= limit.clock.now()) {
+    throw new Error(limit.message);
+  }
+
   const settled = new AbortController();
 
   try {

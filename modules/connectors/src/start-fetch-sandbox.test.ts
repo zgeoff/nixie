@@ -314,6 +314,44 @@ test('it waits on a fetcher that sends no reply until the time limit passes', as
   expect(Bun.peek.status(pending)).toBe('pending');
 });
 
+test('it fails a fetch whose time limit passed before its fetcher exited', async () => {
+  const sleeps = buildTestClock(0);
+  const time = { now: 0 };
+  const adapter = buildStubSandboxAdapter(
+    makeStubFetcher((request) => {
+      // the time passes while the fetcher answers, with no sleep woken, as a stalled event loop does
+      time.now = 2500;
+      return {
+        kind: 'page',
+        url: request.url,
+        status: 200,
+        contentType: 'text/plain',
+        text: 'hello',
+        isTruncated: false,
+      };
+    }),
+  );
+  const fetchSandbox = startFetchSandbox({
+    adapter,
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+    replyGraceMs: 500,
+    clock: { now: () => time.now, sleep: sleeps.sleep },
+  });
+  onTestFinished(() => fetchSandbox.stop());
+
+  const reply = await fetchSandbox.readPage('https://example.com/');
+
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: 'the fetch sandbox failed: the fetcher passed its time limit',
+  });
+});
+
 test('it removes the fetch sandboxes a past process left before it creates one', async () => {
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
