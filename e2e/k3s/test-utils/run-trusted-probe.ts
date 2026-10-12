@@ -1,3 +1,4 @@
+import { onTestFinished } from 'bun:test';
 import { buildConnectProbe } from '../../../apps/server/src/test-utils/build-connect-probe';
 import type { KubectlTarget, ProbeTarget } from './parse-live-env';
 import { runKubectl } from './run-kubectl';
@@ -32,6 +33,11 @@ export async function runTrustedProbe(
   }
   const probe = buildConnectProbe(process.execPath, target.host, target.port);
   const child = Bun.spawn([...probe.argv], { env: { ...probe.env }, stdout: 'pipe' });
+
+  onTestFinished(() => {
+    child.kill();
+  });
+
   const stdout = await new Response(child.stdout).text();
 
   return stdout.trim();

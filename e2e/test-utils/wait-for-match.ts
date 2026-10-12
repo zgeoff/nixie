@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant';
 import { waitForCondition } from '../../libs/testing/src/index';
 import type { MatchRecord, TestRecord } from './types';
 
@@ -19,8 +20,8 @@ export async function waitForMatch(
     },
     { timeoutMs },
   );
-  if (found.record === null) {
-    throw new Error('the wait found no record');
-  }
+
+  // the wait returns only once a poll found a record
+  invariant(found.record);
   return found.record;
 }

@@ -2,97 +2,56 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { implement } from '@orpc/server';
-import { RPCHandler } from '@orpc/server/fetch';
-import { contract } from '../../../libs/contract/src/index';
+import { startTestNixie } from '../../../apps/server/src/test-utils/start-test-nixie';
 import { createLiveSession } from './create-live-session';
 
-// A stand-in API on loopback that answers enrolment and revoke through oRPC's RPC handler under
-// /rpc, as nixie's API does, and records each call; and the kubectl stand-in, which prints a code
-// for the enrol-code host command.
+// A test build of nixie's server at ready, and the kubectl stand-in, which answers the enrol-code
+// host command with the code that server issued at start, as kubectl exec into nixie's pod would.
 async function setupTest() {
-  const os = implement(contract);
-  const calls: { procedure: string; input: unknown }[] = [];
-  const handler = new RPCHandler({
-    sessions: {
-      enrol: os.sessions.enrol.handler((options) => {
-        calls.push({ procedure: 'enrol', input: options.input });
-        return { sessionID: '0b9d4c1e-7f3a-4c2b-9a8e-5d6f7a8b9c0d', token: 'session-token' };
-      }),
-      revoke: os.sessions.revoke.handler((options) => {
-        calls.push({ procedure: 'revoke', input: options.input });
-        return { revokedAt: new Date(0) };
-      }),
-    },
-  });
-  const server = Bun.serve({
-    hostname: '127.0.0.1',
-    port: 0,
-    fetch: async (request) => {
-      const result = await handler.handle(request, { prefix: '/rpc' });
+  const nixie = await startTestNixie();
+  const listening = await nixie.waitForLogEvent('http.listening');
+  const issued = await nixie.waitForLogEvent('enrolment_code.issued');
 
-      return result.matched ? result.response : new Response('not found', { status: 404 });
-    },
-  });
-
-  onTestFinished(() => server.stop(true));
+  await nixie.waitForLogEvent('ready');
 
   const dir = await mkdtemp(join(tmpdir(), 'nixie-live-session-'));
 
   onTestFinished(() => rm(dir, { recursive: true, force: true }));
+
+  const replies = join(dir, 'replies.json');
+
   await writeFile(
-    join(dir, 'replies.json'),
-    JSON.stringify({ 'enrol-code': 'K7QX-P2MD\nThe code works once.\n' }),
+    replies,
+    JSON.stringify({ 'enrol-code': `${String(issued['code'])}\nThe code works once.\n` }),
   );
 
   return {
-    calls,
-    url: `http://127.0.0.1:${server.port}`,
+    url: `http://127.0.0.1:${String(listening['port'])}`,
     kubectl: {
-      argv: [process.execPath, join(import.meta.dir, 'run-stub-kubectl.ts'), '--replies'],
-      kubeconfig: '/tmp/kubeconfig',
+      argv: [process.execPath, join(import.meta.dir, 'run-stub-kubectl.ts'), '--replies', replies],
+      kubeconfig: join(dir, 'kubeconfig'),
       namespace: 'nixie',
     },
-    replies: join(dir, 'replies.json'),
   };
 }
 
 test('it enrols a device with the code from the host command, as a bearer session', async () => {
   const ctx = await setupTest();
 
-  const session = await createLiveSession(ctx.url, {
-    ...ctx.kubectl,
-    argv: [...ctx.kubectl.argv, ctx.replies],
-  });
+  const session = await createLiveSession(ctx.url, ctx.kubectl);
 
-  expect(session.sessionID).toBe('0b9d4c1e-7f3a-4c2b-9a8e-5d6f7a8b9c0d');
+  const listed = await session.client.sessions.list();
 
-  // each call's client action ID is random, so the match leaves it out
-  expect(ctx.calls).toMatchObject([
-    {
-      procedure: 'enrol',
-      input: {
-        code: 'K7QX-P2MD',
-        deviceName: 'live check',
-        tokenDelivery: 'bearer',
-      },
-    },
+  expect(listed.sessions).toMatchObject([
+    { sessionID: session.sessionID, deviceName: 'live check', current: true },
   ]);
-});
+}, 60_000);
 
 test('it revokes the session it enrolled', async () => {
   const ctx = await setupTest();
-  const session = await createLiveSession(ctx.url, {
-    ...ctx.kubectl,
-    argv: [...ctx.kubectl.argv, ctx.replies],
-  });
+  const session = await createLiveSession(ctx.url, ctx.kubectl);
 
   await session.revoke();
 
-  expect(ctx.calls.at(-1)).toMatchObject({
-    procedure: 'revoke',
-    input: {
-      sessionID: '0b9d4c1e-7f3a-4c2b-9a8e-5d6f7a8b9c0d',
-    },
-  });
-});
+  expect(session.client.sessions.list()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+}, 60_000);
