@@ -1,6 +1,6 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { createConversationTask } from '@heynixie/tasks';
+import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
 import { startScriptedModel } from '@heynixie/testing';
 import { startConversation } from './start-conversation';
 import { buildTestModelsConfig } from './test-utils/build-test-models-config';
@@ -9,17 +9,23 @@ import { sendTestMessage } from './test-utils/send-test-message';
 import { startTestMemoryStore } from './test-utils/start-test-memory-store';
 import { startTestServer } from './test-utils/start-test-server';
 
+// root reads a file whatever its mode, so the unreadable transcript fails no copy under root; Bun
+// 1.4.2's skipIf takes a boolean and has no in-body skip
+const isRoot = process.getuid?.() === 0;
+
 interface RunnerConfig {
   // the conversation image's name, whose change replaces the conversation's sandbox
   readonly image: string;
   readonly contextTokens?: number;
 }
 
-// a test server, the scripted model, and a memory store whose forget cleans up the sessions of the
-// runner a test started last
+// a test server, the scripted model, a recorder for the server's log, the folder of the process
+// double's sandboxes, a memory store whose forget cleans up the sessions of the runner a test
+// started last, and a start of the conversation that stops the runner before it, as a deploy does
 async function setupTest() {
   const server = await startTestServer();
   const model = startScriptedModel();
+  const log = mock<Parameters<typeof startConversation>[0]['log']>();
 
   onTestFinished(() => model.stop());
 
@@ -37,6 +43,8 @@ async function setupTest() {
     context,
     model,
     memory,
+    log,
+    sandboxesDir: `${server.dataDir}/sandboxes`,
     startRunner: async (config: RunnerConfig) => {
       await runners.last?.stop();
       runners.last = await startConversation({
@@ -49,6 +57,7 @@ async function setupTest() {
         image: config.image,
         getSystemPrompt: () => 'You are nixie.',
         memory: () => memory,
+        log,
       });
       return runners.last;
     },
@@ -118,20 +127,22 @@ test('it puts a pinned item in the next turn system prompt, with the change note
   );
 }, 30_000);
 
-test('it rebuilds the session with the recent turns once the conversation sandbox is replaced', async () => {
+test('it rebuilds the session with the recent turns once a replaced sandbox has lost the session', async () => {
   const ctx = await setupTest();
   const [first] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' }, { text: 'CHERRY' });
+  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
   await sendTestMessage(ctx.context, first.runStep, 'Say a fruit.');
-  await sendTestMessage(ctx.context, first.runStep, 'Another.');
+
+  // with every transcript gone, the replacement has no session to carry over
+  await Bun.$`find . -name '*.jsonl' -delete`.cwd(ctx.sandboxesDir);
 
   const second = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
 
-  await sendTestMessage(ctx.context, second.runStep, 'And one more.');
+  await sendTestMessage(ctx.context, second.runStep, 'Another.');
 
   const records = await ctx.readRecords();
 
@@ -139,12 +150,10 @@ test('it rebuilds the session with the recent turns once the conversation sandbo
     (messages: string) =>
       messages.includes('<conversation-history>') &&
       messages.includes(String.raw`] owner: Say a fruit.\n[`) &&
-      messages.includes(String.raw`] nixie: APPLE\n[`) &&
-      messages.includes(String.raw`] owner: Another.\n[`) &&
-      messages.includes(String.raw`] nixie: BANANA\n</conversation-history>\n\nAnd one more.`),
+      messages.includes(String.raw`] nixie: APPLE\n</conversation-history>\n\nAnother.`),
   );
   expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toMatchObject([
-    { payload: { reason: 'missing', recentRecords: 4 } },
+    { payload: { reason: 'missing', recentRecords: 2 } },
   ]);
 }, 30_000);
 
@@ -252,4 +261,132 @@ test('it records an automatic compaction once, with its token counts and no summ
     },
   ]);
   expect(JSON.stringify(records)).not.toInclude('SUMMARY');
+}, 30_000);
+
+test('it resumes the session on a sandbox that a new image replaced between two turns', async () => {
+  const ctx = await setupTest();
+  const [before] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+
+  const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+
+  await sendTestMessage(ctx.context, after.runStep, 'Another.');
+
+  const records = await ctx.readRecords();
+
+  expect(records.filter((record) => record.kind === 'sandbox.destroyed')).toHaveLength(1);
+  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toStrictEqual([]);
+  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
+}, 30_000);
+
+test('it takes the session into a replacement that a stopped start left beside the old sandbox', async () => {
+  const ctx = await setupTest();
+  const [before] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+
+  // the replacement a start made before it stopped, with neither the session copy nor the destroy
+  const sandboxes = await ctx.sandboxes.list(conversationTaskID);
+
+  await Promise.all(
+    sandboxes.map((old) =>
+      ctx.sandboxes.create({ ...old.spec, image: 'nixie-conversation-ba9876543210' }),
+    ),
+  );
+
+  const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+
+  await sendTestMessage(ctx.context, after.runStep, 'Another.');
+
+  const records = await ctx.readRecords();
+
+  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toStrictEqual([]);
+}, 30_000);
+
+test('it wakes a sleeping sandbox to take its session before it replaces it', async () => {
+  const ctx = await setupTest();
+  const [before] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+
+  const [asleep] = await ctx.sandboxes.list(conversationTaskID);
+
+  if (asleep?.suspension.kind !== 'memory') {
+    throw new Error('the process double sleeps its sandboxes');
+  }
+  await asleep.suspension.sleep();
+
+  const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+
+  await sendTestMessage(ctx.context, after.runStep, 'Another.');
+
+  expect(ctx.log).not.toHaveBeenCalled();
+}, 30_000);
+
+test.skipIf(isRoot)(
+  'it starts the new sandbox and the next turn on a fresh session when the session copy fails',
+  async () => {
+    const ctx = await setupTest();
+    const [before] = await Promise.all([
+      ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+      createConversationTask(ctx.context),
+    ]);
+
+    await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+
+    const transcripts = await collectFilesWithText(ctx.sandboxesDir, 'Say a fruit.');
+
+    // a transcript its guest cannot read fails the copy out of the old sandbox
+    await Bun.$`chmod 000 ${transcripts}`.cwd(ctx.sandboxesDir);
+
+    const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+
+    await sendTestMessage(ctx.context, after.runStep, 'Another.');
+
+    const records = await ctx.readRecords();
+
+    expect(ctx.log).toHaveBeenCalledExactlyOnceWith('conversation.session_copy_failed', {
+      toSandboxID: expect.toBeString(),
+      reason: expect.toInclude('EACCES'),
+    });
+    expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toHaveLength(1);
+  },
+  30_000,
+);
+
+test('it starts a fresh session on the new sandbox when the old sandbox no longer holds the session', async () => {
+  const ctx = await setupTest();
+  const [before] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
+
+  const transcripts = await collectFilesWithText(ctx.sandboxesDir, 'Say a fruit.');
+
+  await Bun.$`rm ${transcripts}`.cwd(ctx.sandboxesDir);
+
+  const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+
+  await sendTestMessage(ctx.context, after.runStep, 'Another.');
+
+  const records = await ctx.readRecords();
+
+  expect(ctx.log).toHaveBeenCalledExactlyOnceWith('conversation.session_copy_failed', {
+    toSandboxID: expect.toBeString(),
+    reason: expect.toInclude('holds no transcript'),
+  });
+  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toHaveLength(1);
 }, 30_000);

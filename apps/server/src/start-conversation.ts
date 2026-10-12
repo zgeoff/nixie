@@ -11,6 +11,7 @@ import {
   resolveRoleProfile,
   startConversationRunner,
 } from '@heynixie/models';
+import type { Logger } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
@@ -37,6 +38,9 @@ export interface ConversationOptions {
   // the memory store, read at each turn, which starts after the conversation
   readonly memory: () => ConversationMemory;
   readonly memorySettings?: Partial<ConversationMemorySettings>;
+
+  // the server's log, which takes a warning when a replaced sandbox's session does not carry over
+  readonly log: Logger;
 }
 
 // Starts the conversation on the conversation role's profile. Every profile's credential resolves
@@ -61,5 +65,6 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
     memory: options.memory,
     ...(options.memorySettings === undefined ? {} : { memorySettings: options.memorySettings }),
+    log: options.log,
   });
 }

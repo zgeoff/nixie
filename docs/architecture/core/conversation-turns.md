@@ -24,6 +24,18 @@ new image or a rotated credential, replaces the sandbox, so a turn never runs wi
 profile nixie no longer uses. The sandbox's owner is the conversation task, which never finishes, so
 the sandbox outlives each step and the transcripts on its disk outlive each turn.
 
+A replacement keeps the session. nixie creates the new sandbox before it destroys the old one, and
+copies the session that the conversation resumes, its transcript and its side folder, from the old
+disk to the new one. The copy wakes a sleeping old sandbox first, because each read runs in its
+guest. The CLI names a session's project folder after the working directory, so the copy lists the
+files from the old guest's home and writes them under the folder that the new guest's own home
+names. A start that stops before it destroys the old sandbox leaves both, so the next start copies
+again into the sandbox it keeps and overwrites what the stopped copy wrote. No turn runs while an
+old sandbox remains, so the old copy is never behind. The copy writes the transcript under a staged
+name and renames it once every file has landed, so a copy that fails partway leaves no session to
+resume. The copy tries each old sandbox in turn. When every copy fails, nixie logs a warning and the
+start goes on, so a deploy never fails on the copy.
+
 Each step spawns the guest in the sandbox for one turn. The host writes a turn frame to the guest's
 standard input, and the guest writes its own frames to standard output. Both directions use the wire
 framing, and a schema checks each frame's JSON on arrival, so a frame from a broken guest ends the
@@ -88,9 +100,8 @@ it.
 
 ## Rebuilding a session
 
-A turn rebuilds its session when it has none to resume: a sandbox that lost its disk, such as one
-replaced after a profile change, no longer holds the session, and a forget's session cleanup
-invalidates it
+A turn rebuilds its session when it has none to resume: a replacement sandbox whose session copy
+failed holds no session, and a forget's session cleanup invalidates it
 ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session)). Each
 turn-ended record keeps the newest session-invalidated record the turn saw before it ran. The step
 resumes no session when a newer invalidation exists, so a step that commits after an invalidation it

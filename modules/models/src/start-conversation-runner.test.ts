@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import { resolveRoleProfile } from './resolve-role-profile';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
@@ -15,6 +15,9 @@ interface RunnerConfig {
   readonly credential: string;
   readonly toolNames: readonly string[];
   readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote'>;
+
+  // a recorder for the server's log, for a test that reads its warnings
+  readonly log?: ConversationRunnerOptions['log'];
 }
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
@@ -57,6 +60,7 @@ async function setupTest() {
           readPinnedCore: () => Promise.resolve([]),
           recall: () => Promise.resolve({ items: [], next: null }),
         }),
+        log: config.log ?? (() => {}),
       }),
     writeMessage,
     runNextStep: (runner: Runner) => runNextStep(tasks.context, runner.runStep),
@@ -746,6 +750,45 @@ test('it keeps the conversation sandbox across restarts on one profile and repla
     'gateway.example',
   ]);
   expect(ctx.sandboxes.destroyed).toHaveLength(1);
+});
+
+test('it tries every replaced sandbox for the session and logs one warning that names each', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const before = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.sendMessage(before, 'Hi.');
+
+  const existing = await ctx.sandboxes.adapter.list('conversation');
+
+  await Promise.all(
+    existing.map((sandbox) =>
+      ctx.sandboxes.adapter.create({ ...sandbox.spec, image: 'conversation-stale' }),
+    ),
+  );
+
+  const replaced = await ctx.sandboxes.adapter.list('conversation');
+  const log = mock<ConversationRunnerOptions['log']>();
+
+  // a rotated credential changes the grant, which replaces the sandbox
+  await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'another-not-real-key',
+    toolNames: ['notes_read'],
+    log,
+  });
+
+  expect(log).toHaveBeenCalledExactlyOnceWith('conversation.session_copy_failed', {
+    toSandboxID: expect.toBeString(),
+    reason: expect.toSatisfy((reason: string) =>
+      replaced.every((sandbox) => reason.includes(sandbox.id)),
+    ),
+  });
 });
 
 test('it puts the memory note before the first message of the turn and leaves the rest as sent', async () => {

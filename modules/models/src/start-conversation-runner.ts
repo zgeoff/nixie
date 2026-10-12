@@ -1,14 +1,13 @@
-import type { SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
-import { buildSandboxSpec } from '@heynixie/sandbox';
 import type { RunStep, TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
-import { buildModelGrant } from './build-model-grant';
 import { deriveModelSecret } from './derive-model-secret';
 import { makeSessionGuard } from './make-session-guard';
 import { runConversationStep } from './run-conversation-step';
 import type { GuestCommand } from './run-guest-turn';
 import { runSessionCleanup } from './run-session-cleanup';
+import type { ConversationSandboxSpec } from './setup-conversation-sandbox';
+import { setupConversationSandbox } from './setup-conversation-sandbox';
 import type {
   ConversationMemory,
   ConversationMemorySettings,
@@ -22,13 +21,13 @@ export interface ConversationRunnerOptions {
   // the conversation role's profile, read once at start: a role change reaches the conversation
   // at its next start
   readonly profile: ResolvedProfile;
-  readonly sandboxes: SandboxAdapter;
+  readonly sandboxes: ConversationSandboxSpec['sandboxes'];
   readonly tools: Pick<ToolEndpoint, 'startRun'>;
 
   // the conversation's tool list, which its endpoint serves
   readonly toolNames: readonly string[];
   readonly image: string;
-  readonly limits: SandboxLimits;
+  readonly limits: ConversationSandboxSpec['limits'];
   readonly command: GuestCommand;
 
   // the persona in force, read at each turn so a new seed reaches the next turn
@@ -38,6 +37,9 @@ export interface ConversationRunnerOptions {
   // the memory store, which starts after the runner, so each turn reads it again
   readonly memory: () => ConversationMemory;
   readonly memorySettings?: Partial<ConversationMemorySettings>;
+
+  // the server's log, which takes a warning when a replaced sandbox's session does not carry over
+  readonly log: ConversationSandboxSpec['log'];
 }
 
 export interface ConversationRunner {
@@ -66,7 +68,7 @@ export async function startConversationRunner(
 
   await options.sandboxes.addSecret(secret);
 
-  const sandbox = await setupConversationSandbox(options, buildModelGrant(secret));
+  const sandbox = await setupConversationSandbox(options, secret);
   const model: ToolRunModel = {
     model: options.profile.profile.model,
     profile: options.profile.profile.id,
@@ -99,25 +101,4 @@ export async function startConversationRunner(
     cleanupSessions: (itemID) => runSessionCleanup(run, itemID),
     stop: () => endpoint.stop(),
   };
-}
-
-// the sandbox's owner is the conversation, whose run never ends, so the sandbox outlives each step
-async function setupConversationSandbox(
-  options: ConversationRunnerOptions,
-  grant: ReturnType<typeof buildModelGrant>,
-): ReturnType<SandboxAdapter['create']> {
-  const spec = buildSandboxSpec({
-    kind: 'conversation',
-    image: options.image,
-    owner: conversationTaskID,
-    limits: options.limits,
-    modelGrant: grant,
-  });
-  const existing = await options.sandboxes.list(conversationTaskID);
-  const kept = existing.find((sandbox) => Bun.deepEquals(sandbox.spec, spec));
-
-  await Promise.all(
-    existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),
-  );
-  return kept ?? options.sandboxes.create(spec);
 }

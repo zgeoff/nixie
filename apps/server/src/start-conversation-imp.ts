@@ -31,6 +31,7 @@ export async function startConversationImp(
     readTurnNote: () => readMemoryChangeNote(parts.context.log, memory(), memoryNoteCap),
     memory,
     memorySettings: parts.config.memory,
+    log: parts.log,
   });
 
   await parts.cleanup.defer(() => conversation.stop());
