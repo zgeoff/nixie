@@ -84,6 +84,8 @@ export async function runWriter(
       },
       stderr: 'pipe',
       stdout: 'pipe',
+      // A hung call ends with empty output, which reads as a writer error.
+      timeout: 120_000,
     },
   );
   const [stdout, stderr] = await Promise.all([

@@ -131,7 +131,9 @@ for (const { path, run } of runs) {
       `- Trigger wait from a batch's first turn: median ${formatNumber(getQuantile(waits, 0.5))} min, max ${formatNumber(Math.max(...waits))} min.`,
     );
     console.log(
-      `- Capture delay for applied gold facts: median ${formatNumber(getQuantile(delays, 0.5))} min, 90th percentile ${formatNumber(getQuantile(delays, 0.9))} min, max ${formatNumber(Math.max(...delays))} min.`,
+      delays.length === 0
+        ? '- Capture delay for applied gold facts: n/a, no gold fact applied.'
+        : `- Capture delay for applied gold facts: median ${formatNumber(getQuantile(delays, 0.5))} min, 90th percentile ${formatNumber(getQuantile(delays, 0.9))} min, max ${formatNumber(Math.max(...delays))} min.`,
     );
   }
   console.log(

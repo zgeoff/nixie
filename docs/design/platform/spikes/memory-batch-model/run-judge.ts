@@ -70,9 +70,14 @@ Label every candidate: "gold" with the gold ID it captures (a revise or retire t
       },
       stderr: 'pipe',
       stdout: 'pipe',
+      // A hung call ends with empty output, which reads as a judge error.
+      timeout: 300_000,
     },
   );
-  const stdout = await new Response(child.stdout).text();
+  const [stdout] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
   await child.exited;
   return parseVerdicts(stdout);
 }
