@@ -1,6 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { buildTestClock, makeGatedCall, waitForCondition } from '@heynixie/testing';
 import type { FetchRequest } from '@heynixie/wire';
 import { startFetchSandbox } from './start-fetch-sandbox';
 import { buildStubSandboxAdapter } from './test-utils/build-stub-sandbox-adapter';
@@ -395,21 +395,17 @@ test('it removes the fetch sandboxes a past process left before it creates one',
 });
 
 test('it runs one fetch at a time', async () => {
-  const running = { now: 0, most: 0, gate: Promise.withResolvers<void>() };
-  const adapter = buildStubSandboxAdapter(async (stdin, stdout) => {
-    running.now += 1;
-    running.most = Math.max(running.most, running.now);
-    await running.gate.promise;
-    running.now -= 1;
-    return makeStubFetcher((request) => ({
+  const fetcher = makeGatedCall(
+    makeStubFetcher((request) => ({
       kind: 'page',
       url: request.url,
       status: 200,
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
-    }))(stdin, stdout);
-  });
+    })),
+  );
+  const adapter = buildStubSandboxAdapter(fetcher.call);
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -426,13 +422,13 @@ test('it runs one fetch at a time', async () => {
     fetchSandbox.readPage('https://example.com/2'),
     fetchSandbox.readPage('https://example.com/3'),
   ]);
-  await waitForCondition(() => running.now === 1);
+  await fetcher.started;
 
-  running.gate.resolve();
+  fetcher.release();
   const settled = await replies;
 
   expect(settled).toMatchObject([{ kind: 'page' }, { kind: 'page' }, { kind: 'page' }]);
-  expect(running.most).toBe(1);
+  expect(fetcher.countMostRunning()).toBe(1);
 });
 
 test('it fails the fetch when the sandbox cannot be created, and tries again on the next', async () => {
@@ -625,6 +621,8 @@ test('it destroys the sandbox when it stops', async () => {
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+  onTestFinished(() => fetchSandbox.stop());
+
   await fetchSandbox.readPage('https://example.com/');
 
   await fetchSandbox.stop();

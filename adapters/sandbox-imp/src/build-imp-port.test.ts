@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createImpClient } from '@zgeoff/imp-client';
 import invariant from 'tiny-invariant';
@@ -55,6 +55,21 @@ async function setupTest() {
     createSandbox: isolation.createSandbox,
   };
 }
+
+test('it refuses to read the features of an impd whose version the client does not speak', () => {
+  // impd answers every oRPC call in the RPC protocol's envelope, and only system.info reaches it
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: () => Response.json({ json: { version: '0.39.0', features: {}, egress: {} } }),
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readFeatures()).rejects.toThrow(/^impd 0\.39\.0 does not speak imp client /u);
+});
 
 // A dropped connection waits out curl's whole limit, so each test allows for the imp's boot and
 // for each probe's limit.

@@ -64,6 +64,7 @@ server-only, so a guest keeps its test helpers in its own package.
 | `startScriptedModel`  | A local stand-in for the Messages API that answers each request with a scripted reply  |
 | `buildTestClock`      | A clock that a test steps                                                              |
 | `waitForCondition`    | The polling condition wait                                                             |
+| `makeGatedCall`       | Holds each call at a gate the test opens, and counts how many calls run at once        |
 
 Each package keeps the helpers only its own tests use in `src/test-utils/`, each with its own test
 file.

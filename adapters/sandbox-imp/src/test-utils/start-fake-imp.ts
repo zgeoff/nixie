@@ -1,14 +1,7 @@
 import { onTestFinished } from 'bun:test';
-import { once } from 'node:events';
 import { createServer } from 'node:net';
-import type {
-  ImpCreateInput,
-  ImpExec,
-  ImpExecOptions,
-  ImpFeatures,
-  ImpForward,
-  ImpPort,
-} from '../types';
+import type { ImpCreateInput, ImpExec, ImpExecOptions, ImpFeatures, ImpPort } from '../types';
+import { startFakeForward } from './start-fake-forward';
 
 interface FakeExec {
   readonly argv: readonly string[];
@@ -110,7 +103,7 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
       }
       return startFakeExec(exec, stack);
     },
-    ...buildFakeForwardCall(state, stack),
+    ...buildFakeForwardCall(state),
   };
 }
 
@@ -170,8 +163,7 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
       if (exec.failsOnStop) {
         lost.reject(new Error('CONNECTION_CLOSED'));
       }
-      sendGroupSignal(child.pid, 'SIGTERM');
-      setTimeout(sendGroupSignal, exec.options.killGraceMs, child.pid, 'SIGKILL');
+      stopProcessGroup(child.pid, exec.options.killGraceMs, stack);
     },
     close: () => {
       sendGroupSignal(child.pid, 'SIGKILL');
@@ -186,6 +178,19 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
   };
 }
 
+// Sends the group SIGTERM, then SIGKILL after the grace. The kill must not outlive the fake, or it
+// could signal a later test's process group that reuses the PID.
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own cleanup
+function stopProcessGroup(pid: number, graceMs: number, stack: AsyncDisposableStack): void {
+  sendGroupSignal(pid, 'SIGTERM');
+
+  const kill = setTimeout(sendGroupSignal, graceMs, pid, 'SIGKILL');
+
+  stack.defer(() => {
+    clearTimeout(kill);
+  });
+}
+
 async function waitForExit<T>(exited: Promise<number>, readExit: () => T): Promise<T> {
   await exited;
   return readExit();
@@ -193,71 +198,18 @@ async function waitForExit<T>(exited: Promise<number>, readExit: () => T): Promi
 
 type ForwardPort = Pick<ImpPort, 'openReverseForward'>;
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own log and cleanup
-function buildFakeForwardCall(state: FakeState, stack: AsyncDisposableStack): ForwardPort {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own log
+function buildFakeForwardCall(state: FakeState): ForwardPort {
   return {
     openReverseForward: (name, guestPort, onConnection) => {
       state.calls.push(`forward ${name} ${guestPort}`);
-      return startFakeForward(
-        {
-          port: state.guestToolPort,
-          onConnection,
-          onStop: () => {
-            state.calls.push(`forward-stopped ${name}`);
-          },
+      return startFakeForward({
+        port: state.guestToolPort,
+        onConnection,
+        onStop: () => {
+          state.calls.push(`forward-stopped ${name}`);
         },
-        stack,
-      );
-    },
-  };
-}
-
-interface FakeForwardOptions {
-  readonly port: number;
-  readonly onConnection: Parameters<ImpPort['openReverseForward']>[2];
-  readonly onStop: () => void;
-}
-
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own cleanup
-function startFakeForward(options: FakeForwardOptions, stack: AsyncDisposableStack): ImpForward {
-  const ended = Promise.withResolvers<{ readonly kind: string }>();
-  const listening = Promise.withResolvers<unknown>();
-  const server = createServer((socket) => {
-    options.onConnection((handlers) => {
-      socket.on('data', (chunk: Uint8Array) => void handlers.onData(chunk));
-      socket.once('end', handlers.onEof);
-      socket.once('close', () => {
-        handlers.onClose(false);
       });
-      return {
-        send: (data) => socket.write(data),
-        waitForRoom: async () => {
-          await once(socket, 'drain');
-        },
-        sendEof: () => {
-          socket.end();
-        },
-        close: () => {
-          socket.destroy();
-        },
-      };
-    });
-  });
-
-  server.once('error', listening.reject);
-  server.listen(options.port, '127.0.0.1', () => {
-    listening.resolve(options.port);
-  });
-  stack.defer(() => {
-    server.close();
-  });
-  return {
-    listening: listening.promise,
-    ended: ended.promise,
-    stop: () => {
-      options.onStop();
-      server.close();
-      ended.resolve({ kind: 'stopped' });
     },
   };
 }

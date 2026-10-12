@@ -321,6 +321,15 @@ test('it refuses to copy in a path that leaves the sandbox', async () => {
   );
 });
 
+test('it refuses to copy in a relative path', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  expect(sandbox.copyIn([{ path: 'work/in.txt', content: new Uint8Array() }])).rejects.toThrow(
+    'a guest path must be absolute: work/in.txt',
+  );
+});
+
 test('it refuses an exec while the sandbox sleeps', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
