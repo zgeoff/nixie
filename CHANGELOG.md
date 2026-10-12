@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/zgeoff/nixie/compare/v0.4.0...v0.5.0) (2026-10-12)
+
+
+### Features
+
+* **geo-550:** cap the conversation context per model profile ([#114](https://github.com/zgeoff/nixie/issues/114)) ([2c5ece3](https://github.com/zgeoff/nixie/commit/2c5ece3334e874c1aed8f5f1990fab95307470ca))
+
+
+### Bug Fixes
+
+* **geo-549:** reconnect at once when the page wakes during a backoff ([#115](https://github.com/zgeoff/nixie/issues/115)) ([e65ec77](https://github.com/zgeoff/nixie/commit/e65ec770b4bef63190c5611066f5a374c2d462b8))
+
 ## [0.4.0](https://github.com/zgeoff/nixie/compare/v0.3.0...v0.4.0) (2026-10-12)
 
 
