@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/zgeoff/nixie/compare/v0.6.0...v0.6.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **geo-731:** give the writer and checker sandboxes a 4096 mib disk ([#128](https://github.com/zgeoff/nixie/issues/128)) ([2198690](https://github.com/zgeoff/nixie/commit/219869090e9cdc3d0472847334bb43f33fdaa870))
+
 ## [0.6.0](https://github.com/zgeoff/nixie/compare/v0.5.0...v0.6.0) (2026-10-12)
 
 
