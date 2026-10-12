@@ -42,7 +42,7 @@ test('it leaves the session cookie to the API response', async () => {
 
   const session = store.sessions.findFirst((query) => query.where({ deviceName: 'Browser' }));
 
-  expect(browserCookies.get(sessionCookieName)).toBe(session?.token);
+  expect(session).toMatchObject({ token: browserCookies.get(sessionCookieName) });
   expect(globalThis.document.cookie).toBe('');
 });
 
