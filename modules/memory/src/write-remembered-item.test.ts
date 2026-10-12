@@ -134,6 +134,32 @@ test('it pins a new item when asked', async () => {
   expect(row.is_pinned).toBe(1);
 });
 
+test('it rejects an edit that pins a retired item', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const retired = await ctx.memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const edit = ctx.memory.store.remember({
+    text: 'Lived on Elm Street until 2024',
+    target: retired,
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await edit.catch(() => {});
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID], includeRetired: true });
+
+  expect(edit).rejects.toMatchObject({ code: 'WRONG_STATE' });
+  expect(recalled.items).toMatchObject([{ version: 2, isPinned: false }]);
+});
+
 test('it keeps no item text in plain form in nixie.db or any file beside it', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

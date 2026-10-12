@@ -176,6 +176,33 @@ test('it records each item and version it delivered, and no text', async () => {
   ]);
 });
 
+test('it records every version that a history recall delivered', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Lives on Oak Avenue',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  await ctx.memory.store.recall({ itemIDs: [item.itemID], includeHistory: true });
+
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(records.at(-1)?.record).toMatchObject({
+    kind: 'memory.recalled',
+    payload: {
+      items: [
+        { itemID: item.itemID, version: 1 },
+        { itemID: item.itemID, version: 2 },
+      ],
+    },
+  });
+});
+
 test('it never delivers an item that a forget removed while the recall ranked it', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

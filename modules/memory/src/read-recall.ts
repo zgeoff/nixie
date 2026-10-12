@@ -186,7 +186,12 @@ async function writeRecallRecord(
         definitions: parts.context.definitions(),
         ...(request.thread === undefined ? {} : { thread: request.thread }),
         payload: {
-          items: items.map((item) => ({ itemID: item.itemID, version: item.version })),
+          items: items.flatMap((item) =>
+            (item.history ?? [item]).map((version) => ({
+              itemID: item.itemID,
+              version: version.version,
+            })),
+          ),
         },
       },
     ]),

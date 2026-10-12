@@ -2,6 +2,7 @@ import type { JSONObject, RecordInput } from '@heynixie/log';
 import { createRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { encodeVersionText } from './encode-version-text';
 import { findItemKey } from './find-item-key';
+import { MemoryStateError } from './memory-state-error';
 import type { ReadableVersion } from './read-version';
 import { readVersion } from './read-version';
 import type { ItemRequirement } from './require-item';
@@ -58,7 +59,8 @@ export function writeMemoryVersion(parts: StoreParts, plan: VersionPlan): Promis
         current,
       );
       const ref = { itemID, version: current + 1 };
-      const sealed = await encodeVersionText(key, ref, next.text);
+
+      const sealed = await encodePinnableVersion(key, { plan, ref, next });
 
       await writeRecordsInTransaction(tx, log, buildRecords(parts, { plan, ref, next, sealed }));
       return { ref, next };
@@ -67,6 +69,21 @@ export function writeMemoryVersion(parts: StoreParts, plan: VersionPlan): Promis
     await updateIndex(parts, written.ref.itemID, written.next);
     return written.ref;
   });
+}
+
+interface PinnableVersion {
+  readonly plan: VersionPlan;
+  readonly ref: VersionRef;
+  readonly next: NewVersion;
+}
+
+// Seals the new version's text, after it refuses a pin of a version that is not active, because
+// only an active item joins the pinned core, as a separate pin requires.
+function encodePinnableVersion(key: CryptoKey, version: PinnableVersion): Promise<string> {
+  if (version.plan.isPinned === true && version.next.state !== 'active') {
+    throw new MemoryStateError(version.ref.itemID, 'pin', version.next.state);
+  }
+  return encodeVersionText(key, version.ref, version.next.text);
 }
 
 async function createItemKey(parts: StoreParts, itemID: string): Promise<CryptoKey> {
