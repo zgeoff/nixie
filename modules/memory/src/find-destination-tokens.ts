@@ -65,7 +65,7 @@ const patterns: readonly TokenPattern[] = [
     kind: 'account',
     pattern: /\b[A-Z]{2}\d{2}(?:\s?[A-Z\d]{4}){2,7}(?:\s?[A-Z\d]{1,4})?\b/gu,
   },
-  { kind: 'phone', pattern: /\+?\d[\d \t().-]{5,}\d/gu },
+  { kind: 'phone', pattern: /\+?\d[\d\p{Zs}\t().-]{5,}\d/gu },
   { kind: 'domain', pattern: /\b(?:[\p{L}\p{N}-]+\.)+\p{L}{2,63}\b/gu },
 ];
 

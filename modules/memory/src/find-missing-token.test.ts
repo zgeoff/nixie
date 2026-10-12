@@ -34,6 +34,16 @@ test('it never joins 2 numbers on separate lines into one phone number', () => {
   });
 });
 
+test.each([
+  ['no-break spaces', 'Call +33 6 12 34 56 78'],
+  ['narrow no-break spaces', 'Call +33 6 12 34 56 78'],
+])('it finds a phone number written with %s', (_label, text) => {
+  expect(findMissingToken(text, 'Call my usual number')).toMatchObject({
+    kind: 'phone',
+    key: '+33612345678',
+  });
+});
+
 test('it finds a URL path that differs in case', () => {
   expect(findMissingToken('Uses https://example.com/A', 'see https://example.com/a')).toMatchObject(
     { kind: 'url' },
