@@ -234,6 +234,30 @@ test('it fails the turn with the error its host message stream throws', async ()
   ).rejects.toThrow('a turn is already running');
 });
 
+test('it fails the turn at once when the host message stream throws during a held tool call', async () => {
+  const ctx = await setupTest();
+  const writer = ctx.channel.writable.getWriter();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_wait', input: {} } },
+    { text: 'Noted.' },
+  );
+
+  const turn = runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+    ...ctx.deps,
+    messages: ctx.channel.readable,
+  });
+
+  onTestFinished(async () => {
+    ctx.tools.release();
+    await Promise.allSettled([turn]);
+  });
+  await ctx.tools.waitForHeldCall();
+  void writer.abort(new Error('a turn is already running'));
+
+  expect(turn).rejects.toThrow('a turn is already running');
+});
+
 test('it resumes at a boundary on a new session that holds nothing after the boundary', async () => {
   const ctx = await setupTest();
   const runTurnAt = async (text: string, resume: SessionPoint | null) => {
