@@ -7,8 +7,9 @@ import { renderHistoryLine } from './render-history-line';
 export interface RecentTurnsQuery {
   readonly taskID: string;
 
-  // the turn's first inbox record; the history holds only records before it, so a message that
-  // lands during the turn reaches the model once, as a live message
+  // the turn's first inbox record; the history holds only messages before it, so a pending message
+  // reaches the model once, as a live message, and keeps every reply, which a pending message can
+  // come before
   readonly beforeSequence: number;
 
   // the history's budget, counted over its rendered lines
@@ -16,7 +17,7 @@ export interface RecentTurnsQuery {
 }
 
 // Reads the thread's most recent messages and replies, word for word, oldest first, up to the
-// token budget. Older turns stay out, and reach a rebuilt session only through recall.
+// token budget. A message from the turn's first inbox record on stays out. Older turns stay out, and reach a rebuilt session only through recall.
 export async function readRecentTurns(
   context: Pick<TasksContext, 'log'>,
   query: RecentTurnsQuery,
@@ -24,12 +25,16 @@ export async function readRecentTurns(
   const kept: LogRecord[] = [];
   const total = { tokens: 0 };
 
-  for await (const record of readHistoryNewestFirst(context, query)) {
-    total.tokens += countTextTokens(renderHistoryLine(record));
+  for await (const record of readHistoryNewestFirst(context, query.taskID)) {
+    const isPending = record.kind === 'owner_message' && record.sequence >= query.beforeSequence;
+
+    total.tokens += isPending ? 0 : countTextTokens(renderHistoryLine(record));
     if (total.tokens > query.tokens) {
       break;
     }
-    kept.push(record);
+    if (!isPending) {
+      kept.push(record);
+    }
   }
   return kept.toReversed();
 }
@@ -41,16 +46,16 @@ const pageSize = 200;
 
 async function* readHistoryNewestFirst(
   context: Pick<TasksContext, 'log'>,
-  query: RecentTurnsQuery,
+  taskID: string,
 ): AsyncGenerator<LogRecord> {
-  const page = { before: query.beforeSequence, size: pageSize };
+  const page = { before: Number.MAX_SAFE_INTEGER, size: pageSize };
 
   while (page.size === pageSize) {
     // oxlint-disable-next-line no-await-in-loop -- each page reads on from the one before it
     const entries = await readRecords(context.log, {
       afterSequence: 0,
       beforeSequence: page.before,
-      thread: query.taskID,
+      thread: taskID,
       kinds: historyKinds,
       order: 'newest',
       limit: pageSize,

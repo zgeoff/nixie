@@ -162,20 +162,6 @@ test('it removes every session file that holds a forgotten item', async () => {
       },
     }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
-
-    // keyword retrieval scores a word by how few items hold it, so the store holds 3 items
-    ...['The dentist is on Tuesday at nine', 'The library closes at six on Sundays'].map((text) =>
-      ctx.memory.remember({
-        text,
-        provenance: {
-          origin: 'owner',
-          source: 'owner',
-          taskID: null,
-          proposalID: null,
-          checks: null,
-        },
-      }),
-    ),
     createConversationTask(ctx.context),
   ]);
 
@@ -211,20 +197,6 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
       },
     }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
-
-    // keyword retrieval scores a word by how few items hold it, so the store holds 3 items
-    ...['The dentist is on Tuesday at nine', 'The library closes at six on Sundays'].map((text) =>
-      ctx.memory.remember({
-        text,
-        provenance: {
-          origin: 'owner',
-          source: 'owner',
-          taskID: null,
-          proposalID: null,
-          checks: null,
-        },
-      }),
-    ),
     createConversationTask(ctx.context),
   ]);
 

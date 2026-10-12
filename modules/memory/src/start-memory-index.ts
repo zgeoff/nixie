@@ -84,14 +84,28 @@ async function findMatches(
   if (match === null) {
     return [];
   }
+  const isRanked = await hasRankedIndex(db);
+  const minScore = isRanked ? (options.minScore ?? 0) : 0;
   const excludedIDs = options.excludedIDs ?? [];
   const excluded =
     excludedIDs.length === 0 ? sql`` : sql`and item_id not in (${sql.join(excludedIDs)})`;
   const result = await sql<{ item_id: string }>`select item_id from memory_index
-    where memory_index match ${match} and rank <= ${-(options.minScore ?? 0)} ${excluded}
+    where memory_index match ${match} and rank <= ${-minScore} ${excluded}
     order by rank limit ${options.limit}`.execute(db);
 
   return result.rows.map((row) => row.item_id);
+}
+
+// BM25 weighs a word by how few items hold it, and gives a word in at least half the items no
+// weight, so in an index of fewer items than this every match scores about zero
+const smallestRankedIndex = 3;
+
+// whether the index holds enough items for a score floor to tell a rare word from a common one
+async function hasRankedIndex(db: Kysely<unknown>): Promise<boolean> {
+  const result = await sql<{ count: number }>`select count(*) as count from (
+    select 1 from memory_index limit ${smallestRankedIndex})`.execute(db);
+
+  return (result.rows.at(0)?.count ?? 0) >= smallestRankedIndex;
 }
 
 // Quotes each word of a free-text query and joins them with OR, so no character in the query reads

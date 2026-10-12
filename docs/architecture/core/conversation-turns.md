@@ -99,12 +99,13 @@ the turn again on a rebuilt session.
 
 A rebuilt session's first turn opens with the thread's recent turns, then the turn's own messages.
 The recent turns are the user's messages and the replies, word for word and oldest first, newest
-back to a token budget that the deployment configuration sets. The history ends before the turn's
-first inbox record, so a message that lands during the turn reaches the model once, as a live
-message. Older turns reach the new session only through recall. The step writes a session-rebuilt
-record that names the lost session, the reason and the count of records the history holds. The SDK
-transcript is a cache, so a rebuild restores the conversation's recent context from the event log
-rather than an identical session.
+back to a token budget that the deployment configuration sets. The history leaves out every message
+from the turn's first inbox record on, so a pending message reaches the model once, as a live
+message. It keeps every committed reply, because a turn that left messages for the next step commits
+its reply after them. Older turns reach the new session only through recall. The step writes a
+session-rebuilt record that names the lost session, the reason and the count of records the history
+holds. The SDK transcript is a cache, so a rebuild restores the conversation's recent context from
+the event log rather than an identical session.
 
 ## Inbox records as messages
 

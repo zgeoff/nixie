@@ -58,6 +58,40 @@ test('it reads the messages and replies before the first inbox record, oldest fi
   expect(records.map((record) => record.sequence)).toStrictEqual([1, 2]);
 });
 
+test('it keeps a reply that committed after a message still pending', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Where is the spare key?' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'A message past the batch the turn took.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { messageID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' },
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+  ]);
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 2,
+    tokens: 30_000,
+  });
+
+  expect(records.map((record) => record.sequence)).toStrictEqual([1, 3]);
+});
+
 test('it keeps only the newest turns that fit the token budget', async () => {
   const ctx = await setupTest();
 
