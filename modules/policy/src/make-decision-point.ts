@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant';
 import { getFixedRules } from './get-fixed-rules';
 import type {
   DecisionPoint,
@@ -5,6 +6,7 @@ import type {
   FixedRule,
   PolicyCall,
   PolicyDecision,
+  PolicyOutcome,
 } from './types';
 
 export interface DecisionPointOptions {
@@ -49,19 +51,31 @@ function pickRuleDecision(
   call: PolicyCall,
   declaration: EffectDeclaration,
 ): PolicyDecision {
+  const decided = findRuleOutcome(rules, call, declaration);
+
+  invariant(decided, 'no fixed rule decided the call, but slice1.read-only decides every call');
+  return {
+    decision: {
+      outcome: decided.outcome,
+      stage: fixedRuleStage,
+      rule: { id: decided.rule.id, revision: decided.rule.revision },
+    },
+    sentence: decided.outcome === 'deny' ? `${decided.rule.id}: ${decided.rule.sentence}` : null,
+  };
+}
+
+// the first rule that covers the call, with its outcome; a later rule never runs
+function findRuleOutcome(
+  rules: readonly FixedRule[],
+  call: PolicyCall,
+  declaration: EffectDeclaration,
+): { readonly rule: FixedRule; readonly outcome: PolicyOutcome } | undefined {
   for (const rule of rules) {
     const outcome = rule.pickOutcome(call, declaration);
 
     if (outcome !== null) {
-      return {
-        decision: {
-          outcome,
-          stage: fixedRuleStage,
-          rule: { id: rule.id, revision: rule.revision },
-        },
-        sentence: outcome === 'deny' ? `${rule.id}: ${rule.sentence}` : null,
-      };
+      return { rule, outcome };
     }
   }
-  throw new Error('no fixed rule decided the call, but slice1.read-only decides every call');
+  return undefined;
 }

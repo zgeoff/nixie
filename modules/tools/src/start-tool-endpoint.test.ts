@@ -134,7 +134,7 @@ test('it returns a typed result to the client as structured content with no text
 });
 
 test('it refuses a request with no bearer token', async () => {
-  const ctx = await setupTest({ tools: [buildMockToolDefinition()] });
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
@@ -153,7 +153,7 @@ test('it refuses a request with no bearer token', async () => {
 });
 
 test("it refuses another run's token on this run's socket", async () => {
-  const ctx = await setupTest({ tools: [buildMockToolDefinition()] });
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
   const runA = await ctx.endpoint.startRun({
     runID: 'run-a',
     thread: 'task-a',
@@ -178,7 +178,7 @@ test("it refuses another run's token on this run's socket", async () => {
 });
 
 test('it revokes the run token when the run ends, so a restarted run refuses the old token', async () => {
-  const ctx = await setupTest({ tools: [buildMockToolDefinition()] });
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
   const ended = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
@@ -206,7 +206,7 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
 });
 
 test('it stops listening on the run socket when the run ends', async () => {
-  const ctx = await setupTest({ tools: [buildMockToolDefinition()] });
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
@@ -226,7 +226,7 @@ test('it stops listening on the run socket when the run ends', async () => {
 });
 
 test('it gives a sandbox the socket of the run that owns it', async () => {
-  const ctx = await setupTest({ tools: [buildMockToolDefinition()] });
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
@@ -240,7 +240,7 @@ test('it gives a sandbox the socket of the run that owns it', async () => {
 });
 
 test('it sends the listen acknowledgement while the listen stream stays open', async () => {
-  const ctx = await setupTest({ tools: [buildMockToolDefinition()] });
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',

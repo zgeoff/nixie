@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@heynixie/log": "workspace:*"
+    "@heynixie/log": "workspace:*",
+    "tiny-invariant": "catalog:"
   }
 }
