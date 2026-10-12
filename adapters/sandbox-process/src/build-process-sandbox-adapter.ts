@@ -99,10 +99,19 @@ async function createProcessSandbox(
   }
 }
 
+// impd gives every built image a filesystem of this size and fails the create of a sandbox on a
+// smaller disk, so the double fails it too.
+const imageFilesystemMiB = 4096;
+
 async function setupProcessSandbox(
   options: ProcessSandboxOptions,
   sandbox: Sandbox,
 ): Promise<Sandbox> {
+  if (sandbox.spec.limits.diskMiB < imageFilesystemMiB) {
+    throw new Error(
+      `a disk of ${sandbox.spec.limits.diskMiB} MiB is smaller than the image's filesystem (${imageFilesystemMiB} MiB)`,
+    );
+  }
   await mkdir(join(options.rootDir, sandbox.id, 'fs'), { recursive: true });
   await writeGrantRecords(options.recorder, sandbox.id, sandbox.spec);
   await sandbox.toolRoute();
