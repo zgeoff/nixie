@@ -95,22 +95,24 @@ function collectElement(
   // an article or a main element keeps its own header and footer
   const isInRegion = reading.depth.article > 0 || reading.depth.main > 0;
   const counts = rule.counts === 'banner' && isInRegion ? null : rule.counts;
+  const isCounted = counts !== null && element.canHaveContent;
 
+  // a region's own separators fall inside the region, so adjacent articles stay apart
+  if (isCounted) {
+    reading.depth[counts] += 1;
+  }
   if (rule.isBlock) {
     collectPart(reading, '\n');
   }
   if (!element.canHaveContent) {
     return;
   }
-  if (counts !== null) {
-    reading.depth[counts] += 1;
-  }
   element.onEndTag(() => {
-    if (counts !== null) {
-      reading.depth[counts] -= 1;
-    }
     if (rule.isBlock) {
       collectPart(reading, '\n');
+    }
+    if (isCounted) {
+      reading.depth[counts] -= 1;
     }
   });
 }

@@ -54,6 +54,12 @@ test('it keeps the header and the footer inside an article', () => {
   expect(buildReadableText(html)).toBe('Post\n\nThe headline\n\nBody text.\n\nBy the author');
 });
 
+test('it keeps adjacent articles that hold direct text apart', () => {
+  expect(buildReadableText('<article>First post.</article><article>Second post.</article>')).toBe(
+    'First post.\n\nSecond post.',
+  );
+});
+
 test('it keeps the header and the footer inside the main element', () => {
   const html = `<title>Guide</title>
 <header>Site banner</header>
