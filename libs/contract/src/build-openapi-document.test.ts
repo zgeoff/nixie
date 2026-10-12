@@ -13,18 +13,9 @@ test('it matches the committed openapi.json', async () => {
   expect(`${JSON.stringify(document, null, 2)}\n`).toBe(committed);
 });
 
-test('it gives each contract procedure one operation under its path', async () => {
-  const document = await buildOpenAPIDocument();
+test('it builds the same document from the same contract', async () => {
+  const first = await buildOpenAPIDocument();
+  const second = await buildOpenAPIDocument();
 
-  expect(document).toMatchObject({
-    paths: {
-      '/conversation/read': { post: { operationId: 'conversation.read' } },
-      '/conversation/send': { post: { operationId: 'conversation.send' } },
-      '/log/follow': { post: { operationId: 'log.follow' } },
-      '/sessions/enrol': { post: { operationId: 'sessions.enrol' } },
-      '/sessions/issueCode': { post: { operationId: 'sessions.issueCode' } },
-      '/sessions/list': { post: { operationId: 'sessions.list' } },
-      '/sessions/revoke': { post: { operationId: 'sessions.revoke' } },
-    },
-  });
+  expect(first).toStrictEqual(second);
 });
