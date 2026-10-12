@@ -91,6 +91,7 @@ test('it reads a model profile, with the default of each setting it leaves out',
       model: 'claude-test-1',
       effort: 'medium',
       providerPin: null,
+      contextTokens: null,
       prices: null,
     },
   });

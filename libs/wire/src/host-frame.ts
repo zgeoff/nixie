@@ -19,6 +19,7 @@ const turnProfileSchema = z
     baseURL: z.url(),
     effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
     authHeader: z.enum(['bearer', 'x-api-key']),
+    contextTokens: z.int().positive().nullable(),
   })
   .readonly();
 

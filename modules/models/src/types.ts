@@ -31,6 +31,10 @@ export interface ModelProfile {
   // the upstream provider an aggregator endpoint must keep to, so its prompt cache holds
   readonly providerPin: string | null;
 
+  // the context window, in tokens, that the conversation's CLI compacts within instead of the
+  // model's own window
+  readonly contextTokens: number | null;
+
   // parsed for the counting proxy, which prices each response; nothing here reads them
   readonly prices: ModelPrices | null;
 }

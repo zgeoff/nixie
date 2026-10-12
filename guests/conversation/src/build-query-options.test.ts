@@ -55,6 +55,32 @@ test('it passes the broker proxy settings on by name and nothing else from the g
   expect(options.env).not.toContainKey('UNRELATED');
 });
 
+test('it caps the CLI auto-compact window at the profile context tokens', () => {
+  const options = buildQueryOptions(
+    buildMockTurnFrame({ profile: { authHeader: 'x-api-key', contextTokens: 400_000 } }),
+    {
+      env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+      toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+    },
+  );
+
+  invariant(options.env);
+  expect(options.env).toContainEntry(['CLAUDE_CODE_AUTO_COMPACT_WINDOW', '400000']);
+});
+
+test('it leaves the CLI auto-compact window unset for a profile with no context tokens', () => {
+  const options = buildQueryOptions(
+    buildMockTurnFrame({ profile: { authHeader: 'x-api-key', contextTokens: null } }),
+    {
+      env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+      toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+    },
+  );
+
+  invariant(options.env);
+  expect(options.env).not.toContainKey('CLAUDE_CODE_AUTO_COMPACT_WINDOW');
+});
+
 test('it resumes at the boundary on a fork of the session', () => {
   const options = buildQueryOptions(
     buildMockTurnFrame({

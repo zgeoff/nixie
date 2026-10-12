@@ -35,9 +35,9 @@ built-in tools, every settings source, the bundled skills and the SDK's own memo
 only nixie's MCP server, so the loop cannot read a file, run a command or remember anything outside
 the event log. The strict MCP option keeps every other MCP server out of the loop.
 
-The turn frame holds the profile's base URL, model, effort and auth header, and the guest sets them
-in the query's environment. The guest holds a placeholder in place of the credential, and the
-sandbox's grant swaps in the real one on the way to the profile's host
+The turn frame holds the profile's base URL, model, effort, auth header and context cap, and the
+guest sets them in the query's environment. The guest holds a placeholder in place of the
+credential, and the sandbox's grant swaps in the real one on the way to the profile's host
 ([model profiles](./model-profiles.md#credentials)). The frame also holds the URL of the tool route
 and the run's bearer token, which the guest gives the SDK as an HTTP MCP server that must connect
 before the loop starts.
@@ -57,6 +57,12 @@ therefore starts from the same point as the first try, and the model never sees 
 Each fork copies the whole history, so the guest removes every session on its disk but the one it
 resumes before the turn starts. The disk then holds at most the resumed session and the fork the
 turn writes, rather than a growing copy per turn.
+
+The history in the session only grows, and the CLI compacts it only as it nears the window it
+assumes, which for a model with a large window is far past what the conversation needs. A turn after
+the prompt cache expires re-reads the whole history at the full input price, so a profile can set a
+context cap, and the guest passes it to the CLI as its auto-compact window. The CLI then compacts
+the session within the cap and the next turn resumes the compacted history.
 
 A guest can die after one result and before the next, once a message that landed mid-turn started a
 second model call. The step then counts only the replies and reads that came before the last result,

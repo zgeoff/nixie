@@ -2,11 +2,12 @@
 
 nixie reaches every model through a model profile: a named route to one model on one
 Anthropic-compatible endpoint, with a reference to its credential, the header that credential goes
-in, the model ID, the reasoning effort, an optional provider pin and an optional price table. Each
-model role names the profile it uses, so moving a role to another model is a change to the
-deployment configuration and never to code. [Conversation turns](./conversation-turns.md) covers how
-the conversation runs its turns on its role's profile, and decision
-[0033](../../decisions/0033-model-profiles.md) records why profiles exist.
+in, the model ID, the reasoning effort, an optional context cap, an optional provider pin and an
+optional price table. Each model role names the profile it uses, so moving a role to another model
+is a change to the deployment configuration and never to code.
+[Conversation turns](./conversation-turns.md) covers how the conversation runs its turns on its
+role's profile, and decision [0033](../../decisions/0033-model-profiles.md) records why profiles
+exist.
 
 ## The role map
 

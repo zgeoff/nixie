@@ -21,6 +21,7 @@ test('it answers a turn frame with the script frames, then exits', async () => {
         baseURL: 'https://api.anthropic.com',
         effort: 'low',
         authHeader: 'x-api-key',
+        contextTokens: null,
       },
       tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
       resume: null,

@@ -12,6 +12,7 @@ test('it derives the frozen secret for a profile host and header, named by the p
       model: 'glm-5.3',
       effort: 'low',
       providerPin: null,
+      contextTokens: null,
       prices: null,
     },
     credential: 'not-a-real-token',

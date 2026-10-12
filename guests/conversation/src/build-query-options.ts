@@ -113,6 +113,11 @@ function buildQueryEnv(
     ANTHROPIC_DEFAULT_HAIKU_MODEL: turn.profile.model,
     CLAUDE_CODE_EFFORT_LEVEL: turn.profile.effort,
 
+    // the window the CLI auto-compacts within; unset, it compacts near the model's own window
+    ...(turn.profile.contextTokens === null
+      ? {}
+      : { CLAUDE_CODE_AUTO_COMPACT_WINDOW: String(turn.profile.contextTokens) }),
+
     // keeps the CLI to the model API's host, the one host its grant covers
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
