@@ -89,7 +89,7 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox",
 });
 
 test.skipIf(!hasImpHost)(
-  'on an imp host, the fetch sandbox fetches a public page',
+  'it fetches a public page through the fetch sandbox on an imp host',
   async () => {
     const ctx = await setupTest();
     const config = parseImpConfig(impEnv);
@@ -140,7 +140,7 @@ test.skipIf(!hasImpHost)(
 );
 
 test.skipIf(!hasImpHost)(
-  'on an imp host, a fetch sandbox reaches the internet',
+  'it reaches the internet from a fetch sandbox on an imp host',
   async () => {
     const ctx = await setupTest();
     const config = parseImpConfig(impEnv);
@@ -170,7 +170,7 @@ test.skipIf(!hasImpHost)(
 );
 
 test.skipIf(!hasImpHost)(
-  'on an imp host, a fetch sandbox never reaches impd, the host or a tailnet address',
+  'it never reaches impd, the host or a tailnet address from a fetch sandbox on an imp host',
   async () => {
     const ctx = await setupTest();
     const config = parseImpConfig(impEnv);
