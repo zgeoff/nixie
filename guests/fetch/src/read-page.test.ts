@@ -342,6 +342,28 @@ test('it counts the decoded bytes of a compressed body against the body limit', 
   expect(reply).toMatchObject({ kind: 'page', text: 'a'.repeat(100), isTruncated: true });
 });
 
+test('it fails a page sent in a content coding it cannot read', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    fetch: () =>
+      new Response('not really zstd', {
+        headers: { 'content-type': 'text/plain', 'content-encoding': 'zstd' },
+      }),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'failed',
+    reason: expect.toInclude('the page uses the content coding zstd'),
+  });
+});
+
 test('it stops at the text limit without splitting a character and marks the result truncated', async () => {
   const site = await startTestSite({
     names: ['site.test'],

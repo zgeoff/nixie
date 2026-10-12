@@ -26,10 +26,11 @@ const enrolmentCodes = new Collection({
   }),
 });
 
+// a default span ends after it starts
 const spanSchema = z.object({
-  end: z.int(),
-  source: z.enum(['typed', 'pasted', 'dropped', 'unknown']),
-  start: z.int(),
+  end: z.int().default(() => faker.number.int({ max: 200, min: 101 })),
+  source: z.enum(['typed', 'pasted', 'dropped', 'unknown']).default('typed'),
+  start: z.int().default(() => faker.number.int({ max: 100, min: 0 })),
 });
 
 const messageSchema = z.object({
@@ -40,10 +41,13 @@ const messageSchema = z.object({
 
 const jsonObjectSchema = z.record(z.string(), z.unknown());
 
-const taskSchema = z.object({ stepKey: z.string().optional(), taskID: z.string() });
+const taskSchema = z.object({
+  stepKey: z.string().optional(),
+  taskID: z.string().default(() => faker.string.uuid()),
+});
 
 const toolCallSchema = z.object({
-  callID: z.string(),
+  callID: z.string().default(() => faker.string.uuid()),
   content: jsonObjectSchema.optional(),
   input: jsonObjectSchema.optional(),
   outcome: z.string().optional(),
