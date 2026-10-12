@@ -7,12 +7,7 @@ import type {
   SandboxSpec,
   ToolTargetResolver,
 } from '@heynixie/sandbox';
-import {
-  SandboxSpecRefusedError,
-  createSandboxID,
-  requireSandboxSpec,
-  stopGraceMs,
-} from '@heynixie/sandbox';
+import { createSandboxID, requireSandboxSpec, stopGraceMs } from '@heynixie/sandbox';
 import { buildProcessSandbox } from './build-process-sandbox';
 import type { ProcessState } from './build-process-state';
 import { buildProcessState } from './build-process-state';
@@ -83,10 +78,6 @@ interface ProcessSandboxes {
   readonly removeSandbox: (id: string) => Promise<void>;
 }
 
-// impd gives every built image a filesystem of this size and starts no sandbox on a smaller disk,
-// so the double refuses that disk too.
-const imageFilesystemMiB = 4096;
-
 // Writes the created record before it makes anything, so recovery finds a sandbox that a crash
 // cut short. A failure removes what it made and records the sandbox as destroyed.
 async function createProcessSandbox(
@@ -95,11 +86,6 @@ async function createProcessSandbox(
   sandboxes: ProcessSandboxes,
 ): Promise<Sandbox> {
   requireSandboxSpec(spec);
-  if (spec.limits.diskMiB < imageFilesystemMiB) {
-    throw new SandboxSpecRefusedError(
-      `a disk of ${spec.limits.diskMiB} MiB is smaller than the image's filesystem (${imageFilesystemMiB} MiB)`,
-    );
-  }
 
   const id = createSandboxID();
 
@@ -113,10 +99,19 @@ async function createProcessSandbox(
   }
 }
 
+// impd gives every built image a filesystem of this size and fails the create of a sandbox on a
+// smaller disk, so the double fails it too.
+const imageFilesystemMiB = 4096;
+
 async function setupProcessSandbox(
   options: ProcessSandboxOptions,
   sandbox: Sandbox,
 ): Promise<Sandbox> {
+  if (sandbox.spec.limits.diskMiB < imageFilesystemMiB) {
+    throw new Error(
+      `a disk of ${sandbox.spec.limits.diskMiB} MiB is smaller than the image's filesystem (${imageFilesystemMiB} MiB)`,
+    );
+  }
   await mkdir(join(options.rootDir, sandbox.id, 'fs'), { recursive: true });
   await writeGrantRecords(options.recorder, sandbox.id, sandbox.spec);
   await sandbox.toolRoute();
