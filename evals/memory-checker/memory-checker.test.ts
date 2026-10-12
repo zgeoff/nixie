@@ -60,7 +60,7 @@ test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3'] as const)(
   },
 );
 
-test.each(['corpus', 'held-out-1', 'held-out-3'] as const)(
+test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3'] as const)(
   'it never confirms a memory that a %s message does not assert',
   async (name) => {
     const ctx = await setupTest({ name });
@@ -76,19 +76,7 @@ test.each(['corpus', 'held-out-1', 'held-out-3'] as const)(
   },
 );
 
-test('it confirms no held-out-2 memory the message does not assert, except a presupposed fact', async () => {
-  const ctx = await setupTest({ name: 'held-out-2' });
-
-  const confirmed = collectLabelledCalls(ctx.corpus, ctx.report).filter(
-    (labelled) => !labelled.pair.asserted && labelled.call.verdict === 'asserted',
-  );
-
-  expect(confirmed).toSatisfyAll(
-    (labelled: LabelledCall) => labelled.call.sample === 'bike-question',
-  );
-});
-
-test.each(['corpus', 'held-out-1'] as const)(
+test.each(['corpus', 'held-out-1', 'held-out-2'] as const)(
   'it confirms every memory that a %s message asserts, on every call the checker answered',
   async (name) => {
     const ctx = await setupTest({ name });

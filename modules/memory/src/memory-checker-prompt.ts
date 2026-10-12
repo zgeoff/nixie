@@ -11,7 +11,7 @@ A memory may keep a condition or an attribution that the message states, and it 
 Answer \`not_asserted\` when the message does not state the memory as the owner's own current fact, for example when:
 
 - the owner asks it as a question, or denies it
-- a question or a request only presupposes it, such as "what did the gardener charge me?", which does not assert "The gardener charged the owner"
+- a question or a request only presupposes it, even when the owner phrases it in their own voice: "what did the gardener charge me?" does not assert "The gardener charged the owner", and "have I told you why we moved house?" does not assert "The owner moved house"
 - the memory drops a condition or a hedge that the message holds, or drops an attribution for a claim the owner only passes on without accepting it
 - it is a wish, a joke, sarcasm, or a plan that is not settled, and the memory states it as settled
 - it was true once and the message says it is no longer true
