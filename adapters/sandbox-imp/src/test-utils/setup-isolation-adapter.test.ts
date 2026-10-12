@@ -71,6 +71,38 @@ test('it destroys an imp whose create was still running when the test finished',
   });
 });
 
+test('it removes a secret whose add was still running when the test finished', async () => {
+  const imp = await startFakeImp();
+  const removeSecret = mock(() => Promise.resolve());
+  const started = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+
+  // the add stores the secret only once the test has finished, as one does that outlives a timeout
+  onTestFinished(() => {
+    release.resolve();
+  });
+  void setupIsolationAdapter({
+    port: {
+      ...imp.port,
+      addSecret: async (secret) => {
+        started.resolve();
+        await release.promise;
+        await Bun.sleep(50);
+        await imp.port.addSecret(secret);
+      },
+    },
+    removeSecret,
+    publicEgress: null,
+    guestToolPort: imp.guestToolPort,
+    secret: 'nixie-test-a',
+  });
+  await started.promise;
+
+  onTestFinished(() => {
+    expect(removeSecret).toHaveBeenCalledWith('nixie-test-a');
+  });
+});
+
 test('it refuses a secret name impd holds already', async () => {
   const imp = await startFakeImp();
 

@@ -86,18 +86,23 @@ async function createTestSecret(options: IsolationAdapterOptions): Promise<void>
   if (held !== null) {
     throw new Error(`impd holds a secret named ${name} that this run did not add`);
   }
-  onTestFinished(async () => {
-    const left = await options.port.readSecretHosts(name);
-
-    if (left !== null) {
-      await options.removeSecret(name);
-    }
-  });
-  await options.port.addSecret({
+  const added = options.port.addSecret({
     name,
     value: 'nixie-isolation-dummy',
     host: 'api.anthropic.com',
     header: 'x-api-key',
     scheme: 'raw',
   });
+
+  // an add that outlives the test stores the secret late, so the check waits for it to settle
+  onTestFinished(async () => {
+    await Promise.allSettled([added]);
+
+    const left = await options.port.readSecretHosts(name);
+
+    if (left !== null) {
+      await options.removeSecret(name);
+    }
+  });
+  await added;
 }
