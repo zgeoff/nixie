@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/zgeoff/nixie/compare/v0.6.1...v0.6.2) (2026-10-12)
+
+
+### Bug Fixes
+
+* **geo-733:** move to imp-client 0.42.0 to speak impd 0.42 ([#130](https://github.com/zgeoff/nixie/issues/130)) ([4a74538](https://github.com/zgeoff/nixie/commit/4a74538a1e8d301e09677f7f7c17023246b54130))
+
 ## [0.6.1](https://github.com/zgeoff/nixie/compare/v0.6.0...v0.6.1) (2026-10-12)
 
 
