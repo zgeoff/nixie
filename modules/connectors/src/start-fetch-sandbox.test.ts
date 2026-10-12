@@ -1,4 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import type { FetchRequest } from '@heynixie/wire';
 import { startFetchSandbox } from './start-fetch-sandbox';
@@ -363,15 +364,16 @@ test('it removes the fetch sandboxes a past process left before it creates one',
       isTruncated: false,
     })),
   );
-  const leftover = await adapter.create({
-    kind: 'fetch',
-    image: 'nixie-fetch',
-    owner: 'web_fetch',
-    egress: { kind: 'public' },
-    grants: [],
-    toolRoute: false,
-    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
-  });
+  const leftover = await adapter.create(
+    buildMockSandboxSpec({
+      kind: 'fetch',
+      image: 'nixie-fetch',
+      owner: 'web_fetch',
+      egress: { kind: 'public' },
+      grants: [],
+      toolRoute: false,
+    }),
+  );
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',

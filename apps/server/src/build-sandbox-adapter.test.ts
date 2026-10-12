@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
+import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { buildSandboxAdapter } from './build-sandbox-adapter';
 import { startTestServer } from './test-utils/start-test-server';
 
@@ -63,15 +64,16 @@ test("it routes a guest to its run's endpoint in a test build, passing each chun
   const ctx = await setupTest();
   const model = { model: 'model-a', profile: 'chat-direct' };
   const run = await ctx.endpoint.startRun({ runID: 'run-1', thread: 'task-1', tools: [], model });
-  const sandbox = await ctx.sandboxes.create({
-    kind: 'conversation',
-    image: 'conversation',
-    owner: 'run-1',
-    egress: { kind: 'none' },
-    grants: [],
-    toolRoute: true,
-    limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
-  });
+  const sandbox = await ctx.sandboxes.create(
+    buildMockSandboxSpec({
+      kind: 'conversation',
+      image: 'conversation',
+      owner: 'run-1',
+      egress: { kind: 'none' },
+      grants: [],
+      toolRoute: true,
+    }),
+  );
 
   ctx.stack.defer(() => sandbox.destroy());
 
