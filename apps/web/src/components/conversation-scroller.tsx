@@ -51,8 +51,8 @@ export function ConversationScroller(props: ConversationScrollerProps): ReactNod
 
 // A growing message box shrinks the view without a scroll, so a view at its end stays there.
 function useFollowOnResize(
-  scrollerRef: Readonly<RefObject<HTMLDivElement | null>>,
-  isFollowing: Readonly<RefObject<boolean>>,
+  scrollerRef: RefObject<HTMLDivElement | null>,
+  isFollowing: RefObject<boolean>,
 ): void {
   useLayoutEffect(() => {
     const observer = new ResizeObserver((entries) => {

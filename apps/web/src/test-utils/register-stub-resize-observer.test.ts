@@ -10,7 +10,7 @@ test('it calls back an observer when the test resizes an element it watches', ()
   observer.observe(target);
   stub.resize(target);
 
-  expect(callback).toHaveBeenCalledExactlyOnceWith([{ target }], observer);
+  expect(callback).toHaveBeenCalledExactlyOnceWith([expect.objectContaining({ target })], observer);
 });
 
 test('it leaves an observer alone when the test resizes an element it does not watch', () => {

@@ -35,7 +35,7 @@ export function registerStubResizeObserver(): StubResizeObserver {
     };
 
     emitResize(target: Element): void {
-      this.#onResize([{ target } as ResizeObserverEntry], this);
+      this.#onResize([buildResizeEntry(target)], this);
     }
   }
 
@@ -52,5 +52,20 @@ export function registerStubResizeObserver(): StubResizeObserver {
         }
       }
     },
+  };
+}
+
+// An entry with the element's current box, so an observer that reads the size sees the one the
+// test laid out.
+function buildResizeEntry(target: Element): ResizeObserverEntry {
+  const rect = target.getBoundingClientRect();
+  const size = [{ blockSize: rect.height, inlineSize: rect.width }];
+
+  return {
+    borderBoxSize: size,
+    contentBoxSize: size,
+    contentRect: rect,
+    devicePixelContentBoxSize: size,
+    target,
   };
 }
