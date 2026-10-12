@@ -36,9 +36,11 @@ export function buildStubTimer(): StubTimer {
         .filter((timer) => timer.dueAt <= state.now)
         .toSorted((a, b) => a.dueAt - b.dueAt);
 
+      // an earlier callback can stop a later timer, which then stays unfired
       for (const timer of due) {
-        pending.delete(timer);
-        timer.onTimeout();
+        if (pending.delete(timer)) {
+          timer.onTimeout();
+        }
       }
     },
     countPending: () => pending.size,

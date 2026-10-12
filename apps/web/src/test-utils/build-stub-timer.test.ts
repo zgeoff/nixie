@@ -28,6 +28,18 @@ test('it never fires a stopped timer', () => {
   expect(timer.countPending()).toBe(0);
 });
 
+test('it never fires a timer that an earlier callback in the same advance stopped', () => {
+  const timer = buildStubTimer();
+  const onLater = mock(() => {});
+  const stopLater = timer.startTimer(onLater, 20);
+
+  timer.startTimer(stopLater, 10);
+  timer.advance(100);
+
+  expect(onLater).not.toHaveBeenCalled();
+  expect(timer.countPending()).toBe(0);
+});
+
 test('it fires the due timers earliest first', () => {
   const timer = buildStubTimer();
   const fired: string[] = [];
