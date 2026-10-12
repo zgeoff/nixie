@@ -5,19 +5,18 @@ import type { TasksTables } from '../../modules/tasks/src/index';
 import { runOracle } from './run-oracle';
 import { startTestNixie } from './start-test-nixie';
 
-// a nixie that ran one step of a test task, then died
 async function setupTest() {
   const nixie = await startTestNixie();
-  const process = nixie.harness.start();
+  const first = nixie.harness.start();
 
-  await process.ready;
+  await first.ready;
 
-  const created = await process.request('createTask', { brief: 'Wait an hour.' });
-
+  // boot data: the oracle reads a log that nixie wrote, so one task commits a step before nixie dies
+  const created = await first.request('createTask', { brief: 'Wait an hour.' });
   const taskID = String(created);
 
   await nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
-  await process.kill();
+  await first.kill();
 
   return { nixie, taskID };
 }

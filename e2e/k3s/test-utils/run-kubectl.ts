@@ -1,13 +1,19 @@
+import { onTestFinished } from 'bun:test';
 import { buildKubectlArgv } from './build-kubectl-argv';
 import type { KubectlTarget } from './parse-live-env';
 
 // Runs one kubectl command against the target's kubeconfig and namespace, and returns its stdout.
 // A command that exits non-zero throws with its stderr, so a refused call fails the check at once.
+// A command still running when the test finishes is killed.
 export async function runKubectl(target: KubectlTarget, args: readonly string[]): Promise<string> {
   const child = Bun.spawn(buildKubectlArgv(target, args), {
     stdin: 'ignore',
     stdout: 'pipe',
     stderr: 'pipe',
+  });
+
+  onTestFinished(() => {
+    child.kill();
   });
   const [stdout, stderr, code] = await Promise.all([
     new Response(child.stdout).text(),

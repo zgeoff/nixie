@@ -4,11 +4,23 @@ import type { TestNixie } from './start-test-nixie';
 import type { MatchRecord, TestRecord } from './types';
 import { waitForMatch } from './wait-for-match';
 
+export interface AdvanceWaits {
+  // how long each advance but the last waits for what it looks for before the next advance
+  readonly advanceWaitMs: number;
+
+  // how long the last advance waits, as long as any record wait
+  readonly lastAdvanceWaitMs: number;
+}
+
+// a turn runs the real SDK in a guest process, which takes a few seconds on a slow host
+const defaultAdvanceWaits: AdvanceWaits = { advanceWaitMs: 1000, lastAdvanceWaitMs: 30_000 };
+
 // Builds the helpers that advance the clock until a record or an arrival shows, for a wait inside
 // nixie, such as a turn's wait for an action, that may start its sleep after the first advance.
 export function buildAdvanceHelpers(
   harness: CrashHarness,
   readRecords: TestNixie['readRecords'],
+  waits: AdvanceWaits = defaultAdvanceWaits,
 ): Pick<TestNixie, 'advanceUntilArrival' | 'advanceUntilRecord'> {
   return {
     advanceUntilRecord: (stepMs, maxSteps, matches) =>
@@ -16,6 +28,7 @@ export function buildAdvanceHelpers(
         {
           harness,
           stepMs,
+          waits,
           waitFor: (timeoutMs) => findMatchWithin(readRecords, matches, timeoutMs),
         },
         maxSteps,
@@ -27,6 +40,7 @@ export function buildAdvanceHelpers(
         {
           harness,
           stepMs: options.stepMs,
+          waits,
           waitFor: (timeoutMs) => waitForArrivalWithin(arrival, timeoutMs),
         },
         options.maxSteps,
@@ -38,6 +52,7 @@ export function buildAdvanceHelpers(
 interface Advances<T> {
   readonly harness: CrashHarness;
   readonly stepMs: number;
+  readonly waits: AdvanceWaits;
 
   // the awaited value once it arrives within timeoutMs, or null
   readonly waitFor: (timeoutMs: number) => Promise<T | null>;
@@ -46,8 +61,8 @@ interface Advances<T> {
 async function runAdvances<T>(advances: Advances<T>, remaining: number): Promise<T> {
   await advances.harness.advance(advances.stepMs);
 
-  // the last advance waits as long as any record wait, for a turn on a slow host
-  const timeoutMs = remaining <= 1 ? lastAdvanceWaitMs : advanceWaitMs;
+  const timeoutMs =
+    remaining <= 1 ? advances.waits.lastAdvanceWaitMs : advances.waits.advanceWaitMs;
   const found = await advances.waitFor(timeoutMs);
 
   if (found !== null) {
@@ -75,9 +90,3 @@ function waitForArrivalWithin(
 ): Promise<FaultPointArrival | null> {
   return Promise.race([arrival, setTimeout(timeoutMs, null)]);
 }
-
-// how long each advance but the last waits for its record before the next advance
-const advanceWaitMs = 1000;
-
-// a turn runs the real SDK in a guest process, which takes a few seconds on a slow host
-const lastAdvanceWaitMs = 30_000;
