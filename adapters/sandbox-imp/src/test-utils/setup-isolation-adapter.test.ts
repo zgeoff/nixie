@@ -3,33 +3,38 @@ import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test
 import { setupIsolationAdapter } from './setup-isolation-adapter';
 import { startFakeImp } from './start-fake-imp';
 
+// the fake impd that each test's adapter talks to
+async function setupTest() {
+  return { imp: await startFakeImp() };
+}
+
 test('it adds the model-host secret under the name it is given', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
   await setupIsolationAdapter({
-    port: imp.port,
+    port: ctx.imp.port,
     removeSecret: mock(),
     publicEgress: null,
-    guestToolPort: imp.guestToolPort,
+    guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   });
 
-  expect(imp.calls).toStrictEqual(['secret nixie-test-a api.anthropic.com x-api-key raw']);
+  expect(ctx.imp.calls).toStrictEqual(['secret nixie-test-a api.anthropic.com x-api-key raw']);
 });
 
 test('it destroys each imp it made, then removes the secret, when the test finishes', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
   // the removal goes on the fake's call log, so the log shows the order of every removal
   const removeSecret = mock((name: string) => {
-    imp.calls.push(`secret-remove ${name}`);
+    ctx.imp.calls.push(`secret-remove ${name}`);
     return Promise.resolve();
   });
   const isolation = await setupIsolationAdapter({
-    port: imp.port,
+    port: ctx.imp.port,
     removeSecret,
     publicEgress: null,
-    guestToolPort: imp.guestToolPort,
+    guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   });
   const sandbox = await isolation.createSandbox(
@@ -40,7 +45,7 @@ test('it destroys each imp it made, then removes the secret, when the test finis
   );
 
   onTestFinished(() => {
-    expect(imp.calls.slice(-3)).toStrictEqual([
+    expect(ctx.imp.calls.slice(-3)).toStrictEqual([
       `forward-stopped ${sandbox.id}`,
       `remove ${sandbox.id}`,
       'secret-remove nixie-test-a',
@@ -49,12 +54,12 @@ test('it destroys each imp it made, then removes the secret, when the test finis
 });
 
 test('it destroys an imp whose create was still running when the test finished', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
   const isolation = await setupIsolationAdapter({
-    port: imp.port,
+    port: ctx.imp.port,
     removeSecret: mock(),
     publicEgress: null,
-    guestToolPort: imp.guestToolPort,
+    guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   });
 
@@ -67,27 +72,27 @@ test('it destroys an imp whose create was still running when the test finished',
   );
 
   onTestFinished(() => {
-    expect(imp.calls).toSatisfyAny((call: string) => call.startsWith('remove '));
+    expect(ctx.imp.calls).toSatisfyAny((call: string) => call.startsWith('remove '));
   });
 });
 
 test('it destroys an imp whose failed create could not roll it back', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
   // the rollback's removal fails, and the removal at teardown succeeds
-  imp.failRemove = true;
+  ctx.imp.failRemove = true;
   onTestFinished(() => {
-    imp.failRemove = false;
+    ctx.imp.failRemove = false;
   });
 
   const isolation = await setupIsolationAdapter({
     port: {
-      ...imp.port,
+      ...ctx.imp.port,
       addGrant: () => Promise.reject(new Error('NOT_FOUND')),
     },
     removeSecret: mock(),
     publicEgress: null,
-    guestToolPort: imp.guestToolPort,
+    guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   });
   const created = isolation.createSandbox(
@@ -100,9 +105,9 @@ test('it destroys an imp whose failed create could not roll it back', async () =
   await created.catch(() => {});
 
   onTestFinished(() => {
-    const name = imp.created.at(0)?.name;
+    const name = ctx.imp.created.at(0)?.name;
 
-    expect(imp.calls.filter((call) => call.startsWith('remove '))).toStrictEqual([
+    expect(ctx.imp.calls.filter((call) => call.startsWith('remove '))).toStrictEqual([
       `remove ${name}`,
       `remove ${name}`,
     ]);
@@ -112,7 +117,7 @@ test('it destroys an imp whose failed create could not roll it back', async () =
 });
 
 test('it removes a secret whose add was still running when the test finished', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
   const removeSecret = mock(() => Promise.resolve());
   const started = Promise.withResolvers<void>();
   const release = Promise.withResolvers<void>();
@@ -123,17 +128,17 @@ test('it removes a secret whose add was still running when the test finished', a
   });
   void setupIsolationAdapter({
     port: {
-      ...imp.port,
+      ...ctx.imp.port,
       addSecret: async (secret) => {
         started.resolve();
         await release.promise;
         await Bun.sleep(50);
-        await imp.port.addSecret(secret);
+        await ctx.imp.port.addSecret(secret);
       },
     },
     removeSecret,
     publicEgress: null,
-    guestToolPort: imp.guestToolPort,
+    guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   });
   await started.promise;
@@ -144,32 +149,32 @@ test('it removes a secret whose add was still running when the test finished', a
 });
 
 test('it refuses a secret name impd holds already', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  imp.secrets.set('nixie-test-a', ['api.anthropic.com']);
+  ctx.imp.secrets.set('nixie-test-a', ['api.anthropic.com']);
 
   expect(
     setupIsolationAdapter({
-      port: imp.port,
+      port: ctx.imp.port,
       removeSecret: mock(),
       publicEgress: null,
-      guestToolPort: imp.guestToolPort,
+      guestToolPort: ctx.imp.guestToolPort,
       secret: 'nixie-test-a',
     }),
   ).rejects.toThrow('impd holds a secret named nixie-test-a that this run did not add');
 });
 
 test('it never removes a secret it did not add', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
   const removeSecret = mock(() => Promise.resolve());
 
-  imp.secrets.set('nixie-test-a', ['api.anthropic.com']);
+  ctx.imp.secrets.set('nixie-test-a', ['api.anthropic.com']);
 
   const failure = await setupIsolationAdapter({
-    port: imp.port,
+    port: ctx.imp.port,
     removeSecret,
     publicEgress: null,
-    guestToolPort: imp.guestToolPort,
+    guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   }).catch((error: unknown) => error);
 

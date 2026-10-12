@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import type { InboxMessage } from '@heynixie/wire';
+import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import { runGuestTurn } from './run-guest-turn';
 import { buildStubSandboxes } from './test-utils/build-stub-sandboxes';
 
@@ -14,19 +15,9 @@ test('it collects the frames the guest sent for the turn', async () => {
   const turn = await runGuestTurn({
     sandbox,
     command: { argv: ['guest'], env: {} },
-    turn: {
-      type: 'turn',
-      profile: {
-        model: 'model-a',
-        baseURL: 'https://api.anthropic.com',
-        effort: 'low',
-        authHeader: 'x-api-key',
-      },
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-      resume: null,
-      systemPrompt: 'You are nixie.',
+    turn: buildMockTurnFrame({
       input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
-    },
+    }),
     messages: [],
     signal: new AbortController().signal,
   });
@@ -65,19 +56,9 @@ test('it drops the reads and replies a guest sent after its last result when it 
   const turn = await runGuestTurn({
     sandbox,
     command: { argv: ['guest'], env: {} },
-    turn: {
-      type: 'turn',
-      profile: {
-        model: 'model-a',
-        baseURL: 'https://api.anthropic.com',
-        effort: 'low',
-        authHeader: 'x-api-key',
-      },
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-      resume: null,
-      systemPrompt: 'You are nixie.',
+    turn: buildMockTurnFrame({
       input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
-    },
+    }),
     messages: [],
     signal: new AbortController().signal,
   });
@@ -104,19 +85,9 @@ test('it passes each live message into the running turn', async () => {
   const turn = await runGuestTurn({
     sandbox,
     command: { argv: ['guest'], env: {} },
-    turn: {
-      type: 'turn',
-      profile: {
-        model: 'model-a',
-        baseURL: 'https://api.anthropic.com',
-        effort: 'low',
-        authHeader: 'x-api-key',
-      },
-      tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-      resume: null,
-      systemPrompt: 'You are nixie.',
+    turn: buildMockTurnFrame({
       input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
-    },
+    }),
     messages: live,
     signal: new AbortController().signal,
   });
@@ -134,19 +105,9 @@ test('it throws when the guest exits before it ends or fails its turn', async ()
     runGuestTurn({
       sandbox,
       command: { argv: ['guest'], env: {} },
-      turn: {
-        type: 'turn',
-        profile: {
-          model: 'model-a',
-          baseURL: 'https://api.anthropic.com',
-          effort: 'low',
-          authHeader: 'x-api-key',
-        },
-        tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-        resume: null,
-        systemPrompt: 'You are nixie.',
+      turn: buildMockTurnFrame({
         input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
-      },
+      }),
       messages: [],
       signal: new AbortController().signal,
     }),
@@ -170,19 +131,9 @@ test('it stops the guest when the step signal aborts', async () => {
     runGuestTurn({
       sandbox,
       command: { argv: ['guest'], env: {} },
-      turn: {
-        type: 'turn',
-        profile: {
-          model: 'model-a',
-          baseURL: 'https://api.anthropic.com',
-          effort: 'low',
-          authHeader: 'x-api-key',
-        },
-        tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-        resume: null,
-        systemPrompt: 'You are nixie.',
+      turn: buildMockTurnFrame({
         input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
-      },
+      }),
       messages: [],
       signal: lease.signal,
     }),
