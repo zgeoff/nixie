@@ -60,8 +60,9 @@ sleep onto a stop or a pause.
 
 `public` egress is defined by this contract, not by any one adapter. A sandbox with `public` egress
 reaches the global internet only. It cannot reach the host, the sandbox runtime's API, other
-sandboxes, the loopback, private, link-local and tailnet ranges, or any range the deployment lists
-as internal. Every adapter enforces it at the network layer, outside the guest.
+sandboxes, the loopback, private, link-local and shared address space (`100.64.0.0/10`) ranges, or
+any range the deployment lists as internal. Every adapter enforces it at the network layer, outside
+the guest.
 
 The deployment lists every address of the host and every range the host forwards to, such as a
 cluster's pod and service ranges. **Why:** a host address or a forwarded range that the list leaves

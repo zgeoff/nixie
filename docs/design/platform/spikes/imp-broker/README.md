@@ -50,7 +50,7 @@ on exit.
    cd <imp_clone> && bun install
    ```
 
-2. Start a dev instance with its own name, ports and data directory, off the tailnet:
+2. Start a dev instance with its own name, ports and data directory, off the private network:
 
    ```bash
    export IMP_DEV_NAME=nixie-spike-dev IMP_DEV_PORT_OFFSET=400 IMP_DEV_DATA=<data_dir>

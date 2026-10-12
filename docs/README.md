@@ -87,7 +87,7 @@ below, and planned work lives in Linear.
 - [The release pipeline](architecture/deployment/release-pipeline.md) — versions, the release
   stages, the sandbox manifest, publishing, attestations and the compatibility checks
 - [Kubernetes](architecture/deployment/kubernetes.md) — the reference manifests, nixie's pod and its
-  mounts, impd and the address ranges, the ingress, and the live checks
+  mounts, impd and the address ranges, and the ingress
 
 ## Runbooks
 
@@ -95,8 +95,6 @@ below, and planned work lives in Linear.
   public, checking an attestation and repairing a failed release
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
   public imp reach, on a host with impd
-- [Run the live checks](runbooks/live-checks.md) — the conversation, the rollout and the fetch
-  sandbox, against nixie deployed on Kubernetes
 
 ## Design
 
@@ -354,8 +352,6 @@ left untested. The [spikes index](design/platform/spikes/README.md) describes ho
   pasted, kept right through edits
 - [Tools through a reverse forward](design/platform/spikes/tools-reverse-forward/) — relay overhead,
   streamed responses, egress isolation and reopening after wake
-- [The reverse forward from a pod](design/platform/spikes/pod-reverse-forward/) — a pod with no
-  inbound port serves an egress `none` imp's tool calls through impd
 - [Retrieval on nixie-shaped memory](design/platform/spikes/memory-retrieval/) — keyword search,
   BM25 and local embeddings over synthetic memory, and where they part
 - [Crypto-shredding memory items](design/platform/spikes/memory-shred/) — a key per item against

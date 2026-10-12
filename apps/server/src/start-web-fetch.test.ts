@@ -170,7 +170,7 @@ test.skipIf(!hasImpHost)(
 );
 
 test.skipIf(!hasImpHost)(
-  'it never reaches impd, the host or a tailnet address from a fetch sandbox on an imp host',
+  'it never reaches impd or the host from a fetch sandbox on an imp host',
   async () => {
     const ctx = await setupTest();
     const config = parseImpConfig(impEnv);
@@ -200,10 +200,6 @@ test.skipIf(!hasImpHost)(
       ...(config.publicEgress?.hostAddresses ?? []).map(
         (range) => [range.split('/')[0] ?? '', impdPort] as const,
       ),
-
-      // imp sends every guest IPv4 packet for port 53 to impd's own resolver, so the probe uses
-      // port 80, where the tailnet's resolver answers HTTP when the sandbox reaches it
-      [process.env['NIXIE_IMP_TEST_TAILNET_ADDRESS'] ?? '100.100.100.100', 80],
     ];
 
     const outcomes = await Promise.all(

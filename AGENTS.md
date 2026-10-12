@@ -138,7 +138,7 @@ writing rules, the size limits and the README contract.
 
 The repo is public, so every commit, PR, issue and review reply stays free of private detail:
 
-- No home directory paths, host names, tailnet names, or details of the owner's cloud. The
+- No home directory paths, host names, private network names, or details of the owner's cloud. The
   deployment repo holds those.
 - No name for the owner's coordinator agent.
 - The docs justify nixie on its own terms, never by comparing it to another system.

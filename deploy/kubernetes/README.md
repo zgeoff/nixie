@@ -15,20 +15,16 @@ release tag and digest. impd runs on the node, outside the cluster.
 4. Create the namespace, the TLS Secret `nixie-tls`, and the `nixie-secrets` Secret from your sops
    file and your host's age key, as `secret.example.yaml` shows. `kustomization.yaml` leaves that
    example out, so applying the folder never replaces a real Secret.
-5. Apply the folder:
-
-   ```bash
-   kubectl apply -k .
-   ```
+5. Apply the folder as a kustomization with your cluster's client.
 
 ## Check them
 
-To validate every resource against the Kubernetes schemas, render the folder and run kubeconform:
+To validate every resource against the Kubernetes schemas, render the folder with kustomize and run
+kubeconform:
 
 ```bash
-kubectl kustomize deploy/kubernetes > /tmp/nixie.yaml
+kustomize build deploy/kubernetes > /tmp/nixie.yaml
 kubeconform -strict -summary /tmp/nixie.yaml deploy/kubernetes/secret.example.yaml
 ```
 
-Expect `Valid: 10, Invalid: 0, Errors: 0`. [The live checks](../../docs/runbooks/live-checks.md)
-prove a running deployment.
+Expect `Valid: 10, Invalid: 0, Errors: 0`.

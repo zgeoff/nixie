@@ -63,8 +63,8 @@ audit row for a refused host.
    in the clone, and run `bun install` there
    ([imp install guide](https://github.com/zgeoff/imp/blob/v0.38.1/docs/guides/install.md#set-up)).
 
-2. Start a dev instance off the tailnet. Put its data directory on a disk filesystem with more than
-   5.5 GiB free, never on a tmpfs: impd keeps 5 GiB in reserve (`IMP_DISK_RESERVE_GIB`).
+2. Start a dev instance off the private network. Put its data directory on a disk filesystem with
+   more than 5.5 GiB free, never on a tmpfs: impd keeps 5 GiB in reserve (`IMP_DISK_RESERVE_GIB`).
 
    ```bash
    export IMP_DEV_NAME=nixie-spike-dev IMP_DEV_PORT_OFFSET=400 IMP_DEV_DATA=<data_dir>

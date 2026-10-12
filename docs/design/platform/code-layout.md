@@ -167,9 +167,9 @@ describes.
 
 Tests run on `bun test`, with `@zgeoff/bun-test-extended` preloaded for its matchers. Each test sits
 beside the module it tests, as `x.test.ts` beside `x.ts`. The only test folder is the root `e2e/`,
-which holds whole-program suites and the live checks against a Kubernetes or Compose deployment. A
-test that needs a database opens its own SQLite file in a temporary directory. A guest keeps its
-test helpers inside its own package, because `libs/testing` is server-only.
+which holds whole-program suites. A test that needs a database opens its own SQLite file in a
+temporary directory. A guest keeps its test helpers inside its own package, because `libs/testing`
+is server-only.
 
 The tests that run the Agent SDK's `query()` live in `guests/conversation`, the one package that
 imports the SDK. They run against the scripted model from the

@@ -82,4 +82,4 @@ its body.
 The fetch image holds a minimal base with Bun and the fetcher bundled into one file, built from
 `guests/fetch` with its Dockerfile. [The imp isolation tests](../../runbooks/imp-isolation-tests.md)
 run the fetch sandbox on an imp host against the image: a public page succeeds, and a direct
-connection to impd, the host's addresses or a tailnet address fails.
+connection to impd or the host's addresses fails.

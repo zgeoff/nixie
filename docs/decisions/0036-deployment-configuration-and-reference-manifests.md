@@ -1,6 +1,7 @@
 # 0036: Deployment configuration and reference manifests
 
 - Date: 2026-10-10
+- Updated: 2026-10-12
 - Status: decided
 - Design: [deployment configuration](../design/platform/deployment/configuration.md),
   [deployment](../design/platform/deployment/deployment.md#kubernetes),
@@ -14,8 +15,8 @@ the file in `docs/reference/`.
 
 nixie ships generic reference Kubernetes manifests in `deploy/kubernetes/`, beside the Compose
 recipe in `deploy/compose/`. They cover the StatefulSet, the web Deployment, the ingress with its
-`/rpc` rule, the Secrets, and impd beside the cluster, and hold no host, cloud or tailnet detail. A
-deployment repo keeps its own version of them.
+`/rpc` rule, the Secrets, and impd beside the cluster, and hold no host, cloud or private network
+detail. A deployment repo keeps its own version of them.
 
 ## Why
 
@@ -24,8 +25,8 @@ deployment repo keeps its own version of them.
 - A zod schema refuses a bad file before any part starts, and the same schema types the settings in
   code.
 - Keeping secrets out of the file lets the file stay in plain text and in review.
-- Reference manifests give the live checks a target in this repo and give a new deployment a
-  starting point, while the public repo stays free of private detail.
+- Reference manifests give a new deployment a starting point, while the public repo stays free of
+  private detail.
 
 ## Alternatives
 
@@ -33,10 +34,14 @@ deployment repo keeps its own version of them.
   and a variable in the container's configuration is easy to change without review.
 - **Settings in the secrets file.** Every settings change would need a decrypt and a re-encrypt, and
   review would see only ciphertext.
-- **Manifests only in the deployment repo.** The live checks and a new deployment would have no
-  shared starting point, and each deployment would rediscover the single-writer shape.
+- **Manifests only in the deployment repo.** A new deployment would have no shared starting point,
+  and each deployment would rediscover the single-writer shape.
 
 ## Consequences
 
 - A setting a later slice adds joins the schema in that slice, and nixie refuses an unknown key.
 - A change to a reference manifest reaches a deployment only when its deployment repo copies it.
+
+## Changes
+
+- 2026-10-12: the live checks left the repo, so the manifests no longer give them a target.

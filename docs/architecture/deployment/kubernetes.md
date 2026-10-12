@@ -4,9 +4,7 @@ nixie ships reference manifests for Kubernetes in `deploy/kubernetes/`, and a de
 its own copy with its host name, impd's URL, its address ranges and its model profiles in place of
 the placeholders. One SQLite writer sets their shape: nixie runs as one pod that owns one volume,
 the web server runs beside it with no state, and one ingress puts both behind one host name. The
-manifests hold no host, cloud or tailnet detail, because the repo is public. The live checks in
-`e2e/k3s/` prove a deployment built from them, and
-[the live checks runbook](../../runbooks/live-checks.md) runs them.
+manifests hold no host, cloud or tailnet detail, because the repo is public.
 
 [The server](./server.md) covers the process the pod runs, its configuration and secrets, and how it
 stops, and [the database](../core/database.md#the-single-writer) covers the writer lock. The
@@ -70,23 +68,3 @@ Each manifest pins its image by the release's version tag and the image's digest
 runs exactly the digest the release published while the tag shows a reader which release it is. An
 upgrade changes the nixie and web digests in one pull request in the deployment repo, as
 [upgrades](../../design/platform/deployment/upgrades.md) describes.
-
-## The live checks
-
-The live checks run from a workstation against a deployed nixie, by its URL and a kubeconfig, and
-each suite skips until its variables are set. Each one checks one guarantee of the deployment:
-
-- **The conversation.** A device enrols with a code from the host command in nixie's pod, waits
-  until no step is in flight, sends a message, and receives a reply that used the web fetch, with
-  the message, the step, the tool call, its result, the reply and the step's commit in order on the
-  conversation's thread.
-- **The rollout.** The StatefulSet rolls to another digest, and the old pod's last log line and its
-  exit come before the new pod's writer opens the database, under a higher writer epoch.
-- **The fetch sandbox.** A fetch sandbox built from the configuration and the sandbox manifest in
-  nixie's pod fetches a public page and reaches the internet. A direct connection from it to impd,
-  each node address, nixie's pod and Service, and a tailnet address fails, while the same target
-  answers from nixie's pod or, for the tailnet, from the machine that runs the check. Every node,
-  pod and Service address falls inside the ranges the configuration lists as internal.
-
-The checks build their own fetch sandboxes and record them in their own scratch database, so they
-never list or remove nixie's sandboxes.
