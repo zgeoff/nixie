@@ -1,4 +1,3 @@
-import type { StartedMemoryStore } from '@heynixie/memory';
 import { memoryWriterTaskID } from '@heynixie/memory';
 import { registerSandboxImages } from './register-sandbox-images';
 import { runDefinitionsSeed } from './run-definitions-seed';
@@ -11,17 +10,11 @@ import { startWork } from './start-work';
 import { startWriterTask } from './start-writer-task';
 import type { ServerParts } from './types';
 
-// the slot the conversation reads its memory store from, empty until the store starts
-interface MemorySlot {
-  store: StartedMemoryStore | null;
-}
-
 // The start steps behind the health endpoint: recovery, the images, the conversation imp, memory,
 // the memory writer, the seed, then the runners, so a pending forget finds its session cleanup. A
 // failed step runs again, so nixie stays live and unready until impd answers or the seed applies.
 export async function runStartSequence(parts: ServerParts): Promise<void> {
   const retry = { signal: parts.cleanup.signal, log: parts.log };
-  const memory: MemorySlot = { store: null };
 
   // every record carries a snapshot hash, so a first start seeds before anything else writes
   if (parts.inForce.read() === null) {
@@ -34,17 +27,17 @@ export async function runStartSequence(parts: ServerParts): Promise<void> {
     () =>
       startConversationImp(parts, () => {
         // the runners that run turns start after the memory store
-        if (memory.store === null) {
+        const store = parts.tools.memory.read();
+
+        if (store === null) {
           throw new Error('a turn ran before the memory store started');
         }
-        return memory.store;
+        return store;
       }),
     { ...retry, step: 'conversation_imp' },
   );
 
-  await startMemoryAndWork(parts, conversation, (store) => {
-    memory.store = store;
-  });
+  await startMemoryAndWork(parts, conversation);
 }
 
 // Starts the memory store and hands it to the conversation, then the memory writer and the runners,
@@ -52,7 +45,6 @@ export async function runStartSequence(parts: ServerParts): Promise<void> {
 async function startMemoryAndWork(
   parts: ServerParts,
   conversation: ConversationImp,
-  setMemoryStore: (store: StartedMemoryStore) => void,
 ): Promise<void> {
   const retry = { signal: parts.cleanup.signal, log: parts.log };
   const store = await runWithRetry(() => startMemory(parts, conversation.cleanupSessions), {
@@ -60,7 +52,7 @@ async function startMemoryAndWork(
     step: 'memory',
   });
 
-  setMemoryStore(store);
+  parts.tools.memory.set(store);
 
   // the content gate checks one write of yours at a time, not a writer batch, so the writer stays
   // off and its catch-up waits for a gate that checks a batch

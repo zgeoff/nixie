@@ -1,5 +1,6 @@
 import type { APIContext } from '@heynixie/api';
 import type { DefinitionsInForce, DefinitionsSource, SnapshotPolicy } from '@heynixie/definitions';
+import type { StartedMemoryStore } from '@heynixie/memory';
 import type { ModelSecrets } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
 import type { TasksContext } from '@heynixie/tasks';
@@ -27,6 +28,12 @@ export interface Cleanup {
 export interface InForce {
   readonly read: () => DefinitionsInForce | null;
   readonly set: (inForce: DefinitionsInForce) => void;
+}
+
+// the slot the memory tools and the conversation read the memory store from, empty until it starts
+export interface MemorySlot {
+  readonly read: () => StartedMemoryStore | null;
+  readonly set: (store: StartedMemoryStore) => void;
 }
 
 // Everything the start steps behind the health endpoint use.

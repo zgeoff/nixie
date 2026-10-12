@@ -25,7 +25,7 @@ export async function startConversationImp(
     secrets: parts.modelSecrets,
     sandboxes: parts.tools.adapter,
     tools: parts.tools.endpoint,
-    toolNames: [parts.tools.webFetch.tool.name],
+    toolNames: parts.tools.definitions.map((definition) => definition.name),
     image: parts.images.conversation.name,
     getSystemPrompt: () => parts.inForce.read()?.persona ?? '',
     readTurnNote: () => readMemoryChangeNote(parts.context.log, memory(), memoryNoteCap),

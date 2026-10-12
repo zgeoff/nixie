@@ -1,22 +1,27 @@
 import { join } from 'node:path';
-import { makeDecisionPoint } from '@heynixie/policy';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
-import type { ActionQueue, ToolEndpoint } from '@heynixie/tools';
-import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildSandboxAdapter } from './build-sandbox-adapter';
 import type { DeploymentConfig } from './deployment-config-schema';
 import type { SandboxImages } from './load-sandbox-manifest';
+import { startConversationEndpoint } from './start-conversation-endpoint';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
 import type { WebFetch } from './start-web-fetch';
-import type { Cleanup } from './types';
+import type { Cleanup, MemorySlot } from './types';
 
-// The sandbox adapter, the web fetch tool on its fetch sandbox, and the endpoint that serves it.
+// The sandbox adapter, the web fetch tool on its fetch sandbox, the conversation's tool
+// definitions, and the endpoint that serves them. The memory tools reach the store through the
+// slot, which the start sequence fills once the store starts.
 export interface Tools {
   readonly adapter: SandboxAdapter;
   readonly endpoint: ToolEndpoint;
   readonly webFetch: WebFetch;
+
+  // the web fetch tool and the 3 memory tools
+  readonly definitions: readonly ToolDefinition[];
+  readonly memory: MemorySlot;
 }
 
 export interface ToolsOptions {
@@ -32,6 +37,7 @@ export interface ToolsOptions {
 // exists.
 export async function startTools(options: ToolsOptions): Promise<Tools> {
   const holder: { endpoint: ToolEndpoint | null } = { endpoint: null };
+  const slot: { store: ReturnType<MemorySlot['read']> } = { store: null };
   const adapter = buildSandboxAdapter({
     recorder: buildSandboxRecorder({
       log: options.context.log,
@@ -58,33 +64,22 @@ export async function startTools(options: ToolsOptions): Promise<Tools> {
   });
 
   await options.cleanup.defer(() => webFetch.stop());
-  holder.endpoint = await startEndpoint(options, webFetch.tool);
-  return { adapter, endpoint: holder.endpoint, webFetch };
-}
-
-async function startEndpoint(
-  options: ToolsOptions,
-  tool: Tools['webFetch']['tool'],
-): Promise<ToolEndpoint> {
-  const registry = buildToolRegistry([tool]);
-  const endpoint = await startToolEndpoint({
-    socketDir: join(options.config.server.dataDir, 'run', 'tools'),
-    registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
-    }),
-    log: options.context.log,
-    definitions: options.context.definitions,
-    queue: refusingQueue,
+  const served = await startConversationEndpoint(options, {
+    webFetch: webFetch.tool,
+    readStore: () => slot.store,
   });
 
-  await options.cleanup.defer(() => endpoint.stop());
-  return endpoint;
+  holder.endpoint = served.endpoint;
+  return {
+    adapter,
+    endpoint: served.endpoint,
+    webFetch,
+    definitions: served.definitions,
+    memory: {
+      read: () => slot.store,
+      set: (store) => {
+        slot.store = store;
+      },
+    },
+  };
 }
-
-// No tool in a slice 1 release runs queued: the read-only rule denies every call with an effect
-// outside nixie before it reaches the queue.
-const refusingQueue: ActionQueue = {
-  enqueue: () => Promise.reject(new Error('no tool in this build runs queued')),
-  waitForOutcome: () => Promise.resolve(null),
-};

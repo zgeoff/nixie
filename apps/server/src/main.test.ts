@@ -101,6 +101,53 @@ test('it puts the snapshot hash of the definitions in force on every record', as
   );
 }, 60_000);
 
+test('it applies a remembered fact backed by typed words, with the memory tools listed', async () => {
+  const ctx = await setupTest();
+  const text = 'Remember that my sister Ada lives in Leeds.';
+
+  ctx.model.addReplies(
+    {
+      toolUse: {
+        name: 'mcp__nixie__memory_remember',
+        input: { text: 'Sister Ada lives in Leeds', quote: 'my sister Ada lives in Leeds' },
+      },
+    },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+    { text: 'Noted.' },
+  );
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [{ start: 0, end: text.length, source: 'typed' }],
+    text,
+    thread: 'conversation',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Noted.');
+  });
+  ctx.sendSignal('SIGTERM');
+  const run = await ctx.waitForExit();
+
+  expect(run.records.filter((record) => record.kind === 'memory.version_added')).toMatchObject([
+    {
+      contentSource: 'owner',
+      payload: { change: 'created', origin: 'conversation', source: 'owner', state: 'active' },
+    },
+  ]);
+  expect(run.records.filter((record) => record.kind === 'memory.proposed')).toStrictEqual([]);
+  expect(ctx.model.requests.find((request) => request.path === '/v1/messages')?.body).toMatchObject(
+    {
+      tools: expect.toIncludeAllPartialMembers([
+        { name: 'mcp__nixie__memory_remember' },
+        { name: 'mcp__nixie__memory_recall' },
+        { name: 'mcp__nixie__memory_retire' },
+        { name: 'mcp__nixie__web_fetch' },
+      ]),
+    },
+  );
+}, 60_000);
+
 test('it answers liveness per part', async () => {
   const ctx = await setupTest();
 

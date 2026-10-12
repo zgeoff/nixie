@@ -166,4 +166,5 @@ as origin, any other thread gives a task, and the run's model gives the model ID
 takes outside content as its source, because the items it returns hold every source memory holds. A
 stale version, a missing item or a wrong state returns to the model as the tool's refusal, so the
 model reads the item again. The model can retire an item and can never restore, undo or forget one.
-The server's tool registry leaves the 3 tools out, so no model reaches memory.
+The server registers the 3 tools beside web fetch, and the conversation's tool list names them. The
+read-only rule allows them, because they declare `read` and `note` and run direct.
