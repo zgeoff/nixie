@@ -173,6 +173,7 @@
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
+        "tiny-invariant": "catalog:",
       },
     },
     "modules/api": {

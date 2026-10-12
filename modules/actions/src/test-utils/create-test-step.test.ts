@@ -2,8 +2,12 @@ import { expect, test } from 'bun:test';
 import { createTestStep } from './create-test-step';
 import { startTestActions } from './start-test-actions';
 
+function setupTest() {
+  return startTestActions();
+}
+
 test('it claims the first step of a new task under a 60 s lease', async () => {
-  const ctx = await startTestActions();
+  const ctx = await setupTest();
 
   const step = await createTestStep(ctx.context);
 

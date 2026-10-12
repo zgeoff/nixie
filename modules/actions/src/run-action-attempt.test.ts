@@ -1,89 +1,100 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import type { FaultPointID } from '@heynixie/tasks';
 import { setFaultPointHandler } from '@heynixie/tasks';
-import { claimAction } from './claim-action';
-import { createAllowedAction } from './create-allowed-action';
-import { runActionAttempt } from './run-action-attempt';
+import { createAllowedAction, runActionAttempt } from './index';
 import { buildStubConnector } from './test-utils/build-stub-connector';
+import { claimTestAction } from './test-utils/claim-test-action';
 import { createTestStep } from './test-utils/create-test-step';
+import { runStalledAttempt } from './test-utils/run-stalled-attempt';
 import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
 
-// a queued test.send action, claimed by a runner
 async function setupTest() {
   const actions = await startTestActions();
-  const db = actions.writer.db.$extendTables<ActionsTables>();
-  const step = await createTestStep(actions.context);
-  const queued = await createAllowedAction(actions.context, {
+
+  return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>() };
+}
+
+test('it calls the provider with the action ID as the idempotency key', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await createAllowedAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
-  const lease = await claimAction(actions.context, { holder: 'runner-a', leaseMs: 60_000 });
-
-  if (lease === null) {
-    throw new Error('the setup claim found no action');
-  }
-  const readAction = () => db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
-  const readOutcomes = async () => {
-    const entries = await readRecords(actions.context.log, { afterSequence: 0 });
-
-    return entries
-      .map((entry) => entry.record)
-      .filter((record) => record.kind === 'action.outcome');
-  };
-
-  return {
-    ...actions,
-    db,
-    taskID: step.lease.workID,
-    actionID: queued.actionID,
-    lease,
-    readAction,
-    readOutcomes,
-  };
-}
-
-test('it calls the provider with the action ID as the idempotency key', async () => {
-  const ctx = await setupTest();
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
   const stub = buildStubConnector(() => ({ kind: 'success', result: { messageID: 'm-1' } }));
 
-  await runActionAttempt(ctx.context, ctx.lease, {
+  await runActionAttempt(ctx.context, lease, {
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
   });
 
   expect(stub.calls).toStrictEqual([
     {
-      actionID: ctx.actionID,
+      actionID: queued.actionID,
       tool: 'test.send',
       arguments: { to: 'team' },
       attempt: 1,
-      idempotencyKey: ctx.actionID,
+      idempotencyKey: queued.actionID,
     },
   ]);
 });
 
-test('it settles a success as done, with the result in the task inbox', async () => {
+test('it settles a success as done', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
   const stub = buildStubConnector(() => ({ kind: 'success', result: { messageID: 'm-1' } }));
 
-  await runActionAttempt(ctx.context, ctx.lease, {
+  await runActionAttempt(ctx.context, lease, {
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
   });
 
-  const action = await ctx.readAction();
-  const outcomes = await ctx.readOutcomes();
+  const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
 
   expect(action).toMatchObject({ status: 'done', attempt_count: 1, attempt_open: 0 });
-  expect(outcomes).toMatchObject([
+});
+
+test('it puts the result of a success in the task inbox', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+  const stub = buildStubConnector(() => ({ kind: 'success', result: { messageID: 'm-1' } }));
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const entries = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  expect(
+    entries.map((entry) => entry.record).filter((record) => record.kind === 'action.outcome'),
+  ).toMatchObject([
     {
-      thread: ctx.taskID,
-      payload: { actionID: ctx.actionID, status: 'done', attempt: 1, reason: null },
+      thread: step.lease.workID,
+      payload: { actionID: queued.actionID, status: 'done', attempt: 1, reason: null },
       erasable: { status: 'readable', fields: { result: { messageID: 'm-1' } } },
     },
   ]);
@@ -91,16 +102,29 @@ test('it settles a success as done, with the result in the task inbox', async ()
 
 test('it settles a refusal with no effect as failed, with the reason in the inbox', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
   const stub = buildStubConnector(() => ({ kind: 'refused', reason: 'no such recipient' }));
 
-  await runActionAttempt(ctx.context, ctx.lease, {
+  await runActionAttempt(ctx.context, lease, {
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
   });
 
-  const outcomes = await ctx.readOutcomes();
+  const entries = await readRecords(ctx.context.log, { afterSequence: 0 });
 
-  expect(outcomes).toMatchObject([
+  expect(
+    entries.map((entry) => entry.record).filter((record) => record.kind === 'action.outcome'),
+  ).toMatchObject([
     {
       payload: { status: 'failed', reason: 'refused' },
       erasable: { fields: { message: 'no such recipient' } },
@@ -110,15 +134,30 @@ test('it settles a refusal with no effect as failed, with the reason in the inbo
 
 test('it returns a refusal that can clear to pending, with its next attempt time', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
   const stub = buildStubConnector(() => ({ kind: 'refused_retryable', reason: 'rate limited' }));
 
-  await runActionAttempt(ctx.context, ctx.lease, {
+  await runActionAttempt(ctx.context, lease, {
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
   });
 
-  const action = await ctx.readAction();
-  const outcomes = await ctx.readOutcomes();
+  const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
+  const outcomes = await ctx.db
+    .selectFrom('records')
+    .select('sequence')
+    .where('kind', '=', 'action.outcome')
+    .execute();
 
   expect(action).toMatchObject({
     status: 'pending',
@@ -132,32 +171,56 @@ test('it returns a refusal that can clear to pending, with its next attempt time
 
 test('it settles an ambiguous response as unknown', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
   const stub = buildStubConnector(() => ({ kind: 'ambiguous', reason: 'timed out' }));
 
-  await runActionAttempt(ctx.context, ctx.lease, {
+  await runActionAttempt(ctx.context, lease, {
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
   });
 
-  const action = await ctx.readAction();
+  const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
 
   expect(action).toMatchObject({ status: 'unknown', reason: 'ambiguous' });
 });
 
 test('it settles a provider call that threw, such as a dropped connection, as unknown', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
   const stub = buildStubConnector(() => {
     throw new Error('socket hang up');
   });
 
-  await runActionAttempt(ctx.context, ctx.lease, {
+  await runActionAttempt(ctx.context, lease, {
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
   });
 
-  const outcomes = await ctx.readOutcomes();
+  const entries = await readRecords(ctx.context.log, { afterSequence: 0 });
 
-  expect(outcomes).toMatchObject([
+  expect(
+    entries.map((entry) => entry.record).filter((record) => record.kind === 'action.outcome'),
+  ).toMatchObject([
     {
       payload: { status: 'unknown', reason: 'ambiguous' },
       erasable: { fields: { message: 'socket hang up' } },
@@ -167,64 +230,95 @@ test('it settles a provider call that threw, such as a dropped connection, as un
 
 test('it marks an action whose attempt record has no result unknown, and calls no provider', async () => {
   const ctx = await setupTest();
-  const stub = buildStubConnector(() => {
-    // the first runner stalled in the call past its lease, so its result never commits
-    ctx.clock.advance(60_000);
-    return { kind: 'success', result: {} };
-  });
+  const step = await createTestStep(ctx.context);
 
-  await runActionAttempt(ctx.context, ctx.lease, {
-    connectors: new Map([['test.send', stub.connector]]),
-    leaseMs: 60_000,
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+  await runStalledAttempt(ctx);
 
-  const reclaim = await claimAction(ctx.context, { holder: 'runner-b', leaseMs: 60_000 }).then(
-    (lease) => lease ?? Promise.reject(new Error('the second runner found no action to claim')),
-  );
+  const reclaim = await claimTestAction(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
 
   await runActionAttempt(ctx.context, reclaim, {
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
   });
 
-  const action = await ctx.readAction();
+  const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
 
   expect(action).toMatchObject({ status: 'unknown', reason: 'attempt_without_result' });
-  expect(stub.calls).toHaveLength(1);
+  expect(stub.calls).toStrictEqual([]);
 });
 
 test('it commits no result once its lease is lost during the provider call', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
   const stub = buildStubConnector(() => {
     // the runner stalled past its lease, and a second runner claimed the action
     ctx.clock.advance(60_000);
     return { kind: 'success', result: {} };
   });
 
-  await runActionAttempt(ctx.context, ctx.lease, {
+  await runActionAttempt(ctx.context, lease, {
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
   });
 
-  const action = await ctx.readAction();
+  const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
 
   expect(action).toMatchObject({ status: 'pending', attempt_count: 1, attempt_open: 1 });
 });
 
 test('it fails an action whose tool has no connector', async () => {
   const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
 
-  await runActionAttempt(ctx.context, ctx.lease, { connectors: new Map(), leaseMs: 60_000 });
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
-  const action = await ctx.readAction();
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, { connectors: new Map(), leaseMs: 60_000 });
+
+  const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
 
   expect(action).toMatchObject({ status: 'failed', reason: 'unknown_tool', attempt_count: 0 });
 });
 
 test('it reaches each attempt fault point in order', async () => {
   const ctx = await setupTest();
-  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
-  const reached: FaultPointID[] = [];
+  const reached: string[] = [];
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   setFaultPointHandler((id) => {
     reached.push(id);
@@ -233,8 +327,10 @@ test('it reaches each attempt fault point in order', async () => {
     setFaultPointHandler(null);
   });
 
-  await runActionAttempt(ctx.context, ctx.lease, {
-    connectors: new Map([['test.send', stub.connector]]),
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([
+      ['test.send', buildStubConnector(() => ({ kind: 'success', result: {} })).connector],
+    ]),
     leaseMs: 60_000,
   });
 
