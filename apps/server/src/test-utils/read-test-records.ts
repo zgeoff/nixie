@@ -7,7 +7,6 @@ export async function readTestRecords(
   dataDir: string,
   deploymentKey: string,
 ): Promise<LogRecord[]> {
-  const writer = await startWriter({ dataDir });
   const key = await crypto.subtle.importKey(
     'raw',
     Buffer.from(deploymentKey, 'base64'),
@@ -15,6 +14,9 @@ export async function readTestRecords(
     false,
     ['wrapKey', 'unwrapKey'],
   );
+
+  // the key imports first, so a bad key leaves no writer open
+  const writer = await startWriter({ dataDir });
 
   try {
     const entries = await readRecords({ writer, deploymentKey: key }, { afterSequence: 0 });

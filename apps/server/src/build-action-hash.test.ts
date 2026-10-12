@@ -1,8 +1,18 @@
 import { expect, test } from 'bun:test';
 import { buildActionHash } from './build-action-hash';
 
-test('it builds a sha256 hash of the tool and its arguments', () => {
-  expect(buildActionHash('test.send', { to: 'team' })).toMatch(/^sha256:[\da-f]{64}$/u);
+test('it builds the sha256 of the canonical JSON of the tool and its arguments', () => {
+  expect(
+    buildActionHash('test.send', { to: 'team', body: { text: 'hi', tags: ['a', 'b'] } }),
+  ).toMatchInlineSnapshot(
+    `"sha256:bdcde815a84c6840a548757b8287c1b9edb6a979f0d59eaf711855e76276ecb7"`,
+  );
+});
+
+test('it builds the same hash for the same input on each call', () => {
+  expect(buildActionHash('test.send', { to: 'team' })).toStrictEqual(
+    buildActionHash('test.send', { to: 'team' }),
+  );
 });
 
 test('it builds the same hash for the same arguments in another key order', () => {

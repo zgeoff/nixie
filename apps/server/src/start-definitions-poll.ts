@@ -1,7 +1,10 @@
+import type { Clock } from '@heynixie/tasks';
+
 export interface DefinitionsPollOptions {
   // the source's probe token, which changes when the definitions change
   readonly probe: () => Promise<string>;
   readonly seed: () => Promise<void>;
+  readonly clock: Clock;
   readonly intervalMs: number;
   readonly onError: (error: unknown) => void;
 }
@@ -32,7 +35,7 @@ async function runPoll(options: DefinitionsPollOptions, signal: AbortSignal): Pr
 
   while (!signal.aborted) {
     // oxlint-disable-next-line no-await-in-loop -- the poll waits between probes
-    await waitForInterval(options.intervalMs, signal);
+    await options.clock.sleep(options.intervalMs, signal);
     if (signal.aborted) {
       return;
     }
@@ -59,19 +62,4 @@ async function runProbe(
     options.onError(error);
     return lastToken;
   }
-}
-
-function waitForInterval(ms: number, signal: AbortSignal): Promise<void> {
-  const waited = Promise.withResolvers<void>();
-  const timer = setTimeout(waited.resolve, ms);
-
-  signal.addEventListener(
-    'abort',
-    () => {
-      clearTimeout(timer);
-      waited.resolve();
-    },
-    { once: true },
-  );
-  return waited.promise;
 }

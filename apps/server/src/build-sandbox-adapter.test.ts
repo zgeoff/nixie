@@ -1,117 +1,69 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { logProjections, startWriter } from '@heynixie/log';
-import { makeDecisionPoint } from '@heynixie/policy';
-import type { SandboxRecorder } from '@heynixie/sandbox';
-import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildSandboxAdapter } from './build-sandbox-adapter';
+import { startTestServer } from './test-utils/start-test-server';
 
-const entry = join(import.meta.dir, 'index.ts');
-
-// a string only the process double holds, and one only the imp adapter holds
-const processMarker = 'the tool relay has no TCP address';
-const impMarker = 'public egress without the host addresses in imp.host_addresses';
-
-async function buildBundle(isTestBuild: boolean): Promise<string> {
-  const outdir = await mkdtemp(join(tmpdir(), 'nixie-server-bundle-'));
-
-  onTestFinished(() => rm(outdir, { recursive: true, force: true }));
-
-  const result = await Bun.build({
-    entrypoints: [entry],
-    outdir,
-    target: 'bun',
-    define: { NIXIE_TEST_BUILD: String(isTestBuild) },
-  });
-
-  if (!result.success) {
-    throw new AggregateError(result.logs, 'the bundle failed');
-  }
-  const texts = await Promise.all(result.outputs.map((output) => output.text()));
-
-  return texts.join('\n');
-}
-
-test('a test build wires the process double', () => {
-  const recorder: SandboxRecorder = {
-    write: () => Promise.resolve(),
-    findRow: () => Promise.resolve(null),
-    list: () => Promise.resolve([]),
-  };
-  const adapter = buildSandboxAdapter({
-    recorder,
-    toolTarget: () => ({ path: '/nonexistent.sock' }),
-    imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
-    testRootDir: tmpdir(),
-  });
-
-  expect(adapter).toMatchObject({ id: 'process', boundary: 'process' });
-});
-
-test('the release bundle holds the imp adapter and no part of the process double', async () => {
-  const release = await buildBundle(false);
-  const testBuild = await buildBundle(true);
-
-  expect(release).toContain(impMarker);
-  expect(release).not.toContain(processMarker);
-  expect(testBuild).toContain(processMarker);
-});
-
+// The parts of a test build that the adapter wires to, from the test server. The stack's disposal
+// registers before the server's, and onTestFinished runs first in, first out, so a sandbox that a
+// test registers on it is destroyed while the writer that its recorder writes through still runs.
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-server-tools-'));
+  const server = await startTestServer();
 
-  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
-
-  const writer = await startWriter({ dataDir });
-
-  stack.defer(() => writer.stop());
-
-  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
-    'wrapKey',
-    'unwrapKey',
-  ]);
-  const endpoint = await startToolEndpoint({
-    socketDir: join(dataDir, 'tools'),
-    registry: buildToolRegistry([]),
-    decide: makeDecisionPoint({ findDeclaration: () => null }),
-    log: { writer, deploymentKey, projections: logProjections },
-    definitions: () => ({ snapshotHash: 'sha256:test' }),
-
-    // no test here calls a tool, so nothing reaches the queue
-    queue: {
-      enqueue: () => Promise.reject(new Error('no tool is registered, so nothing is queued')),
-      waitForOutcome: () => Promise.resolve(null),
-    },
-  });
-
-  stack.defer(() => endpoint.stop());
-
-  return {
-    endpoint,
-    adapter: buildSandboxAdapter({
-      recorder: {
-        write: () => Promise.resolve(),
-        findRow: () => Promise.resolve(null),
-        list: () => Promise.resolve([]),
-      },
-      toolTarget: endpoint.getToolTarget,
-      imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
-      testRootDir: dataDir,
-    }),
-  };
+  return { stack, ...server };
 }
 
-test("a test build's tool route takes a guest to its run's endpoint and passes each chunk as it arrives", async () => {
+test('it wires the process double in a test build', async () => {
+  const ctx = await setupTest();
+
+  const adapter = buildSandboxAdapter({
+    recorder: buildSandboxRecorder({
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+    }),
+    toolTarget: ctx.endpoint.getToolTarget,
+    imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
+    testRootDir: join(ctx.dataDir, 'sandboxes'),
+  });
+
+  expect(adapter).toMatchObject({ id: 'process', boundary: 'process' });
+});
+
+test('it bundles the imp adapter and no part of the process double in a release build', async () => {
+  const build = await Bun.build({
+    entrypoints: [join(import.meta.dir, 'index.ts')],
+    target: 'bun',
+    define: { NIXIE_TEST_BUILD: 'false' },
+  });
+  const texts = await Promise.all(build.outputs.map((output) => output.text()));
+  const bundle = texts.join('\n');
+
+  // a string only the imp adapter holds, and one only the process double holds
+  expect(bundle).toInclude('public egress without the host addresses in imp.host_addresses');
+  expect(bundle).not.toInclude('the tool relay has no TCP address');
+});
+
+test('it bundles the process double in a test build', async () => {
+  const build = await Bun.build({
+    entrypoints: [join(import.meta.dir, 'index.ts')],
+    target: 'bun',
+    define: { NIXIE_TEST_BUILD: 'true' },
+  });
+  const texts = await Promise.all(build.outputs.map((output) => output.text()));
+
+  // a string only the process double holds
+  expect(texts.join('\n')).toInclude('the tool relay has no TCP address');
+});
+
+test("it routes a guest to its run's endpoint in a test build, passing each chunk as it arrives", async () => {
   const ctx = await setupTest();
   const model = { model: 'model-a', profile: 'chat-direct' };
   const run = await ctx.endpoint.startRun({ runID: 'run-1', thread: 'task-1', tools: [], model });
-  const sandbox = await ctx.adapter.create({
+  const sandbox = await ctx.sandboxes.create({
     kind: 'conversation',
     image: 'conversation',
     owner: 'run-1',
@@ -121,12 +73,11 @@ test("a test build's tool route takes a guest to its run's endpoint and passes e
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
 
-  onTestFinished(() => sandbox.destroy());
+  ctx.stack.defer(() => sandbox.destroy());
 
   const route = await sandbox.toolRoute();
 
-  // Bun.fetch, because the test preload's request interceptor would sit between the test and the
-  // relay; the listen stream stays open, so its first chunk shows the relay does not buffer
+  // Bun.fetch skips the preload's interceptor; the open stream's first chunk shows no buffering
   const response = await Bun.fetch(`${route?.url ?? ''}/mcp`, {
     method: 'POST',
     headers: {

@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import type { ContractClient } from '@heynixie/contract';
 import { clientHeaderName } from '@heynixie/contract';
@@ -20,6 +20,8 @@ async function setupTest() {
   const signedOut = createORPCClient<ContractClient>(
     new RPCLink({ url: `${url}/rpc`, headers: { [clientHeaderName]: 'test' } }),
   );
+
+  // boot data: every procedure but enrol needs a device session, and no test reads the device
   const session = await signedOut.sessions.enrol({
     clientActionID: crypto.randomUUID(),
     code: String(issued['code']),
@@ -52,15 +54,15 @@ test('it keeps no message text in nixie.db, the key store or the logs', async ()
     return page.records.some((record) => record.message?.text === 'Quince-reply-4ZT9');
   });
   ctx.sendSignal('SIGTERM');
-  const run = await ctx.waitForExit();
+  await ctx.waitForExit();
+
   const files = await ctx.readDataFiles();
 
-  expect(run.exitCode).toBe(0);
   expect(files.map((file) => file.name)).toIncludeAllMembers(['nixie.db', 'keys.db']);
-  expect({
-    files: files.filter((file) => /Plum-message-7QK2|Quince-reply-4ZT9/u.test(file.text)),
-    logs: /Plum-message-7QK2|Quince-reply-4ZT9/u.test(ctx.readOutput()),
-  }).toStrictEqual({ files: [], logs: false });
+  expect(
+    files.filter((file) => /Plum-message-7QK2|Quince-reply-4ZT9/u.test(file.text)),
+  ).toStrictEqual([]);
+  expect(ctx.readOutput()).not.toMatch(/Plum-message-7QK2|Quince-reply-4ZT9/u);
 }, 60_000);
 
 test('it puts the snapshot hash of the definitions in force on every record', async () => {
@@ -99,19 +101,25 @@ test('it puts the snapshot hash of the definitions in force on every record', as
   );
 }, 60_000);
 
-test('it answers liveness and readiness per part, with the slice 1 parts only', async () => {
+test('it answers liveness per part', async () => {
   const ctx = await setupTest();
 
   const live = await fetch(`${ctx.url}/health/live`);
   const liveReport: unknown = await live.json();
-  const ready = await fetch(`${ctx.url}/health/ready`);
-  const readyReport: unknown = await ready.json();
 
   expect(live.status).toBe(200);
   expect(liveReport).toStrictEqual({
     status: 'ready',
     parts: { process: { isReady: true, reason: null }, database: { isReady: true, reason: null } },
   });
+}, 60_000);
+
+test('it answers readiness per part, with the slice 1 parts only', async () => {
+  const ctx = await setupTest();
+
+  const ready = await fetch(`${ctx.url}/health/ready`);
+  const readyReport: unknown = await ready.json();
+
   expect(ready.status).toBe(200);
   expect(readyReport).toStrictEqual({
     status: 'ready',
@@ -125,7 +133,7 @@ test('it answers liveness and readiness per part, with the slice 1 parts only', 
   });
 }, 60_000);
 
-test('on SIGTERM it stops claiming steps, lets the turn in flight commit and exits 0', async () => {
+test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exits 0', async () => {
   const ctx = await setupTest();
   const gate = Promise.withResolvers<void>();
 
@@ -149,7 +157,7 @@ test('on SIGTERM it stops claiming steps, lets the turn in flight commit and exi
   ]);
 }, 60_000);
 
-test('the enrol-code command issues a code from the running server', async () => {
+test('it issues a code from the running server through the enrol-code command', async () => {
   const ctx = await setupTest();
   const command = Bun.spawn(
     [
@@ -163,6 +171,10 @@ test('the enrol-code command issues a code from the running server', async () =>
     ],
     { stdout: 'pipe', stderr: 'pipe' },
   );
+
+  onTestFinished(() => {
+    command.kill();
+  });
 
   const exitCode = await command.exited;
   const output = await new Response(command.stdout).text();

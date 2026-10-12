@@ -24,6 +24,7 @@ test('it reads every record with its erasable fields decrypted', async () => {
   const ctx = await setupTest();
   const writer = await startWriter({ dataDir: ctx.dataDir });
 
+  onTestFinished(() => writer.stop());
   await writeRecords({ writer, deploymentKey: ctx.deploymentKey, projections: logProjections }, [
     {
       kind: 'owner_message',

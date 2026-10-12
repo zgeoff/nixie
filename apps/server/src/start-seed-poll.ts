@@ -11,6 +11,7 @@ export async function startSeedPoll(parts: ServerParts): Promise<void> {
     seed: async () => {
       await runDefinitionsSeed(parts);
     },
+    clock: parts.context.clock,
     intervalMs: parts.config.definitions.probeIntervalMs,
     onError: (error) => {
       parts.log('definitions.probe_failed', toErrorFields(error));
