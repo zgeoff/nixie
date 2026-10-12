@@ -1,11 +1,11 @@
 import type { ActionOutcome, ActionQueue, QueuedAction } from '../types';
 
-export interface QueuedEntry {
+interface QueuedEntry {
   readonly actionID: string;
   readonly action: QueuedAction;
 }
 
-export interface OutcomeWait {
+interface OutcomeWait {
   readonly actionID: string;
   readonly timeoutMs: number;
 }
