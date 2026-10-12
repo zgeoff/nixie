@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { act, waitFor } from '@testing-library/react';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import { server } from './mocks/node';
 import { store } from './mocks/store';
 import { buildStubTimer } from './test-utils/build-stub-timer';
@@ -153,15 +153,71 @@ test('it waits the shortest time again after a failure that follows a connection
   expect(ctx.timer.advanceToNext()).resolves.toBe(1000);
 });
 
-test('it backs off from a stream the API refuses, as from one that never opens', async () => {
+test('it backs off from a revoked session, as from a stream that never opens', async () => {
   const ctx = await setupTest();
 
-  // the session is revoked, so each stream opens and then refuses
+  // the API refuses each attempt before it opens the stream
   await store.sessions.update(ctx.session, {
     data(draft) {
       draft.revokedAt = new Date();
     },
   });
+  renderHook(() => useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }));
+
+  const first = await ctx.timer.advanceToNext();
+  const second = await ctx.timer.advanceToNext();
+
+  expect(first).toBe(1000);
+  expect(second).toBe(2000);
+});
+
+test('it keeps reporting live updates unavailable while the API refuses a revoked session', async () => {
+  const ctx = await setupTest();
+  const reported: boolean[] = [];
+
+  await store.sessions.update(ctx.session, {
+    data(draft) {
+      draft.revokedAt = new Date();
+    },
+  });
+
+  // each refusal takes a round trip, as over a network, so React renders any state between
+  server.use(
+    http.post('*/rpc/records/follow', async () => {
+      await delay(20);
+    }),
+  );
+  renderHook(() => {
+    const live = useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer });
+
+    reported.push(live.unavailable);
+
+    return live;
+  });
+
+  // the fourth advance waits for the fourth refusal, one past the notice
+  await ctx.timer.advanceToNext();
+  await ctx.timer.advanceToNext();
+  await ctx.timer.advanceToNext();
+  await ctx.timer.advanceToNext();
+
+  expect(reported.slice(reported.indexOf(true))).toSatisfyAll((unavailable) => unavailable);
+});
+
+test('it backs off from a stream that opens and then ends with UNAUTHORIZED', async () => {
+  const ctx = await setupTest();
+
+  // a server that checks the session after it opens the stream sends these bytes
+  server.use(
+    http.post(
+      '*/rpc/records/follow',
+      () =>
+        new HttpResponse(
+          ': \n\nevent: error\ndata: {"json":{"defined":true,"code":"UNAUTHORIZED","status":401,"message":"The device session is missing, lapsed or revoked"}}\n\n',
+          { headers: { 'content-type': 'text/event-stream' } },
+        ),
+    ),
+  );
   renderHook(() => useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }));
 
   const first = await ctx.timer.advanceToNext();

@@ -83,11 +83,11 @@ becomes visible again, or a browser that comes back online, ends the open connec
 again at once, because those are the moments a connection most often died unseen.
 
 A stream that fails attempt after attempt backs off: the pause before each reconnect doubles up to a
-cap, and a connection that opens and is not refused resets it. A stream the API refuses counts as a
-failure, because the stream opens before the API checks the session and the refusal arrives as its
-first event. After a few failures in a row the page says live updates are unavailable, so a stream
-that a content blocker or a down server stops fails visibly, and the notice goes once the stream
-connects again.
+cap. The API checks the session before it opens the stream, so a stream that opens is one the API
+accepted, and only an open stream resets the backoff, unless the API then ends it with an error.
+After a few failures in a row the page says live updates are unavailable, so a stream that a content
+blocker, a down server or a revoked session stops fails visibly. The notice goes once the stream
+opens again.
 
 Each message stands on its own line, and every other record folds into the step it belongs to, from
 the step's start to its end. A record before a step, such as the task's creation, folds into the

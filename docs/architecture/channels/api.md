@@ -106,6 +106,10 @@ to a thread, because session and refusal records belong to none and no client vi
 message record carries its text and spans while its key exists, and keeps its place with no text
 once the message is forgotten.
 
+The API checks the caller's session before it opens the live stream and refuses a missing or revoked
+session with a plain 401, so a stream that opens is one the API accepted. A session revoked while
+its stream is open ends that stream with the same error.
+
 The live stream answers at a path with no `log` segment, because EasyPrivacy, a filter list that
 content blockers enable by default, blocks `/rpc/log/` on every domain. The stream's first path
 stays in the contract as a deprecated alias for the clients of earlier releases, which a later

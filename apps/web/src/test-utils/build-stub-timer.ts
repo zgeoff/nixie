@@ -30,7 +30,7 @@ export function buildStubTimer(): StubTimer {
   const pending = new Set<PendingTimer>();
   const runTimersFor = (ms: number): void => {
     const target = state.now + ms;
-    let next = findEarliestDue(pending, target);
+    let next = findEarliestDue([...pending], target);
 
     // Time steps to each due time in turn, so a timer that a callback starts counts from the
     // moment it fired and fires in this advance when it falls due by the target. An earlier
@@ -39,7 +39,7 @@ export function buildStubTimer(): StubTimer {
       state.now = next.dueAt;
       pending.delete(next);
       next.onTimeout();
-      next = findEarliestDue(pending, target);
+      next = findEarliestDue([...pending], target);
     }
 
     state.now = target;
@@ -63,7 +63,7 @@ export function buildStubTimer(): StubTimer {
         }
       });
 
-      const next = findEarliestDue(pending, Number.POSITIVE_INFINITY);
+      const next = findEarliestDue([...pending], Number.POSITIVE_INFINITY);
 
       invariant(next);
       runTimersFor(next.dueAt - state.now);
@@ -75,12 +75,12 @@ export function buildStubTimer(): StubTimer {
 }
 
 // The pending timer due soonest and no later than the target; of two due at once, the one started
-// first, as the sort keeps the order the set holds them in.
+// first, as the sort keeps the order they started in.
 function findEarliestDue(
-  pending: ReadonlySet<PendingTimer>,
+  pending: readonly PendingTimer[],
   target: number,
 ): PendingTimer | undefined {
-  return [...pending]
+  return pending
     .filter((timer) => timer.dueAt <= target)
     .toSorted((a, b) => a.dueAt - b.dueAt)
     .at(0);

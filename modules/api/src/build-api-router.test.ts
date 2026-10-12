@@ -514,6 +514,22 @@ test('#records.follow started past the head still ends once the session is revok
   expect(ended).toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
+test('#records.follow refuses a revoked session before the stream opens', async () => {
+  const ctx = await setupTest();
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  await laptopClient.sessions.revoke({
+    clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    sessionID: laptop.sessionID,
+  });
+
+  expect(
+    laptopClient.records.follow({ afterSequence: 0, thread: 'conversation' }),
+  ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
 test('#sessions.issueCode refuses a retry once its code enrolled a device', async () => {
   const ctx = await setupTest();
 

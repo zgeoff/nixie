@@ -99,7 +99,7 @@ interface Attempt {
   // the sequence of the last record the stream delivered
   readonly after: number;
 
-  // whether the stream opened and the API did not refuse it, which resets the backoff
+  // whether the API accepted the stream and opened it, which resets the backoff
   readonly connected: boolean;
 }
 
@@ -160,9 +160,9 @@ function startConnection(outer: AbortSignal): Connection {
 
 type RecordEvents = Awaited<ReturnType<ContractClient['records']['follow']>>;
 
-// Reads one connection of the stream until it ends, drops or the caller aborts. The stream opens
-// before the API checks the session, so a refusal arrives as the stream's first event, and an
-// attempt the API refuses counts as a failure like one that never opened.
+// Reads one connection of the stream until it ends, drops or the caller aborts. The API checks the
+// session before it opens the stream, so a stream that opens is one the API accepted: only that
+// clears the unavailable notice, and it resets the backoff unless the API then ends it.
 async function readRecordStream(
   options: SubscribeOptions,
   afterSequence: number,
@@ -183,8 +183,7 @@ async function readRecordStream(
   return drainRecordStream(options, events, afterSequence);
 }
 
-// Opens the stream, or resolves with nothing when the request fails, as a blocked or offline one
-// does.
+// Opens the stream, or resolves with nothing when the request fails or the API refuses it.
 async function tryStartRecordStream(
   options: SubscribeOptions,
   afterSequence: number,
@@ -200,9 +199,13 @@ async function tryStartRecordStream(
   }
 }
 
-// Delivers each record of an open stream until it ends, and reports whether the API refused it.
+// Delivers each record of an open stream until it ends. A stream that the API ends with one of its
+// errors, such as a refusal from a server that checks the session after it opens the stream,
+// counts as a failure.
 async function drainRecordStream(
   options: SubscribeOptions,
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- an async iterator has no readonly form
   events: RecordEvents,
   afterSequence: number,
 ): Promise<Attempt> {
@@ -214,7 +217,7 @@ async function drainRecordStream(
       options.onRecord(event.record);
     }
   } catch (error) {
-    // The stream dropped, went quiet or the API refused it; the caller follows again.
+    // The stream dropped, went quiet or the API ended it; the caller follows again.
     return { after: state.after, connected: !isDefinedError(error) };
   }
 
