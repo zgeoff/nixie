@@ -109,9 +109,8 @@ not the recognizer.
 - **Clipboard chip:** tapping Gboard's clipboard suggestion inserts the copied text as one
   `insertText`, the same event as a tapped prediction, so the mapping labels all 3 copied words
   `typed`.
-- **Gboard's undo:** Ctrl+Z reaches Gboard before Chrome, and Gboard undoes a delete by inserting
-  the deleted text again as `insertText`. Chrome never sees `historyUndo`, so a deleted and restored
-  paste comes back `typed`.
+- **Gboard's undo:** after a delete, Ctrl+Z through Gboard produced no `historyUndo` event. The
+  deleted text came back as one `insertText`, so a deleted and restored paste comes back `typed`.
 - **Selection fallback:** it never fired. Each insertion landed at the selection that `beforeinput`
   reported, autocorrect's included, because Gboard deletes the wrong word as its own edit first.
 
