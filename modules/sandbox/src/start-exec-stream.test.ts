@@ -1,79 +1,61 @@
 import { expect, test } from 'bun:test';
 import { FrameTooLargeError, encodeFrame } from '@heynixie/wire';
 import { startExecStream } from './start-exec-stream';
-import type { ExecExit, ExecStream } from './types';
+import { buildStubProcessIO } from './test-utils/build-stub-process-io';
 
-const encoder = new TextEncoder();
-
-function buildStream(chunks: readonly Uint8Array[]): ReadableStream<Uint8Array> {
-  return new ReadableStream({
-    start: (controller) => {
-      for (const chunk of chunks) {
-        controller.enqueue(chunk);
-      }
-      controller.close();
-    },
-  });
-}
-
-// A process whose stdout holds the given chunks and whose stderr holds 4 bytes. A stop ends it
-// with SIGTERM.
-function setupTestIO(stdoutChunks: readonly Uint8Array[]) {
-  const written: Uint8Array[] = [];
-  const stops: string[] = [];
-  const exit = Promise.withResolvers<ExecExit>();
-  const io = {
-    stdout: buildStream(stdoutChunks),
-    stderr: buildStream([encoder.encode('warn')]),
-    write: (bytes: Uint8Array) => {
-      written.push(bytes);
-      return Promise.resolve();
-    },
-    closeStdin: () => Promise.resolve(),
-    exit: exit.promise,
-    stop: () => {
-      stops.push('SIGTERM');
-      exit.resolve({ code: null, signal: 'SIGTERM' });
-    },
-  };
-
-  return { io, written, stops, exit };
-}
-
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- an async iterable has no readonly form
-async function collectMessages(stream: ExecStream): Promise<readonly string[]> {
-  const texts: string[] = [];
-
-  for await (const message of stream.messages) {
-    texts.push(new TextDecoder().decode(message));
-  }
-  return texts;
-}
-
-test('it sends and reads framed messages, whatever the transport splits', async () => {
+test('it reads each framed message, whatever the transport splits', async () => {
+  const encoder = new TextEncoder();
   const frames = new Uint8Array([
     ...encodeFrame(encoder.encode('one')),
     ...encodeFrame(encoder.encode('two')),
   ]);
-  const ctx = setupTestIO([frames.slice(0, 5), frames.slice(5)]);
-  const stream = startExecStream(ctx.io, 16);
+  const stub = buildStubProcessIO({ stdout: [frames.slice(0, 5), frames.slice(5)], stderr: [] });
+  const stream = startExecStream(stub.io, 16);
+
+  const messages = await Array.fromAsync(stream.messages);
+
+  expect(messages.map((message) => new TextDecoder().decode(message))).toStrictEqual([
+    'one',
+    'two',
+  ]);
+});
+
+test('it writes each sent message as one frame', async () => {
+  const encoder = new TextEncoder();
+  const stub = buildStubProcessIO({ stdout: [], stderr: [] });
+  const stream = startExecStream(stub.io, 16);
 
   await stream.send(encoder.encode('hi'));
 
-  const messages = await collectMessages(stream);
-
-  ctx.exit.resolve({ code: 0, signal: null });
-
-  expect(messages).toStrictEqual(['one', 'two']);
-  expect(ctx.written).toStrictEqual([encodeFrame(encoder.encode('hi'))]);
-  expect(stream.exit).resolves.toMatchObject({ code: 0, signal: null, stderr: { totalBytes: 4 } });
+  expect(stub.written).toStrictEqual([encodeFrame(encoder.encode('hi'))]);
 });
 
-test('it stops the process on a message past the caller limit', () => {
-  const ctx = setupTestIO([encodeFrame(new Uint8Array(17))]);
-  const stream = startExecStream(ctx.io, 16);
+test('it resolves the exit with the stderr the process wrote', () => {
+  const stub = buildStubProcessIO({ stdout: [], stderr: [new TextEncoder().encode('warn')] });
+  const stream = startExecStream(stub.io, 16);
 
-  expect(collectMessages(stream)).rejects.toThrow(new FrameTooLargeError(17, 16));
+  stub.end({ code: 0, signal: null });
+
+  expect(stream.exit).resolves.toStrictEqual({
+    code: 0,
+    signal: null,
+    stderr: { bytes: new TextEncoder().encode('warn'), totalBytes: 4, isCut: false },
+  });
+});
+
+test('it rejects the messages on a frame past the caller limit', () => {
+  const stub = buildStubProcessIO({ stdout: [encodeFrame(new Uint8Array(17))], stderr: [] });
+  const stream = startExecStream(stub.io, 16);
+
+  expect(Array.fromAsync(stream.messages)).rejects.toThrow(new FrameTooLargeError(17, 16));
+});
+
+test('it stops the process on a frame past the caller limit', async () => {
+  const stub = buildStubProcessIO({ stdout: [encodeFrame(new Uint8Array(17))], stderr: [] });
+  const stream = startExecStream(stub.io, 16);
+
+  await Array.fromAsync(stream.messages).catch(() => null);
+
+  expect(stub.signals).toStrictEqual(['SIGTERM']);
   expect(stream.exit).resolves.toMatchObject({ code: null, signal: 'SIGTERM' });
-  expect(ctx.stops).toStrictEqual(['SIGTERM']);
 });

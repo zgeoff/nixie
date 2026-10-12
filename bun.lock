@@ -248,6 +248,9 @@
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
       },
+      "devDependencies": {
+        "@faker-js/faker": "catalog:",
+      },
     },
     "modules/tasks": {
       "name": "@heynixie/tasks",

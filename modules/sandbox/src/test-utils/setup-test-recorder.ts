@@ -8,7 +8,7 @@ import { buildSandboxRecorder } from '../build-sandbox-recorder';
 import { sandboxesProjection } from '../sandboxes-projection';
 import type { SandboxEvent, SandboxRecorder } from '../types';
 
-interface TestRecorder {
+export interface TestRecorder {
   readonly log: Log;
   readonly recorder: SandboxRecorder;
   readonly writeEvents: (events: readonly SandboxEvent[]) => Promise<void>;

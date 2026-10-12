@@ -1,56 +1,43 @@
 import { expect, test } from 'bun:test';
 import { removeStaleSandboxes } from './remove-stale-sandboxes';
+import { buildMockSandboxSpec } from './test-utils/build-mock-sandbox-spec';
+import { buildStubRecordedAdapter } from './test-utils/build-stub-recorded-adapter';
 import { setupTestRecorder } from './test-utils/setup-test-recorder';
-import type { SandboxRecorder } from './types';
 
-// a recorder on a fresh log, and an imp adapter's list over it whose destroy notes each ID
 async function setupTest() {
-  const ctx = await setupTestRecorder();
-  const destroyed: string[] = [];
-  const buildAdapter = (recorder: SandboxRecorder) => ({
-    id: 'imp',
-    list: async (owner: string) => {
-      const rows = await recorder.list('imp', owner);
+  const recorder = await setupTestRecorder();
+  const adapter = buildStubRecordedAdapter(recorder.recorder, 'imp');
 
-      return rows.map((row) => ({
-        destroy: () => {
-          destroyed.push(row.sandboxID);
-          return Promise.resolve();
-        },
-      }));
-    },
-  });
-
-  return { ...ctx, destroyed, adapter: buildAdapter(ctx.recorder) };
+  return { log: recorder.log, writeEvents: recorder.writeEvents, adapter };
 }
 
 test('it destroys every sandbox of the adapter whose owner is not kept', async () => {
   const ctx = await setupTest();
 
-  await ctx.writeEvents(
-    [
-      { sandboxID: 'nixie-a', owner: 'task-1:step-2' },
-      { sandboxID: 'nixie-b', owner: 'task-1:step-2' },
-      { sandboxID: 'nixie-c', owner: 'web_fetch' },
-    ].map((sandbox) => ({
+  await ctx.writeEvents([
+    {
       event: 'created',
-      sandboxID: sandbox.sandboxID,
+      sandboxID: 'nixie-a',
       adapter: 'imp',
-      spec: {
-        kind: 'worker',
-        image: 'worker',
-        owner: sandbox.owner,
-        egress: { kind: 'none' },
-        grants: [],
-        toolRoute: true,
-        limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
-      },
-    })),
-  );
+      spec: buildMockSandboxSpec({ owner: 'task-1:step-2' }),
+    },
+    {
+      event: 'created',
+      sandboxID: 'nixie-b',
+      adapter: 'imp',
+      spec: buildMockSandboxSpec({ owner: 'task-1:step-2' }),
+    },
+    {
+      event: 'created',
+      sandboxID: 'nixie-c',
+      adapter: 'imp',
+      spec: buildMockSandboxSpec({ owner: 'web_fetch' }),
+    },
+  ]);
 
   await removeStaleSandboxes({ log: ctx.log, adapter: ctx.adapter, keptOwners: ['conversation'] });
 
-  expect(ctx.destroyed).toIncludeSameMembers(['nixie-a', 'nixie-b', 'nixie-c']);
+  expect(ctx.adapter.destroyed).toIncludeSameMembers(['nixie-a', 'nixie-b', 'nixie-c']);
 });
 
 test('it never destroys a kept owner’s sandbox or another adapter’s', async () => {
@@ -61,33 +48,17 @@ test('it never destroys a kept owner’s sandbox or another adapter’s', async 
       event: 'created',
       sandboxID: 'nixie-a',
       adapter: 'imp',
-      spec: {
-        kind: 'worker',
-        image: 'worker',
-        owner: 'conversation',
-        egress: { kind: 'none' },
-        grants: [],
-        toolRoute: true,
-        limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
-      },
+      spec: buildMockSandboxSpec({ owner: 'conversation' }),
     },
     {
       event: 'created',
       sandboxID: 'nixie-b',
       adapter: 'process',
-      spec: {
-        kind: 'worker',
-        image: 'worker',
-        owner: 'task-1:step-2',
-        egress: { kind: 'none' },
-        grants: [],
-        toolRoute: true,
-        limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
-      },
+      spec: buildMockSandboxSpec({ owner: 'task-1:step-2' }),
     },
   ]);
 
   await removeStaleSandboxes({ log: ctx.log, adapter: ctx.adapter, keptOwners: ['conversation'] });
 
-  expect(ctx.destroyed).toStrictEqual([]);
+  expect(ctx.adapter.destroyed).toStrictEqual([]);
 });
