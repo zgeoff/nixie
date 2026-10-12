@@ -49,27 +49,45 @@ function runRequest(request: WorkerRequest): WorkerQueryResult {
   return runTransactionStep(state.database, request.sql, request.parameters);
 }
 
-// busy_timeout comes first, so even the switch to WAL waits for another connection's lock. WAL lets
+const busyTimeoutMs = 5000;
+
+// busy_timeout comes first, so the statements after it wait for another connection's lock. WAL lets
 // readers run beside the writer, and FULL fsyncs every commit so a claimed outside action survives
 // a power loss.
-const PRAGMAS = [
-  'pragma busy_timeout = 5000',
-  'pragma journal_mode = wal',
-  'pragma synchronous = full',
-  'pragma foreign_keys = on',
-];
-
 function startConnection(path: string, options: DatabaseOptions): Database {
   const database = new Database(path, { create: true, strict: true });
 
-  for (const pragma of PRAGMAS) {
-    database.run(pragma);
-  }
+  database.run(`pragma busy_timeout = ${String(busyTimeoutMs)}`);
+  updateJournalMode(database, Date.now() + busyTimeoutMs);
+  database.run('pragma synchronous = full');
+  database.run('pragma foreign_keys = on');
   if (options.secureDelete === true) {
     database.run('pragma secure_delete = on');
   }
   return database;
 }
+
+// Switches the file to WAL. Two connections that switch a new file at once each hold a shared lock
+// while they wait for the exclusive one, so SQLite refuses one of them with SQLITE_BUSY at once
+// rather than call its busy handler and deadlock. The switch retries until the busy timeout passes.
+function updateJournalMode(database: Database, deadline: number): void {
+  try {
+    database.run('pragma journal_mode = wal');
+  } catch (error) {
+    if (!isBusyError(error) || Date.now() >= deadline) {
+      throw error;
+    }
+    Bun.sleepSync(walRetryMs);
+    updateJournalMode(database, deadline);
+  }
+}
+
+function isBusyError(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'SQLITE_BUSY';
+}
+
+// the pause between two tries of the WAL switch, short beside the busy timeout
+const walRetryMs = 5;
 
 // Keeps a transaction's statements inside it. Once SQLite has rolled the transaction back, a later
 // statement would commit on its own, outside the transaction and its writer epoch check.
