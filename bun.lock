@@ -64,6 +64,7 @@
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "elysia": "catalog:",
+        "tiny-invariant": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {

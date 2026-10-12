@@ -11,12 +11,18 @@ test('it prints connected for a port that accepts the connection', async () => {
       },
     },
   });
+
   onTestFinished(() => {
     listener.stop(true);
   });
-  const probe = buildConnectProbe(process.execPath, '127.0.0.1', listener.port);
 
+  const probe = buildConnectProbe(process.execPath, '127.0.0.1', listener.port);
   const run = Bun.spawn([...probe.argv], { env: { ...probe.env }, stdout: 'pipe' });
+
+  onTestFinished(() => {
+    run.kill();
+  });
+
   const output = await new Response(run.stdout).text();
 
   expect(output.trim()).toBe('connected');
@@ -33,10 +39,16 @@ test('it prints failed with the reason for a port where nothing listens', async 
     },
   });
   const port = listener.port;
-  listener.stop(true);
-  const probe = buildConnectProbe(process.execPath, '127.0.0.1', port);
 
+  listener.stop(true);
+
+  const probe = buildConnectProbe(process.execPath, '127.0.0.1', port);
   const run = Bun.spawn([...probe.argv], { env: { ...probe.env }, stdout: 'pipe' });
+
+  onTestFinished(() => {
+    run.kill();
+  });
+
   const output = await new Response(run.stdout).text();
 
   expect(output.trim()).toStartWith('failed ');
