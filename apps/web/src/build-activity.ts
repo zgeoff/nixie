@@ -11,7 +11,7 @@ export interface ToolActivity {
   readonly tool: string;
 }
 
-export type StepStatus = 'done' | 'failed' | 'interrupted' | 'running';
+type StepStatus = 'done' | 'failed' | 'interrupted' | 'running';
 
 export interface StepActivity {
   readonly kind: 'step';
@@ -53,6 +53,7 @@ interface ActivityState {
 }
 
 // Adds one record to the groups: a message stands alone, and any other record joins the open step.
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fold updates its own state
 function applyRecord(state: ActivityState, record: LiveRecord): void {
   if (record.message !== undefined) {
     state.items.push({ kind: 'message', record });
