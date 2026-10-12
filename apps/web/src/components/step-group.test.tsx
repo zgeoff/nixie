@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import userEvent from '@testing-library/user-event';
+import invariant from 'tiny-invariant';
 import { buildMockStepActivity } from '../test-utils/build-mock-step-activity';
 import { render } from '../test-utils/render';
 import { StepGroup } from './step-group';
@@ -131,4 +132,38 @@ test('it closes an opened result again from a control above the text', async () 
   expect(showLess.compareDocumentPosition(text)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   expect(rendered.getByRole('region', { name: 'web_fetch' })).not.toHaveTextContent('the end');
   expect(rendered.getByRole('group')).toHaveAttribute('open');
+});
+
+test('it keeps the toggles of a long input and a long result each with its own text', async () => {
+  const user = userEvent.setup();
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { text: `result start ${'x'.repeat(2000)}` } },
+            input: { url: `https://example.com/input-start-${'a'.repeat(1000)}` },
+            outcome: 'result',
+            tool: 'web_fetch',
+          },
+        ],
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^web fetch: example\.com/u));
+
+  const inputBox = rendered.getByRole('button', {
+    name: /^Show all 1,0\d\d characters$/u,
+  }).parentElement;
+  const resultBox = rendered.getByRole('button', {
+    name: /^Show all 2,0\d\d characters$/u,
+  }).parentElement;
+
+  invariant(inputBox && resultBox);
+  expect(inputBox).toHaveTextContent('input-start');
+  expect(inputBox).not.toHaveTextContent('result start');
+  expect(resultBox).toHaveTextContent('result start');
+  expect(resultBox).not.toHaveTextContent('input-start');
 });
