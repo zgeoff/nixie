@@ -46,8 +46,8 @@ test('it waits twice as long after each failed attempt in a row', async () => {
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
-    onAvailability: mock(),
-    onRecord: mock(),
+    onAvailability: mock<() => void>(),
+    onRecord: mock<() => void>(),
     signal: ctx.signal,
     startTimer: ctx.timer.startTimer,
     thread: 'conversation',
@@ -64,7 +64,7 @@ test('it waits twice as long after each failed attempt in a row', async () => {
 
 test('it waits the shortest time again after a failure that follows a connection', async () => {
   const ctx = await setupTest();
-  const onRecord = mock();
+  const onRecord = mock<() => void>();
 
   await store.records.create({ kind: 'tool_called' });
 
@@ -73,7 +73,7 @@ test('it waits the shortest time again after a failure that follows a connection
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
-    onAvailability: mock(),
+    onAvailability: mock<() => void>(),
     onRecord,
     signal: ctx.signal,
     startTimer: ctx.timer.startTimer,
@@ -103,8 +103,8 @@ test('it backs off from a revoked session, as from a stream that never opens', a
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
-    onAvailability: mock(),
-    onRecord: mock(),
+    onAvailability: mock<() => void>(),
+    onRecord: mock<() => void>(),
     signal: ctx.signal,
     startTimer: ctx.timer.startTimer,
     thread: 'conversation',
@@ -134,8 +134,8 @@ test('it backs off from a stream that opens and then ends with UNAUTHORIZED', as
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
-    onAvailability: mock(),
-    onRecord: mock(),
+    onAvailability: mock<() => void>(),
+    onRecord: mock<() => void>(),
     signal: ctx.signal,
     startTimer: ctx.timer.startTimer,
     thread: 'conversation',
@@ -160,8 +160,8 @@ test('it follows the log again at once when the browser comes back online during
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
-    onAvailability: mock(),
-    onRecord: mock(),
+    onAvailability: mock<() => void>(),
+    onRecord: mock<() => void>(),
     signal: ctx.signal,
     startTimer: ctx.timer.startTimer,
     thread: 'conversation',
@@ -197,8 +197,8 @@ test('it follows the log again at once when the page becomes visible during the 
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
-    onAvailability: mock(),
-    onRecord: mock(),
+    onAvailability: mock<() => void>(),
+    onRecord: mock<() => void>(),
     signal: ctx.signal,
     startTimer: ctx.timer.startTimer,
     thread: 'conversation',
