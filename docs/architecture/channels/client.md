@@ -73,6 +73,12 @@ The conversation view merges three sources into one list:
 The page never refetches: the live stream keeps it current from the sequence it was read at, and a
 dropped stream reconnects from the last sequence it delivered.
 
+The view fills the window. The list scrolls in a reversed column, which starts at its end and stays
+there as records arrive unless the user scrolled up to read, and the message box stays in view below
+it. Styles come from Panda CSS with its own presets and no theme of nixie's, and they set only what
+reading needs: a readable column width, spacing between records, and wrapping for a long word or
+link. The build runs the React Compiler, so no component memoizes by hand.
+
 ## The outbox
 
 Every message gets its client message ID when the user sends it, and the outbox keeps it in local

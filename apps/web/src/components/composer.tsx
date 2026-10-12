@@ -2,6 +2,7 @@ import type { SpanState } from '@heynixie/contract';
 import { buildSpanState } from '@heynixie/contract';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { useRef, useState } from 'react';
+import { css } from '../styled-system/css';
 import { usePendingInput } from '../use-pending-input';
 
 export interface ComposerProps {
@@ -19,6 +20,7 @@ export function Composer(props: ComposerProps): ReactNode {
 
   return (
     <form
+      className={css({ alignItems: 'flex-end', display: 'flex', gap: '2' })}
       onSubmit={(event) => {
         event.preventDefault();
 
@@ -37,12 +39,18 @@ export function Composer(props: ComposerProps): ReactNode {
           pendingInput.current = undefined;
           setMessage((current) => buildSpanState(current, pending, text));
         }}
+        className={css({ borderWidth: '1px', flex: '1', padding: '2', resize: 'vertical' })}
         onKeyDown={handleKeyDown}
         ref={textBox}
         rows={3}
         value={message.text}
       />
-      <button type="submit">Send</button>
+      <button
+        className={css({ borderWidth: '1px', paddingBlock: '2', paddingInline: '4' })}
+        type="submit"
+      >
+        Send
+      </button>
     </form>
   );
 }

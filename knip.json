@@ -1,7 +1,8 @@
 {
   "$schema": "./node_modules/knip/schema.json",
-  // repo-sync delivers .claude/ verbatim, and design spikes install and run on their own
-  "ignore": [".claude/**", "docs/design/**"],
+  // repo-sync delivers .claude/ verbatim, design spikes install and run on their own, and panda
+  // codegen writes the web styled-system on install
+  "ignore": [".claude/**", "docs/design/**", "apps/web/src/styled-system/**"],
   // the shared oxlint config loads this plugin, which knip cannot see through
   "ignoreDependencies": ["@stylistic/eslint-plugin"],
   "workspaces": {
