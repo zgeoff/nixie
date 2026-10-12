@@ -33,72 +33,35 @@ export interface StubActionQueue {
 // a wait answers the outcome once the action settles, or null while it is pending. The test decides
 // when a wait times out, so no timer runs.
 export function buildStubActionQueue(): StubActionQueue {
-  const state: QueueState = {
-    actions: [],
-    waits: [],
-    outcomes: new Map(),
-    pending: new Set(),
-    stopped: false,
-  };
+  const actions: QueuedEntry[] = [];
+  const outcomes = buildOutcomeWaits();
 
   return {
-    queue: { enqueue: makeEnqueue(state), waitForOutcome: makeWaitForOutcome(state) },
-    actions: state.actions,
-    waits: state.waits,
-    writeOutcome: (actionID, outcome) => {
-      state.outcomes.set(actionID, outcome);
-      drainPending(
-        state,
-        (wait) => wait.actionID === actionID,
-        (wait) => wait.resolve(outcome),
-      );
+    queue: {
+      enqueue: (action) => {
+        if (outcomes.isStopped()) {
+          return Promise.reject(buildStoppedError());
+        }
+        const earlier = actions.find((entry) => isSameAction(entry.action, action));
+
+        if (earlier !== undefined) {
+          return Promise.resolve(earlier.actionID);
+        }
+        const actionID = crypto.randomUUID();
+
+        actions.push({ actionID, action });
+        return Promise.resolve(actionID);
+      },
+      waitForOutcome: (actionID, timeoutMs) =>
+        actions.some((entry) => entry.actionID === actionID)
+          ? outcomes.waitFor(actionID, timeoutMs)
+          : Promise.reject(new Error(`the action queue holds no action ${actionID}`)),
     },
-    drainWaits: () => {
-      drainPending(
-        state,
-        () => true,
-        (wait) => wait.resolve(null),
-      );
-    },
-    stop: () => {
-      state.stopped = true;
-      drainPending(
-        state,
-        () => true,
-        (wait) => wait.reject(buildStoppedError()),
-      );
-    },
-  };
-}
-
-interface PendingWait {
-  readonly actionID: string;
-  readonly resolve: (outcome: ActionOutcome | null) => void;
-  readonly reject: (error: Error) => void;
-}
-
-interface QueueState {
-  readonly actions: QueuedEntry[];
-  readonly waits: OutcomeWait[];
-  readonly outcomes: Map<string, ActionOutcome>;
-  readonly pending: Set<PendingWait>;
-  stopped: boolean;
-}
-
-function makeEnqueue(state: QueueState): ActionQueue['enqueue'] {
-  return (action) => {
-    if (state.stopped) {
-      return Promise.reject(buildStoppedError());
-    }
-    const earlier = state.actions.find((entry) => isSameAction(entry.action, action));
-
-    if (earlier !== undefined) {
-      return Promise.resolve(earlier.actionID);
-    }
-    const actionID = crypto.randomUUID();
-
-    state.actions.push({ actionID, action });
-    return Promise.resolve(actionID);
+    actions,
+    waits: outcomes.waits,
+    writeOutcome: outcomes.writeOutcome,
+    drainWaits: outcomes.drainWaits,
+    stop: outcomes.stop,
   };
 }
 
@@ -110,39 +73,73 @@ function isSameAction(left: QueuedAction, right: QueuedAction): boolean {
   );
 }
 
-function makeWaitForOutcome(state: QueueState): ActionQueue['waitForOutcome'] {
-  return (actionID, timeoutMs) => {
-    state.waits.push({ actionID, timeoutMs });
-    if (state.stopped) {
-      return Promise.reject(buildStoppedError());
-    }
-    if (!state.actions.some((entry) => entry.actionID === actionID)) {
-      return Promise.reject(new Error(`the action queue holds no action ${actionID}`));
-    }
-    const outcome = state.outcomes.get(actionID);
+function buildOutcomeWaits() {
+  const waits: OutcomeWait[] = [];
+  const outcomes = new Map<string, ActionOutcome>();
+  const pending = buildPendingWaits();
+  const state = { stopped: false };
 
-    return outcome === undefined ? waitForSettle(state, actionID) : Promise.resolve(outcome);
+  return {
+    waits,
+    isStopped: () => state.stopped,
+    waitFor: (actionID: string, timeoutMs: number): Promise<ActionOutcome | null> => {
+      const outcome = outcomes.get(actionID);
+      const wait = Promise.withResolvers<ActionOutcome | null>();
+
+      waits.push({ actionID, timeoutMs });
+      if (state.stopped) {
+        wait.reject(buildStoppedError());
+      } else if (outcome === undefined) {
+        pending.add({ actionID, resolve: wait.resolve, reject: wait.reject });
+      } else {
+        wait.resolve(outcome);
+      }
+      return wait.promise;
+    },
+    writeOutcome: (actionID: string, outcome: ActionOutcome) => {
+      outcomes.set(actionID, outcome);
+      for (const wait of pending.drain(actionID)) {
+        wait.resolve(outcome);
+      }
+    },
+    drainWaits: () => {
+      for (const wait of pending.drain()) {
+        wait.resolve(null);
+      }
+    },
+    stop: () => {
+      state.stopped = true;
+      for (const wait of pending.drain()) {
+        wait.reject(buildStoppedError());
+      }
+    },
   };
 }
 
-function waitForSettle(state: QueueState, actionID: string): Promise<ActionOutcome | null> {
-  const wait = Promise.withResolvers<ActionOutcome | null>();
-
-  state.pending.add({ actionID, resolve: wait.resolve, reject: wait.reject });
-  return wait.promise;
+interface PendingWait {
+  readonly actionID: string;
+  readonly resolve: (outcome: ActionOutcome | null) => void;
+  readonly reject: (error: Error) => void;
 }
 
-function drainPending(
-  state: QueueState,
-  isMatch: (wait: PendingWait) => boolean,
-  settle: (wait: PendingWait) => void,
-): void {
-  for (const wait of state.pending) {
-    if (isMatch(wait)) {
-      state.pending.delete(wait);
-      settle(wait);
-    }
-  }
+// the waits that hold no outcome yet; a drain removes and returns the waits for one action, or
+// every wait when it names no action
+function buildPendingWaits() {
+  const pending = new Set<PendingWait>();
+
+  return {
+    add: (wait: PendingWait) => {
+      pending.add(wait);
+    },
+    drain: (actionID?: string): PendingWait[] => {
+      const drained = [...pending].filter((wait) => (actionID ?? wait.actionID) === wait.actionID);
+
+      for (const wait of drained) {
+        pending.delete(wait);
+      }
+      return drained;
+    },
+  };
 }
 
 function buildStoppedError(): Error {

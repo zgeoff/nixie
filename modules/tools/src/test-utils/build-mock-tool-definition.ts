@@ -53,17 +53,16 @@ export function buildMockToolDefinition(
 }
 
 function mergeJSONObjects(defaults: JSONObject, override: JSONObject = {}): JSONObject {
-  return Object.fromEntries([
-    ...Object.entries(defaults),
-    ...Object.entries(override).map(([key, value]) => {
-      const fallback = defaults[key];
+  const merged = Object.entries(override).map(([key, value]): [string, JSONValue] => {
+    const fallback = defaults[key];
 
-      return [
-        key,
-        isJSONObject(fallback) && isJSONObject(value) ? mergeJSONObjects(fallback, value) : value,
-      ];
-    }),
-  ]);
+    return [
+      key,
+      isJSONObject(fallback) && isJSONObject(value) ? mergeJSONObjects(fallback, value) : value,
+    ];
+  });
+
+  return Object.fromEntries<JSONValue>([...Object.entries(defaults), ...merged]);
 }
 
 function isJSONObject(value: JSONValue | undefined): value is JSONObject {
