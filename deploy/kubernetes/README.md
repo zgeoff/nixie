@@ -23,9 +23,7 @@ release tag and digest. impd runs on the node, outside the cluster.
 
 ## Check them
 
-`kustomization.test.ts` checks that the configuration passes nixie's schema and that the
-single-writer shape holds. To validate every resource against the Kubernetes schemas, render the
-folder and run kubeconform:
+To validate every resource against the Kubernetes schemas, render the folder and run kubeconform:
 
 ```bash
 kubectl kustomize deploy/kubernetes > /tmp/nixie.yaml

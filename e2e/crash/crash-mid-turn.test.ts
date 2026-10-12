@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 
@@ -55,6 +56,7 @@ test('it sends once when nixie dies after the action queued, before any attempt'
   const rerunRequest = ctx.nixie.model.requests
     .slice(rerunFrom)
     .find((request) => request.path === '/v1/messages');
+  invariant(rerunRequest?.body);
 
   const oracle = await runOracle(ctx.nixie);
 
@@ -68,8 +70,8 @@ test('it sends once when nixie dies after the action queued, before any attempt'
   expect(ctx.nixie.provider.calls).toStrictEqual([
     { idempotencyKey: actionID, body: { to: 'team', body: 'The summary.' } },
   ]);
-  expect(JSON.stringify(rerunRequest?.body?.messages)).toInclude('Hi.');
-  expect(JSON.stringify(rerunRequest?.body?.messages)).not.toInclude('tool_use');
+  expect(JSON.stringify(rerunRequest.body.messages)).toInclude('Hi.');
+  expect(JSON.stringify(rerunRequest.body.messages)).not.toInclude('tool_use');
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
     repeatedActions: [],
@@ -115,6 +117,7 @@ test('it leaves the action unknown and calls no provider when nixie dies after t
   const rerunRequest = ctx.nixie.model.requests
     .slice(rerunFrom)
     .find((request) => request.path === '/v1/messages');
+  invariant(rerunRequest?.body);
 
   const oracle = await runOracle(ctx.nixie);
 
@@ -128,8 +131,8 @@ test('it leaves the action unknown and calls no provider when nixie dies after t
       .map((record) => [record.payload['outcome'], record.payload['actionID']]),
   ).toStrictEqual([['unknown', actionID]]);
   expect(ctx.nixie.provider.calls).toStrictEqual([]);
-  expect(JSON.stringify(rerunRequest?.body?.messages)).toInclude('Hi.');
-  expect(JSON.stringify(rerunRequest?.body?.messages)).not.toInclude('tool_use');
+  expect(JSON.stringify(rerunRequest.body.messages)).toInclude('Hi.');
+  expect(JSON.stringify(rerunRequest.body.messages)).not.toInclude('tool_use');
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
     repeatedActions: [],
@@ -176,6 +179,7 @@ test('it leaves the action unknown and calls the provider once when nixie dies b
   const rerunRequest = ctx.nixie.model.requests
     .slice(rerunFrom)
     .find((request) => request.path === '/v1/messages');
+  invariant(rerunRequest?.body);
 
   const oracle = await runOracle(ctx.nixie);
 
@@ -191,8 +195,8 @@ test('it leaves the action unknown and calls the provider once when nixie dies b
   expect(ctx.nixie.provider.calls).toStrictEqual([
     { idempotencyKey: actionID, body: { to: 'team', body: 'The summary.' } },
   ]);
-  expect(JSON.stringify(rerunRequest?.body?.messages)).toInclude('Hi.');
-  expect(JSON.stringify(rerunRequest?.body?.messages)).not.toInclude('tool_use');
+  expect(JSON.stringify(rerunRequest.body.messages)).toInclude('Hi.');
+  expect(JSON.stringify(rerunRequest.body.messages)).not.toInclude('tool_use');
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
     repeatedActions: [],
@@ -248,6 +252,7 @@ test('it returns the done action to the rerun and sends once when nixie dies bef
   const rerunRequest = ctx.nixie.model.requests
     .slice(rerunFrom)
     .find((request) => request.path === '/v1/messages');
+  invariant(rerunRequest?.body);
 
   const oracle = await runOracle(ctx.nixie);
 
@@ -263,8 +268,8 @@ test('it returns the done action to the rerun and sends once when nixie dies bef
   expect(ctx.nixie.provider.calls).toStrictEqual([
     { idempotencyKey: actionID, body: { to: 'team', body: 'The summary.' } },
   ]);
-  expect(JSON.stringify(rerunRequest?.body?.messages)).toInclude('Hi.');
-  expect(JSON.stringify(rerunRequest?.body?.messages)).not.toInclude('tool_use');
+  expect(JSON.stringify(rerunRequest.body.messages)).toInclude('Hi.');
+  expect(JSON.stringify(rerunRequest.body.messages)).not.toInclude('tool_use');
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
     repeatedActions: [],

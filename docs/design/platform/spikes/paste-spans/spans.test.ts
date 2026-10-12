@@ -1,94 +1,98 @@
-/* oxlint-disable one-var -- the replay keeps its state in 2 lets */
 import { expect, test } from 'bun:test';
-import type { Selection, Span, SpanSource } from './spans.ts';
 import { applyEdit, findEdit, getSpanText } from './spans.ts';
 
-interface Step {
-  after: string;
-  selection?: Selection;
-  source: SpanSource;
-}
+test('it labels typed, pasted and typed-again text with their sources', () => {
+  const typed = applyEdit([], findEdit('', 'hello '), 'typed');
+  const pasted = applyEdit(typed, findEdit('hello ', 'hello PASTED'), 'pasted');
 
-function getCaret(at: number, backward = false): Selection {
-  return { backward, end: at, start: at };
-}
+  const spans = applyEdit(pasted, findEdit('hello PASTED', 'hello PASTED world'), 'typed');
 
-function runSteps(steps: Step[]): string[] {
-  let spans: Span[] = [];
-  let text = '';
-  for (const step of steps) {
-    spans = applyEdit(spans, findEdit(text, step.after, step.selection), step.source);
-    text = step.after;
-  }
-  return getSpanText(text, spans);
-}
-
-test('typed, pasted and typed again', () => {
-  expect(
-    runSteps([
-      { after: 'hello ', source: 'typed' },
-      { after: 'hello PASTED', source: 'pasted' },
-      { after: 'hello PASTED world', source: 'typed' },
-    ]),
-  ).toEqual(['typed:"hello "', 'pasted:"PASTED"', 'typed:" world"']);
-});
-
-test('typing inside a pasted span splits it', () => {
-  expect(
-    runSteps([
-      { after: 'PASTED', source: 'pasted' },
-      { after: 'PASxTED', selection: getCaret(3), source: 'typed' },
-    ]),
-  ).toEqual(['pasted:"PAS"', 'typed:"x"', 'pasted:"TED"']);
-});
-
-test('a paste next to repeated text, with and without the caret', () => {
-  const steps: Step[] = [
-    { after: 'ab', source: 'typed' },
-    { after: 'abab', selection: getCaret(1), source: 'pasted' },
-  ];
-  expect(runSteps(steps)).toEqual(['typed:"a"', 'pasted:"ba"', 'typed:"b"']);
-  expect(runSteps(steps.map((step) => ({ after: step.after, source: step.source })))).toEqual([
-    'typed:"ab"',
-    'pasted:"ab"',
+  expect(getSpanText('hello PASTED world', spans)).toStrictEqual([
+    'typed:"hello "',
+    'pasted:"PASTED"',
+    'typed:" world"',
   ]);
 });
 
-test('a replacement over a boundary keeps the untouched parts', () => {
-  expect(
-    runSteps([
-      { after: 'hello ', source: 'typed' },
-      { after: 'hello PASTED', source: 'pasted' },
-      { after: 'helXTED', selection: { backward: false, end: 9, start: 3 }, source: 'typed' },
-    ]),
-  ).toEqual(['typed:"helX"', 'pasted:"TED"']);
+test('it splits a pasted span around text typed inside it', () => {
+  const pasted = applyEdit([], findEdit('', 'PASTED'), 'pasted');
+
+  const spans = applyEdit(
+    pasted,
+    findEdit('PASTED', 'PASxTED', { backward: false, end: 3, start: 3 }),
+    'typed',
+  );
+
+  expect(getSpanText('PASxTED', spans)).toStrictEqual(['pasted:"PAS"', 'typed:"x"', 'pasted:"TED"']);
 });
 
-test('a paste over a selection labels the whole paste', () => {
-  expect(
-    runSteps([
-      { after: 'cat', source: 'typed' },
-      { after: 'bat', selection: { backward: false, end: 3, start: 0 }, source: 'pasted' },
-    ]),
-  ).toEqual(['pasted:"bat"']);
+test('it places a paste next to repeated text at the caret', () => {
+  const typed = applyEdit([], findEdit('', 'ab'), 'typed');
+
+  const spans = applyEdit(
+    typed,
+    findEdit('ab', 'abab', { backward: false, end: 1, start: 1 }),
+    'pasted',
+  );
+
+  expect(getSpanText('abab', spans)).toStrictEqual(['typed:"a"', 'pasted:"ba"', 'typed:"b"']);
 });
 
-test('a backspace between a typed and a pasted character removes the typed one', () => {
-  expect(
-    runSteps([
-      { after: 'a', source: 'typed' },
-      { after: 'aa', source: 'pasted' },
-      { after: 'a', selection: getCaret(1, true), source: 'unknown' },
-    ]),
-  ).toEqual(['pasted:"a"']);
+test('it places a paste next to repeated text at the end when no caret is known', () => {
+  const typed = applyEdit([], findEdit('', 'ab'), 'typed');
+
+  const spans = applyEdit(typed, findEdit('ab', 'abab'), 'pasted');
+
+  expect(getSpanText('abab', spans)).toStrictEqual(['typed:"ab"', 'pasted:"ab"']);
 });
 
-test('a forward delete between a typed and a pasted character removes the pasted one', () => {
-  expect(
-    runSteps([
-      { after: 'a', source: 'typed' },
-      { after: 'aa', source: 'pasted' },
-      { after: 'a', selection: getCaret(1), source: 'unknown' },
-    ]),
-  ).toEqual(['typed:"a"']);
+test('it keeps the untouched parts of a replacement over a span boundary', () => {
+  const typed = applyEdit([], findEdit('', 'hello '), 'typed');
+  const pasted = applyEdit(typed, findEdit('hello ', 'hello PASTED'), 'pasted');
+
+  const spans = applyEdit(
+    pasted,
+    findEdit('hello PASTED', 'helXTED', { backward: false, end: 9, start: 3 }),
+    'typed',
+  );
+
+  expect(getSpanText('helXTED', spans)).toStrictEqual(['typed:"helX"', 'pasted:"TED"']);
+});
+
+test('it labels the whole paste over a selection as pasted', () => {
+  const typed = applyEdit([], findEdit('', 'cat'), 'typed');
+
+  const spans = applyEdit(
+    typed,
+    findEdit('cat', 'bat', { backward: false, end: 3, start: 0 }),
+    'pasted',
+  );
+
+  expect(getSpanText('bat', spans)).toStrictEqual(['pasted:"bat"']);
+});
+
+test('it removes the typed character on a backspace between a typed and a pasted one', () => {
+  const typed = applyEdit([], findEdit('', 'a'), 'typed');
+  const pasted = applyEdit(typed, findEdit('a', 'aa'), 'pasted');
+
+  const spans = applyEdit(
+    pasted,
+    findEdit('aa', 'a', { backward: true, end: 1, start: 1 }),
+    'unknown',
+  );
+
+  expect(getSpanText('a', spans)).toStrictEqual(['pasted:"a"']);
+});
+
+test('it removes the pasted character on a forward delete between a typed and a pasted one', () => {
+  const typed = applyEdit([], findEdit('', 'a'), 'typed');
+  const pasted = applyEdit(typed, findEdit('a', 'aa'), 'pasted');
+
+  const spans = applyEdit(
+    pasted,
+    findEdit('aa', 'a', { backward: false, end: 1, start: 1 }),
+    'unknown',
+  );
+
+  expect(getSpanText('a', spans)).toStrictEqual(['typed:"a"']);
 });
