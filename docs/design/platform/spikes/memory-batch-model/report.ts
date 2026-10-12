@@ -9,6 +9,7 @@ import type { Usage } from './run-writer.ts';
 // estimate from a straight-line fit of input tokens against turns per batch.
 interface Run {
   effort: string;
+  input?: boolean;
   model: string;
   plan: PlannedBatch[];
   samples: {
@@ -46,6 +47,10 @@ const runs = paths.map((path) => ({
 const points: { tokens: number; turns: number; usd: number; wallMs: number }[] = [];
 
 for (const { path, run } of runs) {
+  // A run over an input file has no gold facts to score against the fixture's.
+  if (run.input === true) {
+    throw new Error(`${path} ran over an input file; this report scores fixture runs only`);
+  }
   const ownerTurns = conversation.turns.length;
   console.log(`\n## ${path}: ${run.model}, effort ${run.effort}, ${run.plan.length} batches\n`);
   console.log(
