@@ -1,13 +1,18 @@
 import type { ActivityItem } from './build-activity';
 
-// nixie works on a reply from when you send a message until the reply arrives, and through a step
-// from its start to its end. A message that failed to send waits on you, not on nixie.
+// nixie works from when you send a message until its reply arrives or a step fails or stops, and
+// through each step from its start to its end. A message that failed to send waits on you.
 export function isWorking(activity: readonly ActivityItem[], hasPendingSend: boolean): boolean {
-  const last = activity.at(-1);
-
   return (
     hasPendingSend ||
-    (last?.kind === 'message' && last.record.kind === 'owner_message') ||
-    activity.some((item) => item.kind === 'step' && item.status === 'running')
+    activity.some((item) => item.kind === 'step' && item.status === 'running') ||
+    hasUnansweredMessage(activity)
   );
+}
+
+// Reads back from the end past the steps that finished, to the item that settles the wait.
+function hasUnansweredMessage(activity: readonly ActivityItem[]): boolean {
+  const settling = activity.findLast((item) => item.kind === 'message' || item.status !== 'done');
+
+  return settling?.kind === 'message' && settling.record.kind === 'owner_message';
 }

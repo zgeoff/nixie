@@ -101,11 +101,12 @@ The view fills the window, and the message box stays in view below the list. The
 end. When a record or a message arrives, the view moves to the end if the user was at or near it
 when they last scrolled, and stays in place if they scrolled up to read. The user's own message
 always brings the view to the end. Below the list, a small spinner shows while nixie works: from a
-sent message until a reply follows it, and while any step runs. The spinner keeps its slot when it
-goes, so the list never jumps. A message that failed to send stops the spinner, because it waits on
-the user and not on nixie. Styles come from Panda CSS with its own presets and no theme of nixie's,
-and they set only what reading needs: a readable column width, spacing between records, and wrapping
-for a long word or link. The build runs the React Compiler, so no component memoizes by hand.
+sent message until a reply follows it or a step fails or stops, and while any step runs. The spinner
+keeps its slot when it goes, so the list never jumps. A message that failed to send stops the
+spinner, because it waits on the user and not on nixie. Styles come from Panda CSS with its own
+presets and no theme of nixie's, and they set only what reading needs: a readable column width,
+spacing between records, and wrapping for a long word or link. The build runs the React Compiler, so
+no component memoizes by hand.
 
 ## The outbox
 
