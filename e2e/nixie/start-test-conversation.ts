@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { buildSandboxAdapter, startConversation } from '../../apps/server/src/index';
 import { modelsConfigSchema } from '../../modules/models/src/index';
+import { makeLogger } from '../../modules/ops/src/index';
 import { buildSandboxRecorder } from '../../modules/sandbox/src/index';
 import type { TasksContext } from '../../modules/tasks/src/index';
 import type { TestTools } from './start-test-tools';
@@ -44,6 +45,9 @@ export function startTestConversation(
     memory: () => ({
       readPinnedCore: () => Promise.resolve([]),
       recall: () => Promise.resolve({ items: [], next: null }),
+    }),
+    log: makeLogger((line) => {
+      process.stderr.write(line);
     }),
   });
 }

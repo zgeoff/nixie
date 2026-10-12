@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@heynixie/log": "workspace:*",
+    "@heynixie/ops": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",

@@ -10,6 +10,7 @@ export { isInboxRecord } from './is-inbox-record';
 export { LeaseLostError } from './lease-lost-error';
 export { planReadCursor } from './plan-read-cursor';
 export { readInbox } from './read-inbox';
+export { readSessionBoundary } from './read-session-boundary';
 export { requireLease } from './require-lease';
 export { resetLease } from './reset-lease';
 export { runDueTimers } from './run-due-timers';

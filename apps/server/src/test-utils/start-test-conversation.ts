@@ -59,6 +59,7 @@ export async function startTestConversation(
       readPinnedCore: () => Promise.resolve([]),
       recall: () => Promise.resolve({ items: [], next: null }),
     }),
+    log: () => {},
   });
 
   server.defer(() => runner.stop());
