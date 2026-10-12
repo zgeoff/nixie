@@ -80,8 +80,10 @@ Larger batches lost facts. Across 6 samples they missed the usual lunch place 3 
 have a car" twice, and twice they added the new address as a second item while "14 Elm Row" stayed
 active, so memory held 2 contradicting addresses. They also never stored the pottery class, because
 it starts and ends inside one batch; the final memory is correct there, so that miss costs nothing.
-No batch at any size needed the clash retry. Every one of the 126 candidates passed the code checks,
-so the writer's quotes were exact and the checks never had to stop a writer error.
+Of the 4 bad-applied candidates, 2 are the duplicate address. The other 2 are the hiking fact, which
+the judge labelled acceptable in 7 samples and unsupported in 2, so they show judge noise, not
+writer errors. No batch at any size needed the clash retry. Every one of the 126 candidates passed
+the code checks, so the writer's quotes were exact and the checks never had to stop a writer error.
 
 ### Capture delay
 
@@ -99,8 +101,13 @@ A live batch of 4 turns sent a mean of 2,136 input tokens and produced 383 outpu
 input, 1,067 tokens are the system prompt and harness preamble, a cache read from the second batch
 on. Claude Code writes the rest, the batch text and the active items, to a 1-hour cache that no
 later batch reads, at twice the input price. One batch cost $0.0004 at Haiku 5.5 list prices, and
-the conversation cost $0.0044, or $0.011 per 100 turns. The harness's own cost figure matched the
-priced token counts in every run, which confirms the price table in [report.ts](report.ts).
+the conversation cost $0.0046, or $0.011 per 100 turns. The harness reported the 1-hour cache write
+itself, and its own cost figure matched the priced token counts in every run, which confirms the
+price table in [report.ts](report.ts).
+
+The samples ran in parallel, so 5 first batches read a cached prompt that another sample wrote. The
+report reprices that read as a write, as a lone writer pays it; the recorded figure was $0.0044 a
+conversation.
 
 ### Backfill of a long log
 
@@ -112,9 +119,9 @@ fixture's one-line replies.
 
 | Turns per batch | Batches | Input tokens | Cost  | Serial time | Cost at 400-token turns |
 | --------------- | ------- | ------------ | ----- | ----------- | ----------------------- |
-| 4               | 5,000   | 10.8 M       | $2.08 | 5.9 h       | $3.49                   |
-| 20              | 1,000   | 2.9 M        | $1.01 | 2.3 h       | $2.42                   |
-| 40              | 500     | 1.9 M        | $0.88 | 1.9 h       | $2.29                   |
+| 4               | 5,000   | 10.8 M       | $2.14 | 5.9 h       | $3.56                   |
+| 20              | 1,000   | 2.9 M        | $1.07 | 2.3 h       | $2.49                   |
+| 40              | 500     | 1.9 M        | $0.94 | 1.9 h       | $2.35                   |
 
 The fit holds the full item list, at most 20 items here. A backfill grows the store to hundreds of
 items, so it needs the writer's recall to send only the relevant ones; at about 20 tokens an item,
@@ -123,10 +130,10 @@ items, so it needs the writer's recall to send only the relevant ones; at about 
 ## Recommendation
 
 Build Memory 1's writer on Haiku 5.5 at low effort with the default triggers, and run the backfill
-through the same 4-turn batches. A year of history then costs $2 to $3.50 and about 6 hours in the
-background. Larger batches save about $1 and 4 hours, but in 5 of 6 samples they lost a fact that
-4-turn batches kept or left 2 contradicting items, and a dollar does not pay for that. The backfill
-resumes from the committed cursor after a crash, as the
+through the same 4-turn batches. A year of history then costs $2.10 to $3.60 and about 6 hours in
+the background. Larger batches save about $1 and 4 hours, but in 5 of 6 samples they lost a fact
+that 4-turn batches kept or left 2 contradicting items, and a dollar does not pay for that. The
+backfill resumes from the committed cursor after a crash, as the
 [batch boundaries](../../memory/writes.md#batch-boundaries-and-recovery) require, so its length
 needs no special handling.
 

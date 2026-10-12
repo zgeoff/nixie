@@ -29,6 +29,11 @@ interface Run {
 // Claude Haiku 5.5 list prices in USD per million tokens. Claude Code asks for the 1-hour cache, so
 // a cache write costs twice the input price.
 const PRICES = { cacheRead: 0.01, cacheWrite: 0.2, input: 0.1, output: 0.5 };
+// Samples run in parallel, so a batch can read a cache another sample wrote. A lone writer reads
+// only the shared preamble from the cache and writes the rest, so the excess read is repriced as a
+// write.
+const SHARED_PREFIX = 1067;
+
 const LONG_LOG_TURNS = 20_000;
 // A real reply runs longer than the fixture's one-line replies; this sizes a turn for the estimate.
 const LONG_TURN_TOKENS = 400;
@@ -52,6 +57,7 @@ for (const { path, run } of runs) {
   const waits: number[] = [];
   let usd = 0;
   let reported = 0;
+  let raw = 0;
   let inputTokens = 0;
   let outputTokens = 0;
   for (const sample of run.samples) {
@@ -104,10 +110,12 @@ for (const { path, run } of runs) {
       walls.push(batch.wallMs / 1000);
       const turns = batch.plan.end - batch.plan.start;
       const tokens = batch.usage.input + batch.usage.cacheWrite + batch.usage.cacheRead;
-      points.push({ tokens, turns, usd: priceUsage(batch.usage), wallMs: batch.wallMs });
+      const batchUSD = priceUsage(toSoloUsage(batch.usage));
+      points.push({ tokens, turns, usd: batchUSD, wallMs: batch.wallMs });
       inputTokens += tokens;
       outputTokens += batch.usage.output;
-      usd += priceUsage(batch.usage);
+      usd += batchUSD;
+      raw += priceUsage(batch.usage);
       reported += batch.reportedUSD;
       if (batch.plan.startedAt !== null) {
         waits.push(batch.plan.startedAt - conversation.turns[batch.plan.start]!.at);
@@ -127,7 +135,7 @@ for (const { path, run } of runs) {
     );
   }
   console.log(
-    `- Per sample: ${Math.round(inputTokens / count)} input tokens, ${Math.round(outputTokens / count)} output tokens, $${(usd / count).toFixed(5)} (harness figure $${(reported / count).toFixed(5)}); $${((usd / count / ownerTurns) * 100).toFixed(4)} per 100 turns.`,
+    `- Per sample: ${Math.round(inputTokens / count)} input tokens, ${Math.round(outputTokens / count)} output tokens, $${(usd / count).toFixed(5)} (as recorded $${(raw / count).toFixed(5)}, harness figure $${(reported / count).toFixed(5)}); $${((usd / count / ownerTurns) * 100).toFixed(4)} per 100 turns.`,
   );
 }
 
@@ -151,6 +159,11 @@ for (const size of [4, 20, 40]) {
   console.log(
     `| ${size} | ${batches} | ${formatMillions(tokens)} | $${cost.toFixed(2)} | ${hours.toFixed(1)} h | $${(cost + LONG_LOG_TURNS * longTurnUSD).toFixed(2)} |`,
   );
+}
+
+function toSoloUsage(usage: Usage): Usage {
+  const excess = Math.max(0, usage.cacheRead - SHARED_PREFIX);
+  return { ...usage, cacheRead: usage.cacheRead - excess, cacheWrite: usage.cacheWrite + excess };
 }
 
 function priceUsage(usage: Usage): number {
