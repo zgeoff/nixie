@@ -21,6 +21,18 @@ test('it reads the records and the exit code once nixie exits', async () => {
   expect(run.records).toIncludeAllPartialMembers([{ kind: 'definitions_seeded' }]);
 }, 60_000);
 
+test('it rejects a wait for a log event once nixie exits without it', async () => {
+  const nixie = await startTestNixie();
+
+  await nixie.waitForLogEvent('ready');
+  nixie.sendSignal('SIGTERM');
+  await nixie.waitForExit();
+
+  expect(nixie.waitForLogEvent('no-such-event')).rejects.toThrow(
+    /^nixie exited without the log event no-such-event:\n/u,
+  );
+}, 60_000);
+
 test('it returns from the stop signal once nixie logs that its stop began', async () => {
   const nixie = await startTestNixie();
 

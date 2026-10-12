@@ -1,27 +1,12 @@
-import type { Sandbox, ToolRoute } from '@heynixie/sandbox';
-import type { StepInput, TasksContext } from '@heynixie/tasks';
-import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
+import type { StepInput } from '@heynixie/tasks';
 import type { SessionPoint, TurnProfile } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
 import { inboxBatchLimit } from './inbox-batch-limit';
 import { readLiveInbox } from './read-live-inbox';
-import type { GuestCommand } from './run-guest-turn';
 import { runGuestTurn } from './run-guest-turn';
 import { toInboxMessage } from './to-inbox-message';
-import type { ResolvedProfile } from './types';
-
-// The conversation's runner as one step sees it: its sandbox, its endpoint and its profile.
-export interface ConversationRun {
-  readonly context: TasksContext;
-  readonly profile: ResolvedProfile;
-  readonly sandbox: Sandbox;
-  readonly endpoint: Pick<RunEndpoint, 'token'>;
-  readonly model: ToolRunModel;
-  readonly command: GuestCommand;
-
-  // the persona in force, read at each turn so a new seed reaches the next turn
-  readonly getSystemPrompt: () => string;
-}
+import type { ConversationRun, ResolvedProfile } from './types';
 
 // Runs one turn in the guest on the step's inbox, up to the batch limit, resuming at the session
 // point when there is one. Only a turn that took the whole inbox takes the records that land while
@@ -31,7 +16,10 @@ export async function runLiveTurn(
   input: StepInput,
   resume: SessionPoint | null,
 ): Promise<CompletedTurn> {
-  const route = await requireToolRoute(run.sandbox);
+  const route = await run.sandbox.toolRoute();
+
+  // a conversation sandbox's spec always asks for a tool route, and every adapter gives one then
+  invariant(route, 'the conversation sandbox has no tool route');
   const batch = input.inbox.slice(0, inboxBatchLimit);
   const sent = new Set(batch.map((record) => record.sequence));
   const live = new AbortController();
@@ -59,15 +47,6 @@ export async function runLiveTurn(
   } finally {
     live.abort();
   }
-}
-
-async function requireToolRoute(sandbox: Sandbox): Promise<ToolRoute> {
-  const route = await sandbox.toolRoute();
-
-  if (route === null) {
-    throw new Error('the conversation sandbox has no tool route');
-  }
-  return route;
 }
 
 // the profile as the guest needs it, with no credential reference and no prices

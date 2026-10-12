@@ -61,3 +61,22 @@ test('it answers any other request with 404', async () => {
 
   expect(response.status).toBe(404);
 });
+
+test('it answers 500 with the reason when the code cannot be issued', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('the database is locked')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/enrolment-codes', {
+    method: 'POST',
+    unix: ctx.path,
+  });
+  const reason = await response.text();
+
+  expect(response.status).toBe(500);
+  expect(reason).toBe('the database is locked');
+});

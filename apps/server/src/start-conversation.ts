@@ -13,6 +13,7 @@ import {
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
 
 export interface ConversationOptions {
   readonly context: TasksContext;
@@ -36,9 +37,8 @@ export function startConversation(options: ConversationOptions): Promise<Convers
   const profile = resolveRoleProfile(options.models, 'conversation');
   const resolved = credentials[profile.id];
 
-  if (resolved === undefined) {
-    throw new Error(`the conversation profile ${profile.id} has no credential`);
-  }
+  // the credentials resolve for every profile, or resolveModelCredentials throws first
+  invariant(resolved, `the conversation profile ${profile.id} has no credential`);
   return startConversationRunner({
     context: options.context,
     profile: resolved,
