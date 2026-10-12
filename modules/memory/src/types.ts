@@ -1,5 +1,11 @@
 import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
 import type { Selectable } from 'kysely';
+import type {
+  GateContext,
+  MemoryForgottenEvidenceTable,
+  MemoryNoticeEntryTable,
+  MemoryProposalTable,
+} from './gate-types';
 import type { DeliveryLock } from './make-delivery-lock';
 import type { MemoryIndex } from './start-memory-index';
 
@@ -40,6 +46,9 @@ export interface Provenance {
 
   // the thread the version's record belongs to
   readonly thread?: string;
+
+  // the model ID of the call that wrote the version, or null for your own action
+  readonly model?: string | null;
 }
 
 // The free text of a version, which nixie seals under the item's key.
@@ -173,6 +182,7 @@ export interface MemoryContext {
   readonly log: Log;
   readonly definitions: () => Definitions;
   readonly cleanupSessions: CleanupSessions;
+  readonly gate: GateContext;
 }
 
 // What every store operation reaches: the context, the index and the delivery lock.
@@ -209,6 +219,7 @@ interface MemoryVersionTable {
   readonly task_id: string | null;
   readonly proposal_id: string | null;
   readonly checks: string | null;
+  readonly model: string | null;
   readonly sequence: number;
   readonly snapshot_hash: string;
   readonly recorded_at: number;
@@ -218,6 +229,9 @@ interface MemoryVersionTable {
 export type MemoryTables = Readonly<{
   memory_items: MemoryItemTable;
   memory_versions: MemoryVersionTable;
+  memory_proposals: MemoryProposalTable;
+  memory_notice_entries: MemoryNoticeEntryTable;
+  memory_forgotten_evidence: MemoryForgottenEvidenceTable;
 }>;
 
 export type MemoryItemRow = Selectable<MemoryItemTable>;

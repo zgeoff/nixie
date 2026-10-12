@@ -1,3 +1,5 @@
+import type { MemoryGate } from './build-memory-gate';
+import { buildMemoryGate } from './build-memory-gate';
 import { buildMemoryStore } from './build-memory-store';
 import { makeDeliveryLock } from './make-delivery-lock';
 import { readIndexEntries } from './read-index-entries';
@@ -7,7 +9,7 @@ import type { MemoryContext, MemoryStore, StoreParts } from './types';
 import type { BatchPublication, PublishResult } from './write-memory-batch';
 import { writeMemoryBatch } from './write-memory-batch';
 
-export interface StartedMemoryStore extends MemoryStore {
+export interface StartedMemoryStore extends MemoryStore, MemoryGate {
   // publishes one memory writer batch with its cursor in one transaction
   readonly writeBatch: (publication: BatchPublication) => Promise<PublishResult>;
   readonly stop: () => Promise<void>;
@@ -31,6 +33,7 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
   }
   return {
     ...buildMemoryStore(parts),
+    ...buildMemoryGate(parts),
     writeBatch: (publication) => writeMemoryBatch(parts, publication),
     stop: () => parts.lock(() => index.stop()),
   };

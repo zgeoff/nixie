@@ -1,0 +1,191 @@
+import { expect, mock, test } from 'bun:test';
+import invariant from 'tiny-invariant';
+import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
+import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
+import { startTestMemory } from './test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
+
+test('it retires an item you asked to retire, with your intent quote and the checks', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+  const memory = await startTestMemory({ gate: { check } });
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: {
+      origin: 'conversation',
+      source: 'untrusted',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I moved out of Elm Street last week',
+    spans: [{ start: 0, end: 36, source: 'typed' }],
+  });
+  await memory.store.recall({ query: 'Elm', thread: 'conversation' });
+
+  const outcome = await memory.store.writes.retire({
+    target: item,
+    intentQuote: 'I moved out of Elm Street',
+    caller: buildMockWriteCaller(),
+  });
+  const history = await memory.store.readHistory(item.itemID);
+
+  expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+  expect(history?.versions.at(-1)).toMatchObject({
+    change: 'retired',
+    origin: 'conversation',
+    source: 'untrusted',
+  });
+  expect(check).toHaveBeenCalledExactlyOnceWith({
+    prompt: expect.toStartWith('You check one request to retire'),
+    input:
+      '<owner_message>\n«evidence»I moved out of Elm Street«/evidence» last week\n</owner_message>\n\n' +
+      '<item_to_retire>\nLives on Elm Street\n</item_to_retire>',
+  });
+});
+
+test('it proposes a retirement of an item the thread never read', async () => {
+  const memory = await startTestMemory();
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const outcome = await memory.store.writes.retire({
+    target: item,
+    intentQuote: 'I moved out of Elm Street',
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'claude-opus-5-5',
+    },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'ambiguous_target' });
+});
+
+test('it proposes a retirement that cites no intent quote', async () => {
+  const memory = await startTestMemory();
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' });
+
+  const outcome = await memory.store.writes.retire({
+    target: item,
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'claude-opus-5-5',
+    },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+});
+
+test('it proposes a retirement the checker does not confirm', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () =>
+        Promise.resolve({
+          verdict: 'not_asserted',
+          reason: 'A question.',
+          model: 'claude-sonnet-5-5',
+          failure: null,
+        }),
+    },
+  });
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const text = 'Did I move out of Elm Street?';
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text,
+    spans: [{ start: 0, end: text.length, source: 'typed' }],
+  });
+  await memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' });
+
+  const outcome = await memory.store.writes.retire({
+    target: item,
+    intentQuote: 'move out of Elm Street',
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'claude-opus-5-5',
+    },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'checker_not_asserted' });
+});
+
+test('it refuses a retirement of a retired item before any check runs', async () => {
+  const memory = await startTestMemory();
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const retired = await memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const retire = memory.store.writes.retire({
+    target: retired,
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'claude-opus-5-5',
+    },
+  });
+
+  await retire.catch(() => {});
+
+  expect(retire).rejects.toMatchObject({ code: 'WRONG_STATE' });
+});
+
+test('it seals a retirement proposal with the item text you review', async () => {
+  const memory = await startTestMemory();
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const outcome = await memory.store.writes.retire({
+    target: item,
+    intentQuote: 'forget my old street',
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'claude-opus-5-5',
+    },
+  });
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(outcome.status === 'proposed');
+  expect(pending).toMatchObject({
+    proposalID: outcome.proposalID,
+    operation: 'retire',
+    itemID: item.itemID,
+    targetVersion: 1,
+    text: 'Lives on Elm Street',
+    quote: 'forget my old street',
+  });
+});

@@ -1,23 +1,19 @@
 import type { JSONObject } from '@heynixie/log';
-import { conversationTaskID } from '@heynixie/tasks';
-import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
-import { MemoryItemNotFoundError } from './memory-item-not-found-error';
-import { MemoryStateError } from './memory-state-error';
-import { StaleVersionError } from './stale-version-error';
-import type {
-  MemoryStore,
-  Provenance,
-  RecallRequest,
-  RecalledItem,
-  RecalledVersion,
-} from './types';
+import { buildRememberTool } from './build-remember-tool';
+import { buildRetireTool } from './build-retire-tool';
+import type { StartedMemoryStore } from './start-memory-store';
+import type { RecallRequest, RecalledItem, RecalledVersion } from './types';
+
+// What the model's tools reach: recall, and the gated write paths.
+export type MemoryToolStore = Pick<StartedMemoryStore, 'recall' | 'writes'>;
 
 // Builds the model's memory tools. recall declares read, and remember and retire declare note.
-// Provenance comes from the run, never from the model's arguments, and a model write records
-// outside content as its source until the write checks set it from the turn.
-export function buildMemoryTools(store: MemoryStore): readonly ToolDefinition[] {
-  return [buildRecallTool(store), buildRememberTool(store), buildRetireTool(store)];
+// Every write runs through its gate, which sets the provenance from the run and the checks, never
+// from the model's arguments.
+export function buildMemoryTools(memory: MemoryToolStore): readonly ToolDefinition[] {
+  return [buildRecallTool(memory), buildRememberTool(memory), buildRetireTool(memory)];
 }
 
 const recallInput = {
@@ -78,15 +74,8 @@ const recallOutput = {
   additionalProperties: false,
 };
 
-const versionOutput = {
-  type: 'object',
-  properties: { itemID: { type: 'string' }, version: { type: 'integer' } },
-  required: ['itemID', 'version'],
-  additionalProperties: false,
-};
-
 // The items hold every source that memory holds, so the result takes the most cautious one.
-function buildRecallTool(store: MemoryStore): ToolDefinition {
+function buildRecallTool(memory: MemoryToolStore): ToolDefinition {
   return {
     name: 'memory.recall',
     description:
@@ -114,7 +103,7 @@ function buildRecallTool(store: MemoryStore): ToolDefinition {
         ...(input.limit === undefined ? {} : { limit: input.limit }),
         thread: context.run.thread,
       };
-      const result = await store.recall(request);
+      const result = await memory.recall(request);
 
       return {
         status: 'ok',
@@ -153,123 +142,3 @@ const recallArguments = z.object({
   after: z.string().optional(),
   limit: z.int().optional(),
 });
-
-function buildRememberTool(store: MemoryStore): ToolDefinition {
-  return {
-    name: 'memory.remember',
-    description:
-      'Stores one fact as a new memory item, or edits an item when you pass its itemID and the ' +
-      'version you read. An edit fails as stale when the item changed after you read it. Set pin ' +
-      'to put a new item in the pinned core.',
-    input: {
-      type: 'object',
-      properties: {
-        text: { type: 'string', minLength: 1, maxLength: 2000 },
-        itemID: { type: 'string' },
-        version: { type: 'integer', minimum: 1 },
-        pin: { type: 'boolean' },
-      },
-      required: ['text'],
-      dependentRequired: { itemID: ['version'], version: ['itemID'] },
-      additionalProperties: false,
-    },
-    output: versionOutput,
-    declaration: {
-      effects: ['note'],
-      destinations: [],
-      amount: null,
-      content: ['text'],
-      results: { itemID: 'owner_data', version: 'owner_data' },
-    },
-    execution: 'direct',
-    run: (call, context) =>
-      runStoreCall(() => {
-        const input = rememberArguments.parse(call.input);
-
-        return store.remember({
-          text: input.text,
-          provenance: buildProvenance(context),
-          ...(input.itemID === undefined || input.version === undefined
-            ? {}
-            : { target: { itemID: input.itemID, version: input.version } }),
-          ...(input.pin === undefined ? {} : { isPinned: input.pin }),
-        });
-      }),
-  };
-}
-
-const rememberArguments = z.object({
-  text: z.string(),
-  itemID: z.string().optional(),
-  version: z.int().optional(),
-  pin: z.boolean().optional(),
-});
-
-function buildRetireTool(store: MemoryStore): ToolDefinition {
-  return {
-    name: 'memory.retire',
-    description:
-      'Retires a memory item that stopped being true, such as an old address, by its itemID and ' +
-      'the version you read. A retired item keeps its history and can be restored by the owner.',
-    input: {
-      type: 'object',
-      properties: { itemID: { type: 'string' }, version: { type: 'integer', minimum: 1 } },
-      required: ['itemID', 'version'],
-      additionalProperties: false,
-    },
-    output: versionOutput,
-    declaration: {
-      effects: ['note'],
-      destinations: [],
-      amount: null,
-      content: [],
-      results: { itemID: 'owner_data', version: 'owner_data' },
-    },
-    execution: 'direct',
-    run: (call: ToolCall, context: ToolContext) =>
-      runStoreCall(() => {
-        const input = retireArguments.parse(call.input);
-
-        return store.retire({
-          target: { itemID: input.itemID, version: input.version },
-          provenance: buildProvenance(context),
-        });
-      }),
-  };
-}
-
-const retireArguments = z.object({ itemID: z.string(), version: z.int() });
-
-function buildProvenance(context: ToolContext): Provenance {
-  const thread = context.run.thread;
-
-  return {
-    origin: thread === conversationTaskID ? 'conversation' : 'task',
-    source: 'untrusted',
-    taskID: thread,
-    proposalID: null,
-    checks: null,
-    thread,
-  };
-}
-
-// A stale version, a missing item or a wrong state is the model's to read and act on; any other
-// failure propagates.
-async function runStoreCall(
-  call: () => Promise<{ readonly itemID: string; readonly version: number }>,
-): Promise<ToolOutcome> {
-  try {
-    const ref = await call();
-
-    return { status: 'ok', result: { itemID: ref.itemID, version: ref.version } };
-  } catch (error) {
-    if (
-      error instanceof StaleVersionError ||
-      error instanceof MemoryItemNotFoundError ||
-      error instanceof MemoryStateError
-    ) {
-      return { status: 'error', message: error.message };
-    }
-    throw error;
-  }
-}

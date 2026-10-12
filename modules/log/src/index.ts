@@ -28,6 +28,7 @@ export type {
   JSONValue,
   Log,
   LogRecord,
+  LogTables,
   Projection,
   ProjectionChange,
   PromptCause,

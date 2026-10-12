@@ -1,5 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
+import { defaultGateLimits } from '../default-gate-limits';
+import { findNoAllowRule } from '../find-no-allow-rule';
 import { memoryProjections } from '../memory-projections';
 import { startMemoryStore } from '../start-memory-store';
 import type { TestMemory, TestMemoryOptions } from './start-test-memory';
@@ -25,6 +27,20 @@ export async function startTestStore(
     log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     cleanupSessions: options.cleanupSessions ?? (() => Promise.resolve()),
+    gate: {
+      check:
+        options.gate?.check ??
+        (() =>
+          Promise.resolve({
+            verdict: 'unsure',
+            reason: 'no checker is wired',
+            model: 'no-checker',
+            failure: 'error',
+          })),
+      clock: options.gate?.clock ?? { now: () => Date.now() },
+      findAllowRule: options.gate?.findAllowRule ?? findNoAllowRule,
+      limits: options.gate?.limits ?? defaultGateLimits,
+    },
   });
 
   wiring.defer(() => store.stop());

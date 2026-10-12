@@ -1,5 +1,5 @@
 // The kinds of work that run in a sandbox, each with its own egress, grants and tool route.
-export type SandboxKind = 'conversation' | 'worker' | 'code_run' | 'fetch' | 'coding';
+export type SandboxKind = 'conversation' | 'checker' | 'worker' | 'code_run' | 'fetch' | 'coding';
 
 // What the sandbox reaches past its host, enforced at the network layer outside the guest. public
 // reaches the global internet only, never the host, the runtime's API, other sandboxes, or a

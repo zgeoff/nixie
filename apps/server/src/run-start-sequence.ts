@@ -9,8 +9,8 @@ import { startWork } from './start-work';
 import { startWriterTask } from './start-writer-task';
 import type { ServerParts } from './types';
 
-// The start steps behind the health endpoint, in order: recovery, memory, the manifest's images,
-// the conversation imp, the seed, then the runners. A failed step waits and runs again, so nixie stays
+// The start steps behind the health endpoint, in order: recovery, the manifest's images, memory
+// with its checker, the conversation imp, the seed, then the runners. A failed step waits and runs again, so nixie stays
 // live and unready until impd answers or the definitions seed.
 export async function runStartSequence(parts: ServerParts): Promise<void> {
   const retry = { signal: parts.cleanup.signal, log: parts.log };
@@ -20,15 +20,17 @@ export async function runStartSequence(parts: ServerParts): Promise<void> {
     await runWithRetry(() => requireSeeded(parts), { ...retry, step: 'first_seed' });
   }
   await runWithRetry(() => runRecoverySteps(parts), { ...retry, step: 'recovery' });
-  const store = await runWithRetry(() => startMemory(parts), { ...retry, step: 'memory' });
   await runWithRetry(() => registerSandboxImages(parts), { ...retry, step: 'add_images' });
+
+  const store = await runWithRetry(() => startMemory(parts), { ...retry, step: 'memory' });
 
   const conversationStep = await runWithRetry(() => startConversationImp(parts, store), {
     ...retry,
     step: 'conversation_imp',
   });
 
-  // no content gate exists yet, so the writer stays off and its catch-up waits for one
+  // the content gate checks one write of yours at a time, not a writer batch, so the writer stays
+  // off and its catch-up waits for a gate that checks a batch
   const writerStep = await runWithRetry(() => startWriterTask(parts, store, null), {
     ...retry,
     step: 'memory_writer',

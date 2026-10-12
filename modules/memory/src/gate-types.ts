@@ -1,0 +1,242 @@
+import type { ContentSource, JSONObject } from '@heynixie/log';
+import type { RunCheck } from '@heynixie/models';
+import type { Clock } from '@heynixie/tasks';
+import type { Selectable } from 'kysely';
+import type { MemoryChange, MemoryOrigin, QuoteEvidence, VersionRef } from './types';
+
+// The types of the write gate, memory proposals and notices.
+
+// What the write gate reads beside the store: the checker, the clock that proposal lapses read,
+// the allow rule lookup, and the tuning values.
+export interface GateContext {
+  readonly check: RunCheck;
+  readonly clock: Pick<Clock, 'now'>;
+  readonly findAllowRule: FindAllowRule;
+  readonly limits: GateLimits;
+}
+
+// The tuning values of the write gate, all configurable.
+export interface GateLimits {
+  // how many of your latest messages in the thread a quote may come from
+  readonly evidenceWindow: number;
+
+  // how long a memory proposal waits for you before it lapses
+  readonly proposalLapseMs: number;
+
+  // the most proposals one conversation turn, task run or writer batch may make
+  readonly proposalCap: number;
+}
+
+// A rule of yours that names memory.remember and lets a write skip the quote and the checker, as
+// the rule's ID and revision.
+export interface AllowRuleMatch {
+  readonly ruleID: string;
+  readonly revision: number;
+}
+
+// Finds your allow rule on memory.remember that matches a write from the thread, or null. No rule
+// exists until policy ships, so the lookup the server passes returns null.
+export type FindAllowRule = (call: AllowRuleCall) => Promise<AllowRuleMatch | null>;
+
+// The call an allow rule must match: the tool and the thread it came from.
+export interface AllowRuleCall {
+  readonly tool: 'memory.remember';
+  readonly thread: string;
+}
+
+// A message you sent, as the gates read it: its record, its text and how each span arrived.
+export interface OwnerMessage {
+  readonly sequence: number;
+  readonly text: string;
+  readonly spans: readonly MessageSpan[];
+}
+
+export interface MessageSpan {
+  readonly start: number;
+  readonly end: number;
+  readonly source: 'typed' | 'pasted' | 'dropped' | 'unknown';
+}
+
+// Why a write waits for your review instead of applying.
+export type ReviewReason =
+  | 'no_quote'
+  | 'quote_not_typed'
+  | 'quote_in_quoted_block'
+  | 'invisible_character'
+  | 'token_missing'
+  | 'checker_not_asserted'
+  | 'checker_unsure'
+  | 'checker_unreachable'
+  | 'forgotten_evidence'
+  | 'ambiguous_target'
+  | 'pinned';
+
+// Who asked for a write: the conversation or a task in a run, or the memory writer in a batch,
+// with the model of the call that asked. nixie sets it from the run, never from the arguments.
+export interface WriteCaller {
+  readonly origin: 'conversation' | 'task' | 'memory_writer';
+  readonly thread: string;
+  readonly taskID: string;
+  readonly runID: string;
+  readonly model: string;
+
+  // the writer batch the write belongs to, which takes the place of the turn for the cap and the
+  // notice
+  readonly batchID?: string;
+}
+
+export interface GatedRememberRequest {
+  readonly text: string;
+  readonly quote?: string;
+  readonly target?: VersionRef;
+  readonly isPinned?: boolean;
+  readonly caller: WriteCaller;
+}
+
+export interface GatedRetireRequest {
+  readonly target: VersionRef;
+  readonly intentQuote?: string;
+  readonly caller: WriteCaller;
+}
+
+// A gated write applied at once, or became a proposal with its review reason.
+export type WriteOutcome =
+  | { readonly status: 'applied'; readonly itemID: string; readonly version: number }
+  | { readonly status: 'proposed'; readonly proposalID: string; readonly reason: ReviewReason };
+
+// The write paths of the model and the memory writer, each behind its gate.
+export interface MemoryWrites {
+  readonly remember: (request: GatedRememberRequest) => Promise<WriteOutcome>;
+  readonly retire: (request: GatedRetireRequest) => Promise<WriteOutcome>;
+}
+
+// A memory proposal as the memory view reads it, with its sealed text opened.
+export interface MemoryProposal {
+  readonly proposalID: string;
+  readonly operation: 'remember' | 'retire';
+  readonly itemID: string;
+  readonly targetVersion: number | null;
+  readonly isPinned: boolean;
+  readonly reason: ReviewReason;
+  readonly actionHash: string;
+  readonly origin: MemoryOrigin;
+  readonly source: ContentSource;
+  readonly createdAt: number;
+  readonly lapseAt: number;
+
+  // the proposed text, or the item's text for a retirement, and the quote it cited
+  readonly text: string;
+  readonly quote: string | null;
+  readonly evidence: QuoteEvidence | null;
+}
+
+// Your answer to a proposal from the client, bound to the action hash the client showed. An edit
+// approves your own text in place of the proposed text.
+export interface ProposalAnswer {
+  readonly proposalID: string;
+  readonly actionHash: string;
+  readonly identityID: string;
+  readonly editedText?: string;
+}
+
+// The proposals in the memory view, and your answers to them.
+export interface MemoryProposals {
+  readonly listPending: () => Promise<readonly MemoryProposal[]>;
+  readonly approve: (answer: ProposalAnswer) => Promise<VersionRef>;
+  readonly reject: (answer: Omit<ProposalAnswer, 'editedText'>) => Promise<void>;
+
+  // lapses every pending proposal past its lapse time, and returns how many
+  readonly lapse: () => Promise<number>;
+}
+
+// One entry of a turn's or a batch's notice, with the version an undo binds to.
+export interface NoticeEntry {
+  readonly itemID: string;
+  readonly change: MemoryChange | 'proposed';
+  readonly version: number | null;
+  readonly proposalID: string | null;
+}
+
+// The grouped notice for one turn or batch: "Remembered 3 things", with each entry.
+export interface MemoryNotice {
+  readonly noticeKey: string;
+  readonly thread: string | null;
+  readonly remembered: number;
+  readonly retired: number;
+  readonly proposed: number;
+  readonly entries: readonly NoticeEntry[];
+}
+
+export interface MemoryProposalTable {
+  readonly proposal_id: string;
+  readonly item_id: string;
+  readonly is_new_item: number;
+  readonly operation: 'remember' | 'retire';
+  readonly target_version: number | null;
+  readonly is_pinned: number;
+  readonly review_reason: ReviewReason;
+  readonly status: 'pending' | 'consumed' | 'rejected' | 'lapsed';
+  readonly action_hash: string;
+  readonly sealed: string;
+  readonly evidence: string | null;
+  readonly origin: MemoryOrigin;
+  readonly source: ContentSource;
+  readonly task_id: string | null;
+  readonly thread: string | null;
+  readonly cap_group: string;
+  readonly checks: string | null;
+  readonly model: string | null;
+  readonly notice_key: string | null;
+  readonly created_sequence: number;
+  readonly created_at: number;
+  readonly lapse_at: number;
+  readonly resolved_sequence: number | null;
+}
+
+export interface MemoryNoticeEntryTable {
+  readonly entry_key: string;
+  readonly notice_key: string;
+  readonly thread: string | null;
+  readonly item_id: string;
+  readonly version: number | null;
+  readonly change: MemoryChange | 'proposed';
+  readonly proposal_id: string | null;
+  readonly sequence: number;
+  readonly recorded_at: number;
+}
+
+export interface MemoryForgottenEvidenceTable {
+  readonly evidence_key: string;
+  readonly record_sequence: number;
+  readonly item_id: string;
+}
+
+export type MemoryProposalRow = Selectable<MemoryProposalTable>;
+
+// What the content gate checks: the memory's text, the quote that backs it and the thread it came
+// from.
+export interface ContentGateRequest {
+  readonly text: string;
+  readonly quote: string | null;
+  readonly isPinned: boolean;
+  readonly thread: string;
+}
+
+// A gate's outcome: the write applies with the source and checks it earned, or it waits for review
+// with its reason. Each carries the verdict of every check that ran.
+export type ContentGateResult =
+  | {
+      readonly status: 'pass';
+      readonly source: ContentSource;
+      readonly evidence: QuoteEvidence | null;
+      readonly checks: JSONObject;
+    }
+  | {
+      readonly status: 'review';
+      readonly reason: ReviewReason;
+      readonly evidence: QuoteEvidence | null;
+      readonly checks: JSONObject;
+
+      // the checker's one-sentence reason, which the proposal card shows
+      readonly checkerReason: string | null;
+    };
