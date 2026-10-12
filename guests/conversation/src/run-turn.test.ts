@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
@@ -140,6 +140,38 @@ test('it stops the turn with no model output when nixie tool server is not conne
   expect(ctx.frames).toStrictEqual([
     { type: 'failed', reason: 'tools_not_connected', detail: "nixie's tool server is failed" },
   ]);
+});
+
+test('it returns from a turn that ends at a result once the CLI process has exited', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'You need milk.' });
+  await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), ctx.deps);
+
+  const pids = await readdir('/proc');
+  const workDirs = await Promise.all(
+    pids.map((pid) => readlink(join('/proc', pid, 'cwd')).catch(() => null)),
+  );
+
+  expect(workDirs).not.toContain(join(ctx.home, 'conversation'));
+});
+
+test('it returns from a turn that stops early once the CLI process has exited', async () => {
+  const ctx = await setupTest();
+
+  await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+    ...ctx.deps,
+
+    // nothing listens on the discard port, so the server fails to connect and the turn stops
+    toolServer: { type: 'http', url: 'http://127.0.0.1:9/mcp', alwaysLoad: true },
+  });
+
+  const pids = await readdir('/proc');
+  const workDirs = await Promise.all(
+    pids.map((pid) => readlink(join('/proc', pid, 'cwd')).catch(() => null)),
+  );
+
+  expect(workDirs).not.toContain(join(ctx.home, 'conversation'));
 });
 
 test('it reports each inbox message the model read, then the turn end at the last chain entry', async () => {

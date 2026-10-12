@@ -46,7 +46,11 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
     await drainSession(session, deps, state);
   } finally {
     state.ended.resolve();
+
+    // close() ends a read still waiting on the CLI, and return() waits for the CLI process to exit,
+    // so the next turn and the guest's file cleanup never meet a live CLI
     session.close();
+    await session.return();
   }
 }
 
