@@ -10,6 +10,8 @@ import {
   turnFrameLimitBytes,
 } from '@heynixie/wire';
 import type { TurnFrame } from './build-query-options';
+import { getHome } from './get-home';
+import { removeSessionState } from './remove-session-state';
 import { runTurn } from './run-turn';
 
 export interface GuestIO {
@@ -22,8 +24,8 @@ export interface GuestIO {
 }
 
 // Runs the conversation guest for one turn: the first host frame starts it, each later message
-// frame goes into it, and its frames go out framed. A failure becomes a failed frame, so the host
-// always learns how the turn ended.
+// frame goes into it, and its frames go out framed. A purge frame in its place removes the session
+// state instead. A failure becomes a failed frame, so the host always learns how the run ended.
 export async function runConversationGuest(io: GuestIO): Promise<void> {
   const frames = readHostFrames(io.input)[Symbol.asyncIterator]();
   const emit = (frame: GuestFrame) => io.write(encodeFrame(encodeTurnFrame(frame)));
@@ -31,20 +33,36 @@ export async function runConversationGuest(io: GuestIO): Promise<void> {
   try {
     const first = await frames.next();
 
-    if (first.done === true || first.value.type !== 'turn') {
-      throw new Error('the first host frame must start a turn');
+    if (first.done === true || first.value.type === 'message') {
+      throw new Error('the first host frame must start a turn or purge the session');
     }
-    const turn = first.value;
-
-    await runTurn(turn, {
-      env: io.env,
-      toolServer: (io.buildToolServer ?? buildHTTPToolServer)(turn),
-      messages: readMessages(frames),
-      emit,
-    });
+    await runFirstFrame(first.value, { io, frames, emit });
   } catch (error) {
     await emit({ type: 'failed', reason: 'error', detail: String(error) });
   }
+}
+
+interface GuestRun {
+  readonly io: GuestIO;
+  readonly frames: AsyncIterator<HostFrame>;
+  readonly emit: (frame: GuestFrame) => Promise<void>;
+}
+
+async function runFirstFrame(
+  frame: Exclude<HostFrame, { type: 'message' }>,
+  run: GuestRun,
+): Promise<void> {
+  if (frame.type === 'purge') {
+    await removeSessionState(getHome(run.io.env));
+    await run.emit({ type: 'purged' });
+    return;
+  }
+  await runTurn(frame, {
+    env: run.io.env,
+    toolServer: (run.io.buildToolServer ?? buildHTTPToolServer)(frame),
+    messages: readMessages(run.frames),
+    emit: run.emit,
+  });
 }
 
 async function* readHostFrames(

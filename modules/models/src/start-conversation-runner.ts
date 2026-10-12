@@ -5,9 +5,16 @@ import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import { buildModelGrant } from './build-model-grant';
 import { deriveModelSecret } from './derive-model-secret';
+import { makeSessionGuard } from './make-session-guard';
 import { runConversationStep } from './run-conversation-step';
 import type { GuestCommand } from './run-guest-turn';
-import type { ConversationRun, ResolvedProfile } from './types';
+import { runSessionCleanup } from './run-session-cleanup';
+import type {
+  ConversationMemory,
+  ConversationMemorySettings,
+  ConversationRun,
+  ResolvedProfile,
+} from './types';
 
 export interface ConversationRunnerOptions {
   readonly context: TasksContext;
@@ -27,12 +34,27 @@ export interface ConversationRunnerOptions {
   // the persona in force, read at each turn so a new seed reaches the next turn
   readonly getSystemPrompt: () => string;
   readonly readTurnNote?: NonNullable<ConversationRun['readTurnNote']>;
+
+  // the memory store, which starts after the runner, so each turn reads it again
+  readonly memory: () => ConversationMemory;
+  readonly memorySettings?: Partial<ConversationMemorySettings>;
 }
 
 export interface ConversationRunner {
   readonly runStep: RunStep;
+
+  // the session cleanup a forget runs, which invalidates and removes the conversation's session
+  readonly cleanupSessions: (itemID: string) => Promise<void>;
   readonly stop: () => Promise<void>;
 }
+
+// How memory reaches the conversation when the deployment sets nothing: 5 retrieved items above a
+// keyword score of 0.25, and a rebuilt session that starts with up to 30,000 tokens of recent turns.
+const defaultMemorySettings: ConversationMemorySettings = {
+  retrievalItems: 5,
+  retrievalMinScore: 0.25,
+  rebuildTokens: 30_000,
+};
 
 // Starts the conversation's runner on its role's profile: it stores the profile's credential with
 // the sandbox backend, keeps the conversation's long-lived sandbox when its spec still matches and
@@ -56,6 +78,15 @@ export async function startConversationRunner(
     model,
   });
 
+  const run: ConversationRun = {
+    ...options,
+    sandbox,
+    endpoint,
+    model,
+    memorySettings: { ...defaultMemorySettings, ...options.memorySettings },
+    session: makeSessionGuard(),
+  };
+
   return {
     runStep: (input) => {
       if (input.taskID !== conversationTaskID) {
@@ -63,8 +94,9 @@ export async function startConversationRunner(
           new Error(`the conversation runner runs the conversation only, not ${input.taskID}`),
         );
       }
-      return runConversationStep({ ...options, sandbox, endpoint, model }, input);
+      return runConversationStep(run, input);
     },
+    cleanupSessions: (itemID) => runSessionCleanup(run, itemID),
     stop: () => endpoint.stop(),
   };
 }

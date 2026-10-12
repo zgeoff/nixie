@@ -52,6 +52,20 @@ const endedFrameSchema = z
   })
   .readonly();
 
+// the SDK compacted the session: what started it, and the context's tokens before and after, with
+// no summary text
+const compactedFrameSchema = z
+  .object({
+    type: z.literal('compacted'),
+    trigger: z.enum(['manual', 'auto']),
+    preTokens: tokenCountSchema,
+    postTokens: tokenCountSchema.nullable(),
+  })
+  .readonly();
+
+// the guest removed its session state and checked that it is gone
+const purgedFrameSchema = z.object({ type: z.literal('purged') }).readonly();
+
 // the turn stopped without a result the host can commit
 const failedFrameSchema = z
   .object({
@@ -67,7 +81,9 @@ export const guestFrameSchema = z.discriminatedUnion('type', [
   assistantFrameSchema,
   readFrameSchema,
   endedFrameSchema,
+  compactedFrameSchema,
   failedFrameSchema,
+  purgedFrameSchema,
 ]);
 
 export type GuestFrame = z.infer<typeof guestFrameSchema>;

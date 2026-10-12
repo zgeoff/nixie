@@ -9,7 +9,12 @@ export type ScriptedReply = (
         readonly input: Readonly<Record<string, unknown>>;
       };
     }
-) & { readonly gate?: Promise<void> };
+) & {
+  readonly gate?: Promise<void>;
+
+  // the input tokens the reply reports, 10 by default, so a test can fill the CLI's context
+  readonly inputTokens?: number;
+};
 
 // One request the stub model received, with its body parsed.
 export interface ScriptedModelRequest {
@@ -21,6 +26,7 @@ export interface ScriptedModelRequest {
 interface ScriptedModelBody {
   readonly model?: string;
   readonly stream?: boolean;
+  readonly system?: unknown;
   readonly messages?: readonly { readonly role: string; readonly content: unknown }[];
   readonly tools?: readonly { readonly name: string }[];
 }
@@ -124,7 +130,7 @@ function renderWhole(reply: ScriptedReply, model: string): Response {
     content: [block],
     stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
     stop_sequence: null,
-    usage: { input_tokens: 10, output_tokens: 5 },
+    usage: { input_tokens: reply.inputTokens ?? 10, output_tokens: 5 },
   });
 }
 
@@ -142,7 +148,7 @@ function renderStream(reply: ScriptedReply, model: string): Response {
         content: [],
         stop_reason: null,
         stop_sequence: null,
-        usage: { input_tokens: 10, output_tokens: 1 },
+        usage: { input_tokens: reply.inputTokens ?? 10, output_tokens: 1 },
       },
     },
     {

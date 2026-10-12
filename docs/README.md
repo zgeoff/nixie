@@ -89,6 +89,8 @@ below, and planned work lives in Linear.
   a fresh session per batch, publishing in one transaction, backoff, and the change note
 - [Memory writes](architecture/memory/writes.md) — the content gate and its quote, token and checker
   checks, retirement intent, provenance, memory proposals and notices
+- [Memory in context](architecture/memory/context.md) — the pinned core in the system prompt, the
+  items each turn retrieves, and the session cleanup a forget runs
 
 ### Deployment
 
@@ -150,8 +152,8 @@ rests on.
   memories, forget completion with key backups, the memory view and export
 - [Memory writes](design/platform/memory/writes.md) — the memory writer, batched capture, the
   client's proposal cards and notices, and consolidation
-- [Memory in context](design/platform/memory/context.md) — the prompt, the pinned core, retrieval
-  over memory and past messages, compaction, and the SDK transcript as a cache
+- [Memory in context](design/platform/memory/context.md) — semantic search, past messages in
+  retrieval, the recall tools, compaction summaries, and the SDK transcript as a cache
 - [Moments](design/platform/memory/moments.md) — kept spans of the event log, their records and
   tools, links from memory items, reading back, and destroying a moment
 

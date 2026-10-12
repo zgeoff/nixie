@@ -6,7 +6,8 @@ long-lived sandbox, and the step commits the loop's replies and the point the lo
 reached. The event log is the record of the conversation, and the SDK's session transcript is a
 cache that makes the next turn cheaper. [Tasks](./tasks.md) covers steps and their commits,
 [model profiles](./model-profiles.md) covers the profile a turn runs on, and
-[tool calls](../connectors/tool-calls.md) covers the endpoint that serves the loop its tools.
+[tool calls](../connectors/tool-calls.md) covers the endpoint that serves the loop its tools, and
+[memory in context](../memory/context.md) covers the pinned core and the items each turn places.
 `modules/models` holds the host side, `guests/conversation` holds the guest, and the turn frames
 between them live in `libs/wire`.
 
@@ -33,7 +34,9 @@ turn as an error rather than as a record.
 Every query the guest makes holds nixie's tools and nothing else. The options turn off the SDK's
 built-in tools, every settings source, the bundled skills and the SDK's own memory, and they allow
 only nixie's MCP server, so the loop cannot read a file, run a command or remember anything outside
-the event log. The strict MCP option keeps every other MCP server out of the loop.
+the event log. The strict MCP option keeps every other MCP server out of the loop. The turn frame
+holds the system prompt, and the guest sets it as a custom prompt with the SDK's snapshot off, so a
+resumed session runs on the prompt the host rendered for this turn.
 
 The turn frame holds the profile's base URL, model, effort, auth header and context cap, and the
 guest sets them in the query's environment. The guest holds a placeholder in place of the
@@ -58,22 +61,50 @@ Each fork copies the whole history, so the guest removes every session on its di
 resumes before the turn starts. The disk then holds at most the resumed session and the fork the
 turn writes, rather than a growing copy per turn.
 
-The history in the session only grows, and the CLI compacts it only as it nears the window it
-assumes, which for a model with a large window is far past what the conversation needs. A turn after
-the prompt cache expires re-reads the whole history at the full input price, so a profile can set a
-context cap, and the guest passes it to the CLI as its auto-compact window. The CLI then compacts
-the session within the cap and the next turn resumes the compacted history.
-
 A guest can die after one result and before the next, once a message that landed mid-turn started a
 second model call. The step then counts only the replies and reads that came before the last result,
 because the next turn resumes at that result's boundary, and a record read after it stays unread for
 the next step to send again.
 
-A sandbox that lost its disk, such as one replaced after a profile change, no longer holds the
-session. The guest reports a lost session, and the step runs the turn again on a fresh session and
-writes a session reset record that names the lost session. The fresh session starts without the
-earlier history, because the SDK transcript is a cache and the event log keeps every earlier
-message.
+## Compaction
+
+The history in the session only grows, and the CLI compacts it as it nears its auto-compact window.
+A turn after the prompt cache expires re-reads the whole history at the full input price, so the
+window comes from the profile's context cap, with a default for a profile that sets none. The CLI
+then compacts the session within the cap, and the next turn resumes the compacted history. nixie
+builds no compaction of its own.
+
+The guest sets every compaction control in the query's settings rather than leaving it at the SDK's
+default, so an SDK upgrade cannot change it. Auto-compaction stays on, and precomputed compaction
+stays off, because it would change the session outside a step. A step's commit records the session's
+last message as the point that [crash recovery](./leases-and-recovery.md) resumes at, so the session
+changes only inside a step that holds the task's lease.
+
+The CLI compacts between model calls inside a turn, and the guest reports each compaction with its
+trigger and its token counts before and after. The step writes one compacted record per compaction,
+with those counts and no text. The summary the CLI writes stays in the session, because the model
+wrote it from the conversation, and nixie keeps model text out of its records unless a reply holds
+it.
+
+## Rebuilding a session
+
+A turn rebuilds its session when it has none to resume: a sandbox that lost its disk, such as one
+replaced after a profile change, no longer holds the session, and a forget's session cleanup
+invalidates it
+([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session)). Each
+turn-ended record keeps the newest session-invalidated record the turn saw before it ran. The step
+resumes no session when a newer invalidation exists, so a step that commits after an invalidation it
+never saw leaves the session invalid. When the guest instead reports the session lost, the step runs
+the turn again on a rebuilt session.
+
+A rebuilt session's first turn opens with the thread's recent turns, then the turn's own messages.
+The recent turns are the user's messages and the replies, word for word and oldest first, newest
+back to a token budget that the deployment configuration sets. The history ends before the turn's
+first inbox record, so a message that lands during the turn reaches the model once, as a live
+message. Older turns reach the new session only through recall. The step writes a session-rebuilt
+record that names the lost session, the reason and the count of records the history holds. The SDK
+transcript is a cache, so a rebuild restores the conversation's recent context from the event log
+rather than an identical session.
 
 ## Inbox records as messages
 

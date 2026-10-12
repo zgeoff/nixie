@@ -1,4 +1,5 @@
 import { readItemHistory } from './read-item-history';
+import { readPinnedCore } from './read-pinned-core';
 import { readRecall } from './read-recall';
 import { runForget } from './run-forget';
 import type { MemoryStore, StoreParts } from './types';
@@ -17,6 +18,7 @@ export function buildMemoryStore(parts: StoreParts): MemoryStore {
     restore: (request) => writeRestoration(parts, request),
     undo: (request) => writeUndo(parts, request),
     pin: (request) => writePin(parts, request),
+    readPinnedCore: () => readPinnedCore(parts),
     forget: (request) => runForget(parts, request),
     readHistory: (itemID) => readItemHistory(parts, itemID),
   };

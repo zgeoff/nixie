@@ -64,11 +64,10 @@ test('it caps the CLI auto-compact window at the profile context tokens', () => 
     },
   );
 
-  invariant(options.env);
-  expect(options.env).toContainEntry(['CLAUDE_CODE_AUTO_COMPACT_WINDOW', '400000']);
+  expect(options.settings).toMatchObject({ autoCompactWindow: 400_000 });
 });
 
-test('it leaves the CLI auto-compact window unset for a profile with no context tokens', () => {
+test('it sets a 200,000-token auto-compact window for a profile with no context tokens', () => {
   const options = buildQueryOptions(
     buildMockTurnFrame({ profile: { authHeader: 'x-api-key', contextTokens: null } }),
     {
@@ -77,8 +76,7 @@ test('it leaves the CLI auto-compact window unset for a profile with no context 
     },
   );
 
-  invariant(options.env);
-  expect(options.env).not.toContainKey('CLAUDE_CODE_AUTO_COMPACT_WINDOW');
+  expect(options.settings).toMatchObject({ autoCompactWindow: 200_000 });
 });
 
 test('it resumes at the boundary on a fork of the session', () => {

@@ -35,6 +35,36 @@ test('it undoes an edit by adding a version with the text before it', async () =
   ]);
 });
 
+test('it rejects an undo that brings back text too long for the 2,000-token pinned core', async () => {
+  const ctx = await setupTest();
+
+  // about 1,100 tokens each, at 4 characters a token
+  await ctx.memory.store.remember({
+    text: 'Keeps a long packing list for trips. '.repeat(119),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a long reading list for winter. '.repeat(116),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const shortened = await ctx.memory.store.remember({
+    text: 'Keeps a reading list',
+    target: item,
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const undo = ctx.memory.store.undo({
+    target: shortened,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await undo.catch(() => {});
+
+  expect(undo).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
+});
+
 test('it takes the source of the text it brings back', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

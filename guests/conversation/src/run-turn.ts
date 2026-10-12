@@ -94,8 +94,8 @@ function emitMessageFrames(
   deps: TurnDependencies,
   state: TurnState,
 ): Promise<MessageOutcome> {
-  if (message.type === 'system' && message.subtype === 'init') {
-    return emitInit(message, deps);
+  if (message.type === 'system') {
+    return emitSystem(message, deps, state);
   }
   if (message.type === 'assistant') {
     return emitAssistant(message, deps, state);
@@ -106,6 +106,22 @@ function emitMessageFrames(
   }
   if (message.type === 'result') {
     return emitResult(message, deps, state);
+  }
+  return emitCommandRead(message, deps, state);
+}
+
+type SystemMessage = Extract<SDKMessage, { type: 'system' }>;
+
+function emitSystem(
+  message: SystemMessage,
+  deps: TurnDependencies,
+  state: TurnState,
+): Promise<MessageOutcome> {
+  if (message.subtype === 'init') {
+    return emitInit(message, deps);
+  }
+  if (message.subtype === 'compact_boundary') {
+    return emitCompacted(message, deps);
   }
   return emitCommandRead(message, deps, state);
 }
@@ -124,6 +140,22 @@ async function emitInit(message: InitMessage, deps: TurnDependencies): Promise<M
     detail: `nixie's tool server is ${server?.status ?? 'missing'}`,
   });
   return 'stop';
+}
+
+type CompactBoundaryMessage = Extract<SDKMessage, { type: 'system'; subtype: 'compact_boundary' }>;
+
+// the host records each compaction's token counts; the summary text never leaves the guest
+async function emitCompacted(
+  message: CompactBoundaryMessage,
+  deps: TurnDependencies,
+): Promise<MessageOutcome> {
+  await deps.emit({
+    type: 'compacted',
+    trigger: message.compact_metadata.trigger,
+    preTokens: message.compact_metadata.pre_tokens,
+    postTokens: message.compact_metadata.post_tokens ?? null,
+  });
+  return 'continue';
 }
 
 type AssistantMessage = Extract<SDKMessage, { type: 'assistant' }>;

@@ -1,31 +1,65 @@
 import type { StepInput, StepResult } from '@heynixie/tasks';
-import { buildModelRecord } from './build-model-record';
 import { buildStepResult } from './build-step-result';
+import { inboxBatchLimit } from './inbox-batch-limit';
 import { parseSessionBoundary } from './parse-session-boundary';
-import { runLiveTurn } from './run-live-turn';
+import { readSessionMarks } from './read-session-marks';
+import { readTurnContext } from './read-turn-context';
+import type { SessionTurn } from './run-planned-turn';
+import { runPlannedTurn } from './run-planned-turn';
+import { runRebuiltTurn } from './run-rebuilt-turn';
 import type { ConversationRun } from './types';
 
-// Runs one turn step of the conversation in its guest. The turn resumes at the session boundary
-// on a fork, and starts a fresh session, with a record of the reset, when the guest has lost it.
-export async function runConversationStep(
+// Runs one turn step of the conversation, with the pinned core in its system prompt and the
+// retrieved items before your message, resumed at the session boundary on a fork. A session that a
+// forget invalidated or the guest lost is rebuilt from the log.
+export function runConversationStep(run: ConversationRun, input: StepInput): Promise<StepResult> {
+  if (input.inbox.length === 0) {
+    return Promise.resolve({
+      next: 'wait',
+      records: [],
+      acknowledged: [],
+      sessionBoundary: input.sessionBoundary,
+    });
+  }
+  return run.session.withTurn((invalidated) =>
+    runSessionTurn(run, input, AbortSignal.any([input.signal, invalidated])),
+  );
+}
+
+async function runSessionTurn(
   run: ConversationRun,
   input: StepInput,
+  signal: AbortSignal,
 ): Promise<StepResult> {
-  if (input.inbox.length === 0) {
-    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: input.sessionBoundary };
-  }
   const source = { definitions: run.context.definitions, model: run.model };
-  const resume = parseSessionBoundary(input.sessionBoundary);
-  const first = await runLiveTurn(run, input, resume);
-
-  if (first.turn.failure?.reason !== 'session_missing' || resume === null) {
-    return buildStepResult(source, first, []);
-  }
-  const fresh = await runLiveTurn(run, input, null);
-
-  return buildStepResult(source, fresh, [
-    buildModelRecord(source, 'model.session_reset', {
-      payload: { lostSessionID: resume.sessionID },
+  const marks = await readSessionMarks(run.context, input.taskID);
+  const boundary = parseSessionBoundary(input.sessionBoundary);
+  const turn: SessionTurn = {
+    run,
+    input,
+    signal,
+    invalidatedThrough: marks.invalidatedThrough,
+    context: await readTurnContext(run, {
+      taskID: input.taskID,
+      batch: input.inbox.slice(0, inboxBatchLimit),
+      previousCore: marks.previousCore,
     }),
-  ]);
+  };
+
+  if (marks.isInvalidated || boundary === null) {
+    return runRebuiltTurn(turn, source, boundary && { reason: 'invalidated', lost: boundary });
+  }
+  const resumed = await runPlannedTurn(turn, boundary);
+
+  if (resumed.completed.turn.failure?.reason !== 'session_missing') {
+    return buildStepResult(
+      source,
+      {
+        ...resumed.completed,
+        memory: { ...turn.context, invalidatedThrough: turn.invalidatedThrough },
+      },
+      [],
+    );
+  }
+  return runRebuiltTurn(turn, source, { reason: 'missing', lost: boundary });
 }

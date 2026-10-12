@@ -1,9 +1,20 @@
 import { startDatabase } from '@heynixie/db';
+import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 
 export interface IndexEntry {
   readonly itemID: string;
   readonly text: string;
+}
+
+interface MatchOptions {
+  readonly limit: number;
+
+  // drops a match whose BM25 score, negated so higher is better, falls below it
+  readonly minScore?: number;
+
+  // leaves these items out before the limit applies
+  readonly excludedIDs?: readonly string[];
 }
 
 // The keyword index of active memory items. It ranks item IDs and never supplies the text a recall
@@ -17,7 +28,7 @@ export interface MemoryIndex {
   readonly remove: (itemID: string) => Promise<void>;
 
   // the IDs of the items that match any word of query, best match first
-  readonly findItemIDs: (query: string, limit: number) => Promise<readonly string[]>;
+  readonly findItemIDs: (query: string, options: MatchOptions) => Promise<readonly string[]>;
   readonly stop: () => Promise<void>;
 }
 
@@ -58,19 +69,29 @@ export async function startMemoryIndex(): Promise<MemoryIndex> {
     remove: async (itemID) => {
       await sql`delete from memory_index where item_id = ${itemID}`.execute(db);
     },
-    findItemIDs: async (query, limit) => {
-      const match = buildMatchExpression(query);
-
-      if (match === null) {
-        return [];
-      }
-      const result = await sql<{ item_id: string }>`select item_id from memory_index
-        where memory_index match ${match} order by rank limit ${limit}`.execute(db);
-
-      return result.rows.map((row) => row.item_id);
-    },
+    findItemIDs: (query, options) => findMatches(db, query, options),
     stop: () => db.destroy(),
   };
+}
+
+async function findMatches(
+  db: Kysely<unknown>,
+  query: string,
+  options: MatchOptions,
+): Promise<readonly string[]> {
+  const match = buildMatchExpression(query);
+
+  if (match === null) {
+    return [];
+  }
+  const excludedIDs = options.excludedIDs ?? [];
+  const excluded =
+    excludedIDs.length === 0 ? sql`` : sql`and item_id not in (${sql.join(excludedIDs)})`;
+  const result = await sql<{ item_id: string }>`select item_id from memory_index
+    where memory_index match ${match} and rank <= ${-(options.minScore ?? 0)} ${excluded}
+    order by rank limit ${options.limit}`.execute(db);
+
+  return result.rows.map((row) => row.item_id);
 }
 
 // Quotes each word of a free-text query and joins them with OR, so no character in the query reads

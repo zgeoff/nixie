@@ -71,6 +71,43 @@ test('it refuses a turn frame with an empty inbox', () => {
   expect(result.error?.issues).toPartiallyContain({ path: ['input'] });
 });
 
+test('it decodes a compaction the guest reported, with its token counts', () => {
+  const message = encoder.encode(
+    JSON.stringify({ type: 'compacted', trigger: 'auto', preTokens: 104_000, postTokens: 3200 }),
+  );
+
+  expect(decodeTurnFrame(guestFrameSchema, message)).toStrictEqual({
+    type: 'compacted',
+    trigger: 'auto',
+    preTokens: 104_000,
+    postTokens: 3200,
+  });
+});
+
+test('it drops any summary text a compaction frame carries', () => {
+  const result = guestFrameSchema.safeParse({
+    type: 'compacted',
+    trigger: 'auto',
+    preTokens: 104_000,
+    postTokens: 3200,
+    summary: 'The owner planned a trip.',
+  });
+
+  expect(result.success).toBe(true);
+  expect(result.data).toStrictEqual({
+    type: 'compacted',
+    trigger: 'auto',
+    preTokens: 104_000,
+    postTokens: 3200,
+  });
+});
+
+test('it decodes a purge frame the host sent', () => {
+  const message = encoder.encode(JSON.stringify({ type: 'purge' }));
+
+  expect(decodeTurnFrame(hostFrameSchema, message)).toStrictEqual({ type: 'purge' });
+});
+
 test('it refuses a guest frame of a type the host does not know', () => {
   expect(() =>
     decodeTurnFrame(guestFrameSchema, encoder.encode(JSON.stringify({ type: 'model', id: 'x' }))),

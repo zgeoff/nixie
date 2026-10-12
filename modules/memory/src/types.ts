@@ -117,6 +117,12 @@ export interface RecallRequest {
   readonly includeRetired?: boolean;
   readonly includeHistory?: boolean;
 
+  // with a query, the lowest score a match keeps; 0 keeps every match
+  readonly minScore?: number;
+
+  // leaves out pinned items, which the system prompt already holds
+  readonly excludePinned?: boolean;
+
   // the thread the recall record belongs to
   readonly thread?: string;
 }
@@ -169,6 +175,9 @@ export interface MemoryStore {
   readonly undo: (request: UndoRequest) => Promise<VersionRef>;
   readonly pin: (request: PinRequest) => Promise<void>;
 
+  // every pinned active item, in pin order, for the system prompt
+  readonly readPinnedCore: () => Promise<readonly RecalledItem[]>;
+
   // completes once the key is gone, the index entries are removed and the sessions are cleaned up
   readonly forget: (request: ForgetRequest) => Promise<void>;
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
@@ -183,6 +192,9 @@ export interface MemoryContext {
   readonly definitions: () => Definitions;
   readonly cleanupSessions: CleanupSessions;
   readonly gate: GateContext;
+
+  // the pinned core's budget in tokens, 2,000 when unset
+  readonly pinnedCoreTokens?: number;
 }
 
 // What every store operation reaches: the context, the index and the delivery lock.

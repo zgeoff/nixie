@@ -1,4 +1,6 @@
 import type {
+  ConversationMemory,
+  ConversationMemorySettings,
   ConversationRunner,
   ConversationRunnerOptions,
   ModelSecrets,
@@ -31,6 +33,10 @@ export interface ConversationOptions {
 
   // the note of memory changes made outside the conversation, read before each turn
   readonly readTurnNote?: ConversationRunnerOptions['readTurnNote'];
+
+  // the memory store, read at each turn, which starts after the conversation
+  readonly memory: () => ConversationMemory;
+  readonly memorySettings?: Partial<ConversationMemorySettings>;
 }
 
 // Starts the conversation on the conversation role's profile. Every profile's credential resolves
@@ -53,5 +59,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     command: buildGuestCommand(),
     getSystemPrompt: options.getSystemPrompt,
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
+    memory: options.memory,
+    ...(options.memorySettings === undefined ? {} : { memorySettings: options.memorySettings }),
   });
 }

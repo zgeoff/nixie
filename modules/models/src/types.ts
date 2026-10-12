@@ -1,6 +1,7 @@
 import type { Sandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
+import type { SessionGuard } from './make-session-guard';
 import type { GuestCommand } from './run-guest-turn';
 
 // The model roles, each of which names the profile it uses.
@@ -57,6 +58,53 @@ export interface ResolvedProfile {
   readonly credential: string;
 }
 
+// One version of a memory item, as a turn's record lists it.
+export interface MemoryRef {
+  readonly itemID: string;
+  readonly version: number;
+}
+
+// One memory item as a turn renders it, at the version memory returned.
+export interface MemoryItem extends MemoryRef {
+  readonly text: string;
+  readonly source: string;
+
+  // when the version was recorded, in milliseconds since the epoch
+  readonly recordedAt: number;
+}
+
+// One turn's retrieval: the text of the user's new messages, with the item limit and score floor.
+interface MemoryRetrieval {
+  readonly query: string;
+  readonly limit: number;
+  readonly minScore: number;
+
+  // pinned items stay out, because the system prompt holds them
+  readonly excludePinned: true;
+
+  // the thread the recall record belongs to
+  readonly thread: string;
+}
+
+// The memory the conversation reads each turn: the pinned core, and retrieval through recall. The
+// memory store meets it, and the conversation declares it so models never imports memory.
+export interface ConversationMemory {
+  readonly readPinnedCore: () => Promise<readonly MemoryItem[]>;
+  readonly recall: (request: MemoryRetrieval) => Promise<{ readonly items: readonly MemoryItem[] }>;
+}
+
+// How memory reaches the conversation, each setting tunable from the deployment configuration.
+export interface ConversationMemorySettings {
+  // the most memory items one turn's retrieval places
+  readonly retrievalItems: number;
+
+  // the lowest keyword score a retrieved item keeps
+  readonly retrievalMinScore: number;
+
+  // the budget, in tokens, of the recent turns a rebuilt session starts with
+  readonly rebuildTokens: number;
+}
+
 // The conversation's runner as one step sees it: its sandbox, its endpoint and its profile.
 export interface ConversationRun {
   readonly context: TasksContext;
@@ -72,6 +120,13 @@ export interface ConversationRun {
   // the note of memory changes made outside the conversation since its last turn, which goes
   // before the turn's first message, and the sequence it covers
   readonly readTurnNote?: () => Promise<TurnNote>;
+
+  // the memory store, read at each turn, which starts after the runner
+  readonly memory: () => ConversationMemory;
+  readonly memorySettings: ConversationMemorySettings;
+
+  // keeps a forget's session cleanup from meeting a running turn
+  readonly session: SessionGuard;
 }
 
 // A note for the start of a turn and the last sequence it covers, which the turn's end record

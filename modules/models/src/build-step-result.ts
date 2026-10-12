@@ -4,6 +4,7 @@ import type { ModelRecordSource } from './build-model-record';
 import { buildModelRecord } from './build-model-record';
 import { decodeInboxUUID } from './decode-inbox-uuid';
 import type { GuestTurn } from './run-guest-turn';
+import type { MemoryRef } from './types';
 
 export interface CompletedTurn {
   readonly turn: GuestTurn;
@@ -18,14 +19,28 @@ export interface CompletedTurn {
   readonly notedThrough: number | null;
 }
 
-// Builds the step's result from a turn the guest ended: a record per reply and one for the turn's
-// end, the inbox records the model read, and the session's last chain entry as the boundary. A
-// turn that failed throws, so the step retries from the boundary it started at.
+// The memory a turn placed, which its record lists as references and never as text.
+interface TurnMemoryRefs {
+  readonly pinnedCore: readonly MemoryRef[];
+  readonly retrieved: readonly MemoryRef[];
+
+  // the newest session invalidation the turn saw before it ran
+  readonly invalidatedThrough: number;
+}
+
+// A turn the guest ended, with the memory the step placed in it.
+export interface StepTurn extends CompletedTurn {
+  readonly memory: TurnMemoryRefs;
+}
+
+// Builds the step's result from a turn the guest ended: its records, the inbox records the model
+// read, and the session's last chain entry as the boundary. A turn that failed throws, so the step
+// retries from the boundary it started at.
 export function buildStepResult(
   source: ModelRecordSource,
 
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the rule reads a ReadonlySet's methods as mutable
-  completed: CompletedTurn,
+  completed: StepTurn,
   before: readonly RecordInput[],
 ): StepResult {
   const last = completed.turn.ended.at(-1);
@@ -38,30 +53,46 @@ export function buildStepResult(
   }
   return {
     next: completed.hasMore ? 'continue' : 'wait',
-    records: [
-      ...before,
-      ...completed.turn.assistants
-        .filter((assistant) => assistant.text !== '')
-        .map((assistant) =>
-          buildModelRecord(source, 'model.reply', {
-            payload: { messageID: assistant.messageID },
-            text: assistant.text,
-          }),
-        ),
-      buildModelRecord(source, 'model.turn_ended', {
-        payload: {
-          ...buildTurnSummary(completed.turn),
-          ...(completed.notedThrough === null
-            ? {}
-            : { memoryNotedThrough: completed.notedThrough }),
-        },
-      }),
-    ],
+    records: [...before, ...buildTurnRecords(source, completed)],
     acknowledged: completed.turn.read
       .map((uuid) => decodeInboxUUID(uuid))
       .filter((sequence): sequence is number => sequence !== null && completed.sent.has(sequence)),
     sessionBoundary: JSON.stringify(last.boundary),
   };
+}
+
+// a record per reply with text, one per compaction with its token counts and no summary, and one
+// for the turn's end with the memory it placed
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the rule reads a ReadonlySet's methods as mutable
+function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
+  return [
+    ...completed.turn.assistants
+      .filter((assistant) => assistant.text !== '')
+      .map((assistant) =>
+        buildModelRecord(source, 'model.reply', {
+          payload: { messageID: assistant.messageID },
+          text: assistant.text,
+        }),
+      ),
+    ...completed.turn.compactions.map((compaction) =>
+      buildModelRecord(source, 'model.compacted', {
+        payload: {
+          trigger: compaction.trigger,
+          preTokens: compaction.preTokens,
+          postTokens: compaction.postTokens,
+        },
+      }),
+    ),
+    buildModelRecord(source, 'model.turn_ended', {
+      payload: {
+        ...buildTurnSummary(completed.turn),
+        pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
+        retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
+        invalidatedThrough: completed.memory.invalidatedThrough,
+        ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
+      },
+    }),
+  ];
 }
 
 type EndedFrame = GuestTurn['ended'][number];

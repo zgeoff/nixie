@@ -4,10 +4,12 @@ import type { Kysely, Transaction } from 'kysely';
 import { encodeVersionText } from './encode-version-text';
 import { findItemKey } from './find-item-key';
 import { MemoryStateError } from './memory-state-error';
+import { readPinnedItems } from './read-pinned-items';
 import type { ReadableVersion } from './read-version';
 import { readVersion } from './read-version';
 import type { ItemRequirement } from './require-item';
 import { requireItem } from './require-item';
+import { requirePinnedCoreRoom } from './require-pinned-core-room';
 import type {
   MemoryChange,
   MemoryTables,
@@ -87,7 +89,13 @@ export async function writeVersionInTransaction(
     current,
   );
   const ref = { itemID: versionKey.itemID, version: current + 1 };
-  const sealed = await encodePinnableVersion(versionKey.key, { plan, ref, next });
+  const sealed = await encodePinnableVersion(parts, db, {
+    key: versionKey.key,
+    plan,
+    ref,
+    next,
+    wasPinned: item?.is_pinned === 1,
+  });
 
   await writeRecordsInTransaction(
     tx,
@@ -118,18 +126,37 @@ async function readVersionKey(
 }
 
 interface PinnableVersion {
+  readonly key: CryptoKey;
   readonly plan: VersionPlan;
   readonly ref: VersionRef;
   readonly next: NewVersion;
+
+  // whether the item was pinned before this version
+  readonly wasPinned: boolean;
 }
 
 // Seals the new version's text, after it refuses a pin of a version that is not active, because
-// only an active item joins the pinned core, as a separate pin requires.
-function encodePinnableVersion(key: CryptoKey, version: PinnableVersion): Promise<string> {
-  if (version.plan.isPinned === true && version.next.state !== 'active') {
+// only an active item joins the pinned core. A version that leaves the item pinned must fit the
+// core's budget, because an edit, an undo or a batch write of a pinned item changes the core.
+async function encodePinnableVersion(
+  parts: StoreParts,
+  db: Kysely<MemoryTables>,
+  version: PinnableVersion,
+): Promise<string> {
+  const isPinned = version.plan.isPinned === true;
+
+  if (isPinned && version.next.state !== 'active') {
     throw new MemoryStateError(version.ref.itemID, 'pin', version.next.state);
   }
-  return encodeVersionText(key, version.ref, version.next.text);
+  if (version.next.state === 'active' && (isPinned || version.wasPinned)) {
+    const pinned = await readPinnedItems(parts, db);
+
+    requirePinnedCoreRoom(parts.context, pinned, {
+      itemID: version.ref.itemID,
+      text: version.next.text.text,
+    });
+  }
+  return encodeVersionText(version.key, version.ref, version.next.text);
 }
 
 async function createItemKey(parts: StoreParts, itemID: string): Promise<CryptoKey> {
