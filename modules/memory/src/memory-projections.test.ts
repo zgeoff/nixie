@@ -7,7 +7,7 @@ import type { MemoryTables } from './types';
 async function setupTest() {
   const memory = await startTestMemory();
 
-  return { memory, db: memory.writer.db.withTables<MemoryTables>() };
+  return { memory, db: memory.writer.db.$extendTables<MemoryTables>() };
 }
 
 test('it rebuilds an edited, retired and undone item equal to the live rows', async () => {

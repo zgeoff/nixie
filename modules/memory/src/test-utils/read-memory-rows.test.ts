@@ -6,7 +6,7 @@ import { startTestMemory } from './start-test-memory';
 async function setupTest() {
   const memory = await startTestMemory();
 
-  return { memory, db: memory.writer.db.withTables<MemoryTables>() };
+  return { memory, db: memory.writer.db.$extendTables<MemoryTables>() };
 }
 
 test('it reads both memory projections in key order', async () => {

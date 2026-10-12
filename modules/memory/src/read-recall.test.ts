@@ -31,7 +31,7 @@ test('it returns the items that match a query word for word, with their provenan
         isPinned: false,
         origin: 'owner',
         source: 'owner',
-        recordedAt: expect.any(Number),
+        recordedAt: expect.toBeNumber(),
         text: 'The spare key sits under the blue flowerpot',
       },
     ],

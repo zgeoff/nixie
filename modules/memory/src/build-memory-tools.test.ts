@@ -48,13 +48,13 @@ test('it remembers a fact with the provenance of the run, never of the arguments
       },
     },
   );
-  invariant(outcome.status === 'ok');
+  invariant(outcome.status === 'ok' && typeof outcome.result['itemID'] === 'string');
 
-  const history = await ctx.memory.store.readHistory(String(outcome.result['itemID']));
+  const history = await ctx.memory.store.readHistory(outcome.result['itemID']);
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { itemID: expect.any(String), version: 1 },
+    result: { itemID: expect.toBeString(), version: 1 },
   });
   expect(history?.versions).toMatchObject([{ origin: 'task', source: 'untrusted' }]);
 });
@@ -92,7 +92,7 @@ test('it returns a stale edit to the model as an error', async () => {
 
   expect(outcome).toMatchObject({
     status: 'error',
-    message: expect.stringContaining('is at version 2'),
+    message: expect.toInclude('is at version 2'),
   });
 });
 

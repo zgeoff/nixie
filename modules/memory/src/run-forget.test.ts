@@ -19,7 +19,7 @@ test('it deletes the item key and leaves no copy of it in the key store files', 
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
   const stored = await ctx.memory.writer.keys
-    .withTables<{ record_keys: { key_id: string; wrapped: Uint8Array } }>()
+    .$extendTables<{ record_keys: { key_id: string; wrapped: Uint8Array } }>()
     .selectFrom('record_keys')
     .select('wrapped')
     .where('key_id', '=', item.itemID)
@@ -33,7 +33,7 @@ test('it deletes the item key and leaves no copy of it in the key store files', 
   });
 
   const remaining = await ctx.memory.writer.keys
-    .withTables<{ record_keys: { key_id: string } }>()
+    .$extendTables<{ record_keys: { key_id: string } }>()
     .selectFrom('record_keys')
     .select('key_id')
     .where('key_id', '=', item.itemID)
@@ -77,7 +77,7 @@ test('it reads every version of a forgotten item as a gap', async () => {
         state: 'active',
         origin: 'owner',
         source: 'owner',
-        recordedAt: expect.any(Number),
+        recordedAt: expect.toBeNumber(),
         status: 'shredded',
       },
       {
@@ -86,7 +86,7 @@ test('it reads every version of a forgotten item as a gap', async () => {
         state: 'active',
         origin: 'owner',
         source: 'owner',
-        recordedAt: expect.any(Number),
+        recordedAt: expect.toBeNumber(),
         status: 'shredded',
       },
     ],
@@ -127,10 +127,10 @@ test('it runs the session cleanup and then records the forget as complete', asyn
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
   expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith(item.itemID);
-  expect(records.map((entry) => [entry.record.kind, entry.record.payload])).toStrictEqual([
-    ['memory.version_added', expect.objectContaining({ itemID: item.itemID, version: 1 })],
-    ['memory.forget_started', { itemID: item.itemID, version: 1 }],
-    ['memory.forgotten', { itemID: item.itemID }],
+  expect(records.map((entry) => entry.record)).toMatchObject([
+    { kind: 'memory.version_added', payload: { itemID: item.itemID, version: 1 } },
+    { kind: 'memory.forget_started', payload: { itemID: item.itemID, version: 1 } },
+    { kind: 'memory.forgotten', payload: { itemID: item.itemID } },
   ]);
 });
 

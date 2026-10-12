@@ -5,7 +5,7 @@ import type { MemoryTables } from './types';
 async function setupTest() {
   const memory = await startTestMemory();
 
-  return { memory, db: memory.writer.db.withTables<MemoryTables>() };
+  return { memory, db: memory.writer.db.$extendTables<MemoryTables>() };
 }
 
 test('it retires an item, takes it out of search and keeps its text', async () => {

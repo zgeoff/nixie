@@ -32,5 +32,10 @@ export function startFaultPointHold(id: FaultPointID): FaultPointHold {
     gate.resolve();
     setFaultPointHandler(null);
   });
-  return { reached: reached.promise, release: () => gate.resolve() };
+  return {
+    reached: reached.promise,
+    release: () => {
+      gate.resolve();
+    },
+  };
 }

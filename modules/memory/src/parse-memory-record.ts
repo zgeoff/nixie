@@ -1,5 +1,6 @@
-import type { EnvelopeRecord } from '@heynixie/log';
+import type { ContentSource, EnvelopeRecord, JSONObject } from '@heynixie/log';
 import { z } from 'zod';
+import type { MemoryChange, MemoryOrigin, QuoteEvidence, VersionState } from './types';
 
 const quoteEvidence = z.strictObject({
   recordSequence: z.int(),
@@ -26,14 +27,30 @@ const pinned = z.strictObject({ itemID: z.string(), isPinned: z.boolean() });
 const forgetStarted = z.strictObject({ itemID: z.string(), version: z.int().min(1) });
 const forgotten = z.strictObject({ itemID: z.string() });
 
+interface VersionAddedRecord {
+  readonly kind: 'memory.version_added';
+  readonly itemID: string;
+  readonly version: number;
+  readonly change: MemoryChange;
+  readonly state: VersionState;
+  readonly sealed: string;
+  readonly evidence: QuoteEvidence | null;
+  readonly intentEvidence: QuoteEvidence | null;
+  readonly origin: MemoryOrigin;
+  readonly source: ContentSource;
+  readonly taskID: string | null;
+  readonly proposalID: string | null;
+  readonly checks: JSONObject | null;
+}
+
 // The memory records the memory projections fold, each with its plain payload. A version's text
 // sits in the payload sealed under the item's key, so the fold rebuilds every version without the
 // record's erasable fields, and a forget of the item's key reaches the log's copy too.
 export type MemoryRecord =
-  | ({ readonly kind: 'memory.version_added' } & z.infer<typeof versionAdded>)
-  | ({ readonly kind: 'memory.pinned' } & z.infer<typeof pinned>)
-  | ({ readonly kind: 'memory.forget_started' } & z.infer<typeof forgetStarted>)
-  | ({ readonly kind: 'memory.forgotten' } & z.infer<typeof forgotten>);
+  | VersionAddedRecord
+  | { readonly kind: 'memory.pinned'; readonly itemID: string; readonly isPinned: boolean }
+  | { readonly kind: 'memory.forget_started'; readonly itemID: string; readonly version: number }
+  | { readonly kind: 'memory.forgotten'; readonly itemID: string };
 
 // Reads a memory record's payload into its typed shape, or null for a record of another kind. A
 // memory record whose payload breaks its shape throws, so a fold never writes a half-read row.

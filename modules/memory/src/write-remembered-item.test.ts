@@ -7,7 +7,7 @@ import type { MemoryTables } from './types';
 async function setupTest() {
   const memory = await startTestMemory();
 
-  return { memory, db: memory.writer.db.withTables<MemoryTables>() };
+  return { memory, db: memory.writer.db.$extendTables<MemoryTables>() };
 }
 
 test('it creates an item at version 1 with its provenance', async () => {
@@ -35,7 +35,7 @@ test('it creates an item at version 1 with its provenance', async () => {
       version: 1,
       change: 'created',
       state: 'active',
-      sealed: expect.any(String),
+      sealed: expect.toBeString(),
       evidence: '{"recordSequence":3,"start":0,"end":29}',
       intent_evidence: null,
       origin: 'task',
@@ -45,7 +45,7 @@ test('it creates an item at version 1 with its provenance', async () => {
       checks: '{"quote":"pass"}',
       sequence: 1,
       snapshot_hash: 'sha256:test',
-      recorded_at: expect.any(Number),
+      recorded_at: expect.toBeNumber(),
     },
   ]);
 });
