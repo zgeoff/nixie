@@ -56,5 +56,6 @@ function toTurnProfile(profile: ResolvedProfile['profile']): TurnProfile {
     baseURL: profile.baseURL,
     effort: profile.effort,
     authHeader: profile.authHeader,
+    contextTokens: profile.contextTokens,
   };
 }

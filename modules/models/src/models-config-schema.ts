@@ -20,6 +20,10 @@ const credentialSchema = z
   .string()
   .regex(/^deployment:[\w-]+$/u, 'a credential reference reads deployment:<name>');
 
+// The CLI's auto-compact window takes a plain integer in this range and clamps any other value, so
+// nixie refuses one at start instead.
+const contextTokensSchema = z.int().min(100_000).max(1_000_000);
+
 const profileSchema = z.strictObject({
   base_url: z.url({ protocol: /^https?$/u }),
   credential: credentialSchema,
@@ -27,6 +31,7 @@ const profileSchema = z.strictObject({
   model: z.string().min(1),
   effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
   provider_pin: z.string().min(1).optional(),
+  context_tokens: contextTokensSchema.optional(),
   prices: pricesSchema.optional(),
 });
 
@@ -82,6 +87,7 @@ function toProfile(id: string, input: z.infer<typeof profileSchema>): ModelProfi
     model: input.model,
     effort: input.effort,
     providerPin: input.provider_pin ?? null,
+    contextTokens: input.context_tokens ?? null,
     prices:
       input.prices === undefined
         ? null

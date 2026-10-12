@@ -21,6 +21,7 @@ export function buildMockTurnFrame(overrides: TurnFrameOverrides = {}): TurnFram
       baseURL: faker.internet.url(),
       effort: 'medium',
       authHeader: 'x-api-key',
+      contextTokens: null,
       ...overrides.profile,
     },
     tools: {

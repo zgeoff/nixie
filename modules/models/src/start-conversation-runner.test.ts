@@ -145,6 +145,22 @@ test('it records the new model on the next reply once the conversation role poin
   ]);
 });
 
+test('it sends the guest the profile context tokens with every turn', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig({
+      profiles: { 'chat-direct': { model: 'claude-test-1', contextTokens: 400_000 } },
+    }),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.writeMessage('Hi.');
+  await ctx.runNextStep(runner);
+
+  expect(ctx.sandboxes.turns.map((turn) => turn.profile.contextTokens)).toStrictEqual([400_000]);
+});
+
 test('it records the model and the profile on the turn end and on every tool call', async () => {
   const ctx = await setupTest();
   const runner = await ctx.startRunner({

@@ -15,6 +15,7 @@ test('it builds a default models config', () => {
         model: expect.toBeString(),
         effort: 'medium',
         providerPin: null,
+        contextTokens: null,
         prices: null,
       },
     },
@@ -49,6 +50,7 @@ test('it builds each profile it is given from the full profile defaults', () => 
       model: 'claude-test-1',
       effort: 'medium',
       providerPin: null,
+      contextTokens: null,
       prices: null,
     },
   });

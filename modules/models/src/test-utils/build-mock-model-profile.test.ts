@@ -10,6 +10,7 @@ test('it builds a default model profile', () => {
     model: expect.toBeString(),
     effort: 'medium',
     providerPin: null,
+    contextTokens: null,
     prices: null,
   });
 });
@@ -23,6 +24,7 @@ test('it applies overrides on top of the defaults', () => {
     model: expect.toBeString(),
     effort: 'medium',
     providerPin: null,
+    contextTokens: null,
     prices: null,
   });
 });

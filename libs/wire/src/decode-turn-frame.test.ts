@@ -15,6 +15,7 @@ test('it decodes a turn frame the host sent', () => {
       baseURL: 'https://api.anthropic.com',
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: 400_000,
     },
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: {
@@ -38,6 +39,7 @@ test('it refuses a turn frame whose input message has no uuid', () => {
       baseURL: 'https://api.anthropic.com',
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: null,
     },
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: null,
@@ -57,6 +59,7 @@ test('it refuses a turn frame with an empty inbox', () => {
       baseURL: 'https://api.anthropic.com',
       effort: 'low',
       authHeader: 'x-api-key',
+      contextTokens: null,
     },
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: null,

@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import type { ModelProfile } from '../types';
 
-// A direct profile that sends its key in the x-api-key header, with no provider pin and no prices.
+// A direct profile that sends its key in the x-api-key header, with no provider pin, no context cap and no prices.
 export function buildMockModelProfile(overrides: Partial<ModelProfile> = {}): ModelProfile {
   return {
     id: faker.helpers.slugify(faker.lorem.words(2)),
@@ -11,6 +11,7 @@ export function buildMockModelProfile(overrides: Partial<ModelProfile> = {}): Mo
     model: `${faker.lorem.word()}-${faker.number.int({ min: 1, max: 9 })}`,
     effort: 'medium',
     providerPin: null,
+    contextTokens: null,
     prices: null,
     ...overrides,
   };

@@ -12,6 +12,7 @@ test('it builds a default turn frame', () => {
       baseURL: expect.toStartWith('https://'),
       effort: 'medium',
       authHeader: 'x-api-key',
+      contextTokens: null,
     },
     tools: { url: expect.toStartWith('https://'), token: expect.toBeString() },
     resume: null,
@@ -39,6 +40,7 @@ test('it applies overrides on top of the defaults', () => {
       baseURL: expect.toStartWith('https://'),
       effort: 'medium',
       authHeader: 'bearer',
+      contextTokens: null,
     },
     tools: { url: expect.toStartWith('https://'), token: 'run-token' },
     resume: {
