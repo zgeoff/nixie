@@ -134,6 +134,7 @@
       "version": "0.0.0",
       "dependencies": {
         "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
         "zod": "catalog:",
       },
     },
@@ -146,6 +147,9 @@
       "version": "0.0.0",
       "dependencies": {
         "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@faker-js/faker": "catalog:",
       },
     },
     "modules/actions": {
