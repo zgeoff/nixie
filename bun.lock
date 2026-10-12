@@ -33,6 +33,7 @@
       },
       "devDependencies": {
         "@heynixie/log": "workspace:*",
+        "tiny-invariant": "catalog:",
       },
     },
     "adapters/sandbox-process": {
@@ -43,6 +44,8 @@
       },
       "devDependencies": {
         "@heynixie/log": "workspace:*",
+        "@heynixie/testing": "workspace:*",
+        "tiny-invariant": "catalog:",
       },
     },
     "apps/server": {

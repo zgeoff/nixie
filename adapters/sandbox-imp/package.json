@@ -16,6 +16,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@heynixie/log": "workspace:*"
+    "@heynixie/log": "workspace:*",
+    "tiny-invariant": "catalog:"
   }
 }
