@@ -8,9 +8,8 @@ or none of it, and a rerun never publishes a batch twice. The `modules/memory` p
 writer, beside [the memory store](./store.md) whose verbs it calls.
 
 The writer is a system task in [the task runtime](../core/tasks.md): it never finishes, and it waits
-between batches. The [memory writes](../../design/platform/memory/writes.md) design covers the
-content gate each write passes, and [model profiles](../core/model-profiles.md) cover the
-`memory-writer` role that picks its model.
+between batches. [Memory writes](./writes.md) covers the content gate that checks a write, and
+[model profiles](../core/model-profiles.md) cover the `memory-writer` role that picks its model.
 
 ```mermaid
 flowchart LR

@@ -31,8 +31,13 @@
       "lib": {
         "dependencies": { "allow": ["lib"] }
       },
+      // an eval runs production code from any layer against a committed corpus, and nothing
+      // depends on it
+      "eval": {
+        "dependencies": { "allow": ["module", "guest", "lib"] }
+      },
       "server-only": {
-        "dependents": { "allow": ["app", "module", "adapter", "server-only"] }
+        "dependents": { "allow": ["app", "module", "adapter", "server-only", "eval"] }
       }
     }
   }

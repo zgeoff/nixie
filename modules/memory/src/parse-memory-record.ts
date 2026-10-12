@@ -21,10 +21,21 @@ const versionAdded = z.strictObject({
   taskID: z.string().nullable(),
   proposalID: z.string().nullable(),
   checks: z.record(z.string(), z.json()).nullable(),
+
+  // a version from before the gate carries neither
+  model: z.string().nullable().default(null),
+  noticeKey: z.string().nullable().default(null),
 });
 
 const pinned = z.strictObject({ itemID: z.string(), isPinned: z.boolean() });
-const forgetStarted = z.strictObject({ itemID: z.string(), version: z.int().min(1) });
+const forgetStarted = z.strictObject({
+  itemID: z.string(),
+  version: z.int().min(1),
+
+  // the sequences of the messages that backed any version of the item; a forget from before the
+  // gate carries none
+  evidenceSequences: z.array(z.int()).default([]),
+});
 const forgotten = z.strictObject({ itemID: z.string() });
 
 interface VersionAddedRecord {
@@ -41,6 +52,10 @@ interface VersionAddedRecord {
   readonly taskID: string | null;
   readonly proposalID: string | null;
   readonly checks: JSONObject | null;
+  readonly model: string | null;
+
+  // the turn's or the batch's notice the version joins, or null for your own action
+  readonly noticeKey: string | null;
 }
 
 // The memory records the memory projections fold, each with its plain payload. A version's text
@@ -49,7 +64,12 @@ interface VersionAddedRecord {
 export type MemoryRecord =
   | VersionAddedRecord
   | { readonly kind: 'memory.pinned'; readonly itemID: string; readonly isPinned: boolean }
-  | { readonly kind: 'memory.forget_started'; readonly itemID: string; readonly version: number }
+  | {
+      readonly kind: 'memory.forget_started';
+      readonly itemID: string;
+      readonly version: number;
+      readonly evidenceSequences: readonly number[];
+    }
   | { readonly kind: 'memory.forgotten'; readonly itemID: string };
 
 // Reads a memory record's payload into its typed shape, or null for a record of another kind. A

@@ -20,6 +20,7 @@ export function usePendingInput(
       (event) => {
         pendingInput.current = buildPendingInput({
           inputType: event.inputType,
+          data: event.data,
           selectionEnd: element.selectionEnd,
           selectionStart: element.selectionStart,
         });

@@ -1,7 +1,12 @@
 import { onTestFinished } from 'bun:test';
 import { readdir } from 'node:fs/promises';
-import type { RecalledItem, StartedMemoryStore, WriterStatus } from '@heynixie/memory';
-import { startMemoryStore, writerConfigSchema } from '@heynixie/memory';
+import type { GateContext, RecalledItem, StartedMemoryStore, WriterStatus } from '@heynixie/memory';
+import {
+  defaultGateLimits,
+  findNoAllowRule,
+  startMemoryStore,
+  writerConfigSchema,
+} from '@heynixie/memory';
 import { buildStubGate } from '@heynixie/memory/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import type { RunStep, TasksContext } from '@heynixie/tasks';
@@ -60,6 +65,7 @@ export async function startTestMemoryWriter(server: TestServer): Promise<TestMem
     log: context.log,
     definitions: context.definitions,
     cleanupSessions: () => Promise.resolve(),
+    gate: buildClosedGate(clock),
   });
 
   server.defer(() => store.stop());
@@ -157,4 +163,20 @@ async function runWriterSteps(wiring: StepsWiring, run: WriterRun = {}): Promise
     ...(run.isDone === undefined ? {} : { isDone: run.isDone }),
     maxSteps: 20,
   });
+}
+
+// the writer checks its batches through the stub gate, so the store's own checker fails closed
+function buildClosedGate(clock: TestClock): GateContext {
+  return {
+    check: () =>
+      Promise.resolve({
+        verdict: 'unsure',
+        reason: 'no checker is wired',
+        model: 'no-checker',
+        failure: 'error',
+      }),
+    clock,
+    findAllowRule: findNoAllowRule,
+    limits: defaultGateLimits,
+  };
 }

@@ -1,5 +1,6 @@
 import type { DefinitionsSource, SnapshotPolicy } from '@heynixie/definitions';
 import { createPathSource } from '@heynixie/definitions';
+import { buildCheckerRules } from '@heynixie/memory';
 import { getFixedRules } from '@heynixie/policy';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildSnapshotPolicy } from './build-snapshot-policy';
@@ -11,13 +12,21 @@ export interface SeedInputs {
 }
 
 // What every seed reads: the configured definitions source, and the policy in force from the
-// build's fixed rules and its registered tools.
+// build's fixed rules, the memory gate's checker prompts and its registered tools.
 export function buildSeedInputs(
   config: DeploymentConfig,
   tools: readonly ToolDefinition[],
 ): SeedInputs {
+  const policy = buildSnapshotPolicy(getFixedRules(), tools);
+
   return {
     source: createPathSource({ dir: config.definitions.source.path }),
-    policy: buildSnapshotPolicy(getFixedRules(), tools),
+    policy: {
+      ...policy,
+      rules: [
+        ...policy.rules,
+        ...buildCheckerRules().map((rule) => ({ id: rule.id, prompt: rule.prompt })),
+      ],
+    },
   };
 }

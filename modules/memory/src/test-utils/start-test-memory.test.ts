@@ -13,6 +13,9 @@ test('it starts a store over a log that folds the memory projections, with no re
     'memory_items',
     'memory_versions',
     'memory_writer',
+    'memory_proposals',
+    'memory_notice_entries',
+    'memory_forgotten_evidence',
   ]);
   expect(records).toStrictEqual([]);
 });

@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Log, Writer } from '@heynixie/log';
+import type { GateContext } from '../gate-types';
 import type { StartedMemoryStore } from '../start-memory-store';
 import type { CleanupSessions } from '../types';
 import { startTestStore } from './start-test-store';
@@ -19,6 +20,10 @@ export interface TestMemory {
 export interface TestMemoryOptions {
   // the session cleanup each forget runs, which no-ops by default
   readonly cleanupSessions?: CleanupSessions;
+
+  // the gate's checker, clock, allow rule lookup and limits; with none, the checker answers that
+  // it failed, the clock is the wall clock, no allow rule exists and the default limits hold
+  readonly gate?: Partial<GateContext>;
 }
 
 // Starts a writer on a fresh data directory with the log's and the memory projections, and a store

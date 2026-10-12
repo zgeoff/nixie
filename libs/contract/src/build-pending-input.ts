@@ -4,6 +4,9 @@ import type { PendingInput } from './types';
 // The fields a web client reads from a beforeinput event and its text box.
 export interface BeforeInputFields {
   readonly inputType: string;
+
+  // the text the edit inserts, or null for an edit that carries none, such as a delete
+  readonly data: string | null;
   readonly selectionEnd: number;
   readonly selectionStart: number;
 }
@@ -17,6 +20,6 @@ export function buildPendingInput(fields: BeforeInputFields): PendingInput {
       end: fields.selectionEnd,
       start: fields.selectionStart,
     },
-    source: pickSpanSource(fields.inputType),
+    source: pickSpanSource(fields.inputType, fields.data),
   };
 }

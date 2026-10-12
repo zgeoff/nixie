@@ -55,6 +55,10 @@ test('it reads every section, with the default of each setting the file leaves o
     },
     tasks: { runners: 3 },
     actions: { runners: 4 },
+    memory: {
+      limits: { evidenceWindow: 20, proposalLapseMs: 1_209_600_000, proposalCap: 10 },
+      checkerTimeoutMs: 10_000,
+    },
   });
 });
 

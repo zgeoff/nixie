@@ -191,9 +191,10 @@ the call run and keeps the proposal. No starter rule names `skill_write`, and cr
 names it is a widening that asks once.
 
 One check runs whatever the rule says. Every destination-like token in the skill, by the
-[token check](memory/writes.md#the-content-gate) that memory writes use, appears word for word in
-text you typed or in your definitions, and a skill that fails it becomes a proposal. **Why:** the
-worst skill nixie could write is one that sends future tasks to a destination you never named.
+[token check](../../architecture/memory/writes.md#the-content-gate) that memory writes use, appears
+word for word in text you typed or in your definitions, and a skill that fails it becomes a
+proposal. **Why:** the worst skill nixie could write is one that sends future tasks to a destination
+you never named.
 
 An applied skill holds the ID of the approval or rule that applied it. nixie then exports it to the
 definitions repo as a pull request, as [rule export](../../decisions/0020-deployment.md#seeding)

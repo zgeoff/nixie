@@ -7,8 +7,8 @@ CPU time, peak memory and what each one takes to ship in the nixie image. It is 
 
 The encoder serves retrieval only. Per-turn retrieval and the recall tools search with it, and the
 memory writer meets it through the items retrieval hands it when it looks for a near-duplicate. The
-[quote check](../../memory/writes.md#the-quote-check) compares text exactly and never uses the
-encoder.
+[quote check](../../../../architecture/memory/writes.md#the-quote-check) compares text exactly and
+never uses the encoder.
 
 - Bun 1.4.2 on an 8-core x86-64 desktop CPU, CPU only, and in the `oven/bun:1.4.2-slim` container
 - `@huggingface/transformers` 4.3.1 on `onnxruntime-node` 1.30.0

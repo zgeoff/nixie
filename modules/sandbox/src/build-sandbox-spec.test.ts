@@ -5,6 +5,7 @@ import { buildMockGrantSpec } from './test-utils/build-mock-grant-spec';
 
 test.each([
   ['conversation', { kind: 'none' }, true],
+  ['checker', { kind: 'none' }, false],
   ['worker', { kind: 'none' }, true],
   ['coding', { kind: 'allow', hosts: ['github.com'] }, true],
 ] as const)(

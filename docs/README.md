@@ -87,6 +87,8 @@ below, and planned work lives in Linear.
   tools
 - [The memory writer](architecture/memory/writer.md) — batches of conversation turns, the catch-up,
   a fresh session per batch, publishing in one transaction, backoff, and the change note
+- [Memory writes](architecture/memory/writes.md) — the content gate and its quote, token and checker
+  checks, retirement intent, provenance, memory proposals and notices
 
 ### Deployment
 
@@ -146,8 +148,8 @@ rests on.
 
 - [The memory store](design/platform/memory/store.md) — the first build, bulk deletion of retired
   memories, forget completion with key backups, the memory view and export
-- [Memory writes](design/platform/memory/writes.md) — who writes memory, batched capture, the quote,
-  token and checker checks, memory proposals, notices and undo, and consolidation
+- [Memory writes](design/platform/memory/writes.md) — the memory writer, batched capture, the
+  client's proposal cards and notices, and consolidation
 - [Memory in context](design/platform/memory/context.md) — the prompt, the pinned core, retrieval
   over memory and past messages, compaction, and the SDK transcript as a cache
 - [Moments](design/platform/memory/moments.md) — kept spans of the event log, their records and

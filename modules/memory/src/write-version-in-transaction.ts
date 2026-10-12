@@ -1,6 +1,6 @@
-import type { ContentSource, JSONObject, RecordInput } from '@heynixie/log';
+import type { Approval, ContentSource, JSONObject, RecordInput } from '@heynixie/log';
 import { createRecordKey, writeRecordsInTransaction } from '@heynixie/log';
-import type { Transaction } from 'kysely';
+import type { Kysely, Transaction } from 'kysely';
 import { encodeVersionText } from './encode-version-text';
 import { findItemKey } from './find-item-key';
 import { MemoryStateError } from './memory-state-error';
@@ -44,6 +44,21 @@ export interface VersionPlan {
 
   // pins a new item in the same transaction
   readonly isPinned?: boolean;
+
+  // the ID of a new item whose key already exists, as for an approved proposal that created it
+  readonly newItemID?: string;
+
+  // the turn's or the batch's notice the version joins
+  readonly noticeKey?: string;
+
+  // checks that the operation may still run, inside the version's transaction
+  readonly requireInTransaction?: (db: Kysely<MemoryTables>) => Promise<void>;
+
+  // the approval the version consumes: its envelope, and the record that holds your answer
+  readonly approval?: {
+    readonly envelope: Approval;
+    readonly record: RecordInput;
+  };
 }
 
 // The version a write added, and the version it describes, for the index update after the commit.
@@ -61,17 +76,18 @@ export async function writeVersionInTransaction(
   plan: VersionPlan,
 ): Promise<WrittenVersion> {
   const db = tx.$extendTables<MemoryTables>();
+
+  await plan.requireInTransaction?.(db);
+
   const item = plan.requirement === null ? null : await requireItem(db, plan.requirement);
-  const itemID = item?.item_id ?? crypto.randomUUID();
   const current = item?.version ?? 0;
-  const key = await (item === null ? createItemKey(parts, itemID) : requireKey(parts, itemID));
+  const versionKey = await readVersionKey(parts, plan, item?.item_id ?? null);
   const next = await plan.buildVersion(
-    (version) => readVersion(db, key, { itemID, version }),
+    (version) => readVersion(db, versionKey.key, { itemID: versionKey.itemID, version }),
     current,
   );
-  const ref = { itemID, version: current + 1 };
-
-  const sealed = await encodePinnableVersion(key, { plan, ref, next });
+  const ref = { itemID: versionKey.itemID, version: current + 1 };
+  const sealed = await encodePinnableVersion(versionKey.key, { plan, ref, next });
 
   await writeRecordsInTransaction(
     tx,
@@ -79,6 +95,26 @@ export async function writeVersionInTransaction(
     buildRecords(parts, { plan, ref, next, sealed }),
   );
   return { ref, next };
+}
+
+interface VersionKey {
+  readonly itemID: string;
+  readonly key: CryptoKey;
+}
+
+// an existing item, or a new one whose key a proposal already made, uses its key; any other new
+// item gets a fresh ID and key
+async function readVersionKey(
+  parts: StoreParts,
+  plan: VersionPlan,
+  existingID: string | null,
+): Promise<VersionKey> {
+  const itemID = existingID ?? plan.newItemID ?? crypto.randomUUID();
+  const key = await (existingID === null && plan.newItemID === undefined
+    ? createItemKey(parts, itemID)
+    : requireKey(parts, itemID));
+
+  return { itemID, key };
 }
 
 interface PinnableVersion {
@@ -137,20 +173,29 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
     taskID: provenance.taskID,
     proposalID: provenance.proposalID,
     checks: provenance.checks,
+    model: provenance.model ?? null,
+    noticeKey: written.plan.noticeKey ?? null,
   };
+  const approval = written.plan.approval;
   const version: RecordInput = {
     ...base,
     kind: 'memory.version_added',
     contentSource: written.next.source ?? provenance.source,
+    ...(approval === undefined ? {} : { approval: approval.envelope }),
     payload,
   };
+  const pinned: readonly RecordInput[] =
+    written.plan.isPinned === true
+      ? [
+          {
+            ...base,
+            kind: 'memory.pinned',
+            payload: { itemID: written.ref.itemID, isPinned: true },
+          },
+        ]
+      : [];
 
-  return written.plan.isPinned === true
-    ? [
-        version,
-        { ...base, kind: 'memory.pinned', payload: { itemID: written.ref.itemID, isPinned: true } },
-      ]
-    : [version];
+  return [...(approval === undefined ? [] : [approval.record]), version, ...pinned];
 }
 
 function toJSONEvidence(evidence: QuoteEvidence | null): JSONObject | null {

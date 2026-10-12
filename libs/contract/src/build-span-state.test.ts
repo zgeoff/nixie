@@ -69,7 +69,12 @@ test('it labels only the changed text unknown when an edit lands away from the s
         ],
         text: 'PASTED wrod',
       },
-      buildPendingInput({ inputType: 'insertReplacementText', selectionEnd: 0, selectionStart: 0 }),
+      buildPendingInput({
+        inputType: 'insertReplacementText',
+        data: null,
+        selectionEnd: 0,
+        selectionStart: 0,
+      }),
       'PASTED word',
     ),
   ).toStrictEqual({
@@ -119,7 +124,12 @@ test('it removes the typed character when a backspace sits between a typed and a
         ],
         text: 'aa',
       },
-      buildPendingInput({ inputType: 'deleteContentBackward', selectionEnd: 1, selectionStart: 1 }),
+      buildPendingInput({
+        inputType: 'deleteContentBackward',
+        data: null,
+        selectionEnd: 1,
+        selectionStart: 1,
+      }),
       'a',
     ),
   ).toStrictEqual({ spans: [{ end: 1, source: 'pasted', start: 0 }], text: 'a' });
@@ -135,7 +145,12 @@ test('it removes the pasted character when a forward delete sits between a typed
         ],
         text: 'aa',
       },
-      buildPendingInput({ inputType: 'deleteContentForward', selectionEnd: 1, selectionStart: 1 }),
+      buildPendingInput({
+        inputType: 'deleteContentForward',
+        data: null,
+        selectionEnd: 1,
+        selectionStart: 1,
+      }),
       'a',
     ),
   ).toStrictEqual({ spans: [{ end: 1, source: 'typed', start: 0 }], text: 'a' });
@@ -147,7 +162,7 @@ test.each(['historyUndo', 'historyRedo'])(
     expect(
       buildSpanState(
         { spans: [{ end: 12, source: 'typed', start: 0 }], text: 'hello  world' },
-        buildPendingInput({ inputType, selectionEnd: 6, selectionStart: 6 }),
+        buildPendingInput({ inputType, data: null, selectionEnd: 6, selectionStart: 6 }),
         'hello PASTED world',
       ),
     ).toStrictEqual({
@@ -165,7 +180,12 @@ test('it counts offsets in UTF-16 code units', () => {
   expect(
     buildSpanState(
       { spans: [{ end: 3, source: 'typed', start: 0 }], text: '😀 ' },
-      buildPendingInput({ inputType: 'insertFromPaste', selectionEnd: 3, selectionStart: 3 }),
+      buildPendingInput({
+        inputType: 'insertFromPaste',
+        data: null,
+        selectionEnd: 3,
+        selectionStart: 3,
+      }),
       '😀 é😀',
     ),
   ).toStrictEqual({
@@ -193,7 +213,12 @@ test('it leaves no span once the text is empty', () => {
   expect(
     buildSpanState(
       { spans: [{ end: 6, source: 'pasted', start: 0 }], text: 'PASTED' },
-      buildPendingInput({ inputType: 'deleteContentBackward', selectionEnd: 6, selectionStart: 0 }),
+      buildPendingInput({
+        inputType: 'deleteContentBackward',
+        data: null,
+        selectionEnd: 6,
+        selectionStart: 0,
+      }),
       '',
     ),
   ).toStrictEqual({ spans: [], text: '' });

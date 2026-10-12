@@ -34,6 +34,7 @@ export const memoryVersionsProjection: Projection = {
         task_id: parsed.taskID,
         proposal_id: parsed.proposalID,
         checks: parsed.checks === null ? null : JSON.stringify(parsed.checks),
+        model: parsed.model,
         sequence: record.sequence,
         snapshot_hash: record.definitions.snapshotHash,
         recorded_at: record.recordedAt.getTime(),

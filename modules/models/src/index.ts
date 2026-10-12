@@ -2,6 +2,9 @@ export { buildModelGrant } from './build-model-grant';
 export { decodeInboxUUID } from './decode-inbox-uuid';
 export { deriveModelSecret } from './derive-model-secret';
 export { encodeInboxUUID } from './encode-inbox-uuid';
+export type { CheckerOptions } from './make-checker';
+export { makeChecker } from './make-checker';
+export { checkerOwner } from './start-checker-runner';
 export { modelsConfigSchema } from './models-config-schema';
 export { resolveModelCredentials } from './resolve-model-credentials';
 export { resolveRoleProfile } from './resolve-role-profile';
@@ -15,7 +18,12 @@ export type {
 } from './start-session-runner';
 export { startSessionRunner } from './start-session-runner';
 export { startConversationRunner } from './start-conversation-runner';
+export type { CheckerRunnerOptions } from './start-checker-runner';
+export { startCheckerRunner } from './start-checker-runner';
 export type {
+  CheckerAnswer,
+  CheckerRequest,
+  CheckerVerdict,
   ModelPrices,
   ModelProfile,
   ModelRole,
@@ -23,4 +31,5 @@ export type {
   ModelsConfig,
   ReasoningEffort,
   ResolvedProfile,
+  RunCheck,
 } from './types';

@@ -95,7 +95,8 @@ ok  a domain that is a suffix of the one in the quote: fail  the domain ample.co
 
 ## Untested
 
-- The checker model itself, which the [memory checker spike](../memory-checker/README.md) measures.
+- The checker model itself, which the
+  [memory checker eval](../../../../../evals/memory-checker/README.md) measures.
 - Token patterns beyond these kinds, such as local account formats without an IBAN, postal
   addresses, crypto wallet addresses and short codes.
 - Real paste spans from the clients; the cases build spans by hand.

@@ -1,0 +1,45 @@
+import { join } from 'node:path';
+import type { GuestCommand, ModelSecrets, ModelsConfig, RunCheck } from '@heynixie/models';
+import { resolveModelCredentials, resolveRoleProfile, startCheckerRunner } from '@heynixie/models';
+import type { SandboxAdapter } from '@heynixie/sandbox';
+import invariant from 'tiny-invariant';
+
+export interface CheckerOptions {
+  readonly models: ModelsConfig;
+  readonly secrets: ModelSecrets;
+  readonly sandboxes: SandboxAdapter;
+
+  // the conversation image's name in impd, from the sandbox manifest
+  readonly image: string;
+  readonly timeoutMs: number;
+}
+
+// Starts the checker on the checker role's profile, in its own sandbox on the conversation image.
+export function startChecker(options: CheckerOptions): Promise<RunCheck> {
+  const credentials = resolveModelCredentials(options.models, options.secrets);
+  const profile = resolveRoleProfile(options.models, 'checker');
+  const resolved = credentials[profile.id];
+
+  // the credentials resolve for every profile, or resolveModelCredentials throws first
+  invariant(resolved, `the checker profile ${profile.id} has no credential`);
+  return startCheckerRunner({
+    profile: resolved,
+    sandboxes: options.sandboxes,
+    image: options.image,
+    limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
+    command: buildCheckCommand(),
+    timeoutMs: options.timeoutMs,
+  });
+}
+
+// The check guest runs from the conversation image's /app as the user nixie, and a test build's
+// process double runs its source from the workspace with the test's own Bun.
+function buildCheckCommand(): GuestCommand {
+  if (NIXIE_TEST_BUILD) {
+    return {
+      argv: [process.execPath, join(import.meta.dir, '../../../guests/conversation/src/check.ts')],
+      env: {},
+    };
+  }
+  return { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: { HOME: '/home/nixie' } };
+}

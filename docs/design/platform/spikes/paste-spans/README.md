@@ -51,8 +51,8 @@ Drive the keyboard with `adb shell input tap`, `swipe` and `motionevent`, never
 
 On the desktop, all 3 browsers label a paste right and keep the spans right through every edit. On
 Android, 2 Gboard paths insert pasted text as `insertText`, and the client labels it `typed`: the
-clipboard chip and Gboard's own undo. The shipped mapping cannot tell them from typing, so the web
-client needs a fix before its spans serve as evidence on Android.
+clipboard chip and Gboard's own undo. The mapping of that run could not tell them from typing, and
+the client now applies the rule in [the client fix](#the-client-fix).
 
 ### Desktop browsers
 

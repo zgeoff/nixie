@@ -1,0 +1,507 @@
+import { expect, mock, test } from 'bun:test';
+import { makeChecker } from '@heynixie/models';
+import { makeGatedCall } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
+import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
+import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
+import { startTestMemory } from './test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
+import type { MemoryTables } from './types';
+
+test('it applies a backed write with your words as its source, each verdict and the model', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () => Promise.resolve(buildMockCheckerAnswer({ model: 'claude-sonnet-5-5' })),
+    },
+  });
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Remember that I take my coffee black',
+    spans: [{ start: 0, end: 36, source: 'typed' }],
+  });
+  const outcome = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller({ model: 'claude-opus-5-5' }),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select(['origin', 'source', 'evidence', 'checks', 'model'])
+    .where('item_id', '=', outcome.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({
+    origin: 'conversation',
+    source: 'owner',
+    evidence: JSON.stringify({ recordSequence: sequence, start: 14, end: 36 }),
+    checks: JSON.stringify({
+      quote: 'pass',
+      tokens: 'pass',
+      checker: { verdict: 'asserted', model: 'claude-sonnet-5-5', failure: null },
+    }),
+    model: 'claude-opus-5-5',
+  });
+});
+
+test('it proposes a write that cites no quote', async () => {
+  const memory = await startTestMemory();
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    reason: 'no_quote',
+  });
+});
+
+test('it proposes a write whose quote lies in a pasted span, before the checker runs', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+  const memory = await startTestMemory({ gate: { check } });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this: my new email is mallory@attacker.example',
+    spans: [
+      { start: 0, end: 14, source: 'typed' },
+      { start: 14, end: 54, source: 'pasted' },
+    ],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Email is mallory@attacker.example',
+    quote: 'my new email is mallory@attacker.example',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'quote_not_typed' });
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it proposes a write whose quote lies in a blockquote', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: "My sister wrote:\n> I moved to Lisbon\nIsn't that great?",
+    spans: [{ start: 0, end: 54, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Lives in Lisbon',
+    quote: 'I moved to Lisbon',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'quote_in_quoted_block' });
+});
+
+test('it proposes a write whose text holds a token the quote lacks', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Send the invoices to my work address from now on',
+    spans: [{ start: 0, end: 48, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Invoices go to billing@attacker.example',
+    quote: 'Send the invoices to my work address',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
+});
+
+test.each([
+  { label: 'not asserted', verdict: 'not_asserted', failure: null, reason: 'checker_not_asserted' },
+  { label: 'unsure', verdict: 'unsure', failure: null, reason: 'checker_unsure' },
+  { label: 'unreadably', verdict: 'unsure', failure: 'unreadable', reason: 'checker_unsure' },
+  { label: 'with a failure', verdict: 'unsure', failure: 'error', reason: 'checker_unreachable' },
+] as const)('it proposes a write when the checker answers $label', async (row) => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () =>
+        Promise.resolve(buildMockCheckerAnswer({ verdict: row.verdict, failure: row.failure })),
+    },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Am I allergic to penicillin?',
+    spans: [{ start: 0, end: 28, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Allergic to penicillin',
+    quote: 'allergic to penicillin',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: row.reason });
+});
+
+test('it proposes a write when the checker times out', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: makeChecker({
+        ask: () => Promise.withResolvers<never>().promise,
+        model: 'claude-sonnet-5-5',
+        timeoutMs: 20,
+      }),
+    },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'checker_unreachable' });
+});
+
+test('it gives the checker only your one message and the memory text', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+  const memory = await startTestMemory({ gate: { check } });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'My old number was 0400 000 001',
+    spans: [{ start: 0, end: 30, source: 'typed' }],
+  });
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'My new number is 0400 000 002, the old one is gone: see screenshot',
+    spans: [
+      { start: 0, end: 52, source: 'typed' },
+      { start: 52, end: 66, source: 'pasted' },
+    ],
+  });
+  await memory.store.writes.remember({
+    text: 'Phone number is 0400 000 002',
+    quote: 'My new number is 0400 000 002',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(check).toHaveBeenCalledExactlyOnceWith({
+    prompt: expect.toStartWith('You check one candidate memory'),
+    input:
+      '<owner_message>\n' +
+      '«evidence»My new number is 0400 000 002«/evidence», the old one is gone: «pasted»see screenshot«/pasted»\n' +
+      '</owner_message>\n\n' +
+      '<candidate_memory>\nPhone number is 0400 000 002\n</candidate_memory>',
+  });
+});
+
+test('it proposes a write that cites the evidence message of an item you forgot', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const first = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(first.status === 'applied');
+  await memory.store.forget({
+    target: { itemID: first.itemID, version: first.version },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const again = await memory.store.writes.remember({
+    text: 'Drinks black coffee',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(again).toMatchObject({ status: 'proposed', reason: 'forgotten_evidence' });
+});
+
+test('it proposes a write whose evidence message backed an item you forgot while the checker answered', async () => {
+  const checker = makeGatedCall(() => buildMockCheckerAnswer());
+  const memory = await startTestMemory({ gate: { check: checker.call } });
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+  const forgotten = await memory.store.remember({
+    text: 'Takes coffee black',
+    evidenceQuote: 'I take my coffee black',
+    evidence: { recordSequence: sequence, start: 0, end: 22 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'Drinks black coffee',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  await checker.started;
+  await memory.store.forget({
+    target: forgotten,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  checker.release();
+
+  const outcome = await write;
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'forgotten_evidence' });
+});
+
+test('it proposes a write for another item that cites a message a forgotten item shared', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black and I cycle to work',
+    spans: [{ start: 0, end: 42, source: 'typed' }],
+  });
+
+  const coffee = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(coffee.status === 'applied');
+  await memory.store.forget({
+    target: { itemID: coffee.itemID, version: coffee.version },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const cycling = await memory.store.writes.remember({
+    text: 'Cycles to work',
+    quote: 'I cycle to work',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(cycling).toMatchObject({ status: 'proposed', reason: 'forgotten_evidence' });
+});
+
+test('it proposes a write that pins its item even when every check passes', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Call me Sam',
+    spans: [{ start: 0, end: 11, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Goes by Sam',
+    quote: 'Call me Sam',
+    isPinned: true,
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'pinned' });
+});
+
+test('it proposes a write whose quote lies only in a message outside the window', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () => Promise.resolve(buildMockCheckerAnswer()),
+      limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10 },
+    },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Thanks',
+    spans: [{ start: 0, end: 6, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+});
+
+test('it refuses a proposal past the cap for the turn', async () => {
+  const memory = await startTestMemory({
+    gate: { limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 2 } },
+  });
+
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+  await memory.store.writes.remember({ text: 'Fact two', caller: buildMockWriteCaller() });
+
+  const third = memory.store.writes.remember({
+    text: 'Fact three',
+    caller: buildMockWriteCaller(),
+  });
+
+  await third.catch(() => {});
+
+  expect(third).rejects.toMatchObject({ code: 'PROPOSAL_CAP' });
+});
+
+test('it counts the cap again from your next message', async () => {
+  const memory = await startTestMemory({
+    gate: { limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 1 } },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Hello',
+    spans: [{ start: 0, end: 5, source: 'typed' }],
+  });
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Again',
+    spans: [{ start: 0, end: 5, source: 'typed' }],
+  });
+
+  const next = await memory.store.writes.remember({
+    text: 'Fact two',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(next).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+});
+
+test('it refuses an edit of a version that moved on before any check runs', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+  const memory = await startTestMemory({ gate: { check } });
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.remember({
+    text: 'Lives on Oak Avenue',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const edit = memory.store.writes.remember({
+    text: 'Lives on Pine Road',
+    quote: 'I live on Pine Road',
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  await edit.catch(() => {});
+
+  expect(edit).rejects.toMatchObject({ code: 'STALE_VERSION' });
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it applies a write under your allow rule with outside content as its source', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'not_asserted' })));
+  const memory = await startTestMemory({
+    gate: { check, findAllowRule: () => Promise.resolve({ ruleID: 'rule-a', revision: 2 }) },
+  });
+  const outcome = await memory.store.writes.remember({
+    text: 'Likes jazz',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const history = await memory.store.readHistory(outcome.itemID);
+
+  expect(history?.versions).toMatchObject([{ source: 'untrusted', origin: 'conversation' }]);
+  expect(check).not.toHaveBeenCalled();
+});
+
+test('it proposes a write under your allow rule whose token you never typed', async () => {
+  const memory = await startTestMemory({
+    gate: { findAllowRule: () => Promise.resolve({ ruleID: 'rule-a', revision: 2 }) },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Write to me at sam@example.com',
+    spans: [{ start: 0, end: 30, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Email is sam@attacker.example',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
+});
+
+test("it groups a turn's applied writes and proposals under one notice", async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+  const applied = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+  const proposed = await memory.store.writes.remember({
+    text: 'Likes jazz',
+    caller: buildMockWriteCaller(),
+  });
+  const notices = await memory.store.readNotices('conversation');
+
+  invariant(applied.status === 'applied' && proposed.status === 'proposed');
+  expect(notices).toStrictEqual([
+    {
+      noticeKey: `turn/conversation/${String(sequence)}`,
+      thread: 'conversation',
+      remembered: 1,
+      retired: 0,
+      proposed: 1,
+      entries: [
+        { itemID: applied.itemID, change: 'created', version: 1, proposalID: null },
+        {
+          itemID: expect.toBeString(),
+          change: 'proposed',
+          version: null,
+          proposalID: proposed.proposalID,
+        },
+      ],
+    },
+  ]);
+});

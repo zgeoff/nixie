@@ -1,4 +1,9 @@
-import { memoryWriterTaskID, startMemoryStore } from '../../modules/memory/src/index';
+import {
+  defaultGateLimits,
+  findNoAllowRule,
+  memoryWriterTaskID,
+  startMemoryStore,
+} from '../../modules/memory/src/index';
 import type { RunStep, TasksContext } from '../../modules/tasks/src/index';
 import { conversationTaskID } from '../../modules/tasks/src/index';
 import { startTestConversation } from './start-test-conversation';
@@ -30,6 +35,21 @@ export async function startTestSessions(
     log: context.log,
     definitions: context.definitions,
     cleanupSessions: () => Promise.resolve(),
+
+    // no crash test checks a memory tool's write, so the checker fails closed and the clock is the
+    // build's own
+    gate: {
+      check: () =>
+        Promise.resolve({
+          verdict: 'unsure',
+          reason: 'no checker is wired',
+          model: 'no-checker',
+          failure: 'error',
+        }),
+      clock: context.clock,
+      findAllowRule: findNoAllowRule,
+      limits: defaultGateLimits,
+    },
   });
   const writer =
     models.writerModelURL === null

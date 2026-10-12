@@ -28,6 +28,9 @@ test('it starts a log with the tasks, sandboxes and memory projections and a fre
     'memory_items',
     'memory_versions',
     'memory_writer',
+    'memory_proposals',
+    'memory_notice_entries',
+    'memory_forgotten_evidence',
   ]);
   expect(log.deploymentKey.algorithm).toMatchObject({ name: 'AES-KW', length: 256 });
 });

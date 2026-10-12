@@ -9,10 +9,10 @@ through one interface whose verbs are recall, remember, retire, restore, undo, p
 [0031](../../decisions/0031-memory-capture-context-and-removal.md).
 
 [The event log](../core/event-log.md) covers the records memory appends, and
-[erasable fields](../core/erasable-fields.md) covers the key store that holds each item's key. The
-[memory writes](../../design/platform/memory/writes.md) and
-[memory in context](../../design/platform/memory/context.md) designs cover the checks a write passes
-and how memory reaches the conversation.
+[erasable fields](../core/erasable-fields.md) covers the key store that holds each item's key.
+[Memory writes](./writes.md) covers the checks a model write passes and the proposals it becomes,
+and the [memory in context](../../design/platform/memory/context.md) design covers how memory
+reaches the conversation.
 
 ## Items and versions
 
@@ -149,17 +149,17 @@ design sets what that cleanup does once a session does.
 
 The model reaches memory through 3 tools over the same interface:
 
-| Tool              | Effect | Does                                               |
-| ----------------- | ------ | -------------------------------------------------- |
-| `memory.recall`   | `read` | Recalls items by query, by ID or a page at a time  |
-| `memory.remember` | `note` | Creates an item, or edits one at a version it read |
-| `memory.retire`   | `note` | Retires an item at a version it read               |
+| Tool              | Effect | Does                                                             |
+| ----------------- | ------ | ---------------------------------------------------------------- |
+| `memory.recall`   | `read` | Recalls items by query, by ID or a page at a time                |
+| `memory.remember` | `note` | Creates an item, or edits one at a version it read, with a quote |
+| `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote       |
 
+Each write tool runs its gate, and returns either the version it applied or the proposal it became,
+with its review reason. A missing quote is no tool error, because the gate turns it into a proposal.
 Each tool takes its provenance from the task run: the conversation's thread gives the conversation
-as origin, and any other thread gives a task. A model write records outside content as its source,
-the most cautious of the 3, because no write check has set the source from the turn. A recall result
-takes outside content as its source too, because the items it returns hold every source memory
-holds. A stale version, a missing item or a wrong state returns to the model as the tool's refusal,
-so the model reads the item again. The model can retire an item and can never restore, undo or
-forget one. The server's tool registry leaves the 3 tools out, because a write that applies at once
-needs the [write checks](../../design/platform/memory/writes.md) in front of it.
+as origin, any other thread gives a task, and the run's model gives the model ID. A recall result
+takes outside content as its source, because the items it returns hold every source memory holds. A
+stale version, a missing item or a wrong state returns to the model as the tool's refusal, so the
+model reads the item again. The model can retire an item and can never restore, undo or forget one.
+The server's tool registry leaves the 3 tools out, so no model reaches memory.

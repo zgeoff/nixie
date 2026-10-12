@@ -35,6 +35,35 @@ test('it reads a version record into its typed shape', () => {
     taskID: 'conversation',
     proposalID: null,
     checks: { quote: 'pass' },
+    model: null,
+    noticeKey: null,
+  });
+});
+
+test('it reads the model and the notice of a version record from the gate', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.version_added',
+    payload: {
+      itemID: 'item-a',
+      version: 1,
+      change: 'created',
+      state: 'active',
+      sealed: 'c2VhbGVk',
+      evidence: { recordSequence: 3, start: 0, end: 9 },
+      intentEvidence: null,
+      origin: 'conversation',
+      source: 'owner',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: { quote: 'pass' },
+      model: 'claude-opus-5-5',
+      noticeKey: 'turn/main/3',
+    },
+  });
+
+  expect(parseMemoryRecord(record)).toMatchObject({
+    model: 'claude-opus-5-5',
+    noticeKey: 'turn/main/3',
   });
 });
 
@@ -69,7 +98,12 @@ test.each([
   [
     'memory.forget_started',
     { itemID: 'item-a', version: 3 },
-    { kind: 'memory.forget_started', itemID: 'item-a', version: 3 },
+    { kind: 'memory.forget_started', itemID: 'item-a', version: 3, evidenceSequences: [] },
+  ],
+  [
+    'memory.forget_started',
+    { itemID: 'item-a', version: 3, evidenceSequences: [4, 9] },
+    { kind: 'memory.forget_started', itemID: 'item-a', version: 3, evidenceSequences: [4, 9] },
   ],
   ['memory.forgotten', { itemID: 'item-a' }, { kind: 'memory.forgotten', itemID: 'item-a' }],
 ] as const)('it reads a %s record', (kind, payload, expected) => {

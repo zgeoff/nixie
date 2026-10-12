@@ -43,6 +43,7 @@ test('it creates an item at version 1 with its provenance', async () => {
       task_id: 'task-7',
       proposal_id: 'proposal-2',
       checks: '{"quote":"pass"}',
+      model: null,
       sequence: 1,
       snapshot_hash: 'sha256:test',
       recorded_at: expect.toBeNumber(),
