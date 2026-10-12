@@ -2,13 +2,18 @@ import { expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { logProjections } from './log-projections';
 import { startTestLog } from './test-utils/start-test-log';
 import type { RecordInput } from './types';
 import { writeRecords } from './write-records';
 
+function setupTest() {
+  return startTestLog();
+}
+
 test('it writes every envelope field and returns each record with its sequence', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   const records = await writeRecords(ctx.log, [
     {
@@ -58,7 +63,7 @@ test('it writes every envelope field and returns each record with its sequence',
 });
 
 test('it refuses a record without the definitions field and writes none of the batch', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a caller that reached past the type
   const unpinned = { kind: 'owner_message', thread: 'conversation' } as unknown as RecordInput;
@@ -79,7 +84,7 @@ test('it refuses a record without the definitions field and writes none of the b
 });
 
 test('it refuses a record whose snapshot hash is empty', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   const write = writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: '' } },
@@ -91,7 +96,7 @@ test('it refuses a record whose snapshot hash is empty', async () => {
 });
 
 test('it keeps no plaintext of an erasable field in nixie.db', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     {
@@ -119,7 +124,7 @@ test('it keeps no plaintext of an erasable field in nixie.db', async () => {
 });
 
 test('it returns the erasable fields it encrypted', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   const records = await writeRecords(ctx.log, [
     {
@@ -136,7 +141,7 @@ test('it returns the erasable fields it encrypted', async () => {
 });
 
 test('it gives each record with erasable fields its own random key in keys.db', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     {
@@ -157,19 +162,29 @@ test('it gives each record with erasable fields its own random key in keys.db', 
   const keys = await sql<{ key_id: string }>`select key_id from record_keys`.execute(
     ctx.writer.keys,
   );
-  const [first, second, third] = records.rows;
+  const [first, second] = records.rows;
 
-  expect(first?.key_id).toMatch(UUID);
-  expect(second?.key_id).toMatch(UUID);
-  expect(first?.key_id).not.toBe(second?.key_id);
-  expect(third?.key_id).toBeNull();
-  expect(keys.rows).toIncludeSameMembers([{ key_id: first?.key_id }, { key_id: second?.key_id }]);
+  invariant(first);
+  invariant(second);
+  expect(records.rows).toStrictEqual([
+    {
+      key_id: expect.toSatisfy((keyID: string) =>
+        /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u.test(keyID),
+      ),
+    },
+    {
+      key_id: expect.toSatisfy((keyID: string) =>
+        /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u.test(keyID),
+      ),
+    },
+    { key_id: null },
+  ]);
+  expect(first.key_id).not.toBe(second.key_id);
+  expect(keys.rows).toIncludeSameMembers([{ key_id: first.key_id }, { key_id: second.key_id }]);
 });
 
-const UUID = /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u;
-
 test('it refuses a second record from the same step', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:aa11' }, stepKey: 'task-1:s1' },
@@ -185,7 +200,7 @@ test('it refuses a second record from the same step', async () => {
 });
 
 test('it writes no record when a projection fold fails', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   const failing = {
     table: 'threads',
@@ -207,7 +222,7 @@ test('it writes no record when a projection fold fails', async () => {
 });
 
 test('it refuses to update or delete a record', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },

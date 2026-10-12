@@ -68,6 +68,9 @@ test('it ignores a second release, which leaves a later holder its lock', async 
 
   const first = claimWriterLock(ctx.dataDir);
 
+  onTestFinished(() => {
+    first.release();
+  });
   first.release();
 
   const second = claimWriterLock(ctx.dataDir);

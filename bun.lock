@@ -205,6 +205,9 @@
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
       },
+      "devDependencies": {
+        "@faker-js/faker": "catalog:",
+      },
     },
     "modules/models": {
       "name": "@heynixie/models",

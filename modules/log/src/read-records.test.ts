@@ -4,8 +4,12 @@ import { readRecords } from './read-records';
 import { startTestLog } from './test-utils/start-test-log';
 import { writeRecords } from './write-records';
 
+function setupTest() {
+  return startTestLog();
+}
+
 test('it returns every record after the sequence with the rows as of that record', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },
@@ -49,7 +53,7 @@ test('it returns every record after the sequence with the rows as of that record
 });
 
 test('it returns no records after the newest sequence', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
@@ -61,7 +65,7 @@ test('it returns no records after the newest sequence', async () => {
 });
 
 test('it returns only the records of the thread asked for, up to the limit', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },
@@ -80,7 +84,7 @@ test('it returns only the records of the thread asked for, up to the limit', asy
 });
 
 test('it reads a record whose key fails to unwrap as unreadable and reads on past it', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     {
@@ -104,7 +108,7 @@ test('it reads a record whose key fails to unwrap as unreadable and reads on pas
 });
 
 test('it reads a record whose ciphertext fails to decrypt as unreadable', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     {
