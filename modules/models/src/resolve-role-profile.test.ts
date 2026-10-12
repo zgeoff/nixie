@@ -17,7 +17,10 @@ test.each([
 });
 
 test('it refuses a role map that names a missing profile', () => {
-  expect(() =>
-    resolveRoleProfile({ profiles: {}, roles: { conversation: 'chat' } }, 'conversation'),
-  ).toThrowWithMessage(Error, 'the conversation role names the profile chat, which is not defined');
+  const config = buildMockModelsConfig({ profiles: {}, roles: { conversation: 'chat' } });
+
+  expect(() => resolveRoleProfile(config, 'conversation')).toThrowWithMessage(
+    Error,
+    'the conversation role names the profile chat, which is not defined',
+  );
 });

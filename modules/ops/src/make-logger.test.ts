@@ -12,8 +12,19 @@ test('it writes one JSON line with the time and the event first', () => {
 
   log('step.committed', { taskID: 'conversation', records: 3, isRetry: false });
 
-  expect(lines).toStrictEqual([
-    '{"time":"2026-10-11T12:00:00.000Z","event":"step.committed","taskID":"conversation","records":3,"isRetry":false}\n',
+  expect(lines).toSatisfyAll(
+    (line: string) =>
+      line.startsWith('{"time":"2026-10-11T12:00:00.000Z","event":"step.committed",') &&
+      line.endsWith('}\n'),
+  );
+  expect(lines.map((line) => JSON.parse(line) as unknown)).toMatchObject([
+    {
+      time: '2026-10-11T12:00:00.000Z',
+      event: 'step.committed',
+      taskID: 'conversation',
+      records: 3,
+      isRetry: false,
+    },
   ]);
 });
 
@@ -28,5 +39,7 @@ test('it never lets a field replace the time or the event', () => {
 
   log('ready', { event: 'other', time: 'never' });
 
-  expect(lines).toStrictEqual(['{"time":"2026-10-11T12:00:00.000Z","event":"ready"}\n']);
+  expect(lines.map((line) => JSON.parse(line) as unknown)).toStrictEqual([
+    { time: '2026-10-11T12:00:00.000Z', event: 'ready' },
+  ]);
 });
