@@ -1,8 +1,7 @@
 {
   "$schema": "./node_modules/knip/schema.json",
-  // repo-sync delivers .claude/ verbatim, design spikes install and run on their own, and panda
-  // codegen writes the web styled-system on install
-  "ignore": [".claude/**", "docs/design/**", "apps/web/src/styled-system/**"],
+  // repo-sync delivers .claude/ verbatim, and design spikes install and run on their own
+  "ignore": [".claude/**", "docs/design/**"],
   // the shared oxlint config loads this plugin, which knip cannot see through
   "ignoreDependencies": ["@stylistic/eslint-plugin"],
   "workspaces": {
@@ -22,7 +21,8 @@
     "libs/db": { "entry": ["src/run-migration-check.ts", "src/run-schema-report.ts"] },
     // the conversation image runs its guest's entry by its path, so no import reaches it
     "guests/conversation": { "entry": ["src/main.ts"] },
-    // TanStack Router loads each route file by its path, so no import reaches it
-    "apps/web": { "entry": ["src/routes/**/*.tsx"] }
+    // TanStack Router loads each route file by its path, and Vite loads the PostCSS config by its
+    // name, so no import reaches them
+    "apps/web": { "entry": ["src/routes/**/*.tsx", "postcss.config.js"] }
   }
 }
