@@ -2,20 +2,13 @@ import { expect, test } from 'bun:test';
 import { collectOutput } from './collect-output';
 import { execOutputLimitBytes } from './exec-output-limit-bytes';
 
-function buildStream(chunks: readonly Uint8Array[]): ReadableStream<Uint8Array> {
-  return new ReadableStream({
-    start: (controller) => {
-      for (const chunk of chunks) {
-        controller.enqueue(chunk);
-      }
-      controller.close();
-    },
-  });
-}
-
 test('it cuts output past 1 MiB and counts every byte', async () => {
   const chunk = new Uint8Array(700 * 1024).fill(7);
-  const collected = await collectOutput(buildStream([chunk, chunk, chunk]), execOutputLimitBytes);
+
+  const collected = await collectOutput(
+    new Blob([chunk, chunk, chunk]).stream(),
+    execOutputLimitBytes,
+  );
 
   expect(execOutputLimitBytes).toBe(1_048_576);
   expect(collected.bytes.byteLength).toBe(1_048_576);
@@ -24,11 +17,11 @@ test('it cuts output past 1 MiB and counts every byte', async () => {
 });
 
 test('it keeps output under the limit whole', async () => {
-  const collected = await collectOutput(
-    buildStream([new TextEncoder().encode('he'), new TextEncoder().encode('llo')]),
-    execOutputLimitBytes,
-  );
+  const collected = await collectOutput(new Blob(['he', 'llo']).stream(), execOutputLimitBytes);
 
-  expect(new TextDecoder().decode(collected.bytes)).toBe('hello');
-  expect(collected).toMatchObject({ totalBytes: 5, isCut: false });
+  expect(collected).toStrictEqual({
+    bytes: new TextEncoder().encode('hello'),
+    totalBytes: 5,
+    isCut: false,
+  });
 });

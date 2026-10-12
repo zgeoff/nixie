@@ -1,75 +1,108 @@
 import { expect, test } from 'bun:test';
 import { buildSandboxSpec } from './build-sandbox-spec';
 import { requireSandboxSpec } from './require-sandbox-spec';
-import type { GrantSpec } from './types';
+import { buildMockGrantSpec } from './test-utils/build-mock-grant-spec';
 
-const modelGrant: GrantSpec = {
-  secret: 'model-default',
-  host: 'api.anthropic.com',
-  env: { ANTHROPIC_API_KEY: 'broker-placeholder' },
-};
-const limits = { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 };
+test.each([
+  ['conversation', { kind: 'none' }, true],
+  ['worker', { kind: 'none' }, true],
+  ['coding', { kind: 'allow', hosts: ['github.com'] }, true],
+] as const)(
+  'it builds a %s spec with the model grant from the kinds table',
+  (kind, egress, toolRoute) => {
+    const modelGrant = buildMockGrantSpec();
 
-test('it builds each kind of work from the kinds table', () => {
-  const specs = (['conversation', 'worker', 'code_run', 'fetch', 'coding'] as const).map((kind) =>
+    expect(
+      buildSandboxSpec({
+        kind,
+        image: 'image-a',
+        owner: 'task-1:step-1',
+        limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
+        modelGrant,
+        allowHosts: ['github.com'],
+      }),
+    ).toStrictEqual({
+      kind,
+      image: 'image-a',
+      owner: 'task-1:step-1',
+      egress,
+      grants: [modelGrant],
+      toolRoute,
+      limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
+    });
+  },
+);
+
+test.each([
+  ['code_run', { kind: 'none' }, false],
+  ['fetch', { kind: 'public' }, false],
+] as const)('it builds a %s spec with no grant from the kinds table', (kind, egress, toolRoute) => {
+  expect(
     buildSandboxSpec({
       kind,
-      image: kind,
+      image: 'image-a',
       owner: 'task-1:step-1',
-      limits,
-      modelGrant,
+      limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
+      modelGrant: buildMockGrantSpec(),
       allowHosts: ['github.com'],
     }),
-  );
+  ).toStrictEqual({
+    kind,
+    image: 'image-a',
+    owner: 'task-1:step-1',
+    egress,
+    grants: [],
+    toolRoute,
+    limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
+  });
+});
 
-  expect(
-    specs.map((spec) => ({
-      kind: spec.kind,
-      egress: spec.egress,
-      grants: spec.grants.map((grant) => grant.secret),
-      toolRoute: spec.toolRoute,
-    })),
-  ).toStrictEqual([
-    { kind: 'conversation', egress: { kind: 'none' }, grants: ['model-default'], toolRoute: true },
-    { kind: 'worker', egress: { kind: 'none' }, grants: ['model-default'], toolRoute: true },
-    { kind: 'code_run', egress: { kind: 'none' }, grants: [], toolRoute: false },
-    { kind: 'fetch', egress: { kind: 'public' }, grants: [], toolRoute: false },
-    {
-      kind: 'coding',
-      egress: { kind: 'allow', hosts: ['github.com'] },
-      grants: ['model-default'],
-      toolRoute: true,
-    },
-  ]);
-  for (const spec of specs) {
+test.each(['conversation', 'worker', 'code_run', 'fetch', 'coding'] as const)(
+  'it builds a %s spec that the spec rule accepts',
+  (kind) => {
+    const spec = buildSandboxSpec({
+      kind,
+      image: 'image-a',
+      owner: 'task-1:step-1',
+      limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
+      modelGrant: buildMockGrantSpec(),
+      allowHosts: ['github.com'],
+    });
+
     expect(() => {
       requireSandboxSpec(spec);
     }).not.toThrow();
-  }
-});
+  },
+);
 
-test('it adds the extra grants of a coding session only', () => {
-  const extra: GrantSpec = { secret: 'github', host: 'api.github.com', env: {} };
+test('it adds the extra grants to a coding session', () => {
+  const modelGrant = buildMockGrantSpec();
+  const extra = buildMockGrantSpec();
 
-  expect(
-    buildSandboxSpec({
-      kind: 'worker',
-      image: 'w',
-      owner: 'o',
-      limits,
-      modelGrant,
-      extraGrants: [extra],
-    }).grants,
-  ).toStrictEqual([modelGrant]);
   expect(
     buildSandboxSpec({
       kind: 'coding',
-      image: 'c',
-      owner: 'o',
-      limits,
+      image: 'image-a',
+      owner: 'task-1:step-1',
+      limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
       modelGrant,
       allowHosts: ['github.com'],
       extraGrants: [extra],
     }).grants,
   ).toStrictEqual([modelGrant, extra]);
+});
+
+test('it leaves the extra grants out of a worker', () => {
+  const modelGrant = buildMockGrantSpec();
+
+  expect(
+    buildSandboxSpec({
+      kind: 'worker',
+      image: 'image-a',
+      owner: 'task-1:step-1',
+      limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
+      modelGrant,
+      extraGrants: [buildMockGrantSpec()],
+    }).grants,
+  ).toStrictEqual([modelGrant]);
 });
