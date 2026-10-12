@@ -47,6 +47,7 @@ test('it reads one request frame, however it arrives, and writes one reply frame
       contentType: 'text/plain;charset=utf-8',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     },
   ]);
 });

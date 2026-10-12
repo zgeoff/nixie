@@ -21,11 +21,14 @@ flowchart LR
 
 The tool declares only the fetch effect and no destination, so the decision point's read-only rule
 allows it and it runs direct, inside the turn. Its result holds the final URL after redirects, the
-status code, the content type, the page's text and the truncated mark. Every field of the result is
-outside content, because the page and every redirect along the way came from someone other than the
-user. The result schema marks the status code and the truncated mark as endorsed types, because a
-number and a boolean cannot carry the page's words, while a URL can carry text in its path. A
-refused or failed fetch returns an error with its reason, which the model reads.
+status code, the content type, the page's text, the truncated mark and the blocked reason. Every
+field of the result is outside content, because the page and every redirect along the way came from
+someone other than the user. The result schema marks the status code and the truncated mark as
+endorsed types, because a number and a boolean cannot carry the page's words, while a URL can carry
+text in its path. A refused or failed fetch returns an error with its reason, which the model reads.
+When a site's bot protection answers in place of the page, the result is a page with its status and
+a blocked reason, so the model can tell the user why the fetch has no content instead of retrying. A
+blocked page is a page, so nixie keeps the fetch sandbox after it.
 
 ## The fetch sandbox
 
@@ -72,10 +75,16 @@ after a compressed body is decoded, so a small compressed body cannot expand pas
 body limit or the text limit stops the read and marks the result truncated, and the text cut never
 splits a character. Passing the time limit or the redirect limit fails the fetch.
 
-An HTML page returns its readable text: the title, then the text outside scripts, styles and other
-hidden elements, with a line break around each block. Another text type returns as it arrived, in
-the charset its content type names, and a binary type returns no text, so the fetcher never reads
-its body.
+An HTML page returns its readable text: the title, then the text of the page's main content, outside
+scripts, styles and other hidden elements, with a line break around each block. The main content is
+the page's articles, else its main element, else the whole page without its own header and footer,
+and the fetcher takes the next of those when one holds no text. Navigation and asides never count,
+so site menus never use up the text limit before the content. An article comes before the main
+element because a site's main element often holds toolbars around the article. Another text type
+returns as it arrived, in the charset its content type names, and a binary type returns no text, so
+the fetcher never reads its body. A 403 or 503 that carries Cloudflare's challenge header, or the
+markup of its challenge page, sets the blocked reason. A challenge needs a browser that runs its
+script, so the fetcher reports it rather than trying to pass it.
 
 ## The fetch image
 

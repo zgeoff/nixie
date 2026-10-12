@@ -20,6 +20,7 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
     contentType: requireStringOrNull(reply, 'contentType'),
     text: requireStringOrNull(reply, 'text'),
     isTruncated: requireBoolean(reply, 'isTruncated'),
+    blocked: requireStringOrNull(reply, 'blocked'),
   };
 }
 

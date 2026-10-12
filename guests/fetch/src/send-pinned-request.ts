@@ -17,6 +17,10 @@ export interface PinnedRequestOptions {
   readonly ca?: string;
 }
 
+// a browser-shaped user agent that still names nixie, for sites that refuse an agent they cannot
+// place; it claims no browser, so a site can tell the fetcher apart
+const userAgent = 'Mozilla/5.0 (compatible; nixie-fetch/1.0)';
+
 // Sends a GET to the checked address, with the host name for TLS and in the Host header. It carries
 // no credential, cookie or stored header, and never goes through a proxy, which would resolve the
 // host itself: an empty proxyEnv stops the runtime from reading one from the environment.
@@ -39,7 +43,7 @@ export function sendPinnedRequest(
       agent: new Agent({ keepAlive: false, proxyEnv: {} }),
       ...(options.ca === undefined ? {} : { ca: options.ca }),
       headers: {
-        'user-agent': 'nixie-fetch',
+        'user-agent': userAgent,
         accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
         'accept-encoding': 'gzip, deflate, br',
       },
