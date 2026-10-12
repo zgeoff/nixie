@@ -1,3 +1,4 @@
+import { onTestFinished } from 'bun:test';
 import { join } from 'node:path';
 
 const webDir = join(import.meta.dir, '..', '..');
@@ -15,6 +16,12 @@ export function buildWebOnce(): Promise<string> {
 
 async function runBuild(): Promise<string> {
   const child = Bun.spawn(['bun', 'run', 'build'], { cwd: webDir, stderr: 'pipe', stdout: 'pipe' });
+
+  // a build that outlives the test that started it stops with that test, which failed on it
+  onTestFinished(() => {
+    child.kill();
+  });
+
   const exitCode = await child.exited;
 
   if (exitCode !== 0) {
