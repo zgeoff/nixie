@@ -9,7 +9,7 @@ import { loadCheckerReport } from '../test-utils/load-checker-report';
 
 interface SetupConfig {
   // the corpus file's name, which names its report too
-  readonly name: 'corpus' | 'held-out-1' | 'held-out-2' | 'held-out-3';
+  readonly name: 'corpus' | 'held-out-1' | 'held-out-2' | 'held-out-3' | 'held-out-4';
 }
 
 // a committed corpus and the committed report of its last run
@@ -20,7 +20,7 @@ async function setupTest(config: SetupConfig) {
   return { corpus, report };
 }
 
-test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3'] as const)(
+test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3', 'held-out-4'] as const)(
   'it checks a %s report that the checker prompt in force produced',
   async (name) => {
     const ctx = await setupTest({ name });
@@ -31,7 +31,7 @@ test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3'] as const)(
   },
 );
 
-test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3'] as const)(
+test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3', 'held-out-4'] as const)(
   'it checks a %s report that ran every pair, on the input the gate renders, each repeat',
   async (name) => {
     const ctx = await setupTest({ name });
@@ -60,7 +60,7 @@ test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3'] as const)(
   },
 );
 
-test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3'] as const)(
+test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3', 'held-out-4'] as const)(
   'it never confirms a memory that a %s message does not assert',
   async (name) => {
     const ctx = await setupTest({ name });

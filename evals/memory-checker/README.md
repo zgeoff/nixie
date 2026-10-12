@@ -36,11 +36,11 @@ Sonnet 5.5 at low effort, with the 10 s timeout and the reason asked before the 
 | held-out-1 | 0 of 42             | 0 of 36 | 0 of 78      | $0.23 |
 | held-out-2 | 0 of 42             | 0 of 36 | 1 of 78      | $0.26 |
 | held-out-3 | 0 of 42             | 0 of 30 | 0 of 72      | $0.23 |
+| held-out-4 | 0 of 42             | 0 of 33 | 1 of 75      | $0.23 |
 
-Both failed calls timed out on a memory the message asserts, so each sent a true memory to review.
-The p95 latency ran from 3.1 s to 8.4 s across the sets. The prompt was tuned on the corpus. Each
-held-out set was written and committed, with its labels, before any run, and its pass rule was no
-wrong confirmation:
+Each failed call timed out and answered unsure, which sends the write to review. The p95 latency ran
+from 3.1 s to 8.4 s across the sets. The prompt was tuned on the corpus. Each held-out set was
+written and committed, with its labels, before any run, and its pass rule was no wrong confirmation:
 
 - [held-out-1.json](held-out-1.json) failed on agreed advice and on a fact a question presupposes,
   so the prompt gained a rule for each, and the set became a tuning set.
@@ -51,6 +51,7 @@ wrong confirmation:
   the set became a tuning set.
 - [held-out-3.json](held-out-3.json) scored the reason-first schema before and after that example,
   and passed both times.
+- [held-out-4.json](held-out-4.json) scored the final prompt, which no change followed, and passed.
 
 The first measurement, before the prompt took the evidence mark and the rule that a memory may keep
 the message's own condition or attribution, ran Haiku 5.5, Sonnet 5.5 and Opus 5.5 over the same

@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test';
+import { stat } from 'node:fs/promises';
+import { join } from 'node:path';
 import { findRecordKeys, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { createProposal } from './test-utils/create-proposal';
+import { startKeyStoreReader } from './test-utils/start-key-store-reader';
 import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
@@ -76,3 +80,28 @@ test('it never removes the key of a pending proposal', async () => {
 
   expect(keys.get(row.item_id)).toBeInstanceOf(CryptoKey);
 });
+
+// each blocked checkpoint waits out the database's busy timeout before it reports the reader
+test('it finishes on the next lapse sweep a key removal whose checkpoint a reader blocked', async () => {
+  const clock = buildTestClock(1_000_000);
+  const memory = await startTestMemory({
+    gate: { clock, limits: { evidenceWindow: 20, proposalLapseMs: 5000, proposalCap: 10 } },
+  });
+
+  await createProposal(memory.store, { text: 'Likes jazz' });
+
+  const reader = await startKeyStoreReader(memory.dataDir);
+
+  clock.advance(5000);
+
+  const blocked = await memory.store.proposals.lapse().then(
+    () => 'finished',
+    () => 'blocked',
+  );
+
+  await reader.release();
+  await memory.store.proposals.lapse();
+
+  expect(blocked).toBe('blocked');
+  expect(stat(join(memory.dataDir, 'keys.db-wal'))).resolves.toMatchObject({ size: 0 });
+}, 20_000);
