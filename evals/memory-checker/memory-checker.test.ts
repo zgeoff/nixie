@@ -9,7 +9,7 @@ import { loadCheckerReport } from '../test-utils/load-checker-report';
 
 interface SetupConfig {
   // the corpus file's name, which names its report too
-  readonly name: 'corpus' | 'held-out';
+  readonly name: 'corpus' | 'held-out-1' | 'held-out-2';
 }
 
 // a committed corpus and the committed report of its last run
@@ -20,7 +20,7 @@ async function setupTest(config: SetupConfig) {
   return { corpus, report };
 }
 
-test.each(['corpus', 'held-out'] as const)(
+test.each(['corpus', 'held-out-1', 'held-out-2'] as const)(
   'it checks a %s report that the checker prompt in force produced',
   async (name) => {
     const ctx = await setupTest({ name });
@@ -31,7 +31,7 @@ test.each(['corpus', 'held-out'] as const)(
   },
 );
 
-test.each(['corpus', 'held-out'] as const)(
+test.each(['corpus', 'held-out-1', 'held-out-2'] as const)(
   'it checks a %s report that ran every pair, on the input the gate renders, each repeat',
   async (name) => {
     const ctx = await setupTest({ name });
@@ -60,27 +60,35 @@ test.each(['corpus', 'held-out'] as const)(
   },
 );
 
-test('it never confirms a memory that the message does not assert', async () => {
-  const ctx = await setupTest({ name: 'corpus' });
+test.each(['corpus', 'held-out-1', 'held-out-2'] as const)(
+  'it never confirms a memory that a %s message does not assert',
+  async (name) => {
+    const ctx = await setupTest({ name });
 
-  const unasserted = collectLabelledCalls(ctx.corpus, ctx.report).filter(
-    (labelled) => !labelled.pair.asserted,
-  );
+    const unasserted = collectLabelledCalls(ctx.corpus, ctx.report).filter(
+      (labelled) => !labelled.pair.asserted,
+    );
 
-  expect(unasserted).not.toHaveLength(0);
-  expect(unasserted).toSatisfyAll((labelled: LabelledCall) => labelled.call.verdict !== 'asserted');
-});
+    expect(unasserted).not.toHaveLength(0);
+    expect(unasserted).toSatisfyAll(
+      (labelled: LabelledCall) => labelled.call.verdict !== 'asserted',
+    );
+  },
+);
 
-test('it confirms every memory that the message asserts, on every call the checker answered', async () => {
-  const ctx = await setupTest({ name: 'corpus' });
+test.each(['corpus', 'held-out-1'] as const)(
+  'it confirms every memory that a %s message asserts, on every call the checker answered',
+  async (name) => {
+    const ctx = await setupTest({ name });
 
-  const asserted = collectLabelledCalls(ctx.corpus, ctx.report).filter(
-    (labelled) => labelled.pair.asserted && labelled.call.failure === null,
-  );
+    const asserted = collectLabelledCalls(ctx.corpus, ctx.report).filter(
+      (labelled) => labelled.pair.asserted && labelled.call.failure === null,
+    );
 
-  expect(asserted).not.toHaveLength(0);
-  expect(asserted).toSatisfyAll((labelled: LabelledCall) => labelled.call.verdict === 'asserted');
-});
+    expect(asserted).not.toHaveLength(0);
+    expect(asserted).toSatisfyAll((labelled: LabelledCall) => labelled.call.verdict === 'asserted');
+  },
+);
 
 test('it gives no verdict of its own on at most 1 call in 100', async () => {
   const ctx = await setupTest({ name: 'corpus' });

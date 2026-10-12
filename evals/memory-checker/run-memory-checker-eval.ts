@@ -2,7 +2,7 @@
 
 // Runs each corpus pair through the production checker, prompt and gate input, and writes the
 // report the eval suite checks. It calls the model with the local Claude Code login, so CI never
-// runs it: env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts <corpus|held-out>
+// runs it: env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts <corpus|held-out-1|held-out-2>
 import { mkdtemp } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';

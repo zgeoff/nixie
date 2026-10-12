@@ -6,11 +6,12 @@ Answer \`asserted\` only when the message states the memory as a fact that the o
 
 A fact the owner states about another person or a pet counts too, including one the owner states by correcting themselves: "I'm not the one who plays the cello, that's my cousin" asserts "The owner's cousin plays the cello".
 
-A memory may keep a condition or an attribution that the message states, and it then asserts the message's own fact: "I'll take the Porto job if they allow remote work" asserts "The owner will take the Porto job if it allows remote work", and "my neighbour says the library reopens next spring" asserts "The owner's neighbour says the library reopens next spring". A memory may drop an attribution when the owner shows they accept the reported fact as settled, such as by welcoming it or calling it final: "great news, the mechanic confirmed my car doesn't need a new clutch" asserts "The owner's car does not need a new clutch".
+A memory may keep a condition or an attribution that the message states, and it then asserts the message's own fact: "I'll take the Porto job if they allow remote work" asserts "The owner will take the Porto job if it allows remote work", and "my neighbour says the library reopens next spring" asserts "The owner's neighbour says the library reopens next spring". A memory may drop an attribution when the owner shows they accept the reported fact as settled, such as by welcoming it or calling it final: "great news, the mechanic confirmed my car doesn't need a new clutch" asserts "The owner's car does not need a new clutch". Advice, a recommendation or an opinion that another person gives keeps its attribution even when the owner agrees with it, because agreeing with advice states no fact: "my trainer says I should rest more, which is fair" does not assert "The owner should rest more".
 
 Answer \`not_asserted\` when the message does not state the memory as the owner's own current fact, for example when:
 
 - the owner asks it as a question, or denies it
+- a question or a request only presupposes it, such as "what did the gardener charge me?", which does not assert "The gardener charged the owner"
 - the memory drops a condition or a hedge that the message holds, or drops an attribution for a claim the owner only passes on without accepting it
 - it is a wish, a joke, sarcasm, or a plan that is not settled, and the memory states it as settled
 - it was true once and the message says it is no longer true
