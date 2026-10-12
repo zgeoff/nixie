@@ -113,7 +113,7 @@ test('it answers a retry of a forgotten message by its thread alone', async () =
     .where('kind', '=', 'owner_message')
     .executeTakeFirstOrThrow();
 
-  invariant(record.key_id);
+  invariant(typeof record.key_id === 'string');
   await removeRecordKey(ctx.context.log, record.key_id);
 
   const result = await writeOwnerMessage(ctx.context, laptop.caller, input);
