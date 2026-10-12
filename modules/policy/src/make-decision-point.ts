@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant';
 import { getFixedRules } from './get-fixed-rules';
 import type {
   DecisionPoint,
@@ -63,5 +64,5 @@ function pickRuleDecision(
       };
     }
   }
-  throw new Error('no fixed rule decided the call, but slice1.read-only decides every call');
+  invariant(false, 'no fixed rule decided the call, but slice1.read-only decides every call');
 }

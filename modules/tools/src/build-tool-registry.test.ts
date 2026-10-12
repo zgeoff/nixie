@@ -14,7 +14,10 @@ test('it finds nothing for a name it does not hold', () => {
 
 test('it refuses two tools with one name', () => {
   expect(() =>
-    buildToolRegistry([buildMockToolDefinition(), buildMockToolDefinition()]),
+    buildToolRegistry([
+      buildMockToolDefinition({ name: 'notes_read' }),
+      buildMockToolDefinition({ name: 'notes_read' }),
+    ]),
   ).toThrowWithMessage(Error, 'the tool notes_read is defined twice');
 });
 
@@ -28,7 +31,7 @@ test('it refuses a send tool that runs direct', () => {
 
 test('it refuses a read tool that runs queued', () => {
   expect(() =>
-    buildToolRegistry([buildMockToolDefinition({ execution: 'queued' })]),
+    buildToolRegistry([buildMockToolDefinition({ name: 'notes_read', execution: 'queued' })]),
   ).toThrowWithMessage(Error, 'the tool notes_read runs queued, but its effects make it direct');
 });
 
@@ -57,12 +60,14 @@ test('it refuses a source of content for a field the result does not have', () =
 
 test('it refuses an input schema that is not an object', () => {
   expect(() =>
-    buildToolRegistry([buildMockToolDefinition({ input: { type: 'string' } })]),
+    buildToolRegistry([buildMockToolDefinition({ name: 'notes_read', input: { type: 'string' } })]),
   ).toThrowWithMessage(Error, 'the tool notes_read needs an object input schema');
 });
 
 test('it reports the path of an input that breaks the input schema', () => {
-  const registered = buildToolRegistry([buildMockToolDefinition()]).findTool('notes_read');
+  const registered = buildToolRegistry([buildMockToolDefinition({ name: 'notes_read' })]).findTool(
+    'notes_read',
+  );
 
   expect(registered?.parseInput({ query: 7 })).toStrictEqual({
     isValid: false,
@@ -71,7 +76,9 @@ test('it reports the path of an input that breaks the input schema', () => {
 });
 
 test('it accepts an input that meets the input schema', () => {
-  const registered = buildToolRegistry([buildMockToolDefinition()]).findTool('notes_read');
+  const registered = buildToolRegistry([buildMockToolDefinition({ name: 'notes_read' })]).findTool(
+    'notes_read',
+  );
 
   expect(registered?.parseInput({ query: 'milk' })).toStrictEqual({ isValid: true });
 });

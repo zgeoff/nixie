@@ -1,32 +1,21 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeDecisionPoint } from './make-decision-point';
-import type { EffectDeclaration } from './types';
-
-function setupTest() {
-  const declarations = new Map<string, EffectDeclaration>([
-    ['web_fetch', { effects: ['fetch'], destinations: [], amount: null, content: [], results: {} }],
-    [
-      'gmail_send',
-      { effects: ['send'], destinations: ['to'], amount: null, content: ['body'], results: {} },
-    ],
-    [
-      'test.send',
-      { effects: ['send'], destinations: ['to'], amount: null, content: [], results: {} },
-    ],
-    ['bare', { effects: [], destinations: [], amount: null, content: [], results: {} }],
-  ]);
-  const decide = makeDecisionPoint({ findDeclaration: (tool) => declarations.get(tool) ?? null });
-
-  return { decide };
-}
 
 test('it allows a listed fetch tool through slice1.read-only', () => {
-  const ctx = setupTest();
+  const decide = makeDecisionPoint({
+    findDeclaration: () => ({
+      effects: ['fetch'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: {},
+    }),
+  });
 
-  expect(ctx.decide({ tool: 'web_fetch', toolList: ['web_fetch'] })).toStrictEqual({
+  expect(decide({ tool: 'web_fetch', toolList: ['web_fetch'] })).toStrictEqual({
     decision: {
       outcome: 'allow',
       stage: 3,
@@ -37,46 +26,87 @@ test('it allows a listed fetch tool through slice1.read-only', () => {
 });
 
 test('it denies a listed send tool with slice1.read-only and its sentence', () => {
-  const ctx = setupTest();
+  const decide = makeDecisionPoint({
+    findDeclaration: () => ({
+      effects: ['send'],
+      destinations: ['to'],
+      amount: null,
+      content: ['body'],
+      results: {},
+    }),
+  });
 
-  expect(ctx.decide({ tool: 'gmail_send', toolList: ['gmail_send'] })).toStrictEqual({
+  expect(decide({ tool: 'gmail_send', toolList: ['gmail_send'] })).toStrictEqual({
     decision: { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
     sentence:
       'slice1.read-only: Only a tool whose effects are read, fetch or note may run; every other call is denied.',
   });
 });
 
-test('it denies an unknown tool at the registry stage', () => {
-  const ctx = setupTest();
+test('it looks up the declaration of the tool the call names', () => {
+  const findDeclaration = mock(() => null);
+  const decide = makeDecisionPoint({ findDeclaration });
 
-  expect(ctx.decide({ tool: 'nope', toolList: ['nope'] })).toStrictEqual({
+  decide({ tool: 'web_fetch', toolList: ['web_fetch'] });
+
+  expect(findDeclaration).toHaveBeenCalledExactlyOnceWith('web_fetch');
+});
+
+test('it denies an unknown tool at the registry stage', () => {
+  const decide = makeDecisionPoint({ findDeclaration: () => null });
+
+  expect(decide({ tool: 'nope', toolList: ['nope'] })).toStrictEqual({
     decision: { outcome: 'deny', stage: 1, rule: null },
     sentence: 'The tool nope is unknown or has no effect declaration.',
   });
 });
 
 test('it denies a tool that declares no effect at the registry stage', () => {
-  const ctx = setupTest();
+  const decide = makeDecisionPoint({
+    findDeclaration: () => ({
+      effects: [],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: {},
+    }),
+  });
 
-  expect(ctx.decide({ tool: 'bare', toolList: ['bare'] })).toStrictEqual({
+  expect(decide({ tool: 'bare', toolList: ['bare'] })).toStrictEqual({
     decision: { outcome: 'deny', stage: 1, rule: null },
     sentence: 'The tool bare is unknown or has no effect declaration.',
   });
 });
 
 test("it denies a registered tool that is not on the caller's tool list at the scope stage", () => {
-  const ctx = setupTest();
+  const decide = makeDecisionPoint({
+    findDeclaration: () => ({
+      effects: ['fetch'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: {},
+    }),
+  });
 
-  expect(ctx.decide({ tool: 'web_fetch', toolList: ['gmail_send'] })).toStrictEqual({
+  expect(decide({ tool: 'web_fetch', toolList: ['gmail_send'] })).toStrictEqual({
     decision: { outcome: 'deny', stage: 2, rule: null },
     sentence: "The tool web_fetch is not on this run's tool list.",
   });
 });
 
 test('it allows test.send through test.allow-send in a test build', () => {
-  const ctx = setupTest();
+  const decide = makeDecisionPoint({
+    findDeclaration: () => ({
+      effects: ['send'],
+      destinations: ['to'],
+      amount: null,
+      content: [],
+      results: {},
+    }),
+  });
 
-  expect(ctx.decide({ tool: 'test.send', toolList: ['test.send'] })).toStrictEqual({
+  expect(decide({ tool: 'test.send', toolList: ['test.send'] })).toStrictEqual({
     decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
     sentence: null,
   });

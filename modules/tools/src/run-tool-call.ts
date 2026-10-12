@@ -2,6 +2,7 @@ import type { ContentSource, Decision, Definitions, JSONObject, Log } from '@hey
 import { writeRecords } from '@heynixie/log';
 import type { DecisionPoint, PolicyDecision } from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
+import invariant from 'tiny-invariant';
 import type {
   ActionQueue,
   RegisteredTool,
@@ -106,9 +107,7 @@ function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions
         },
       ]);
 
-      if (written === undefined) {
-        throw new Error('the log wrote no record for the tool call');
-      }
+      invariant(written, 'the log wrote no record for the tool call');
       return written.sequence;
     },
     writeResult: async (callSequence, settled) => {
