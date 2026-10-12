@@ -178,8 +178,8 @@ test('it carries framed messages both ways on a spawn stream', async () => {
   const first = await messages.next();
   const second = await messages.next();
 
-  expect(new TextDecoder().decode(first.value)).toBe('first');
-  expect(new TextDecoder().decode(second.value)).toBe('second');
+  expect(first).toStrictEqual({ done: false, value: new TextEncoder().encode('first') });
+  expect(second).toStrictEqual({ done: false, value: new TextEncoder().encode('second') });
 });
 
 test('it ends a spawn stream whose message passes the caller limit', async () => {
@@ -200,17 +200,17 @@ test('it kills the whole group when SIGTERM leaves it running', async () => {
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
 
   // the child starts with SIGTERM ignored; the shell then traps it, notes it in term.txt, and goes
-  // on waiting, so only the kill ends the group
+  // on waiting, so only the kill ends the group; ready.txt shows both traps are set
   const stream = await sandbox.spawn({
     argv: [
       'sh',
       '-c',
-      'trap "" TERM; sleep 60 & echo $! > child.pid; trap "echo term > term.txt" TERM; while :; do wait; done',
+      'trap "" TERM; sleep 60 & echo $! > child.pid; trap "echo term > term.txt" TERM; echo ready > ready.txt; while :; do wait; done',
     ],
     maxMessageBytes: 1024,
   });
 
-  await waitForCondition(() => Bun.file(join(ctx.rootDir, sandbox.id, 'fs', 'child.pid')).exists());
+  await waitForCondition(() => Bun.file(join(ctx.rootDir, sandbox.id, 'fs', 'ready.txt')).exists());
 
   const exit = await stream.stop();
   const after = await sandbox.exec({
@@ -343,7 +343,7 @@ test('it resumes a sleeping process on the wake', async () => {
 
   const message = await stream.messages[Symbol.asyncIterator]().next();
 
-  expect(new TextDecoder().decode(message.value)).toBe('x');
+  expect(message).toStrictEqual({ done: false, value: new TextEncoder().encode('x') });
 });
 
 test('it reports the exit of an exec that stops reading stdin early', async () => {

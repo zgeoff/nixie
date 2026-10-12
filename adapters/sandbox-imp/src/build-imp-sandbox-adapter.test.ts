@@ -334,7 +334,7 @@ test('it carries framed messages on a spawn stream, and a stop sends SIGTERM und
   const message = await stream.messages[Symbol.asyncIterator]().next();
   const exit = await stream.stop();
 
-  expect(new TextDecoder().decode(message.value)).toBe('hello');
+  expect(message).toStrictEqual({ done: false, value: new TextEncoder().encode('hello') });
   expect(exit.signal).toBe('SIGTERM');
   expect(ctx.imp.execs.at(0)).toMatchObject({
     argv: ['cat'],
