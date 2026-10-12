@@ -184,12 +184,12 @@ test('it generates an OpenAPI document with one operation for each procedure', (
 });
 
 // EasyPrivacy blocks /rpc/log/* and /rpc/log? on every domain, so a browser with a content blocker
-// never reaches a procedure whose path starts with a log segment.
+// never reaches a procedure whose path holds a log segment.
 test('it keeps a log segment out of the path of every procedure that is not deprecated', async () => {
   const document = await buildOpenAPIDocument();
   const current = Object.entries(document.paths ?? {})
     .filter(([, item]) => item?.post?.deprecated !== true)
     .map(([path]) => path);
 
-  expect(current).toSatisfyAll((path: string) => !/^\/log(?:[/?]|$)/u.test(path));
+  expect(current).toSatisfyAll((path: string) => !/\/log(?:[/?]|$)/u.test(path));
 });
