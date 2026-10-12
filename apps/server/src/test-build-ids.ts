@@ -22,6 +22,8 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'recovery.step.4': 'recovery.step.',
   'recovery.step.5': 'recovery.step.',
   'sigterm.grace': 'sigterm.grace',
+  'memory.recall.ranked': 'memory.recall.ranked',
+  'memory.forget.key_removed': 'memory.forget.key_removed',
 };
 
 // The IDs that only a test build may hold: every fault point, and the test rule's ID.

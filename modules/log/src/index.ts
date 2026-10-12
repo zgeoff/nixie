@@ -1,7 +1,10 @@
 export { claimWriterEpoch } from './claim-writer-epoch';
+export type { RecordKey } from './create-record-key';
+export { createRecordKey } from './create-record-key';
 export { claimWriterLock } from './claim-writer-lock';
 export { KeyStoreBusyError } from './key-store-busy-error';
 export { logProjections } from './log-projections';
+export { findRecordKeys } from './find-record-keys';
 export { MissingDefinitionsError } from './missing-definitions-error';
 export type { ReadRecordsOptions } from './read-records';
 export { readRecords } from './read-records';

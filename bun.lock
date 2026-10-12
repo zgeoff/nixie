@@ -235,6 +235,22 @@
         "@faker-js/faker": "catalog:",
       },
     },
+    "modules/memory": {
+      "name": "@heynixie/memory",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+      },
+    },
     "modules/models": {
       "name": "@heynixie/models",
       "version": "0.0.0",
@@ -504,6 +520,8 @@
     "@heynixie/fetch": ["@heynixie/fetch@workspace:guests/fetch"],
 
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
+
+    "@heynixie/memory": ["@heynixie/memory@workspace:modules/memory"],
 
     "@heynixie/models": ["@heynixie/models@workspace:modules/models"],
 

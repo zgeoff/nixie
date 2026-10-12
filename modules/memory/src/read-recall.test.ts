@@ -1,0 +1,199 @@
+import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
+import { startFaultPointHold } from './test-utils/start-fault-point-hold';
+import { startTestMemory } from './test-utils/start-test-memory';
+
+async function setupTest() {
+  return { memory: await startTestMemory() };
+}
+
+test('it returns the items that match a query word for word, with their provenance', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'The library closes at six on Sundays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await ctx.memory.store.recall({ query: 'blue flowerpot' });
+
+  expect(result).toStrictEqual({
+    items: [
+      {
+        itemID: item.itemID,
+        version: 1,
+        change: 'created',
+        state: 'active',
+        isPinned: false,
+        origin: 'owner',
+        source: 'owner',
+        recordedAt: expect.any(Number),
+        text: 'The spare key sits under the blue flowerpot',
+      },
+    ],
+    next: null,
+  });
+});
+
+test('it matches a query word through its stem', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Waters the ferns every Tuesday',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await ctx.memory.store.recall({ query: 'watering' });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([item.itemID]);
+});
+
+test('it returns items by ID in the order asked', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.memory.store.remember({
+    text: 'Prefers window seats on trains',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const second = await ctx.memory.store.remember({
+    text: 'Allergic to hazelnuts',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await ctx.memory.store.recall({ itemIDs: [second.itemID, first.itemID] });
+
+  expect(result.items.map((recalled) => recalled.text)).toStrictEqual([
+    'Allergic to hazelnuts',
+    'Prefers window seats on trains',
+  ]);
+});
+
+test('it lists every active item a page at a time', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Prefers window seats on trains',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  await ctx.memory.store.remember({
+    text: 'Allergic to hazelnuts',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  await ctx.memory.store.remember({
+    text: 'The library closes at six on Sundays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const firstPage = await ctx.memory.store.recall({ limit: 2 });
+  const secondPage = await ctx.memory.store.recall({ limit: 2, after: firstPage.next ?? '' });
+
+  expect(firstPage.items.map((recalled) => recalled.text)).toStrictEqual([
+    'Prefers window seats on trains',
+    'Allergic to hazelnuts',
+  ]);
+  expect(secondPage).toMatchObject({
+    items: [{ text: 'The library closes at six on Sundays' }],
+    next: null,
+  });
+});
+
+test('it leaves a retired item out unless asked for retired items', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const active = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+  const withRetired = await ctx.memory.store.recall({
+    itemIDs: [item.itemID],
+    includeRetired: true,
+  });
+
+  expect(active.items).toStrictEqual([]);
+  expect(withRetired.items).toMatchObject([{ state: 'retired', text: 'Lives on Elm Street' }]);
+});
+
+test('it returns every version of an item with its history', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Lives on Oak Avenue',
+    target: item,
+    provenance: {
+      origin: 'conversation',
+      source: 'owner',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  const result = await ctx.memory.store.recall({ itemIDs: [item.itemID], includeHistory: true });
+
+  expect(result.items).toMatchObject([
+    {
+      version: 2,
+      text: 'Lives on Oak Avenue',
+      history: [
+        { version: 1, change: 'created', origin: 'owner', text: 'Lives on Elm Street' },
+        { version: 2, change: 'edited', origin: 'conversation', text: 'Lives on Oak Avenue' },
+      ],
+    },
+  ]);
+});
+
+test('it records each item and version it delivered, and no text', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.recall({ query: 'flowerpot', thread: 'conversation' });
+
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(
+    records.map((entry) => entry.record).filter((record) => record.kind === 'memory.recalled'),
+  ).toMatchObject([
+    {
+      thread: 'conversation',
+      payload: { items: [{ itemID: item.itemID, version: 1 }] },
+      erasable: { status: 'none' },
+    },
+  ]);
+});
+
+test('it never delivers an item that a forget removed while the recall ranked it', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const hold = startFaultPointHold('memory.recall.ranked');
+  const recall = ctx.memory.store.recall({ query: 'flowerpot', thread: 'conversation' });
+  const ranked = await hold.reached;
+
+  await ctx.memory.store.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  hold.release();
+
+  const result = await recall;
+
+  expect(ranked).toStrictEqual({ kind: 'memory', id: null });
+  expect(result).toStrictEqual({ items: [], next: null });
+});
