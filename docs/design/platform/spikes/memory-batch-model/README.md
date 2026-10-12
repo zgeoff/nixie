@@ -51,8 +51,8 @@ bun report.ts runs/persona-plain/run.json runs/persona/run.json
 An input file replaces the fixture with other turns, such as an export of a real log that stays
 outside the repo. It holds `seed`, a list of items with an `id` and `text`, and `turns`, each with
 `at` in minutes, the owner text with pasted spans in ⟦ ⟧ and the reply. The fixture's gold facts and
-traps say nothing about other turns, so the judge does not run and [report.ts](report.ts) refuses
-the result. Each batch's token counts sit in the run's `run.json`.
+traps say nothing about other turns, so the judge does not run, and [report.ts](report.ts) and
+[rejudge.ts](rejudge.ts) refuse the result. Each batch's token counts sit in the run's `run.json`.
 
 ```bash
 env -u ANTHROPIC_API_KEY bun --no-env-file run.ts --samples 1 --input <turns_file> --out <out_dir>
