@@ -181,7 +181,7 @@ test('it queues a new action when the same call settled under an earlier step', 
 test('it queues nothing once the step lost its lease', async () => {
   const ctx = await setupTest();
 
-  ctx.clock.advance(60_000);
+  ctx.clock.advance(ctx.step.lease.expiresAt - ctx.clock.now());
 
   const create = createAllowedAction(ctx.context, {
     step: ctx.step,
