@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { GuestFrame, HostFrame } from '@heynixie/wire';
+import type { GuestFrame } from '@heynixie/wire';
 import {
   decodeTurnFrame,
   encodeFrame,
@@ -10,6 +10,7 @@ import {
   guestFrameSchema,
   makeFrameDecoder,
 } from '@heynixie/wire';
+import { buildMockMessageFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import { runConversationGuest } from './run-conversation-guest';
 import { buildStubToolServer } from './test-utils/build-stub-tool-server';
 import { startStubModel } from './test-utils/start-stub-model';
@@ -41,14 +42,7 @@ async function setupTest() {
 
 test('it runs the turn the first frame starts and writes its frames framed', async () => {
   const ctx = await setupTest();
-  const turn: HostFrame = {
-    type: 'turn',
-    profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
-    tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
-    resume: null,
-    systemPrompt: 'You are nixie.',
-    input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
-  };
+  const turn = buildMockTurnFrame({ profile: { baseURL: ctx.model.url } });
 
   ctx.model.addReplies({ text: 'Hello.' });
   await runConversationGuest({
@@ -75,14 +69,10 @@ test('it reaches the run tool endpoint over HTTP with the run bearer token', asy
 
   onTestFinished(() => endpoint.stop(true));
 
-  const turn: HostFrame = {
-    type: 'turn',
-    profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
+  const turn = buildMockTurnFrame({
+    profile: { baseURL: ctx.model.url },
     tools: { url: `http://127.0.0.1:${endpoint.port}`, token: 'run-token' },
-    resume: null,
-    systemPrompt: 'You are nixie.',
-    input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
-  };
+  });
 
   await runConversationGuest({
     input: [encodeFrame(encodeTurnFrame(turn))],
@@ -96,10 +86,7 @@ test('it reaches the run tool endpoint over HTTP with the run bearer token', asy
 
 test('it answers a first frame that starts no turn with a failed frame', async () => {
   const ctx = await setupTest();
-  const message: HostFrame = {
-    type: 'message',
-    message: { uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' },
-  };
+  const message = buildMockMessageFrame();
 
   await runConversationGuest({
     input: [encodeFrame(encodeTurnFrame(message))],
@@ -109,5 +96,22 @@ test('it answers a first frame that starts no turn with a failed frame', async (
 
   expect(ctx.frames).toStrictEqual([
     { type: 'failed', reason: 'error', detail: 'Error: the first host frame must start a turn' },
+  ]);
+});
+
+test('it answers a turn frame that arrives while a turn runs with a failed frame', async () => {
+  const ctx = await setupTest();
+  const turn = buildMockTurnFrame({ profile: { baseURL: ctx.model.url } });
+
+  ctx.model.addReplies({ text: 'Hello.' });
+  await runConversationGuest({
+    input: [encodeFrame(encodeTurnFrame(turn)), encodeFrame(encodeTurnFrame(turn))],
+    write: ctx.write,
+    env: ctx.env,
+    buildToolServer: () => buildStubToolServer().config,
+  });
+
+  expect(ctx.frames).toStrictEqual([
+    { type: 'failed', reason: 'error', detail: 'Error: a turn is already running' },
   ]);
 });

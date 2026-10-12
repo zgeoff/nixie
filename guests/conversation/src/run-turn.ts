@@ -1,15 +1,12 @@
 // oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's message and MCP types, an async iterable and the turn's own state have no readonly form
 import { mkdir } from 'node:fs/promises';
-import type {
-  McpServerConfig,
-  SDKMessage,
-  SDKResultMessage,
-  SDKUserMessage,
-} from '@anthropic-ai/claude-agent-sdk';
+import type { McpServerConfig, SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import type { TurnFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
+import type { TurnInputState } from './read-turn-input';
+import { readTurnInput } from './read-turn-input';
 import { removeStaleSessions } from './remove-stale-sessions';
 import { toolServerName } from './tool-server-name';
 
@@ -34,14 +31,26 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
   await mkdir(options.cwd ?? '', { recursive: true });
   await removeStaleSessions(options.env?.['CLAUDE_CONFIG_DIR'], turn.resume?.sessionID ?? null);
 
-  const state: TurnState = { pending: new Set(), boundary: null, ended: Promise.withResolvers() };
-  const session = (deps.runQuery ?? query)({ prompt: readInput(turn, deps, state), options });
+  const state: TurnState = {
+    pending: new Set(),
+    boundary: null,
+    inputFailed: Promise.withResolvers(),
+    ended: Promise.withResolvers(),
+  };
+  const session = (deps.runQuery ?? query)({
+    prompt: readTurnInput(turn, deps.messages, state),
+    options,
+  });
 
   try {
     await drainSession(session, deps, state);
   } finally {
     state.ended.resolve();
+
+    // close() ends a read still waiting on the CLI, and return() waits for the CLI process to exit,
+    // so the next turn and the guest's file cleanup never meet a live CLI
     session.close();
+    await session.return();
   }
 }
 
@@ -50,8 +59,21 @@ async function drainSession(
   deps: TurnDependencies,
   state: TurnState,
 ): Promise<void> {
-  for await (const message of session) {
-    const outcome = await emitMessageFrames(message, deps, state);
+  const messages = session[Symbol.asyncIterator]();
+
+  for (;;) {
+    // oxlint-disable-next-line no-await-in-loop -- each SDK message follows the one before it
+    const next = await Promise.race([messages.next(), state.inputFailed.promise]);
+
+    if (next instanceof Error) {
+      throw next;
+    }
+    if (next.done === true) {
+      return;
+    }
+
+    // oxlint-disable-next-line no-await-in-loop -- the host reads the frames in order
+    const outcome = await emitMessageFrames(next.value, deps, state);
 
     if (outcome === 'stop' || (outcome === 'result' && state.pending.size === 0)) {
       return;
@@ -59,55 +81,9 @@ async function drainSession(
   }
 }
 
-interface TurnState {
-  // the uuids of messages the SDK took and has not yet read
-  readonly pending: Set<string>;
-
+interface TurnState extends TurnInputState {
   // the session's last chain entry so far
   boundary: SessionPoint | null;
-  readonly ended: PromiseWithResolvers<void>;
-}
-
-async function* readInput(
-  turn: TurnFrame,
-  deps: TurnDependencies,
-  state: TurnState,
-): AsyncGenerator<SDKUserMessage> {
-  for (const message of turn.input) {
-    state.pending.add(message.uuid);
-    yield buildUserMessage(message);
-  }
-  const iterator = readMessages(deps.messages);
-
-  for (;;) {
-    // oxlint-disable-next-line no-await-in-loop -- each message waits for the host to send it
-    const next = await Promise.race([iterator.next(), state.ended.promise.then(() => null)]);
-
-    if (next === null || next.done === true) {
-      return;
-    }
-    state.pending.add(next.value.uuid);
-    yield buildUserMessage(next.value);
-  }
-}
-
-async function* readMessages(
-  messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
-): AsyncGenerator<InboxMessage> {
-  yield* messages;
-}
-
-function buildUserMessage(message: InboxMessage): SDKUserMessage {
-  return {
-    type: 'user',
-    message: { role: 'user', content: message.text },
-    parent_tool_use_id: null,
-
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the wire schema checked it
-    uuid: message.uuid as SDKUserMessage['uuid'] & string,
-    session_id: '',
-    priority: 'next',
-  };
 }
 
 type MessageOutcome = 'continue' | 'result' | 'stop';

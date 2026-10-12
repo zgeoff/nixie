@@ -115,6 +115,9 @@
         "@heynixie/wire": "workspace:*",
         "zod": "catalog:",
       },
+      "devDependencies": {
+        "tiny-invariant": "catalog:",
+      },
     },
     "guests/fetch": {
       "name": "@heynixie/fetch",
