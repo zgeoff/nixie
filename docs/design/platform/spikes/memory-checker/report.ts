@@ -2,16 +2,24 @@
 // Prints the wrong-confirmation and miss rates for each results file, with each error listed.
 //
 //   bun report.ts results/*.jsonl
-import { type CallRecord, loadRecords } from './run.ts';
+import { type CallRecord, findConfigMismatch, loadRecords } from './run.ts';
 
 if (import.meta.main) {
   for (const path of process.argv.slice(2)) {
-    printReport(loadRecords(path));
+    const records = loadRecords(path);
+    const first = records[0];
+    const mismatch = first === undefined ? undefined : findConfigMismatch(records, first);
+    if (mismatch !== undefined) {
+      throw new Error(`${path} mixes runs: ${mismatch}`);
+    }
+    printReport(records);
   }
 }
 
 function printReport(records: CallRecord[]): void {
-  const model = records[0]?.model ?? 'no records';
+  const first = records[0];
+  const model =
+    first === undefined ? 'no records' : `${first.model}, mark «${first.marker}»`;
   const positives = records.filter((record) => record.asserted);
   const negatives = records.filter((record) => !record.asserted);
   const wrong = negatives.filter((record) => record.verdict === 'asserted');

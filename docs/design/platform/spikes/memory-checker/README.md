@@ -19,7 +19,8 @@ remarks pass the code checks, so they matter most.
 ## Run it
 
 Run each command from this directory. A run calls `claude -p` once per pair and repeat, appends one
-JSON line per call, and skips the calls its output file holds.
+JSON line per call, and skips the calls its output file holds. Each line records the model, the mark
+and a hash of the system prompt, and a run refuses an output file that another configuration wrote.
 
 ```bash
 bun install
@@ -31,7 +32,7 @@ bun report.ts results/*.jsonl
 - [cases.ts](cases.ts) holds 40 messages and 70 pairs: 31 the message asserts and 39 it does not.
   Each pair names its bucket, such as a negation or a quoted remark. The labels were written before
   any model saw a case.
-- [prompt.md](prompt.md) is the checker's system prompt. The input is the message, with the quote
+- [prompt.txt](prompt.txt) is the checker's system prompt. The input is the message, with the quote
   and each pasted span marked, and the candidate memory. The answer is a JSON verdict of `asserted`,
   `not_asserted` or `unsure` with a reason.
 - [run.ts](run.ts) runs the calls with no tools, no settings and no session, and counts an error or

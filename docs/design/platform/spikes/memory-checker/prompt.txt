@@ -17,8 +17,7 @@ for example when:
 - the fact appears only in pasted text
 - the owner asks the assistant not to remember it
 
-Answer `unsure` when the message supports two readings and you cannot tell which one the owner
-meant.
+Answer `unsure` when the message supports two readings and you cannot tell which one the owner meant.
 
 The input marks 2 kinds of span. `«quote»…«/quote»` marks the words that the memory writer cited as
 evidence; judge the whole message, not the quote alone. `«pasted»…«/pasted»` marks text the owner

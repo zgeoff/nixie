@@ -4,7 +4,9 @@
 //
 //   bun run.ts --model claude-haiku-5-5 --repeats 3 --out results/haiku-5-5.jsonl
 //
-// `--marker evidence` renames the mark around the quote, which prompt.md calls «quote».
+// `--marker evidence` renames the mark around the quote, which prompt.txt calls «quote». Each record
+// holds the run's configuration, and a run refuses an output file whose records hold another one.
+import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { checkWrite, type OwnerMessage } from '../memory-checks/checks.ts';
@@ -12,13 +14,19 @@ import { type Pair, SAMPLES } from './cases.ts';
 
 export type CheckerVerdict = 'asserted' | 'not_asserted' | 'unsure';
 
-export interface CallRecord {
+// What makes 2 calls comparable: the model, the mark around the quote, and the system prompt.
+export interface RunConfig {
+  marker: string;
+  model: string;
+  promptSHA256: string;
+}
+
+export interface CallRecord extends RunConfig {
   asserted: boolean;
   bucket: string;
   costUSD: number;
   latencyMs: number;
   memory: string;
-  model: string;
   pair: string;
   reason: string;
   repeat: number;
@@ -56,12 +64,16 @@ async function runAll(): Promise<void> {
   const model = values.model;
   const out = values.out;
   const marker = values.marker;
-  const system = readFileSync(new URL('prompt.md', import.meta.url), 'utf8')
-    .replaceAll('«quote»', `«${marker}»`)
-    .replaceAll('«/quote»', `«/${marker}»`);
-  const done = new Set(loadRecords(out).map((record) => `${record.pair}#${record.repeat}`));
+  const system = buildSystemPrompt(marker);
+  const config = buildRunConfig(model, marker, system);
+  const records = loadRecords(out);
+  const mismatch = findConfigMismatch(records, config);
+  if (mismatch !== undefined) {
+    throw new Error(`${out} holds another run: ${mismatch}`);
+  }
+  const done = new Set(records.map((record) => `${record.pair}#${record.repeat}`));
   const budget = Number(values.budget);
-  let spent = loadRecords(out).reduce((sum, record) => sum + record.costUSD, 0);
+  let spent = records.reduce((sum, record) => sum + record.costUSD, 0);
 
   const jobs: { input: string; key: string; pair: Pair; pairID: string; repeat: number }[] = [];
   for (const sample of SAMPLES) {
@@ -87,12 +99,12 @@ async function runAll(): Promise<void> {
       const call = await runChecker(model, system, job.input);
       spent += call.costUSD;
       const record: CallRecord = {
+        ...config,
         asserted: job.pair.asserted,
         bucket: job.pair.bucket,
         costUSD: call.costUSD,
         latencyMs: call.latencyMs,
         memory: job.pair.memory,
-        model,
         pair: job.pairID,
         reason: call.reason,
         repeat: job.repeat,
@@ -105,6 +117,32 @@ async function runAll(): Promise<void> {
   });
   await Promise.all(workers);
   console.log(`$${spent.toFixed(4)} spent in total`);
+}
+
+// The system prompt with the mark around the quote renamed to `marker`.
+export function buildSystemPrompt(marker: string): string {
+  return readFileSync(new URL('prompt.txt', import.meta.url), 'utf8')
+    .replaceAll('«quote»', `«${marker}»`)
+    .replaceAll('«/quote»', `«/${marker}»`);
+}
+
+export function buildRunConfig(model: string, marker: string, system: string): RunConfig {
+  return { marker, model, promptSHA256: createHash('sha256').update(system).digest('hex') };
+}
+
+// The first field in which a record differs from `config`, or undefined when every record matches.
+export function findConfigMismatch(
+  records: CallRecord[],
+  config: RunConfig,
+): string | undefined {
+  for (const record of records) {
+    for (const field of ['model', 'marker', 'promptSHA256'] as const) {
+      if (record[field] !== config[field]) {
+        return `${field} ${String(record[field])}, not ${config[field]}`;
+      }
+    }
+  }
+  return undefined;
 }
 
 export function loadRecords(path: string): CallRecord[] {
