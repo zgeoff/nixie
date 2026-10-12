@@ -24,7 +24,7 @@ export interface StubSandboxAdapter extends SandboxAdapter {
 
 // How one create fails: the adapter refuses it with message, as an unreachable runtime does, or it
 // never answers.
-export type StubCreateFailure =
+type StubCreateFailure =
   | { readonly kind: 'reject'; readonly message: string }
   | { readonly kind: 'hang' };
 
