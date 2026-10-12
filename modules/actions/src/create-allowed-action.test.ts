@@ -6,35 +6,33 @@ import { LeaseLostError, setFaultPointHandler } from '@heynixie/tasks';
 import { createAllowedAction } from './create-allowed-action';
 import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
-import type { ActionsTables, AllowedCall } from './types';
+import type { ActionsTables } from './types';
 
+// the step that makes the tool call, claimed by its task runner
 async function setupTest() {
   const actions = await startTestActions();
-  const db = actions.writer.db.$extendTables<ActionsTables>();
   const step = await createTestStep(actions.context);
-  const taskID = step.lease.workID;
-  const call: AllowedCall = {
-    step,
-    tool: 'test.send',
-    actionHash: 'sha256:send-1',
-    arguments: { to: 'team', body: 'the weekly summary' },
-    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
-  };
 
-  return { ...actions, db, taskID, call };
+  return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>(), step };
 }
 
 test('it queues an allowed call as a pending action due at once', async () => {
   const ctx = await setupTest();
 
-  const queued = await createAllowedAction(ctx.context, ctx.call);
+  const queued = await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
   const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
 
   expect(queued).toStrictEqual({ actionID: action.action_id, status: 'pending', isRepeat: false });
   expect(action).toMatchObject({
-    task_id: ctx.taskID,
-    step_key: `${ctx.taskID}:1`,
+    task_id: ctx.step.lease.workID,
+    step_key: `${ctx.step.lease.workID}:1`,
     action_hash: 'sha256:send-1',
     tool: 'test.send',
     status: 'pending',
@@ -47,16 +45,25 @@ test('it queues an allowed call as a pending action due at once', async () => {
 test('it records the decision and keeps the arguments in the erasable fields', async () => {
   const ctx = await setupTest();
 
-  await createAllowedAction(ctx.context, ctx.call);
+  await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
   const entries = await readRecords(ctx.context.log, { afterSequence: 2 });
 
   expect(entries.map((entry) => entry.record)).toMatchObject([
     {
       kind: 'action.queued',
-      thread: ctx.taskID,
+      thread: ctx.step.lease.workID,
       decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
-      erasable: { status: 'readable', fields: { arguments: ctx.call.arguments } },
+      erasable: {
+        status: 'readable',
+        fields: { arguments: { to: 'team', body: 'the weekly summary' } },
+      },
     },
   ]);
 });
@@ -65,7 +72,10 @@ test('it refuses a call the decision point did not allow', async () => {
   const ctx = await setupTest();
 
   const create = createAllowedAction(ctx.context, {
-    ...ctx.call,
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
     decision: { outcome: 'ask', stage: 9, rule: null },
   });
 
@@ -79,22 +89,43 @@ test('it refuses a call the decision point did not allow', async () => {
 
 test('it returns the earlier action for a repeat call under the same step key', async () => {
   const ctx = await setupTest();
-  const first = await createAllowedAction(ctx.context, ctx.call);
+  const first = await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
   await ctx.db.updateTable('actions').set({ status: 'done' }).execute();
 
-  const repeat = await createAllowedAction(ctx.context, ctx.call);
+  const repeat = await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
   expect(repeat).toStrictEqual({ actionID: first.actionID, status: 'done', isRepeat: true });
 });
 
 test('it returns the earlier action for a repeat call while that action is pending', async () => {
   const ctx = await setupTest();
-  const first = await createAllowedAction(ctx.context, ctx.call);
+  const first = await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
   const repeat = await createAllowedAction(ctx.context, {
-    ...ctx.call,
-    step: { ...ctx.call.step, stepKey: `${ctx.taskID}:2` },
+    step: { ...ctx.step, stepKey: `${ctx.step.lease.workID}:2` },
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
   expect(repeat).toStrictEqual({ actionID: first.actionID, status: 'pending', isRepeat: true });
@@ -102,13 +133,22 @@ test('it returns the earlier action for a repeat call while that action is pendi
 
 test('it returns the earlier action for a repeat call while that action is unknown', async () => {
   const ctx = await setupTest();
-  const first = await createAllowedAction(ctx.context, ctx.call);
+  const first = await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
   await ctx.db.updateTable('actions').set({ status: 'unknown' }).execute();
 
   const repeat = await createAllowedAction(ctx.context, {
-    ...ctx.call,
-    step: { ...ctx.call.step, stepKey: `${ctx.taskID}:2` },
+    step: { ...ctx.step, stepKey: `${ctx.step.lease.workID}:2` },
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
   expect(repeat).toStrictEqual({ actionID: first.actionID, status: 'unknown', isRepeat: true });
@@ -116,13 +156,22 @@ test('it returns the earlier action for a repeat call while that action is unkno
 
 test('it queues a new action when the same call settled under an earlier step', async () => {
   const ctx = await setupTest();
-  const first = await createAllowedAction(ctx.context, ctx.call);
+  const first = await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
   await ctx.db.updateTable('actions').set({ status: 'done' }).execute();
 
   const next = await createAllowedAction(ctx.context, {
-    ...ctx.call,
-    step: { ...ctx.call.step, stepKey: `${ctx.taskID}:2` },
+    step: { ...ctx.step, stepKey: `${ctx.step.lease.workID}:2` },
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
   expect(next.isRepeat).toBeFalse();
@@ -134,7 +183,13 @@ test('it queues nothing once the step lost its lease', async () => {
 
   ctx.clock.advance(60_000);
 
-  const create = createAllowedAction(ctx.context, ctx.call);
+  const create = createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
   await create.catch(() => {});
 
@@ -155,7 +210,13 @@ test('it reaches queue.commit.before and queue.commit.after around the queue', a
     setFaultPointHandler(null);
   });
 
-  await createAllowedAction(ctx.context, ctx.call);
+  await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team', body: 'the weekly summary' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
 
   expect(reached).toStrictEqual(['queue.commit.before', 'queue.commit.after']);
 });

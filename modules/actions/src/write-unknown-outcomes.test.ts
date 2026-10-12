@@ -1,7 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { startWriter } from '@heynixie/log';
-import type { TasksContext } from '@heynixie/tasks';
 import { runRecovery, setFaultPointHandler } from '@heynixie/tasks';
+import { startNextTestWriter } from '@heynixie/tasks/test-utils';
 import { createAllowedAction } from './create-allowed-action';
 import { createTestStep } from './test-utils/create-test-step';
 import { runStalledAttempt } from './test-utils/run-stalled-attempt';
@@ -9,61 +8,90 @@ import { startTestActions } from './test-utils/start-test-actions';
 import type { ActionsTables } from './types';
 import { writeUnknownOutcomes } from './write-unknown-outcomes';
 
-// A process that died mid-step: its task's step was running, and the action it queued had an
-// attempt record with no result, because the call outlived the lease. The restarted writer raised
-// the epoch, as a real restart does.
+// the step that made the tool call, claimed by its task runner
 async function setupTest() {
   const actions = await startTestActions();
   const step = await createTestStep(actions.context);
 
-  await createAllowedAction(actions.context, {
-    step,
+  return { ...actions, step };
+}
+
+test('it marks an action whose attempt record has no result unknown', async () => {
+  const ctx = await setupTest();
+
+  await createAllowedAction(ctx.context, {
+    step: ctx.step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
-  await runStalledAttempt(actions);
-  await actions.writer.stop();
+  await runStalledAttempt(ctx);
 
-  const writer = await startWriter({ dataDir: actions.dataDir });
+  const before = await ctx.writer.db
+    .$extendTables<ActionsTables>()
+    .selectFrom('actions')
+    .select(['status', 'attempt_open'])
+    .executeTakeFirstOrThrow();
+  const next = await startNextTestWriter(ctx);
 
-  onTestFinished(() => writer.stop());
+  await writeUnknownOutcomes(next.context);
 
-  const context: TasksContext = { ...actions.context, log: { ...actions.context.log, writer } };
+  const after = await next.writer.db
+    .$extendTables<ActionsTables>()
+    .selectFrom('actions')
+    .selectAll()
+    .executeTakeFirstOrThrow();
 
-  return {
-    ...actions,
-    context,
-    db: writer.db.$extendTables<ActionsTables>(),
-    taskID: step.lease.workID,
-  };
-}
-
-test('it marks an action whose attempt record has no result unknown, with a record', async () => {
-  const ctx = await setupTest();
-
-  await writeUnknownOutcomes(ctx.context);
-
-  const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
-  const records = await ctx.db
-    .selectFrom('records')
-    .select(['kind', 'thread'])
-    .where('kind', '=', 'action.outcome')
-    .execute();
-
-  expect(action).toMatchObject({
+  expect(before).toStrictEqual({ status: 'pending', attempt_open: 1 });
+  expect(after).toMatchObject({
     status: 'unknown',
     attempt_count: 1,
     attempt_open: 0,
     reason: 'attempt_without_result',
   });
-  expect(records).toStrictEqual([{ kind: 'action.outcome', thread: ctx.taskID }]);
+});
+
+test('it writes the unknown outcome to the task inbox', async () => {
+  const ctx = await setupTest();
+
+  await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+  await runStalledAttempt(ctx);
+
+  const next = await startNextTestWriter(ctx);
+
+  await writeUnknownOutcomes(next.context);
+
+  const records = await next.writer.db
+    .$extendTables<ActionsTables>()
+    .selectFrom('records')
+    .select(['kind', 'thread'])
+    .where('kind', '=', 'action.outcome')
+    .execute();
+
+  expect(records).toStrictEqual([{ kind: 'action.outcome', thread: ctx.step.lease.workID }]);
 });
 
 test('it runs as recovery step 3, between the interrupted steps and the late timers', async () => {
   const ctx = await setupTest();
   const reached: string[] = [];
+
+  await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+  await runStalledAttempt(ctx);
+
+  const next = await startNextTestWriter(ctx);
 
   setFaultPointHandler((id) => {
     reached.push(id);
@@ -72,13 +100,10 @@ test('it runs as recovery step 3, between the interrupted steps and the late tim
     setFaultPointHandler(null);
   });
 
-  await runRecovery(ctx.context, {
-    writeUnknownOutcomes: () => writeUnknownOutcomes(ctx.context),
+  await runRecovery(next.context, {
+    writeUnknownOutcomes: () => writeUnknownOutcomes(next.context),
     sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
   });
-
-  const task = await ctx.db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
-  const leases = await ctx.db.selectFrom('leases').select('holder').execute();
 
   expect(reached).toStrictEqual([
     'recovery.step.1',
@@ -88,6 +113,31 @@ test('it runs as recovery step 3, between the interrupted steps and the late tim
     'recovery.step.4',
     'recovery.step.5',
   ]);
+});
+
+test('it frees the step and the action leases and readies the task through recovery', async () => {
+  const ctx = await setupTest();
+
+  await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+  await runStalledAttempt(ctx);
+
+  const next = await startNextTestWriter(ctx);
+
+  await runRecovery(next.context, {
+    writeUnknownOutcomes: () => writeUnknownOutcomes(next.context),
+    sandboxes: { removeStaleSandboxes: () => Promise.resolve() },
+  });
+
+  const db = next.writer.db.$extendTables<ActionsTables>();
+  const task = await db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
+  const leases = await db.selectFrom('leases').select('holder').execute();
+
   expect(task.state).toBe('ready');
   expect(leases).toStrictEqual([{ holder: null }, { holder: null }]);
 });
@@ -95,10 +145,22 @@ test('it runs as recovery step 3, between the interrupted steps and the late tim
 test('it leaves an action with no open attempt as it was', async () => {
   const ctx = await setupTest();
 
-  await writeUnknownOutcomes(ctx.context);
-  await writeUnknownOutcomes(ctx.context);
+  await createAllowedAction(ctx.context, {
+    step: ctx.step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+  await runStalledAttempt(ctx);
 
-  const outcomes = await ctx.db
+  const next = await startNextTestWriter(ctx);
+
+  await writeUnknownOutcomes(next.context);
+  await writeUnknownOutcomes(next.context);
+
+  const outcomes = await next.writer.db
+    .$extendTables<ActionsTables>()
     .selectFrom('records')
     .select('sequence')
     .where('kind', '=', 'action.outcome')

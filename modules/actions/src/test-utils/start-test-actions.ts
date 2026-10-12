@@ -2,25 +2,17 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Log, Writer } from '@heynixie/log';
+import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
-import type { TasksContext } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
-import type { TestClock } from '@heynixie/testing';
+import type { TestTasks } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { actionsProjection } from '../actions-projection';
-
-interface TestActions {
-  readonly dataDir: string;
-  readonly writer: Writer;
-  readonly clock: TestClock;
-  readonly context: TasksContext;
-}
 
 // Starts a writer on a fresh data directory with the log's, the tasks and the actions projections,
 // and a test clock at 1,000,000 ms. When the test finishes it stops the writer, then removes the
 // directory.
-export async function startTestActions(): Promise<TestActions> {
+export async function startTestActions(): Promise<TestTasks> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -45,6 +37,9 @@ export async function startTestActions(): Promise<TestActions> {
   const clock = buildTestClock(1_000_000);
 
   return {
+    defer: (cleanup) => {
+      stack.defer(cleanup);
+    },
     dataDir,
     writer,
     clock,

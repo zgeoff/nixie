@@ -5,8 +5,12 @@ import { createTestStep } from './create-test-step';
 import { runStalledAttempt } from './run-stalled-attempt';
 import { startTestActions } from './start-test-actions';
 
+function setupTest() {
+  return startTestActions();
+}
+
 test('it leaves an attempt record with no result after one provider call', async () => {
-  const ctx = await startTestActions();
+  const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
   await createAllowedAction(ctx.context, {
@@ -30,7 +34,7 @@ test('it leaves an attempt record with no result after one provider call', async
 });
 
 test('it refuses to run when no action is due', async () => {
-  const ctx = await startTestActions();
+  const ctx = await setupTest();
 
   const run = runStalledAttempt(ctx);
 
