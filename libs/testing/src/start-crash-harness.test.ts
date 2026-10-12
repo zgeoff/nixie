@@ -53,6 +53,28 @@ test('it refuses an advance while a nixie it started is not yet ready, which wou
   );
 });
 
+test('it settles an advance once every runner it woke sleeps again', async () => {
+  const ctx = setupTest();
+  const nixie = ctx.harness.start();
+
+  await nixie.ready;
+  await nixie.request('startPoll', 1000);
+
+  await expect(ctx.harness.advance(1000, { settle: true, settleTimeoutMs: 200 })).toResolve();
+});
+
+test('it refuses a settled advance when a runner it woke does not sleep again', async () => {
+  const ctx = setupTest();
+  const nixie = ctx.harness.start();
+
+  await nixie.ready;
+  await nixie.request('sleepOnce', 1000);
+
+  expect(ctx.harness.advance(1000, { settle: true, settleTimeoutMs: 200 })).rejects.toThrow(
+    'a runner the advance woke did not sleep again',
+  );
+});
+
 test('it kills every nixie still running when the test finishes', async () => {
   const ctx = setupTest();
   const nixie = ctx.harness.start();

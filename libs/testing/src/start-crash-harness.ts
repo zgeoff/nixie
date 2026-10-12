@@ -15,6 +15,10 @@ export interface AdvanceOptions {
   // waits for every runner and renewal that the advance woke to sleep again, so the test knows
   // each of them looked at the new time; a step the advance started makes the advance throw
   readonly settle?: boolean;
+
+  // how long each nixie waits for its woken sleepers before the advance throws; nixie's default
+  // when left out
+  readonly settleTimeoutMs?: number;
 }
 
 export interface CrashHarness {
@@ -63,7 +67,11 @@ export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
 
       const replies = await Promise.all(
         [...processes.running].map((nixie) =>
-          nixie.request('advance', { ms, settle: advanceOptions.settle ?? false }),
+          nixie.request('advance', {
+            ms,
+            settle: advanceOptions.settle ?? false,
+            settleTimeoutMs: advanceOptions.settleTimeoutMs,
+          }),
         ),
       );
 
