@@ -3,6 +3,7 @@ import type { JSONObject } from '@heynixie/log';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import { findClientAction } from './find-client-action';
 import { isLiveIdentity } from './is-live-identity';
 import { normalizeSpans } from './normalize-spans';
@@ -94,9 +95,7 @@ async function writeMessage(
     },
   ]);
 
-  if (record === undefined) {
-    throw new Error('the log wrote no owner_message record');
-  }
+  invariant(record, 'the log wrote no owner_message record');
   await writeClientAction(tx, {
     clientActionID: input.clientMessageId,
     procedure: 'conversation.send',

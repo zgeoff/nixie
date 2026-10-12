@@ -5,8 +5,12 @@ import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { APITables } from './types';
 
+function setupTest() {
+  return startTestAPI();
+}
+
 test('it finds a session live while it is neither revoked nor lapsed', async () => {
-  const ctx = await startTestAPI();
+  const ctx = await setupTest();
 
   const session = await createDeviceSession(ctx.context, 'laptop');
   const live = await withWriteTransaction(ctx.writer, (tx) =>
@@ -17,7 +21,7 @@ test('it finds a session live while it is neither revoked nor lapsed', async () 
 });
 
 test('it finds a revoked session not live', async () => {
-  const ctx = await startTestAPI();
+  const ctx = await setupTest();
 
   const session = await createDeviceSession(ctx.context, 'laptop');
 
@@ -35,7 +39,7 @@ test('it finds a revoked session not live', async () => {
 });
 
 test('it finds a lapsed session not live', async () => {
-  const ctx = await startTestAPI();
+  const ctx = await setupTest();
 
   const session = await createDeviceSession(ctx.context, 'laptop');
 

@@ -3,8 +3,12 @@ import { createEnrolmentCode } from './create-enrolment-code';
 import { startTestAPI } from './test-utils/start-test-api';
 import type { APITables } from './types';
 
+function setupTest() {
+  return startTestAPI();
+}
+
 test('it issues a code that lapses in 15 minutes', async () => {
-  const ctx = await startTestAPI();
+  const ctx = await setupTest();
 
   const result = await createEnrolmentCode(ctx.context);
 
@@ -13,7 +17,7 @@ test('it issues a code that lapses in 15 minutes', async () => {
 });
 
 test('it records the code as issued by the host, without the code', async () => {
-  const ctx = await startTestAPI();
+  const ctx = await setupTest();
 
   const issued = await createEnrolmentCode(ctx.context);
   const record = await ctx.writer.db

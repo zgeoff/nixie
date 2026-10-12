@@ -4,8 +4,12 @@ import { startTestAPI } from './test-utils/start-test-api';
 import type { APITables } from './types';
 import { writeRefusal } from './write-refusal';
 
+function setupTest() {
+  return startTestAPI();
+}
+
 test('it keeps the last refusal time for each external ID', async () => {
-  const ctx = await startTestAPI();
+  const ctx = await setupTest();
 
   await writeRefusal(ctx.context, { channel: 'client', externalID: 'ab12' });
   ctx.clock.advance(60 * 60 * 1000);
@@ -23,7 +27,7 @@ test('it keeps the last refusal time for each external ID', async () => {
 });
 
 test('it gives the live rows again after a rebuild', async () => {
-  const ctx = await startTestAPI();
+  const ctx = await setupTest();
 
   await writeRefusal(ctx.context, { channel: 'client', externalID: 'ab12' });
   await writeRefusal(ctx.context, { channel: 'client', externalID: 'cd34' });

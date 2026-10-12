@@ -1,26 +1,20 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { readThreadPage } from './read-thread-page';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
-import { verifySessionToken } from './verify-session-token';
 import { writeOwnerMessage } from './write-owner-message';
 
-async function setupTest() {
-  const api = await startTestAPI();
-  const session = await createDeviceSession(api.context, 'laptop');
-  const caller = await verifySessionToken(api.context, session.token);
-
-  if (caller === null) {
-    throw new Error('the session failed to resolve');
-  }
-  return { ...api, caller };
+function setupTest() {
+  return startTestAPI();
 }
 
 test('it reads the page before a sequence, newest last', async () => {
   const ctx = await setupTest();
 
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
   const sendText = (text: string) =>
-    writeOwnerMessage(ctx.context, ctx.caller, {
+    writeOwnerMessage(ctx.context, laptop.caller, {
       clientMessageId: crypto.randomUUID(),
       thread: 'conversation',
       text,
@@ -31,9 +25,7 @@ test('it reads the page before a sequence, newest last', async () => {
 
   const three = await sendText('three');
 
-  if (three.status !== 'written') {
-    throw new Error('the message was not written');
-  }
+  invariant(three.status === 'written');
   const page = await readThreadPage(ctx.context, {
     thread: 'conversation',
     beforeSequence: three.sequence,
