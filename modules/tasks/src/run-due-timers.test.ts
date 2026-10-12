@@ -1,36 +1,28 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { claimTask } from './claim-task';
-import { createTask } from './create-task';
 import { runDueTimers } from './run-due-timers';
 import { setFaultPointHandler } from './set-fault-point-handler';
+import { createTestClaim } from './test-utils/create-test-claim';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { FaultPointID, TasksTables } from './types';
 import { writeStepCommit } from './write-step-commit';
 
-// a task that committed a step waiting on one timer, due at 1,060,000
 async function setupTest() {
   const tasks = await startTestTasks();
-  const db = tasks.writer.db.$extendTables<TasksTables>();
-  const taskID = await createTask(tasks.context, 'check back in a minute');
-  const claim = await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  if (claim === null) {
-    throw new Error('the setup claim found no task');
-  }
-  await writeStepCommit(tasks.context, claim, {
+  return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
+}
+
+test('it fires a due timer into its task inbox and wakes the task', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
+
+  await writeStepCommit(ctx.context, claim, {
     next: 'wait',
     records: [],
     acknowledged: [],
     timers: [{ dueAt: 1_060_000 }],
   });
-
-  return { ...tasks, db, taskID };
-}
-
-test('it fires a due timer into its task inbox and wakes the task', async () => {
-  const ctx = await setupTest();
-
   ctx.clock.advance(60_000);
 
   const fired = await runDueTimers(ctx.context);
@@ -46,7 +38,14 @@ test('it fires a due timer into its task inbox and wakes the task', async () => 
 
 test('it leaves a timer that is not yet due', async () => {
   const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
 
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
+  });
   ctx.clock.advance(59_999);
 
   const fired = await runDueTimers(ctx.context);
@@ -56,8 +55,16 @@ test('it leaves a timer that is not yet due', async () => {
 
 test('it records both the due time and the fire time of a timer that fires late', async () => {
   const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
 
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
+  });
   ctx.clock.advance(3_600_000);
+
   await runDueTimers(ctx.context);
 
   const entries = await readRecords(ctx.context.log, { afterSequence: 3 });
@@ -66,10 +73,10 @@ test('it records both the due time and the fire time of a timer that fires late'
   expect(entries.map((entry) => entry.record)).toMatchObject([
     {
       kind: 'timer.fired',
-      thread: ctx.taskID,
+      thread: claim.lease.workID,
       payload: {
         timerID: timer.timer_id,
-        taskID: ctx.taskID,
+        taskID: claim.lease.workID,
         dueAt: 1_060_000,
         firedAt: 4_600_000,
       },
@@ -80,7 +87,14 @@ test('it records both the due time and the fire time of a timer that fires late'
 
 test('it fires each timer once', async () => {
   const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
 
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
+  });
   ctx.clock.advance(60_000);
   await runDueTimers(ctx.context);
 
@@ -92,7 +106,14 @@ test('it fires each timer once', async () => {
 test('it reaches timer.fire.before, then inbox.write.after once the fire commits', async () => {
   const ctx = await setupTest();
   const reached: FaultPointID[] = [];
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
 
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
+  });
   setFaultPointHandler((id) => {
     reached.push(id);
   });

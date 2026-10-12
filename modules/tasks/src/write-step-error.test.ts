@@ -1,27 +1,21 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
-import { createTask } from './create-task';
+import { createTestClaim } from './test-utils/create-test-claim';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 import { writeStepError } from './write-step-error';
 
 async function setupTest() {
   const tasks = await startTestTasks();
-  const db = tasks.writer.db.$extendTables<TasksTables>();
-  const taskID = await createTask(tasks.context, 'tidy the inbox');
-  const readTask = () => db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
 
-  return { ...tasks, db, taskID, readTask };
+  return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
 }
 
 test('it returns a task whose step threw to ready, after the retry delay', async () => {
   const ctx = await setupTest();
-  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
-
-  if (claim === null) {
-    throw new Error('the setup claim found no task');
-  }
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
 
   await writeStepError(ctx.context, claim, {
     error: new Error('the model profile is unreachable'),
@@ -29,7 +23,7 @@ test('it returns a task whose step threw to ready, after the retry delay', async
     retryDelayMs: 30_000,
   });
 
-  const task = await ctx.readTask();
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
 
   expect(task).toMatchObject({
     state: 'ready',
@@ -41,32 +35,33 @@ test('it returns a task whose step threw to ready, after the retry delay', async
 
 test('it fails a task once its steps threw the limit of times in a row', async () => {
   const ctx = await setupTest();
-  const failure = { error: new Error('boom'), maxStepErrors: 2, retryDelayMs: 30_000 };
-  const first = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 }).then(
-    (claim) => claim ?? Promise.reject(new Error('the first claim found no task')),
-  );
+  const first = await createTestClaim(ctx.context, 'tidy the inbox');
 
-  await writeStepError(ctx.context, first, failure);
+  await writeStepError(ctx.context, first, {
+    error: new Error('the model profile is unreachable'),
+    maxStepErrors: 2,
+    retryDelayMs: 30_000,
+  });
   ctx.clock.advance(30_000);
 
-  const second = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 }).then(
-    (claim) => claim ?? Promise.reject(new Error('the second claim found no task')),
-  );
+  const second = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  await writeStepError(ctx.context, second, failure);
+  invariant(second);
 
-  const task = await ctx.readTask();
+  await writeStepError(ctx.context, second, {
+    error: new Error('the model profile is unreachable'),
+    maxStepErrors: 2,
+    retryDelayMs: 30_000,
+  });
+
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
 
   expect(task).toMatchObject({ state: 'failed', step_errors: 2 });
 });
 
 test('it keeps the error text in the erasable fields of its record', async () => {
   const ctx = await setupTest();
-  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
-
-  if (claim === null) {
-    throw new Error('the setup claim found no task');
-  }
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
 
   await writeStepError(ctx.context, claim, {
     error: new Error('the model profile is unreachable'),
@@ -80,7 +75,7 @@ test('it keeps the error text in the erasable fields of its record', async () =>
     {
       kind: 'task.step_errored',
       payload: {
-        taskID: ctx.taskID,
+        taskID: claim.lease.workID,
         stepKey: claim.stepKey,
         nextState: 'ready',
         errors: 1,

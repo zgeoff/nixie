@@ -16,7 +16,7 @@ test('it refuses a pool of no runners', () => {
 });
 
 test('it refuses an unknown key', () => {
-  const result = actionsConfigSchema.safeParse({ runner: 2 });
+  const result = actionsConfigSchema.safeParse({ runners: 2, runner: 2 });
 
-  expect(result.error?.issues).toPartiallyContain({ code: 'unrecognized_keys', keys: ['runner'] });
+  expect(result.error?.issues).toPartiallyContain({ path: [], keys: ['runner'] });
 });

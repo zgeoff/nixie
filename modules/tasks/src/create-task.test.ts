@@ -4,8 +4,12 @@ import { createTask } from './create-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 
+function setupTest() {
+  return startTestTasks();
+}
+
 test('it creates a ready task with its brief in the erasable fields', async () => {
-  const ctx = await startTestTasks();
+  const ctx = await setupTest();
 
   const taskID = await createTask(ctx.context, 'keep the backlog moving today');
 
@@ -41,7 +45,7 @@ test('it creates a ready task with its brief in the erasable fields', async () =
 });
 
 test('it gives each task a random ID', async () => {
-  const ctx = await startTestTasks();
+  const ctx = await setupTest();
 
   const first = await createTask(ctx.context, 'first');
   const second = await createTask(ctx.context, 'second');

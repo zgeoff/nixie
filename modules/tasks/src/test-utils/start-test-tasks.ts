@@ -9,7 +9,9 @@ import { buildTestClock } from '@heynixie/testing';
 import { tasksProjections } from '../tasks-projections';
 import type { TasksContext } from '../types';
 
-interface TestTasks {
+export interface TestTasks {
+  // adds a cleanup that runs when the test finishes, before the writer stops
+  readonly defer: (cleanup: () => Promise<void>) => void;
   readonly dataDir: string;
   readonly writer: Writer;
   readonly clock: TestClock;
@@ -39,6 +41,9 @@ export async function startTestTasks(): Promise<TestTasks> {
   const clock = buildTestClock(1_000_000);
 
   return {
+    defer: (cleanup) => {
+      stack.defer(cleanup);
+    },
     dataDir,
     writer,
     clock,
