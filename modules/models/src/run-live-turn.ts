@@ -1,12 +1,13 @@
+import type { LogRecord } from '@heynixie/log';
 import type { StepInput } from '@heynixie/tasks';
-import type { SessionPoint, TurnProfile } from '@heynixie/wire';
+import type { InboxMessage, SessionPoint, TurnProfile } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
 import { inboxBatchLimit } from './inbox-batch-limit';
 import { readLiveInbox } from './read-live-inbox';
 import { runGuestTurn } from './run-guest-turn';
 import { toInboxMessage } from './to-inbox-message';
-import type { ConversationRun, ResolvedProfile } from './types';
+import type { ConversationRun, ResolvedProfile, TurnNote } from './types';
 
 // Runs one turn in the guest on the step's inbox, up to the batch limit, resuming at the session
 // point when there is one. Only a turn that took the whole inbox takes the records that land while
@@ -16,13 +17,11 @@ export async function runLiveTurn(
   input: StepInput,
   resume: SessionPoint | null,
 ): Promise<CompletedTurn> {
-  const route = await run.sandbox.toolRoute();
-
-  // a conversation sandbox's spec always asks for a tool route, and every adapter gives one then
-  invariant(route, 'the conversation sandbox has no tool route');
+  const route = await readToolRoute(run);
   const batch = input.inbox.slice(0, inboxBatchLimit);
   const sent = new Set(batch.map((record) => record.sequence));
   const live = new AbortController();
+  const note = await readTurnNote(run);
   const hasMore = input.inbox.length > batch.length;
 
   try {
@@ -35,7 +34,7 @@ export async function runLiveTurn(
         tools: { url: route.url, token: run.endpoint.token },
         resume,
         systemPrompt: run.getSystemPrompt(),
-        input: batch.map((record) => toInboxMessage(record)),
+        input: buildTurnInput(batch, note?.text ?? null),
       },
       messages: hasMore
         ? []
@@ -43,10 +42,35 @@ export async function runLiveTurn(
       signal: input.signal,
     });
 
-    return { turn, sent, hasMore };
+    return { turn, sent, hasMore, notedThrough: note?.throughSequence ?? null };
   } finally {
     live.abort();
   }
+}
+
+async function readToolRoute(
+  run: ConversationRun,
+): Promise<NonNullable<Awaited<ReturnType<ConversationRun['sandbox']['toolRoute']>>>> {
+  const route = await run.sandbox.toolRoute();
+
+  // a conversation sandbox's spec always asks for a tool route, and every adapter gives one then
+  invariant(route, 'the conversation sandbox has no tool route');
+  return route;
+}
+
+function readTurnNote(run: ConversationRun): Promise<TurnNote | null> {
+  return run.readTurnNote === undefined ? Promise.resolve(null) : run.readTurnNote();
+}
+
+// the note goes before the turn's first message, so the model reads it before your words
+function buildTurnInput(batch: readonly LogRecord[], note: string | null): InboxMessage[] {
+  return batch.map((record, index) => {
+    const message = toInboxMessage(record);
+
+    return index === 0 && note !== null
+      ? { ...message, text: `${note}\n\n${message.text}` }
+      : message;
+  });
 }
 
 // the profile as the guest needs it, with no credential reference and no prices

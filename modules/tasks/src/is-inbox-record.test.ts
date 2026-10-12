@@ -5,6 +5,7 @@ test.each([
   ['owner_message', 'conversation', true],
   ['timer.fired', 'task-1', true],
   ['action.outcome', 'task-1', true],
+  ['task.wake', 'memory-writer', true],
   ['turn_finished', 'task-1', false],
   ['task.step_committed', 'task-1', false],
   ['owner_message', null, false],

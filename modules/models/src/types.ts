@@ -68,4 +68,15 @@ export interface ConversationRun {
 
   // the persona in force, read at each turn so a new seed reaches the next turn
   readonly getSystemPrompt: () => string;
+
+  // the note of memory changes made outside the conversation since its last turn, which goes
+  // before the turn's first message, and the sequence it covers
+  readonly readTurnNote?: () => Promise<TurnNote>;
+}
+
+// A note for the start of a turn and the last sequence it covers, which the turn's end record
+// keeps, so the next turn's note starts after it.
+export interface TurnNote {
+  readonly text: string | null;
+  readonly throughSequence: number;
 }

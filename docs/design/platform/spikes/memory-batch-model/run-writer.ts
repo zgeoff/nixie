@@ -39,6 +39,9 @@ export interface WriterOptions {
   effort: string;
   feedback: string | null;
   model: string;
+
+  // the persona text that goes before the writer's rules, or null for the plain prompt
+  persona: string | null;
   token: string;
 }
 
@@ -68,7 +71,7 @@ export async function runWriter(
       '--effort',
       options.effort,
       '--system-prompt',
-      SYSTEM_PROMPT,
+      buildSystemPrompt(options.persona),
       '--json-schema',
       JSON.stringify(OUTPUT_SCHEMA),
       '--output-format',
@@ -109,6 +112,12 @@ Rules:
 - When a fact updates or contradicts a current item, use op "revise" with that item's ID and the new full text. When the owner says a current item stopped being true and nothing replaces it, use op "retire" with that item's ID and the owner's words as the quote. Never add a second item that repeats a current item.
 - At most one revise or retire per item in a batch.
 - An empty list is a good answer when nothing qualifies.`;
+
+// The persona run puts the persona in force before the writer's rules, as a writer that shares the
+// conversation's persona would read it.
+function buildSystemPrompt(persona: string | null): string {
+  return persona === null ? SYSTEM_PROMPT : `${persona.trim()}\n\n${SYSTEM_PROMPT}`;
+}
 
 const OUTPUT_SCHEMA = {
   type: 'object',

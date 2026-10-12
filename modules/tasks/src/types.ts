@@ -97,7 +97,13 @@ export type FaultPointID =
   | 'sigterm.grace'
   | 'memory.recall.ranked'
   | 'memory.recall.checked'
-  | 'memory.forget.key_removed';
+  | 'memory.forget.key_removed'
+  | 'writer.batch.planned'
+  | 'writer.batch.extracted'
+  | 'writer.batch.gated'
+  | 'writer.publish.inside'
+  | 'writer.publish.before'
+  | 'writer.publish.after';
 
 // Which work reached a fault point: a task or an action by ID, recovery, a runner pool, or a memory
 // item.

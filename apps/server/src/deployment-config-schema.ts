@@ -1,6 +1,7 @@
 import { actionsConfigSchema } from '@heynixie/actions';
 import { webFetchConfigSchema } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
+import { writerConfigSchema } from '@heynixie/memory';
 import { modelsConfigSchema } from '@heynixie/models';
 import { impConfigSchema } from '@heynixie/sandbox-imp';
 import { tasksConfigSchema } from '@heynixie/tasks';
@@ -18,6 +19,7 @@ export const deploymentConfigSchema = z.strictObject({
   web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
   tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
   actions: actionsConfigSchema.default(actionsConfigSchema.parse({})),
+  memory_writer: writerConfigSchema.default(writerConfigSchema.parse({})),
 });
 
 export type DeploymentConfig = z.infer<typeof deploymentConfigSchema>;

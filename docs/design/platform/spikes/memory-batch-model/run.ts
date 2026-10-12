@@ -1,5 +1,5 @@
 /* oxlint-disable max-statements, max-lines-per-function -- a throwaway spike that keeps each pass in one place */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -22,6 +22,7 @@ const { values } = parseArgs({
     effort: { default: 'low', type: 'string' },
     model: { default: 'claude-haiku-5-5', type: 'string' },
     out: { type: 'string' },
+    persona: { type: 'string' },
     samples: { default: '3', type: 'string' },
     size: { type: 'string' },
   },
@@ -42,7 +43,9 @@ const plan = planBatches(
 );
 const cwd = mkdtempSync(join(tmpdir(), 'memory-batch-model-'));
 mkdirSync(values.out, { recursive: true });
-const writerOptions = { cwd, effort: values.effort, model: values.model, token };
+// The persona's text never reaches run.json, which records only whether the run used one.
+const persona = values.persona === undefined ? null : readFileSync(values.persona, 'utf8');
+const writerOptions = { cwd, effort: values.effort, model: values.model, persona, token };
 
 try {
   const samples = await Promise.all(
@@ -50,7 +53,11 @@ try {
   );
   writeFileSync(
     join(values.out, 'run.json'),
-    `${JSON.stringify({ model: values.model, effort: values.effort, plan, samples }, null, 2)}\n`,
+    `${JSON.stringify(
+      { model: values.model, effort: values.effort, persona: persona !== null, plan, samples },
+      null,
+      2,
+    )}\n`,
   );
   console.log(`wrote ${join(values.out, 'run.json')}`);
 } finally {

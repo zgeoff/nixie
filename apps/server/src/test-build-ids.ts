@@ -25,6 +25,12 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'memory.recall.ranked': 'memory.recall.ranked',
   'memory.recall.checked': 'memory.recall.checked',
   'memory.forget.key_removed': 'memory.forget.key_removed',
+  'writer.batch.planned': 'writer.batch.planned',
+  'writer.batch.extracted': 'writer.batch.extracted',
+  'writer.batch.gated': 'writer.batch.gated',
+  'writer.publish.inside': 'writer.publish.inside',
+  'writer.publish.before': 'writer.publish.before',
+  'writer.publish.after': 'writer.publish.after',
 };
 
 // The IDs that only a test build may hold: every fault point, and the test rule's ID.

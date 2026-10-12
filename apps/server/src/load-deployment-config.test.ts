@@ -54,7 +54,64 @@ test('it reads every section, with the default of each setting the file leaves o
     },
     tasks: { runners: 3 },
     actions: { runners: 4 },
+
+    // the memory writer's settings have a test of their own
+    memory_writer: expect.any(Object),
   });
+});
+
+test("it reads the memory writer's defaults when the file leaves its section out", async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.memory_writer).toStrictEqual({
+    batchMessages: 4,
+    batchTokens: 12_000,
+    idleMs: 300_000,
+    maxAgeMs: 1_200_000,
+    paceMs: 12_000,
+    itemListTokens: 8000,
+    topItems: 20,
+    proposalCap: 10,
+    firstBackoffMs: 30_000,
+    maxBackoffMs: 3_600_000,
+  });
+});
+
+test("it reads the memory writer's hourly batch limit as the wait between batches", async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+      'memory_writer: { batches_per_hour: 60 }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.memory_writer.paceMs).toBe(60_000);
 });
 
 test('it reads a model profile, with the default of each setting it leaves out', async () => {

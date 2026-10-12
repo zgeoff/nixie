@@ -7,6 +7,13 @@ export { resolveModelCredentials } from './resolve-model-credentials';
 export { resolveRoleProfile } from './resolve-role-profile';
 export type { GuestCommand } from './run-guest-turn';
 export type { ConversationRunner, ConversationRunnerOptions } from './start-conversation-runner';
+export type {
+  SessionInput,
+  SessionRunner,
+  SessionRunnerOptions,
+  SessionUsage,
+} from './start-session-runner';
+export { startSessionRunner } from './start-session-runner';
 export { startConversationRunner } from './start-conversation-runner';
 export type {
   ModelPrices,

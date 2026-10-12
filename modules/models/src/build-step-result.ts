@@ -13,6 +13,9 @@ export interface CompletedTurn {
 
   // whether the turn left unread inbox records past its batch for the next step
   readonly hasMore: boolean;
+
+  // the last sequence the turn's memory note covered, or null when the turn had no note
+  readonly notedThrough: number | null;
 }
 
 // Builds the step's result from a turn the guest ended: a record per reply and one for the turn's
@@ -45,7 +48,14 @@ export function buildStepResult(
             text: assistant.text,
           }),
         ),
-      buildModelRecord(source, 'model.turn_ended', { payload: buildTurnSummary(completed.turn) }),
+      buildModelRecord(source, 'model.turn_ended', {
+        payload: {
+          ...buildTurnSummary(completed.turn),
+          ...(completed.notedThrough === null
+            ? {}
+            : { memoryNotedThrough: completed.notedThrough }),
+        },
+      }),
     ],
     acknowledged: completed.turn.read
       .map((uuid) => decodeInboxUUID(uuid))

@@ -70,6 +70,22 @@ export const mockAPIRouter = os.router({
     }),
   },
   log: { follow: followProcedure },
+  memory: {
+    // a writer that has caught up with every record in the store
+    writerStatus: os.memory.writerStatus.handler((options) => {
+      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return {
+        backlog: 0,
+        batches: 0,
+        cursor: Math.max(0, ...store.records.all().map((record) => record.sequence)),
+        failures: 0,
+        isCatchingUp: false,
+        lastError: null,
+        retryAt: null,
+      };
+    }),
+  },
   records: { follow: followProcedure },
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {
