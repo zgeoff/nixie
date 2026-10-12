@@ -23,7 +23,7 @@ test('it enrols without a token, then calls the API as the device with its beare
     tokenDelivery: 'bearer',
   });
 
-  invariant(enrolled.token);
+  invariant(typeof enrolled.token === 'string');
 
   const listed = await buildLiveClient(`${ctx.url}/`, enrolled.token).sessions.list();
 
