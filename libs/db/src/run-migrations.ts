@@ -2,6 +2,7 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Kysely, Transaction } from 'kysely';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { createDatabaseCopy } from './create-database-copy';
 import { SchemaTooNewError } from './schema-too-new-error';
 import type { BuildSchema, Migration, StoredSchema } from './types';
@@ -60,9 +61,8 @@ function createSchemaVersion(
       select version, oldest_reader from schema_version where id = 1`.execute(tx),
       [row] = result.rows;
 
-    if (row === undefined) {
-      throw new Error('schema_version holds no row');
-    }
+    // the insert above leaves the one row in place
+    invariant(row);
     return { version: row.version, oldestReader: row.oldest_reader };
   });
 }
