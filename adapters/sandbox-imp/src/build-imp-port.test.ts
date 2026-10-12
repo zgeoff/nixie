@@ -76,7 +76,7 @@ test('it reads the backup opt-out among the features of an impd that has it', ()
     port: 0,
     hostname: '127.0.0.1',
     fetch: () =>
-      Response.json({ json: { version: '0.42.0', features: { backupOptOut: true }, egress: {} } }),
+      Response.json({ json: { version: '1.0.0', features: { backupOptOut: true }, egress: {} } }),
   });
 
   onTestFinished(() => impd.stop(true));
