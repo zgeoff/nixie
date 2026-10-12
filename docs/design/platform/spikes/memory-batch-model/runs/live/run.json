@@ -1,0 +1,1919 @@
+{
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "plan": [
+    {
+      "end": 4,
+      "start": 0,
+      "startedAt": 4.5,
+      "trigger": "count"
+    },
+    {
+      "end": 8,
+      "start": 4,
+      "startedAt": 13.5,
+      "trigger": "count"
+    },
+    {
+      "end": 11,
+      "start": 8,
+      "startedAt": 25.5,
+      "trigger": "idle"
+    },
+    {
+      "end": 15,
+      "start": 11,
+      "startedAt": 247.5,
+      "trigger": "count"
+    },
+    {
+      "end": 19,
+      "start": 15,
+      "startedAt": 262.5,
+      "trigger": "count"
+    },
+    {
+      "end": 22,
+      "start": 19,
+      "startedAt": 273.5,
+      "trigger": "idle"
+    },
+    {
+      "end": 26,
+      "start": 22,
+      "startedAt": 607.5,
+      "trigger": "count"
+    },
+    {
+      "end": 30,
+      "start": 26,
+      "startedAt": 620.5,
+      "trigger": "count"
+    },
+    {
+      "end": 32,
+      "start": 30,
+      "startedAt": 630.5,
+      "trigger": "idle"
+    },
+    {
+      "end": 36,
+      "start": 32,
+      "startedAt": 1446.5,
+      "trigger": "count"
+    },
+    {
+      "end": 40,
+      "start": 36,
+      "startedAt": 1465.5,
+      "trigger": "count"
+    }
+  ],
+  "samples": [
+    {
+      "batches": [
+        {
+          "apiMs": 2307,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 4,
+            "start": 0,
+            "startedAt": 4.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.0002211,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1990,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 402
+          },
+          "wallMs": 8759
+        },
+        {
+          "apiMs": 1929,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 8,
+            "start": 4,
+            "startedAt": 13.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00036047000000000005,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1033,
+            "input": 2,
+            "output": 286
+          },
+          "wallMs": 3405
+        },
+        {
+          "apiMs": 1698,
+          "candidates": 0,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 11,
+            "start": 8,
+            "startedAt": 25.5,
+            "trigger": "idle"
+          },
+          "reportedUSD": 0.00029867,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 964,
+            "input": 2,
+            "output": 190
+          },
+          "wallMs": 3098
+        },
+        {
+          "apiMs": 2466,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 15,
+            "start": 11,
+            "startedAt": 247.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00044387,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 960,
+            "input": 2,
+            "output": 482
+          },
+          "wallMs": 4014
+        },
+        {
+          "apiMs": 2817,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 19,
+            "start": 15,
+            "startedAt": 262.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00052317,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1019,
+            "input": 2,
+            "output": 617
+          },
+          "wallMs": 4443
+        },
+        {
+          "apiMs": 2671,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 22,
+            "start": 19,
+            "startedAt": 273.5,
+            "trigger": "idle"
+          },
+          "reportedUSD": 0.00050947,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1018,
+            "input": 2,
+            "output": 590
+          },
+          "wallMs": 4206
+        },
+        {
+          "apiMs": 1912,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 26,
+            "start": 22,
+            "startedAt": 607.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00043187,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1130,
+            "input": 2,
+            "output": 390
+          },
+          "wallMs": 3628
+        },
+        {
+          "apiMs": 2018,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 30,
+            "start": 26,
+            "startedAt": 620.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00043777000000000003,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1182,
+            "input": 2,
+            "output": 381
+          },
+          "wallMs": 3385
+        },
+        {
+          "apiMs": 1658,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 32,
+            "start": 30,
+            "startedAt": 630.5,
+            "trigger": "idle"
+          },
+          "reportedUSD": 0.00038907000000000004,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1096,
+            "input": 2,
+            "output": 318
+          },
+          "wallMs": 4225
+        },
+        {
+          "apiMs": 2444,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 36,
+            "start": 32,
+            "startedAt": 1446.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00046027000000000004,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1217,
+            "input": 2,
+            "output": 412
+          },
+          "wallMs": 4434
+        },
+        {
+          "apiMs": 1811,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 40,
+            "start": 36,
+            "startedAt": 1465.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00040437000000000003,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1280,
+            "input": 2,
+            "output": 275
+          },
+          "wallMs": 3235
+        }
+      ],
+      "candidates": [
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm vegetarian now, since last month",
+          "sourceID": 3,
+          "text": "The owner has been vegetarian since about September 2026.",
+          "batch": 0,
+          "index": 0,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "Priya is my manager by the way, she likes short updates",
+          "sourceID": 7,
+          "text": "The owner's manager is Priya, and she prefers short updates.",
+          "batch": 0,
+          "index": 1,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't drink coffee any more btw, only tea",
+          "sourceID": 15,
+          "text": "The owner no longer drinks coffee and only drinks tea.",
+          "batch": 1,
+          "index": 2,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm allergic to cashews",
+          "sourceID": 27,
+          "text": "The owner is allergic to cashews.",
+          "batch": 3,
+          "index": 3,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "the usual is Green Fork on Mill Lane",
+          "sourceID": 25,
+          "text": "The owner's usual lunch place is Green Fork on Mill Lane.",
+          "batch": 3,
+          "index": 4,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i1",
+          "op": "revise",
+          "quote": "new address from the 1st is 7 Quay Street, Bristol BS1 4DJ",
+          "sourceID": 33,
+          "text": "The owner is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st, and lives at 14 Elm Row, Bristol until then.",
+          "batch": 4,
+          "index": 5,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i2",
+          "op": "revise",
+          "quote": "it's Dr Mensah at Clifton Smiles now",
+          "sourceID": 39,
+          "text": "The owner's dentist is Dr Mensah at Clifton Smiles.",
+          "batch": 5,
+          "index": 6,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "use r.moss.appointments@example.com for appointments from now on",
+          "sourceID": 41,
+          "text": "The owner uses r.moss.appointments@example.com for appointment bookings.",
+          "batch": 5,
+          "index": 7,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "Saturday I have my pottery class 10 to 12, that's every week",
+          "sourceID": 47,
+          "text": "The owner has a pottery class every Saturday from 10 to 12.",
+          "batch": 6,
+          "index": 8,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my partner Jo hates early starts so nothing before 10",
+          "sourceID": 49,
+          "text": "The owner's partner is Jo, who dislikes early starts, so the owner plans nothing before 10 on weekends.",
+          "batch": 6,
+          "index": 9,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't have a car, so it needs to be by bus or train",
+          "sourceID": 53,
+          "text": "The owner does not have a car and needs to travel by bus or train.",
+          "batch": 7,
+          "index": 10,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I wouldn't say I hate hiking, but long ones wipe me out",
+          "sourceID": 57,
+          "text": "The owner finds long hikes exhausting and does not like them.",
+          "batch": 7,
+          "index": 11,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i3",
+          "op": "revise",
+          "quote": "I prefer afternoon meetings these days",
+          "sourceID": 61,
+          "text": "The owner prefers afternoon meetings, and reserves mornings for focus work.",
+          "batch": 8,
+          "index": 12,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm working from home tuesdays and thursdays from now on",
+          "sourceID": 67,
+          "text": "The owner works from home on Tuesdays and Thursdays.",
+          "batch": 9,
+          "index": 13,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my handle on the team chat is @rmoss-ops if anyone asks",
+          "sourceID": 69,
+          "text": "The owner's team chat handle is @rmoss-ops.",
+          "batch": 9,
+          "index": 14,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "n7",
+          "op": "retire",
+          "quote": "pottery's done for me, the studio closed for good last week",
+          "sourceID": 75,
+          "text": null,
+          "batch": 10,
+          "index": 15,
+          "outcome": "applied",
+          "reason": null
+        }
+      ],
+      "history": [
+        {
+          "active": true,
+          "id": "i1",
+          "versions": [
+            "The owner lives at 14 Elm Row, Bristol.",
+            "The owner is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st, and lives at 14 Elm Row, Bristol until then."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i2",
+          "versions": [
+            "The owner's dentist is Dr Okafor at Harbour Dental.",
+            "The owner's dentist is Dr Mensah at Clifton Smiles."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i3",
+          "versions": [
+            "The owner prefers morning meetings.",
+            "The owner prefers afternoon meetings, and reserves mornings for focus work."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n1",
+          "versions": [
+            "The owner has been vegetarian since about September 2026."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n2",
+          "versions": [
+            "The owner's manager is Priya, and she prefers short updates."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n3",
+          "versions": [
+            "The owner no longer drinks coffee and only drinks tea."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n4",
+          "versions": [
+            "The owner is allergic to cashews."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n5",
+          "versions": [
+            "The owner's usual lunch place is Green Fork on Mill Lane."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n6",
+          "versions": [
+            "The owner uses r.moss.appointments@example.com for appointment bookings."
+          ]
+        },
+        {
+          "active": false,
+          "id": "n7",
+          "versions": [
+            "The owner has a pottery class every Saturday from 10 to 12."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n8",
+          "versions": [
+            "The owner's partner is Jo, who dislikes early starts, so the owner plans nothing before 10 on weekends."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n9",
+          "versions": [
+            "The owner does not have a car and needs to travel by bus or train."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n10",
+          "versions": [
+            "The owner finds long hikes exhausting and does not like them."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n11",
+          "versions": [
+            "The owner works from home on Tuesdays and Thursdays."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n12",
+          "versions": [
+            "The owner's team chat handle is @rmoss-ops."
+          ]
+        }
+      ],
+      "judge": {
+        "candidates": [
+          {
+            "index": 0,
+            "label": "gold",
+            "ref": "g1"
+          },
+          {
+            "index": 1,
+            "label": "gold",
+            "ref": "g2"
+          },
+          {
+            "index": 2,
+            "label": "gold",
+            "ref": "g4"
+          },
+          {
+            "index": 3,
+            "label": "gold",
+            "ref": "g6"
+          },
+          {
+            "index": 4,
+            "label": "gold",
+            "ref": "g5"
+          },
+          {
+            "index": 5,
+            "label": "gold",
+            "ref": "g7"
+          },
+          {
+            "index": 6,
+            "label": "gold",
+            "ref": "g8"
+          },
+          {
+            "index": 7,
+            "label": "gold",
+            "ref": "g9"
+          },
+          {
+            "index": 8,
+            "label": "gold",
+            "ref": "g10"
+          },
+          {
+            "index": 9,
+            "label": "gold",
+            "ref": "g11"
+          },
+          {
+            "index": 10,
+            "label": "gold",
+            "ref": "g12"
+          },
+          {
+            "index": 11,
+            "label": "acceptable",
+            "ref": null
+          },
+          {
+            "index": 12,
+            "label": "gold",
+            "ref": "g13"
+          },
+          {
+            "index": 13,
+            "label": "gold",
+            "ref": "g14"
+          },
+          {
+            "index": 14,
+            "label": "gold",
+            "ref": "g15"
+          },
+          {
+            "index": 15,
+            "label": "gold",
+            "ref": "g10"
+          }
+        ],
+        "error": null,
+        "usage": {
+          "cacheRead": 599,
+          "cacheWrite": 2506,
+          "input": 2,
+          "output": 837
+        }
+      },
+      "sample": 0
+    },
+    {
+      "batches": [
+        {
+          "apiMs": 2585,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 4,
+            "start": 0,
+            "startedAt": 4.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.0002656,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1990,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 491
+          },
+          "wallMs": 8902
+        },
+        {
+          "apiMs": 1924,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 8,
+            "start": 4,
+            "startedAt": 13.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00025831,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1711,
+            "cacheWrite": 385,
+            "input": 2,
+            "output": 328
+          },
+          "wallMs": 3400
+        },
+        {
+          "apiMs": 1481,
+          "candidates": 0,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 11,
+            "start": 8,
+            "startedAt": 25.5,
+            "trigger": "idle"
+          },
+          "reportedUSD": 0.00030087,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 960,
+            "input": 2,
+            "output": 196
+          },
+          "wallMs": 3669
+        },
+        {
+          "apiMs": 2695,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 15,
+            "start": 11,
+            "startedAt": 247.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00045306999999999997,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 956,
+            "input": 2,
+            "output": 502
+          },
+          "wallMs": 4098
+        },
+        {
+          "apiMs": 2427,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 19,
+            "start": 15,
+            "startedAt": 262.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00044737,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1015,
+            "input": 2,
+            "output": 467
+          },
+          "wallMs": 3879
+        },
+        {
+          "apiMs": 2296,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 22,
+            "start": 19,
+            "startedAt": 273.5,
+            "trigger": "idle"
+          },
+          "reportedUSD": 0.00043007,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1011,
+            "input": 2,
+            "output": 434
+          },
+          "wallMs": 4074
+        },
+        {
+          "apiMs": 2273,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 26,
+            "start": 22,
+            "startedAt": 607.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00045137,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1125,
+            "input": 2,
+            "output": 431
+          },
+          "wallMs": 3959
+        },
+        {
+          "apiMs": 2124,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 30,
+            "start": 26,
+            "startedAt": 620.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00046467000000000004,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1159,
+            "input": 2,
+            "output": 444
+          },
+          "wallMs": 3783
+        },
+        {
+          "apiMs": 1800,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 32,
+            "start": 30,
+            "startedAt": 630.5,
+            "trigger": "idle"
+          },
+          "reportedUSD": 0.00036497,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1068,
+            "input": 2,
+            "output": 281
+          },
+          "wallMs": 3564
+        },
+        {
+          "apiMs": 2249,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 36,
+            "start": 32,
+            "startedAt": 1446.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00043997000000000003,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1188,
+            "input": 2,
+            "output": 383
+          },
+          "wallMs": 4083
+        },
+        {
+          "apiMs": 1909,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 40,
+            "start": 36,
+            "startedAt": 1465.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00039907,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1251,
+            "input": 2,
+            "output": 276
+          },
+          "wallMs": 3280
+        }
+      ],
+      "candidates": [
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm vegetarian now, since last month",
+          "sourceID": 3,
+          "text": "The owner has been vegetarian since last month.",
+          "batch": 0,
+          "index": 0,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "Priya is my manager by the way, she likes short updates",
+          "sourceID": 7,
+          "text": "The owner's manager is Priya, who prefers short updates.",
+          "batch": 0,
+          "index": 1,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't drink coffee any more btw, only tea",
+          "sourceID": 15,
+          "text": "The owner no longer drinks coffee and drinks only tea.",
+          "batch": 1,
+          "index": 2,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm allergic to cashews",
+          "sourceID": 27,
+          "text": "The owner is allergic to cashews.",
+          "batch": 3,
+          "index": 3,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "the usual is Green Fork on Mill Lane",
+          "sourceID": 25,
+          "text": "The owner's usual lunch place is Green Fork on Mill Lane.",
+          "batch": 3,
+          "index": 4,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i1",
+          "op": "revise",
+          "quote": "new address from the 1st is 7 Quay Street, Bristol BS1 4DJ",
+          "sourceID": 33,
+          "text": "The owner is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st, leaving 14 Elm Row, Bristol.",
+          "batch": 4,
+          "index": 5,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i2",
+          "op": "revise",
+          "quote": "actually I've switched dentist, it's Dr Mensah at Clifton Smiles now",
+          "sourceID": 39,
+          "text": "The owner's dentist is Dr Mensah at Clifton Smiles.",
+          "batch": 5,
+          "index": 6,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "use r.moss.appointments@example.com for appointments from now on",
+          "sourceID": 41,
+          "text": "The owner wants appointment bookings sent to r.moss.appointments@example.com.",
+          "batch": 5,
+          "index": 7,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "Saturday I have my pottery class 10 to 12, that's every week",
+          "sourceID": 47,
+          "text": "The owner has a pottery class every Saturday from 10 to 12.",
+          "batch": 6,
+          "index": 8,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my partner Jo hates early starts",
+          "sourceID": 49,
+          "text": "The owner's partner is Jo, who dislikes early starts.",
+          "batch": 6,
+          "index": 9,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't have a car, so it needs to be by bus or train",
+          "sourceID": 53,
+          "text": "The owner does not have a car and needs to travel by bus or train.",
+          "batch": 7,
+          "index": 10,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I wouldn't say I hate hiking, but long ones wipe me out",
+          "sourceID": 57,
+          "text": "The owner finds long hikes exhausting.",
+          "batch": 7,
+          "index": 11,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i3",
+          "op": "revise",
+          "quote": "I prefer afternoon meetings these days, mornings are for focus work",
+          "sourceID": 61,
+          "text": "The owner prefers afternoon meetings, keeping mornings for focus work.",
+          "batch": 8,
+          "index": 12,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm working from home tuesdays and thursdays from now on",
+          "sourceID": 67,
+          "text": "The owner works from home on Tuesdays and Thursdays.",
+          "batch": 9,
+          "index": 13,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my handle on the team chat is @rmoss-ops if anyone asks",
+          "sourceID": 69,
+          "text": "The owner's team chat handle is @rmoss-ops.",
+          "batch": 9,
+          "index": 14,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "n7",
+          "op": "retire",
+          "quote": "pottery's done for me, the studio closed for good last week",
+          "sourceID": 75,
+          "text": null,
+          "batch": 10,
+          "index": 15,
+          "outcome": "applied",
+          "reason": null
+        }
+      ],
+      "history": [
+        {
+          "active": true,
+          "id": "i1",
+          "versions": [
+            "The owner lives at 14 Elm Row, Bristol.",
+            "The owner is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st, leaving 14 Elm Row, Bristol."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i2",
+          "versions": [
+            "The owner's dentist is Dr Okafor at Harbour Dental.",
+            "The owner's dentist is Dr Mensah at Clifton Smiles."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i3",
+          "versions": [
+            "The owner prefers morning meetings.",
+            "The owner prefers afternoon meetings, keeping mornings for focus work."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n1",
+          "versions": [
+            "The owner has been vegetarian since last month."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n2",
+          "versions": [
+            "The owner's manager is Priya, who prefers short updates."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n3",
+          "versions": [
+            "The owner no longer drinks coffee and drinks only tea."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n4",
+          "versions": [
+            "The owner is allergic to cashews."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n5",
+          "versions": [
+            "The owner's usual lunch place is Green Fork on Mill Lane."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n6",
+          "versions": [
+            "The owner wants appointment bookings sent to r.moss.appointments@example.com."
+          ]
+        },
+        {
+          "active": false,
+          "id": "n7",
+          "versions": [
+            "The owner has a pottery class every Saturday from 10 to 12."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n8",
+          "versions": [
+            "The owner's partner is Jo, who dislikes early starts."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n9",
+          "versions": [
+            "The owner does not have a car and needs to travel by bus or train."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n10",
+          "versions": [
+            "The owner finds long hikes exhausting."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n11",
+          "versions": [
+            "The owner works from home on Tuesdays and Thursdays."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n12",
+          "versions": [
+            "The owner's team chat handle is @rmoss-ops."
+          ]
+        }
+      ],
+      "judge": {
+        "candidates": [
+          {
+            "index": 0,
+            "label": "gold",
+            "ref": "g1"
+          },
+          {
+            "index": 1,
+            "label": "gold",
+            "ref": "g2"
+          },
+          {
+            "index": 2,
+            "label": "gold",
+            "ref": "g4"
+          },
+          {
+            "index": 3,
+            "label": "gold",
+            "ref": "g6"
+          },
+          {
+            "index": 4,
+            "label": "gold",
+            "ref": "g5"
+          },
+          {
+            "index": 5,
+            "label": "gold",
+            "ref": "g7"
+          },
+          {
+            "index": 6,
+            "label": "gold",
+            "ref": "g8"
+          },
+          {
+            "index": 7,
+            "label": "gold",
+            "ref": "g9"
+          },
+          {
+            "index": 8,
+            "label": "gold",
+            "ref": "g10"
+          },
+          {
+            "index": 9,
+            "label": "gold",
+            "ref": "g11"
+          },
+          {
+            "index": 10,
+            "label": "gold",
+            "ref": "g12"
+          },
+          {
+            "index": 11,
+            "label": "acceptable",
+            "ref": null
+          },
+          {
+            "index": 12,
+            "label": "gold",
+            "ref": "g13"
+          },
+          {
+            "index": 13,
+            "label": "gold",
+            "ref": "g14"
+          },
+          {
+            "index": 14,
+            "label": "gold",
+            "ref": "g15"
+          },
+          {
+            "index": 15,
+            "label": "gold",
+            "ref": "g10"
+          }
+        ],
+        "error": null,
+        "usage": {
+          "cacheRead": 599,
+          "cacheWrite": 2489,
+          "input": 2,
+          "output": 596
+        }
+      },
+      "sample": 1
+    },
+    {
+      "batches": [
+        {
+          "apiMs": 2389,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 4,
+            "start": 0,
+            "startedAt": 4.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00029625,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1605,
+            "cacheWrite": 385,
+            "input": 2,
+            "output": 406
+          },
+          "wallMs": 4169
+        },
+        {
+          "apiMs": 1766,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 8,
+            "start": 4,
+            "startedAt": 13.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00035467,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1034,
+            "input": 2,
+            "output": 274
+          },
+          "wallMs": 3412
+        },
+        {
+          "apiMs": 1570,
+          "candidates": 0,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 11,
+            "start": 8,
+            "startedAt": 25.5,
+            "trigger": "idle"
+          },
+          "reportedUSD": 0.00029737000000000003,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 965,
+            "input": 2,
+            "output": 187
+          },
+          "wallMs": 3073
+        },
+        {
+          "apiMs": 2219,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 15,
+            "start": 11,
+            "startedAt": 247.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00040907,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 961,
+            "input": 2,
+            "output": 412
+          },
+          "wallMs": 3897
+        },
+        {
+          "apiMs": 3098,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 19,
+            "start": 15,
+            "startedAt": 262.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.0005013700000000001,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1020,
+            "input": 2,
+            "output": 573
+          },
+          "wallMs": 4444
+        },
+        {
+          "apiMs": 2464,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 22,
+            "start": 19,
+            "startedAt": 273.5,
+            "trigger": "idle"
+          },
+          "reportedUSD": 0.00045457,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1016,
+            "input": 2,
+            "output": 481
+          },
+          "wallMs": 4155
+        },
+        {
+          "apiMs": 2069,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 26,
+            "start": 22,
+            "startedAt": 607.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00043187,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1125,
+            "input": 2,
+            "output": 392
+          },
+          "wallMs": 3423
+        },
+        {
+          "apiMs": 2262,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 30,
+            "start": 26,
+            "startedAt": 620.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00043517,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1159,
+            "input": 2,
+            "output": 385
+          },
+          "wallMs": 3691
+        },
+        {
+          "apiMs": 1406,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 32,
+            "start": 30,
+            "startedAt": 630.5,
+            "trigger": "idle"
+          },
+          "reportedUSD": 0.00034847000000000003,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1068,
+            "input": 2,
+            "output": 248
+          },
+          "wallMs": 2769
+        },
+        {
+          "apiMs": 2408,
+          "candidates": 2,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 36,
+            "start": 32,
+            "startedAt": 1446.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00046747000000000005,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1188,
+            "input": 2,
+            "output": 438
+          },
+          "wallMs": 3841
+        },
+        {
+          "apiMs": 1715,
+          "candidates": 1,
+          "error": null,
+          "model": "claude-haiku-5-5",
+          "plan": {
+            "end": 40,
+            "start": 36,
+            "startedAt": 1465.5,
+            "trigger": "count"
+          },
+          "reportedUSD": 0.00039057,
+          "retried": false,
+          "usage": {
+            "cacheRead": 1067,
+            "cacheWrite": 1251,
+            "input": 2,
+            "output": 259
+          },
+          "wallMs": 4179
+        }
+      ],
+      "candidates": [
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm vegetarian now, since last month",
+          "sourceID": 3,
+          "text": "The owner is vegetarian, having become so in September 2026.",
+          "batch": 0,
+          "index": 0,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "Priya is my manager by the way, she likes short updates",
+          "sourceID": 7,
+          "text": "The owner's manager is Priya, and she likes short updates.",
+          "batch": 0,
+          "index": 1,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't drink coffee any more btw, only tea",
+          "sourceID": 15,
+          "text": "The owner no longer drinks coffee and drinks only tea.",
+          "batch": 1,
+          "index": 2,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm allergic to cashews",
+          "sourceID": 27,
+          "text": "The owner is allergic to cashews.",
+          "batch": 3,
+          "index": 3,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "the usual is Green Fork on Mill Lane",
+          "sourceID": 25,
+          "text": "The owner's usual lunch place is Green Fork on Mill Lane.",
+          "batch": 3,
+          "index": 4,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i1",
+          "op": "revise",
+          "quote": "new address from the 1st is 7 Quay Street, Bristol BS1 4DJ",
+          "sourceID": 33,
+          "text": "The owner is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st, replacing 14 Elm Row, Bristol.",
+          "batch": 4,
+          "index": 5,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i2",
+          "op": "revise",
+          "quote": "actually I've switched dentist, it's Dr Mensah at Clifton Smiles now",
+          "sourceID": 39,
+          "text": "The owner's dentist is Dr Mensah at Clifton Smiles.",
+          "batch": 5,
+          "index": 6,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "use r.moss.appointments@example.com for appointments from now on",
+          "sourceID": 41,
+          "text": "The owner uses r.moss.appointments@example.com for appointments.",
+          "batch": 5,
+          "index": 7,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "Saturday I have my pottery class 10 to 12, that's every week",
+          "sourceID": 47,
+          "text": "The owner has a pottery class every Saturday from 10 to 12.",
+          "batch": 6,
+          "index": 8,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my partner Jo hates early starts",
+          "sourceID": 49,
+          "text": "The owner's partner is Jo, who dislikes early starts.",
+          "batch": 6,
+          "index": 9,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I don't have a car, so it needs to be by bus or train",
+          "sourceID": 53,
+          "text": "The owner does not have a car and needs to travel by bus or train.",
+          "batch": 7,
+          "index": 10,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "long ones wipe me out",
+          "sourceID": 57,
+          "text": "The owner finds long hikes exhausting.",
+          "batch": 7,
+          "index": 11,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "i3",
+          "op": "revise",
+          "quote": "I prefer afternoon meetings these days, mornings are for focus work",
+          "sourceID": 61,
+          "text": "The owner prefers afternoon meetings, keeping mornings for focus work.",
+          "batch": 8,
+          "index": 12,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "I'm working from home tuesdays and thursdays from now on",
+          "sourceID": 67,
+          "text": "The owner works from home on Tuesdays and Thursdays.",
+          "batch": 9,
+          "index": 13,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": null,
+          "op": "remember",
+          "quote": "my handle on the team chat is @rmoss-ops if anyone asks",
+          "sourceID": 69,
+          "text": "The owner's team chat handle is @rmoss-ops.",
+          "batch": 9,
+          "index": 14,
+          "outcome": "applied",
+          "reason": null
+        },
+        {
+          "itemID": "n7",
+          "op": "retire",
+          "quote": "pottery's done for me, the studio closed for good last week",
+          "sourceID": 75,
+          "text": null,
+          "batch": 10,
+          "index": 15,
+          "outcome": "applied",
+          "reason": null
+        }
+      ],
+      "history": [
+        {
+          "active": true,
+          "id": "i1",
+          "versions": [
+            "The owner lives at 14 Elm Row, Bristol.",
+            "The owner is moving to 7 Quay Street, Bristol BS1 4DJ from the 1st, replacing 14 Elm Row, Bristol."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i2",
+          "versions": [
+            "The owner's dentist is Dr Okafor at Harbour Dental.",
+            "The owner's dentist is Dr Mensah at Clifton Smiles."
+          ]
+        },
+        {
+          "active": true,
+          "id": "i3",
+          "versions": [
+            "The owner prefers morning meetings.",
+            "The owner prefers afternoon meetings, keeping mornings for focus work."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n1",
+          "versions": [
+            "The owner is vegetarian, having become so in September 2026."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n2",
+          "versions": [
+            "The owner's manager is Priya, and she likes short updates."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n3",
+          "versions": [
+            "The owner no longer drinks coffee and drinks only tea."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n4",
+          "versions": [
+            "The owner is allergic to cashews."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n5",
+          "versions": [
+            "The owner's usual lunch place is Green Fork on Mill Lane."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n6",
+          "versions": [
+            "The owner uses r.moss.appointments@example.com for appointments."
+          ]
+        },
+        {
+          "active": false,
+          "id": "n7",
+          "versions": [
+            "The owner has a pottery class every Saturday from 10 to 12."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n8",
+          "versions": [
+            "The owner's partner is Jo, who dislikes early starts."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n9",
+          "versions": [
+            "The owner does not have a car and needs to travel by bus or train."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n10",
+          "versions": [
+            "The owner finds long hikes exhausting."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n11",
+          "versions": [
+            "The owner works from home on Tuesdays and Thursdays."
+          ]
+        },
+        {
+          "active": true,
+          "id": "n12",
+          "versions": [
+            "The owner's team chat handle is @rmoss-ops."
+          ]
+        }
+      ],
+      "judge": {
+        "candidates": [
+          {
+            "index": 0,
+            "label": "gold",
+            "ref": "g1"
+          },
+          {
+            "index": 1,
+            "label": "gold",
+            "ref": "g2"
+          },
+          {
+            "index": 2,
+            "label": "gold",
+            "ref": "g4"
+          },
+          {
+            "index": 3,
+            "label": "gold",
+            "ref": "g6"
+          },
+          {
+            "index": 4,
+            "label": "gold",
+            "ref": "g5"
+          },
+          {
+            "index": 5,
+            "label": "gold",
+            "ref": "g7"
+          },
+          {
+            "index": 6,
+            "label": "gold",
+            "ref": "g8"
+          },
+          {
+            "index": 7,
+            "label": "gold",
+            "ref": "g9"
+          },
+          {
+            "index": 8,
+            "label": "gold",
+            "ref": "g10"
+          },
+          {
+            "index": 9,
+            "label": "gold",
+            "ref": "g11"
+          },
+          {
+            "index": 10,
+            "label": "gold",
+            "ref": "g12"
+          },
+          {
+            "index": 11,
+            "label": "acceptable",
+            "ref": null
+          },
+          {
+            "index": 12,
+            "label": "gold",
+            "ref": "g13"
+          },
+          {
+            "index": 13,
+            "label": "gold",
+            "ref": "g14"
+          },
+          {
+            "index": 14,
+            "label": "gold",
+            "ref": "g15"
+          },
+          {
+            "index": 15,
+            "label": "gold",
+            "ref": "g10"
+          }
+        ],
+        "error": null,
+        "usage": {
+          "cacheRead": 599,
+          "cacheWrite": 2474,
+          "input": 2,
+          "output": 714
+        }
+      },
+      "sample": 2
+    }
+  ]
+}

@@ -66,11 +66,12 @@ search limited to the latest 20 messages. This is a design requirement if batchi
 
 ## Limits
 
-Model output is deterministic fixture data. Retries may repeat the extraction attempt; identical
-outputs publish once through the checkpoint. The experiment does not prove that model calls happen
-once, that nondeterministic retries select the same memories, or that semantic duplicates disappear.
-The address fixtures preserve both versions as proposals in source order; they do not prove that a
-model correctly revises an active item.
+Model output is deterministic fixture data; the [model batch spike](../memory-batch-model/README.md)
+measures a real writer. Retries may repeat the extraction attempt; identical outputs publish once
+through the checkpoint. The experiment does not prove that model calls happen once, that
+nondeterministic retries select the same memories, or that semantic duplicates disappear. The
+address fixtures preserve both versions as proposals in source order; they do not prove that a model
+correctly revises an active item.
 
 The session artifact is a JSON file with a fixed summary, not an SDK transcript or live session.
 These results check a SQLite checkpoint and artifact ordering, not SDK session continuity, summary
