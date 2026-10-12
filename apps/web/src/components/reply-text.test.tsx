@@ -38,6 +38,19 @@ test('it opens a link in a new tab with no opener and no referrer', () => {
   expect(link).toHaveAttribute('rel', 'noopener noreferrer');
 });
 
+test('it links a footnote and its way back to anchors that exist, in the same page', () => {
+  const rendered = render(<ReplyText text={'Claim[^1].\n\n[^1]: Source.'} />);
+  const reference = rendered.getByRole('link', { name: '1' });
+  const back = rendered.getByRole('link', { name: /^Back to reference 1/u });
+  const note = rendered.container.querySelector(reference.getAttribute('href') ?? 'missing');
+  const origin = rendered.container.querySelector(back.getAttribute('href') ?? 'missing');
+
+  expect(note).toHaveTextContent('Source.');
+  expect(origin).toBe(reference);
+  expect(reference).not.toHaveAttribute('target');
+  expect(back).not.toHaveAttribute('target');
+});
+
 test('it renders the raw HTML in a reply inert', () => {
   const rendered = render(
     <ReplyText

@@ -20,18 +20,42 @@ export function ReplyText(props: ReplyTextProps): ReactNode {
   );
 }
 
-// The renderer blanks a URL whose protocol it does not allow, such as javascript:.
+// The renderer blanks a URL whose protocol it does not allow, such as javascript:. A link inside
+// the reply, such as a footnote and its way back, keeps the page and the anchor IDs it jumps
+// between.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the renderer passes the element's own props
 function ReplyLink(props: ComponentProps<'a'>): ReactNode {
   if (props.href === undefined || props.href === '') {
     return <span>{props.children}</span>;
   }
+  if (props.href.startsWith('#')) {
+    return (
+      <a
+        aria-describedby={props['aria-describedby']}
+        aria-label={props['aria-label']}
+        data-footnote-backref={readDataProp(props, 'data-footnote-backref')}
+        data-footnote-ref={readDataProp(props, 'data-footnote-ref')}
+        href={props.href}
+        id={props.id}
+      >
+        {props.children}
+      </a>
+    );
+  }
 
   return (
-    <a href={props.href} rel="noopener noreferrer" target="_blank">
+    <a href={props.href} id={props.id} rel="noopener noreferrer" target="_blank">
       {props.children}
     </a>
   );
+}
+
+// The renderer marks a footnote's links with data attributes, which the element's props type
+// leaves out.
+function readDataProp(props: object, name: string): unknown {
+  const value: unknown = Reflect.get(props, name);
+
+  return value;
 }
 
 // An image would load from wherever the reply points, so it shows as a link to the image.
