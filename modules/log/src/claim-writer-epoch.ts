@@ -1,5 +1,6 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 
 // Raises the writer epoch by one in a single transaction and returns the new value. The table
 // predates every migration, because the epoch rises before the first one runs. BEGIN IMMEDIATE
@@ -15,9 +16,8 @@ export function claimWriterEpoch(db: Kysely<unknown>): Promise<number> {
       returning epoch`.execute(tx),
       [row] = result.rows;
 
-    if (row === undefined) {
-      throw new Error('the writer epoch raise returned no row');
-    }
+    // the upsert writes the one row and returns it
+    invariant(row);
     return row.epoch;
   });
 }

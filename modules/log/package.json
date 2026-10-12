@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@heynixie/db": "workspace:*",
-    "kysely": "catalog:"
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:"
   }
 }

@@ -119,6 +119,42 @@ test('it loses no update when 2 connections race read-then-write transactions', 
   expect(result.rows).toStrictEqual([{ value: 50 }]);
 });
 
+test('it opens 2 connections that write to a new file at once without a busy error', async () => {
+  const ctx = await setupTest();
+  const paths = Array.from({ length: 10 }, (_, index) => `${ctx.path}-${String(index)}`);
+  const pairs = paths.map((path) => ({
+    first: new Kysely<unknown>({ dialect: buildSqliteWorkerDialect(path) }),
+    second: new Kysely<unknown>({ dialect: buildSqliteWorkerDialect(path) }),
+  }));
+  const handles = pairs.flatMap((pair) => [pair.first, pair.second]);
+
+  ctx.stack.defer(async () => {
+    await Promise.all(handles.map((db) => db.destroy()));
+  });
+
+  // each connection switches its new file to WAL as it opens, while the other may already write
+  await Promise.all(
+    handles.flatMap((db) =>
+      Array.from({ length: 10 }, () =>
+        db.transaction().execute(async (tx) => {
+          await sql`create table if not exists hits (id integer primary key)`.execute(tx);
+          await sql`insert into hits default values`.execute(tx);
+        }),
+      ),
+    ),
+  );
+
+  const counts = await Promise.all(
+    pairs.map((pair) =>
+      sql<{ count: number }>`select count(*) as count from hits`.execute(pair.first),
+    ),
+  );
+
+  expect(counts.map((count) => count.rows)).toStrictEqual(
+    Array.from({ length: 10 }, () => [{ count: 20 }]),
+  );
+});
+
 test('it keeps the event loop free while a long query runs', async () => {
   const ctx = await setupTest();
 
