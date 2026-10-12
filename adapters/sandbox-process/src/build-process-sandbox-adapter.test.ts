@@ -131,6 +131,21 @@ test.each([
   expect(records).toStrictEqual([]);
 });
 
+test("it refuses a disk smaller than a built image's filesystem and writes no record", async () => {
+  const ctx = await setupTest();
+  const spec = buildMockSandboxSpec({ limits: { diskMiB: 4095 } });
+
+  expect(ctx.adapter.create(spec)).rejects.toThrow(
+    new SandboxSpecRefusedError(
+      "a disk of 4095 MiB is smaller than the image's filesystem (4096 MiB)",
+    ),
+  );
+
+  const records = await ctx.readSandboxRecords();
+
+  expect(records).toStrictEqual([]);
+});
+
 test('it cuts exec output past 1 MiB per stream', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());

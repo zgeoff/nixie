@@ -26,7 +26,7 @@ export function startChecker(options: CheckerOptions): Promise<RunCheck> {
     profile: resolved,
     sandboxes: options.sandboxes,
     image: options.image,
-    limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
+    limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
     command: buildCheckCommand(),
     timeoutMs: options.timeoutMs,
   });
