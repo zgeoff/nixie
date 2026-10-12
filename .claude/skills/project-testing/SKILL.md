@@ -2,15 +2,17 @@
 name: project-testing
 description:
   nixie's test harness facts — the runs and their gates, the preloads, the test build, the shared
-  harnesses in libs/testing, and what an invariant() call means for error coverage. Load it with the
-  testing skill whenever you design, write, run, or review tests in this repo.
+  harnesses in libs/testing, what an invariant() call means for error coverage, and the two recorded
+  exceptions to the testing skill. Load it with the testing skill whenever you design, write, run,
+  or review tests in this repo.
 ---
 
 # nixie test harnesses
 
 This skill lists the runs, preloads, and harnesses that exist in this repo, with the paths and
 variables that drive them. It describes the code as it is. The rules for writing tests live in the
-shared testing skill, and nothing here relaxes them.
+shared testing skill. Nothing here relaxes them except the two cases that [Exceptions](#exceptions)
+records.
 
 ## Runs
 
@@ -77,3 +79,19 @@ such as the row that an `UPDATE … RETURNING` on a row the same transaction jus
 declares no error to a caller, so the testing skill's rule that each declared error has its own test
 does not reach it, and no test forces it. A guard that real input or a real failure can trip is a
 declared error: it throws its own error, and a test reaches it through that input or failure.
+
+## Exceptions
+
+The testing skill holds two rules that this repo relaxes:
+
+- **A fixed-value stand-in stays inline.** A stand-in that only returns a fixed value, resolves,
+  rejects, or never settles, such as `mock(() => new Response('start'))` or a health check that
+  resolves `{ isReady: true, reason: null }`, stays in the test that uses it. It models no behaviour
+  of the thing it replaces, so a tested file in `src/test-utils/` would only repeat the literal. A
+  stand-in that reads its arguments or models a sequence moves to `src/test-utils/` with its own
+  tests, as the testing skill requires.
+- **A committed generated reference file is its own golden.** A test that regenerates a reference
+  file the repo commits, such as the OpenAPI document, and compares the result with the committed
+  file keeps that file as its golden instead of an inline snapshot. Other tools read the committed
+  file, such as the compatibility check that reads the OpenAPI document at the last release tag, so
+  the test proves that file matches the code, and an inline copy would only duplicate it.
