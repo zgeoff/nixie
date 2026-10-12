@@ -82,6 +82,13 @@ the client fails a stream that misses three keepalives in a row and follows agai
 becomes visible again, or a browser that comes back online, ends the open connection and follows
 again at once, because those are the moments a connection most often died unseen.
 
+A stream that fails attempt after attempt backs off: the pause before each reconnect doubles up to a
+cap, and a connection that opens and is not refused resets it. A stream the API refuses counts as a
+failure, because the stream opens before the API checks the session and the refusal arrives as its
+first event. After a few failures in a row the page says live updates are unavailable, so a stream
+that a content blocker or a down server stops fails visibly, and the notice goes once the stream
+connects again.
+
 Each message stands on its own line, and every other record folds into the step it belongs to, from
 the step's start to its end. A record before a step, such as the task's creation, folds into the
 step that follows it. A step shows as one collapsed line that names each tool it called with its

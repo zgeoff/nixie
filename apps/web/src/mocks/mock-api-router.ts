@@ -13,6 +13,23 @@ interface MockAPIContext extends ResponseHeadersPluginContext {
 
 const os = implement(contract).$context<MockAPIContext>();
 
+// The live stream, under its current name and the deprecated one the contract keeps.
+const followProcedure = os.records.follow.handler(async function* followRecords(options) {
+  requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+  const cursor = { after: options.input.afterSequence };
+
+  while (options.signal?.aborted !== true) {
+    for (const record of findRecordsAfter(cursor.after, options.input.thread)) {
+      cursor.after = record.sequence;
+      yield withEventMeta({ record: toLogRecord(record) }, { id: String(record.sequence) });
+    }
+
+    // oxlint-disable-next-line no-await-in-loop -- the stream sleeps until the next record
+    await waitForRecord(options.signal);
+  }
+});
+
 // A stand-in for nixie's API that implements the contract over the mock store, so the client's
 // real link, serialisation and typed errors run in every test.
 export const mockAPIRouter = os.router({
@@ -61,23 +78,8 @@ export const mockAPIRouter = os.router({
       return { duplicate: true, sequence: earlier.sequence };
     }),
   },
-  log: {
-    follow: os.log.follow.handler(async function* followLog(options) {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-      const cursor = { after: options.input.afterSequence };
-
-      while (options.signal?.aborted !== true) {
-        for (const record of findRecordsAfter(cursor.after, options.input.thread)) {
-          cursor.after = record.sequence;
-          yield withEventMeta({ record: toLogRecord(record) }, { id: String(record.sequence) });
-        }
-
-        // oxlint-disable-next-line no-await-in-loop -- the stream sleeps until the next record
-        await waitForRecord(options.signal);
-      }
-    }),
-  },
+  log: { follow: followProcedure },
+  records: { follow: followProcedure },
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {
       const input = options.input;

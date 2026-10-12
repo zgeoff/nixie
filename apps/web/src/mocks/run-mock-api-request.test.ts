@@ -164,7 +164,7 @@ test('it streams the records written after the sequence a client follows from', 
 
   await store.records.create({ message: { text: 'already read' } });
 
-  const events = await client.log.follow({ afterSequence: 1, thread: 'conversation' });
+  const events = await client.records.follow({ afterSequence: 1, thread: 'conversation' });
 
   await store.records.create({ kind: 'assistant_message', message: { text: 'new' } });
 

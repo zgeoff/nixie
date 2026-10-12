@@ -390,7 +390,7 @@ test('#conversation.read refuses a thread with no records', async () => {
   expect(result.error).toMatchObject({ code: 'THREAD_NOT_FOUND' });
 });
 
-test('#log.follow streams the records of the thread after the sequence asked for', async () => {
+test('#records.follow streams the records of the thread after the sequence asked for', async () => {
   const ctx = await setupTest();
 
   const laptop = await createDeviceSession(ctx.context, 'laptop');
@@ -407,13 +407,35 @@ test('#log.follow streams the records of the thread after the sequence asked for
     sendText('00000000-0000-4000-8000-000000000002', 'two'),
   );
 
-  const connection = await laptopClient.log.follow({ afterSequence: 0, thread: 'conversation' });
+  const connection = await laptopClient.records.follow({
+    afterSequence: 0,
+    thread: 'conversation',
+  });
   const seen = await collectEvents(connection, 3);
 
   expect(seen.map((event) => event.record.message?.text)).toStrictEqual([undefined, 'one', 'two']);
 });
 
-test('#log.follow resumes from the last event ID with exactly the records it missed', async () => {
+test('#log.follow still streams the records of the thread for a client of an earlier release', async () => {
+  const ctx = await setupTest();
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  await laptopClient.conversation.send({
+    clientMessageId: '00000000-0000-4000-8000-000000000001',
+    thread: 'conversation',
+    text: 'one',
+    spans: [{ start: 0, end: 3, source: 'typed' }],
+  });
+
+  const connection = await laptopClient.log.follow({ afterSequence: 0, thread: 'conversation' });
+  const seen = await collectEvents(connection, 2);
+
+  expect(seen.map((event) => event.record.message?.text)).toStrictEqual([undefined, 'one']);
+});
+
+test('#records.follow resumes from the last event ID with exactly the records it missed', async () => {
   const ctx = await setupTest();
 
   const laptop = await createDeviceSession(ctx.context, 'laptop');
@@ -427,7 +449,7 @@ test('#log.follow resumes from the last event ID with exactly the records it mis
     });
   const firstConnection = await sendText('00000000-0000-4000-8000-000000000001', 'one')
     .then(() => sendText('00000000-0000-4000-8000-000000000002', 'two'))
-    .then(() => laptopClient.log.follow({ afterSequence: 0, thread: 'conversation' }));
+    .then(() => laptopClient.records.follow({ afterSequence: 0, thread: 'conversation' }));
   const seen = await collectEvents(firstConnection, 3);
 
   await firstConnection
@@ -435,7 +457,7 @@ test('#log.follow resumes from the last event ID with exactly the records it mis
     .then(() => sendText('00000000-0000-4000-8000-000000000003', 'three'))
     .then(() => sendText('00000000-0000-4000-8000-000000000004', 'four'));
 
-  const secondConnection = await laptopClient.log.follow(
+  const secondConnection = await laptopClient.records.follow(
     { afterSequence: 0, thread: 'conversation' },
     { lastEventId: String(seen.at(-1)?.record.sequence) },
   );
@@ -444,13 +466,13 @@ test('#log.follow resumes from the last event ID with exactly the records it mis
   expect(missed.map((event) => event.record.message?.text)).toStrictEqual(['three', 'four']);
 });
 
-test('#log.follow ends with UNAUTHORIZED once the session is revoked', async () => {
+test('#records.follow ends with UNAUTHORIZED once the session is revoked', async () => {
   const ctx = await setupTest();
 
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
-  const stream = await laptopClient.log.follow({ afterSequence: 0, thread: 'conversation' });
+  const stream = await laptopClient.records.follow({ afterSequence: 0, thread: 'conversation' });
   const reading = collectEvents(stream, Number.POSITIVE_INFINITY);
 
   await laptopClient.sessions.revoke({
@@ -467,13 +489,13 @@ test('#log.follow ends with UNAUTHORIZED once the session is revoked', async () 
   expect(ended).toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
-test('#log.follow started past the head still ends once the session is revoked', async () => {
+test('#records.follow started past the head still ends once the session is revoked', async () => {
   const ctx = await setupTest();
 
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
-  const stream = await laptopClient.log.follow({
+  const stream = await laptopClient.records.follow({
     afterSequence: 1_000_000,
     thread: 'conversation',
   });

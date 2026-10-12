@@ -107,6 +107,17 @@ test('it shows a spinner while a reply is pending and removes it when the reply 
   expect(rendered.queryByRole('progressbar', { name: 'nixie is working' })).toBeNull();
 });
 
+// The client pauses 1 s and then 2 s between the three attempts, on the platform timer.
+test('it says live updates are unavailable while the live stream keeps failing', async () => {
+  await setupTest();
+  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
+
+  const rendered = render(<Conversation thread="conversation" />);
+  const notice = await rendered.findByRole('status', {}, { timeout: 8000 });
+
+  expect(notice).toHaveTextContent('Live updates unavailable');
+}, 10_000);
+
 test('it shows an unsent message as not sent', async () => {
   const ctx = await setupTest();
 

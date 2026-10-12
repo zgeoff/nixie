@@ -105,3 +105,8 @@ resumes after that record, whatever start the input holds. The stream shows only
 to a thread, because session and refusal records belong to none and no client view shows them. A
 message record carries its text and spans while its key exists, and keeps its place with no text
 once the message is forgotten.
+
+The live stream answers at a path with no `log` segment, because EasyPrivacy, a filter list that
+content blockers enable by default, blocks `/rpc/log/` on every domain. The stream's first path
+stays in the contract as a deprecated alias for the clients of earlier releases, which a later
+release may remove.

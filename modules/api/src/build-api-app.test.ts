@@ -19,6 +19,7 @@ test.each([
   ['/rpc/conversation/read'],
   ['/rpc/conversation/send'],
   ['/rpc/log/follow'],
+  ['/rpc/records/follow'],
 ])('it refuses %s without the client header, even with a live session', async (path) => {
   const ctx = await setupTest();
 

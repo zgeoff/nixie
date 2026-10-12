@@ -1,3 +1,6 @@
+import type { StartTimer } from './start-platform-timer';
+import { startPlatformTimer } from './start-platform-timer';
+
 export interface WatchedFetchOptions {
   // How long an event stream may go without a byte before the client treats it as dead.
   readonly idleMs: number;
@@ -8,8 +11,6 @@ export interface WatchedFetchOptions {
   // Calls onTimeout once ms pass, unless the returned stop runs first. The platform timer by default.
   readonly startTimer?: StartTimer;
 }
-
-type StartTimer = (onTimeout: () => void, ms: number) => () => void;
 
 // Builds a fetch that fails an event stream once it goes quiet. The API writes keepalives into a
 // quiet stream, so a stream with no byte for several keepalive periods died on the way without
@@ -64,12 +65,4 @@ function startBodyWatch(body: Bytes, idleMs: number, startTimer: StartTimer): By
       },
     }),
   );
-}
-
-function startPlatformTimer(onTimeout: () => void, ms: number): () => void {
-  const timer = setTimeout(onTimeout, ms);
-
-  return () => {
-    clearTimeout(timer);
-  };
 }
