@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.0](https://github.com/zgeoff/nixie/compare/v0.5.0...v0.6.0) (2026-10-12)
+
+
+### Features
+
+* **geo-529:** add the memory store and its operations ([#120](https://github.com/zgeoff/nixie/issues/120)) ([d79ce1a](https://github.com/zgeoff/nixie/commit/d79ce1a854549d36c3809c85a6416cbb2ad1ee55))
+* **geo-530:** gate memory writes behind the user's typed words ([#124](https://github.com/zgeoff/nixie/issues/124)) ([b034132](https://github.com/zgeoff/nixie/commit/b034132c1441b007c7843d6cb1c35eee99d17c1a))
+* **geo-531:** add the batched memory writer and its catch-up ([#125](https://github.com/zgeoff/nixie/issues/125)) ([4d4773c](https://github.com/zgeoff/nixie/commit/4d4773c75b592cda0afd534d76f0e98554e2a0de))
+* **geo-532:** put memory in each turn and rebuild lost sessions ([#122](https://github.com/zgeoff/nixie/issues/122)) ([5bad1e7](https://github.com/zgeoff/nixie/commit/5bad1e7057dd463a380bc10abf2db43ab9e58dda))
+* **geo-576:** carry the conversation session into a replaced sandbox ([#126](https://github.com/zgeoff/nixie/issues/126)) ([47ce7c9](https://github.com/zgeoff/nixie/commit/47ce7c9ebaab97aa883d06dd299e57c8c9a74394))
+
+
+### Bug Fixes
+
+* **geo-530:** finish a key store checkpoint a reader blocked ([#127](https://github.com/zgeoff/nixie/issues/127)) ([74d6f25](https://github.com/zgeoff/nixie/commit/74d6f254ebf51f6d5aaf090dec9f330e6bd09c2e))
+
 ## [0.5.0](https://github.com/zgeoff/nixie/compare/v0.4.0...v0.5.0) (2026-10-12)
 
 
