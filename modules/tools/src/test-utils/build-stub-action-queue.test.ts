@@ -64,6 +64,36 @@ test("it gives a repeat of an earlier action's tool and input that action's ID",
   expect(stub.actions).toHaveLength(1);
 });
 
+test("it gives another task's call with the same tool and input its own ID", async () => {
+  const stub = buildStubActionQueue();
+
+  const first = await stub.queue.enqueue({
+    call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
+    run: {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'm', profile: 'p' },
+    },
+    decision: { outcome: 'allow', stage: 3, rule: null },
+    callSequence: 1,
+  });
+  const other = await stub.queue.enqueue({
+    call: { callID: 'call-2', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
+    run: {
+      runID: 'run-2',
+      thread: 'task-2',
+      tools: ['test.send'],
+      model: { model: 'm', profile: 'p' },
+    },
+    decision: { outcome: 'allow', stage: 3, rule: null },
+    callSequence: 5,
+  });
+
+  expect(other).not.toBe(first);
+  expect(stub.actions).toHaveLength(2);
+});
+
 test('it answers a pending wait with the outcome written for its action', async () => {
   const stub = buildStubActionQueue();
 

@@ -29,9 +29,9 @@ export interface StubActionQueue {
   readonly stop: () => void;
 }
 
-// Stands in for the server's action queue: a repeat of an action's tool and input gets its ID, and
-// a wait answers the outcome once the action settles, or null while it is pending. The test decides
-// when a wait times out, so no timer runs.
+// Stands in for the server's action queue: a task's repeat of an action's tool and input gets its
+// ID, and a wait answers the outcome once the action settles, or null while it is pending. The test
+// decides when a wait times out, so no timer runs.
 export function buildStubActionQueue(): StubActionQueue {
   const actions: QueuedEntry[] = [];
   const outcomes = buildOutcomeWaits();
@@ -65,9 +65,10 @@ export function buildStubActionQueue(): StubActionQueue {
   };
 }
 
-// the real queue keys an action by a hash of its tool and its arguments
+// the real queue keys an action by its task and a hash of its tool and its arguments
 function isSameAction(left: QueuedAction, right: QueuedAction): boolean {
   return (
+    left.run.thread === right.run.thread &&
     left.call.tool === right.call.tool &&
     JSON.stringify(left.call.input) === JSON.stringify(right.call.input)
   );
