@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { join } from 'node:path';
 import { readRecords } from '@heynixie/log';
 import type { FaultPointID } from '@heynixie/tasks';
 import { LeaseLostError, setFaultPointHandler } from '@heynixie/tasks';
@@ -157,4 +158,26 @@ test('it reaches queue.commit.before and queue.commit.after around the queue', a
   await createAllowedAction(ctx.context, ctx.call);
 
   expect(reached).toStrictEqual(['queue.commit.before', 'queue.commit.after']);
+});
+
+test('it leaves no queue fault point in a release bundle', async () => {
+  const build = await Bun.build({
+    entrypoints: [join(import.meta.dir, 'create-allowed-action.ts')],
+    target: 'bun',
+    define: { NIXIE_TEST_BUILD: 'false' },
+  });
+  const texts = await Promise.all(build.outputs.map((output) => output.text()));
+
+  expect(texts.join('\n')).not.toInclude('queue.commit.');
+});
+
+test('it keeps both queue fault points in a test bundle', async () => {
+  const build = await Bun.build({
+    entrypoints: [join(import.meta.dir, 'create-allowed-action.ts')],
+    target: 'bun',
+    define: { NIXIE_TEST_BUILD: 'true' },
+  });
+  const texts = await Promise.all(build.outputs.map((output) => output.text()));
+
+  expect(texts.join('\n')).toIncludeMultiple(['queue.commit.before', 'queue.commit.after']);
 });
