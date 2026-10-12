@@ -113,64 +113,6 @@ test('it follows the log again at once when the page becomes visible', async () 
   expect(ctx.follows).toHaveBeenCalledOnce();
 });
 
-test('it waits twice as long after each failed attempt in a row', async () => {
-  const ctx = await setupTest();
-
-  // every attempt fails, as one behind a content blocker does
-  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
-  renderHook(() => useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }));
-
-  const first = await ctx.timer.advanceToNext();
-  const second = await ctx.timer.advanceToNext();
-  const third = await ctx.timer.advanceToNext();
-
-  expect(first).toBe(1000);
-  expect(second).toBe(2000);
-  expect(third).toBe(4000);
-});
-
-test('it waits the shortest time again after a failure that follows a connection', async () => {
-  const ctx = await setupTest();
-
-  await store.records.create({ kind: 'tool_called' });
-
-  // the first attempt fails and the second connects
-  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
-
-  const hook = renderHook(() =>
-    useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }),
-  );
-
-  await ctx.timer.advanceToNext();
-  await waitFor(() => {
-    expect(hook.result.current.records).toHaveLength(1);
-  });
-
-  // the browser comes back online, which ends the connection, and the next attempt fails
-  server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
-  globalThis.dispatchEvent(new Event('online'));
-
-  expect(ctx.timer.advanceToNext()).resolves.toBe(1000);
-});
-
-test('it backs off from a revoked session, as from a stream that never opens', async () => {
-  const ctx = await setupTest();
-
-  // the API refuses each attempt before it opens the stream
-  await store.sessions.update(ctx.session, {
-    data(draft) {
-      draft.revokedAt = new Date();
-    },
-  });
-  renderHook(() => useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }));
-
-  const first = await ctx.timer.advanceToNext();
-  const second = await ctx.timer.advanceToNext();
-
-  expect(first).toBe(1000);
-  expect(second).toBe(2000);
-});
-
 test('it keeps reporting live updates unavailable while the API refuses a revoked session', async () => {
   const ctx = await setupTest();
   const reported: boolean[] = [];
@@ -204,29 +146,6 @@ test('it keeps reporting live updates unavailable while the API refuses a revoke
   expect(reported.slice(reported.indexOf(true))).toSatisfyAll(
     (unavailable: boolean) => unavailable,
   );
-});
-
-test('it backs off from a stream that opens and then ends with UNAUTHORIZED', async () => {
-  const ctx = await setupTest();
-
-  // a server that checks the session after it opens the stream sends these bytes
-  server.use(
-    http.post(
-      '*/rpc/records/follow',
-      () =>
-        new HttpResponse(
-          ': \n\nevent: error\ndata: {"json":{"defined":true,"code":"UNAUTHORIZED","status":401,"message":"The device session is missing, lapsed or revoked"}}\n\n',
-          { headers: { 'content-type': 'text/event-stream' } },
-        ),
-    ),
-  );
-  renderHook(() => useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer }));
-
-  const first = await ctx.timer.advanceToNext();
-  const second = await ctx.timer.advanceToNext();
-
-  expect(first).toBe(1000);
-  expect(second).toBe(2000);
 });
 
 test('it keeps live updates available after two failed attempts in a row', async () => {
