@@ -1,67 +1,72 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ExecStream, GrantSpec, Sandbox, SandboxSpec } from '@heynixie/sandbox';
+import type { Sandbox, SandboxSpec } from '@heynixie/sandbox';
 import { SandboxSpecRefusedError } from '@heynixie/sandbox';
-import { setupProcessAdapter } from './test-utils/setup-process-adapter';
+import {
+  buildMockGrantSpec,
+  buildMockSandboxSpec,
+  setupTestRecorder,
+  startStubToolEndpoint,
+} from '@heynixie/sandbox/test-utils';
+import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
+import { buildProcessSandboxAdapter } from './build-process-sandbox-adapter';
 
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
-
-const modelGrant: GrantSpec = {
-  secret: 'model-default',
-  host: 'api.anthropic.com',
-  env: { ANTHROPIC_API_KEY: 'broker-placeholder' },
-};
-
-const workerSpec: SandboxSpec = {
-  kind: 'worker',
-  image: 'worker',
-  owner: 'task-1:step-2',
-  egress: { kind: 'none' },
-  grants: [modelGrant],
-  toolRoute: true,
-  limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
-};
-
-async function runText(
-  sandbox: Sandbox,
-  argv: readonly string[],
-  env: Readonly<Record<string, string>> = {},
-) {
-  const result = await sandbox.exec({ argv, env });
-
-  return decoder.decode(result.stdout.bytes);
+interface SetupConfig {
+  // the stop's kill deadline, when a test needs one shorter than the default
+  readonly killGraceMs?: number;
 }
 
-function getMemorySuspension(sandbox: Sandbox): Extract<Sandbox['suspension'], { kind: 'memory' }> {
-  if (sandbox.suspension.kind !== 'memory') {
-    throw new Error('the double keeps memory');
-  }
-  return sandbox.suspension;
-}
+// The process adapter on a fresh recorder, with the stub tool endpoint in its root. The stack's hook
+// registers before the recorder's, and hooks run first in, first out, so each sandbox that
+// createSandbox made writes its destroy record before the writer stops.
+async function setupTest(config: SetupConfig = {}) {
+  const stack = new AsyncDisposableStack();
 
-async function runLifecycle(sandbox: Sandbox): Promise<void> {
-  const suspension = getMemorySuspension(sandbox);
+  onTestFinished(() => stack.disposeAsync());
 
-  await suspension.sleep();
-  await suspension.wake();
-}
+  const recorder = await setupTestRecorder();
+  const rootDir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-process-'));
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- an async iterable has no readonly form
-async function readNextMessage(stream: ExecStream): Promise<string> {
-  const next = await stream.messages[Symbol.asyncIterator]().next();
+  stack.defer(() => rm(rootDir, { recursive: true, force: true }));
+  startStubToolEndpoint(join(rootDir, 'tools.sock'));
 
-  if (next.done === true) {
-    throw new Error('the stream ended');
-  }
-  return decoder.decode(next.value);
+  const buildAdapter = () =>
+    buildProcessSandboxAdapter({
+      recorder: recorder.recorder,
+      rootDir,
+      toolTarget: () => ({ path: join(rootDir, 'tools.sock') }),
+      ...(config.killGraceMs === undefined ? {} : { killGraceMs: config.killGraceMs }),
+    });
+  const adapter = buildAdapter();
+  const createSandbox = async (spec: SandboxSpec): Promise<Sandbox> => {
+    const sandbox = await adapter.create(spec);
+
+    stack.defer(() => sandbox.destroy());
+    return sandbox;
+  };
+
+  return {
+    adapter,
+    rootDir,
+    buildAdapter,
+    createSandbox,
+    recorder: recorder.recorder,
+    readSandboxRecords: recorder.readSandboxRecords,
+  };
 }
 
 test('it records every create, grant, sleep, wake and destroy', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.adapter.create(workerSpec);
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ grants: [buildMockGrantSpec()] }),
+  );
 
-  await runLifecycle(sandbox);
+  invariant(sandbox.suspension.kind === 'memory');
+  await sandbox.suspension.sleep();
+  await sandbox.suspension.wake();
   await sandbox.destroy();
 
   const records = await ctx.readSandboxRecords();
@@ -75,12 +80,12 @@ test('it records every create, grant, sleep, wake and destroy', async () => {
   ]);
 });
 
-test('list returns every sandbox of the owner until it is destroyed', async () => {
-  const ctx = await setupProcessAdapter();
-  const first = await ctx.createSandbox(workerSpec);
-  const second = await ctx.createSandbox({ ...workerSpec, grants: [] });
+test('it lists every sandbox of the owner until it is destroyed', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.createSandbox(buildMockSandboxSpec({ owner: 'task-1:step-2' }));
+  const second = await ctx.createSandbox(buildMockSandboxSpec({ owner: 'task-1:step-2' }));
 
-  await ctx.createSandbox({ ...workerSpec, owner: 'task-9:step-1' });
+  await ctx.createSandbox(buildMockSandboxSpec({ owner: 'task-9:step-1' }));
 
   const before = await ctx.adapter.list('task-1:step-2');
 
@@ -92,9 +97,9 @@ test('list returns every sandbox of the owner until it is destroyed', async () =
   expect(after.map((sandbox) => sandbox.id)).toStrictEqual([second.id]);
 });
 
-test('a restarted adapter lists what the last one made, so recovery destroys it', async () => {
-  const ctx = await setupProcessAdapter();
-  const made = await ctx.adapter.create(workerSpec);
+test('it lets a restarted adapter list and destroy what the last one made', async () => {
+  const ctx = await setupTest();
+  const made = await ctx.adapter.create(buildMockSandboxSpec({ owner: 'task-1:step-2' }));
   const restarted = ctx.buildAdapter();
   const [orphan] = await restarted.list('task-1:step-2');
 
@@ -109,13 +114,15 @@ test('a restarted adapter lists what the last one made, so recovery destroys it'
 });
 
 test.each([
-  [{ ...workerSpec, kind: 'fetch', egress: { kind: 'public' } }, 'public egress with a grant'],
+  ['public egress with a grant', 'fetch', { kind: 'public' }],
   [
-    { ...workerSpec, egress: { kind: 'allow', hosts: ['github.com'] } },
     'a grant with egress outside a coding session (worker)',
+    'worker',
+    { kind: 'allow', hosts: ['github.com'] },
   ],
-] as const)('it refuses a spec and writes no record: %#', async (spec, reason) => {
-  const ctx = await setupProcessAdapter();
+] as const)('it refuses a spec with %s and writes no record', async (reason, kind, egress) => {
+  const ctx = await setupTest();
+  const spec = buildMockSandboxSpec({ kind, egress, grants: [buildMockGrantSpec()] });
 
   expect(ctx.adapter.create(spec)).rejects.toThrow(new SandboxSpecRefusedError(reason));
 
@@ -125,8 +132,9 @@ test.each([
 });
 
 test('it cuts exec output past 1 MiB per stream', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
   const result = await sandbox.exec({
     argv: ['sh', '-c', 'head -c 2097152 /dev/zero; echo err >&2'],
   });
@@ -141,160 +149,207 @@ test('it cuts exec output past 1 MiB per stream', async () => {
 });
 
 test('it passes the grant placeholders and keeps the loopback on NO_PROXY', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
-  const text = await runText(sandbox, ['sh', '-c', 'echo "$ANTHROPIC_API_KEY $NO_PROXY"'], {
-    NO_PROXY: 'example.com',
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(
+    buildMockSandboxSpec({
+      grants: [buildMockGrantSpec({ env: { ANTHROPIC_API_KEY: 'broker-placeholder' } })],
+    }),
+  );
+
+  const result = await sandbox.exec({
+    argv: ['sh', '-c', 'echo "$ANTHROPIC_API_KEY $NO_PROXY"'],
+    env: { NO_PROXY: 'example.com' },
   });
 
-  expect(text).toBe('broker-placeholder example.com,127.0.0.1,localhost\n');
+  expect(new TextDecoder().decode(result.stdout.bytes)).toBe(
+    'broker-placeholder example.com,127.0.0.1,localhost\n',
+  );
 });
 
 test('it carries framed messages both ways on a spawn stream', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
   const stream = await sandbox.spawn({ argv: ['cat'], maxMessageBytes: 1024 });
+  const messages = stream.messages[Symbol.asyncIterator]();
 
-  await stream.send(encoder.encode('first'));
-  await stream.send(encoder.encode('second'));
+  await stream.send(new TextEncoder().encode('first'));
+  await stream.send(new TextEncoder().encode('second'));
 
-  const first = await readNextMessage(stream);
-  const second = await readNextMessage(stream);
+  const first = await messages.next();
+  const second = await messages.next();
 
-  await stream.stop();
-
-  expect([first, second]).toStrictEqual(['first', 'second']);
+  expect(first).toStrictEqual({ done: false, value: new TextEncoder().encode('first') });
+  expect(second).toStrictEqual({ done: false, value: new TextEncoder().encode('second') });
 });
 
 test('it ends a spawn stream whose message passes the caller limit', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
   const stream = await sandbox.spawn({ argv: ['cat'], maxMessageBytes: 4 });
 
-  await stream.send(encoder.encode('too long'));
+  await stream.send(new TextEncoder().encode('too long'));
 
   expect(stream.messages[Symbol.asyncIterator]().next()).rejects.toThrow(
     'a frame of 8 bytes is past the limit of 4 bytes per message',
   );
-
-  const exit = await stream.exit;
-
-  expect(exit).toMatchObject({ code: null, signal: 'SIGTERM' });
+  expect(stream.exit).resolves.toMatchObject({ code: null, signal: 'SIGTERM' });
 });
 
-test('a stop sends SIGTERM and kills the whole group 5 s later', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
+test('it kills the whole group when SIGTERM leaves it running', async () => {
+  const ctx = await setupTest({ killGraceMs: 300 });
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
+  // the child starts with SIGTERM ignored; the shell then traps it, notes it in term.txt, and goes
+  // on waiting, so only the kill ends the group; ready.txt shows both traps are set
   const stream = await sandbox.spawn({
-    argv: ['sh', '-c', 'trap "" TERM; sleep 60 & echo $! > child.pid; wait'],
+    argv: [
+      'sh',
+      '-c',
+      'trap "" TERM; sleep 60 & echo $! > child.pid; trap "echo term > term.txt" TERM; echo ready > ready.txt; while :; do wait; done',
+    ],
     maxMessageBytes: 1024,
   });
-  const childPID = await waitForChildPID(sandbox);
+
+  await waitForCondition(() => Bun.file(join(ctx.rootDir, sandbox.id, 'fs', 'ready.txt')).exists());
+
+  const exit = await stream.stop();
+  const after = await sandbox.exec({
+    argv: [
+      'sh',
+      '-c',
+      'cat term.txt; kill -0 "$(cat child.pid)" 2>/dev/null && echo alive || echo gone',
+    ],
+  });
+
+  expect(exit.signal).toBe('SIGKILL');
+  expect(new TextDecoder().decode(after.stdout.bytes)).toBe('term\ngone\n');
+});
+
+test('it holds the kill until the deadline when SIGTERM leaves the group running', async () => {
+  const ctx = await setupTest({ killGraceMs: 300 });
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+  const stream = await sandbox.spawn({
+    argv: ['sh', '-c', 'trap "" TERM; echo started > started.txt; while :; do sleep 1; done'],
+    maxMessageBytes: 1024,
+  });
+
+  await waitForCondition(() =>
+    Bun.file(join(ctx.rootDir, sandbox.id, 'fs', 'started.txt')).exists(),
+  );
+
+  const startedAt = performance.now();
+
+  await stream.stop();
+
+  const elapsed = performance.now() - startedAt;
+
+  expect(elapsed).toBeWithin(300, 2000);
+});
+
+test('it returns a stop at once when the group ends on SIGTERM', async () => {
+  const ctx = await setupTest({ killGraceMs: 30_000 });
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+  const stream = await sandbox.spawn({ argv: ['sleep', '60'], maxMessageBytes: 1024 });
+
   const startedAt = performance.now();
   const exit = await stream.stop();
   const elapsed = performance.now() - startedAt;
 
-  expect(exit.signal).toBe('SIGKILL');
-  expect(elapsed).toBeWithin(5000, 6500);
-  expect(() => process.kill(childPID, 0)).toThrow();
-}, 10_000);
-
-async function waitForChildPID(sandbox: Sandbox): Promise<number> {
-  for (let attempt = 0; attempt < 500; attempt += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- polls for the guest's file
-    const text = await runText(sandbox, ['sh', '-c', 'cat child.pid 2>/dev/null']);
-
-    if (text.trim() !== '') {
-      return Number(text.trim());
-    }
-
-    // oxlint-disable-next-line no-await-in-loop -- polls for the guest's file
-    await Bun.sleep(10);
-  }
-  throw new Error('the guest wrote no child.pid');
-}
-
-test('a stop returns at once when the group ends on SIGTERM', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
-  const stream = await sandbox.spawn({ argv: ['sleep', '60'], maxMessageBytes: 1024 });
-  const startedAt = performance.now();
-  const exit = await stream.stop();
-
   expect(exit.signal).toBe('SIGTERM');
-  expect(performance.now() - startedAt).toBeLessThan(1000);
+  expect(elapsed).toBeLessThan(1000);
 });
 
-test('an aborted exec stops its command', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
+test('it stops the command of an aborted exec', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
   const result = await sandbox.exec({ argv: ['sleep', '60'] }, AbortSignal.timeout(50));
 
   expect(result).toMatchObject({ code: null, signal: 'SIGTERM' });
 });
 
-const fetchScript =
-  'const r = await fetch(process.env.TOOL_URL + "/mcp", { headers: { authorization: "Bearer run-token" } }); console.log(await r.text())';
-
-test('the guest reaches the tool endpoint through its local tool route', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
+test('it lets the guest reach the tool endpoint through its local tool route', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec({ toolRoute: true }));
   const route = await sandbox.toolRoute();
-  const text = await runText(sandbox, [process.execPath, '-e', fetchScript], {
-    TOOL_URL: route?.url ?? '',
+
+  invariant(route);
+
+  const result = await sandbox.exec({
+    argv: [
+      process.execPath,
+      '-e',
+      'const r = await fetch(process.env.TOOL_URL + "/mcp", { headers: { authorization: "Bearer run-token" } }); console.log(await r.text())',
+    ],
+    env: { TOOL_URL: route.url },
   });
 
-  expect(route?.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/u);
-  expect(JSON.parse(text)).toStrictEqual({ path: '/mcp', authorization: 'Bearer run-token' });
+  expect(route.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/u);
+  expect(JSON.parse(new TextDecoder().decode(result.stdout.bytes))).toStrictEqual({
+    path: '/mcp',
+    authorization: 'Bearer run-token',
+  });
 });
 
-test('a sandbox without the tool route has none', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox({
-    ...workerSpec,
-    kind: 'code_run',
-    grants: [],
-    toolRoute: false,
-  });
+test('it gives a sandbox without the tool route no route', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(
+    buildMockSandboxSpec({ kind: 'code_run', grants: [], toolRoute: false }),
+  );
 
   expect(sandbox.toolRoute()).resolves.toBeNull();
 });
 
-test('it copies files in and out, and refuses a path that leaves the sandbox', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
+test('it copies a file in, and back out after the guest changed it', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
 
-  await sandbox.copyIn([{ path: '/work/in.txt', content: encoder.encode('hello') }]);
+  await sandbox.copyIn([{ path: '/work/in.txt', content: new TextEncoder().encode('hello') }]);
   await sandbox.exec({ argv: ['sh', '-c', 'tr a-z A-Z < in.txt > out.txt'], cwd: '/work' });
 
   const [out] = await sandbox.copyOut(['/work/out.txt']);
 
-  expect(decoder.decode(out?.content)).toBe('HELLO');
+  expect(new TextDecoder().decode(out?.content)).toBe('HELLO');
+});
+
+test('it refuses to copy in a path that leaves the sandbox', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
   expect(sandbox.copyIn([{ path: '/../escape.txt', content: new Uint8Array() }])).rejects.toThrow(
     'a guest path must stay inside the sandbox: /../escape.txt',
   );
 });
 
-test('a sleep pauses the processes, and the wake resumes them', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
-  const stream = await sandbox.spawn({ argv: ['cat'], maxMessageBytes: 1024 });
+test('it refuses an exec while the sandbox sleeps', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
 
-  const suspension = getMemorySuspension(sandbox);
-
-  await suspension.sleep();
+  invariant(sandbox.suspension.kind === 'memory');
+  await sandbox.suspension.sleep();
 
   expect(sandbox.exec({ argv: ['true'] })).rejects.toThrow(`sandbox ${sandbox.id} is asleep`);
-
-  await suspension.wake();
-  await stream.send(encoder.encode('x'));
-
-  expect(readNextMessage(stream)).resolves.toBe('x');
 });
 
-test('an exec that stops reading stdin early still reports its exit', async () => {
-  const ctx = await setupProcessAdapter();
-  const sandbox = await ctx.createSandbox(workerSpec);
+test('it resumes a sleeping process on the wake', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+  const stream = await sandbox.spawn({ argv: ['cat'], maxMessageBytes: 1024 });
+
+  invariant(sandbox.suspension.kind === 'memory');
+  await sandbox.suspension.sleep();
+  await sandbox.suspension.wake();
+  await stream.send(new TextEncoder().encode('x'));
+
+  const message = await stream.messages[Symbol.asyncIterator]().next();
+
+  expect(message).toStrictEqual({ done: false, value: new TextEncoder().encode('x') });
+});
+
+test('it reports the exit of an exec that stops reading stdin early', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
   const result = await sandbox.exec({
     argv: ['head', '-c', '1'],
     stdin: new Uint8Array(4 * 1024 * 1024),
@@ -304,7 +359,7 @@ test('an exec that stops reading stdin early still reports its exit', async () =
 });
 
 test('it accepts a secret and records nothing, because the double injects no grant', async () => {
-  const ctx = await setupProcessAdapter();
+  const ctx = await setupTest();
 
   await ctx.adapter.addSecret({
     name: 'model-chat-1',

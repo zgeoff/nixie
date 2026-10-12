@@ -35,7 +35,11 @@ test('it refuses a host address that is not an address or a network', () => {
 test('it refuses a token, which belongs in the secrets file', () => {
   const result = impConfigSchema.safeParse({ url: 'http://localhost:7070', token: 'secret' });
 
-  expect(result.error?.issues).toPartiallyContain({ code: 'unrecognized_keys', keys: ['token'] });
+  expect(result.error?.issues).toPartiallyContain({
+    path: [],
+    code: 'unrecognized_keys',
+    keys: ['token'],
+  });
 });
 
 test('it refuses a url that is not http or https', () => {

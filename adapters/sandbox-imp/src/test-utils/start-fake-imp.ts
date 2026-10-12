@@ -35,7 +35,7 @@ interface FakeState {
   failExitOnStop: boolean;
 }
 
-export interface FakeImp extends FakeState {
+interface FakeImp extends FakeState {
   readonly port: ImpPort;
 }
 
@@ -52,7 +52,7 @@ export async function startFakeImp(): Promise<FakeImp> {
     calls: [],
     created: [],
     execs: [],
-    secrets: new Map([['model-default', ['api.anthropic.com']]]),
+    secrets: new Map(),
     images: new Map(),
     features: { publicEgress: true, isEgressEnforced: true },
     failFeatures: false,
@@ -100,14 +100,15 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
     sleepImp: (name) => updateCallLog(`sleep ${name}`),
     wakeImp: (name) => updateCallLog(`wake ${name}`),
     ...buildFakeSecretCalls(state, updateCallLog),
-    openExec: (_name, argv, options) => {
+    openExec: async (_name, argv, options) => {
       const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
 
       state.execs.push(exec);
+      await Promise.resolve();
       if (options.requireBroker) {
         requireBrokerEnv(options.env);
       }
-      return Promise.resolve(startFakeExec(exec, stack));
+      return startFakeExec(exec, stack);
     },
     ...buildFakeForwardCall(state, stack),
   };

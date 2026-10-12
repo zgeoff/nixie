@@ -1,11 +1,18 @@
 # Run the imp isolation tests
 
-The isolation tests in `adapters/sandbox-imp/src/isolation.test.ts` check what a conversation imp
-reaches through the imp adapter. Through the reverse forward it reaches the tool endpoint. Through
-the broker it reaches only the model host. Every direct connection fails: the internet, impd, the
-gateway, the metadata service and the tailnet's resolver. With the host addresses set, a further
-test checks that a public imp reaches the internet and never the host or impd. The tests skip unless
-the variables below are set, and they need a host with `/dev/kvm` and impd.
+The isolation tests in `adapters/sandbox-imp/src/build-imp-port.test.ts` check what a conversation
+imp reaches through the imp adapter on the real impd port. Through the reverse forward it reaches
+the tool endpoint. Through the broker it reaches only the model host. Every direct connection fails:
+the internet, the model host, impd, the gateway, the metadata service and the tailnet's resolver.
+With the host addresses set, a further test checks that a public imp reaches the internet and never
+a host address or impd. The tests skip unless the variables below are set, and they need a host with
+`/dev/kvm` and impd.
+
+A guest cannot resolve impd's name or the model host's, so a probe of either name fails at the
+lookup whatever the network allows. The machine that runs the tests resolves each name, and the
+guest probes each address. A direct probe passes only on curl's exit for a refused connection (7) or
+a dropped one (28), never on a failed lookup. The tests that expect refusals also probe the imp's
+own tool route, which must answer, so a guest that reaches nothing at all fails them.
 
 1. Start an impd that you can create imps and secrets on, and get a token with manage scope for it.
 2. Import an image that holds `sh`, `curl` and `ip`, such as `ubuntu:24.04` with `curl` installed.
@@ -17,7 +24,7 @@ the variables below are set, and they need a host with `/dev/kvm` and impd.
    NIXIE_IMP_TEST_TOKEN=<impd_token> \
    NIXIE_IMP_TEST_IMAGE=<image_name> \
    NIXIE_IMP_TEST_HOST_ADDRESSES=<host_addresses> \
-   bun test src/isolation.test.ts
+   bun test src/build-imp-port.test.ts
    ```
 
    Leave out `NIXIE_IMP_TEST_HOST_ADDRESSES` to skip the public egress test. It takes the same list
@@ -30,10 +37,12 @@ The package's `bunfig.toml` leaves out the web test preload, whose mock server a
 it runs in. From the repo root, Bun loads the web preload, and the suite fails at once with
 `the web test preload is loaded`.
 
-The tests create one imp per egress kind and a secret named `nixie-test-<id>` with a dummy value.
-They remove the imps first and the secret after, when they end, when a test fails, and when setup
-fails part way. A run that you stop with Ctrl-C skips that cleanup. Remove what it left with impd's
-API: the imps the run created, each named `nixie-<id>`, and the `nixie-test-<id>` secret.
+Each test creates its own imp and its own secret named `nixie-test-<id>` with a dummy value. A test
+refuses a secret name that impd holds already, because the run did not add that secret, and it
+removes only a secret it added. When a test ends, fails, or fails part way through setup, it removes
+its imps first and its secret after. A run that you stop with Ctrl-C skips that cleanup. Remove what
+it left with impd's API: the imps the run created, each named `nixie-<id>`, and each
+`nixie-test-<id>` secret.
 
 ## The fetch sandbox tests
 
