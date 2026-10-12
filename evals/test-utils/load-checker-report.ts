@@ -10,6 +10,9 @@ const callSchema = z
     input: z.string().startsWith('sha256:'),
     verdict: z.enum(['asserted', 'not_asserted', 'unsure']),
     reason: z.string(),
+
+    // why the checker gave no verdict of its own, which reads as unsure
+    failure: z.enum(['timeout', 'error', 'unreadable']).nullable(),
     costUSD: z.number().nonnegative(),
     latencyMs: z.number().nonnegative(),
   })

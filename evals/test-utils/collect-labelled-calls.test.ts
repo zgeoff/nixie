@@ -7,7 +7,6 @@ test('it joins each call to the pair it checked', () => {
     bucket: 'question',
     memory: 'The owner takes their coffee black.',
     quote: 'do I take my coffee black?',
-    mustConfirm: false,
   };
   const call = {
     sample: 'coffee',
@@ -16,6 +15,7 @@ test('it joins each call to the pair it checked', () => {
     input: 'sha256:a1b2',
     verdict: 'not_asserted' as const,
     reason: 'It is a question.',
+    failure: null,
     costUSD: 0.003,
     latencyMs: 4100,
   };
@@ -62,6 +62,7 @@ test('it refuses a call for a pair the corpus does not hold', () => {
             input: 'sha256:a1b2',
             verdict: 'not_asserted',
             reason: 'It is a question.',
+            failure: null,
             costUSD: 0.003,
             latencyMs: 4100,
           },

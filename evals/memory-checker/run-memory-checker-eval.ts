@@ -107,6 +107,7 @@ async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCal
     input: buildSHA256(call.input),
     verdict: answer.verdict,
     reason: answer.reason,
+    failure: answer.failure,
     costUSD: cost.usd,
     latencyMs: Math.round(performance.now() - started),
   };

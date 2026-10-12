@@ -20,7 +20,6 @@ test('it marks the quote as evidence and each pasted span, then gives the candid
         bucket: 'pasted fact',
         memory: "The owner's sister lives in Leeds.",
         quote: 'from my sister',
-        mustConfirm: false,
       },
     ),
   ).toBe(
@@ -48,7 +47,6 @@ test('it refuses a pair whose quote the gate would not find in typed text', () =
         bucket: 'pasted fact',
         memory: "The owner's sister lives in Leeds.",
         quote: 'We moved to Leeds',
-        mustConfirm: false,
       },
     ),
   ).toThrowWithMessage(Error, /sister pair fails the quote check: not_typed/u);

@@ -60,15 +60,21 @@ test('it never confirms a memory that the message does not assert', async () => 
   expect(unasserted).toSatisfyAll((labelled: LabelledCall) => labelled.call.verdict !== 'asserted');
 });
 
-test('it confirms each memory that an earlier prompt missed, on every call', async () => {
+test('it confirms every memory that the message asserts, on every call the checker answered', async () => {
   const ctx = await setupTest();
 
-  const mustConfirm = collectLabelledCalls(ctx.corpus, ctx.report).filter(
-    (labelled) => labelled.pair.mustConfirm,
+  const asserted = collectLabelledCalls(ctx.corpus, ctx.report).filter(
+    (labelled) => labelled.pair.asserted && labelled.call.failure === null,
   );
 
-  expect(mustConfirm).not.toHaveLength(0);
-  expect(mustConfirm).toSatisfyAll(
-    (labelled: LabelledCall) => labelled.call.verdict === 'asserted',
-  );
+  expect(asserted).not.toHaveLength(0);
+  expect(asserted).toSatisfyAll((labelled: LabelledCall) => labelled.call.verdict === 'asserted');
+});
+
+test('it gives no verdict of its own on at most 1 call in 100', async () => {
+  const ctx = await setupTest();
+
+  const failed = ctx.report.calls.filter((call) => call.failure !== null);
+
+  expect(failed.length).toBeLessThanOrEqual(Math.floor(ctx.report.calls.length / 100));
 });

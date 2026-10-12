@@ -14,9 +14,6 @@ const pairSchema = z
     bucket: z.string().min(1),
     memory: z.string().min(1),
     quote: z.string().min(1),
-
-    // a pair the checker must confirm on every call, because an earlier prompt missed it
-    mustConfirm: z.boolean(),
   })
   .readonly();
 

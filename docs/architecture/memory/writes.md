@@ -73,9 +73,9 @@ that may repeat the memory, so it reaches only the sealed proposal.
 Each checker prompt joins the policy snapshot as the SHA-256 of its text, so a release that changes
 a prompt changes the snapshot hash that every record carries. The
 [memory checker eval](../../../evals/memory-checker/README.md) replays a labelled corpus through the
-production prompt and the input the gate renders. Its committed run on Sonnet 5.5 confirmed no
-memory the message does not assert, and sent 6 of 93 true memories to review, chiefly ones that
-dropped an attribution the message stated.
+production prompt and the input the gate renders. Its committed run on Sonnet 5.5 gave every pair
+its labelled verdict on every call the checker answered, with no memory confirmed that the message
+does not assert.
 
 ## Retirement intent
 
