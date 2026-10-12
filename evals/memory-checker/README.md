@@ -23,9 +23,8 @@ bun test evals
 ```
 
 The suite fails when a report came from another prompt, skipped a pair or rendered a pair's input
-differently from the gate. It fails when a call confirms a memory that a corpus, held-out-1 or
-held-out-3 message does not assert, and when an answered call misses one that a corpus or held-out-1
-message asserts.
+differently from the gate. It fails when a call confirms a memory that any set's message does not
+assert, and when an answered call misses one that a tuning set's message asserts.
 
 ## Results
 
@@ -33,22 +32,25 @@ Sonnet 5.5 at low effort, with the 10 s timeout and the reason asked before the 
 
 | Set        | Wrong confirmations | Misses  | Failed calls | Cost  |
 | ---------- | ------------------- | ------- | ------------ | ----- |
-| corpus     | 0 of 117            | 0 of 93 | 0 of 210     | $0.63 |
-| held-out-1 | 0 of 42             | 0 of 36 | 0 of 78      | $0.24 |
-| held-out-2 | 2 of 42             | 0 of 36 | 0 of 78      | $0.25 |
-| held-out-3 | 0 of 42             | 0 of 30 | 0 of 72      | $0.25 |
+| corpus     | 0 of 117            | 0 of 93 | 1 of 210     | $0.63 |
+| held-out-1 | 0 of 42             | 0 of 36 | 0 of 78      | $0.23 |
+| held-out-2 | 0 of 42             | 0 of 36 | 1 of 78      | $0.26 |
+| held-out-3 | 0 of 42             | 0 of 30 | 0 of 72      | $0.23 |
 
-The p95 latency was under 3.7 s on every set. The prompt was tuned on the corpus. Each held-out set
-was written and committed, with its labels, before any run, and its pass rule was no wrong
-confirmation:
+Both failed calls timed out on a memory the message asserts, so each sent a true memory to review.
+The p95 latency ran from 3.1 s to 8.4 s across the sets. The prompt was tuned on the corpus. Each
+held-out set was written and committed, with its labels, before any run, and its pass rule was no
+wrong confirmation:
 
 - [held-out-1.json](held-out-1.json) failed on agreed advice and on a fact a question presupposes,
   so the prompt gained a rule for each, and the set became a tuning set.
 - [held-out-2.json](held-out-2.json) failed on facts that a question presupposes. In one call the
   reason said the memory was not asserted and the verdict said it was, so the answer schema puts the
-  reason first. The checker still confirms "The owner sold their bike" from "Did I ever tell you why
-  I sold my bike?", and the suite allows that one case.
-- [held-out-3.json](held-out-3.json) scored the reason-first schema, and passed.
+  reason first. The checker kept confirming "The owner sold their bike" from "Did I ever tell you
+  why I sold my bike?", so the presupposition rule gained an example in the owner's own voice, and
+  the set became a tuning set.
+- [held-out-3.json](held-out-3.json) scored the reason-first schema before and after that example,
+  and passed both times.
 
 The first measurement, before the prompt took the evidence mark and the rule that a memory may keep
 the message's own condition or attribution, ran Haiku 5.5, Sonnet 5.5 and Opus 5.5 over the same
