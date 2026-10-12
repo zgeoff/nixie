@@ -32,6 +32,7 @@ test('it returns the readable text of an HTML page over a connection to the chec
     contentType: 'text/html; charset=utf-8',
     text: 't\n\nHello\n\nworld',
     isTruncated: false,
+    blocked: null,
   });
   expect(resolver.hosts).toStrictEqual(['site.test']);
   expect(site.requests).toMatchObject([{ headers: { host: `site.test:${site.port}` } }]);
@@ -240,6 +241,7 @@ test('it follows redirects up to the limit and returns the final URL', async () 
     contentType: 'text/plain',
     text: 'arrived',
     isTruncated: false,
+    blocked: null,
   });
 });
 
@@ -258,6 +260,101 @@ test('it fails a page that redirects more times than the limit', async () => {
 
   expect(reply).toStrictEqual({ kind: 'failed', reason: 'the page redirected more than 3 times' });
   expect(site.requests).toHaveLength(4);
+});
+
+test('it returns the blocked reason for a Cloudflare challenge in place of the page', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    fetch: () =>
+      new Response(
+        '<html><head><title>Just a moment...</title></head><body><noscript>Enable JavaScript and cookies to continue</noscript></body></html>',
+        {
+          status: 403,
+          headers: { 'content-type': 'text/html; charset=UTF-8', 'cf-mitigated': 'challenge' },
+        },
+      ),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/post`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toStrictEqual({
+    kind: 'page',
+    url: `https://site.test:${site.port}/post`,
+    status: 403,
+    contentType: 'text/html; charset=UTF-8',
+    text: 'Just a moment...',
+    isTruncated: false,
+    blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+  });
+});
+
+test('it returns the blocked reason for a challenge page it knows by its markup', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    fetch: () =>
+      new Response(
+        '<html><body><script>window._cf_chl_opt = { cType: "managed" };</script><script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script></body></html>',
+        { status: 503, headers: { 'content-type': 'text/html' } },
+      ),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toMatchObject({
+    kind: 'page',
+    status: 503,
+    blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+  });
+});
+
+test('it returns no blocked reason for a forbidden page with no challenge', async () => {
+  const site = await startTestSite({
+    names: ['site.test'],
+    fetch: () =>
+      new Response('<p>You do not have access.</p>', {
+        status: 403,
+        headers: { 'content-type': 'text/html' },
+      }),
+  });
+
+  const reply = await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(reply).toMatchObject({
+    kind: 'page',
+    status: 403,
+    text: 'You do not have access.',
+    blocked: null,
+  });
+});
+
+test('it sends a user agent that names nixie', async () => {
+  const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('x') });
+
+  await readPage(`https://site.test:${site.port}/`, {
+    limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
+    checkAddress: (address) => address === '127.0.0.1',
+    resolveHost: () => Promise.resolve(['127.0.0.1']),
+    ca: site.ca,
+  });
+
+  expect(site.requests).toMatchObject([
+    { headers: { 'user-agent': 'Mozilla/5.0 (compatible; nixie-fetch/1.0)' } },
+  ]);
 });
 
 test('it sends no credential from the URL and no cookie a redirect set', async () => {
@@ -533,6 +630,7 @@ test('it returns a binary type with no body', async () => {
     contentType: 'image/png',
     text: null,
     isTruncated: false,
+    blocked: null,
   });
 });
 
@@ -558,6 +656,7 @@ test('it returns another text type as it arrived', async () => {
     status: 404,
     text: '{"a": "<b>"}',
     isTruncated: false,
+    blocked: null,
   });
 });
 

@@ -1,61 +1,139 @@
-// the elements whose content a reader never sees; the title is read on its own
-const hiddenSelector = 'title, script, style, noscript, template, svg, math, iframe';
-
-// the elements that start and end a block of text
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the reading state collects into arrays, and an HTMLRewriter element has no readonly form
+// the elements that start and end a block of text, besides the regions and the furniture
 const blockSelector = [
-  'address, article, aside, blockquote, dd, details, dialog, div, dl, dt, fieldset, figcaption',
-  'figure, footer, form, h1, h2, h3, h4, h5, h6, header, hr, li, main, nav, ol, p, pre, section',
-  'summary, table, tbody, thead, tfoot, tr, td, th, ul',
+  'address, blockquote, dd, details, dialog, div, dl, dt, fieldset, figcaption, figure, form',
+  'h1, h2, h3, h4, h5, h6, hr, li, ol, p, pre, section, summary, table, tbody, thead, tfoot, tr',
+  'td, th, ul',
 ].join(', ');
 
-// Builds an HTML page's readable text: its title, then the text nodes outside hidden elements, with
-// entities decoded, a line break around each block and each br, and runs of white space collapsed.
+interface ElementRule {
+  readonly isBlock: boolean;
+
+  // the depth the element adds to while it is open, or null
+  readonly counts: 'hidden' | 'article' | 'main' | 'banner' | null;
+}
+
+// script, style and the like hide their text, and so do nav and aside, as page furniture
+const elementRules: readonly (readonly [string, ElementRule])[] = [
+  [
+    'title, script, style, noscript, template, svg, math, iframe',
+    { isBlock: false, counts: 'hidden' },
+  ],
+  ['nav, aside', { isBlock: true, counts: 'hidden' }],
+  ['article', { isBlock: true, counts: 'article' }],
+  ['main', { isBlock: true, counts: 'main' }],
+  ['header, footer', { isBlock: true, counts: 'banner' }],
+  [blockSelector, { isBlock: true, counts: null }],
+];
+
+// Builds an HTML page's readable text: its title, then the text of its main content, with entities
+// decoded, a line break around each block and each br, and runs of white space collapsed. The web
+// fetch architecture doc gives the order in which the fetcher picks the main content.
 export function buildReadableText(html: string): string {
-  const parts: string[] = [];
-  const title: string[] = [];
-  const hidden = { depth: 0 };
+  const reading = buildReadingState();
+
+  buildPageRewriter(reading).transform(html);
+  const content = pickContent(reading.regions);
+
+  return normalizeWhitespace(decodeEntities(`${reading.title.join(' ')}\n\n${content}`));
+}
+
+interface ReadingState {
+  readonly title: string[];
+  readonly regions: {
+    readonly article: string[];
+    readonly main: string[];
+    readonly page: string[];
+  };
+  readonly depth: Record<NonNullable<ElementRule['counts']>, number>;
+}
+
+function buildReadingState(): ReadingState {
+  return {
+    title: [],
+    regions: { article: [], main: [], page: [] },
+    depth: { hidden: 0, article: 0, main: 0, banner: 0 },
+  };
+}
+
+function buildPageRewriter(reading: ReadingState): HTMLRewriter {
   const rewriter = new HTMLRewriter()
     .on('title', {
       text: (text) => {
-        title.push(text.text);
-      },
-    })
-    .on(hiddenSelector, {
-      element: (element) => {
-        if (!element.canHaveContent) {
-          return;
-        }
-        hidden.depth += 1;
-        element.onEndTag(() => {
-          hidden.depth -= 1;
-        });
-      },
-    })
-    .on(blockSelector, {
-      element: (element) => {
-        parts.push('\n');
-        if (element.canHaveContent) {
-          element.onEndTag(() => {
-            parts.push('\n');
-          });
-        }
+        reading.title.push(text.text);
       },
     })
     .on('br', {
       element: () => {
-        parts.push('\n');
+        collectPart(reading, '\n');
       },
     })
     .onDocument({
       text: (text) => {
-        if (hidden.depth === 0) {
-          parts.push(text.text);
+        if (reading.depth.hidden === 0 && reading.depth.banner === 0) {
+          collectPart(reading, text.text);
         }
       },
     });
 
-  rewriter.transform(html);
-  return normalizeWhitespace(decodeEntities(`${title.join(' ')}\n\n${parts.join('')}`));
+  for (const [selector, rule] of elementRules) {
+    rewriter.on(selector, {
+      element: (element) => {
+        collectElement(reading, element, rule);
+      },
+    });
+  }
+  return rewriter;
+}
+
+// an element takes one end tag handler, so one handler both counts the depth and ends the block
+function collectElement(
+  reading: ReadingState,
+  element: HTMLRewriterTypes.Element,
+  rule: ElementRule,
+): void {
+  // an article or a main element keeps its own header and footer
+  const isInRegion = reading.depth.article > 0 || reading.depth.main > 0;
+  const counts = rule.counts === 'banner' && isInRegion ? null : rule.counts;
+  const isCounted = counts !== null && element.canHaveContent;
+
+  // a region's own separators fall inside the region, so adjacent articles stay apart
+  if (isCounted) {
+    reading.depth[counts] += 1;
+  }
+  if (rule.isBlock) {
+    collectPart(reading, '\n');
+  }
+  if (!element.canHaveContent) {
+    return;
+  }
+  element.onEndTag(() => {
+    if (rule.isBlock) {
+      collectPart(reading, '\n');
+    }
+    if (isCounted) {
+      reading.depth[counts] -= 1;
+    }
+  });
+}
+
+function collectPart(reading: ReadingState, part: string): void {
+  reading.regions.page.push(part);
+  if (reading.depth.main > 0) {
+    reading.regions.main.push(part);
+  }
+  if (reading.depth.article > 0) {
+    reading.regions.article.push(part);
+  }
+}
+
+// the articles, else the main element, else the whole page: the first that holds text
+function pickContent(regions: ReadingState['regions']): string {
+  const content = [regions.article, regions.main, regions.page]
+    .map((parts) => parts.join(''))
+    .find((text) => normalizeWhitespace(decodeEntities(text)) !== '');
+
+  return content ?? '';
 }
 
 const namedEntities: Readonly<Record<string, string>> = {

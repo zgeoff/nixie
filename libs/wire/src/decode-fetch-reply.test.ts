@@ -12,6 +12,7 @@ test('it returns a page with its text', () => {
       contentType: 'text/html',
       text: 'Example Domain',
       isTruncated: false,
+      blocked: null,
     }),
   );
 
@@ -22,6 +23,7 @@ test('it returns a page with its text', () => {
     contentType: 'text/html',
     text: 'Example Domain',
     isTruncated: false,
+    blocked: null,
   });
 });
 
@@ -34,6 +36,7 @@ test('it returns a binary page with no text', () => {
       contentType: null,
       text: null,
       isTruncated: false,
+      blocked: null,
     }),
   );
 
@@ -44,6 +47,7 @@ test('it returns a binary page with no text', () => {
     contentType: null,
     text: null,
     isTruncated: false,
+    blocked: null,
   });
 });
 
@@ -79,6 +83,7 @@ test('it refuses a page whose status is out of range', () => {
       contentType: 'text/plain',
       text: 'x',
       isTruncated: false,
+      blocked: null,
     }),
   );
 
@@ -94,6 +99,7 @@ test('it refuses a page whose truncated mark is not a boolean', () => {
       contentType: 'text/plain',
       text: 'x',
       isTruncated: 'no',
+      blocked: null,
     }),
   );
 
@@ -109,10 +115,50 @@ test('it refuses a page whose text is not a string or null', () => {
       contentType: 'text/plain',
       text: 5,
       isTruncated: false,
+      blocked: null,
     }),
   );
 
   expect(() => decodeFetchReply(bytes)).toThrowWithMessage(TypeError, /text, a string or null/u);
+});
+
+test('it returns a page with the reason the bot protection blocked it', () => {
+  const bytes = encoder.encode(
+    JSON.stringify({
+      kind: 'page',
+      url: 'https://example.com/',
+      status: 403,
+      contentType: 'text/html',
+      text: 'Just a moment...',
+      isTruncated: false,
+      blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+    }),
+  );
+
+  expect(decodeFetchReply(bytes)).toStrictEqual({
+    kind: 'page',
+    url: 'https://example.com/',
+    status: 403,
+    contentType: 'text/html',
+    text: 'Just a moment...',
+    isTruncated: false,
+    blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+  });
+});
+
+test('it refuses a page with no blocked field', () => {
+  const bytes = encoder.encode(
+    JSON.stringify({
+      kind: 'page',
+      url: 'https://example.com/',
+      status: 200,
+      contentType: 'text/plain',
+      text: 'x',
+      isTruncated: false,
+    }),
+  );
+
+  expect(() => decodeFetchReply(bytes)).toThrowWithMessage(TypeError, /blocked, a string or null/u);
 });
 
 test('it refuses a page with no url', () => {
@@ -123,6 +169,7 @@ test('it refuses a page with no url', () => {
       contentType: 'text/plain',
       text: 'x',
       isTruncated: false,
+      blocked: null,
     }),
   );
 

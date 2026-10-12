@@ -3,48 +3,74 @@ import type { IncomingMessage } from 'node:http';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
 import { buildReadableText } from './build-readable-text';
 import { decodeContent } from './decode-content';
+import { findBotChallenge } from './find-bot-challenge';
 import { readLimitedBody } from './read-limited-body';
 
 // Reads a final response into the result: an HTML page returns its readable text, another text
 // type returns as it arrived, and a binary type returns no body. The text stops at the text limit,
-// and either limit marks the result truncated.
+// and either limit marks the result truncated. A bot challenge in place of the page sets blocked.
 export async function readResponsePage(
   url: URL,
   response: IncomingMessage,
   limits: FetchLimits,
 ): Promise<FetchReply> {
   const contentType = response.headers['content-type'] ?? null;
-  const kind = pickBodyKind(contentType);
-  const page = {
-    kind: 'page' as const,
-    url: url.href,
-    status: response.statusCode ?? 0,
-    contentType,
-  };
+  const status = response.statusCode ?? 0;
 
   try {
-    return kind === 'binary'
-      ? { ...page, text: null, isTruncated: false }
-      : { ...page, ...(await readText(response, kind, limits)) };
+    return {
+      kind: 'page',
+      url: url.href,
+      status,
+      contentType,
+      ...(await readContent(response, pickBodyKind(contentType), limits)),
+    };
   } finally {
     response.destroy();
   }
 }
 
-async function readText(
+async function readContent(
   response: IncomingMessage,
-  kind: 'html' | 'text',
+  kind: 'html' | 'text' | 'binary',
+  limits: FetchLimits,
+): Promise<{
+  readonly text: string | null;
+  readonly isTruncated: boolean;
+  readonly blocked: string | null;
+}> {
+  const status = response.statusCode ?? 0;
+
+  if (kind === 'binary') {
+    return {
+      text: null,
+      isTruncated: false,
+      blocked: findBotChallenge(status, response.headers, null),
+    };
+  }
+  const body = await readBodyText(response, limits);
+  const readable = kind === 'html' ? buildReadableText(body.text) : body.text;
+  const text = buildTextWithinLimit(readable, limits.textBytes);
+
+  return {
+    text: text.text,
+    isTruncated: body.isTruncated || text.isCut,
+    blocked: findBotChallenge(status, response.headers, body.text),
+  };
+}
+
+// the body decoded from its content coding and its charset, cut at the body limit
+async function readBodyText(
+  response: IncomingMessage,
   limits: FetchLimits,
 ): Promise<{ readonly text: string; readonly isTruncated: boolean }> {
   const body = await readLimitedBody(
     decodeContent(response, response.headers['content-encoding']),
     limits.bodyBytes,
   );
-  const decoded = makeTextDecoder(response.headers['content-type'] ?? null).decode(body.bytes);
-  const readable = kind === 'html' ? buildReadableText(decoded) : decoded;
-  const text = buildTextWithinLimit(readable, limits.textBytes);
+  const text = makeTextDecoder(response.headers['content-type'] ?? null).decode(body.bytes);
 
-  return { text: text.text, isTruncated: body.isTruncated || text.isCut };
+  return { text, isTruncated: body.isTruncated };
 }
 
 const htmlTypes: ReadonlySet<string> = new Set(['text/html', 'application/xhtml+xml']);

@@ -17,8 +17,9 @@ const webFetchOutput = {
     contentType: { type: ['string', 'null'] },
     text: { type: ['string', 'null'] },
     isTruncated: { type: 'boolean', 'x-endorsed': true },
+    blocked: { type: ['string', 'null'] },
   },
-  required: ['url', 'status', 'contentType', 'text', 'isTruncated'],
+  required: ['url', 'status', 'contentType', 'text', 'isTruncated', 'blocked'],
   additionalProperties: false,
 };
 
@@ -31,7 +32,9 @@ export function buildWebFetchTool(readPage: (url: string) => Promise<FetchReply>
     description:
       'Fetches one public https page and returns its final URL, status code, content type and ' +
       'text: the readable text of an HTML page, the text of another text type, and no text for ' +
-      'a binary type. isTruncated is true when the page passed a size limit.',
+      'a binary type. isTruncated is true when the page passed a size limit. blocked is null, ' +
+      "or the reason the site's bot protection answered in place of the page, which no retry " +
+      'passes.',
     input: webFetchInput,
     output: webFetchOutput,
     declaration: {
@@ -45,6 +48,7 @@ export function buildWebFetchTool(readPage: (url: string) => Promise<FetchReply>
         contentType: 'untrusted',
         text: 'untrusted',
         isTruncated: 'untrusted',
+        blocked: 'untrusted',
       },
     },
     execution: 'direct',
@@ -62,6 +66,7 @@ export function buildWebFetchTool(readPage: (url: string) => Promise<FetchReply>
               contentType: reply.contentType,
               text: reply.text,
               isTruncated: reply.isTruncated,
+              blocked: reply.blocked,
             },
           }
         : { status: 'error', message: reply.reason };

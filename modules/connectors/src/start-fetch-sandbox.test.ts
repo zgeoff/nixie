@@ -14,6 +14,7 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
     contentType: 'text/plain',
     text: 'hello',
     isTruncated: false,
+    blocked: null,
   }));
   const adapter = buildStubSandboxAdapter(makeStubFetcher(answer));
   const fetchSandbox = startFetchSandbox({
@@ -36,6 +37,7 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
     contentType: 'text/plain',
     text: 'hello',
     isTruncated: false,
+    blocked: null,
   });
   expect(answer).toHaveBeenCalledExactlyOnceWith({
     url: 'https://example.com/',
@@ -53,6 +55,7 @@ test('it creates one fetch sandbox with public egress, no grants and no tool rou
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
   );
   const fetchSandbox = startFetchSandbox({
@@ -93,6 +96,7 @@ test('it runs each fetch in a new fetcher process in the same sandbox', async ()
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
   );
   const fetchSandbox = startFetchSandbox({
@@ -129,6 +133,7 @@ test('it replaces the sandbox after the configured number of fetches', async () 
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
   );
   const fetchSandbox = startFetchSandbox({
@@ -329,6 +334,7 @@ test('it fails a fetch whose time limit passed before its fetcher exited', async
         contentType: 'text/plain',
         text: 'hello',
         isTruncated: false,
+        blocked: null,
       };
     }),
   );
@@ -362,6 +368,7 @@ test('it removes the fetch sandboxes a past process left before it creates one',
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
   );
   const leftover = await adapter.create(
@@ -403,6 +410,7 @@ test('it runs one fetch at a time', async () => {
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
   );
   const adapter = buildStubSandboxAdapter(fetcher.call);
@@ -440,6 +448,7 @@ test('it fails the fetch when the sandbox cannot be created, and tries again on 
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
     { createFailures: [{ kind: 'reject', message: 'impd is down' }] },
   );
@@ -474,6 +483,7 @@ test('it fails a fetch whose sandbox never finishes creating', async () => {
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
     { createFailures: [{ kind: 'hang' }] },
   );
@@ -511,6 +521,7 @@ test('it waits on a sandbox that never finishes creating until the time limit pa
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
     { createFailures: [{ kind: 'hang' }] },
   );
@@ -548,6 +559,7 @@ test('it serves the next fetch after a sandbox that never finished creating', as
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
     { createFailures: [{ kind: 'hang' }] },
   );
@@ -582,6 +594,7 @@ test('it fails a fetch after it stops, and creates no sandbox', async () => {
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
   );
   const fetchSandbox = startFetchSandbox({
@@ -610,6 +623,7 @@ test('it destroys the sandbox when it stops', async () => {
       contentType: 'text/plain',
       text: 'hello',
       isTruncated: false,
+      blocked: null,
     })),
   );
   const fetchSandbox = startFetchSandbox({

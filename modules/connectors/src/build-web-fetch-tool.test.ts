@@ -16,6 +16,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
         contentType: 'text/html',
         text: 'Example Domain',
         isTruncated: false,
+        blocked: null,
       })),
     ),
     image: 'nixie-fetch',
@@ -29,12 +30,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
   const tool = buildWebFetchTool(fetchSandbox.readPage);
 
   const outcome = await tool.run(
-    {
-      callID: 'call-1',
-      tool: 'web_fetch',
-      input: { url: 'https://example.com/' },
-      toolUseID: null,
-    },
+    { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://site.test/' }, toolUseID: null },
     {
       run: {
         runID: 'run-1',
@@ -48,25 +44,27 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: {
-      url: 'https://example.com/',
+      url: 'https://site.test/',
       status: 200,
       contentType: 'text/html',
       text: 'Example Domain',
       isTruncated: false,
+      blocked: null,
     },
   });
 });
 
-test('it returns a page result that the registry checks against the output schema', async () => {
+test('it returns the reason the bot protection blocked a page in a result the schema accepts', async () => {
   const fetchSandbox = startFetchSandbox({
     adapter: buildStubSandboxAdapter(
       makeStubFetcher((request) => ({
         kind: 'page',
         url: request.url,
-        status: 200,
+        status: 403,
         contentType: 'text/html',
-        text: 'Example Domain',
+        text: 'Just a moment...',
         isTruncated: false,
+        blocked: "blocked by the site's bot protection (Cloudflare challenge)",
       })),
     ),
     image: 'nixie-fetch',
@@ -83,12 +81,57 @@ test('it returns a page result that the registry checks against the output schem
   invariant(registered);
 
   const outcome = await registered.definition.run(
+    { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://site.test/' }, toolUseID: null },
     {
-      callID: 'call-1',
-      tool: 'web_fetch',
-      input: { url: 'https://example.com/' },
-      toolUseID: null,
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['web_fetch'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
     },
+  );
+
+  invariant(outcome.status === 'ok');
+  expect(outcome.result).toStrictEqual({
+    url: 'https://site.test/',
+    status: 403,
+    contentType: 'text/html',
+    text: 'Just a moment...',
+    isTruncated: false,
+    blocked: "blocked by the site's bot protection (Cloudflare challenge)",
+  });
+  expect(registered.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
+});
+
+test('it returns a page result that the registry checks against the output schema', async () => {
+  const fetchSandbox = startFetchSandbox({
+    adapter: buildStubSandboxAdapter(
+      makeStubFetcher((request) => ({
+        kind: 'page',
+        url: request.url,
+        status: 200,
+        contentType: 'text/html',
+        text: 'Example Domain',
+        isTruncated: false,
+        blocked: null,
+      })),
+    ),
+    image: 'nixie-fetch',
+    argv: ['bun', '/app/fetch.js'],
+    limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
+    deniedRanges: [],
+    fetchesPerSandbox: 10,
+    sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
+  });
+  onTestFinished(() => fetchSandbox.stop());
+  const registered = buildToolRegistry([buildWebFetchTool(fetchSandbox.readPage)]).findTool(
+    'web_fetch',
+  );
+  invariant(registered);
+
+  const outcome = await registered.definition.run(
+    { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://site.test/' }, toolUseID: null },
     {
       run: {
         runID: 'run-1',
@@ -113,6 +156,7 @@ test('it returns a binary page with no text', async () => {
         contentType: 'image/png',
         text: null,
         isTruncated: false,
+        blocked: null,
       })),
     ),
     image: 'nixie-fetch',
@@ -197,6 +241,7 @@ test('it marks every result field as outside content', () => {
     contentType: 'untrusted',
     text: 'untrusted',
     isTruncated: 'untrusted',
+    blocked: 'untrusted',
   });
 });
 
@@ -209,6 +254,7 @@ test('it endorses only the status code and the truncated mark', () => {
     contentType: { type: ['string', 'null'] },
     text: { type: ['string', 'null'] },
     isTruncated: { type: 'boolean', 'x-endorsed': true },
+    blocked: { type: ['string', 'null'] },
   });
 });
 
