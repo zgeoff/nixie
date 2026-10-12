@@ -48,6 +48,29 @@ test('it destroys each imp it made, then removes the secret, when the test finis
   });
 });
 
+test('it destroys an imp whose create was still running when the test finished', async () => {
+  const imp = await startFakeImp();
+  const isolation = await setupIsolationAdapter({
+    port: imp.port,
+    removeSecret: mock(),
+    publicEgress: null,
+    guestToolPort: imp.guestToolPort,
+    secret: 'nixie-test-a',
+  });
+
+  // the test ends before the create returns, as one does when the create outlives its timeout
+  void isolation.createSandbox(
+    buildMockSandboxSpec({
+      kind: 'conversation',
+      grants: [buildMockGrantSpec({ secret: 'nixie-test-a', host: 'api.anthropic.com' })],
+    }),
+  );
+
+  onTestFinished(() => {
+    expect(imp.calls).toSatisfyAny((call: string) => call.startsWith('remove '));
+  });
+});
+
 test('it refuses a secret name impd holds already', async () => {
   const imp = await startFakeImp();
 

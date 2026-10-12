@@ -2,7 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Sandbox, SandboxSpec } from '@heynixie/sandbox';
+import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
 import { setupTestRecorder, startStubToolEndpoint } from '@heynixie/sandbox/test-utils';
 import { buildImpSandboxAdapter } from '../build-imp-sandbox-adapter';
 import type { PublicEgressConfig } from '../parse-imp-config';
@@ -24,14 +24,18 @@ interface IsolationAdapter {
 }
 
 // Sets up the imp adapter on a fresh recorder and the stub tool endpoint, and adds the model-host
-// secret with a dummy value. The stack's hook registers first, and hooks run first in, first out,
-// so each imp goes before the writer stops, and the secret goes last.
+// secret with a dummy value. The stack's hook registers first and waits for every create still
+// running; hooks run first in, first out, so each imp goes before the writer stops.
 export async function setupIsolationAdapter(
   options: IsolationAdapterOptions,
 ): Promise<IsolationAdapter> {
   const stack = new AsyncDisposableStack();
+  const creating = new Set<Promise<unknown>>();
 
-  onTestFinished(() => stack.disposeAsync());
+  onTestFinished(async () => {
+    await Promise.allSettled(creating);
+    await stack.disposeAsync();
+  });
 
   const recorder = await setupTestRecorder();
   const dir = await mkdtemp(join(tmpdir(), 'nixie-isolation-'));
@@ -50,13 +54,26 @@ export async function setupIsolationAdapter(
   });
 
   return {
-    createSandbox: async (spec) => {
-      const sandbox = await adapter.create(spec);
+    createSandbox: (spec) => {
+      const created = createOwnedSandbox(adapter, spec, (sandbox) => {
+        stack.defer(() => sandbox.destroy());
+      });
 
-      stack.defer(() => sandbox.destroy());
-      return sandbox;
+      creating.add(created);
+      return created;
     },
   };
+}
+
+async function createOwnedSandbox(
+  adapter: SandboxAdapter,
+  spec: SandboxSpec,
+  onCreated: (sandbox: Sandbox) => void,
+): Promise<Sandbox> {
+  const sandbox = await adapter.create(spec);
+
+  onCreated(sandbox);
+  return sandbox;
 }
 
 // A name impd holds already is not this run's, so the add refuses it. Once the run has seen the
