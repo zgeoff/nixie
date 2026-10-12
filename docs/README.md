@@ -80,6 +80,12 @@ below, and planned work lives in Linear.
 - [The API](architecture/channels/api.md) — device sessions and the identity record, checked
   actions, refusals, message sends and the live stream
 
+### Memory
+
+- [The memory store](architecture/memory/store.md) — items and versions, the 4 states, changes bound
+  to a version, a key per item, recall with its index and delivery lock, forgetting, and the model's
+  tools
+
 ### Deployment
 
 - [The server](architecture/deployment/server.md) — configuration and secrets, the start sequence,
@@ -136,8 +142,8 @@ rests on.
 
 ### Memory
 
-- [The memory store](design/platform/memory/store.md) — the first build, items and versions, a key
-  per item, retire and forget, bulk deletion, recall, the memory view and export
+- [The memory store](design/platform/memory/store.md) — the first build, bulk deletion of retired
+  memories, forget completion with key backups, the memory view and export
 - [Memory writes](design/platform/memory/writes.md) — who writes memory, batched capture, the quote,
   token and checker checks, memory proposals, notices and undo, and consolidation
 - [Memory in context](design/platform/memory/context.md) — the prompt, the pinned core, retrieval

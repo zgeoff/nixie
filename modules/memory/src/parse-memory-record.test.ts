@@ -61,13 +61,21 @@ test('it rejects a version record whose state is not a version state', () => {
 });
 
 test.each([
-  ['memory.pinned', { itemID: 'item-a', isPinned: true }],
-  ['memory.forget_started', { itemID: 'item-a', version: 3 }],
-  ['memory.forgotten', { itemID: 'item-a' }],
-])('it reads a %s record', (kind, payload) => {
+  [
+    'memory.pinned',
+    { itemID: 'item-a', isPinned: true },
+    { kind: 'memory.pinned', itemID: 'item-a', isPinned: true },
+  ],
+  [
+    'memory.forget_started',
+    { itemID: 'item-a', version: 3 },
+    { kind: 'memory.forget_started', itemID: 'item-a', version: 3 },
+  ],
+  ['memory.forgotten', { itemID: 'item-a' }, { kind: 'memory.forgotten', itemID: 'item-a' }],
+] as const)('it reads a %s record', (kind, payload, expected) => {
   const record = buildMockLogRecord({ kind, payload });
 
-  expect(parseMemoryRecord(record)).toStrictEqual({ kind, ...payload });
+  expect(parseMemoryRecord(record)).toStrictEqual(expected);
 });
 
 test('it reads a record of another kind as null', () => {

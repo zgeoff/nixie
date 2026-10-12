@@ -25,6 +25,11 @@ The host key needs no backup, because your recovery key is a second recipient of
 SDK transcript is a cache that a task rebuilds from the event log, as
 [memory context](../memory/context.md) describes.
 
+A sandbox backend never backs up nixie's sandboxes, whatever snapshot or backup feature the backend
+offers. A sandbox holds the SDK transcript and other working copies of what the model read, so a
+backup of one would keep forgotten memory text where no forget reaches it, and a lost sandbox costs
+only a session rebuild from the event log.
+
 ## nixie and the backup sidecar
 
 Backups run in 2 containers. nixie owns consistency: it is the single writer, so it alone opens the

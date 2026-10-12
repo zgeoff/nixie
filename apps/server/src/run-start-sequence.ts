@@ -3,11 +3,12 @@ import { runDefinitionsSeed } from './run-definitions-seed';
 import { runRecoverySteps } from './run-recovery-steps';
 import { runWithRetry } from './run-with-retry';
 import { startConversationImp } from './start-conversation-imp';
+import { startMemory } from './start-memory';
 import { startWork } from './start-work';
 import type { ServerParts } from './types';
 
-// The start steps behind the health endpoint, in order: recovery, the manifest's images, the
-// conversation imp, the seed, then the runners. A failed step waits and runs again, so nixie stays
+// The start steps behind the health endpoint, in order: recovery, memory, the manifest's images,
+// the conversation imp, the seed, then the runners. A failed step waits and runs again, so nixie stays
 // live and unready until impd answers or the definitions seed.
 export async function runStartSequence(parts: ServerParts): Promise<void> {
   const retry = { signal: parts.cleanup.signal, log: parts.log };
@@ -17,6 +18,7 @@ export async function runStartSequence(parts: ServerParts): Promise<void> {
     await runWithRetry(() => requireSeeded(parts), { ...retry, step: 'first_seed' });
   }
   await runWithRetry(() => runRecoverySteps(parts), { ...retry, step: 'recovery' });
+  await runWithRetry(() => startMemory(parts), { ...retry, step: 'memory' });
   await runWithRetry(() => registerSandboxImages(parts), { ...retry, step: 'add_images' });
 
   const runStep = await runWithRetry(() => startConversationImp(parts), {

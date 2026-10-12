@@ -216,7 +216,7 @@ appear in its thread and in its next report to the conversation.
 
 Undo is a checked action. It adds a version with the earlier text, or retires an item that the write
 created, so undo itself can be undone. A later edit makes an old notice's undo stale. A notice also
-links the checked [forget](store.md#forgetting) action.
+links the checked [forget](../../../architecture/memory/store.md#forgetting) action.
 
 ## Consolidation
 

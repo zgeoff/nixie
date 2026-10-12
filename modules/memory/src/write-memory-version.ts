@@ -18,7 +18,7 @@ import type {
 } from './types';
 
 // The version an operation adds, built from the versions of the item before it.
-export interface NewVersion {
+interface NewVersion {
   readonly change: MemoryChange;
   readonly state: VersionState;
   readonly text: VersionText;
@@ -27,7 +27,7 @@ export interface NewVersion {
 }
 
 // Reads one earlier version of the item, decrypted.
-export type ReadEarlierVersion = (version: number) => Promise<ReadableVersion>;
+type ReadEarlierVersion = (version: number) => Promise<ReadableVersion>;
 
 export interface VersionPlan {
   // the item and the version the caller read, with the states the operation applies to, or null

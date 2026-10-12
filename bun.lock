@@ -56,6 +56,7 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/ops": "workspace:*",
         "@heynixie/policy": "workspace:*",
