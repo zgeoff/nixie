@@ -1,5 +1,5 @@
 import { onTestFinished } from 'bun:test';
-import { join } from 'node:path';
+import { readdir } from 'node:fs/promises';
 import type { RecalledItem, StartedMemoryStore, WriterStatus } from '@heynixie/memory';
 import { startMemoryStore, writerConfigSchema } from '@heynixie/memory';
 import { buildStubGate } from '@heynixie/memory/test-utils';
@@ -21,8 +21,12 @@ export interface TestMemoryWriter {
   readonly model: ScriptedModel;
   readonly store: StartedMemoryStore;
 
-  // starts the writer, after the test records the messages its catch-up covers
-  readonly start: () => Promise<MemoryWriterRunner>;
+  // the names in the directory of the writer's tool endpoint sockets
+  readonly listSocketNames: () => Promise<readonly string[]>;
+
+  // starts the writer, after the test records the messages its catch-up covers, on the server's
+  // context unless the test passes its own
+  readonly start: (start?: WriterStart) => Promise<MemoryWriterRunner>;
 
   // runs the writer's steps, and any other task's step the test passes, until the tasks settle or
   // isDone holds
@@ -31,6 +35,10 @@ export interface TestMemoryWriter {
   // every active item, through recall
   readonly listItems: () => Promise<readonly RecalledItem[]>;
   readonly readStatus: () => Promise<WriterStatus>;
+}
+
+interface WriterStart {
+  readonly context?: TasksContext;
 }
 
 interface WriterRun {
@@ -57,14 +65,21 @@ export async function startTestMemoryWriter(server: TestServer): Promise<TestMem
   server.defer(() => store.stop());
 
   const started: { writer: MemoryWriterRunner | null } = { writer: null };
+  const socketDir = `${server.dataDir}/tools`;
 
   return {
     context,
     clock,
     model,
     store,
-    start: async () => {
-      started.writer = await startTestWriterRunner(server, { context, model, store });
+    listSocketNames: () => readdir(socketDir),
+    start: async (start = {}) => {
+      started.writer = await startTestWriterRunner(server, {
+        context: start.context ?? context,
+        model,
+        store,
+        socketDir,
+      });
       return started.writer;
     },
     run: (run) => runWriterSteps({ context, clock, writer: started.writer }, run),
@@ -86,6 +101,7 @@ interface WriterWiring {
   readonly context: TasksContext;
   readonly model: ScriptedModel;
   readonly store: StartedMemoryStore;
+  readonly socketDir: string;
 }
 
 async function startTestWriterRunner(
@@ -108,7 +124,7 @@ async function startTestWriterRunner(
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: server.sandboxes,
-    socketDir: join(server.dataDir, 'tools'),
+    socketDir: wiring.socketDir,
     image: 'nixie-conversation-0123456789ab',
     store: wiring.store,
     gate: buildStubGate(),

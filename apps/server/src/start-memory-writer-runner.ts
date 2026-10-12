@@ -46,9 +46,33 @@ export interface MemoryWriterRunner extends MemoryWriter {
 export async function startMemoryWriterRunner(
   options: MemoryWriterRunnerOptions,
 ): Promise<MemoryWriterRunner> {
+  const started = new AsyncDisposableStack();
+
+  try {
+    const writer = await startWriterParts(options, (stop) => {
+      started.defer(stop);
+    });
+    const stack = started.move();
+
+    return { ...writer, stop: () => stack.disposeAsync() };
+  } catch (error) {
+    // the server retries a failed start, and each retry opens the run socket again
+    await started.disposeAsync();
+    throw error;
+  }
+}
+
+// the endpoint, the session runner and the writer, each deferred to stop in reverse order
+async function startWriterParts(
+  options: MemoryWriterRunnerOptions,
+  defer: (stop: () => Promise<void>) => void,
+): Promise<MemoryWriter> {
   const staging = createWriterStaging();
   const tools = buildWriterTools(options.store, staging, options.config.topItems);
   const endpoint = await startWriterEndpoint(options, tools);
+
+  defer(() => endpoint.stop());
+
   const runner = await startSessionRunner({
     context: options.context,
     profile: resolveWriterProfile(options),
@@ -60,6 +84,9 @@ export async function startMemoryWriterRunner(
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: buildGuestCommand(),
   });
+
+  defer(() => runner.stop());
+
   const writer = await startMemoryWriter({
     context: options.context,
     store: options.store,
@@ -76,14 +103,8 @@ export async function startMemoryWriterRunner(
     onError: options.onError,
   });
 
-  return {
-    ...writer,
-    stop: async () => {
-      await writer.stop();
-      await runner.stop();
-      await endpoint.stop();
-    },
-  };
+  defer(() => writer.stop());
+  return writer;
 }
 
 function resolveWriterProfile(options: MemoryWriterRunnerOptions): ResolvedProfile {

@@ -184,3 +184,20 @@ test('it resumes the batch once the model answers after a backoff', async () => 
 
   expect(items).toMatchObject([{ text: 'You work at the harbour office.' }]);
 }, 60_000);
+
+test('it closes the writer tool socket when the writer fails to start', async () => {
+  const ctx = await setupTest();
+
+  // the writer's start reads the definitions snapshot after its tool endpoint opens the run socket
+  const starting = ctx.memory.start({
+    context: {
+      ...ctx.memory.context,
+      definitions: () => {
+        throw new Error('the definitions snapshot is unreadable');
+      },
+    },
+  });
+
+  expect(starting).rejects.toThrow('the definitions snapshot is unreadable');
+  expect(ctx.memory.listSocketNames()).resolves.toStrictEqual([]);
+});
