@@ -137,9 +137,11 @@ The message box labels every span of its text with how it arrived: typed, pasted
 unknown. Memory evidence needs text the user typed, so every path that cannot tell fails closed to
 unknown. The labelling logic lives in the contract package, so every client shares it.
 
-1. Before each edit, the client records the browser's input type and the text box's selection. Undo,
-   redo and any input type the logic does not list map to unknown, because they restore or insert
-   text without saying where it came from.
+1. Before each edit, the client records the browser's input type, the text it inserts and the text
+   box's selection. Undo, redo and any input type the logic does not list map to unknown, because
+   they restore or insert text without saying where it came from. A single typing event that inserts
+   more than one word maps to unknown too, because an Android keyboard's clipboard chip and its own
+   undo insert pasted text that way, and typing, a prediction or a swipe inserts one word at most.
 2. After the edit, the logic applies it at the recorded selection. The selection pins where the edit
    happened, so a paste next to repeated text keeps its label.
 3. An insertion that does not replace exactly the selection, such as a spelling fix elsewhere in the
