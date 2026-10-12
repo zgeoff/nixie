@@ -32,6 +32,7 @@ export function buildRecordProcedures(context: APIContext) {
 }
 
 // Each record as one event whose ID is the record's sequence.
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the contract's record type is mutable
 async function* toRecordEvents(records: AsyncIterable<LogRecord>) {
   for await (const record of records) {
     yield withEventMeta({ record }, { id: String(record.sequence) });

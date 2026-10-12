@@ -201,7 +201,9 @@ test('it keeps reporting live updates unavailable while the API refuses a revoke
   await ctx.timer.advanceToNext();
   await ctx.timer.advanceToNext();
 
-  expect(reported.slice(reported.indexOf(true))).toSatisfyAll((unavailable) => unavailable);
+  expect(reported.slice(reported.indexOf(true))).toSatisfyAll(
+    (unavailable: boolean) => unavailable,
+  );
 });
 
 test('it backs off from a stream that opens and then ends with UNAUTHORIZED', async () => {
