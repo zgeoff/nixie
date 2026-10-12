@@ -106,7 +106,116 @@ test('it carries no message text for a record of another kind', () => {
     kind: 'task.created',
     recordedAt: new Date('2026-10-10T12:00:00Z'),
     sequence: 3,
+    task: { taskID: 'task-1' },
     thread: 'task-1',
+  });
+});
+
+test('it names the task and the step of a step record', () => {
+  expect(
+    toContractRecord({
+      sequence: 4,
+      recordedAt: new Date('2026-10-10T12:00:00Z'),
+      kind: 'task.step_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: { taskID: 'conversation', stepKey: 'step-2' },
+      erasable: { status: 'none' },
+    }),
+  ).toStrictEqual({
+    kind: 'task.step_started',
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 4,
+    task: { stepKey: 'step-2', taskID: 'conversation' },
+    thread: 'conversation',
+  });
+});
+
+test('it carries a tool call with its tool and input', () => {
+  expect(
+    toContractRecord({
+      sequence: 5,
+      recordedAt: new Date('2026-10-10T12:00:01Z'),
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: { callID: 'call-1', runID: 'run-1', tool: 'web_fetch', toolUseID: 'use-1' },
+      erasable: { status: 'readable', fields: { input: { url: 'https://example.com/' } } },
+    }),
+  ).toStrictEqual({
+    kind: 'tool_called',
+    recordedAt: new Date('2026-10-10T12:00:01Z'),
+    sequence: 5,
+    thread: 'conversation',
+    toolCall: { callID: 'call-1', input: { url: 'https://example.com/' }, tool: 'web_fetch' },
+  });
+});
+
+test('it carries a tool result with its outcome and content', () => {
+  expect(
+    toContractRecord({
+      sequence: 6,
+      recordedAt: new Date('2026-10-10T12:00:02Z'),
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      stepKey: null,
+      parent: 5,
+      contentSource: 'untrusted',
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: { callID: 'call-1', outcome: 'result', actionID: null, sources: {} },
+      erasable: { status: 'readable', fields: { result: { status: 200, text: 'Example Domain' } } },
+    }),
+  ).toStrictEqual({
+    kind: 'tool_result',
+    recordedAt: new Date('2026-10-10T12:00:02Z'),
+    sequence: 6,
+    thread: 'conversation',
+    toolCall: {
+      callID: 'call-1',
+      content: { result: { status: 200, text: 'Example Domain' } },
+      outcome: 'result',
+    },
+  });
+});
+
+test('it keeps a forgotten tool result with its outcome and no content', () => {
+  expect(
+    toContractRecord({
+      sequence: 6,
+      recordedAt: new Date('2026-10-10T12:00:02Z'),
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      stepKey: null,
+      parent: 5,
+      contentSource: 'untrusted',
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: { callID: 'call-1', outcome: 'result', actionID: null, sources: {} },
+      erasable: { status: 'shredded' },
+    }),
+  ).toStrictEqual({
+    kind: 'tool_result',
+    recordedAt: new Date('2026-10-10T12:00:02Z'),
+    sequence: 6,
+    thread: 'conversation',
+    toolCall: { callID: 'call-1', outcome: 'result' },
   });
 });
 

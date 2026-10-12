@@ -173,7 +173,9 @@ function toLogRecord(record: StoredRecord): LogRecord {
     ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
     recordedAt: record.recordedAt,
     sequence: record.sequence,
+    ...(record.task === undefined ? {} : { task: structuredClone(record.task) }),
     thread: record.thread,
+    ...(record.toolCall === undefined ? {} : { toolCall: structuredClone(record.toolCall) }),
   };
 }
 

@@ -38,6 +38,18 @@ const messageSchema = z.object({
   text: z.string().default(() => faker.lorem.sentence()),
 });
 
+const jsonObjectSchema = z.record(z.string(), z.unknown());
+
+const taskSchema = z.object({ stepKey: z.string().optional(), taskID: z.string() });
+
+const toolCallSchema = z.object({
+  callID: z.string(),
+  content: jsonObjectSchema.optional(),
+  input: jsonObjectSchema.optional(),
+  outcome: z.string().optional(),
+  tool: z.string().optional(),
+});
+
 const records = new Collection({
   schema: z.object({
     kind: z.string().default('owner_message'),
@@ -48,7 +60,9 @@ const records = new Collection({
 
       return counter.lastSequence;
     }),
+    task: taskSchema.optional(),
     thread: z.string().default('conversation'),
+    toolCall: toolCallSchema.optional(),
   }),
 });
 

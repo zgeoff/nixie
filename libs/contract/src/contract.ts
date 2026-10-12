@@ -21,6 +21,18 @@ const spanSchema = z.object({
   start: z.int().nonnegative(),
 });
 
+const jsonObjectSchema = z.record(z.string(), z.unknown());
+
+const taskSchema = z.object({ stepKey: z.string().optional(), taskID: z.string() });
+
+const toolCallSchema = z.object({
+  callID: z.string(),
+  content: jsonObjectSchema.optional(),
+  input: jsonObjectSchema.optional(),
+  outcome: z.string().optional(),
+  tool: z.string().optional(),
+});
+
 const recordSchema = z.object({
   // The kind decides how a client renders the record, and a client shows an unfamiliar kind by
   // its name.
@@ -37,6 +49,14 @@ const recordSchema = z.object({
   recordedAt: z.date(),
   sequence: sequenceSchema,
   thread: threadSchema,
+
+  // Set on a task record: the task it belongs to, and the step for a step record.
+  task: taskSchema.optional(),
+
+  // Set on a tool call's record and its result's record, which share the call ID. The call
+  // carries the tool and its input, and the result its outcome and content, while they are
+  // readable.
+  toolCall: toolCallSchema.optional(),
 });
 
 const sessionSchema = z.object({

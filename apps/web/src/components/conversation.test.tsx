@@ -26,6 +26,34 @@ test('it shows the conversation the API holds', async () => {
   expect(list).toHaveTextContent('You Is it raining?nixie Not yet.');
 });
 
+test('it folds the records of a step into one line between the messages', async () => {
+  await setupTest();
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is it raining?' } });
+  await store.records.create({
+    kind: 'task.step_started',
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+  await store.records.create({
+    kind: 'tool_called',
+    toolCall: { callID: 'call-1', input: { url: 'https://weather.test/' }, tool: 'web_fetch' },
+  });
+  await store.records.create({
+    kind: 'tool_result',
+    toolCall: { callID: 'call-1', content: { result: { text: 'dry' } }, outcome: 'result' },
+  });
+  await store.records.create({ kind: 'model.reply', message: { text: 'Not yet.' } });
+  await store.records.create({ kind: 'task.step_committed', task: { taskID: 'conversation' } });
+
+  const rendered = render(<Conversation thread="conversation" />);
+  const list = await rendered.findByRole('list', { name: 'Conversation' });
+
+  expect(
+    [...list.children].map(
+      (item) => item.querySelector('summary')?.textContent ?? item.textContent,
+    ),
+  ).toStrictEqual(['You Is it raining?', 'web fetch: weather.test', 'nixie Not yet.']);
+});
+
 test('it sends a message with a span for each way its text arrived', async () => {
   const ctx = await setupTest();
   const rendered = render(<Conversation thread="conversation" />);
