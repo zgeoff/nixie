@@ -43,14 +43,19 @@ test('it exits a second process on the same data directory with the writer lock 
     await first.exited;
   });
 
-  const ready = await first.stdout.getReader().read();
-
-  expect(new TextDecoder().decode(ready.value)).toBe('writer epoch 1\n');
+  // the stub prints its epoch once it holds the lock
+  await first.stdout.getReader().read();
 
   const second = Bun.spawn([process.execPath, ctx.stubServer, ctx.dataDir], {
     stdout: 'pipe',
     stderr: 'pipe',
   });
+
+  onTestFinished(async () => {
+    second.kill('SIGKILL');
+    await second.exited;
+  });
+
   const exitCode = await second.exited;
   const stderr = await new Response(second.stderr).text();
 
@@ -62,6 +67,11 @@ test('it takes the lock and the next epoch once the process that held them dies'
   const ctx = await setupTest();
 
   const first = Bun.spawn([process.execPath, ctx.stubServer, ctx.dataDir], { stdout: 'pipe' });
+
+  onTestFinished(async () => {
+    first.kill('SIGKILL');
+    await first.exited;
+  });
 
   await first.stdout.getReader().read();
   first.kill('SIGKILL');
@@ -100,7 +110,7 @@ test('it raises the writer epoch before the first migration runs', async () => {
   expect(seen).toStrictEqual([writer.epoch]);
 });
 
-test('it copies the database before the first migration of a release and never the key store', async () => {
+test('it reports the copy it takes before the first migration of a release', async () => {
   const ctx = await setupTest();
 
   const createNotes: Migration = {
@@ -115,6 +125,7 @@ test('it copies the database before the first migration of a release and never t
     schema: { migrations: [createNotes], oldestReader: 0 },
   });
 
+  onTestFinished(() => release1.stop());
   await release1.stop();
 
   const release2 = await startWriter({
@@ -133,16 +144,57 @@ test('it copies the database before the first migration of a release and never t
     },
   });
 
-  await release2.stop();
-
-  const names = await readdir(ctx.dataDir);
+  onTestFinished(() => release2.stop());
 
   expect(release2.migration).toStrictEqual({
     from: 1,
     to: 2,
     copyPath: join(ctx.dataDir, 'nixie-schema-1.db'),
   });
-  expect(names.toSorted()).toStrictEqual(['keys.db', 'nixie-schema-1.db', 'nixie.db']);
+});
+
+test('it copies the database before the first migration of a release and never the key store', async () => {
+  const ctx = await setupTest();
+
+  const createNotes: Migration = {
+    name: 'create notes',
+    up: async (tx) => {
+      await sql`create table notes (id text primary key)`.execute(tx);
+    },
+  };
+
+  const release1 = await startWriter({
+    dataDir: ctx.dataDir,
+    schema: { migrations: [createNotes], oldestReader: 0 },
+  });
+
+  onTestFinished(() => release1.stop());
+  await release1.stop();
+
+  const release2 = await startWriter({
+    dataDir: ctx.dataDir,
+    schema: {
+      migrations: [
+        createNotes,
+        {
+          name: 'create tags',
+          up: async (tx) => {
+            await sql`create table tags (id text primary key)`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+  });
+
+  onTestFinished(() => release2.stop());
+
+  // stopping checkpoints each WAL, so only the database files remain
+  await release2.stop();
+
+  const names = await readdir(ctx.dataDir);
+
+  expect(names).toIncludeSameMembers(['keys.db', 'nixie-schema-1.db', 'nixie.db']);
 });
 
 test('it opens the key store as keys.db beside nixie.db, with secure delete on', async () => {

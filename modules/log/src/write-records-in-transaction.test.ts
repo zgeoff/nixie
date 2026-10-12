@@ -4,8 +4,12 @@ import { startTestLog } from './test-utils/start-test-log';
 import { withWriteTransaction } from './with-write-transaction';
 import { writeRecordsInTransaction } from './write-records-in-transaction';
 
+function setupTest() {
+  return startTestLog();
+}
+
 test('it commits the records with the rows the caller writes in the same transaction', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await sql`create table notes (title text not null) strict`.execute(ctx.writer.db);
 
@@ -25,7 +29,7 @@ test('it commits the records with the rows the caller writes in the same transac
 });
 
 test('it rolls the records back when the caller fails after writing them', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await sql`create table notes (title text not null) strict`.execute(ctx.writer.db);
 

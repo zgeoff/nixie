@@ -2,13 +2,18 @@ import { expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { readRecords } from './read-records';
 import { removeRecordKey } from './remove-record-key';
 import { startTestLog } from './test-utils/start-test-log';
 import { writeRecords } from './write-records';
 
+function setupTest() {
+  return startTestLog();
+}
+
 test('it leaves the envelope and a gap where the payload was once the key is gone', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     {
@@ -28,8 +33,10 @@ test('it leaves the envelope and a gap where the payload was once the key is gon
 
   const keys = await sql<{ key_id: string }>`select key_id from records
     where sequence = 1`.execute(ctx.writer.db);
+  const [key] = keys.rows;
 
-  await removeRecordKey(ctx.log, keys.rows.at(0)?.key_id ?? '');
+  invariant(key);
+  await removeRecordKey(ctx.log, key.key_id);
 
   const read = await readRecords(ctx.log, { afterSequence: 0 });
 
@@ -55,7 +62,7 @@ test('it leaves the envelope and a gap where the payload was once the key is gon
 });
 
 test('it leaves no copy of the wrapped key in keys.db or its WAL', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     {
@@ -67,7 +74,9 @@ test('it leaves no copy of the wrapped key in keys.db or its WAL', async () => {
 
   const stored = await sql<{ key_id: string; wrapped: Uint8Array }>`select key_id, wrapped
     from record_keys`.execute(ctx.writer.keys);
-  const key = stored.rows.at(0) ?? { key_id: '', wrapped: new Uint8Array() };
+  const [key] = stored.rows;
+
+  invariant(key);
   const walBefore = await readFile(join(ctx.dataDir, 'keys.db-wal'));
 
   await removeRecordKey(ctx.log, key.key_id);
@@ -81,7 +90,7 @@ test('it leaves no copy of the wrapped key in keys.db or its WAL', async () => {
 });
 
 test('it refuses to remove a key under a stale writer epoch and keeps the key', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     {
@@ -95,7 +104,9 @@ test('it refuses to remove a key under a stale writer epoch and keeps the key', 
   const stored = await sql<{ key_id: string }>`select key_id from record_keys`.execute(
     ctx.writer.keys,
   );
-  const remove = removeRecordKey(ctx.log, stored.rows.at(0)?.key_id ?? '');
+
+  invariant(stored.rows[0]);
+  const remove = removeRecordKey(ctx.log, stored.rows[0].key_id);
 
   await remove.catch(() => {});
 

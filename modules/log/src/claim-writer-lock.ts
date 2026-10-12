@@ -1,6 +1,7 @@
 import type { Pointer } from 'bun:ffi';
 import { FFIType, dlopen, read } from 'bun:ffi';
 import { closeSync, existsSync, openSync } from 'node:fs';
+import invariant from 'tiny-invariant';
 import type { WriterLock } from './types';
 import { WriterLockHeldError } from './writer-lock-held-error';
 
@@ -90,9 +91,8 @@ function findLinuxLibc(): string {
   return 'libc.so.6';
 }
 
+// libc always returns the thread's errno location, and a user-space address fits in a number
 function readPointedInt(pointer: Pointer | bigint | null): number {
-  if (pointer === null || typeof pointer === 'bigint') {
-    throw new Error('libc returned no errno location');
-  }
+  invariant(typeof pointer === 'number', 'libc returned no errno location');
   return read.i32(pointer, 0);
 }

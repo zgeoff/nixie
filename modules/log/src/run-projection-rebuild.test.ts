@@ -1,12 +1,17 @@
 import { expect, test } from 'bun:test';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import { removeRecordKey } from './remove-record-key';
 import { runProjectionRebuild } from './run-projection-rebuild';
 import { startTestLog } from './test-utils/start-test-log';
 import { writeRecords } from './write-records';
 
+function setupTest() {
+  return startTestLog();
+}
+
 test('it folds a recorded log into the live tables once every projection is dropped', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     {
@@ -47,7 +52,7 @@ test('it folds a recorded log into the live tables once every projection is drop
 });
 
 test('it folds the same rows after a record key is gone', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     {
@@ -62,7 +67,10 @@ test('it folds the same rows after a record key is gone', async () => {
     ctx.writer.keys,
   );
 
-  await removeRecordKey(ctx.log, keys.rows.at(0)?.key_id ?? '');
+  const [key] = keys.rows;
+
+  invariant(key);
+  await removeRecordKey(ctx.log, key.key_id);
 
   const live = await sql`select * from threads`.execute(ctx.writer.db);
 
@@ -74,7 +82,7 @@ test('it folds the same rows after a record key is gone', async () => {
 });
 
 test('it refuses to rebuild under a stale writer epoch and leaves the projections as they were', async () => {
-  const ctx = await startTestLog();
+  const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },

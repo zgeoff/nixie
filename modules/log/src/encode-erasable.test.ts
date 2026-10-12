@@ -11,7 +11,7 @@ async function setupTest() {
   return { key };
 }
 
-test('it decodes what it encoded under the same key and key ID', async () => {
+test('#decodeErasable returns the fields that encodeErasable sealed under the same key and key ID', async () => {
   const ctx = await setupTest();
 
   const sealed = await encodeErasable(ctx.key, 'key-1', { text: 'call the bank', count: 2 });
@@ -23,7 +23,7 @@ test('it decodes what it encoded under the same key and key ID', async () => {
   });
 });
 
-test('it holds no plaintext of the fields', async () => {
+test('#encodeErasable holds no plaintext of the fields', async () => {
   const ctx = await setupTest();
 
   const sealed = await encodeErasable(ctx.key, 'key-1', { text: 'secretmarker3301' });
@@ -31,7 +31,7 @@ test('it holds no plaintext of the fields', async () => {
   expect(new TextDecoder().decode(sealed)).not.toInclude('secretmarker3301');
 });
 
-test('it encodes the same fields differently each time', async () => {
+test('#encodeErasable encodes the same fields differently each time', async () => {
   const ctx = await setupTest();
 
   const first = await encodeErasable(ctx.key, 'key-1', { text: 'same' });
@@ -40,7 +40,7 @@ test('it encodes the same fields differently each time', async () => {
   expect(first).not.toStrictEqual(second);
 });
 
-test('it refuses to decode under another key ID', async () => {
+test('#decodeErasable refuses fields sealed under another key ID', async () => {
   const ctx = await setupTest();
 
   const sealed = await encodeErasable(ctx.key, 'key-1', { text: 'call the bank' });
@@ -51,7 +51,7 @@ test('it refuses to decode under another key ID', async () => {
   expect(decode).rejects.toThrow();
 });
 
-test('it refuses to decode a changed byte', async () => {
+test('#decodeErasable refuses sealed fields with a changed byte', async () => {
   const ctx = await setupTest();
 
   const sealed = await encodeErasable(ctx.key, 'key-1', { text: 'call the bank' });
