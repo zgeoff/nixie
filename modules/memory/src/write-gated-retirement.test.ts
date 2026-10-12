@@ -1,6 +1,8 @@
 import { expect, mock, test } from 'bun:test';
+import { makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
+import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
@@ -130,6 +132,42 @@ test('it proposes a retirement the checker does not confirm', async () => {
   });
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'checker_not_asserted' });
+});
+
+test('it proposes a retirement whose evidence message backed an item you forgot while the checker answered', async () => {
+  const checker = makeGatedCall(() => buildMockCheckerAnswer({ verdict: 'asserted' }));
+  const memory = await startTestMemory({ gate: { check: checker.call } });
+  const [item, sequence] = await Promise.all([
+    memory.store.remember({ text: 'Lives on Elm Street', provenance: buildMockProvenance() }),
+    writeOwnerMessageRecord(memory.log, {
+      thread: 'conversation',
+      text: 'I moved out of Elm Street last week',
+      spans: [{ start: 0, end: 36, source: 'typed' }],
+    }),
+  ]);
+  const [forgotten] = await Promise.all([
+    memory.store.remember({
+      text: 'Moved out of Elm Street last week',
+      evidenceQuote: 'I moved out of Elm Street last week',
+      evidence: { recordSequence: sequence, start: 0, end: 36 },
+      provenance: buildMockProvenance(),
+    }),
+    memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' }),
+  ]);
+
+  const retirement = memory.store.writes.retire({
+    target: item,
+    intentQuote: 'I moved out of Elm Street',
+    caller: buildMockWriteCaller(),
+  });
+
+  await checker.started;
+  await memory.store.forget({ target: forgotten, provenance: buildMockProvenance() });
+  checker.release();
+
+  const outcome = await retirement;
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'forgotten_evidence' });
 });
 
 test('it refuses a retirement of a retired item before any check runs', async () => {
