@@ -85,7 +85,7 @@ async function readHeadSequence(log: Pick<Log, 'writer'>): Promise<number> {
     .select((eb) => eb.fn.max('sequence').as('head'))
     .executeTakeFirst();
 
-  return Number(head?.head ?? 0);
+  return head?.head ?? 0;
 }
 
 interface VersionRange {

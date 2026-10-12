@@ -159,10 +159,10 @@ async function readRecoveredState(
 // a turn runs the real SDK in a guest process, which takes a few seconds on a slow host
 const recordTimeoutMs = 30_000;
 
+type TestDoubles = Pick<TestNixie, 'model' | 'provider' | 'writerModel'>;
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the test's own cleanup
-function startDoubles(
-  stack: AsyncDisposableStack,
-): Pick<TestNixie, 'model' | 'provider' | 'writerModel'> {
+function startDoubles(stack: AsyncDisposableStack): TestDoubles {
   const model = startScriptedModel();
 
   stack.defer(() => model.stop());

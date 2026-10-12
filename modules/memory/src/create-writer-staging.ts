@@ -3,12 +3,12 @@ import type { SourceMessage, StagedWrite } from './writer-types';
 
 // The batch a writer session stages into: your messages it may cite, by sequence, and the version
 // of each item the session was shown, by item ID.
-export interface StagingBatch {
+interface StagingBatch {
   readonly sources: ReadonlyMap<number, SourceMessage>;
   readonly shown: ReadonlyMap<string, number>;
 }
 
-export type StageResult =
+type StageResult =
   | { readonly status: 'staged' }
   | { readonly status: 'refused'; readonly reason: string };
 
@@ -29,7 +29,7 @@ export interface StagingHandle {
 }
 
 // A write as the session asks for it: a change names its item, and the host binds the version.
-export type StagedWriteRequest =
+type StagedWriteRequest =
   | {
       readonly op: 'remember';
       readonly text: string;
@@ -102,12 +102,12 @@ function updateStagedBatch(batch: OpenBatch, request: StagedWriteRequest): Stage
   return { status: 'staged' };
 }
 
+type PlannedWrite = StagedWrite | { readonly reason: string };
+
 // The write a request stages, bound to the version the session was shown, or why it is refused:
 // a source outside the batch, an item the session was never shown, or a second change to an item.
-function planStagedWrite(
-  batch: OpenBatch,
-  request: StagedWriteRequest,
-): StagedWrite | { readonly reason: string } {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the batch this reads
+function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): PlannedWrite {
   if (!batch.sources.has(request.sourceSequence)) {
     return {
       reason: `sourceID ${String(request.sourceSequence)} is not one of the owner's messages in this batch`,
@@ -127,11 +127,11 @@ function planStagedWrite(
   return planTargetedWrite(batch, { ...request, itemID: request.itemID });
 }
 
+type TargetedRequest = StagedWriteRequest & { readonly itemID: string };
+
 // a change to an item the session was shown, once per batch
-function planTargetedWrite(
-  batch: OpenBatch,
-  request: StagedWriteRequest & { readonly itemID: string },
-): StagedWrite | { readonly reason: string } {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the batch this reads
+function planTargetedWrite(batch: OpenBatch, request: TargetedRequest): PlannedWrite {
   const version = batch.shown.get(request.itemID);
 
   if (version === undefined) {

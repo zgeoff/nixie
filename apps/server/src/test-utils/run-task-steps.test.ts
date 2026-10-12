@@ -23,7 +23,9 @@ test('it runs the step of each task that has work until every task finishes', as
 
   const steps = await runTaskSteps(ctx.context, {
     steps: { [first]: runStep, [second]: runStep },
-    advance: (ms) => ctx.clock.advance(ms),
+    advance: (ms) => {
+      ctx.clock.advance(ms);
+    },
     maxSteps: 10,
   });
 
@@ -45,7 +47,9 @@ test('it moves the clock to the next timer when no task has work', async () => {
 
   await runTaskSteps(ctx.context, {
     steps: { [taskID]: runStep },
-    advance: (ms) => ctx.clock.advance(ms),
+    advance: (ms) => {
+      ctx.clock.advance(ms);
+    },
     isDone: () => Promise.resolve(runStep.mock.calls.length >= 2),
     maxSteps: 10,
   });
@@ -65,7 +69,9 @@ test('it stops after the step at which isDone holds', async () => {
 
   const steps = await runTaskSteps(ctx.context, {
     steps: { [taskID]: runStep },
-    advance: (ms) => ctx.clock.advance(ms),
+    advance: (ms) => {
+      ctx.clock.advance(ms);
+    },
     isDone: () => Promise.resolve(runStep.mock.calls.length >= 3),
     maxSteps: 10,
   });
@@ -82,7 +88,9 @@ test('it throws when the tasks still have work after the most steps', async () =
 
   const run = runTaskSteps(ctx.context, {
     steps: { [taskID]: runStep },
-    advance: (ms) => ctx.clock.advance(ms),
+    advance: (ms) => {
+      ctx.clock.advance(ms);
+    },
     maxSteps: 4,
   });
 
@@ -97,7 +105,9 @@ test('it throws on a task it has no step for', async () => {
 
   const run = runTaskSteps(ctx.context, {
     steps: {},
-    advance: (ms) => ctx.clock.advance(ms),
+    advance: (ms) => {
+      ctx.clock.advance(ms);
+    },
     maxSteps: 4,
   });
 

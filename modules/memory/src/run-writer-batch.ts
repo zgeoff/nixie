@@ -20,7 +20,10 @@ export async function runWriterBatch(
   }
   const batch = await readWriterBatch(parts.context.log, bounds);
   const extracted = await runWriterExtraction(parts, batch, state.input.signal);
-  const gated = await runWriterGate(parts.gate, batch, extracted);
+  const gated = await runWriterGate(parts.gate, extracted.writes, {
+    findSource: (sequence) => batch.sources.get(sequence),
+    isShownText: (text) => extracted.shownTexts.has(text),
+  });
 
   return writeGatedBatch(parts, { ...state, batch, gated, usage: extracted.usage });
 }

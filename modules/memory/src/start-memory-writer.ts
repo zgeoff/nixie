@@ -55,7 +55,7 @@ async function readHeadSequence(log: Pick<Log, 'writer'>): Promise<number> {
     .select((eb) => eb.fn.max('sequence').as('head'))
     .executeTakeFirst();
 
-  return Number(row?.head ?? 0);
+  return row?.head ?? 0;
 }
 
 // the writer's row, created once with the sequence at which memory started

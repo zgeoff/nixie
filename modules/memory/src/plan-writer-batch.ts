@@ -4,7 +4,7 @@ import type { BatchBounds, BatchMode } from './writer-types';
 // One conversation record after the cursor, as the planner sees it: whether it is your message,
 // its size, and when the writer learned it arrived, or null for a record from before the writer
 // watched, such as the catch-up's.
-export interface PlannedMessage {
+interface PlannedMessage {
   readonly sequence: number;
   readonly isOwner: boolean;
   readonly tokens: number;

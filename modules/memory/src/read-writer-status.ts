@@ -48,7 +48,7 @@ export async function readWriterStatus(
 
   return {
     cursor,
-    backlog: Number(backlog.count),
+    backlog: backlog.count,
     startSequence: row?.start_sequence ?? 0,
     isCatchingUp: row === undefined || row.caught_up_sequence === null,
     batches: row?.batches ?? 0,

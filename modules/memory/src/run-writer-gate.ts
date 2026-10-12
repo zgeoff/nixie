@@ -1,22 +1,28 @@
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import { memoryWriterTaskID } from './memory-writer-task-id';
-import type { WriterBatch } from './read-writer-batch';
-import type { WriterExtraction } from './run-writer-extraction';
 import type { GatedWrite } from './write-memory-batch';
-import type { WriterGate } from './writer-types';
+import type { SourceMessage, StagedWrite, WriterGate } from './writer-types';
+
+export interface GateLookups {
+  // the batch's readable message a write cites, or undefined for one outside the batch
+  readonly findSource: (sequence: number) => SourceMessage | undefined;
+
+  // whether the session was shown an item with exactly this text
+  readonly isShownText: (text: string) => boolean;
+}
 
 // Gates each staged write against the source it cites, one at a time and outside any transaction.
 // A write that repeats a current item's text exactly writes nothing.
 export async function runWriterGate(
   gate: WriterGate,
-  batch: WriterBatch,
-  extracted: WriterExtraction,
+  writes: readonly StagedWrite[],
+  lookups: GateLookups,
 ): Promise<readonly GatedWrite[]> {
   const gated: GatedWrite[] = [];
 
-  for (const write of extracted.writes) {
-    const source = batch.sources.get(write.sourceSequence);
-    const isRepeat = write.op === 'remember' && extracted.shownTexts.has(write.text);
+  for (const write of writes) {
+    const source = lookups.findSource(write.sourceSequence);
+    const isRepeat = write.op === 'remember' && lookups.isShownText(write.text);
 
     if (source !== undefined && !isRepeat) {
       // oxlint-disable-next-line no-await-in-loop -- the checker takes one write at a time

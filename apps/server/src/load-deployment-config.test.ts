@@ -28,10 +28,11 @@ test('it reads every section, with the default of each setting the file leaves o
     ].join('\n'),
   );
 
-  const { models, ...rest } = await loadDeploymentConfig(ctx.path);
+  // a model profile's fields and the memory writer's settings have tests of their own
+  const { models, memory_writer: memoryWriter, ...rest } = await loadDeploymentConfig(ctx.path);
 
-  // a model profile's fields have a test of their own
   expect(models.roles).toStrictEqual({ conversation: 'chat-direct' });
+  expect(memoryWriter.batchMessages).toBe(4);
   expect(rest).toStrictEqual({
     server: {
       dataDir: '/data',
@@ -54,9 +55,6 @@ test('it reads every section, with the default of each setting the file leaves o
     },
     tasks: { runners: 3 },
     actions: { runners: 4 },
-
-    // the memory writer's settings have a test of their own
-    memory_writer: expect.any(Object),
   });
 });
 

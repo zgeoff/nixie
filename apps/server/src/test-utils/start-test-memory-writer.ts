@@ -33,7 +33,7 @@ export interface TestMemoryWriter {
   readonly readStatus: () => Promise<WriterStatus>;
 }
 
-export interface WriterRun {
+interface WriterRun {
   readonly isDone?: () => Promise<boolean>;
   readonly steps?: Readonly<Record<string, RunStep>>;
 }
