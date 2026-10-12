@@ -51,9 +51,11 @@ function toMessage(record: LogRecord): Message | undefined {
 
 type Task = NonNullable<ContractRecord['task']>;
 
+// A step's start names its step in the payload, and its commit in the record's own step key.
 function toTask(record: LogRecord): Task | undefined {
   const taskID = record.payload['taskID'];
-  const stepKey = record.payload['stepKey'];
+  const payloadKey = record.payload['stepKey'];
+  const stepKey = typeof payloadKey === 'string' ? payloadKey : record.stepKey;
 
   if (typeof taskID !== 'string') {
     return undefined;

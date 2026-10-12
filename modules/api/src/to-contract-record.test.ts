@@ -137,6 +137,38 @@ test('it names the task and the step of a step record', () => {
   });
 });
 
+test('it names the step of a commit from the step key of the record', () => {
+  expect(
+    toContractRecord({
+      sequence: 9,
+      recordedAt: new Date('2026-10-10T12:00:03Z'),
+      kind: 'task.step_committed',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      stepKey: 'step-2',
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: {
+        taskID: 'conversation',
+        nextState: 'waiting',
+        readCursor: 8,
+        sessionBoundary: null,
+        timers: [],
+      },
+      erasable: { status: 'none' },
+    }),
+  ).toStrictEqual({
+    kind: 'task.step_committed',
+    recordedAt: new Date('2026-10-10T12:00:03Z'),
+    sequence: 9,
+    task: { stepKey: 'step-2', taskID: 'conversation' },
+    thread: 'conversation',
+  });
+});
+
 test('it carries a tool call with its tool and input', () => {
   expect(
     toContractRecord({
