@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/zgeoff/nixie/compare/v0.2.0...v0.3.0) (2026-10-12)
+
+
+### Features
+
+* **geo-503:** reconnect a live stream that dies without closing ([#84](https://github.com/zgeoff/nixie/issues/84)) ([cbf8a59](https://github.com/zgeoff/nixie/commit/cbf8a597078ed2f1fc770785d029c25f9d4eabc3))
+* **geo-504:** move the web client to panda css and the react compiler ([#80](https://github.com/zgeoff/nixie/issues/80)) ([75b8aa3](https://github.com/zgeoff/nixie/commit/75b8aa33d503f5f1d30b69ab247a4ab53414203c))
+* **geo-505:** fold each step into one line that names its tools ([#86](https://github.com/zgeoff/nixie/issues/86)) ([86b197f](https://github.com/zgeoff/nixie/commit/86b197fe976980bcf1a831cf8ceddeb1bca20388))
+* **geo-506:** render replies as markdown with inert html and safe links ([#90](https://github.com/zgeoff/nixie/issues/90)) ([cb44c55](https://github.com/zgeoff/nixie/commit/cb44c55520e7d35cbb6e30920bd7635bca697f45))
+
+
+### Bug Fixes
+
+* **geo-493:** retry the wal switch when connections open a new file ([#85](https://github.com/zgeoff/nixie/issues/85)) ([598cbfe](https://github.com/zgeoff/nixie/commit/598cbfe86442c63ff136d574bbc087b05e343d7e))
+
 ## [0.2.0](https://github.com/zgeoff/nixie/compare/v0.1.0...v0.2.0) (2026-10-11)
 
 
