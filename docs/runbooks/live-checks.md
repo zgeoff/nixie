@@ -4,14 +4,15 @@ The live checks in `e2e/k3s/` run against a nixie deployed on Kubernetes from th
 [reference manifests](../architecture/deployment/kubernetes.md). They reach nixie by its URL and the
 cluster by a kubeconfig, and each suite skips until the variables it needs are set:
 
-| Suite                   | Checks                                                         | Needs                                              |
-| ----------------------- | -------------------------------------------------------------- | -------------------------------------------------- |
-| `conversation.test.ts`  | enrol, send a message, and get a reply that used the web fetch | the URL and the kubeconfig                         |
-| `rollout.test.ts`       | the old pod stops before the new pod opens the database        | the kubeconfig and an image to roll to             |
-| `fetch-sandbox.test.ts` | a fetch sandbox reaches public pages and nothing internal      | the kubeconfig, an impd token and a tailnet target |
+| Suite                   | Checks                                                                 | Needs                                              |
+| ----------------------- | ---------------------------------------------------------------------- | -------------------------------------------------- |
+| `conversation.test.ts`  | enrol, send a message, and get a reply that used the web fetch         | the URL and the kubeconfig                         |
+| `live-stream.test.ts`   | a tool call and its result reach the live stream within about a second | the URL and the kubeconfig                         |
+| `rollout.test.ts`       | the old pod stops before the new pod opens the database                | the kubeconfig and an image to roll to             |
+| `fetch-sandbox.test.ts` | a fetch sandbox reaches public pages and nothing internal              | the kubeconfig, an impd token and a tailnet target |
 
-The conversation check calls the model of the conversation's profile, which its provider bills. The
-rollout check restarts nixie twice.
+The conversation and live-stream checks call the model of the conversation's profile, which its
+provider bills. The rollout check restarts nixie twice.
 
 ## Before you start
 
@@ -75,7 +76,7 @@ NIXIE_LIVE_URL=<nixie_url> \
 NIXIE_LIVE_KUBECONFIG=<kubeconfig> \
 NIXIE_LIVE_ROLL_IMAGE=<roll_image> \
 NIXIE_LIVE_IMPD_TOKEN=<impd_token> \
-bun test conversation.test.ts rollout.test.ts fetch-sandbox.test.ts
+bun test conversation.test.ts live-stream.test.ts rollout.test.ts fetch-sandbox.test.ts
 ```
 
 Expect `0 fail` and no skipped test. Run one suite by naming only its file and setting only its

@@ -73,6 +73,12 @@ The conversation view merges three sources into one list:
 The page never refetches: the live stream keeps it current from the sequence it was read at, and a
 dropped stream reconnects from the last sequence it delivered.
 
+A live stream can die without the browser seeing it close, as when a phone sleeps or a proxy loses
+its upstream, so the client watches for that. The API writes a keepalive into a quiet stream, and
+the client fails a stream that misses three keepalives in a row and follows again. A page that
+becomes visible again, or a browser that comes back online, ends the open connection and follows
+again at once, because those are the moments a connection most often died unseen.
+
 The view fills the window. The list scrolls in a reversed column, which starts at its end and stays
 there as records arrive unless the user scrolled up to read, and the message box stays in view below
 it. Styles come from Panda CSS with its own presets and no theme of nixie's, and they set only what

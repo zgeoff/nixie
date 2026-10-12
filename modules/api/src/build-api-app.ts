@@ -14,6 +14,9 @@ interface RouteContext {
 // cannot send one. The server mounts the app and listens.
 export function buildAPIApp(context: APIContext) {
   const handler = new RPCHandler(buildAPIRouter(context), {
+    // A quiet live stream carries a keepalive this often, and the web client treats a stream
+    // that misses three in a row as dead.
+    eventIteratorKeepAliveInterval: 5000,
     plugins: [new ResponseHeadersPlugin()],
   });
 

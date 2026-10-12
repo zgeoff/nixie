@@ -46,37 +46,92 @@ interface SubscribeOptions {
 }
 
 // How long the client waits before it follows the log again after the stream drops.
-const reconnectDelay = 2000;
+const reconnectDelay = 1000;
 
 async function subscribeToRecords(options: SubscribeOptions): Promise<void> {
   let after = options.afterSequence;
 
   while (!options.signal.aborted) {
-    // oxlint-disable-next-line no-await-in-loop -- each connection starts after the last record
-    after = await readRecordStream(options, after);
+    const connection = startConnection(options.signal);
 
-    // oxlint-disable-next-line no-await-in-loop -- the client pauses before it reconnects
-    await waitForDelay(reconnectDelay, options.signal);
+    // oxlint-disable-next-line no-await-in-loop -- each connection starts after the last record
+    after = await readRecordStream(options, after, connection.signal);
+    connection.stop();
+
+    if (!connection.woken) {
+      // oxlint-disable-next-line no-await-in-loop -- the client pauses before it reconnects
+      await waitForDelay(reconnectDelay, options.signal);
+    }
   }
+}
+
+interface Connection {
+  readonly signal: AbortSignal;
+  readonly stop: () => void;
+
+  // whether the page woke while the connection was open, which ends it for an immediate reconnect
+  readonly woken: boolean;
+}
+
+// One connection of the stream. A page that becomes visible again, or a browser that comes back
+// online, ends the connection and follows again at once: a phone that slept can hold a dead
+// connection that no error reports.
+function startConnection(outer: AbortSignal): Connection {
+  const controller = new AbortController();
+  const state = { woken: false };
+  const stop = (): void => {
+    outer.removeEventListener('abort', stopOnAbort);
+    globalThis.removeEventListener('online', stopOnWake);
+    globalThis.document.removeEventListener('visibilitychange', stopOnWake);
+  };
+  const stopOnAbort = (): void => {
+    controller.abort();
+  };
+  const stopOnWake = (): void => {
+    if (globalThis.document.visibilityState === 'visible') {
+      state.woken = true;
+      controller.abort();
+    }
+  };
+
+  outer.addEventListener('abort', stopOnAbort, { once: true });
+  globalThis.addEventListener('online', stopOnWake);
+  globalThis.document.addEventListener('visibilitychange', stopOnWake);
+
+  return {
+    signal: controller.signal,
+    stop,
+    get woken() {
+      return state.woken;
+    },
+  };
 }
 
 // Reads one connection of the stream until it ends, drops or the caller aborts, and resolves with
 // the sequence of the last record it delivered.
-async function readRecordStream(options: SubscribeOptions, afterSequence: number): Promise<number> {
+async function readRecordStream(
+  options: SubscribeOptions,
+  afterSequence: number,
+  signal: AbortSignal,
+): Promise<number> {
   let after = afterSequence;
 
   try {
     const events = await options.client.log.follow(
       { afterSequence, thread: options.thread },
-      { signal: options.signal },
+      { signal },
     );
+
+    // The iterator stops a read in flight when it returns, even where an abort does not reach the
+    // response body.
+    signal.addEventListener('abort', () => void events.return(undefined), { once: true });
 
     for await (const event of events) {
       after = event.record.sequence;
       options.onRecord(event.record);
     }
   } catch {
-    // The stream dropped or the API refused it; the caller follows again after a pause.
+    // The stream dropped, went quiet or the API refused it; the caller follows again.
   }
 
   return after;
