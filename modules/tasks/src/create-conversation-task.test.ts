@@ -3,8 +3,12 @@ import { createConversationTask } from './create-conversation-task';
 import { startTestTasks } from './test-utils/start-test-tasks';
 import type { TasksTables } from './types';
 
+function setupTest() {
+  return startTestTasks();
+}
+
 test('it creates the conversation as a waiting task flagged as the conversation', async () => {
-  const ctx = await startTestTasks();
+  const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
 
@@ -18,7 +22,7 @@ test('it creates the conversation as a waiting task flagged as the conversation'
 });
 
 test('it leaves the conversation be on every start after the first', async () => {
-  const ctx = await startTestTasks();
+  const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
   await createConversationTask(ctx.context);

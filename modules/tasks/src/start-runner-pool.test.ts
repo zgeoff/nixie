@@ -2,128 +2,117 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { setFaultPointHandler } from './set-fault-point-handler';
 import { startRunnerPool } from './start-runner-pool';
+import { buildStubPoolWork } from './test-utils/build-stub-pool-work';
 
-// a queue of work whose runs each hold until the test releases them
-function setupTest(work: readonly string[]) {
-  const clock = buildTestClock(0);
-  const queue = [...work];
-  const running = new Map<string, () => void>();
-  const finished: string[] = [];
-  const peak = { running: 0 };
-  const claim = mock(() => Promise.resolve(queue.shift() ?? null));
-  const run = async (item: string): Promise<void> => {
-    const held = Promise.withResolvers<void>();
-
-    running.set(item, held.resolve);
-    peak.running = Math.max(peak.running, running.size);
-    await held.promise;
-    running.delete(item);
-    finished.push(item);
-  };
-  const emitReleases = (): void => {
-    for (const release of running.values()) {
-      release();
-    }
-  };
-
-  return { clock, queue, running, finished, peak, claim, run, emitReleases };
+function setupTest() {
+  return { clock: buildTestClock(0) };
 }
 
 test('it runs no more work at once than its size', async () => {
-  const ctx = setupTest(['a', 'b', 'c', 'd', 'e']);
-  const pool = startRunnerPool(ctx.clock, {
+  const work = buildStubPoolWork(['a', 'b', 'c', 'd', 'e']);
+  const pool = startRunnerPool(buildTestClock(0), {
     size: 2,
     pollMs: 1000,
-    claim: ctx.claim,
-    run: ctx.run,
+    claim: work.claim,
+    run: work.run,
     onError: () => {},
   });
 
   onTestFinished(() => pool.stop(0));
-  await waitForCondition(() => ctx.running.size === 2);
-  ctx.emitReleases();
-  await waitForCondition(() => ctx.running.size === 2 && ctx.finished.length === 2);
-  ctx.emitReleases();
-  await waitForCondition(() => ctx.finished.length === 4).then(ctx.emitReleases);
+  await waitForCondition(() => work.running.size === 2);
+  work.releaseAll();
+  await waitForCondition(() => work.running.size === 2 && work.finished.length === 2);
+  work.releaseAll();
+  await waitForCondition(() => work.finished.length === 4).then(work.releaseAll);
 
-  await waitForCondition(() => ctx.finished.length === 5);
-  expect(ctx.peak.running).toBe(2);
+  await waitForCondition(() => work.finished.length === 5);
+  expect(work.peak.running).toBe(2);
 });
 
 test('it claims again after the poll interval when no work was claimable', async () => {
-  const ctx = setupTest([]);
+  const ctx = setupTest();
+  const work = buildStubPoolWork([]);
+  const claim = mock(work.claim);
   const pool = startRunnerPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
-    claim: ctx.claim,
-    run: ctx.run,
+    claim,
+    run: work.run,
     onError: () => {},
   });
 
-  onTestFinished(() => pool.stop(0));
+  onTestFinished(async () => {
+    work.releaseAll();
+    await pool.stop(0);
+  });
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
-  ctx.queue.push('a');
+  work.queue.push('a');
   ctx.clock.advance(1000);
 
-  await waitForCondition(() => ctx.running.has('a'));
-  expect(ctx.claim).toHaveBeenCalledTimes(2);
-  ctx.emitReleases();
+  await waitForCondition(() => work.running.has('a'));
+  expect(claim).toHaveBeenCalledTimes(2);
 });
 
 test('it claims at once when woken', async () => {
-  const ctx = setupTest([]);
+  const ctx = setupTest();
+  const work = buildStubPoolWork([]);
   const pool = startRunnerPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
-    claim: ctx.claim,
-    run: ctx.run,
+    claim: work.claim,
+    run: work.run,
+    onError: () => {},
+  });
+
+  onTestFinished(async () => {
+    work.releaseAll();
+    await pool.stop(0);
+  });
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  work.queue.push('a');
+
+  pool.wake();
+
+  await waitForCondition(() => work.running.has('a'));
+  expect(ctx.clock.now()).toBe(0);
+});
+
+test('it claims nothing after a stop, and waits for the work in flight', async () => {
+  const ctx = setupTest();
+  const work = buildStubPoolWork(['a', 'b']);
+  const pool = startRunnerPool(ctx.clock, {
+    size: 1,
+    pollMs: 1000,
+    claim: work.claim,
+    run: work.run,
     onError: () => {},
   });
 
   onTestFinished(() => pool.stop(0));
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
-  ctx.queue.push('a');
-
-  pool.wake();
-
-  await waitForCondition(() => ctx.running.has('a'));
-  expect(ctx.clock.now()).toBe(0);
-  ctx.emitReleases();
-});
-
-test('it claims nothing after a stop, and waits for the work in flight', async () => {
-  const ctx = setupTest(['a', 'b']);
-  const pool = startRunnerPool(ctx.clock, {
-    size: 1,
-    pollMs: 1000,
-    claim: ctx.claim,
-    run: ctx.run,
-    onError: () => {},
-  });
-
-  await waitForCondition(() => ctx.running.has('a'));
+  await waitForCondition(() => work.running.has('a'));
 
   const stopped = pool.stop();
 
-  ctx.emitReleases();
+  work.releaseAll();
   await stopped;
 
-  expect(ctx.finished).toStrictEqual(['a']);
-  expect(ctx.queue).toStrictEqual(['b']);
+  expect(work.finished).toStrictEqual(['a']);
+  expect(work.queue).toStrictEqual(['b']);
 });
 
 test('it stops waiting for work in flight at the grace deadline', async () => {
-  const ctx = setupTest(['a']);
+  const ctx = setupTest();
+  const work = buildStubPoolWork(['a']);
   const pool = startRunnerPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
-    claim: ctx.claim,
-    run: ctx.run,
+    claim: work.claim,
+    run: work.run,
     onError: () => {},
   });
 
-  onTestFinished(ctx.emitReleases);
-  await waitForCondition(() => ctx.running.has('a'));
+  onTestFinished(work.releaseAll);
+  await waitForCondition(() => work.running.has('a'));
 
   const stopped = pool.stop(30_000);
 
@@ -131,15 +120,18 @@ test('it stops waiting for work in flight at the grace deadline', async () => {
   ctx.clock.advance(30_000);
   await stopped;
 
-  expect(ctx.finished).toStrictEqual([]);
+  expect(work.finished).toStrictEqual([]);
 });
 
 test('it reaches sigterm.grace when a stop finds work in flight', async () => {
-  const ctx = setupTest(['a']);
+  const ctx = setupTest();
+  const work = buildStubPoolWork(['a']);
   const reached: string[] = [];
 
+  // the run in flight finishes once the stop reaches its grace wait
   setFaultPointHandler((id) => {
     reached.push(id);
+    work.releaseAll();
   });
   onTestFinished(() => {
     setFaultPointHandler(null);
@@ -148,33 +140,32 @@ test('it reaches sigterm.grace when a stop finds work in flight', async () => {
   const pool = startRunnerPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
-    claim: ctx.claim,
-    run: ctx.run,
+    claim: work.claim,
+    run: work.run,
     onError: () => {},
   });
 
-  await waitForCondition(() => ctx.running.has('a'));
+  onTestFinished(() => pool.stop(0));
+  await waitForCondition(() => work.running.has('a'));
 
-  const stopped = pool.stop();
-
-  ctx.emitReleases();
-  await stopped;
+  await pool.stop();
 
   expect(reached).toStrictEqual(['sigterm.grace']);
 });
 
 test('it runs no work whose claim committed after a stop began', async () => {
-  const ctx = setupTest([]);
   const claimed = Promise.withResolvers<string | null>();
   const claim = mock(() => claimed.promise);
-  const pool = startRunnerPool(ctx.clock, {
+  const run = mock(() => Promise.resolve());
+  const pool = startRunnerPool(buildTestClock(0), {
     size: 1,
     pollMs: 1000,
     claim,
-    run: ctx.run,
+    run,
     onError: () => {},
   });
 
+  onTestFinished(() => pool.stop(0));
   await waitForCondition(() => claim.mock.calls.length === 1);
 
   const stopped = pool.stop();
@@ -182,18 +173,18 @@ test('it runs no work whose claim committed after a stop began', async () => {
   claimed.resolve('a');
   await stopped;
 
-  expect(ctx.running.size).toBe(0);
-  expect(ctx.finished).toStrictEqual([]);
+  expect(run).not.toHaveBeenCalled();
 });
 
 test('it reports an error a run threw and stops claiming', async () => {
-  const ctx = setupTest(['a', 'b']);
+  const ctx = setupTest();
+  const work = buildStubPoolWork(['a', 'b']);
   const onError = mock<(error: unknown) => void>();
   const failure = new Error('writer epoch 1 is stale: the database holds writer epoch 2');
   const pool = startRunnerPool(ctx.clock, {
     size: 1,
     pollMs: 1000,
-    claim: ctx.claim,
+    claim: work.claim,
     run: () => Promise.reject(failure),
     onError,
   });
@@ -202,5 +193,5 @@ test('it reports an error a run threw and stops claiming', async () => {
 
   await waitForCondition(() => onError.mock.calls.length === 1);
   expect(onError).toHaveBeenCalledExactlyOnceWith(failure);
-  expect(ctx.queue).toStrictEqual(['b']);
+  expect(work.queue).toStrictEqual(['b']);
 });

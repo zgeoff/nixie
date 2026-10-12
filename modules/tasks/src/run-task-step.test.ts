@@ -1,5 +1,6 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { waitForCondition } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { runTaskStep } from './run-task-step';
@@ -7,13 +8,22 @@ import { startTestTasks } from './test-utils/start-test-tasks';
 import type { StepInput, StepResult, TasksTables } from './types';
 import { writeInboxRecords } from './write-inbox-records';
 
-// the conversation with one message from you, claimed by a runner
 async function setupTest() {
   const tasks = await startTestTasks();
-  const db = tasks.writer.db.$extendTables<TasksTables>();
 
+  // nixie creates the conversation on its first start
   await createConversationTask(tasks.context);
-  await writeInboxRecords(tasks.context, [
+
+  return { ...tasks, db: tasks.writer.db.$extendTables<TasksTables>() };
+}
+
+test('it gives the step its unread inbox and commits what the step returns', async () => {
+  const ctx = await setupTest();
+  const runStep = mock<(input: StepInput) => Promise<StepResult>>(() =>
+    Promise.resolve({ next: 'wait', records: [], acknowledged: [2] }),
+  );
+
+  await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -22,48 +32,51 @@ async function setupTest() {
     },
   ]);
 
-  const claim = await claimTask(tasks.context, { holder: 'runner-a', leaseMs: 60_000 });
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  if (claim === null) {
-    throw new Error('the setup claim found no task');
-  }
-  const readTask = () => db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+  invariant(claim);
 
-  return { ...tasks, db, claim, readTask };
-}
-
-test('it gives the step its unread inbox and commits what the step returns', async () => {
-  const ctx = await setupTest();
-  const inputs: StepInput[] = [];
-
-  await runTaskStep(ctx.context, ctx.claim, {
-    runStep: (input) => {
-      inputs.push(input);
-      return Promise.resolve<StepResult>({ next: 'wait', records: [], acknowledged: [2] });
-    },
+  await runTaskStep(ctx.context, claim, {
+    runStep,
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
   });
 
-  const task = await ctx.readTask();
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
 
-  expect(inputs).toMatchObject([
-    {
-      taskID: 'conversation',
-      stepKey: 'conversation:1',
-      inbox: [{ sequence: 2, erasable: { fields: { text: 'what is on today?' } } }],
-      sessionBoundary: null,
-    },
+  expect(runStep.mock.calls).toMatchObject([
+    [
+      {
+        taskID: 'conversation',
+        stepKey: 'conversation:1',
+        inbox: [{ sequence: 2, erasable: { fields: { text: 'what is on today?' } } }],
+        sessionBoundary: null,
+      },
+    ],
   ]);
   expect(task).toMatchObject({ state: 'waiting', read_cursor: 2 });
 });
 
 test('it gives the next step the session boundary the last commit recorded', async () => {
   const ctx = await setupTest();
-  const inputs: StepInput[] = [];
+  const runStep = mock<(input: StepInput) => Promise<StepResult>>(() =>
+    Promise.resolve({ next: 'wait', records: [], acknowledged: [] }),
+  );
 
-  await runTaskStep(ctx.context, ctx.claim, {
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const first = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(first);
+  await runTaskStep(ctx.context, first, {
     runStep: () =>
       Promise.resolve<StepResult>({
         next: 'continue',
@@ -78,33 +91,44 @@ test('it gives the next step the session boundary the last commit recorded', asy
 
   const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  if (next === null) {
-    throw new Error('the second claim found no task');
-  }
+  invariant(next);
+
   await runTaskStep(ctx.context, next, {
-    runStep: (input) => {
-      inputs.push(input);
-      return Promise.resolve<StepResult>({ next: 'wait', records: [], acknowledged: [] });
-    },
+    runStep,
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
   });
 
-  expect(inputs).toMatchObject([{ stepKey: 'conversation:2', sessionBoundary: 'boundary-1' }]);
+  expect(runStep.mock.calls).toMatchObject([
+    [{ stepKey: 'conversation:2', sessionBoundary: 'boundary-1' }],
+  ]);
 });
 
 test('it records the error when the step throws', async () => {
   const ctx = await setupTest();
 
-  await runTaskStep(ctx.context, ctx.claim, {
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
     runStep: () => Promise.reject(new Error('the model profile is unreachable')),
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
   });
 
-  const task = await ctx.readTask();
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
 
   expect(task).toMatchObject({ state: 'ready', step_errors: 1, read_cursor: 0 });
 });
@@ -112,7 +136,20 @@ test('it records the error when the step throws', async () => {
 test('it records the error when the commit refuses what the step returned', async () => {
   const ctx = await setupTest();
 
-  await runTaskStep(ctx.context, ctx.claim, {
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
     runStep: () =>
       Promise.resolve<StepResult>({
         next: 'wait',
@@ -125,7 +162,7 @@ test('it records the error when the commit refuses what the step returned', asyn
     retryDelayMs: 30_000,
   });
 
-  const task = await ctx.readTask();
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
 
   expect(task).toMatchObject({ state: 'ready', step_errors: 1, read_cursor: 0 });
 });
@@ -134,7 +171,20 @@ test('it aborts the step and commits nothing once the lease is lost', async () =
   const ctx = await setupTest();
   const seen = { aborted: false };
 
-  await runTaskStep(ctx.context, ctx.claim, {
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
     runStep: async (input) => {
       await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
@@ -149,7 +199,7 @@ test('it aborts the step and commits nothing once the lease is lost', async () =
     retryDelayMs: 30_000,
   });
 
-  const task = await ctx.readTask();
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
 
   expect(seen.aborted).toBeTrue();
   expect(task).toMatchObject({ state: 'running', committed_steps: 0 });

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { claimTask } from './claim-task';
 import { createConversationTask } from './create-conversation-task';
 import { readInbox } from './read-inbox';
@@ -7,8 +8,12 @@ import { startTestTasks } from './test-utils/start-test-tasks';
 import { writeInboxRecords } from './write-inbox-records';
 import { writeStepCommit } from './write-step-commit';
 
+function setupTest() {
+  return startTestTasks();
+}
+
 test('it reads the inbox records past the read cursor, and no other record of the task', async () => {
-  const ctx = await startTestTasks();
+  const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
   await writeInboxRecords(ctx.context, [
@@ -20,10 +25,9 @@ test('it reads the inbox records past the read cursor, and no other record of th
     },
   ]);
 
-  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 }).then(
-    (found) => found ?? Promise.reject(new Error('the setup claim found no task')),
-  );
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
+  invariant(claim);
   await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [2] });
   await writeRecords(ctx.context.log, [
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
@@ -46,5 +50,4 @@ test('it reads the inbox records past the read cursor, and no other record of th
       erasable: { status: 'readable', fields: { text: 'not yet read' } },
     },
   ]);
-  expect(inbox).toHaveLength(1);
 });

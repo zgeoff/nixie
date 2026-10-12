@@ -1,46 +1,14 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { startWriter } from '@heynixie/log';
-import { claimTask } from './claim-task';
-import { createTask } from './create-task';
 import { runRecovery } from './run-recovery';
 import { setFaultPointHandler } from './set-fault-point-handler';
+import { createTestClaim } from './test-utils/create-test-claim';
+import { startNextTestWriter } from './test-utils/start-next-test-writer';
 import { startTestTasks } from './test-utils/start-test-tasks';
-import type { TasksContext, TasksTables } from './types';
+import type { TasksTables } from './types';
 import { writeStepCommit } from './write-step-commit';
 
-// A process that ran one task's step and left another task waiting on a timer, then died. The
-// restarted writer raised the epoch, as a real restart does before recovery runs.
-async function setupTest() {
-  const tasks = await startTestTasks();
-  const sleeper = await createTask(tasks.context, 'check back in a minute');
-  const sleeperClaim = await claimTask(tasks.context, { holder: 'old', leaseMs: 60_000 }).then(
-    (claim) => claim ?? Promise.reject(new Error('the setup claim found no task')),
-  );
-
-  await writeStepCommit(tasks.context, sleeperClaim, {
-    next: 'wait',
-    records: [],
-    acknowledged: [],
-    timers: [{ dueAt: 1_060_000 }],
-  });
-
-  const runningTask = await createTask(tasks.context, 'tidy the inbox');
-
-  await claimTask(tasks.context, { holder: 'old', leaseMs: 60_000 });
-  await tasks.writer.stop();
-
-  const writer = await startWriter({ dataDir: tasks.dataDir });
-
-  onTestFinished(() => writer.stop());
-
-  return {
-    ...tasks,
-    writer,
-    context: { ...tasks.context, log: { ...tasks.context.log, writer } } satisfies TasksContext,
-    db: writer.db.$extendTables<TasksTables>(),
-    sleeper,
-    runningTask,
-  };
+function setupTest() {
+  return startTestTasks();
 }
 
 test('it runs the 5 recovery steps in order, with steps 3 and 5 through the dependencies', async () => {
@@ -80,84 +48,160 @@ test('it runs the 5 recovery steps in order, with steps 3 and 5 through the depe
   ]);
 });
 
-test('it frees every lease from the older epoch and returns the running task to ready', async () => {
+test('it frees a lease claimed under the older epoch', async () => {
   const ctx = await setupTest();
 
-  await runRecovery(ctx.context, {
-    writeUnknownOutcomes: mock(async () => {}),
-    sandboxes: { removeStaleSandboxes: mock(async () => {}) },
+  await createTestClaim(ctx.context, 'tidy the inbox');
+
+  const before = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('leases')
+    .select('holder')
+    .executeTakeFirstOrThrow();
+  const next = await startNextTestWriter(ctx);
+
+  await runRecovery(next.context, {
+    writeUnknownOutcomes: mock(() => Promise.resolve()),
+    sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   });
 
-  const leases = await ctx.db.selectFrom('leases').select(['work_id', 'holder']).execute();
-  const task = await ctx.db
-    .selectFrom('tasks')
-    .select(['state', 'started_step_key'])
-    .where('task_id', '=', ctx.runningTask)
+  const after = await next.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('leases')
+    .select('holder')
     .executeTakeFirstOrThrow();
 
-  expect(leases).toIncludeSameMembers([
-    { work_id: ctx.sleeper, holder: null },
-    { work_id: ctx.runningTask, holder: null },
-  ]);
-  expect(task).toStrictEqual({ state: 'ready', started_step_key: null });
+  expect(before.holder).toBe('runner-a');
+  expect(after.holder).toBeNull();
+});
+
+test('it returns a task running under the older epoch to ready', async () => {
+  const ctx = await setupTest();
+
+  await createTestClaim(ctx.context, 'tidy the inbox');
+
+  const before = await ctx.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('state')
+    .executeTakeFirstOrThrow();
+  const next = await startNextTestWriter(ctx);
+
+  await runRecovery(next.context, {
+    writeUnknownOutcomes: mock(() => Promise.resolve()),
+    sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
+  });
+
+  const after = await next.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select(['state', 'started_step_key'])
+    .executeTakeFirstOrThrow();
+
+  expect(before.state).toBe('running');
+  expect(after).toStrictEqual({ state: 'ready', started_step_key: null });
 });
 
 test('it records the step that started without a commit as interrupted', async () => {
   const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+  const next = await startNextTestWriter(ctx);
 
-  await runRecovery(ctx.context, {
-    writeUnknownOutcomes: mock(async () => {}),
-    sandboxes: { removeStaleSandboxes: mock(async () => {}) },
+  await runRecovery(next.context, {
+    writeUnknownOutcomes: mock(() => Promise.resolve()),
+    sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   });
 
-  const records = await ctx.db
+  const records = await next.writer.db
+    .$extendTables<TasksTables>()
     .selectFrom('records')
     .select(['kind', 'thread'])
     .where('kind', 'in', ['task.lease_expired', 'task.step_interrupted'])
     .execute();
 
   expect(records).toStrictEqual([
-    { kind: 'task.lease_expired', thread: ctx.runningTask },
-    { kind: 'task.step_interrupted', thread: ctx.runningTask },
+    { kind: 'task.lease_expired', thread: claim.lease.workID },
+    { kind: 'task.step_interrupted', thread: claim.lease.workID },
   ]);
 });
 
 test('it fires the timers that fell due while nixie was down', async () => {
   const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
 
-  ctx.clock.advance(120_000);
-
-  await runRecovery(ctx.context, {
-    writeUnknownOutcomes: mock(async () => {}),
-    sandboxes: { removeStaleSandboxes: mock(async () => {}) },
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
   });
 
-  const timer = await ctx.db.selectFrom('timers').selectAll().executeTakeFirstOrThrow();
-  const sleeper = await ctx.db
-    .selectFrom('tasks')
-    .select('state')
-    .where('task_id', '=', ctx.sleeper)
+  const next = await startNextTestWriter(ctx);
+
+  next.clock.advance(120_000);
+
+  await runRecovery(next.context, {
+    writeUnknownOutcomes: mock(() => Promise.resolve()),
+    sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
+  });
+
+  const timer = await next.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('timers')
+    .select(['due_at', 'fired_at'])
     .executeTakeFirstOrThrow();
 
-  expect(timer).toMatchObject({ due_at: 1_060_000, fired_at: 1_120_000 });
-  expect(sleeper.state).toBe('ready');
+  expect(timer).toStrictEqual({ due_at: 1_060_000, fired_at: 1_120_000 });
+});
+
+test('it wakes a task whose timer fell due while nixie was down', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestClaim(ctx.context, 'check back in a minute');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    timers: [{ dueAt: 1_060_000 }],
+  });
+
+  const next = await startNextTestWriter(ctx);
+
+  next.clock.advance(120_000);
+
+  await runRecovery(next.context, {
+    writeUnknownOutcomes: mock(() => Promise.resolve()),
+    sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
+  });
+
+  const task = await next.writer.db
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('state')
+    .executeTakeFirstOrThrow();
+
+  expect(task.state).toBe('ready');
 });
 
 test('it writes nothing more when it runs again', async () => {
   const ctx = await setupTest();
+
+  await createTestClaim(ctx.context, 'tidy the inbox');
+
+  const next = await startNextTestWriter(ctx);
   const dependencies = {
-    writeUnknownOutcomes: mock(async () => {}),
-    sandboxes: { removeStaleSandboxes: mock(async () => {}) },
+    writeUnknownOutcomes: mock(() => Promise.resolve()),
+    sandboxes: { removeStaleSandboxes: mock(() => Promise.resolve()) },
   };
 
-  ctx.clock.advance(120_000);
-  await runRecovery(ctx.context, dependencies);
+  await runRecovery(next.context, dependencies);
 
-  const before = await ctx.db.selectFrom('records').select('sequence').execute();
+  const db = next.writer.db.$extendTables<TasksTables>();
+  const before = await db.selectFrom('records').select('sequence').execute();
 
-  await runRecovery(ctx.context, dependencies);
+  await runRecovery(next.context, dependencies);
 
-  const after = await ctx.db.selectFrom('records').select('sequence').execute();
+  const after = await db.selectFrom('records').select('sequence').execute();
 
-  expect(after).toHaveLength(before.length);
+  expect(after).toStrictEqual(before);
 });
