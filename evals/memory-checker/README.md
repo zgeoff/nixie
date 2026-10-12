@@ -45,7 +45,8 @@ correction, and a vet's finding the owner welcomed, so the prompt gained the rul
 another person counts and that a memory may drop an attribution the owner accepts as settled. A
 later run missed a one-off event the checker judged not worth keeping, so the prompt now tells it to
 judge the assertion alone. Its examples are written for the prompt and share no topic with a corpus
-case.
+case. The prompt was revised against this corpus, so this run measures the cases it was tuned on,
+and a corpus written later would measure it fresh.
 
 The first measurement, before the prompt took the evidence mark and the rule that a memory may keep
 the message's own condition or attribution, ran Haiku 5.5, Sonnet 5.5 and Opus 5.5 over the same
