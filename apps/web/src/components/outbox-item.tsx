@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { css } from '../styled-system/css';
 import type { OutboxMessage } from '../types';
 import type { OutboxEntry } from '../use-outbox';
 
@@ -11,7 +12,11 @@ export interface OutboxItemProps {
 export function OutboxItem(props: OutboxItemProps): ReactNode {
   return (
     <li>
-      <strong>You</strong> {props.entry.message.text} {renderStatus(props)}
+      <strong className={css({ display: 'block', fontWeight: 'semibold' })}>You</strong>{' '}
+      <span className={css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' })}>
+        {props.entry.message.text}
+      </span>{' '}
+      {renderStatus(props)}
     </li>
   );
 }

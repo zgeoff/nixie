@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { css } from '../styled-system/css';
 import { useConversationPage } from '../use-conversation-page';
 import type { LiveRecord } from '../use-live-records';
 import { useLiveRecords } from '../use-live-records';
@@ -29,25 +30,61 @@ export function Conversation(props: ConversationProps): ReactNode {
   const shown = new Set(records.map((record) => record.message?.clientMessageId));
 
   return (
-    <main>
-      <ol aria-label="Conversation">
-        {records.map((record) => (
-          <RecordItem key={record.sequence} record={record} />
-        ))}
-        {outbox.entries
-          .filter((entry) => !shown.has(entry.message.clientMessageId))
-          .map((entry) => (
-            <OutboxItem entry={entry} key={entry.message.clientMessageId} onRetry={outbox.retry} />
+    <main className={layout}>
+      <div className={scroller}>
+        <ol aria-label="Conversation" className={messages}>
+          {records.map((record) => (
+            <RecordItem key={record.sequence} record={record} />
           ))}
-      </ol>
-      <Composer
-        onSend={(message) => {
-          outbox.add({ ...message, clientMessageId: crypto.randomUUID(), thread: props.thread });
-        }}
-      />
+          {outbox.entries
+            .filter((entry) => !shown.has(entry.message.clientMessageId))
+            .map((entry) => (
+              <OutboxItem
+                entry={entry}
+                key={entry.message.clientMessageId}
+                onRetry={outbox.retry}
+              />
+            ))}
+        </ol>
+      </div>
+      <div className={composerBar}>
+        <Composer
+          onSend={(message) => {
+            outbox.add({ ...message, clientMessageId: crypto.randomUUID(), thread: props.thread });
+          }}
+        />
+      </div>
     </main>
   );
 }
+
+// The page fills the window: the messages scroll, and the composer stays below them in view.
+const layout = css({ display: 'flex', flexDirection: 'column', height: '100dvh' });
+
+// A reversed column starts scrolled to its end and stays there as messages arrive, unless you
+// scrolled up to read.
+const scroller = css({
+  display: 'flex',
+  flex: '1',
+  flexDirection: 'column-reverse',
+  overflowY: 'auto',
+});
+
+const column = {
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingInline: '4',
+  width: 'full',
+} as const;
+
+const messages = css(column, {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '3',
+  paddingBlock: '4',
+});
+
+const composerBar = css({ borderTopWidth: '1px', paddingBlock: '3', '& > form': column });
 
 // The page and the live stream can both hold a record, so each sequence shows once, in order.
 function mergeRecords(

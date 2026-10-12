@@ -5,5 +5,11 @@
     "lib": ["ESNext", "DOM"],
     "types": ["bun", "vite/client", "@zgeoff/bun-test-extended", "@zgeoff/bun-test-react"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "panda.config.ts",
+    "postcss.config.js",
+    "vite.config.ts"
+  ]
 }

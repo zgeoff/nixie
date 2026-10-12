@@ -2,6 +2,7 @@ import { ORPCError } from '@orpc/client';
 import { useMutation } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useRef, useState } from 'react';
+import { css } from '../styled-system/css';
 import { useNixieClient } from '../use-nixie-client';
 
 export interface EnrolFormProps {
@@ -20,9 +21,10 @@ export function EnrolForm(props: EnrolFormProps): ReactNode {
   );
 
   return (
-    <main>
-      <h1>Enrol this browser</h1>
+    <main className={page}>
+      <h1 className={heading}>Enrol this browser</h1>
       <form
+        className={fields}
         onSubmit={(event) => {
           event.preventDefault();
           lastAttempt.current = buildAttempt(lastAttempt.current, code.trim(), deviceName);
@@ -58,6 +60,19 @@ export function EnrolForm(props: EnrolFormProps): ReactNode {
     </main>
   );
 }
+
+// A narrow column with one field per line, so the form reads on a phone.
+const page = css({ marginInline: 'auto', maxWidth: 'md', padding: '4' });
+
+const heading = css({ fontSize: 'xl', fontWeight: 'bold', marginBottom: '4' });
+
+const fields = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '3',
+  '& input': { borderWidth: '1px', display: 'block', padding: '2', width: 'full' },
+  '& button': { borderWidth: '1px', paddingBlock: '2' },
+});
 
 interface Attempt {
   readonly clientActionID: string;
