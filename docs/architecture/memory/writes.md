@@ -9,9 +9,9 @@ write that fails a check therefore waits for the user instead of failing, and no
 writes reaches memory on the model's word alone.
 
 [The memory store](./store.md) covers the items, versions and keys that a write changes. The gates
-follow [0011](../../decisions/0011-memory-writes.md), and the
-[memory writes](../../design/platform/memory/writes.md) design covers the memory writer and the
-consolidation that are not built.
+follow [0011](../../decisions/0011-memory-writes.md). [The memory writer](./writer.md) covers the
+batched writer, and the [memory writes](../../design/platform/memory/writes.md) design covers the
+consolidation that is not built.
 
 ## The content gate
 

@@ -13,6 +13,9 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
     'memory_items',
     'memory_versions',
     'memory_writer',
+    'memory_proposals',
+    'memory_notice_entries',
+    'memory_forgotten_evidence',
   ]);
   expect(server.sandboxes).toMatchObject({ id: 'process', boundary: 'process' });
   expect(server.endpoint.getToolTarget({ id: 's-1', owner: 'conversation' })).toMatchObject({
