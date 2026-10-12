@@ -60,7 +60,9 @@ transaction makes.
 
 - **Remember** creates an item with its key and its first version, or adds an edited version that
   keeps the item's state.
-- **Retire** and **restore** add a version with the same text and the other state.
+- **Retire** and **restore** add a version with the same text and the other state. A retire, a
+  restore and an undo keep the source of the text they copy and take only the origin from the actor,
+  so a state change never relabels outside content as the user's words.
 - **Undo** adds a version with the text and state of the version before the one it undoes. Undo
   binds to the version it undoes, so an undo after a later edit fails as stale instead of discarding
   that edit. An undo of a first version retires the item, because no earlier text exists.

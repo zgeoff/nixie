@@ -41,6 +41,32 @@ test('it retires an item, takes it out of search and keeps its text', async () =
   });
 });
 
+test('it keeps the source of the text it retires', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: {
+      origin: 'task',
+      source: 'untrusted',
+      taskID: 'task-3',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  await ctx.memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const history = await ctx.memory.store.readHistory(item.itemID);
+
+  expect(history?.versions).toMatchObject([
+    { version: 1, origin: 'task', source: 'untrusted' },
+    { version: 2, origin: 'owner', source: 'untrusted' },
+  ]);
+});
+
 test('it takes a retired item out of the pinned core', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

@@ -16,6 +16,7 @@ export function writeRetirement(parts: StoreParts, request: RetireRequest): Prom
         state: 'retired',
         text: { ...before.text, intentQuote: request.intentQuote ?? null },
         evidence: parseEvidence(before.row.evidence),
+        source: before.row.source,
         intentEvidence: request.intentEvidence ?? null,
       };
     },

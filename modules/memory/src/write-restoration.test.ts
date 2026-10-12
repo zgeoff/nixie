@@ -41,6 +41,33 @@ test('it restores a retired item as active with the text it had', async () => {
   ]);
 });
 
+test('it keeps the source of the text it restores', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: {
+      origin: 'task',
+      source: 'untrusted',
+      taskID: 'task-3',
+      proposalID: null,
+      checks: null,
+    },
+  });
+  const retired = await ctx.memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.restore({
+    target: retired,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toMatchObject([{ version: 3, origin: 'owner', source: 'untrusted' }]);
+});
+
 test('it rejects a restore of an active item', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

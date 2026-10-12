@@ -15,6 +15,7 @@ export function writeRestoration(parts: StoreParts, request: RestoreRequest): Pr
         state: 'active',
         text: { ...before.text, intentQuote: null },
         evidence: parseEvidence(before.row.evidence),
+        source: before.row.source,
         intentEvidence: null,
       };
     },

@@ -35,6 +35,36 @@ test('it undoes an edit by adding a version with the text before it', async () =
   ]);
 });
 
+test('it takes the source of the text it brings back', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: {
+      origin: 'task',
+      source: 'untrusted',
+      taskID: 'task-3',
+      proposalID: null,
+      checks: null,
+    },
+  });
+  const edited = await ctx.memory.store.remember({
+    text: 'Lives on Oak Avenue',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.undo({
+    target: edited,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toMatchObject([
+    { version: 3, text: 'Lives on Elm Street', source: 'untrusted' },
+  ]);
+});
+
 test('it rejects an undo of an edit after a later edit', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

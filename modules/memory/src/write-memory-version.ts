@@ -1,4 +1,4 @@
-import type { JSONObject, RecordInput } from '@heynixie/log';
+import type { ContentSource, JSONObject, RecordInput } from '@heynixie/log';
 import { createRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { encodeVersionText } from './encode-version-text';
 import { findItemKey } from './find-item-key';
@@ -21,6 +21,10 @@ import type {
 // The version an operation adds, built from the versions of the item before it.
 interface NewVersion {
   readonly change: MemoryChange;
+
+  // the source of the copied text, which a change that keeps earlier text keeps too, so a state
+  // change never relabels outside content as the actor's words
+  readonly source?: ContentSource;
   readonly state: VersionState;
   readonly text: VersionText;
   readonly evidence: QuoteEvidence | null;
@@ -123,7 +127,7 @@ function buildRecords(parts: StoreParts, written: WrittenVersion): readonly Reco
     evidence: toJSONEvidence(written.next.evidence),
     intentEvidence: toJSONEvidence(written.next.intentEvidence),
     origin: provenance.origin,
-    source: provenance.source,
+    source: written.next.source ?? provenance.source,
     taskID: provenance.taskID,
     proposalID: provenance.proposalID,
     checks: provenance.checks,
@@ -131,7 +135,7 @@ function buildRecords(parts: StoreParts, written: WrittenVersion): readonly Reco
   const version: RecordInput = {
     ...base,
     kind: 'memory.version_added',
-    contentSource: provenance.source,
+    contentSource: written.next.source ?? provenance.source,
     payload,
   };
 

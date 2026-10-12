@@ -17,6 +17,7 @@ export function writeUndo(parts: StoreParts, request: UndoRequest): Promise<Vers
         state: current === 1 ? 'retired' : earlier.row.state,
         text: earlier.text,
         evidence: parseEvidence(earlier.row.evidence),
+        source: earlier.row.source,
         intentEvidence: parseEvidence(earlier.row.intent_evidence),
       };
     },
