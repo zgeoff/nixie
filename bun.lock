@@ -185,6 +185,7 @@
         "@orpc/server": "catalog:",
         "elysia": "catalog:",
         "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",

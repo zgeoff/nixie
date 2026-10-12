@@ -1,5 +1,6 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import { buildInputHash } from './build-input-hash';
 import { createSecret } from './create-secret';
 import { deriveSecretHash } from './derive-secret-hash';
@@ -114,9 +115,7 @@ async function writeSession(
     },
   ]);
 
-  if (record === undefined) {
-    throw new Error('the log wrote no session.enrolled record');
-  }
+  invariant(record, 'the log wrote no session.enrolled record');
   await tx
     .$extendTables<APITables>()
     .insertInto('identities')

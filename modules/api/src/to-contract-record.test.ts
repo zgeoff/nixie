@@ -1,27 +1,22 @@
 import { expect, test } from 'bun:test';
+import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import { toContractRecord } from './to-contract-record';
 
 test('it carries your message with its text and spans', () => {
-  expect(
-    toContractRecord({
-      sequence: 7,
-      recordedAt: new Date('2026-10-10T12:00:00Z'),
-      kind: 'owner_message',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      stepKey: null,
-      parent: null,
-      contentSource: 'owner',
-      decision: null,
-      promptCause: null,
-      approval: null,
-      payload: { clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60', spans: 'as_sent' },
-      erasable: {
-        status: 'readable',
-        fields: { text: 'hello', spans: [{ start: 0, end: 5, source: 'typed' }] },
-      },
-    }),
-  ).toStrictEqual({
+  const record = buildMockLogRecord({
+    sequence: 7,
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    kind: 'owner_message',
+    thread: 'conversation',
+    contentSource: 'owner',
+    payload: { clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60', spans: 'as_sent' },
+    erasable: {
+      status: 'readable',
+      fields: { text: 'hello', spans: [{ start: 0, end: 5, source: 'typed' }] },
+    },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
     kind: 'owner_message',
     message: {
       clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
@@ -35,23 +30,16 @@ test('it carries your message with its text and spans', () => {
 });
 
 test('it carries the model reply with its text', () => {
-  expect(
-    toContractRecord({
-      sequence: 9,
-      recordedAt: new Date('2026-10-10T12:00:01Z'),
-      kind: 'model.reply',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      stepKey: null,
-      parent: null,
-      contentSource: null,
-      decision: null,
-      promptCause: null,
-      approval: null,
-      payload: { model: 'claude-test-1', profile: 'chat-direct' },
-      erasable: { status: 'readable', fields: { text: 'Hello.' } },
-    }),
-  ).toStrictEqual({
+  const record = buildMockLogRecord({
+    sequence: 9,
+    recordedAt: new Date('2026-10-10T12:00:01Z'),
+    kind: 'model.reply',
+    thread: 'conversation',
+    payload: { model: 'claude-test-1', profile: 'chat-direct' },
+    erasable: { status: 'readable', fields: { text: 'Hello.' } },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
     kind: 'model.reply',
     message: { text: 'Hello.' },
     recordedAt: new Date('2026-10-10T12:00:01Z'),
@@ -61,23 +49,17 @@ test('it carries the model reply with its text', () => {
 });
 
 test('it keeps a forgotten message in place with no text', () => {
-  expect(
-    toContractRecord({
-      sequence: 7,
-      recordedAt: new Date('2026-10-10T12:00:00Z'),
-      kind: 'owner_message',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      stepKey: null,
-      parent: null,
-      contentSource: 'owner',
-      decision: null,
-      promptCause: null,
-      approval: null,
-      payload: { clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60', spans: 'as_sent' },
-      erasable: { status: 'shredded' },
-    }),
-  ).toStrictEqual({
+  const record = buildMockLogRecord({
+    sequence: 7,
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    kind: 'owner_message',
+    thread: 'conversation',
+    contentSource: 'owner',
+    payload: { clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60', spans: 'as_sent' },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
     kind: 'owner_message',
     recordedAt: new Date('2026-10-10T12:00:00Z'),
     sequence: 7,
@@ -86,23 +68,16 @@ test('it keeps a forgotten message in place with no text', () => {
 });
 
 test('it carries no message text for a record of another kind', () => {
-  expect(
-    toContractRecord({
-      sequence: 3,
-      recordedAt: new Date('2026-10-10T12:00:00Z'),
-      kind: 'task.created',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'task-1',
-      stepKey: null,
-      parent: null,
-      contentSource: null,
-      decision: null,
-      promptCause: null,
-      approval: null,
-      payload: { taskID: 'task-1' },
-      erasable: { status: 'readable', fields: { text: 'a brief' } },
-    }),
-  ).toStrictEqual({
+  const record = buildMockLogRecord({
+    sequence: 3,
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    kind: 'task.created',
+    thread: 'task-1',
+    payload: { taskID: 'task-1' },
+    erasable: { status: 'readable', fields: { text: 'a brief' } },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
     kind: 'task.created',
     recordedAt: new Date('2026-10-10T12:00:00Z'),
     sequence: 3,
@@ -111,21 +86,12 @@ test('it carries no message text for a record of another kind', () => {
 });
 
 test('it shows no record that belongs to no thread', () => {
-  expect(
-    toContractRecord({
-      sequence: 2,
-      recordedAt: new Date('2026-10-10T12:00:00Z'),
-      kind: 'session.enrolled',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: null,
-      stepKey: null,
-      parent: null,
-      contentSource: null,
-      decision: null,
-      promptCause: null,
-      approval: null,
-      payload: { identityID: 's-1' },
-      erasable: { status: 'readable', fields: { label: 'laptop' } },
-    }),
-  ).toBeNull();
+  const record = buildMockLogRecord({
+    kind: 'session.enrolled',
+    thread: null,
+    payload: { identityID: 's-1' },
+    erasable: { status: 'readable', fields: { label: 'laptop' } },
+  });
+
+  expect(toContractRecord(record)).toBeNull();
 });

@@ -3,8 +3,12 @@ import { verifySessionToken } from '../verify-session-token';
 import { createDeviceSession } from './create-device-session';
 import { startTestAPI } from './start-test-api';
 
+function setupTest() {
+  return startTestAPI();
+}
+
 test('it creates a session whose token resolves to its row', async () => {
-  const ctx = await startTestAPI();
+  const ctx = await setupTest();
 
   const session = await createDeviceSession(ctx.context, 'laptop');
 
@@ -19,8 +23,22 @@ test('it creates a session whose token resolves to its row', async () => {
   });
 });
 
+test('it returns the identity its token resolves to as the caller', async () => {
+  const ctx = await setupTest();
+
+  const session = await createDeviceSession(ctx.context, 'laptop');
+
+  expect(session.caller).toStrictEqual({
+    identityID: session.sessionID,
+    channel: 'client',
+    label: 'laptop',
+    pairedAt: 1_000_000,
+    lastSeenAt: 1_000_000,
+  });
+});
+
 test('it creates a separate session on each call', async () => {
-  const ctx = await startTestAPI();
+  const ctx = await setupTest();
 
   const first = await createDeviceSession(ctx.context, 'laptop');
   const second = await createDeviceSession(ctx.context, 'laptop');
