@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the reading state collects into arrays, and an HTMLRewriter element has no readonly form
 // the elements that start and end a block of text, besides the regions and the furniture
 const blockSelector = [
   'address, blockquote, dd, details, dialog, div, dl, dt, fieldset, figcaption, figure, form',
@@ -91,8 +92,9 @@ function collectElement(
   element: HTMLRewriterTypes.Element,
   rule: ElementRule,
 ): void {
-  // an article keeps its own header and footer
-  const counts = rule.counts === 'banner' && reading.depth.article > 0 ? null : rule.counts;
+  // an article or a main element keeps its own header and footer
+  const isInRegion = reading.depth.article > 0 || reading.depth.main > 0;
+  const counts = rule.counts === 'banner' && isInRegion ? null : rule.counts;
 
   if (rule.isBlock) {
     collectPart(reading, '\n');

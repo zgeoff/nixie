@@ -54,6 +54,16 @@ test('it keeps the header and the footer inside an article', () => {
   expect(buildReadableText(html)).toBe('Post\n\nThe headline\n\nBody text.\n\nBy the author');
 });
 
+test('it keeps the header and the footer inside the main element', () => {
+  const html = `<title>Guide</title>
+<header>Site banner</header>
+<main><header><h1>Getting started</h1></header><p>Install the tool.</p><footer>Last edited today</footer></main>`;
+
+  expect(buildReadableText(html)).toBe(
+    'Guide\n\nGetting started\n\nInstall the tool.\n\nLast edited today',
+  );
+});
+
 test('it reads every article on a page', () => {
   const html =
     '<title>Index</title><article><p>First post.</p></article><article><p>Second post.</p></article>';
