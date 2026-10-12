@@ -8,15 +8,15 @@ test('it builds a default turn frame', () => {
   expect(frame).toStrictEqual({
     type: 'turn',
     profile: {
-      model: expect.any(String),
+      model: expect.toBeString(),
       baseURL: expect.toStartWith('https://'),
       effort: 'medium',
       authHeader: 'x-api-key',
     },
-    tools: { url: expect.toStartWith('https://'), token: expect.any(String) },
+    tools: { url: expect.toStartWith('https://'), token: expect.toBeString() },
     resume: null,
-    systemPrompt: expect.any(String),
-    input: [{ uuid: expect.any(String), text: expect.any(String) }],
+    systemPrompt: expect.toBeString(),
+    input: [{ uuid: expect.toBeString(), text: expect.toBeString() }],
   });
   expect(hostFrameSchema.parse(frame)).toStrictEqual(frame);
 });
@@ -45,7 +45,7 @@ test('it applies overrides on top of the defaults', () => {
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
       messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     },
-    systemPrompt: expect.any(String),
+    systemPrompt: expect.toBeString(),
     input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
   });
 });

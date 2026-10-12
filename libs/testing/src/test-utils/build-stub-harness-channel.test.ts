@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import type { HarnessMessage } from '../types';
 import { buildStubHarnessChannel } from './build-stub-harness-channel';
 
 test('it records each message nixie sends, in order', () => {
@@ -15,8 +16,8 @@ test('it records each message nixie sends, in order', () => {
 
 test('it delivers a harness message to every listener', () => {
   const stub = buildStubHarnessChannel();
-  const first = mock();
-  const second = mock();
+  const first = mock<(message: HarnessMessage) => void>();
+  const second = mock<(message: HarnessMessage) => void>();
 
   stub.channel.subscribe(first);
   stub.channel.subscribe(second);
