@@ -126,7 +126,8 @@ A proposal lapses after a configurable time, and a server sweep lapses each over
 conversation turn, a task run or a writer batch makes at most a configurable number of proposals,
 and the next one refuses, so an injected instruction cannot flood the user's review. A lapsed or
 rejected proposal for a new item deletes that item's key, because the proposal held its only
-reference.
+reference. The key goes after the close commits, so store start and each lapse sweep delete any key
+that a crash or a failed deletion left behind.
 
 ## Notices
 
