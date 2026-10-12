@@ -1,4 +1,4 @@
-import { findRecordKeys, removeRecordKey } from '@heynixie/log';
+import { findRecordKeys, removeRecordKey, writeKeyStoreCheckpoint } from '@heynixie/log';
 import type { MemoryTables, StoreParts } from './types';
 
 // Removes each key that a rejected or lapsed proposal for a new item left in the key store, because
@@ -30,6 +30,11 @@ export async function removeClosedProposalKeys(parts: StoreParts): Promise<numbe
     (removed, itemID) => removed.then(() => removeRecordKey(log, itemID)),
     Promise.resolve(),
   );
+
+  // a removal whose checkpoint a reader blocked left no row to find, so the checkpoint runs again
+  if (rows.length > 0) {
+    await writeKeyStoreCheckpoint(log, null);
+  }
   return left.length;
 }
 

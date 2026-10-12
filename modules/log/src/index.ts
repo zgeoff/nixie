@@ -9,6 +9,7 @@ export { MissingDefinitionsError } from './missing-definitions-error';
 export type { ReadRecordsOptions } from './read-records';
 export { readRecords } from './read-records';
 export { removeRecordKey } from './remove-record-key';
+export { writeKeyStoreCheckpoint } from './write-key-store-checkpoint';
 export { requireWriterEpoch } from './require-writer-epoch';
 export { runProjectionRebuild } from './run-projection-rebuild';
 export { StaleWriterError } from './stale-writer-error';
