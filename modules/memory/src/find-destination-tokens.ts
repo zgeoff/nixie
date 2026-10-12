@@ -1,3 +1,5 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the scan's own list of taken ranges, and a RegExp, which has no readonly form
+
 // A destination-like token in a text, with the form it compares in.
 export interface DestinationToken {
   readonly kind: 'account' | 'domain' | 'email' | 'handle' | 'phone' | 'url';

@@ -16,7 +16,8 @@ test('it gives a checker query no tools, no MCP server, no settings and no saved
     { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder', UNRELATED: 'kept out' },
   );
 
-  expect(options).toStrictEqual({
+  // the next test pins the environment
+  expect({ ...options, env: null }).toStrictEqual({
     tools: [],
     allowedTools: [],
     permissionMode: 'dontAsk',
@@ -40,7 +41,7 @@ test('it gives a checker query no tools, no MCP server, no settings and no saved
       },
     },
     cwd: '/home/guest/checker',
-    env: expect.any(Object),
+    env: null,
   });
 });
 

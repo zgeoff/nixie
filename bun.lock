@@ -112,6 +112,17 @@
         "vite": "catalog:",
       },
     },
+    "evals": {
+      "name": "@heynixie/evals",
+      "version": "0.0.0",
+      "dependencies": {
+        "@anthropic-ai/claude-agent-sdk": "catalog:",
+        "@heynixie/conversation": "workspace:*",
+        "@heynixie/memory": "workspace:*",
+        "@heynixie/models": "workspace:*",
+        "zod": "catalog:",
+      },
+    },
     "guests/conversation": {
       "name": "@heynixie/conversation",
       "version": "0.0.0",
@@ -520,6 +531,8 @@
     "@heynixie/db": ["@heynixie/db@workspace:libs/db"],
 
     "@heynixie/definitions": ["@heynixie/definitions@workspace:modules/definitions"],
+
+    "@heynixie/evals": ["@heynixie/evals@workspace:evals"],
 
     "@heynixie/fetch": ["@heynixie/fetch@workspace:guests/fetch"],
 

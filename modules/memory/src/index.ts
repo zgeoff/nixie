@@ -31,6 +31,7 @@ export { startMemoryStore } from './start-memory-store';
 export type { MemoryWriter, MemoryWriterOptions } from './start-memory-writer';
 export { startMemoryWriter } from './start-memory-writer';
 export type {
+  AllowRuleCall,
   AllowRuleMatch,
   FindAllowRule,
   GateContext,
@@ -41,7 +42,9 @@ export type {
   MemoryProposal,
   MemoryProposals,
   MemoryWrites,
+  MessageSpan,
   NoticeEntry,
+  OwnerMessage,
   ProposalAnswer,
   ReviewReason,
   WriteCaller,
@@ -83,3 +86,5 @@ export type {
   WriterSessionInput,
   WriterUsage,
 } from './writer-types';
+export { findTypedQuote } from './find-typed-quote';
+export { renderCheckerInput } from './render-checker-input';

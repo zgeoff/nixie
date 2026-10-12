@@ -1,15 +1,16 @@
 # Sandboxes
 
-nixie runs untrusted work in sandboxes: the conversation's model loop, each worker, each code run,
-the fetch sandbox and each coding session. A sandbox gets only the network and the credentials its
-kind of work needs. The spec builder sets the egress, the grants and the tool route from the kind,
-so a caller that builds its spec there names only the kind of work. nixie reaches sandboxes through
-its own sandbox interface, under [0016](../../decisions/0016-own-interfaces.md). `modules/sandbox`
-holds the interface, the kinds and the lifecycle records. `adapters/sandbox-imp` runs each sandbox
-as an imp microVM and is the one package that imports imp's client, and `adapters/sandbox-process`
-is a test-build double that runs each guest as a local process. [Tool calls](./tool-calls.md) covers
-the endpoint a sandbox's tool route reaches. [Web fetch](./web-fetch.md) covers the fetch sandbox's
-lifetime and the fetcher that runs in it.
+nixie runs untrusted work in sandboxes: the conversation's model loop, the memory checker, each
+worker, each code run, the fetch sandbox and each coding session. A sandbox gets only the network
+and the credentials its kind of work needs. The spec builder sets the egress, the grants and the
+tool route from the kind, so a caller that builds its spec there names only the kind of work. nixie
+reaches sandboxes through its own sandbox interface, under
+[0016](../../decisions/0016-own-interfaces.md). `modules/sandbox` holds the interface, the kinds and
+the lifecycle records. `adapters/sandbox-imp` runs each sandbox as an imp microVM and is the one
+package that imports imp's client, and `adapters/sandbox-process` is a test-build double that runs
+each guest as a local process. [Tool calls](./tool-calls.md) covers the endpoint a sandbox's tool
+route reaches. [Web fetch](./web-fetch.md) covers the fetch sandbox's lifetime and the fetcher that
+runs in it.
 
 ## Kinds of work
 
@@ -21,6 +22,7 @@ spec from the kind:
 | Kind         | Egress    | Model credential | Tool route |
 | ------------ | --------- | ---------------- | ---------- |
 | conversation | None      | Yes              | Yes        |
+| checker      | None      | Yes              | No         |
 | worker       | None      | Yes              | Yes        |
 | code run     | None      | No               | No         |
 | fetch        | Public    | No               | No         |

@@ -48,7 +48,7 @@ const approvalRecorded = z.strictObject({
 
 const resolved = z.strictObject({ proposalID: z.string() });
 
-export interface ProposedRecord {
+interface ProposedRecord {
   readonly kind: 'memory.proposed';
   readonly proposalID: string;
   readonly itemID: string;

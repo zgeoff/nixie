@@ -74,5 +74,5 @@ async function createCheckerSandbox(
   return sandboxes.create(spec);
 }
 
-// the owner of the checker's sandbox, which lives for the deployment
-const checkerOwner = 'checker';
+// the owner of the checker's sandbox, which lives for the deployment, so recovery keeps it
+export const checkerOwner = 'checker';
