@@ -42,6 +42,8 @@ export CLAUDE_CODE_OAUTH_TOKEN=$(
 )
 env -u ANTHROPIC_API_KEY bun --no-env-file run.ts "$(mktemp -d)" 5
 env -u ANTHROPIC_API_KEY bun --no-env-file compact.ts "$(mktemp -d)" 3
+# The scan's own tests, with no model calls
+bun test
 ```
 
 - [cli.ts](cli.ts) runs one `claude -p` call for a task and reads its transcript.
@@ -49,6 +51,9 @@ env -u ANTHROPIC_API_KEY bun --no-env-file compact.ts "$(mktemp -d)" 3
   proposal and action rows, and the session records. It renders the canonical state block and the
   rebuild's first turn.
 - [run.ts](run.ts) runs the comparison and the canonical-state and forget checks.
+- [collect-files-with.ts](collect-files-with.ts) finds every file that holds the forgotten text. The
+  scan outside the task's directory skips that directory, which sits under `/tmp` when the run
+  directory comes from `mktemp -d`.
 - [compact.ts](compact.ts) checks what decides the content of a compaction summary, and runs one
   automatic compaction.
 

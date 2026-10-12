@@ -1,9 +1,10 @@
 // Compares a rebuild from the event log with an SDK resume, after a compaction and after a crash,
 // and checks the canonical-state and forget rules. Usage: bun --no-env-file run.ts <dir> [repeats]
 import type { Database } from 'bun:sqlite';
-import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Task, TurnResult } from './cli';
+import { collectFilesWith } from './collect-files-with';
 import {
   createTask,
   findBoundary,
@@ -352,42 +353,6 @@ async function waitForTranscript(conversation: Task, before: Set<string>, marker
   throw new Error(`no new transcript holds ${marker}`);
 }
 
-// every file under the folders that holds the text, found by reading each file whole
-function collectFilesWith(dirs: string[], text: string): string[] {
-  const found: string[] = [];
-  const visit = (path: string): void => {
-    let stat;
-    try {
-      stat = statSync(path);
-    } catch {
-      return;
-    }
-    if (stat.isDirectory()) {
-      let names: string[] = [];
-      try {
-        names = readdirSync(path);
-      } catch {
-        return;
-      }
-      for (const name of names) {
-        visit(join(path, name));
-      }
-    } else if (stat.isFile() && stat.size < 50_000_000) {
-      try {
-        if (readFileSync(path).includes(text)) {
-          found.push(path);
-        }
-      } catch {
-        // a file the scan cannot read belongs to another user
-      }
-    }
-  };
-  for (const dir of dirs) {
-    visit(dir);
-  }
-  return found;
-}
-
 function formatPaths(paths: string[], base: string): string {
   return paths.length === 0 ? 'none' : paths.map((path) => path.replace(base, '<task>').replace(/[0-9a-f]{8}-[0-9a-f-]{27}/g, '<session>')).join(', ');
 }
@@ -410,7 +375,7 @@ async function runForget(): Promise<void> {
   });
   const compacted = await runTurn(forgetTask, '/compact', { sessionID: second.sessionID, fork: true });
   console.log(`  copies after 2 turns and a compaction: ${formatPaths(collectFilesWith([home], canary), forgetTask.dir)}`);
-  console.log(`  copies outside the task directory: ${formatPaths(collectFilesWith(tmpDirs, canary), forgetTask.dir)}`);
+  console.log(`  copies outside the task directory: ${formatPaths(collectFilesWith(tmpDirs, canary, [forgetTask.dir]), forgetTask.dir)}`);
 
   // the hazard: removing the directory while a writer still runs
   const before = new Set(collectTranscripts(forgetTask));
@@ -450,7 +415,7 @@ async function runForget(): Promise<void> {
   writeRecord(db, 'forget-safe', 'session_cleanup_completed');
   await Bun.sleep(3000);
   console.log(`  removed: gone=${gone}, copies 3 s later: ${formatPaths(collectFilesWith([safeTask.dir], canary), safeTask.dir)}`);
-  console.log(`  copies outside the task directory: ${formatPaths(collectFilesWith(tmpDirs, canary), safeTask.dir)}`);
+  console.log(`  copies outside the task directory: ${formatPaths(collectFilesWith(tmpDirs, canary, [safeTask.dir]), safeTask.dir)}`);
   console.log(`  cleanup completed: a new query is refused=${isTaskBlocked(db, 'forget-safe')}`);
 }
 
