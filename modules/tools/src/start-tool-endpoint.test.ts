@@ -225,6 +225,26 @@ test('it stops listening on the run socket when the run ends', async () => {
   ).rejects.toThrow();
 });
 
+test('it refuses a second endpoint for a run that has one', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
+  await ctx.endpoint.startRun({
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  expect(
+    ctx.endpoint.startRun({
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    }),
+  ).rejects.toThrowWithMessage(Error, 'the run run-1 already has a tool endpoint');
+});
+
 test('it gives a sandbox the socket of the run that owns it', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
   const run = await ctx.endpoint.startRun({

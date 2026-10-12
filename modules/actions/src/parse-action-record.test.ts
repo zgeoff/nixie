@@ -81,3 +81,60 @@ test('it refuses an action record that lacks a field', () => {
     }),
   ).toThrowWithMessage(Error, 'record 9 of kind action.attempt_started lacks attempt');
 });
+
+test('it refuses an action record whose string field holds a number', () => {
+  expect(() =>
+    parseActionRecord({
+      sequence: 9,
+      recordedAt: new Date(0),
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'task-1',
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: { actionID: 7, status: 'unknown', attempt: 2, reason: 'ambiguous' },
+    }),
+  ).toThrowWithMessage(TypeError, 'expected a string, got 7');
+});
+
+test('it refuses an action record whose number field holds a string', () => {
+  expect(() =>
+    parseActionRecord({
+      sequence: 9,
+      recordedAt: new Date(0),
+      kind: 'action.attempt_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'task-1',
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: { actionID: 'action-1', attempt: '2' },
+    }),
+  ).toThrowWithMessage(TypeError, 'expected a number, got "2"');
+});
+
+test('it refuses an outcome record with a reason outside the outcome reasons', () => {
+  expect(() =>
+    parseActionRecord({
+      sequence: 9,
+      recordedAt: new Date(0),
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'task-1',
+      stepKey: null,
+      parent: null,
+      contentSource: null,
+      decision: null,
+      promptCause: null,
+      approval: null,
+      payload: { actionID: 'action-1', status: 'unknown', attempt: 2, reason: 'timed_out' },
+    }),
+  ).toThrowWithMessage(TypeError, 'expected an outcome reason, got timed_out');
+});

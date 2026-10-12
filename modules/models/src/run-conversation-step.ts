@@ -2,8 +2,8 @@ import type { StepInput, StepResult } from '@heynixie/tasks';
 import { buildModelRecord } from './build-model-record';
 import { buildStepResult } from './build-step-result';
 import { parseSessionBoundary } from './parse-session-boundary';
-import type { ConversationRun } from './run-live-turn';
 import { runLiveTurn } from './run-live-turn';
+import type { ConversationRun } from './types';
 
 // Runs one turn step of the conversation in its guest. The turn resumes at the session boundary
 // on a fork, and starts a fresh session, with a record of the reset, when the guest has lost it.

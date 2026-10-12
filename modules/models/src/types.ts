@@ -1,3 +1,8 @@
+import type { Sandbox } from '@heynixie/sandbox';
+import type { TasksContext } from '@heynixie/tasks';
+import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
+import type { GuestCommand } from './run-guest-turn';
+
 // The model roles, each of which names the profile it uses.
 export type ModelRole = 'conversation' | 'task' | 'worker' | 'checker' | 'memory-writer';
 
@@ -46,4 +51,17 @@ export interface ModelSecrets {
 export interface ResolvedProfile {
   readonly profile: ModelProfile;
   readonly credential: string;
+}
+
+// The conversation's runner as one step sees it: its sandbox, its endpoint and its profile.
+export interface ConversationRun {
+  readonly context: TasksContext;
+  readonly profile: ResolvedProfile;
+  readonly sandbox: Sandbox;
+  readonly endpoint: Pick<RunEndpoint, 'token'>;
+  readonly model: ToolRunModel;
+  readonly command: GuestCommand;
+
+  // the persona in force, read at each turn so a new seed reaches the next turn
+  readonly getSystemPrompt: () => string;
 }

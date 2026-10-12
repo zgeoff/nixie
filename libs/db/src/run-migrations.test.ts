@@ -92,6 +92,45 @@ test('it rolls back a failed migration together with its schema version', async 
   expect(tables.rows).toStrictEqual([{ name: 'notes' }, { name: 'schema_version' }]);
 });
 
+test('it rolls back a migration that writes the schema version itself', async () => {
+  const ctx = await setupTest();
+
+  const run = runMigrations(ctx.db, {
+    schema: {
+      migrations: [
+        {
+          name: 'create notes',
+          up: async (tx) => {
+            await sql`create table notes (id text primary key)`.execute(tx);
+          },
+        },
+        {
+          name: 'create tags and set the version',
+          up: async (tx) => {
+            await sql`create table tags (id text primary key)`.execute(tx);
+            await sql`update schema_version set version = 5 where id = 1`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+    copyDir: ctx.dir,
+  });
+
+  await run.catch(() => {});
+
+  const stored = await sql`select version from schema_version`.execute(ctx.db);
+  const tables =
+    await sql`select name from sqlite_schema where type = 'table' order by name`.execute(ctx.db);
+
+  expect(run).rejects.toThrowWithMessage(
+    Error,
+    'schema_version moved during migration create tags and set the version',
+  );
+  expect(stored.rows).toStrictEqual([{ version: 1 }]);
+  expect(tables.rows).toStrictEqual([{ name: 'notes' }, { name: 'schema_version' }]);
+});
+
 test('it copies the database with VACUUM INTO before the first migration of a release', async () => {
   const ctx = await setupTest();
 

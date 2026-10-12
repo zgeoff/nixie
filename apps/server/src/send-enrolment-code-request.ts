@@ -9,7 +9,9 @@ export async function sendEnrolmentCodeRequest(socketPath: string): Promise<Enro
   });
 
   if (!response.ok) {
-    throw new Error(`nixie answered the enrolment code request with ${response.status}`);
+    const reason = await response.text();
+
+    throw new Error(`nixie answered the enrolment code request with ${response.status}: ${reason}`);
   }
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control socket's own reply

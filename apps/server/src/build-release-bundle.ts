@@ -25,9 +25,7 @@ export async function buildReleaseBundle(
     define: { NIXIE_TEST_BUILD: String(isTestBuild) },
   });
 
-  if (!result.success) {
-    throw new AggregateError(result.logs, 'the release bundle failed to build');
-  }
+  // Bun.build throws on a failed build, so every result here is a success
   const texts = await Promise.all(result.outputs.map((output) => output.text()));
   const text = texts.join('\n');
 

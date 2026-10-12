@@ -33,6 +33,9 @@ export async function startControlSocket(options: ControlSocketOptions): Promise
 
       return Response.json({ code: issued.code, expiresAt: issued.expiresAt.toISOString() });
     },
+
+    // only nixie's user reaches the socket, so the host command can show the reason
+    error: (error) => new Response(error.message, { status: 500 }),
   });
 
   return {
