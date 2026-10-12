@@ -83,7 +83,13 @@ function loadInput(path: string): { seed: Item[]; turns: Turn[] } {
   if (!Array.isArray(raw.turns) || raw.turns.length === 0) {
     throw new Error(`${path} holds no turns`);
   }
-  return { seed: raw.seed ?? [], turns: raw.turns };
+  const seed = raw.seed ?? [];
+  // A remember creates n1, n2 and on, so a seed item under one of those IDs would be overwritten.
+  const clash = seed.find((item) => /^n\d+$/u.test(item.id));
+  if (clash !== undefined) {
+    throw new Error(`${path} has seed item ${clash.id}; n<number> IDs are kept for new items`);
+  }
+  return { seed, turns: raw.turns };
 }
 
 interface StoredItem {
