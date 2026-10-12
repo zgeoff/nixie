@@ -38,6 +38,40 @@ test('it answers a turn frame with the script frames, then exits', async () => {
   expect(exit).toMatchObject({ code: 0, signal: null });
 });
 
+test('it answers a purge frame as purged, records the sandbox, then exits', async () => {
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+  const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
+
+  await stream.send(encodeTurnFrame({ type: 'purge' }));
+
+  const messages = await Array.fromAsync(stream.messages);
+  const exit = await stream.exit;
+
+  expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toStrictEqual([
+    { type: 'purged' },
+  ]);
+  expect(exit).toMatchObject({ code: 0, signal: null });
+  expect(ctx.stub.purged).toStrictEqual([sandbox.id]);
+});
+
+test('it answers a purge frame with the frames a test sets', async () => {
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stub.setPurgeAnswer([{ type: 'failed', reason: 'error', detail: 'the disk is read-only' }]);
+
+  const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
+
+  await stream.send(encodeTurnFrame({ type: 'purge' }));
+
+  const messages = await Array.fromAsync(stream.messages);
+
+  expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toStrictEqual([
+    { type: 'failed', reason: 'error', detail: 'the disk is read-only' },
+  ]);
+});
+
 test('it lists a sandbox by its owner until it is destroyed', async () => {
   const ctx = setupTest();
   const sandbox = await ctx.stub.adapter.create(

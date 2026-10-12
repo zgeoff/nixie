@@ -41,6 +41,40 @@ test('it answers each request with the next scripted reply', async () => {
   });
 });
 
+test('it reports the input tokens a scripted reply sets, and 10 for one that sets none', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({ text: 'large', inputTokens: 150_000 }, { text: 'small' });
+
+  const sendRequest = async () => {
+    const response = await fetch(`${ctx.model.url}/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-a', messages: [] }),
+    });
+
+    return response.json();
+  };
+  const first = await sendRequest();
+  const second = await sendRequest();
+
+  expect(first).toMatchObject({ usage: { input_tokens: 150_000 } });
+  expect(second).toMatchObject({ usage: { input_tokens: 10 } });
+});
+
+test('it streams the input tokens a scripted reply sets in its message start', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({ text: 'large', inputTokens: 150_000 });
+
+  const response = await fetch(`${ctx.model.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', stream: true, messages: [] }),
+  });
+  const text = await response.text();
+
+  expect(text).toInclude('"usage":{"input_tokens":150000,"output_tokens":1}');
+});
+
 test('it streams a reply as server-sent events when the request asks', async () => {
   const ctx = setupTest();
 

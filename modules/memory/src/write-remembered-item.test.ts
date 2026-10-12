@@ -78,6 +78,35 @@ test('it adds an edited version that keeps the state of the item', async () => {
   ]);
 });
 
+test('it rejects an edit that grows a pinned item past the 2,000-token pinned core, and keeps the old text', async () => {
+  const ctx = await setupTest();
+
+  // about 1,100 tokens, at 4 characters a token
+  await ctx.memory.store.remember({
+    text: 'Keeps a long packing list for trips. '.repeat(119),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Goes by Sam',
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const edit = ctx.memory.store.remember({
+    text: 'Keeps a long reading list for winter. '.repeat(116),
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await edit.catch(() => {});
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(edit).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
+  expect(recalled.items).toMatchObject([{ version: 1, text: 'Goes by Sam' }]);
+});
+
 test('it rejects an edit made from a stale revision', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

@@ -1,13 +1,16 @@
-import type { StartedMemoryStore } from '@heynixie/memory';
+import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
 import { findNoAllowRule, startMemoryStore } from '@heynixie/memory';
 import { toErrorFields } from '@heynixie/ops';
 import { startChecker } from './start-checker';
 import type { ServerParts } from './types';
 
-// Starts the checker, then the memory store after recovery, and returns the store, which resumes
-// every pending forget and builds the index before any runner claims work. No live session reads
-// memory yet, so a forget's session cleanup has nothing to clean.
-export async function startMemory(parts: ServerParts): Promise<StartedMemoryStore> {
+// Starts the checker, then the memory store after recovery and after the conversation imp, which
+// supplies the session cleanup a forget runs. The store resumes every pending forget, cleanup
+// included, and builds the index before any runner claims work.
+export async function startMemory(
+  parts: ServerParts,
+  cleanupSessions: CleanupSessions,
+): Promise<StartedMemoryStore> {
   const check = await startChecker({
     models: parts.config.models,
     secrets: parts.modelSecrets,
@@ -18,7 +21,8 @@ export async function startMemory(parts: ServerParts): Promise<StartedMemoryStor
   const store = await startMemoryStore({
     log: parts.context.log,
     definitions: parts.context.definitions,
-    cleanupSessions: () => Promise.resolve(),
+    cleanupSessions,
+    pinnedCoreTokens: parts.config.memory.pinnedCoreTokens,
     gate: {
       check,
       clock: parts.context.clock,

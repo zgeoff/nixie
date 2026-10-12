@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { GuestFrame } from '@heynixie/wire';
@@ -28,6 +28,7 @@ async function setupTest() {
   const frames: GuestFrame[] = [];
 
   return {
+    home,
     model,
     frames,
 
@@ -95,7 +96,11 @@ test('it answers a first frame that starts no turn with a failed frame', async (
   });
 
   expect(ctx.frames).toStrictEqual([
-    { type: 'failed', reason: 'error', detail: 'Error: the first host frame must start a turn' },
+    {
+      type: 'failed',
+      reason: 'error',
+      detail: 'Error: the first host frame must start a turn or purge the session',
+    },
   ]);
 });
 
@@ -114,4 +119,47 @@ test('it answers a turn frame that arrives while a turn runs with a failed frame
   expect(ctx.frames).toStrictEqual([
     { type: 'failed', reason: 'error', detail: 'Error: a turn is already running' },
   ]);
+});
+
+test('it removes every session transcript and the working directory on a purge frame', async () => {
+  const ctx = await setupTest();
+  const turn = buildMockTurnFrame({ profile: { baseURL: ctx.model.url } });
+
+  ctx.model.addReplies({ text: 'Hello.' });
+  await runConversationGuest({
+    input: [encodeFrame(encodeTurnFrame(turn))],
+    write: ctx.write,
+    env: ctx.env,
+    buildToolServer: () => buildStubToolServer().config,
+  });
+
+  const before = await readdir(ctx.home);
+
+  await runConversationGuest({
+    input: [encodeFrame(encodeTurnFrame({ type: 'purge' }))],
+    write: ctx.write,
+    env: ctx.env,
+  });
+
+  const after = await readdir(ctx.home);
+
+  expect(before).toIncludeAllMembers(['.claude', 'conversation']);
+  expect(after).not.toIncludeAnyMembers(['.claude', 'conversation']);
+  expect(ctx.frames.at(-1)).toStrictEqual({ type: 'purged' });
+});
+
+test('it never removes a file in the guest home outside the session state on a purge frame', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.home, 'keep.txt'), 'not session state');
+  await runConversationGuest({
+    input: [encodeFrame(encodeTurnFrame({ type: 'purge' }))],
+    write: ctx.write,
+    env: ctx.env,
+  });
+
+  const kept = await readFile(join(ctx.home, 'keep.txt'), 'utf8');
+
+  expect(kept).toBe('not session state');
+  expect(ctx.frames).toStrictEqual([{ type: 'purged' }]);
 });

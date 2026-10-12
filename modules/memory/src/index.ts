@@ -25,6 +25,7 @@ export type { TurnMemoryNote } from './read-memory-change-note';
 export { readMemoryChangeNote } from './read-memory-change-note';
 export type { WriterStatus } from './read-writer-status';
 export { readWriterStatus } from './read-writer-status';
+export { PinnedCoreFullError } from './pinned-core-full-error';
 export { StaleVersionError } from './stale-version-error';
 export type { StartedMemoryStore } from './start-memory-store';
 export { startMemoryStore } from './start-memory-store';

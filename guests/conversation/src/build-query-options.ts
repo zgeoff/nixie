@@ -1,6 +1,7 @@
-import { join } from 'node:path';
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
+import { getConfigDir } from './get-config-dir';
+import { getHome } from './get-home';
 import { getWorkDir } from './get-work-dir';
 import { toolServerName } from './tool-server-name';
 
@@ -14,9 +15,12 @@ export interface QueryContext {
   readonly toolServer: McpServerConfig;
 }
 
-// Builds the options of every query(): nixie's tools are the only tools, and nothing comes from a
-// settings file, a skill, the SDK's own memory or another MCP config. options.env replaces the
-// CLI's environment, so each variable goes in by name, with the profile's URL, model and effort.
+// the auto-compact window of a profile that sets no context cap
+const defaultCompactWindow = 200_000;
+
+// Builds the options of every query(): nixie's tools alone, a system prompt rendered fresh on every
+// request, and the SDK's compaction pinned to run only inside a turn. options.env replaces the
+// CLI's environment, so each variable goes in by name.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the SDK's MCP config has no readonly form
 export function buildQueryOptions(turn: TurnFrame, context: QueryContext): Options {
   const home = getHome(context.env);
@@ -33,9 +37,17 @@ export function buildQueryOptions(turn: TurnFrame, context: QueryContext): Optio
       disableBundledSkills: true,
       autoMemoryEnabled: false,
       autoDreamEnabled: false,
+      autoCompactEnabled: true,
+
+      // the profile's context cap, which the CLI compacts within instead of the model's own window
+      autoCompactWindow: turn.profile.contextTokens ?? defaultCompactWindow,
+      precomputeCompactionEnabled: false,
+
+      // a compaction runs only inside a turn, so its record lands with that turn's
+      idleCompaction: false,
     },
     mcpServers: { [toolServerName]: context.toolServer },
-    systemPrompt: turn.systemPrompt,
+    systemPrompt: { type: 'custom', prompt: turn.systemPrompt, snapshot: false },
     cwd: getWorkDir(home),
     env: buildQueryEnv(turn, context.env, home),
     ...(turn.resume === null
@@ -46,15 +58,6 @@ export function buildQueryOptions(turn: TurnFrame, context: QueryContext): Optio
           forkSession: true,
         }),
   };
-}
-
-function getHome(env: Readonly<Record<string, string | undefined>>): string {
-  const home = env['HOME'];
-
-  if (home === undefined || home === '') {
-    throw new Error('the conversation guest needs HOME');
-  }
-  return home;
 }
 
 // the variables the guest passes on from its own environment when they are set: the broker's
@@ -103,7 +106,7 @@ function buildQueryEnv(
   return {
     ...passed,
     HOME: home,
-    CLAUDE_CONFIG_DIR: join(home, '.claude'),
+    CLAUDE_CONFIG_DIR: getConfigDir(home),
     [credentialVariable]: placeholder,
     ANTHROPIC_BASE_URL: turn.profile.baseURL,
     ANTHROPIC_MODEL: turn.profile.model,
@@ -112,11 +115,6 @@ function buildQueryEnv(
     ANTHROPIC_SMALL_FAST_MODEL: turn.profile.model,
     ANTHROPIC_DEFAULT_HAIKU_MODEL: turn.profile.model,
     CLAUDE_CODE_EFFORT_LEVEL: turn.profile.effort,
-
-    // the window the CLI auto-compacts within; unset, it compacts near the model's own window
-    ...(turn.profile.contextTokens === null
-      ? {}
-      : { CLAUDE_CODE_AUTO_COMPACT_WINDOW: String(turn.profile.contextTokens) }),
 
     // keeps the CLI to the model API's host, the one host its grant covers
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',

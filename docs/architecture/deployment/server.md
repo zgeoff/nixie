@@ -44,8 +44,8 @@ flowchart LR
   L["load config,<br>secrets, manifest"] --> W["writer: lock, epoch,<br>copy, migrate"]
   W --> H["health endpoint,<br>API, control socket"]
   H --> S0["first seed,<br>if none in force"]
-  S0 --> R["recovery"] --> I["add images"] --> M["memory"] --> C["conversation imp"]
-  C --> S["seed"] --> RU["runners claim work"] --> Y["ready"]
+  S0 --> R["recovery"] --> I["add images"] --> C["conversation imp"] --> M["memory"]
+  M --> S["seed"] --> RU["runners claim work"] --> Y["ready"]
 ```
 
 Every record carries the snapshot hash of the definitions in force
@@ -57,15 +57,17 @@ every sandbox whose owner no longer runs, and keeps the conversation's sandbox, 
 ends, and the memory checker's, which the deployment owns.
 
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
-that creates a sandbox on an image impd lacks would fail. The memory checker then starts on the
-conversation image ([the checker](../memory/writes.md#the-checker)), and the memory store starts
-behind it, so every forget that a crash left pending completes before any runner claims work
-([forgetting](../memory/store.md#forgetting)). The conversation imp then starts on its image from
-the manifest, and the sandbox adapter replaces its sandbox when the image or the model profile
-changed. The seed runs after the conversation imp, so a release's new definitions apply to the turns
-it runs. Only then do the runners claim work.
+that creates a sandbox on an image impd lacks would fail. The conversation imp then starts on its
+image from the manifest, and the sandbox adapter replaces its sandbox when the image or the model
+profile changed. The memory checker starts next on the conversation image
+([the checker](../memory/writes.md#the-checker)), and the memory store starts behind it. The store
+starts after the conversation imp, because a forget cleans up the conversation's sessions through
+it, and before any runner claims work, so every forget that a crash left pending completes before a
+turn can read the item ([forgetting](../memory/store.md#forgetting)). The seed runs after the memory
+store, so a release's new definitions apply to the turns it runs. Only then do the runners claim
+work.
 
-The first seed, recovery, adding the images, the memory store and starting the conversation imp each
+The first seed, recovery, adding the images, starting the conversation imp and the memory store each
 wait and run again when they fail, with a log line per attempt. nixie therefore stays live and
 unready while impd is down or the definitions refuse to seed, and the container runtime sees why in
 the readiness report instead of a restart loop. Any other failure in the sequence logs the error and

@@ -45,7 +45,7 @@ async function setupTest() {
   };
 }
 
-test('it gives every query() nixie tools alone and no settings, skills or memory', async () => {
+test('it gives every query() nixie tools alone, no settings, skills or SDK memory, and pinned compaction', async () => {
   const ctx = await setupTest();
 
   ctx.model.addReplies(
@@ -66,9 +66,17 @@ test('it gives every query() nixie tools alone and no settings, skills or memory
       strictMcpConfig: true,
       skills: [],
       verbatimPrompts: true,
-      settings: { disableBundledSkills: true, autoMemoryEnabled: false, autoDreamEnabled: false },
+      settings: {
+        disableBundledSkills: true,
+        autoMemoryEnabled: false,
+        autoDreamEnabled: false,
+        autoCompactEnabled: true,
+        autoCompactWindow: 200_000,
+        precomputeCompactionEnabled: false,
+        idleCompaction: false,
+      },
       mcpServers: { nixie: ctx.tools.config },
-      systemPrompt: 'You are nixie.',
+      systemPrompt: { type: 'custom', prompt: 'You are nixie.', snapshot: false },
       cwd: join(ctx.home, 'conversation'),
       env: expect.toBeObject(),
     },
@@ -359,6 +367,78 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
   expect(messages).toInclude('APPLE');
   expect(messages).not.toInclude('BANANA');
   expect(rerun.sessionID).not.toBe(first.sessionID);
+});
+
+test('it sends the system prompt of each turn on a resumed session, not the one the session began with', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+  await runTurn(
+    buildMockTurnFrame({ profile: { baseURL: ctx.model.url }, systemPrompt: 'You are nixie.' }),
+    { ...ctx.deps, toolServer: buildStubToolServer().config },
+  );
+
+  const first = ctx.frames.at(-1);
+
+  if (first?.type !== 'ended') {
+    throw new Error('the first turn did not end');
+  }
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      resume: first.boundary,
+      systemPrompt: 'You are nixie. Pinned: the spare key sits under the blue flowerpot.',
+    }),
+    { ...ctx.deps, toolServer: buildStubToolServer().config },
+  );
+
+  const system = JSON.stringify(ctx.model.requests.at(-1)?.body?.system);
+
+  expect(system).toInclude('Pinned: the spare key sits under the blue flowerpot.');
+});
+
+test('it reports an automatic compaction with its token counts and no summary text', async () => {
+  const ctx = await setupTest();
+  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
+    await runTurn(
+      buildMockTurnFrame({
+        profile: { baseURL: ctx.model.url, contextTokens: 100_000 },
+        resume,
+        input: [{ uuid: crypto.randomUUID(), text }],
+      }),
+      { ...ctx.deps, toolServer: buildStubToolServer().config },
+    );
+    const last = ctx.frames.at(-1);
+
+    if (last?.type !== 'ended') {
+      throw new Error('the turn did not end');
+    }
+    return last.boundary;
+  };
+
+  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+
+  const first = await runTurnAt('one', null);
+  const second = await runTurnAt('two', first);
+
+  // the tool call reports a context past the window, so the CLI compacts before its next call,
+  // and the summary request takes the second reply
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'a' } }, inputTokens: 150_000 },
+    { text: 'SUMMARY: the owner said one and two.' },
+    { text: 'CHERRY' },
+  );
+  await runTurnAt('three', second);
+
+  expect(ctx.frames.filter((frame) => frame.type === 'compacted')).toStrictEqual([
+    {
+      type: 'compacted',
+      trigger: 'auto',
+      preTokens: expect.toBeWithin(150_000, 160_000),
+      postTokens: expect.toBeNumber(),
+    },
+  ]);
+  expect(JSON.stringify(ctx.frames)).not.toInclude('SUMMARY');
 });
 
 test('it reports a session to resume that is not on the guest disk as missing', async () => {

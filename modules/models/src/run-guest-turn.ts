@@ -16,6 +16,7 @@ export interface GuestCommand {
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 type AssistantFrame = Extract<GuestFrame, { type: 'assistant' }>;
 type EndedFrame = Extract<GuestFrame, { type: 'ended' }>;
+type CompactedFrame = Extract<GuestFrame, { type: 'compacted' }>;
 type FailedFrame = Extract<GuestFrame, { type: 'failed' }>;
 
 export interface GuestTurnSpec {
@@ -31,11 +32,13 @@ export interface GuestTurnSpec {
 }
 
 // What the guest reported for one turn: each assistant message, the uuids of the inbox messages
-// the model read, each model turn that ended at a result, and the failure that stopped it.
+// the model read, each model turn that ended at a result, each compaction, and the failure that
+// stopped it.
 export interface GuestTurn {
   readonly assistants: readonly AssistantFrame[];
   readonly read: readonly string[];
   readonly ended: readonly EndedFrame[];
+  readonly compactions: readonly CompactedFrame[];
   readonly failure: FailedFrame | null;
 }
 
@@ -49,12 +52,11 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
     env: spec.command.env,
     maxMessageBytes: turnFrameLimitBytes,
   });
-  const stopStream = () => {
-    void stream.stop();
-  };
+  const unsubscribe = subscribeToAbort(spec.signal, stream);
 
-  spec.signal.addEventListener('abort', stopStream, { once: true });
   try {
+    // a signal that aborted while the guest started never fires its listener
+    spec.signal.throwIfAborted();
     await stream.send(encodeTurnFrame(spec.turn));
     void sendMessages(stream, spec.messages);
     return await collectTurn(stream);
@@ -62,8 +64,21 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
     await stream.stop();
     throw error;
   } finally {
-    spec.signal.removeEventListener('abort', stopStream);
+    unsubscribe();
   }
+}
+
+// stops the guest when the signal aborts, until the returned function detaches it
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
+function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
+  const stopStream = () => {
+    void stream.stop();
+  };
+
+  signal.addEventListener('abort', stopStream, { once: true });
+  return () => {
+    signal.removeEventListener('abort', stopStream);
+  };
 }
 
 type LiveMessages = GuestTurnSpec['messages'];
@@ -80,14 +95,15 @@ async function sendMessages(stream: ExecStream, messages: LiveMessages): Promise
   }
 }
 
-// the turn as collectTurn fills it in, frame by frame, with the count of assistant frames and read
-// uuids that came before its last ended frame
+// the turn as collectTurn fills it in, frame by frame, with the count of assistant frames, read
+// uuids and compactions that came before its last ended frame
 interface MutableTurn {
   readonly assistants: AssistantFrame[];
   readonly read: string[];
   readonly ended: EndedFrame[];
+  readonly compactions: CompactedFrame[];
   failure: FailedFrame | null;
-  settled: { readonly assistants: number; readonly read: number };
+  settled: { readonly assistants: number; readonly read: number; readonly compactions: number };
 }
 
 // Only the frames up to the last ended frame count, because the next turn resumes at that frame's
@@ -99,8 +115,9 @@ async function collectTurn(stream: ExecStream): Promise<GuestTurn> {
     assistants: [],
     read: [],
     ended: [],
+    compactions: [],
     failure: null,
-    settled: { assistants: 0, read: 0 },
+    settled: { assistants: 0, read: 0, compactions: 0 },
   };
 
   for await (const message of stream.messages) {
@@ -113,6 +130,7 @@ async function collectTurn(stream: ExecStream): Promise<GuestTurn> {
     assistants: turn.assistants.slice(0, turn.settled.assistants),
     read: turn.read.slice(0, turn.settled.read),
     ended: turn.ended,
+    compactions: turn.compactions.slice(0, turn.settled.compactions),
     failure: turn.failure,
   };
 }
@@ -125,9 +143,17 @@ function updateTurn(turn: MutableTurn, frame: GuestFrame): void {
     turn.read.push(...frame.uuids);
   } else if (frame.type === 'ended') {
     turn.ended.push(frame);
-    turn.settled = { assistants: turn.assistants.length, read: turn.read.length };
-  } else {
+    turn.settled = {
+      assistants: turn.assistants.length,
+      read: turn.read.length,
+      compactions: turn.compactions.length,
+    };
+  } else if (frame.type === 'compacted') {
+    turn.compactions.push(frame);
+  } else if (frame.type === 'failed') {
     turn.failure = frame;
+  } else {
+    throw new Error('the conversation guest reported a purge during a turn');
   }
 }
 

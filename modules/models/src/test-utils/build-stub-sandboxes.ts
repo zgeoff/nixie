@@ -31,8 +31,14 @@ export interface StubSandboxes {
   // every turn frame the guests received, in order
   readonly turns: readonly TurnFrame[];
 
+  // the ID of the sandbox each purge frame reached, in order
+  readonly purged: readonly string[];
+
   // sets how the guest of each later spawn answers its turn
   readonly setGuestScript: (script: StubGuestScript) => void;
+
+  // sets the frames the guest of each later spawn answers a purge frame with, purged by default
+  readonly setPurgeAnswer: (frames: readonly GuestFrame[]) => void;
 }
 
 // The stub guest's script until a test sets one: it reads every inbox message, answers Hello. and
@@ -61,19 +67,12 @@ export function buildStubSandboxes(): StubSandboxes {
     created: [] as SandboxSpec[],
     destroyed: [] as string[],
     turns: [] as TurnFrame[],
+    purged: [] as string[],
     sandboxes: [] as Sandbox[],
     script: buildHelloTurn as StubGuestScript,
+    purgeAnswer: [{ type: 'purged' }] as readonly GuestFrame[],
   };
-  const buildSandbox = (spec: SandboxSpec): Sandbox =>
-    buildStubSandbox(spec, {
-      onTurn: (turn, guest) => {
-        state.turns.push(turn);
-        return state.script(turn, guest);
-      },
-      onDestroy: (id) => {
-        state.destroyed.push(id);
-      },
-    });
+  const buildSandbox = (spec: SandboxSpec): Sandbox => buildStubSandbox(spec, buildHooks(state));
 
   return {
     adapter: {
@@ -99,8 +98,12 @@ export function buildStubSandboxes(): StubSandboxes {
     created: state.created,
     destroyed: state.destroyed,
     turns: state.turns,
+    purged: state.purged,
     setGuestScript: (script) => {
       state.script = script;
+    },
+    setPurgeAnswer: (frames) => {
+      state.purgeAnswer = frames;
     },
   };
 }
@@ -108,6 +111,32 @@ export function buildStubSandboxes(): StubSandboxes {
 interface StubSandboxState {
   readonly sandboxes: readonly Sandbox[];
   readonly destroyed: readonly string[];
+}
+
+interface RecordingState {
+  readonly turns: TurnFrame[];
+  readonly destroyed: string[];
+  readonly purged: string[];
+  readonly script: StubGuestScript;
+  readonly purgeAnswer: readonly GuestFrame[];
+}
+
+// each sandbox records what reaches it in the stub's state, and runs the script set at the time
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the stub's own state, which the hooks fill in
+function buildHooks(state: RecordingState): StubSandboxHooks {
+  return {
+    onTurn: (turn, guest) => {
+      state.turns.push(turn);
+      return state.script(turn, guest);
+    },
+    onDestroy: (id) => {
+      state.destroyed.push(id);
+    },
+    onPurge: (id) => {
+      state.purged.push(id);
+      return state.purgeAnswer;
+    },
+  };
 }
 
 function findLive(
@@ -122,6 +151,7 @@ function findLive(
 interface StubSandboxHooks {
   readonly onTurn: StubGuestScript;
   readonly onDestroy: (id: string) => void;
+  readonly onPurge: (id: string) => readonly GuestFrame[];
 }
 
 // the stub runs the guest and nothing else
@@ -136,7 +166,13 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
     id,
     spec,
     exec: requireSpawnOnly,
-    spawn: () => Promise.resolve(startStubGuest(hooks.onTurn)),
+    spawn: () =>
+      Promise.resolve(
+        startStubGuest({
+          onTurn: hooks.onTurn,
+          onPurge: () => hooks.onPurge(id),
+        }),
+      ),
     copyIn: requireSpawnOnly,
     copyOut: requireSpawnOnly,
     toolRoute: () => Promise.resolve({ url: 'http://127.0.0.1:8901' }),
@@ -150,7 +186,14 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
 
 const noStderr = { bytes: new Uint8Array(0), totalBytes: 0, isCut: false };
 
-function startStubGuest(onTurn: StubGuestScript): ExecStream {
+interface StubGuestHooks {
+  readonly onTurn: StubGuestScript;
+  readonly onPurge: () => readonly GuestFrame[];
+}
+
+// the stub guest answers a turn frame with its script, and a purge frame as the guest does once it
+// has removed its session state
+function startStubGuest(hooks: StubGuestHooks): ExecStream {
   const output = new TransformStream<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>();
   const writer = output.writable.getWriter();
   const exit = Promise.withResolvers<StreamExit>();
@@ -159,8 +202,8 @@ function startStubGuest(onTurn: StubGuestScript): ExecStream {
     await writer.close().catch(() => {});
     exit.resolve(ended);
   };
-  const runScript = async (turn: TurnFrame) => {
-    const frames = await onTurn(turn, { waitForMessage: inbox.wait });
+  const runScript = async (first: Exclude<HostFrame, { type: 'message' }>) => {
+    const frames = await runFirstFrame(hooks, first, { waitForMessage: inbox.wait });
 
     for (const frame of frames) {
       // oxlint-disable-next-line no-await-in-loop -- frames reach the host in order
@@ -187,6 +230,17 @@ function startStubGuest(onTurn: StubGuestScript): ExecStream {
       return exit.promise;
     },
   };
+}
+
+function runFirstFrame(
+  hooks: StubGuestHooks,
+  first: Exclude<HostFrame, { type: 'message' }>,
+  guest: StubGuest,
+): Promise<readonly GuestFrame[]> | readonly GuestFrame[] {
+  if (first.type === 'purge') {
+    return hooks.onPurge();
+  }
+  return hooks.onTurn(first, guest);
 }
 
 function buildMessageQueue(): {

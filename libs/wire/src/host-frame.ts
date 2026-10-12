@@ -56,8 +56,16 @@ const messageFrameSchema = z
   })
   .readonly();
 
+// removes the guest's session state, every transcript and fork, once a forget invalidated it
+const purgeFrameSchema = z.object({ type: z.literal('purge') }).readonly();
+
 // What the host sends the conversation guest. A turn starts one model turn, which resumes at the
 // session boundary when there is one. A message reaches the running turn at its next tool boundary.
-export const hostFrameSchema = z.discriminatedUnion('type', [turnFrameSchema, messageFrameSchema]);
+// A purge, sent in place of a turn, removes the session state and runs no model.
+export const hostFrameSchema = z.discriminatedUnion('type', [
+  turnFrameSchema,
+  messageFrameSchema,
+  purgeFrameSchema,
+]);
 
 export type HostFrame = z.infer<typeof hostFrameSchema>;

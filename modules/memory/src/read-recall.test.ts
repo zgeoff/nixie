@@ -39,6 +39,84 @@ test('it returns the items that match a query word for word, with their provenan
   });
 });
 
+test('it leaves pinned items out of a query when asked', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Goes by Sam, and the spare key is with Sam',
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const unpinned = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const result = await ctx.memory.store.recall({
+    query: 'spare key',
+    limit: 1,
+    excludePinned: true,
+  });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([unpinned.itemID]);
+});
+
+test('it finds an unpinned match when more pinned matches rank first than recall ranks at most', async () => {
+  const ctx = await setupTest();
+
+  // 101 short pinned items, each ranking above the longer unpinned one
+  await Promise.all(
+    Array.from({ length: 101 }, (_, index) =>
+      ctx.memory.store.remember({
+        text: `Spare key ${index}`,
+        isPinned: true,
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      }),
+    ),
+  );
+
+  const unpinned = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot by the door',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const result = await ctx.memory.store.recall({
+    query: 'spare key',
+    limit: 1,
+    excludePinned: true,
+  });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([unpinned.itemID]);
+});
+
+test('it leaves out a match below the score floor', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const flowerpot = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance,
+  });
+
+  await ctx.memory.store.remember({ text: 'The dentist is on Tuesday at nine', provenance });
+  await ctx.memory.store.remember({ text: 'The library closes at six on Sundays', provenance });
+  await ctx.memory.store.remember({ text: 'Allergic to hazelnuts and the cat', provenance });
+
+  const result = await ctx.memory.store.recall({ query: 'the flowerpot', minScore: 0.25 });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([flowerpot.itemID]);
+});
+
 test('it matches a query word through its stem', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

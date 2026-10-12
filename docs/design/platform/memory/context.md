@@ -23,26 +23,15 @@ Each turn's prompt runs from the most stable part to the least, so the prompt ca
 3. **The newest turn:** the task's inbox records, the dashboard data for the conversation, and the
    retrieved items.
 
-nixie runs the SDK with `settingSources: []` and passes its own settings through the `settings`
-option of `query()`. Those settings switch the SDK's own memory off with `autoMemoryEnabled: false`
-and `autoDreamEnabled: false`, and a test asserts that every `query()` passes both. **Why:** the
-SDK's auto-memory would make a second memory store with no provenance and no review.
+[Conversation turns](../../../architecture/core/conversation-turns.md#what-a-query-holds) covers the
+settings that switch the SDK's own memory off on every query.
 
 ## The pinned core
 
-The pinned core is the set of items you pin, such as your name and pronouns. nixie renders it into
-the system prompt as a list of items, each with its ID, in pin order. Its budget is 2,000 tokens by
-default and configurable, and pinning past it asks you to unpin something first. **Why:** the core
-rides in the cached prefix of every turn of every task, and every change to it costs one cache write
-per live session.
-
-nixie sets `snapshot: false` on every session and builds the system prompt on each `query()` from
-the task's persona version and the current core. On the turn after the core changes, nixie also puts
-a short change note before your message that states the changed items, at about 30 tokens per
-change. **Why:** the SDK otherwise keeps a session's first system prompt until it compacts, and a
-pinned or edited item must reach the conversation on its next turn. A model can still repeat the old
-value from its own earlier turns, which the note stops. An unchanged core renders the same bytes, so
-the cache holds. The [pinned core spike](../spikes/sdk-pinned-core/README.md) is the evidence.
+The pinned core is built for the conversation, and
+[memory in context](../../../architecture/memory/context.md#the-pinned-core) covers its rendering,
+its budget and the change note. The [pinned core spike](../spikes/sdk-pinned-core/README.md) is the
+evidence for rendering it with the SDK's snapshot off.
 
 ## Retrieval
 
@@ -85,12 +74,11 @@ own words.
 
 ### Per-turn retrieval
 
-Before each turn, nixie searches with the text of your new messages, or with the task's brief on its
-first turn. It places up to 5 memory items and up to 3 past messages above a score floor in the
-newest turn, all 3 numbers configurable. Each entry carries its ID, version or record sequence,
-source and date, inside a block that labels them as stored items, not instructions. Pinned items and
-messages already in the session stay out. The turn's record lists each item and version it placed,
-as references, not text. Per-turn retrieval never places a moment's title, note or reflection, as
+Per-turn retrieval of memory items is built for the conversation, with keyword search only, as
+[memory in context](../../../architecture/memory/context.md#per-turn-retrieval) covers. The design
+adds 3 things to it. On a task's first turn, the search uses the task's brief. Up to 3 past messages
+above the score floor join the items, with past messages already in the session left out. Per-turn
+retrieval never places a moment's title, note or reflection, as
 [moments](moments.md#reading-moments-back) sets out.
 
 ### The recall tools
@@ -105,25 +93,16 @@ memory is current; the state and version checks decide that.
 
 ## Compaction
 
-The SDK compacts a session when its context fills, and nixie keeps that behaviour:
+The SDK compacts a session when its context fills, and
+[conversation turns](../../../architecture/core/conversation-turns.md#compaction) covers the
+controls nixie sets and the record of each compaction's token counts. The design adds the summary
+record.
 
-| Control                       | Kind         | Setting                                 |
-| ----------------------------- | ------------ | --------------------------------------- |
-| `autoCompactEnabled`          | Setting      | On                                      |
-| `autoCompactWindow`           | Setting      | 200,000 tokens by default, configurable |
-| `idleCompaction`              | Setting      | Off                                     |
-| `precomputeCompactionEnabled` | Setting      | Off                                     |
-| `PostCompact` hook            | Hook         | Records the summary                     |
-| `compact_boundary` message    | Stream event | Records tokens before and after         |
-
-Idle and precomputed compaction stay off. **Why:** a step's commit records the session's last entry
-as the point that [crash recovery](../core/tasks.md) resumes at, so the session changes only inside
-a step that holds the task's lease.
-
-nixie writes each summary as a `session_compacted` record, encrypted under its own record key, and
-the live view shows it. The summary never becomes memory, and retrieval never searches summaries.
-**Why:** the model wrote the summary from an untrusted conversation, and retrieving it would launder
-that text. A forget deletes the key of every stored summary as part of its operation.
+nixie writes each summary as a `session_compacted` record from the `PostCompact` hook, encrypted
+under its own record key, and the live view shows it. The summary never becomes memory, and
+retrieval never searches summaries. **Why:** the model wrote the summary from an untrusted
+conversation, and retrieving it would launder that text. A forget deletes the key of every stored
+summary as part of its operation.
 
 ## The SDK transcript
 
@@ -141,36 +120,30 @@ failure, and it would need a write route from every imp to the host.
 
 ### Rebuilding a session
 
-A rebuild starts a new session from the log. Its first turn carries:
+The conversation's rebuild is built, as
+[conversation turns](../../../architecture/core/conversation-turns.md#rebuilding-a-session) covers:
+its first turn carries the recent turns word for word and the unread inbox. The design adds to that
+first turn:
 
-- the task's brief;
-- the thread's recent turns word for word, up to 30,000 tokens by default;
-- the latest readable compaction summary from before those turns, if one exists;
-- the unread inbox, and the canonical state of pending proposals, approvals and action outcomes.
+- the task's brief, for a task that has one;
+- the latest readable compaction summary from before the recent turns, if one exists;
+- the canonical state of pending proposals, approvals and action outcomes.
 
-A rebuild restores application continuity, not an identical SDK session. Context older than the
-recent turns reaches the new session only through a summary or recall. Proposals, approvals and
-outcomes come from canonical task state, never from summary text, and a rebuild never infers that an
-unknown action succeeded. The live view marks the rebuild in the thread.
+Proposals, approvals and outcomes come from canonical task state, never from summary text, and a
+rebuild never infers that an unknown action succeeded. The live view marks the rebuild in the
+thread.
 
 ### Forgetting and the live session
 
-A forgotten item or record can sit in a live session's context. Each forget therefore marks every
-live session for rebuild, and each task rebuilds before its next step. A request already sent to the
-model provider keeps the text it received, and the forget confirmation shows that limit.
+A forgotten item can sit in a live session's context, and
+[memory in context](../../../architecture/memory/context.md#forgetting-and-the-live-session) covers
+how a forget cleans up the conversation's session. The design extends the same cleanup to every task
+that runs a session, and to a forgotten record as well as a forgotten item. The forget confirmation
+shows that a request already sent to the model provider keeps the text it received.
 
 ### Removing invalid transcript copies
 
-Each task keeps its SDK state in a directory reserved for it, with no other files. Forget cleans up
-each invalid session in order:
-
-1. It commits a `session_invalidated` record per task, which blocks every query and resume from that
-   session.
-2. The runner aborts any active query, marks the step interrupted, and waits for the SDK process to
-   exit. A shutdown timeout replaces the imp.
-3. nixie deletes the task's state directory, checks that it is gone, and records
-   `session_cleanup_completed`.
-
-The task then starts a fresh session from the log. The forget stays pending until every cleanup
-completes, and startup resumes pending cleanups before any affected task runs. Actions keep their
-canonical outcomes and never repeat because a query stopped.
+Each task keeps its SDK state in a directory reserved for it, with no other files, and a forget
+removes it in the order the conversation's cleanup follows. The forget stays pending until every
+task's cleanup completes, and startup resumes pending cleanups before any affected task runs.
+Actions keep their canonical outcomes and never repeat because a query stopped.

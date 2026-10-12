@@ -53,6 +53,12 @@ export async function startTestConversation(
     image: 'nixie-conversation-0123456789ab',
     getSystemPrompt: () => 'You are nixie.',
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
+
+    // a memory with no pinned items that recalls nothing, so a turn places no memory
+    memory: () => ({
+      readPinnedCore: () => Promise.resolve([]),
+      recall: () => Promise.resolve({ items: [], next: null }),
+    }),
   });
 
   server.defer(() => runner.stop());

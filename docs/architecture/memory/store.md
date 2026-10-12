@@ -11,8 +11,7 @@ through one interface whose verbs are recall, remember, retire, restore, undo, p
 [The event log](../core/event-log.md) covers the records memory appends, and
 [erasable fields](../core/erasable-fields.md) covers the key store that holds each item's key.
 [Memory writes](./writes.md) covers the checks a model write passes and the proposals it becomes,
-and the [memory in context](../../design/platform/memory/context.md) design covers how memory
-reaches the conversation.
+and [memory in context](./context.md) covers how memory reaches the conversation.
 
 ## Items and versions
 
@@ -67,7 +66,8 @@ transaction makes.
   binds to the version it undoes, so an undo after a later edit fails as stale instead of discarding
   that edit. An undo of a first version retires the item, because no earlier text exists.
 - **Pin** changes where the item shows and not its text, so it appends a record and adds no version.
-  Only an active item can be pinned.
+  Only an active item can be pinned. A pin, or an edit of a pinned item, fails when it would take
+  the pinned core past its budget ([the pinned core](./context.md#the-pinned-core)).
 
 ## Keys
 
@@ -109,7 +109,12 @@ full-text index keeps forgotten words after their key is gone, as the
 from the readable active items. A version's record is the index's invalidation record: after the
 record commits, still under the delivery lock, the store replaces the item's entry with its current
 text or drops an item that left the active state. A query matches any of its words, and the store
-quotes each word, so no character a caller sends reads as FTS5 syntax.
+quotes each word, so no character a caller sends reads as FTS5 syntax. A query can also set a score
+floor, which drops each match whose BM25 score falls below it, and can leave pinned items out. BM25
+gives no weight to a word that half the items hold, so in an index of 1 or 2 items every match
+scores about zero, and the store applies the floor only once the index holds 3 items.
+[Per-turn retrieval](./context.md#per-turn-retrieval) uses both, so a word that half the items share
+places nothing.
 
 ### The delivery lock
 
@@ -140,10 +145,9 @@ describes, so neither the key store file nor its write-ahead log keeps the wrapp
 rows and their records stay as ciphertext, and the memory view reads every version of a forgotten
 item as a gap with its date and provenance.
 
-With no key backup registered, a forget completes after local cleanup. No live session reads memory,
-so the session cleanup that the server passes in removes nothing, and the
-[memory in context](../../design/platform/memory/context.md#removing-invalid-transcript-copies)
-design sets what that cleanup does once a session does.
+With no key backup registered, a forget completes after local cleanup. The session cleanup is the
+one the server passes in from the conversation, and
+[memory in context](./context.md#forgetting-and-the-live-session) covers what it removes.
 
 ## The model's tools
 

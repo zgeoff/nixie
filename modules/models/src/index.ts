@@ -1,4 +1,5 @@
 export { buildModelGrant } from './build-model-grant';
+export { countTextTokens } from './count-text-tokens';
 export { decodeInboxUUID } from './decode-inbox-uuid';
 export { deriveModelSecret } from './derive-model-secret';
 export { encodeInboxUUID } from './encode-inbox-uuid';
@@ -24,6 +25,8 @@ export type {
   CheckerAnswer,
   CheckerRequest,
   CheckerVerdict,
+  ConversationMemory,
+  ConversationMemorySettings,
   ModelPrices,
   ModelProfile,
   ModelRole,

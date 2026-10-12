@@ -39,5 +39,11 @@ export function startTestConversation(
     toolNames: tools.toolNames,
     image: 'nixie-conversation-test',
     getSystemPrompt: () => 'You are nixie.',
+
+    // the crash tests hold no memory, so each turn reads an empty core and recalls nothing
+    memory: () => ({
+      readPinnedCore: () => Promise.resolve([]),
+      recall: () => Promise.resolve({ items: [], next: null }),
+    }),
   });
 }

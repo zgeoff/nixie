@@ -14,24 +14,38 @@ import type {
 
 export interface ReadRecordsOptions {
   readonly afterSequence: number;
+
+  // only records before this sequence, so a newest-first read pages back
+  readonly beforeSequence?: number;
   readonly limit?: number;
   readonly thread?: string;
+
+  // only records of these kinds
+  readonly kinds?: readonly string[];
+
+  // newest reads the latest records first, so a limit keeps the most recent ones
+  readonly order?: 'oldest' | 'newest';
 }
 
-// Reads the records after a sequence, oldest first, each with the projection rows its transaction
-// changed. One writer means the sequence grows in commit order, so a reader misses none. A record
+// Reads the records after a sequence, oldest first unless asked for the newest, each with the
+// projection rows its transaction changed. One writer means the sequence grows in commit order, so a reader misses none. A record
 // that fails to decrypt reads as unreadable, so it never stops a reader at its sequence.
 export async function readRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   options: ReadRecordsOptions,
 ): Promise<readonly RecordWithChanges[]> {
   const db = log.writer.db.$extendTables<LogTables>();
+  const direction = options.order === 'newest' ? 'desc' : 'asc';
   const rows = await db
     .selectFrom('records')
     .selectAll()
     .where('sequence', '>', options.afterSequence)
+    .$if(options.beforeSequence !== undefined, (query) =>
+      query.where('sequence', '<', options.beforeSequence ?? 0),
+    )
     .$if(options.thread !== undefined, (query) => query.where('thread', '=', options.thread ?? ''))
-    .orderBy('sequence')
+    .$if(options.kinds !== undefined, (query) => query.where('kind', 'in', options.kinds ?? []))
+    .orderBy('sequence', direction)
     .limit(options.limit ?? DEFAULT_LIMIT)
     .execute();
 

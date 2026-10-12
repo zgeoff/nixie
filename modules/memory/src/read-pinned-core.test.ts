@@ -1,0 +1,92 @@
+import { expect, test } from 'bun:test';
+import { startFaultPointHold } from './test-utils/start-fault-point-hold';
+import { startTestMemory } from './test-utils/start-test-memory';
+
+async function setupTest() {
+  return { memory: await startTestMemory() };
+}
+
+test('it reads every pinned active item in the order you pinned them', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const name = await ctx.memory.store.remember({ text: 'Goes by Sam', provenance });
+  const pronouns = await ctx.memory.store.remember({ text: 'Uses they/them', provenance });
+
+  await ctx.memory.store.remember({ text: 'Allergic to hazelnuts', provenance });
+  await ctx.memory.store.pin({ itemID: pronouns.itemID, isPinned: true, provenance });
+  await ctx.memory.store.pin({ itemID: name.itemID, isPinned: true, provenance });
+
+  const core = await ctx.memory.store.readPinnedCore();
+
+  expect(core).toStrictEqual([
+    {
+      itemID: pronouns.itemID,
+      version: 1,
+      change: 'created',
+      state: 'active',
+      isPinned: true,
+      origin: 'owner',
+      source: 'owner',
+      recordedAt: expect.toBeNumber(),
+      text: 'Uses they/them',
+    },
+    {
+      itemID: name.itemID,
+      version: 1,
+      change: 'created',
+      state: 'active',
+      isPinned: true,
+      origin: 'owner',
+      source: 'owner',
+      recordedAt: expect.toBeNumber(),
+      text: 'Goes by Sam',
+    },
+  ]);
+});
+
+test('it reads the current text of a pinned item that was edited', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const item = await ctx.memory.store.remember({ text: 'Goes by Sam', isPinned: true, provenance });
+
+  await ctx.memory.store.remember({ text: 'Goes by Sasha', target: item, provenance });
+
+  const core = await ctx.memory.store.readPinnedCore();
+
+  expect(core.map((pinned) => pinned.text)).toStrictEqual(['Goes by Sasha']);
+});
+
+test('it never reads an item that a forget began', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const item = await ctx.memory.store.remember({ text: 'Goes by Sam', isPinned: true, provenance });
+  const hold = startFaultPointHold('memory.forget.key_removed');
+  const forget = ctx.memory.store.forget({ target: item, provenance });
+
+  await hold.reached;
+
+  const core = await ctx.memory.store.readPinnedCore();
+
+  hold.release();
+  await forget;
+
+  expect(core).toStrictEqual([]);
+});
