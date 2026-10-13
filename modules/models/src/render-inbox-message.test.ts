@@ -104,3 +104,30 @@ test('it renders an action outcome', () => {
     }),
   ).toBe('An action settled: {"actionID":"a-1"}');
 });
+
+test('it renders a span you dropped in your message inside a dropped block', () => {
+  const record = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-13T13:05:00Z'),
+    payload: { timeZone: 'Europe/London' },
+    erasable: {
+      status: 'readable',
+      fields: {
+        text: 'Read notes.txt',
+        spans: [
+          { start: 0, end: 5, source: 'typed' },
+          { start: 5, end: 14, source: 'dropped' },
+        ],
+      },
+    },
+  });
+  const message = renderInboxMessage(record, {
+    defaultZone: 'Australia/Sydney',
+    now: new Date('2026-10-13T15:00:00Z'),
+  });
+  const blockID = /<dropped id="(?<blockID>\w+)">/u.exec(message)?.groups?.['blockID'];
+
+  expect(message).toBe(
+    `[Tue 13 Oct, 14:05, London] Read <dropped id="${blockID}">notes.txt</dropped id="${blockID}">`,
+  );
+});

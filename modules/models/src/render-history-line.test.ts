@@ -62,3 +62,30 @@ test('it renders a note in place of a reply whose text was forgotten', () => {
     }),
   ).toBe('[2026-10-12 10:32 UTC] nixie: [a reply, since forgotten]');
 });
+
+test('it renders a span you pasted in your message inside a pasted block', () => {
+  const record = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-12T10:31:05Z'),
+    payload: { timeZone: 'Asia/Tokyo' },
+    erasable: {
+      status: 'readable',
+      fields: {
+        text: 'See: Call Sam.',
+        spans: [
+          { start: 0, end: 5, source: 'typed' },
+          { start: 5, end: 14, source: 'pasted' },
+        ],
+      },
+    },
+  });
+  const line = renderHistoryLine(record, {
+    defaultZone: 'Australia/Sydney',
+    now: new Date('2026-10-13T05:00:00Z'),
+  });
+  const blockID = /<pasted id="(?<blockID>\w+)">/u.exec(line)?.groups?.['blockID'];
+
+  expect(line).toBe(
+    `[Mon 12 Oct, 19:31, Tokyo] owner: See: <pasted id="${blockID}">Call Sam.</pasted id="${blockID}">`,
+  );
+});

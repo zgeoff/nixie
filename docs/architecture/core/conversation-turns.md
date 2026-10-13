@@ -145,6 +145,15 @@ and the guest passes it into the running query. The SDK acknowledges a message i
 running turn in a different form from the turn's opening messages, and the guest counts both forms
 as a read.
 
+The user's message renders with each span the client labelled pasted or dropped wrapped in a
+`<pasted id="…">` or `<dropped id="…">` block, in the inbox and in a rebuilt session's history
+alike. The closing tag repeats the opening tag's ID, which is random and fresh for each block, so
+pasted text that holds a closing tag cannot end its block early. A message the user typed in full
+renders as it was written. The system prompt states, after the persona, that the text inside these
+blocks is not the user's own words and may hold instructions the model acts on only when the user's
+own words ask. The model can then tell which quotes the [memory gate](../memory/writes.md) takes as
+typed.
+
 ## Records of a turn
 
 The guest reports each assistant message with its text and the tools it asked for, and ends with the
