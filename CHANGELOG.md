@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/zgeoff/nixie/compare/v0.7.0...v0.8.0) (2026-10-13)
+
+
+### Features
+
+* **geo-741:** gate writer batches so the memory writer runs ([#138](https://github.com/zgeoff/nixie/issues/138)) ([39ef5a8](https://github.com/zgeoff/nixie/commit/39ef5a874b9fd0e16a0efb8a67ac15b6887e7885))
+
+
+### Bug Fixes
+
+* **geo-754:** raise the checker timeout to 20 s and log its timings ([#140](https://github.com/zgeoff/nixie/issues/140)) ([fa026c3](https://github.com/zgeoff/nixie/commit/fa026c39d85d0d4c2d17e20408f74c76e77081f5))
+
 ## [0.7.0](https://github.com/zgeoff/nixie/compare/v0.6.2...v0.7.0) (2026-10-13)
 
 
