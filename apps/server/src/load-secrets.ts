@@ -14,6 +14,9 @@ export interface Secrets {
   readonly deploymentKey: CryptoKey;
   readonly impdToken: string;
   readonly models: ModelSecrets;
+
+  // the private settings, which a deployment:<name> reference in the configuration names
+  readonly settings: Readonly<Record<string, string>>;
 }
 
 // Decrypts the secrets file with sops in this process and keeps the plaintext in memory only,
@@ -51,6 +54,7 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
     ),
     impdToken: result.data.impd_token,
     models: { model_credentials: result.data.model_credentials },
+    settings: result.data.settings,
   };
 }
 

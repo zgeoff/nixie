@@ -8,6 +8,7 @@ import type { SandboxImages } from './load-sandbox-manifest';
 import { loadSandboxManifest } from './load-sandbox-manifest';
 import type { Secrets } from './load-secrets';
 import { loadSecrets } from './load-secrets';
+import { resolveOwnerConfig } from './resolve-owner-config';
 import { startServerParts } from './start-server-parts';
 import type { Cleanup } from './types';
 
@@ -49,11 +50,12 @@ export interface ServerPartsOptions extends ServerOptions {
 // opens anything, then takes the writer lock and a new writer epoch, and copies and migrates the
 // database, before the health endpoint listens.
 export async function startServer(options: ServerOptions): Promise<Server> {
-  const config = await loadDeploymentConfig(options.configPath);
+  const loaded = await loadDeploymentConfig(options.configPath);
   const secrets = await loadSecrets({
-    path: config.server.secretsFile,
+    path: loaded.server.secretsFile,
     sopsArgv: options.sopsArgv,
   });
+  const config = { ...loaded, owner: resolveOwnerConfig(loaded.owner, secrets.settings) };
   const images = await loadSandboxManifest(options.manifestPath);
   const cleanup = buildCleanup();
   const writer = await startLoggedWriter(config.server.dataDir, options.log, cleanup);

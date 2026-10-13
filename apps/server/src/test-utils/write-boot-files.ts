@@ -11,23 +11,31 @@ export interface BootFiles {
   readonly deploymentKey: string;
 }
 
+export interface BootFileExtras {
+  // YAML lines appended to the configuration file
+  readonly config: readonly string[];
+
+  // YAML lines appended to the secrets file
+  readonly secrets: readonly string[];
+}
+
 // Writes what nixie needs to start in a test directory: the definitions, a plaintext secrets file
 // for the sops stand-in, the sandbox manifest, and a configuration on a free loopback port with
 // the scripted model as the conversation's profile.
 export async function writeBootFiles(
   dir: string,
   modelURL: string,
-  extraConfig: readonly string[],
+  extras: BootFileExtras,
 ): Promise<BootFiles> {
   const dataDir = join(dir, 'data');
   const deploymentKey = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64');
 
   await mkdir(dataDir);
   await writeDefinitions(join(dir, 'definitions'));
-  await writeSecrets(join(dir, 'secrets.yaml'), deploymentKey);
+  await writeSecrets(join(dir, 'secrets.yaml'), deploymentKey, extras.secrets);
   await writeManifest(join(dir, 'sandbox-manifest.json'));
   await writeStubSops(join(dir, 'sops'));
-  await writeConfig(dir, [...buildConfigLines(dir, modelURL), ...extraConfig]);
+  await writeConfig(dir, [...buildConfigLines(dir, modelURL), ...extras.config]);
   return {
     dataDir,
     configPath: join(dir, 'config.yaml'),
@@ -44,12 +52,17 @@ async function writeDefinitions(definitionsDir: string): Promise<void> {
   await writeFile(join(definitionsDir, 'persona.md'), 'You are nixie.\n');
 }
 
-async function writeSecrets(path: string, deploymentKey: string): Promise<void> {
+async function writeSecrets(
+  path: string,
+  deploymentKey: string,
+  extraSecrets: readonly string[],
+): Promise<void> {
   const lines = [
     `deployment_key: ${deploymentKey}`,
     'impd_token: impd-test-token',
     'model_credentials:',
     '  scripted: scripted-model-key',
+    ...extraSecrets,
   ];
 
   await writeFile(path, `${lines.join('\n')}\n`);

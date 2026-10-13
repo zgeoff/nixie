@@ -15,6 +15,9 @@ export interface TestNixieOptions {
   // YAML lines appended to the configuration file, such as a key no module reads
   readonly extraConfig?: readonly string[];
 
+  // YAML lines appended to the secrets file, such as a private setting the configuration names
+  readonly extraSecrets?: readonly string[];
+
   // a release bundle's main.js to run in place of a test build of the source
   readonly entry?: string;
 }
@@ -59,7 +62,10 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
 
   stack.defer(() => model.stop());
 
-  const files = await writeBootFiles(dir, model.url, options.extraConfig ?? []);
+  const files = await writeBootFiles(dir, model.url, {
+    config: options.extraConfig ?? [],
+    secrets: options.extraSecrets ?? [],
+  });
   const child = Bun.spawn([...buildCommand(options.entry), ...buildServeArgs(files)], {
     stdin: 'ignore',
     stdout: 'pipe',
