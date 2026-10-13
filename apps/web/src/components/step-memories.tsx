@@ -97,7 +97,7 @@ interface MemoryRowProps {
 
 // One memory as one line, its ID, score and the start of its text; opened, its full text.
 function MemoryRow(props: MemoryRowProps): ReactNode {
-  const score = props.memory.score === undefined ? '–' : props.memory.score.toFixed(2);
+  const score = props.memory.score === undefined ? '–' : formatScore(props.memory.score);
 
   return (
     <li>
@@ -109,6 +109,12 @@ function MemoryRow(props: MemoryRowProps): ReactNode {
       </details>
     </li>
   );
+}
+
+// BM25 gives a common word a score near zero, such as 1.1e-6, so a score below 0.01 shows its
+// significant digits and two such matches still read apart.
+function formatScore(score: number): string {
+  return Math.abs(score) >= 0.01 || score === 0 ? score.toFixed(2) : score.toExponential(1);
 }
 
 const lineLimit = 80;

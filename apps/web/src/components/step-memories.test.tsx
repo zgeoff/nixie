@@ -96,3 +96,29 @@ test('it shows a memory forgotten since the section last opened as forgotten', a
 
   expect(forgotten).toBeVisible();
 });
+
+test('it shows two scores near zero with their significant digits', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+  await Promise.all([
+    store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
+    store.memoryVersions.create({ itemID: 'item-2', text: 'Stub memory two', version: 1 }),
+  ]);
+
+  const rendered = render(
+    <StepMemories
+      memories={[
+        { itemID: 'item-1', score: 1.073e-6, version: 1 },
+        { itemID: 'item-2', score: 7.857e-7, version: 1 },
+      ]}
+    />,
+  );
+
+  await user.click(rendered.getByText('Memories 2'));
+
+  const first = await rendered.findByText('item-1 1.1e-6 Stub memory one');
+
+  expect(first).toBeVisible();
+  expect(rendered.getByText('item-2 7.9e-7 Stub memory two')).toBeVisible();
+});
