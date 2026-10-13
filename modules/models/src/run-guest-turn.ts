@@ -155,13 +155,10 @@ async function collectTurn(stream: ExecStream, readRecallMark: MarkReader): Prom
 }
 
 // the newest recall at an ended or compacted frame, read before the turn moves past it
-async function readFrameMark(
-  frame: GuestFrame,
-  readRecallMark: MarkReader,
-): Promise<number | undefined> {
+function readFrameMark(frame: GuestFrame, readRecallMark: MarkReader): Promise<number | undefined> {
   const isMarked = frame.type === 'ended' || frame.type === 'compacted';
 
-  return isMarked && readRecallMark !== undefined ? await readRecallMark() : undefined;
+  return isMarked && readRecallMark !== undefined ? readRecallMark() : Promise.resolve(undefined);
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the turn this collects
