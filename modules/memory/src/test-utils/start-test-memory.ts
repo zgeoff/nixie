@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Log, Writer } from '@heynixie/log';
 import type { GateContext } from '../gate-types';
 import type { StartedMemoryStore } from '../start-memory-store';
-import type { CleanupSessions } from '../types';
+import type { CleanupSessions, MemoryContext } from '../types';
 import { startTestStore } from './start-test-store';
 
 export interface TestMemory {
@@ -20,6 +20,9 @@ export interface TestMemory {
 export interface TestMemoryOptions {
   // the session cleanup each forget runs, which no-ops by default
   readonly cleanupSessions?: CleanupSessions;
+
+  // the definitions snapshot each record names, which reads a fixed hash by default
+  readonly definitions?: MemoryContext['definitions'];
 
   // the gate's checker, clock, allow rule lookup and limits; with none, the checker answers that
   // it failed, the clock is the wall clock, no allow rule exists and the default limits hold

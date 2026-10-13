@@ -34,7 +34,10 @@ async function setupTest() {
       profile: 'writer-direct',
       runSession: () => Promise.reject(new Error('no session runs in a publish')),
     },
-    gate: { check: () => Promise.reject(new Error('no gate runs in a publish')) },
+    gate: {
+      check: () => Promise.reject(new Error('no gate runs in a publish')),
+      release: () => Promise.resolve(),
+    },
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
   };

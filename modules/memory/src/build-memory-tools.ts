@@ -3,12 +3,13 @@ import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildRememberTool } from './build-remember-tool';
 import { buildRetireTool } from './build-retire-tool';
+import type { ModelWriteStore } from './gate-types';
 import { makeInputRecorder } from './make-input-recorder';
 import type { StartedMemoryStore } from './start-memory-store';
 import type { RecallRequest, RecalledItem, RecalledVersion } from './types';
 
 // What the model's tools reach: recall, and the gated write paths.
-export type MemoryToolStore = Pick<StartedMemoryStore, 'recall' | 'writes'>;
+export type MemoryToolStore = Pick<StartedMemoryStore, 'recall'> & ModelWriteStore;
 
 // Builds the model's memory tools. recall declares read, and remember and retire declare note.
 // Every write runs through its gate, which sets the provenance from the run and the checks, never

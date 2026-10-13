@@ -6,6 +6,9 @@ import type { GateVerdict, SourceMessage, StagedWrite, WriterGate } from '../wri
 export function buildStubGate(): WriterGate {
   return {
     check: (write, source) => Promise.resolve(buildStubVerdict(write, source)),
+
+    // the stub creates no key, so nothing it made outlives a batch
+    release: () => Promise.resolve(),
   };
 }
 

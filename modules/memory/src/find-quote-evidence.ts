@@ -2,8 +2,9 @@ import type { Log } from '@heynixie/log';
 import type { QuoteMatch } from './find-typed-quote';
 import { findTypedQuote } from './find-typed-quote';
 import type { OwnerMessage, ReviewReason } from './gate-types';
+import { readForgottenSequences } from './read-forgotten-sequences';
 import { readOwnerMessages } from './read-owner-messages';
-import type { MemoryTables, QuoteEvidence } from './types';
+import type { QuoteEvidence } from './types';
 
 // Where a quote's evidence lies: in a message you typed, or a review reason that says why no
 // message backs it.
@@ -55,7 +56,7 @@ export async function findQuoteEvidence(
     return { status: 'review', reason: pickFailure(matches.map((entry) => entry.match)) };
   }
   const forgotten = await readForgottenSequences(
-    log,
+    log.writer.db,
     typed.map((entry) => entry.message.sequence),
   );
   const backing = typed.find((entry) => !forgotten.has(entry.message.sequence));
@@ -79,18 +80,4 @@ function pickFailure(matches: readonly QuoteMatch[]): ReviewReason {
     return 'quote_not_typed';
   }
   return 'no_quote';
-}
-
-async function readForgottenSequences(
-  log: Pick<Log, 'writer'>,
-  sequences: readonly number[],
-): Promise<ReadonlySet<number>> {
-  const rows = await log.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_forgotten_evidence')
-    .select('record_sequence')
-    .where('record_sequence', 'in', sequences)
-    .execute();
-
-  return new Set(rows.map((row) => row.record_sequence));
 }

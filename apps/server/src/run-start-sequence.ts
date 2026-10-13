@@ -54,17 +54,13 @@ async function startMemoryAndWork(
 
   parts.tools.memory.set(store);
 
-  // the content gate checks one write of yours at a time, not a writer batch, so the writer stays
-  // off and its catch-up waits for a gate that checks a batch
-  const writerStep = await runWithRetry(() => startWriterTask(parts, store, null), {
+  const writerStep = await runWithRetry(() => startWriterTask(parts, store), {
     ...retry,
     step: 'memory_writer',
   });
 
   await startWork(parts, (input) =>
-    writerStep !== null && input.taskID === memoryWriterTaskID
-      ? writerStep(input)
-      : conversation.runStep(input),
+    input.taskID === memoryWriterTaskID ? writerStep(input) : conversation.runStep(input),
   );
 }
 

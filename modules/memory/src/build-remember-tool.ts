@@ -1,14 +1,13 @@
 import type { ToolCall, ToolContext, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildWriteCaller } from './build-write-caller';
-import type { GatedRememberRequest } from './gate-types';
+import type { GatedRememberRequest, ModelWriteStore } from './gate-types';
 import { makeInputRecorder } from './make-input-recorder';
 import { memoryWriteOutput } from './memory-write-output';
 import { runWriteCall } from './run-write-call';
-import type { StartedMemoryStore } from './start-memory-store';
 
 // Builds memory.remember, which declares note and runs each write through the content gate.
-export function buildRememberTool(memory: Pick<StartedMemoryStore, 'writes'>): ToolDefinition {
+export function buildRememberTool(memory: ModelWriteStore): ToolDefinition {
   return {
     name: 'memory.remember',
     description: rememberDescription,

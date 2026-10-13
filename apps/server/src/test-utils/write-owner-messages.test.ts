@@ -10,7 +10,7 @@ async function setupTest() {
   return { log: server.context.log };
 }
 
-test('it records each message on the conversation thread and returns their sequences', async () => {
+test('it records each message on the conversation thread, typed in full, and returns their sequences', async () => {
   const ctx = await setupTest();
 
   const sequences = await writeOwnerMessages(ctx.log, ['I live at 4 Elm Row.', 'I work nights.']);
@@ -21,12 +21,18 @@ test('it records each message on the conversation thread and returns their seque
     {
       sequence: sequences[0],
       kind: 'owner_message',
-      erasable: { status: 'readable', fields: { text: 'I live at 4 Elm Row.' } },
+      erasable: {
+        status: 'readable',
+        fields: { text: 'I live at 4 Elm Row.', spans: [{ start: 0, end: 20, source: 'typed' }] },
+      },
     },
     {
       sequence: sequences[1],
       kind: 'owner_message',
-      erasable: { status: 'readable', fields: { text: 'I work nights.' } },
+      erasable: {
+        status: 'readable',
+        fields: { text: 'I work nights.', spans: [{ start: 0, end: 14, source: 'typed' }] },
+      },
     },
   ]);
 });

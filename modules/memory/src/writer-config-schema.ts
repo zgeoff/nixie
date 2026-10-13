@@ -29,6 +29,9 @@ export const writerConfigSchema = z
     maxBackoffMs: Math.max(1, Math.round(config.max_backoff_minutes * 60_000)),
   }));
 
+// The writer section as the deployment configuration writes it, before the defaults apply.
+export type WriterConfigInput = z.input<typeof writerConfigSchema>;
+
 export interface WriterConfig {
   readonly batchMessages: number;
   readonly batchTokens: number;

@@ -29,7 +29,10 @@ async function setupTest() {
       profile: 'writer-direct',
       runSession: () => Promise.reject(new Error('no session runs at start')),
     },
-    gate: { check: () => Promise.reject(new Error('no gate runs at start')) },
+    gate: {
+      check: () => Promise.reject(new Error('no gate runs at start')),
+      release: () => Promise.resolve(),
+    },
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
     onError: mock(),

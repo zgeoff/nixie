@@ -3,6 +3,7 @@ import type { RunCheck } from '@heynixie/models';
 import type { Clock } from '@heynixie/tasks';
 import type { Selectable } from 'kysely';
 import type { MemoryChange, MemoryOrigin, QuoteEvidence, VersionRef } from './types';
+import type { WriterGate } from './writer-types';
 
 // The types of the write gate, memory proposals and notices.
 
@@ -108,6 +109,15 @@ export type WriteOutcome =
 export interface MemoryWrites {
   readonly remember: (request: GatedRememberRequest) => Promise<WriteOutcome>;
   readonly retire: (request: GatedRetireRequest) => Promise<WriteOutcome>;
+
+  // the gate each write of a memory writer batch passes before its batch publishes
+  readonly batch: WriterGate;
+}
+
+// The model's own write paths, which its memory tools call. A writer batch's gate stays out of the
+// model's reach.
+export interface ModelWriteStore {
+  readonly writes: Pick<MemoryWrites, 'remember' | 'retire'>;
 }
 
 // A memory proposal as the memory view reads it, with its sealed text opened.

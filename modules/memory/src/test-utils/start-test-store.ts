@@ -25,7 +25,7 @@ export async function startTestStore(
   };
   const store = await startMemoryStore({
     log,
-    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    definitions: options.definitions ?? (() => ({ snapshotHash: 'sha256:test' })),
     cleanupSessions: options.cleanupSessions ?? (() => Promise.resolve()),
     gate: {
       check:

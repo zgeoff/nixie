@@ -241,3 +241,45 @@ test('it rejects a publish after the lease expired', async () => {
 
   expect(publish).rejects.toBeInstanceOf(LeaseLostError);
 });
+
+test('it leaves out a write whose message backed an item forgotten after the gate ran', async () => {
+  const ctx = await setupTest();
+  const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
+  const item = await ctx.memory.store.remember({
+    text: 'Lives at 4 Elm Row',
+    evidenceQuote: '4 Elm Row',
+    evidence: { recordSequence: planned.bounds.end, start: 10, end: 19 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await ctx.memory.store.writeBatch({
+    lease: ctx.lease,
+    now: ctx.clock.now(),
+    bounds: planned.bounds,
+    writes: [
+      {
+        write: {
+          op: 'remember',
+          text: 'You live at 4 Elm Row.',
+          quote: '4 Elm Row',
+          sourceSequence: planned.bounds.end,
+          target: null,
+        },
+        verdict: {
+          outcome: 'apply',
+          source: 'owner',
+          checks: { quote: 'exact' },
+          evidence: { recordSequence: planned.bounds.end, start: 10, end: 19 },
+        },
+      },
+    ],
+    buildRecords: () => [],
+  });
+
+  expect(result).toStrictEqual({ status: 'published', applied: [], proposed: 0, forgotten: 1 });
+});

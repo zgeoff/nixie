@@ -29,3 +29,19 @@ test('it removes the data directory when the test finishes', async () => {
 
   expect(ctx.dataDir).toBeString();
 });
+
+test('it gives the store the definitions snapshot the test passes', async () => {
+  const ctx = await startTestMemory({ definitions: () => ({ snapshotHash: 'sha256:other' }) });
+
+  await ctx.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const records = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(records.map((entry) => entry.record.definitions)).toSatisfyAll(
+    (definitions: unknown) =>
+      JSON.stringify(definitions) === JSON.stringify({ snapshotHash: 'sha256:other' }),
+  );
+});

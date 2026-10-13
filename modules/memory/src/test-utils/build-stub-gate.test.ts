@@ -13,6 +13,7 @@ test('it applies a write whose quote is in its source, with the quote as the evi
       target: null,
     },
     { sequence: 12, text: 'I moved to 4 Elm Row.', spans: [] },
+    { bounds: { start: 0, end: 12 }, model: 'claude-test-1' },
   );
 
   expect(verdict).toStrictEqual({
@@ -35,6 +36,7 @@ test('it holds a write whose quote is not in its source as a proposal', async ()
       target: null,
     },
     { sequence: 12, text: 'I moved to 4 Elm Row.', spans: [] },
+    { bounds: { start: 0, end: 12 }, model: 'claude-test-1' },
   );
 
   expect(verdict).toStrictEqual({
@@ -62,6 +64,7 @@ test('it holds a write with an empty quote as a proposal', async () => {
       target: { itemID: 'item-a', version: 1 },
     },
     { sequence: 12, text: 'I moved to 4 Elm Row.', spans: [] },
+    { bounds: { start: 0, end: 12 }, model: 'claude-test-1' },
   );
 
   expect(verdict.outcome).toBe('propose');

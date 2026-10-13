@@ -26,6 +26,9 @@ because the checker is a model call, and runs these steps in order:
 4. **The checker.** The checker model confirms that the message asserts the memory.
 5. **Apply.** nixie writes the version, its record and the turn's notice entry in one transaction.
 
+A write from a memory writer batch skips the first step: the one message it cites is its evidence,
+and [the memory writer](./writer.md#publishing) covers how its batch publishes it.
+
 A write that pins its item waits for review even when every check passes, because a pinned item
 rides in the system prompt of every turn. A memory text that holds a Unicode format character, such
 as a zero-width space or a bidirectional control, fails before any check runs.

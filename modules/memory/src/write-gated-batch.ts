@@ -20,11 +20,20 @@ interface GatedBatch extends WriterStepState {
 }
 
 // Publishes a gated batch, or splits one over the proposal cap so each half runs again. A batch
-// that a newer change superseded runs again at once.
+// that a newer change superseded runs again at once. Either way the gate then releases what it
+// made for each proposal that never published.
 export async function writeGatedBatch(
   parts: WriterParts,
   gated: GatedBatch,
 ): Promise<WriterBatchStep> {
+  try {
+    return await writeCappedBatch(parts, gated);
+  } finally {
+    await parts.gate.release(gated.gated.map((entry) => entry.verdict));
+  }
+}
+
+async function writeCappedBatch(parts: WriterParts, gated: GatedBatch): Promise<WriterBatchStep> {
   const bounds = gated.batch.bounds;
   const capped = planProposalCap(parts.config, gated.batch, gated.gated);
 
