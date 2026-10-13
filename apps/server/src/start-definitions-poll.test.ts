@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import type { DefinitionsProbe } from './start-definitions-poll';
 import { startDefinitionsPoll } from './start-definitions-poll';
 
 function setupTest() {
@@ -16,6 +17,7 @@ test('it probes nothing before the interval passes', () => {
     seed: () => Promise.resolve(),
     clock: ctx.clock,
     intervalMs: 60_000,
+    onProbed: () => {},
     onError: () => {},
   });
 
@@ -33,6 +35,7 @@ test('it seeds on the first probe token once the interval passes', async () => {
     seed,
     clock: ctx.clock,
     intervalMs: 60_000,
+    onProbed: () => {},
     onError: () => {},
   });
 
@@ -53,6 +56,7 @@ test('it skips the seed for a probe token it seeded already', async () => {
     seed,
     clock: ctx.clock,
     intervalMs: 60_000,
+    onProbed: () => {},
     onError: () => {},
   });
 
@@ -73,6 +77,7 @@ test('it seeds again on a new probe token', async () => {
     seed,
     clock: ctx.clock,
     intervalMs: 60_000,
+    onProbed: () => {},
     onError: () => {},
   });
 
@@ -85,6 +90,46 @@ test('it seeds again on a new probe token', async () => {
   expect(seed).toHaveBeenCalledTimes(2);
 });
 
+test('it reports every probe, one whose token it seeded already included', async () => {
+  const ctx = setupTest();
+  const onProbed = mock<(probed: DefinitionsProbe) => void>();
+  const poll = startDefinitionsPoll({
+    probe: () => Promise.resolve('rev-1'),
+    seed: () => Promise.resolve(),
+    clock: ctx.clock,
+    intervalMs: 60_000,
+    onProbed,
+    onError: () => {},
+  });
+
+  onTestFinished(() => poll.stop());
+  ctx.clock.advance(60_000);
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  ctx.clock.advance(60_000);
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
+  expect(onProbed.mock.calls).toStrictEqual([[{ isChanged: true }], [{ isChanged: false }]]);
+});
+
+test('it reports no probe for a probe that throws', async () => {
+  const ctx = setupTest();
+  const onProbed = mock<(probed: DefinitionsProbe) => void>();
+  const poll = startDefinitionsPoll({
+    probe: () => Promise.reject(new Error('the definitions directory is gone')),
+    seed: () => Promise.resolve(),
+    clock: ctx.clock,
+    intervalMs: 60_000,
+    onProbed,
+    onError: () => {},
+  });
+
+  onTestFinished(() => poll.stop());
+  ctx.clock.advance(60_000);
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
+  expect(onProbed).not.toHaveBeenCalled();
+});
+
 test('it reports a probe that throws and keeps polling', async () => {
   const ctx = setupTest();
   const onError = mock<(error: unknown) => void>();
@@ -93,6 +138,7 @@ test('it reports a probe that throws and keeps polling', async () => {
     seed: () => Promise.resolve(),
     clock: ctx.clock,
     intervalMs: 60_000,
+    onProbed: () => {},
     onError,
   });
 
