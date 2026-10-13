@@ -286,7 +286,7 @@ test('it gives the model a recalled item and leaves no readable copy once the it
   });
 
   const result = await runToolCall(
-    { tool: 'memory.recall', input: { query: 'sister' }, toolUseID: null },
+    { tool: 'memory.recall', input: { query: 'Ada lives in Leeds' }, toolUseID: null },
     {
       runID: 'run-1',
       thread: 'conversation',
@@ -366,6 +366,31 @@ test('it applies a remembered fact and leaves no readable copy of its text once 
   // the owner's own message keeps its words, and only the item's text is gone
   expect(result.structuredContent).toStrictEqual({ status: 'applied', itemID, version: 1 });
   expect(JSON.stringify(entries)).not.toInclude('Allergic to hazelnuts');
+});
+
+test('it records a remember call with neither its text nor its quote, which the gate has not checked', async () => {
+  const ctx = await setupTest();
+
+  await runToolCall(
+    {
+      tool: 'memory.remember',
+      input: { text: 'Sister Ada lives in Leeds', quote: 'Sister Ada lives in Leeds', pin: false },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  expect(entries.find((entry) => entry.record.kind === 'tool_called')?.record).toMatchObject({
+    erasable: { status: 'readable', fields: { input: { pin: false } } },
+  });
 });
 
 test.each([

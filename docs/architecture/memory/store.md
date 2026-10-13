@@ -171,6 +171,7 @@ read-only rule allows them, because they declare `read` and `note` and run direc
 
 The records of a memory tool call never hold an item's text, so a forget leaves no readable copy in
 them. A recall's result record lists each item and version it returned, as the recall's own record
-does, while the model reads the items word for word. A remember's call record keeps every argument
-but the memory text, which the version holds under its item's key. Its quote stays, because the
-quote repeats the user's own message, and a forget never erases that message.
+does, while the model reads the items word for word. Each call record leaves out the free text the
+model wrote: the search words, the memory text and both quotes. The model can copy an item's text
+into any of them, and the record holds them before a gate checks a quote. The version keeps the
+memory text under its item's key, and its evidence points at the quote in the user's message.
