@@ -9,7 +9,7 @@ test('it makes the dark color scheme query match', () => {
 
 test('it tells a color scheme query listener about the change', () => {
   const query = globalThis.matchMedia('(prefers-color-scheme: dark)');
-  const listener = mock<(event: Readonly<MediaQueryListEvent>) => void>();
+  const listener = mock<NonNullable<MediaQueryList['onchange']>>();
 
   query.addEventListener('change', listener);
   onTestFinished(() => {
