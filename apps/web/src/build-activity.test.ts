@@ -214,6 +214,48 @@ test('it collects what each recall of a step delivered, in order', () => {
   ]);
 });
 
+test('it takes the context of the last turn end in a step that recorded one', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+  const first = buildMockLogRecord({
+    context: { size: 34_200, window: 400_000 },
+    kind: 'model.turn_ended',
+    sequence: 2,
+  });
+  const second = buildMockLogRecord({
+    context: { size: 41_000, window: 400_000 },
+    kind: 'model.turn_ended',
+    sequence: 3,
+  });
+  const unreported = buildMockLogRecord({ kind: 'model.turn_ended', sequence: 4 });
+
+  expect(buildActivity([started, first, second, unreported])).toMatchObject([
+    { context: { size: 41_000, window: 400_000 } },
+  ]);
+});
+
+test('it collects each compaction of a step with the sequence of its record, in order', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+  const first = buildMockLogRecord({
+    compaction: { postTokens: 42_000, preTokens: 384_000, trigger: 'auto' },
+    kind: 'model.compacted',
+    sequence: 2,
+  });
+  const second = buildMockLogRecord({
+    compaction: { preTokens: 391_000, trigger: 'manual' },
+    kind: 'model.compacted',
+    sequence: 3,
+  });
+
+  expect(buildActivity([started, first, second])).toMatchObject([
+    {
+      compactions: [
+        { postTokens: 42_000, preTokens: 384_000, sequence: 2, trigger: 'auto' },
+        { preTokens: 391_000, sequence: 3, trigger: 'manual' },
+      ],
+    },
+  ]);
+});
+
 test('it counts a recall that delivered nothing as a recall', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
   const recalled = buildMockLogRecord({

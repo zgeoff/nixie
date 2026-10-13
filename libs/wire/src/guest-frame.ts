@@ -38,8 +38,18 @@ const usageSchema = z
   })
   .readonly();
 
+// the context the model read at the turn's last main-chain call, as input plus cache-read plus
+// cache-write tokens, and the window the CLI compacts within
+const contextSchema = z
+  .object({
+    size: tokenCountSchema,
+    window: z.int().positive(),
+  })
+  .readonly();
+
 // a model turn ended at a result; boundary is the session's last chain entry, where the next turn
-// resumes, and isError marks a result the model API's error ended, such as a refused request
+// resumes, isError marks a result the model API's error ended, such as a refused request, and
+// context is absent when no main-chain call reported its usage
 const endedFrameSchema = z
   .object({
     type: z.literal('ended'),
@@ -49,6 +59,7 @@ const endedFrameSchema = z
     isError: z.boolean().optional(),
     turns: z.int().nonnegative(),
     usage: usageSchema,
+    context: contextSchema.optional(),
   })
   .readonly();
 

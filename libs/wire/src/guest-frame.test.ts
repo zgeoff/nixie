@@ -35,6 +35,42 @@ test('it accepts an ended frame from a guest that sends no error mark', () => {
   expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
 });
 
+test('it accepts an ended frame with the context of its last model call', () => {
+  const frame: GuestFrame = {
+    type: 'ended',
+    boundary: {
+      sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+    },
+    subtype: 'success',
+    stopReason: 'end_turn',
+    turns: 2,
+    usage: { inputTokens: 80, outputTokens: 5, cacheReadTokens: 70_000, cacheWriteTokens: 1200 },
+    context: { size: 41_000, window: 400_000 },
+  };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it refuses an ended frame whose context window is zero', () => {
+  const frame = {
+    type: 'ended',
+    boundary: {
+      sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+    },
+    subtype: 'success',
+    stopReason: 'end_turn',
+    turns: 2,
+    usage: { inputTokens: 80, outputTokens: 5, cacheReadTokens: 70_000, cacheWriteTokens: 1200 },
+    context: { size: 41_000, window: 0 },
+  };
+
+  expect(guestFrameSchema.safeParse(frame).error?.issues).toPartiallyContain({
+    path: ['context', 'window'],
+  });
+});
+
 test('it refuses an ended frame whose error mark is not a boolean', () => {
   const frame = {
     type: 'ended',

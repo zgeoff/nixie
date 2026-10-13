@@ -1,6 +1,6 @@
 // One reply the stub model gives: a text block that ends the turn, or a tool_use block that asks
-// for a tool by its name as the model sees it, such as mcp__nixie__note_read. inputTokens sets the
-// usage the reply reports, 10 by default, so a test can fill the context the CLI counts.
+// for a tool by its name as the model sees it, such as mcp__nixie__note_read. The usage defaults to
+// 10 input tokens and no cache tokens, and a test sets more to fill the context the CLI counts.
 type ScriptedReply = (
   | { readonly text: string }
   | {
@@ -9,7 +9,11 @@ type ScriptedReply = (
         readonly input: Readonly<Record<string, unknown>>;
       };
     }
-) & { readonly inputTokens?: number };
+) & {
+  readonly inputTokens?: number;
+  readonly cacheReadTokens?: number;
+  readonly cacheWriteTokens?: number;
+};
 
 // One request the stub model received, with its body parsed.
 interface StubModelRequest {
@@ -112,8 +116,21 @@ function renderWhole(reply: ScriptedReply, model: string): Response {
     content: [block],
     stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
     stop_sequence: null,
-    usage: { input_tokens: reply.inputTokens ?? 10, output_tokens: 5 },
+    usage: buildUsage(reply, 5),
   });
+}
+
+function buildUsage(reply: ScriptedReply, outputTokens: number): Record<string, number> {
+  return {
+    input_tokens: reply.inputTokens ?? 10,
+    ...(reply.cacheReadTokens === undefined
+      ? {}
+      : { cache_read_input_tokens: reply.cacheReadTokens }),
+    ...(reply.cacheWriteTokens === undefined
+      ? {}
+      : { cache_creation_input_tokens: reply.cacheWriteTokens }),
+    output_tokens: outputTokens,
+  };
 }
 
 function renderStream(reply: ScriptedReply, model: string): Response {
@@ -130,7 +147,7 @@ function renderStream(reply: ScriptedReply, model: string): Response {
         content: [],
         stop_reason: null,
         stop_sequence: null,
-        usage: { input_tokens: reply.inputTokens ?? 10, output_tokens: 1 },
+        usage: buildUsage(reply, 1),
       },
     },
     {

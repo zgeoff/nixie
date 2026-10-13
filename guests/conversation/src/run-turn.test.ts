@@ -219,8 +219,33 @@ test('it reports each inbox message the model read, then the turn end at the las
       isError: false,
       turns: 2,
       usage: { inputTokens: 20, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      context: { size: 10, window: 200_000 },
     },
   ]);
+});
+
+test('it reports the context of the last model call and the profile cap at the turn end', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    {
+      toolUse: { name: 'mcp__nixie__note_read', input: { name: 'groceries' } },
+      inputTokens: 200,
+      cacheReadTokens: 30_000,
+      cacheWriteTokens: 4000,
+    },
+    { text: 'You need milk.', inputTokens: 300, cacheReadTokens: 38_000, cacheWriteTokens: 2700 },
+  );
+  await runTurn(
+    buildMockTurnFrame({ profile: { baseURL: ctx.model.url, contextTokens: 400_000 } }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames.at(-1)).toMatchObject({
+    type: 'ended',
+    usage: { inputTokens: 500, cacheReadTokens: 68_000, cacheWriteTokens: 6700 },
+    context: { size: 41_000, window: 400_000 },
+  });
 });
 
 test('it marks the turn end as an error when the model API refuses the request', async () => {

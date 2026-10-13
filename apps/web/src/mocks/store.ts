@@ -65,8 +65,18 @@ const recallItemSchema = z.object({
 
 const recallSchema = z.object({ items: z.array(recallItemSchema) });
 
+const contextSchema = z.object({ size: z.int().nonnegative(), window: z.int().positive() });
+
+const compactionSchema = z.object({
+  postTokens: z.int().nonnegative().optional(),
+  preTokens: z.int().nonnegative(),
+  trigger: z.enum(['manual', 'auto']).default('auto'),
+});
+
 const records = new Collection({
   schema: z.object({
+    compaction: compactionSchema.optional(),
+    context: contextSchema.optional(),
     kind: z.string().default('owner_message'),
     message: messageSchema.optional(),
     recall: recallSchema.optional(),

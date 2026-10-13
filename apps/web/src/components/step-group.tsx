@@ -3,6 +3,8 @@ import type { StepActivity, ToolActivity } from '../build-activity';
 import { formatStepSummary } from '../format-step-summary';
 import { css } from '../styled-system/css';
 import { ClippedText } from './clipped-text';
+import { CompactionMarker } from './compaction-marker';
+import { StepContext } from './step-context';
 import { StepMemories } from './step-memories';
 import { StepSection } from './step-section';
 
@@ -10,9 +12,9 @@ export interface StepGroupProps {
   readonly step: StepActivity;
 }
 
-// One step of a task as one collapsed line. Opening it shows one collapsible section per source of
-// what the step was given and did: the step itself, the memories its recalls delivered, its tool
-// calls with their inputs and results, and the error of a failed step.
+// One step of a task as one collapsed line, with a marker under it for each compaction. Opening it
+// shows a collapsible section per source: the step, its memories, its context, its tool calls with
+// their inputs and results, and the error of a failed step.
 export function StepGroup(props: StepGroupProps): ReactNode {
   const step = props.step;
 
@@ -27,6 +29,9 @@ export function StepGroup(props: StepGroupProps): ReactNode {
             <p>{formatStepLine(step)}</p>
           </StepSection>
           {step.memories === undefined ? null : <StepMemories memories={step.memories} />}
+          {step.context === undefined && step.compactions === undefined ? null : (
+            <StepContext compactions={step.compactions ?? []} context={step.context} />
+          )}
           <StepSection title={`Tools ${step.calls.length}`}>
             {step.calls.map((call) => (
               <ToolCallDetail call={call} key={call.callID} />
@@ -39,6 +44,9 @@ export function StepGroup(props: StepGroupProps): ReactNode {
           )}
         </div>
       </details>
+      {step.compactions?.map((compaction) => (
+        <CompactionMarker compaction={compaction} key={compaction.sequence} />
+      ))}
     </li>
   );
 }

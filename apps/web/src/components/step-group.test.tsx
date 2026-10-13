@@ -209,6 +209,44 @@ test('it shows a turn with 5 memories as one line, and each memory with its scor
   ]);
 });
 
+test('it shows the context against its window in the collapsed line, and each compaction in the Context section', async () => {
+  const user = userEvent.setup();
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        compactions: [{ preTokens: 391_000, sequence: 24, trigger: 'manual' }],
+        context: { size: 41_000, window: 400_000 },
+        durationMs: 12_300,
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText('conversation · no tools · 41k / 400k · 12.3s'));
+  await user.click(rendered.getByText('Context'));
+
+  expect(rendered.getByRole('group', { name: 'Context' })).toHaveTextContent(
+    '41k / 400k tokens · 10% at the last model callcompacted (manual) · 391k tokens before',
+  );
+});
+
+test('it marks a compaction under the collapsed line with its tokens before and after', () => {
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        compactions: [{ postTokens: 42_000, preTokens: 384_000, sequence: 20, trigger: 'auto' }],
+        context: { size: 43_500, window: 400_000 },
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  const marker = rendered.getByRole('note', { name: 'compaction' });
+
+  expect(marker).toBeVisible();
+  expect(marker).toHaveTextContent('compacted (auto) · 384k → 42k tokens');
+});
+
 test('it opens one section of a step and leaves the others closed', async () => {
   const user = userEvent.setup();
   const rendered = render(
