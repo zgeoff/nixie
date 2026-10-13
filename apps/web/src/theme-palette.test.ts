@@ -19,8 +19,8 @@ test.each([
 ] as const)(
   'it gives the %s theme %s on %s at least WCAG AA contrast',
   (theme, text, background) => {
-    const palette = themePalette[theme];
-
-    expect(buildContrastRatio(palette[text], palette[background])).toBeGreaterThanOrEqual(4.5);
+    expect(
+      buildContrastRatio(themePalette[text][theme], themePalette[background][theme]),
+    ).toBeGreaterThanOrEqual(4.5);
   },
 );

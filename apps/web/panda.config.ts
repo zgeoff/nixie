@@ -23,14 +23,9 @@ export default defineConfig({
     extend: {
       semanticTokens: {
         colors: Object.fromEntries(
-          Object.entries(themePalette.light).map(([name, light]) => [
+          Object.entries(themePalette).map(([name, colours]) => [
             name,
-            {
-              value: {
-                _dark: themePalette.dark[name as keyof typeof themePalette.dark],
-                base: light,
-              },
-            },
+            { value: { _dark: colours.dark, base: colours.light } },
           ]),
         ),
       },

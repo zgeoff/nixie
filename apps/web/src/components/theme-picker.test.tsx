@@ -3,6 +3,7 @@ import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { buildThemeScript } from '../build-theme-script';
 import { render } from '../test-utils/render';
+import { runHeadScript } from '../test-utils/run-head-script';
 import { updateSystemColorScheme } from '../test-utils/update-system-color-scheme';
 import { ThemePicker } from './theme-picker';
 
@@ -49,8 +50,7 @@ test('it keeps the chosen theme after a reload', async () => {
   delete globalThis.document.documentElement.dataset['theme'];
 
   // a reload runs the head script before the page renders
-  // oxlint-disable-next-line no-new-func -- runs the script's text as the browser would
-  new Function(buildThemeScript())();
+  runHeadScript(buildThemeScript());
   const themeBeforeRender = globalThis.document.documentElement.dataset['theme'];
   const rendered = render(<ThemePicker />);
 
