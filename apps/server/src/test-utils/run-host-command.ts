@@ -30,9 +30,11 @@ export async function runHostCommand(
     command.kill();
   });
 
+  // stderr drains too, so a long write to it never blocks the command
   const [exitCode, stdout] = await Promise.all([
     command.exited,
     new Response(command.stdout).text(),
+    new Response(command.stderr).text(),
   ]);
 
   return { exitCode, stdout };
