@@ -97,9 +97,9 @@ test('it puts the snapshot hash of the definitions in force on every record', as
       erasable: { status: 'readable', fields: { text: 'Quince-reply-4ZT9' } },
     },
   ]);
-  expect(seeded['snapshotHash']).toMatch(/^[0-9a-f]{64}$/u);
+  expect(seeded['inForceSnapshotHash']).toMatch(/^[0-9a-f]{64}$/u);
   expect(run.records).toSatisfyAll(
-    (record: LogRecord) => record.definitions.snapshotHash === seeded['snapshotHash'],
+    (record: LogRecord) => record.definitions.snapshotHash === seeded['inForceSnapshotHash'],
   );
 }, 60_000);
 

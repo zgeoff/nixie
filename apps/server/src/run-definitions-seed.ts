@@ -1,5 +1,6 @@
 import type { SeedResult } from '@heynixie/definitions';
 import { runSeed } from '@heynixie/definitions';
+import { buildSeedLogFields } from './build-seed-log-fields';
 import type { ServerParts } from './types';
 
 // Runs one seed. The definitions part turns unready while a refused snapshot is pending, and the
@@ -20,10 +21,6 @@ export async function runDefinitionsSeed(parts: ServerParts): Promise<SeedResult
         ? { isReady: false, reason: `the last snapshot was refused: ${result.error.name}` }
         : { isReady: true, reason: null },
   });
-  parts.log('definitions.seeded', {
-    status: result.status,
-    snapshotHash: result.inForce?.snapshotHash ?? null,
-    ...(result.status === 'refused' ? { error: result.error.name } : {}),
-  });
+  parts.log('definitions.seeded', buildSeedLogFields(result));
   return result;
 }
