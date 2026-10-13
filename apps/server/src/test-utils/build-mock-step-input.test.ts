@@ -2,7 +2,18 @@ import { expect, test } from 'bun:test';
 import { buildMockStepInput } from './build-mock-step-input';
 
 test('it builds a default step input', () => {
-  expect(buildMockStepInput()).toStrictEqual({
+  const input = buildMockStepInput();
+
+  expect(input).toContainAllKeys([
+    'taskID',
+    'stepKey',
+    'lease',
+    'inbox',
+    'sessionBoundary',
+    'signal',
+  ]);
+  expect(input.signal.aborted).toBe(false);
+  expect(input).toMatchObject({
     taskID: 'conversation',
     stepKey: 'conversation:1',
     lease: {
@@ -15,7 +26,6 @@ test('it builds a default step input', () => {
     },
     inbox: [],
     sessionBoundary: null,
-    signal: expect.any(AbortSignal),
   });
 });
 
