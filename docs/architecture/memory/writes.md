@@ -131,11 +131,12 @@ both, with the same pin and the same text once case, spacing and a closing full 
 The check runs inside the write's transaction, so two writes of one fact never both miss it. Each
 proposal's text is sealed under its own item's key, so the check opens the text of each pending
 candidate rather than comparing a stored digest, which would outlive a forget. A merge records the
-second proposer against the proposal, and adds no proposal against the cap. The listing shows every
-source that proposed the change, and the second proposer's result says that it merged. A
-conversation whose proposal another source proposed again learns of it from
-[the change note](./writer.md#the-change-note). A reworded fact stays a proposal of its own: wording
-that differs is the model's to reconcile.
+second proposer against the proposal and adds no proposal against the cap. It moves the proposal's
+lapse to a full lapse window from the merge, so a fact proposed again never lapses sooner than a
+proposal of its own. The listing shows every source that proposed the change, and the second
+proposer's result says that it merged. A conversation whose proposal another source proposed again
+learns of it from [the change note](./writer.md#the-change-note). A reworded fact stays a proposal
+of its own: wording that differs is the model's to reconcile.
 
 An approval of a proposal for a new item first searches the retrieval index with its text. When an
 active item shares enough of the proposal's content words, the approval holds, applies nothing and

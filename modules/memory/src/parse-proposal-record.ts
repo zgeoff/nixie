@@ -56,6 +56,7 @@ const merged = z.strictObject({
   taskID: z.string().nullable(),
   model: z.string().nullable(),
   noticeKey: z.string().nullable(),
+  lapseAt: z.int(),
 });
 
 interface ProposedRecord {
@@ -92,6 +93,9 @@ interface MergedRecord {
   readonly taskID: string | null;
   readonly model: string | null;
   readonly noticeKey: string | null;
+
+  // when the proposal lapses now, unless it already lapses later
+  readonly lapseAt: number;
 }
 
 // The records that change a memory proposal: its creation, a later write that merged into it, your

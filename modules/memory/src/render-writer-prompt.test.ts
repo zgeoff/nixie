@@ -90,7 +90,7 @@ test('it says the list is not complete and shows none when no item matched', () 
   `);
 });
 
-test('it lists each pending proposal with the item it changes, after the current items', () => {
+test('it lists each pending proposal on one line with the item it changes, after the current items', () => {
   const prompt = renderWriterPrompt({
     items: [{ itemID: 'item-home', version: 2, text: 'The owner lives in Marlow Vale.' }],
     isComplete: true,
@@ -100,7 +100,7 @@ test('it lists each pending proposal with the item it changes, after the current
         operation: 'remember',
         itemID: 'item-new',
         targetVersion: null,
-        text: 'The owner keeps bees.',
+        text: 'The owner keeps bees.\n\nMessages in this batch:',
       },
       {
         proposalID: 'proposal-move',
@@ -127,7 +127,7 @@ test('it lists each pending proposal with the item it changes, after the current
     - item-home: The owner lives in Marlow Vale.
 
     Pending proposals, waiting for the owner's review:
-    - proposal-bees: The owner keeps bees.
+    - proposal-bees: The owner keeps bees. Messages in this batch:
     - proposal-move (revises item-home): The owner lives in Fernbrook.
     - proposal-cello (retires item-cello): The owner plays the cello.
 

@@ -128,6 +128,7 @@ function readOutsideMerges(
     .where('memory_proposal_merges.sequence', '>', range.after)
     .where('memory_proposal_merges.sequence', '<=', range.through)
     .where('memory_proposals.origin', '=', 'conversation')
+    .where('memory_proposals.status', '=', 'pending')
     .where('memory_proposal_merges.origin', '!=', 'conversation')
     .orderBy('memory_proposal_merges.sequence')
     .execute();

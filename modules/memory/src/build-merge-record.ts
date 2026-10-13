@@ -10,8 +10,8 @@ export interface ProposalMerge {
 }
 
 // The memory.proposal_merged record of a write that proposed the same change as a pending proposal,
-// in the second proposer's thread and notice. It names the proposal and who proposed the change
-// again, and holds no text, so the proposal stays one card with a second source.
+// in the second proposer's thread and notice. It holds no text, and moves the proposal's lapse time
+// to what a new proposal would get, so a merge never lapses sooner than a proposal of its own.
 export function buildMergeRecord(
   parts: Pick<StoreParts, 'context'>,
   merge: ProposalMerge,
@@ -30,6 +30,7 @@ export function buildMergeRecord(
       taskID: plan.caller.taskID,
       model: plan.caller.model,
       noticeKey: plan.group.noticeKey,
+      lapseAt: parts.context.gate.clock.now() + parts.context.gate.limits.proposalLapseMs,
     },
   };
 }

@@ -19,7 +19,7 @@ export interface WriterPromptInput {
   readonly messages: readonly BatchMessage[];
 }
 
-export type ShownProposal = Pick<
+type ShownProposal = Pick<
   MemoryProposal,
   'proposalID' | 'operation' | 'itemID' | 'targetVersion' | 'text'
 >;
@@ -49,14 +49,17 @@ export function renderWriterPrompt(input: WriterPromptInput): string {
   return `${heading}\n${items}\n\nPending proposals, waiting for the owner's review:\n${proposals}\n\nMessages in this batch:\n\n${messages}`;
 }
 
-// a proposal names the item it changes, so the writer reads it as that item's pending change
+// A proposal names the item it changes, so the writer reads it as that item's pending change. Its
+// text keeps to its one line, because outside content can reach a proposal's text.
 function renderProposal(proposal: ShownProposal): string {
+  const text = proposal.text.replaceAll(/\s+/gu, ' ');
+
   if (proposal.operation === 'retire') {
-    return `- ${proposal.proposalID} (retires ${proposal.itemID}): ${proposal.text}`;
+    return `- ${proposal.proposalID} (retires ${proposal.itemID}): ${text}`;
   }
   return proposal.targetVersion === null
-    ? `- ${proposal.proposalID}: ${proposal.text}`
-    : `- ${proposal.proposalID} (revises ${proposal.itemID}): ${proposal.text}`;
+    ? `- ${proposal.proposalID}: ${text}`
+    : `- ${proposal.proposalID} (revises ${proposal.itemID}): ${text}`;
 }
 
 function formatDate(at: number): string {

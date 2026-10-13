@@ -237,7 +237,7 @@ interface MemoryVersionTable {
   readonly recorded_at: number;
 }
 
-export interface MemoryProposalMergeTable {
+interface MemoryProposalMergeTable {
   readonly merge_id: string;
   readonly proposal_id: string;
   readonly origin: MemoryOrigin;

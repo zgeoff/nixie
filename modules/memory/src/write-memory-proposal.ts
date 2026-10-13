@@ -34,12 +34,17 @@ export interface WrittenProposal {
 
 // Writes a memory proposal bound to its exact operation, sealed under its item's key; a new item's
 // proposal creates that item's key. A write of the same change as a pending proposal merges into
-// it inside the transaction, so two writes of one fact never make two proposals.
+// it, before any key exists and again inside the proposal's transaction for a race.
 export async function writeMemoryProposal(
   parts: StoreParts,
   plan: ProposalPlan,
 ): Promise<WrittenProposal> {
   const log = parts.context.log;
+  const merged = await withWriteTransaction(log.writer, (tx) => writePendingMerge(tx, parts, plan));
+
+  if (merged !== null) {
+    return merged;
+  }
   const sealed = await createSealedProposal(parts, plan);
   const written = await withWriteTransaction(log.writer, (tx) =>
     writeProposalOrMerge(tx, parts, { plan, sealed }),
@@ -51,11 +56,28 @@ export async function writeMemoryProposal(
     throw error;
   });
 
-  // a merge leaves the new item's key sealing nothing
+  // a merge that raced in leaves the new item's key sealing nothing
   if (written.merged && plan.target === null) {
     await removeRecordKey(log, sealed.itemID);
   }
   return written;
+}
+
+// merges the write into a pending proposal of the same change, or returns null when none waits
+async function writePendingMerge(
+  tx: Transaction<unknown>,
+  parts: StoreParts,
+  plan: ProposalPlan,
+): Promise<WrittenProposal | null> {
+  const match = await findMatchingProposal(tx.$extendTables<MemoryTables>(), parts, plan);
+
+  if (match === null) {
+    return null;
+  }
+  await writeRecordsInTransaction(tx, parts.context.log, [
+    buildMergeRecord(parts, { proposal: match, plan }),
+  ]);
+  return { proposalID: match.proposal_id, merged: true };
 }
 
 async function writeProposalOrMerge(
@@ -63,14 +85,10 @@ async function writeProposalOrMerge(
   parts: StoreParts,
   pending: PendingProposal,
 ): Promise<WrittenProposal> {
-  const plan = pending.plan;
-  const match = await findMatchingProposal(tx.$extendTables<MemoryTables>(), parts, plan);
+  const merged = await writePendingMerge(tx, parts, pending.plan);
 
-  if (match !== null) {
-    await writeRecordsInTransaction(tx, parts.context.log, [
-      buildMergeRecord(parts, { proposal: match, plan }),
-    ]);
-    return { proposalID: match.proposal_id, merged: true };
+  if (merged !== null) {
+    return merged;
   }
   await writeProposalRecord(tx, parts, pending);
   return { proposalID: pending.sealed.proposalID, merged: false };

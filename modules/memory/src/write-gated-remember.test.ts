@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { makeChecker } from '@heynixie/models';
-import { makeGatedCall } from '@heynixie/testing';
+import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
@@ -608,4 +608,39 @@ test('it keeps a reworded write, and a write that pins, as proposals of their ow
     ['Collects old fountain pens.', false],
     ['Collects vintage fountain pens.', true],
   ]);
+});
+
+test('it moves a proposal lapse back to a full lapse window when a later write merges into it', async () => {
+  const clock = buildTestClock(1_000_000);
+  const memory = await startTestMemory({
+    gate: {
+      clock,
+      limits: {
+        evidenceWindow: 20,
+        proposalLapseMs: 60_000,
+        proposalCap: 10,
+        closeMatchScore: 0.6,
+      },
+    },
+  });
+
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+  clock.advance(50_000);
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(pending).toMatchObject([{ lapseAt: 1_110_000 }]);
+});
+
+test('it lists a proposal once in a turn notice when the turn proposes it twice', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+
+  const notices = await memory.store.readNotices('conversation');
+
+  expect(notices).toMatchObject([{ proposed: 1, entries: [{ change: 'proposed' }] }]);
+  expect(notices[0]?.entries).toHaveLength(1);
 });

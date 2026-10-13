@@ -241,3 +241,29 @@ test("it names each of the conversation's proposals that a write from outside me
     ].join('\n'),
   );
 });
+
+test('it leaves out a merge into a proposal that closed before the next turn', async () => {
+  const ctx = await setupTest();
+  const caller = {
+    origin: 'conversation' as const,
+    thread: 'conversation',
+    taskID: 'conversation',
+    runID: 'run-1',
+    model: 'claude-test-1',
+  };
+
+  await ctx.memory.store.writes.remember({ text: 'Keeps bees', caller });
+  await ctx.memory.store.writes.remember({
+    text: 'Keeps bees',
+    caller: { ...caller, origin: 'task', thread: 'task-7', taskID: 'task-7' },
+  });
+
+  const [pending] = await ctx.memory.store.proposals.listPending();
+
+  invariant(pending);
+  await ctx.memory.store.proposals.reject({ ...pending, identityID: 'identity-1' });
+
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+
+  expect(note.text).toBeNull();
+});

@@ -17,7 +17,13 @@ export const memoryNoticesProjection: Projection = {
     if (entry === null) {
       return [];
     }
-    await writeNoticeEntry(tx.$extendTables<MemoryTables>(), record, entry);
+    const db = tx.$extendTables<MemoryTables>();
+    const isListed = await hasProposalEntry(db, entry);
+
+    if (isListed) {
+      return [];
+    }
+    await writeNoticeEntry(db, record, entry);
     return [entry.entry_key];
   },
 };
@@ -68,6 +74,24 @@ function buildNoticeEntry(record: EnvelopeRecord): NoticeEntryValues | null {
     };
   }
   return null;
+}
+
+// a write that merged into a proposal its own notice already lists adds no second entry for it
+async function hasProposalEntry(
+  db: Kysely<MemoryTables>,
+  entry: NoticeEntryValues,
+): Promise<boolean> {
+  if (entry.change !== 'proposed' || entry.proposal_id === null) {
+    return false;
+  }
+  const found = await db
+    .selectFrom('memory_notice_entries')
+    .select('entry_key')
+    .where('notice_key', '=', entry.notice_key)
+    .where('proposal_id', '=', entry.proposal_id)
+    .executeTakeFirst();
+
+  return found !== undefined;
 }
 
 async function writeNoticeEntry(
