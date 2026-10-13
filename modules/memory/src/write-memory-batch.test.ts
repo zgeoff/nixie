@@ -105,6 +105,53 @@ test('it publishes a proposal records and counts the proposal', async () => {
   expect(entries.map((entry) => entry.record.kind)).toContain('test.proposal');
 });
 
+test('it rejects a batch whose proposal names an item that moved on since the session read it', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
+
+  await ctx.memory.store.remember({
+    text: 'Lives on Pine Road',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const publish = ctx.memory.store.writeBatch({
+    lease: ctx.lease,
+    now: ctx.clock.now(),
+    bounds: planned.bounds,
+    writes: [
+      {
+        write: {
+          op: 'remember',
+          text: 'You live at 9 Oak Lane.',
+          quote: '9 Oak Lane',
+          sourceSequence: planned.bounds.end,
+          target: item,
+        },
+        verdict: {
+          outcome: 'propose',
+          reason: 'the checker did not assert the quote',
+          records: [
+            {
+              kind: 'test.proposal',
+              definitions: { snapshotHash: 'sha256:test' },
+              thread: 'memory-writer',
+              payload: { sourceSequence: planned.bounds.end },
+            },
+          ],
+        },
+      },
+    ],
+    buildRecords: () => [],
+  });
+
+  expect(publish).rejects.toMatchObject({ code: 'STALE_VERSION' });
+});
+
 test('it advances the cursor with the batch own records in the same publish', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);

@@ -1,4 +1,5 @@
 import { buildBatchRecords } from './build-batch-records';
+import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { pickBatchMode } from './pick-batch-mode';
 import type { CappedBatch } from './plan-proposal-cap';
 import { StaleVersionError } from './stale-version-error';
@@ -13,7 +14,8 @@ export interface BatchToWrite extends WriterStepState {
 }
 
 // Publishes the batch, with a stale revision captured as a superseded batch: an item that moved on
-// since the session read it fails the publish, and the next step extracts the batch again.
+// or was forgotten since the session read it fails the publish, and the next step
+// extracts the batch again.
 export async function tryWriteBatch(
   parts: WriterParts,
   batch: BatchToWrite,
@@ -41,7 +43,7 @@ export async function tryWriteBatch(
         }),
     });
   } catch (error) {
-    if (error instanceof StaleVersionError) {
+    if (error instanceof StaleVersionError || error instanceof MemoryItemNotFoundError) {
       return { status: 'superseded' };
     }
     throw error;

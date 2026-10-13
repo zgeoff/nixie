@@ -85,9 +85,10 @@ again. A write that passes applies with its quote's place in the message as its 
 a pinned item waits for review even when every check passes, because the pinned core rides every
 turn and a batch must never fail on the core's budget. Every other write becomes a proposal from the
 memory writer: the gate seals its text and builds its records, and the batch publishes them in its
-own transaction. A batch's proposals share one group for the cap and the notice. A retirement whose
-item moved on, was retired or was forgotten since the session read it fails the gate, and the batch
-runs again at once against the item as it stands.
+own transaction. A batch's proposals share one group for the cap and the notice. An edit or a
+retirement whose item moved on or was forgotten since the session read it fails the gate before any
+check runs, and so does a retirement of a retired item. The batch then runs again at once against
+the item as it stands.
 
 A proposal for a new item seals its text under a key the gate creates before the transaction. When
 the proposal never publishes, because its batch split, ran again or failed, the writer removes that
@@ -102,8 +103,10 @@ One transaction then publishes the batch:
 3. It reads each cited message again and leaves out every write whose message the user forgot during
    the session, or whose message backed an item the user forgot since the gate ran, and the batch
    counts them as dropped.
-4. It applies each write at the version the session read. A write whose item changed in the meantime
-   aborts the transaction, and the batch runs again at once against the new version.
+4. It checks that the item each proposal targets still stands at the version the session read, so
+   the user can approve every proposal the batch publishes, and it applies each write at that
+   version. A write or a proposal whose item changed or was forgotten in the meantime aborts the
+   transaction, and the batch runs again at once against the item as it stands.
 5. It writes the proposals' records, the batch's notice and the advanced cursor.
 
 A batch that would hold more proposals than the proposal cap allows never publishes them. A batch

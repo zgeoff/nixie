@@ -118,6 +118,57 @@ test('it returns superseded when an item moved on since the session read it', as
   expect(result).toStrictEqual({ status: 'superseded' });
 });
 
+test('it returns superseded when an item a proposal names was forgotten since the session read it', async () => {
+  const ctx = await setupTest();
+  const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await tryWriteBatch(ctx.parts, {
+    input: ctx.input,
+    row: await readWriterRow(ctx.memory.log),
+    now: ctx.clock.now(),
+    bounds: planned.bounds,
+    capped: {
+      kind: 'publish',
+      writes: [
+        {
+          write: {
+            op: 'remember',
+            text: 'You live at 9 Oak Lane.',
+            quote: '9 Oak Lane',
+            sourceSequence: planned.bounds.end,
+            target: item,
+          },
+          verdict: {
+            outcome: 'propose',
+            reason: 'the checker did not assert the quote',
+            records: [
+              {
+                kind: 'test.proposal',
+                definitions: { snapshotHash: 'sha256:test' },
+                thread: 'memory-writer',
+                payload: { sourceSequence: planned.bounds.end },
+              },
+            ],
+          },
+        },
+      ],
+      dropped: 0,
+    },
+    usage: null,
+  });
+
+  expect(result).toStrictEqual({ status: 'superseded' });
+});
+
 test('it rejects a publish whose lease another claim replaced', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
