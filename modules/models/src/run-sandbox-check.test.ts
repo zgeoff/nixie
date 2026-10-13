@@ -54,7 +54,7 @@ test('it logs the spawn, reply, CLI and API times of an answered check', async (
     stderr: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
   };
   const reply = { kind: 'answer', output: {}, costUSD: 0.003, durationMs: 2400.4, apiMs: 2100.6 };
-  const log = mock();
+  const log = mock<Parameters<typeof runSandboxCheck>[0]['log']>();
 
   await runSandboxCheck({
     sandbox: {
@@ -103,7 +103,7 @@ test('it logs an aborted check with no reply, CLI or API time', async () => {
     stderr: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
   };
   const controller = new AbortController();
-  const log = mock();
+  const log = mock<Parameters<typeof runSandboxCheck>[0]['log']>();
 
   controller.abort();
   await expect(
@@ -147,13 +147,13 @@ test('it logs an aborted check with no reply, CLI or API time', async () => {
   });
 });
 
-test('it logs a check whose guest exited with no reply', async () => {
+test('it logs a check whose guest exited with no reply as an error', async () => {
   const exit = {
     code: 1,
     signal: null,
     stderr: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
   };
-  const log = mock();
+  const log = mock<Parameters<typeof runSandboxCheck>[0]['log']>();
 
   await expect(
     runSandboxCheck({
@@ -187,9 +187,105 @@ test('it logs a check whose guest exited with no reply', async () => {
   ).toReject();
 
   expect(log).toHaveBeenCalledExactlyOnceWith('checker.timed', {
-    outcome: 'no_reply',
+    outcome: 'error',
     spawnMs: expect.toBeNumber(),
     replyMs: null,
+    cliMs: null,
+    apiMs: null,
+    totalMs: expect.toBeNumber(),
+  });
+});
+
+test('it logs a check whose reply frame it cannot read as an error', async () => {
+  const stderr = { bytes: new Uint8Array(), totalBytes: 0, isCut: false };
+  const exit = { code: 0, signal: null, stderr };
+  const reply = { kind: 'answer', output: {}, costUSD: 0.003 };
+  const log = mock<Parameters<typeof runSandboxCheck>[0]['log']>();
+
+  await expect(
+    runSandboxCheck({
+      sandbox: {
+        spawn: () =>
+          Promise.resolve({
+            messages: new ReadableStream<Uint8Array<ArrayBuffer>>({
+              start: (stream) => {
+                stream.enqueue(new TextEncoder().encode(JSON.stringify(reply)));
+                stream.close();
+              },
+            }),
+            send: () => Promise.resolve(),
+            exit: Promise.resolve(exit),
+            stop: () => Promise.resolve(exit),
+          }),
+      },
+      command: { argv: ['bun', 'check.ts'], env: {} },
+      request: {
+        profile: {
+          model: 'claude-sonnet-5-5',
+          baseURL: 'https://api.anthropic.com',
+          effort: 'low',
+          authHeader: 'x-api-key',
+        },
+        systemPrompt: 'You check one candidate memory.',
+        input: 'the input',
+      },
+      signal: new AbortController().signal,
+      log,
+    }),
+  ).toReject();
+
+  expect(log).toHaveBeenCalledExactlyOnceWith('checker.timed', {
+    outcome: 'error',
+    spawnMs: expect.toBeNumber(),
+    replyMs: null,
+    cliMs: null,
+    apiMs: null,
+    totalMs: expect.toBeNumber(),
+  });
+});
+
+test('it logs a failed reply with its reply time and no CLI or API time', async () => {
+  const stderr = { bytes: new Uint8Array(), totalBytes: 0, isCut: false };
+  const exit = { code: 0, signal: null, stderr };
+  const reply = { kind: 'failed', reason: 'error_max_turns' };
+  const log = mock<Parameters<typeof runSandboxCheck>[0]['log']>();
+
+  await expect(
+    runSandboxCheck({
+      sandbox: {
+        spawn: () =>
+          Promise.resolve({
+            messages: new ReadableStream<Uint8Array<ArrayBuffer>>({
+              start: (stream) => {
+                stream.enqueue(new TextEncoder().encode(JSON.stringify(reply)));
+                stream.close();
+              },
+            }),
+            send: () => Promise.resolve(),
+            exit: Promise.resolve(exit),
+            stop: () => Promise.resolve(exit),
+          }),
+      },
+      command: { argv: ['bun', 'check.ts'], env: {} },
+      request: {
+        profile: {
+          model: 'claude-sonnet-5-5',
+          baseURL: 'https://api.anthropic.com',
+          effort: 'low',
+          authHeader: 'x-api-key',
+        },
+        systemPrompt: 'You check one candidate memory.',
+        input: 'the input',
+      },
+      signal: new AbortController().signal,
+      log,
+    }),
+  ).toReject();
+
+  expect(log).toHaveBeenCalledExactlyOnceWith('checker.timed', {
+    outcome: 'failed',
+    spawnMs: expect.toBeNumber(),
+    replyMs: expect.toBeNumber(),
     cliMs: null,
     apiMs: null,
     totalMs: expect.toBeNumber(),

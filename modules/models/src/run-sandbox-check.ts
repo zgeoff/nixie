@@ -21,48 +21,54 @@ export interface SandboxCheck {
 // exited with no reply.
 export async function runSandboxCheck(check: SandboxCheck): Promise<unknown> {
   const startedAt = performance.now();
-  const timings: CheckTimings = { startedAt, spawnMs: null, reply: null };
+  const readElapsedMs = () => Math.round(performance.now() - startedAt);
+  let spawnMs: number | null = null;
+  let reply: CheckReply | null = null;
+  let replyMs: number | null = null;
 
   try {
-    return await runGuestCheck(check, timings);
+    return await runGuestCheck(check, {
+      spawned: () => {
+        spawnMs = readElapsedMs();
+      },
+      replied: (received) => {
+        reply = received;
+        replyMs = readElapsedMs();
+      },
+    });
   } finally {
     check.log('checker.timed', {
-      outcome: timings.reply?.kind ?? (check.signal.aborted ? 'aborted' : 'no_reply'),
-      spawnMs: timings.spawnMs,
-      replyMs: timings.reply === null ? null : timings.reply.atMs,
-      cliMs: timings.reply?.kind === 'answer' ? Math.round(timings.reply.durationMs) : null,
-      apiMs: timings.reply?.kind === 'answer' ? Math.round(timings.reply.apiMs) : null,
-      totalMs: Math.round(performance.now() - startedAt),
+      ...buildReplyTimings(reply, check.signal.aborted),
+      spawnMs,
+      replyMs,
+      totalMs: readElapsedMs(),
     });
   }
 }
 
-// the times a check reached, in ms from its start; a phase it never reached stays null
-interface CheckTimings {
-  readonly startedAt: number;
-  spawnMs: number | null;
-  reply: (CheckReply & { readonly atMs: number }) | null;
+// marks each phase of a check as it ends
+interface CheckMarks {
+  readonly spawned: () => void;
+  readonly replied: (reply: CheckReply) => void;
 }
 
-async function runGuestCheck(check: SandboxCheck, timings: CheckTimings): Promise<unknown> {
+async function runGuestCheck(check: SandboxCheck, marks: CheckMarks): Promise<unknown> {
   const stream = await check.sandbox.spawn({
     argv: check.command.argv,
     env: check.command.env,
     maxMessageBytes: turnFrameLimitBytes,
   });
 
-  timings.spawnMs = Math.round(performance.now() - timings.startedAt);
+  marks.spawned();
 
-  const reply = await readGuestReply(check, stream, timings);
+  const reply = await readGuestReply(check, stream);
 
+  marks.replied(reply);
   return toCheckOutput(reply);
 }
 
-async function readGuestReply(
-  check: SandboxCheck,
-  stream: ExecStream,
-  timings: CheckTimings,
-): Promise<CheckReply> {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream has no readonly form
+async function readGuestReply(check: SandboxCheck, stream: ExecStream): Promise<CheckReply> {
   const stopGuest = () => {
     void stream.stop();
   };
@@ -72,15 +78,19 @@ async function readGuestReply(
     // a timeout that fired while the guest started finds no listener, so the guest stops here
     check.signal.throwIfAborted();
     await stream.send(new TextEncoder().encode(JSON.stringify(check.request)));
-
-    const reply = await readCheckReply(stream.messages);
-
-    timings.reply = { ...reply, atMs: Math.round(performance.now() - timings.startedAt) };
-    return reply;
+    return await readCheckReply(stream.messages);
   } finally {
     check.signal.removeEventListener('abort', stopGuest);
     await stream.stop();
   }
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream has no readonly form
+async function readCheckReply(messages: AsyncIterable<Uint8Array>): Promise<CheckReply> {
+  for await (const message of messages) {
+    return decodeTurnFrame(checkReplySchema, message);
+  }
+  throw new Error('the check guest exited with no reply');
 }
 
 function toCheckOutput(reply: CheckReply): unknown {
@@ -90,10 +100,18 @@ function toCheckOutput(reply: CheckReply): unknown {
   return reply.output;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream has no readonly form
-async function readCheckReply(messages: AsyncIterable<Uint8Array>): Promise<CheckReply> {
-  for await (const message of messages) {
-    return decodeTurnFrame(checkReplySchema, message);
+// the reply's outcome and the guest's own CLI and API times; a check with no reply has neither
+// time, and one that threw before a reply, as a failed spawn or an unreadable frame, is an error
+function buildReplyTimings(reply: CheckReply | null, isAborted: boolean) {
+  if (reply === null) {
+    return { outcome: isAborted ? 'aborted' : 'error', cliMs: null, apiMs: null };
   }
-  throw new Error('the check guest exited with no reply');
+  if (reply.kind === 'failed') {
+    return { outcome: 'failed', cliMs: null, apiMs: null };
+  }
+  return {
+    outcome: 'answer',
+    cliMs: Math.round(reply.durationMs),
+    apiMs: Math.round(reply.apiMs),
+  };
 }

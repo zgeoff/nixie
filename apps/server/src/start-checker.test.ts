@@ -65,7 +65,7 @@ test('it runs each check in the check guest on the checker role profile', async 
 
 test('it logs where each check spent its time', async () => {
   const ctx = await setupTest();
-  const log = mock();
+  const log = mock<Parameters<typeof startChecker>[0]['log']>();
   const check = await startChecker({
     models: modelsConfigSchema.parse({
       profiles: {
