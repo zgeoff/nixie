@@ -6,6 +6,7 @@ import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
+import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { Conversation } from './conversation';
 
 async function setupTest() {
@@ -167,6 +168,7 @@ test('it retries an unsent message with its first client message ID', async () =
   const ctx = await setupTest();
   const attempted = mock<(body: unknown) => void>();
 
+  setupBrowserTimeZone('Europe/Lisbon');
   server.use(
     http.post(
       '*/rpc/conversation/send',
@@ -186,9 +188,7 @@ test('it retries an unsent message with its first client message ID', async () =
 
   await ctx.user.type(textBox, 'hello{Enter}');
 
-  const retry = await rendered.findByRole('button', { name: 'Retry' });
-
-  await ctx.user.click(retry);
+  await rendered.findByRole('button', { name: 'Retry' }).then((retry) => ctx.user.click(retry));
   await waitFor(() => {
     expect(store.records.count()).toBe(1);
   });
@@ -200,7 +200,7 @@ test('it retries an unsent message with its first client message ID', async () =
       spans: [{ end: 5, source: 'typed', start: 0 }],
       text: 'hello',
       thread: 'conversation',
-      timeZone: 'UTC',
+      timeZone: 'Europe/Lisbon',
     },
   });
 });
