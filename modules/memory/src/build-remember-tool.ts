@@ -29,6 +29,11 @@ export function buildRememberTool(memory: Pick<StartedMemoryStore, 'writes'>): T
     execution: 'direct',
     run: (call, context) =>
       runWriteCall(() => memory.writes.remember(buildRememberRequest(call, context))),
+
+    // the text is the item's, which the version holds under the item's key, so the call's record
+    // leaves it out and a forget leaves no readable copy
+    recordInput: (input) =>
+      Object.fromEntries(Object.entries(input).filter(([key]) => key !== 'text')),
   };
 }
 

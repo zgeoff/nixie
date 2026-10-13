@@ -1,18 +1,43 @@
 import { expect, test } from 'bun:test';
-import { buildToolRegistry } from '@heynixie/tools';
+import { readRecords } from '@heynixie/log';
+import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildMemoryTools } from './build-memory-tools';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
+import type { TestMemoryOptions } from './test-utils/start-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
 
-async function setupTest() {
-  const memory = await startTestMemory();
+// a test memory with the gate the config gives, the memory tools' registry, and the options a tool
+// call runs under, which record each call and its result in the memory's log
+async function setupTest(config: TestMemoryOptions = {}) {
+  const memory = await startTestMemory(config);
   const registry = buildToolRegistry(buildMemoryTools(memory.store));
 
-  return { memory, registry };
+  return {
+    memory,
+    registry,
+    toolCallOptions: {
+      registry,
+
+      // every call is allowed, so each reaches its tool
+      decide: () => ({
+        decision: { outcome: 'allow' as const, stage: 3, rule: null },
+        sentence: null,
+      }),
+      log: memory.log,
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+
+      // the memory tools run direct, so nothing reaches the queue
+      queue: {
+        enqueue: () => Promise.reject(new Error('no memory tool runs queued')),
+        waitForOutcome: () => Promise.resolve(null),
+      },
+      queuedWaitMs: 1000,
+    },
+  };
 }
 
 test('it declares read for recall and note for remember and retire', async () => {
@@ -251,6 +276,96 @@ test('it recalls items with a result that its output schema accepts', async () =
     items: [{ text: 'Allergic to hazelnuts', history: [{ version: 1 }] }],
     next: null,
   });
+});
+
+test('it gives the model a recalled item and leaves no readable copy once the item is forgotten', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Sister Ada lives in Leeds',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: { query: 'sister' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  await ctx.memory.store.forget({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  expect(result.structuredContent).toMatchObject({
+    items: [{ itemID: item.itemID, text: 'Sister Ada lives in Leeds' }],
+  });
+  expect(entries).toIncludeAllPartialMembers([
+    {
+      record: expect.objectContaining({
+        kind: 'tool_result',
+        erasable: {
+          status: 'readable',
+          fields: { result: { items: [{ itemID: item.itemID, version: 1 }], next: null } },
+        },
+      }),
+    },
+  ]);
+  expect(JSON.stringify(entries)).not.toInclude('Leeds');
+});
+
+test('it applies a remembered fact and leaves no readable copy of its text once it is forgotten', async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm allergic to hazelnuts",
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  const result = await runToolCall(
+    {
+      tool: 'memory.remember',
+      input: { text: 'Allergic to hazelnuts', quote: "I'm allergic to hazelnuts" },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+  const content = result.structuredContent;
+
+  invariant(
+    typeof content === 'object' &&
+      content !== null &&
+      'itemID' in content &&
+      typeof content.itemID === 'string',
+    'the remember applied no item',
+  );
+  const itemID = content.itemID;
+
+  await ctx.memory.store.forget({
+    target: { itemID, version: 1 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  // the owner's own message keeps its words, and only the item's text is gone
+  expect(result.structuredContent).toStrictEqual({ status: 'applied', itemID, version: 1 });
+  expect(JSON.stringify(entries)).not.toInclude('Allergic to hazelnuts');
 });
 
 test.each([

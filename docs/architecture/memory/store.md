@@ -168,3 +168,9 @@ stale version, a missing item or a wrong state returns to the model as the tool'
 model reads the item again. The model can retire an item and can never restore, undo or forget one.
 The server registers the 3 tools beside web fetch, and the conversation's tool list names them. The
 read-only rule allows them, because they declare `read` and `note` and run direct.
+
+The records of a memory tool call never hold an item's text, so a forget leaves no readable copy in
+them. A recall's result record lists each item and version it returned, as the recall's own record
+does, while the model reads the items word for word. A remember's call record keeps every argument
+but the memory text, which the version holds under its item's key. Its quote stays, because the
+quote repeats the user's own message, and a forget never erases that message.

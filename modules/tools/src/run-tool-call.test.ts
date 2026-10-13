@@ -130,6 +130,66 @@ test('it writes the result with the source of each field, under the call it answ
   expect(entries[1]?.record.payload['callID']).toBe(entries[0]?.record.payload['callID']);
 });
 
+test('it returns the model the whole result and records the record form the tool gave', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () =>
+          Promise.resolve({ status: 'ok', result: { text: 'a note' }, record: { noteID: 'n-1' } }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(result).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
+  expect(entries[1]?.record).toMatchObject({
+    kind: 'tool_result',
+    erasable: { status: 'readable', fields: { result: { noteID: 'n-1' } } },
+  });
+});
+
+test("it records the call's input in the record form the tool gives", async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_write',
+        declaration: { effects: ['note'] },
+        recordInput: (input) => ({ length: String(input['query']).length }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'notes_write', input: { query: 'buy milk' }, toolUseID: 'toolu_4' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_write'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[0]?.record).toMatchObject({
+    kind: 'tool_called',
+    erasable: { status: 'readable', fields: { input: { length: 8 } } },
+  });
+});
+
 test('it returns an allowed queued call the action outcome once the action is done', async () => {
   const ctx = await setupTest({
     tools: [

@@ -105,9 +105,15 @@ function buildRecallTool(memory: MemoryToolStore): ToolDefinition {
       };
       const result = await memory.recall(request);
 
+      // the record holds references, as the recall's own record does, so a forget leaves no
+      // readable copy of what the model read
       return {
         status: 'ok',
         result: { items: result.items.map((item) => toItemJSON(item)), next: result.next },
+        record: {
+          items: result.items.map((item) => ({ itemID: item.itemID, version: item.version })),
+          next: result.next,
+        },
       };
     },
   };

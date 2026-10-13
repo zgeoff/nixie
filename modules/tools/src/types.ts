@@ -25,8 +25,16 @@ export interface ToolContext {
 
 // A typed result, or an error the model reads as the tool's refusal.
 export type ToolOutcome =
-  | { readonly status: 'ok'; readonly result: JSONObject }
+  | ({ readonly status: 'ok' } & TypedResult)
   | { readonly status: 'error'; readonly message: string };
+
+// A result the output schema checks. A result that repeats text another key guards, such as a
+// memory item's, gives a record that holds references in its place, so removing that key leaves no
+// readable copy in the result's record.
+export interface TypedResult {
+  readonly result: JSONObject;
+  readonly record?: JSONObject;
+}
 
 // A tool as connectors, the MCP proxy and nixie's own features define it. The model sees the name,
 // the description and the input schema; the output schema and the declaration stay in the registry.
@@ -42,6 +50,11 @@ export interface ToolDefinition {
 
   // receives an input the input schema accepted, and returns a result the output schema checks
   readonly run: (call: ToolCall, context: ToolContext) => Promise<ToolOutcome>;
+
+  // what the call's record holds of the input, when the input repeats text another key guards. It
+  // receives the input as the model sent it, before any schema check. The record holds the whole
+  // input when this is absent.
+  readonly recordInput?: (input: JSONObject) => JSONObject;
 }
 
 // The result of checking a value against a schema.

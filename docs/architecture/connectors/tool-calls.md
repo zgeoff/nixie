@@ -97,3 +97,9 @@ repeats text the model chose counts as untrusted: the schema errors, and a regis
 with the tool's name. A tool's error and an action's failure count as untrusted too, because they
 can quote what an outside service said. nixie's other messages, such as a rule's deny sentence,
 count as the user's own data.
+
+A tool whose input or result repeats text that another key guards gives each record a form of its
+own in place of that text. Each record's erasable fields sit under the record's own key, so a forget
+that destroys the other key would leave the copy readable. The model reads the whole result either
+way. The memory tools use these forms, and [the memory store](../memory/store.md#the-models-tools)
+covers what each one records.
