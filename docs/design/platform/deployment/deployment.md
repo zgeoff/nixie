@@ -239,6 +239,8 @@ and your deployment repo keeps its own version of them. One SQLite writer sets t
 - each container's secrets file and its decryption key as a Secret mounted read-only, which that
   container decrypts at start
 - impd on each node that runs nixie, outside the cluster, with its API reachable from nixie's pod
+  through a rule of its own, so a change to a rule other traffic uses cannot cut nixie off, like
+  [the tailnet grant in one deployment repo](https://github.com/zgeoff/cloud/blob/main/docs/architecture/network/tailnet.md#identities)
 
 nixie keeps one writer itself, with the
 [writer lock and epoch](../../../architecture/core/database.md#the-single-writer), so a rollout's
