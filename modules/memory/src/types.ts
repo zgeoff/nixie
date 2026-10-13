@@ -135,6 +135,12 @@ export interface RecalledVersion {
   readonly source: ContentSource;
   readonly recordedAt: number;
   readonly text: string;
+
+  // the quote the gate checked the version against, or null when it had none
+  readonly evidenceQuote: string | null;
+
+  // the model ID of the call that wrote the version, or null for your own action
+  readonly model: string | null;
 }
 
 export interface RecalledItem extends RecalledVersion {
@@ -154,7 +160,7 @@ export interface RecallResult {
 
 // One version as the memory view reads it. A version whose key is gone reads as shredded, and one
 // whose key or ciphertext fails reads as unreadable, so a forgotten item shows as a gap.
-export type HistoryVersion = Omit<RecalledVersion, 'text'> &
+export type HistoryVersion = Omit<RecalledVersion, 'text' | 'evidenceQuote' | 'model'> &
   (
     | { readonly status: 'readable'; readonly text: string }
     | { readonly status: 'shredded' | 'unreadable' }

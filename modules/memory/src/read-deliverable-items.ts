@@ -108,5 +108,7 @@ async function readVersion(key: CryptoKey, row: MemoryVersionRow): Promise<Recal
     source: row.source,
     recordedAt: row.recorded_at,
     text: text.text,
+    evidenceQuote: text.evidenceQuote,
+    model: row.model,
   };
 }

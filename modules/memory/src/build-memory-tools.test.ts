@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -280,6 +280,108 @@ test('it recalls items with a result that its output schema accepts', async () =
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
   expect(outcome.result).toMatchObject({
     items: [{ text: 'Allergic to hazelnuts', history: [{ version: 1 }] }],
+    next: null,
+  });
+});
+
+test('it tells the model when to reach for recall', async () => {
+  const ctx = await setupTest();
+  const tool = ctx.registry.findTool('memory.recall');
+
+  expect(tool?.definition.description).toInclude(
+    'Use it when you half-remember something said, or when a detail from before would change your answer.',
+  );
+});
+
+test('it recalls a version with its quote, its model and a readable date', async () => {
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2026, 9, 1, 9, 30)));
+  onTestFinished(() => {
+    setSystemTime();
+  });
+  await ctx.memory.store.remember({
+    text: 'Keeps a sourdough starter called Gerald',
+    evidenceQuote: 'Gerald the starter needs feeding again',
+    provenance: {
+      origin: 'conversation',
+      source: 'owner',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+      model: 'test-model-1',
+    },
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({
+    items: [
+      {
+        itemID: expect.any(String),
+        isPinned: false,
+        version: 1,
+        change: 'created',
+        state: 'active',
+        origin: 'conversation',
+        source: 'owner',
+        recordedAt: '2026-10-01 09:30 UTC',
+        text: 'Keeps a sourdough starter called Gerald',
+        quote: 'Gerald the starter needs feeding again',
+        model: 'test-model-1',
+      },
+    ],
+    next: null,
+  });
+});
+
+test('it recalls a version with no quote or model without them', async () => {
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2026, 8, 14, 18, 5)));
+  onTestFinished(() => {
+    setSystemTime();
+  });
+  await ctx.memory.store.remember({
+    text: 'Plays the cello on Sundays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({
+    items: [
+      {
+        itemID: expect.any(String),
+        isPinned: false,
+        version: 1,
+        change: 'created',
+        state: 'active',
+        origin: 'owner',
+        source: 'owner',
+        recordedAt: '2026-09-14 18:05 UTC',
+        text: 'Plays the cello on Sundays',
+        model: null,
+      },
+    ],
     next: null,
   });
 });

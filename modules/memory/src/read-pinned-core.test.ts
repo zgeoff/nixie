@@ -35,6 +35,8 @@ test('it reads every pinned active item in the order you pinned them', async () 
       source: 'owner',
       recordedAt: expect.toBeNumber(),
       text: 'Uses they/them',
+      evidenceQuote: null,
+      model: null,
     },
     {
       itemID: name.itemID,
@@ -46,6 +48,8 @@ test('it reads every pinned active item in the order you pinned them', async () 
       source: 'owner',
       recordedAt: expect.toBeNumber(),
       text: 'Goes by Sam',
+      evidenceQuote: null,
+      model: null,
     },
   ]);
 });
