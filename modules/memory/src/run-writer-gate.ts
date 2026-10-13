@@ -25,7 +25,16 @@ export async function runWriterGate(
   const gated: GatedWrite[] = [];
 
   try {
-    await collectVerdicts({ gate, lookups, gated }, writes);
+    await collectVerdicts(
+      {
+        gate,
+        lookups,
+        onGated: (entry) => {
+          gated.push(entry);
+        },
+      },
+      writes,
+    );
   } catch (error) {
     await gate.release(gated.map((entry) => entry.verdict));
     throw error;
@@ -40,8 +49,8 @@ interface VerdictCollection {
   readonly gate: WriterGate;
   readonly lookups: GateLookups;
 
-  // the gated writes so far, which the caller releases when a later check throws
-  readonly gated: GatedWrite[];
+  // takes each gated write as it comes, so the caller can release them when a later check throws
+  readonly onGated: (entry: GatedWrite) => void;
 }
 
 async function collectVerdicts(
@@ -58,7 +67,7 @@ async function collectVerdicts(
       // oxlint-disable-next-line no-await-in-loop -- the checker takes one write at a time
       const verdict = await collection.gate.check(write, source, lookups.batch);
 
-      collection.gated.push({ write, verdict });
+      collection.onGated({ write, verdict });
     }
   }
 }
