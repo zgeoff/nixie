@@ -14,6 +14,7 @@ test('it starts a store over a log that folds the memory projections, with no re
     'memory_versions',
     'memory_writer',
     'memory_proposals',
+    'memory_proposal_merges',
     'memory_notice_entries',
     'memory_forgotten_evidence',
   ]);

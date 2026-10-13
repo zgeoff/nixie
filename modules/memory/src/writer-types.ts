@@ -1,6 +1,7 @@
 import type { ContentSource, JSONObject, RecordInput } from '@heynixie/log';
 import type { Selectable } from 'kysely';
 import type { QuoteEvidence, VersionRef } from './types';
+import type { ProposalPlan } from './write-memory-proposal';
 
 // One record of the conversation as the writer reads it: your message, with each pasted span
 // marked, or a reply. Your message's sequence is the ID a candidate cites as its source.
@@ -59,6 +60,10 @@ export type GateVerdict =
 
       // the proposal's records, which the batch publishes in its one transaction
       readonly records: readonly RecordInput[];
+
+      // the change the proposal makes, which merges into a pending proposal of the same change
+      // instead when the batch publishes, or null for a proposal that never merges
+      readonly plan: ProposalPlan | null;
     };
 
 // The content gate a batch write passes, which the memory checks supply. It checks a write against

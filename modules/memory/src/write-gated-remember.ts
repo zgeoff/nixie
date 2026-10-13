@@ -50,7 +50,7 @@ async function writeRememberProposal(
   reviewed: ReviewedRemember,
 ): Promise<WriteOutcome> {
   const review = reviewed.review;
-  const proposalID = await writeMemoryProposal(parts, {
+  const written = await writeMemoryProposal(parts, {
     operation: 'remember',
     target: request.target ?? null,
     isPinned: request.isPinned === true,
@@ -64,7 +64,7 @@ async function writeRememberProposal(
     group: reviewed.group,
   });
 
-  return { status: 'proposed', proposalID, reason: review.reason };
+  return { status: 'proposed', ...written, reason: review.reason };
 }
 
 // a forget that completed while the checker answered turns a passing write into a proposal

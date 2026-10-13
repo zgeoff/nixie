@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { makeChecker } from '@heynixie/models';
-import { makeGatedCall } from '@heynixie/testing';
+import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
@@ -59,6 +59,7 @@ test('it proposes a write that cites no quote', async () => {
     status: 'proposed',
     proposalID: expect.toBeString(),
     reason: 'no_quote',
+    merged: false,
   });
 });
 
@@ -334,7 +335,7 @@ test('it proposes a write whose quote lies only in a message outside the window'
   const memory = await startTestMemory({
     gate: {
       check: () => Promise.resolve(buildMockCheckerAnswer()),
-      limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10 },
+      limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10, closeMatchScore: 0.6 },
     },
   });
 
@@ -360,7 +361,9 @@ test('it proposes a write whose quote lies only in a message outside the window'
 
 test('it refuses a proposal past the cap for the turn', async () => {
   const memory = await startTestMemory({
-    gate: { limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 2 } },
+    gate: {
+      limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 2, closeMatchScore: 0.6 },
+    },
   });
 
   await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
@@ -378,7 +381,9 @@ test('it refuses a proposal past the cap for the turn', async () => {
 
 test('it counts the cap again from your next message', async () => {
   const memory = await startTestMemory({
-    gate: { limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 1 } },
+    gate: {
+      limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 1, closeMatchScore: 0.6 },
+    },
   });
 
   await writeOwnerMessageRecord(memory.log, {
@@ -504,4 +509,138 @@ test("it groups a turn's applied writes and proposals under one notice", async (
       ],
     },
   ]);
+});
+
+test("it merges a task's write into the conversation's pending proposal of the same text", async () => {
+  const memory = await startTestMemory();
+  const first = await memory.store.writes.remember({
+    text: 'Collects vintage fountain pens.',
+    caller: buildMockWriteCaller(),
+  });
+
+  const second = await memory.store.writes.remember({
+    text: 'collects vintage  fountain pens',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-7', taskID: 'task-7' }),
+  });
+  const pending = await memory.store.proposals.listPending();
+
+  invariant(first.status === 'proposed');
+  expect(second).toStrictEqual({
+    status: 'proposed',
+    proposalID: first.proposalID,
+    reason: 'no_quote',
+    merged: true,
+  });
+  expect(pending).toMatchObject([
+    {
+      proposalID: first.proposalID,
+      text: 'Collects vintage fountain pens.',
+      sources: [
+        { origin: 'conversation', thread: 'conversation', taskID: 'conversation' },
+        { origin: 'task', thread: 'task-7', taskID: 'task-7' },
+      ],
+    },
+  ]);
+  expect(pending).toHaveLength(1);
+});
+
+test("it shows the proposal a write merged into in the notice of the write's own task run", async () => {
+  const memory = await startTestMemory();
+  const first = await memory.store.writes.remember({
+    text: 'Collects vintage fountain pens.',
+    caller: buildMockWriteCaller(),
+  });
+
+  await memory.store.writes.remember({
+    text: 'Collects vintage fountain pens.',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-7', runID: 'run-7' }),
+  });
+  const notices = await memory.store.readNotices('task-7');
+
+  invariant(first.status === 'proposed');
+  expect(notices).toMatchObject([
+    {
+      noticeKey: 'run/run-7',
+      proposed: 1,
+      entries: [{ change: 'proposed', version: null, proposalID: first.proposalID }],
+    },
+  ]);
+});
+
+test("it merges a write past the turn's proposal cap, because a merge adds no proposal", async () => {
+  const memory = await startTestMemory({
+    gate: {
+      limits: { evidenceWindow: 20, proposalLapseMs: 60_000, proposalCap: 1, closeMatchScore: 0.6 },
+    },
+  });
+
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+
+  const again = await memory.store.writes.remember({
+    text: 'Fact one',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(again).toMatchObject({ status: 'proposed', merged: true });
+});
+
+test('it keeps a reworded write, and a write that pins, as proposals of their own', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.writes.remember({
+    text: 'Collects vintage fountain pens.',
+    caller: buildMockWriteCaller(),
+  });
+  await memory.store.writes.remember({
+    text: 'Collects old fountain pens.',
+    caller: buildMockWriteCaller(),
+  });
+  const pinned = await memory.store.writes.remember({
+    text: 'Collects vintage fountain pens.',
+    isPinned: true,
+    caller: buildMockWriteCaller(),
+  });
+  const pending = await memory.store.proposals.listPending();
+
+  expect(pinned).toMatchObject({ status: 'proposed', merged: false });
+  expect(pending.map((proposal) => [proposal.text, proposal.isPinned])).toStrictEqual([
+    ['Collects vintage fountain pens.', false],
+    ['Collects old fountain pens.', false],
+    ['Collects vintage fountain pens.', true],
+  ]);
+});
+
+test('it moves a proposal lapse back to a full lapse window when a later write merges into it', async () => {
+  const clock = buildTestClock(1_000_000);
+  const memory = await startTestMemory({
+    gate: {
+      clock,
+      limits: {
+        evidenceWindow: 20,
+        proposalLapseMs: 60_000,
+        proposalCap: 10,
+        closeMatchScore: 0.6,
+      },
+    },
+  });
+
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+  clock.advance(50_000);
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(pending).toMatchObject([{ lapseAt: 1_110_000 }]);
+});
+
+test('it lists a proposal once in a turn notice when the turn proposes it twice', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+  await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+
+  const notices = await memory.store.readNotices('conversation');
+
+  expect(notices).toMatchObject([{ proposed: 1, entries: [{ change: 'proposed' }] }]);
+  expect(notices[0]?.entries).toHaveLength(1);
 });

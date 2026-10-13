@@ -10,7 +10,7 @@ test('it applies a staged memory with the message it cites as its evidence, outs
     gate: {
       check: () =>
         Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted', model: 'claude-checker-1' })),
-      limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10 },
+      limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10, closeMatchScore: 0.6 },
     },
   });
   const sequence = await writeOwnerMessageRecord(memory.log, {

@@ -1,9 +1,13 @@
 import type { JSONObject } from '@heynixie/log';
-import { removeRecordKey, withWriteTransaction } from '@heynixie/log';
+import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { Transaction } from 'kysely';
+import { buildMergeRecord } from './build-merge-record';
 import type { WriteGroup } from './build-write-group';
 import { createSealedProposal } from './create-sealed-proposal';
+import { findMatchingProposal } from './find-matching-proposal';
 import type { ReviewReason, WriteCaller } from './gate-types';
-import type { QuoteEvidence, StoreParts } from './types';
+import type { MemoryTables, QuoteEvidence, StoreParts } from './types';
+import type { PendingProposal } from './write-proposal-record';
 import { writeProposalRecord } from './write-proposal-record';
 
 export interface ProposalPlan {
@@ -22,22 +26,70 @@ export interface ProposalPlan {
   readonly group: WriteGroup;
 }
 
-// Writes a memory proposal bound to its exact operation, sealed under its item's key. A proposal
-// for a new item creates that item's key, and its approval creates the item under it.
-export async function writeMemoryProposal(parts: StoreParts, plan: ProposalPlan): Promise<string> {
-  const log = parts.context.log;
-  const sealed = await createSealedProposal(parts, plan);
+// The proposal a write made, or the pending one it merged into.
+export interface WrittenProposal {
+  readonly proposalID: string;
+  readonly merged: boolean;
+}
 
-  try {
-    await withWriteTransaction(log.writer, (tx) =>
-      writeProposalRecord(tx, parts, { plan, sealed }),
-    );
-  } catch (error) {
+// Writes a memory proposal bound to its exact operation, sealed under its item's key; a new item's
+// proposal creates that item's key. A write of the same change as a pending proposal merges into
+// it, before any key exists and again inside the proposal's transaction for a race.
+export async function writeMemoryProposal(
+  parts: StoreParts,
+  plan: ProposalPlan,
+): Promise<WrittenProposal> {
+  const log = parts.context.log;
+  const merged = await withWriteTransaction(log.writer, (tx) => writePendingMerge(tx, parts, plan));
+
+  if (merged !== null) {
+    return merged;
+  }
+  const sealed = await createSealedProposal(parts, plan);
+  const written = await withWriteTransaction(log.writer, (tx) =>
+    writeProposalOrMerge(tx, parts, { plan, sealed }),
+  ).catch(async (error: unknown) => {
     // a new item's key seals nothing but this proposal, so a proposal that never landed drops it
     if (plan.target === null) {
       await removeRecordKey(log, sealed.itemID);
     }
     throw error;
+  });
+
+  // a merge that raced in leaves the new item's key sealing nothing
+  if (written.merged && plan.target === null) {
+    await removeRecordKey(log, sealed.itemID);
   }
-  return sealed.proposalID;
+  return written;
+}
+
+// merges the write into a pending proposal of the same change, or returns null when none waits
+async function writePendingMerge(
+  tx: Transaction<unknown>,
+  parts: StoreParts,
+  plan: ProposalPlan,
+): Promise<WrittenProposal | null> {
+  const match = await findMatchingProposal(tx.$extendTables<MemoryTables>(), parts, plan);
+
+  if (match === null) {
+    return null;
+  }
+  await writeRecordsInTransaction(tx, parts.context.log, [
+    buildMergeRecord(parts, { proposal: match, plan }),
+  ]);
+  return { proposalID: match.proposal_id, merged: true };
+}
+
+async function writeProposalOrMerge(
+  tx: Transaction<unknown>,
+  parts: StoreParts,
+  pending: PendingProposal,
+): Promise<WrittenProposal> {
+  const merged = await writePendingMerge(tx, parts, pending.plan);
+
+  if (merged !== null) {
+    return merged;
+  }
+  await writeProposalRecord(tx, parts, pending);
+  return { proposalID: pending.sealed.proposalID, merged: false };
 }

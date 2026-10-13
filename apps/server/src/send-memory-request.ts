@@ -4,6 +4,10 @@ export type MemoryRequest =
       readonly command: 'approve' | 'reject';
       readonly proposalID: string;
       readonly actionHash: string;
+
+      // an approval's answer to a close match: a revision of that item, or a new item anyway
+      readonly revisionOf?: { readonly itemID: string; readonly version: number };
+      readonly ignoreCloseMatch?: boolean;
     };
 
 // A memory host command's request: lists the pending memory proposals, or answers one, through the
@@ -20,7 +24,12 @@ export async function sendMemoryRequest(
           method: 'POST',
           unix: socketPath,
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ proposalID: request.proposalID, actionHash: request.actionHash }),
+          body: JSON.stringify({
+            proposalID: request.proposalID,
+            actionHash: request.actionHash,
+            ...(request.revisionOf === undefined ? {} : { revisionOf: request.revisionOf }),
+            ...(request.ignoreCloseMatch === true ? { ignoreCloseMatch: true } : {}),
+          }),
         });
 
   if (!response.ok) {

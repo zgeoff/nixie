@@ -131,6 +131,7 @@ test('it returns a proposal, not an error, for a fact with no quote', async () =
     status: 'proposed',
     proposalID: expect.toBeString(),
     reason: 'no_quote',
+    merged: false,
   });
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });
@@ -217,7 +218,9 @@ test('it retires an item the model read and you asked to retire', async () => {
 
 test('it returns a full proposal cap to the model as an error', async () => {
   const memory = await startTestMemory({
-    gate: { limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 1 } },
+    gate: {
+      limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 1, closeMatchScore: 0.6 },
+    },
   });
   const tool = buildToolRegistry(buildMemoryTools(memory.store)).findTool('memory.remember');
   const call = {
@@ -238,7 +241,10 @@ test('it returns a full proposal cap to the model as an error', async () => {
   invariant(tool);
   await tool.definition.run(call, context);
 
-  const outcome = await tool.definition.run(call, context);
+  const outcome = await tool.definition.run(
+    { ...call, callID: 'call-2', input: { text: 'Likes opera' } },
+    context,
+  );
 
   expect(outcome).toMatchObject({ status: 'error', message: expect.toInclude('memory proposals') });
 });

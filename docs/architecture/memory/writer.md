@@ -59,13 +59,15 @@ in force before the writer's rules, so the writer frames what it stores the way 
 of the user. The [batch model spike](../../design/platform/spikes/memory-batch-model/README.md)
 found the persona costs no capture.
 
-The prompt holds the batch's records with their sequences, the user's pasted spans marked, and the
-active items: every one while the list fits its budget, else the items a keyword recall over the
-batch finds. The session's tools are recall, remember and retire, and they stage writes instead of
-applying them. Staging refuses a write that cites a record outside the batch, a change to an item
-the session was never shown, and a second change to the same item, and the refusal goes back to the
-model at once. Staging binds each change to the version the session was shown, never to a version
-the model sent.
+The prompt holds the batch's records with their sequences, the user's pasted spans marked, the
+active items, and the pending proposals with the item each one changes. It lists every active item
+while the list fits its budget, else the items a keyword recall over the batch finds. A rule tells
+the writer to stage nothing for a fact that a pending proposal already holds, even in other words,
+because the gate merges only a proposal of the same text. The session's tools are recall, remember
+and retire, and they stage writes instead of applying them. Staging refuses a write that cites a
+record outside the batch, a change to an item the session was never shown, and a second change to
+the same item, and the refusal goes back to the model at once. Staging binds each change to the
+version the session was shown, never to a version the model sent.
 
 A batch's staging belongs to the step that opened it. A step that lost its lease and stops late
 closes only its own staging, so it never empties the staging of the step that replaced it.
@@ -107,7 +109,9 @@ One transaction then publishes the batch:
    the user can approve every proposal the batch publishes, and it applies each write at that
    version. A write or a proposal whose item changed or was forgotten in the meantime aborts the
    transaction, and the batch runs again at once against the item as it stands.
-5. It writes the proposals' records, the batch's notice and the advanced cursor.
+5. It writes the proposals' records one at a time, and merges each proposal that makes the same
+   change as a pending one into it, so a batch's proposal sees every proposal before it. It then
+   writes the batch's notice and the advanced cursor.
 
 A batch that would hold more proposals than the proposal cap allows never publishes them. A batch
 over several of the user's messages splits in half and runs each half again, so each proposal still
@@ -131,5 +135,6 @@ A conversation turn sees memory that changed outside it. Before each turn, the c
 the versions written since its last turn by anything but the conversation itself, such as a writer
 batch or an edit in the memory view, and puts a note of them before the user's message. The note
 lists changes up to a cap, then how many more, and counts the catch-up's items without listing them.
-The turn's end record holds the last sequence the note covered, so the next turn's note starts after
-it.
+It also names each of the conversation's pending proposals that another source proposed again since
+the last turn, so the conversation knows its proposal merged. The turn's end record holds the last
+sequence the note covered, so the next turn's note starts after it.

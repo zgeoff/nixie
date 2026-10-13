@@ -211,3 +211,59 @@ test('it lists changes up to the cap and counts the rest', async () => {
     /^<memory-changes>\n[^\n]+\n- Remembered \[[^\]]+\]: Lives on Elm Street\nand 2 more\n<\/memory-changes>$/u,
   );
 });
+
+test("it names each of the conversation's proposals that a write from outside merged into, and no merge of the conversation's own", async () => {
+  const ctx = await setupTest();
+  const caller = {
+    origin: 'conversation' as const,
+    thread: 'conversation',
+    taskID: 'conversation',
+    runID: 'run-1',
+    model: 'claude-test-1',
+  };
+  const first = await ctx.memory.store.writes.remember({ text: 'Keeps bees', caller });
+
+  await ctx.memory.store.writes.remember({ text: 'Keeps bees', caller });
+  await ctx.memory.store.writes.remember({
+    text: 'Keeps bees',
+    caller: { ...caller, origin: 'task', thread: 'task-7', taskID: 'task-7' },
+  });
+
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+
+  invariant(first.status === 'proposed');
+  expect(note.text).toBe(
+    [
+      '<memory-changes>',
+      'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
+      `- A task proposed the same memory again; it merged into your pending proposal [${first.proposalID}], which still waits for the owner's review`,
+      '</memory-changes>',
+    ].join('\n'),
+  );
+});
+
+test('it leaves out a merge into a proposal that closed before the next turn', async () => {
+  const ctx = await setupTest();
+  const caller = {
+    origin: 'conversation' as const,
+    thread: 'conversation',
+    taskID: 'conversation',
+    runID: 'run-1',
+    model: 'claude-test-1',
+  };
+
+  await ctx.memory.store.writes.remember({ text: 'Keeps bees', caller });
+  await ctx.memory.store.writes.remember({
+    text: 'Keeps bees',
+    caller: { ...caller, origin: 'task', thread: 'task-7', taskID: 'task-7' },
+  });
+
+  const [pending] = await ctx.memory.store.proposals.listPending();
+
+  invariant(pending);
+  await ctx.memory.store.proposals.reject({ ...pending, identityID: 'identity-1' });
+
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+
+  expect(note.text).toBeNull();
+});

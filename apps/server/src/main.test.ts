@@ -292,7 +292,11 @@ test('it lists a pending memory proposal and approves it through the memory comm
   ]);
 
   expect(proposal.text).toBe('Likes jazz');
-  expect(JSON.parse(approved.stdout)).toStrictEqual({ itemID: proposal.itemID, version: 1 });
+  expect(JSON.parse(approved.stdout)).toStrictEqual({
+    status: 'applied',
+    itemID: proposal.itemID,
+    version: 1,
+  });
 }, 60_000);
 
 test('it refuses to start on a key no module reads, and exits 1', async () => {

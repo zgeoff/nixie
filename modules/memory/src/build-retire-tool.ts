@@ -38,6 +38,7 @@ export function buildRetireTool(memory: ModelWriteStore): ToolDefinition {
         version: 'owner_data',
         proposalID: 'owner_data',
         reason: 'owner_data',
+        merged: 'owner_data',
       },
     },
     execution: 'direct',

@@ -48,6 +48,17 @@ const approvalRecorded = z.strictObject({
 
 const resolved = z.strictObject({ proposalID: z.string() });
 
+const merged = z.strictObject({
+  mergeID: z.string(),
+  proposalID: z.string(),
+  itemID: z.string(),
+  origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']),
+  taskID: z.string().nullable(),
+  model: z.string().nullable(),
+  noticeKey: z.string().nullable(),
+  lapseAt: z.int(),
+});
+
 interface ProposedRecord {
   readonly kind: 'memory.proposed';
   readonly proposalID: string;
@@ -72,10 +83,26 @@ interface ProposedRecord {
   readonly lapseAt: number;
 }
 
-// The records that change a memory proposal: its creation, your approval, your rejection, and its
-// lapse.
+// A later write that proposed the same change as a pending proposal, and merged into it.
+interface MergedRecord {
+  readonly kind: 'memory.proposal_merged';
+  readonly mergeID: string;
+  readonly proposalID: string;
+  readonly itemID: string;
+  readonly origin: MemoryOrigin;
+  readonly taskID: string | null;
+  readonly model: string | null;
+  readonly noticeKey: string | null;
+
+  // when the proposal lapses now, unless it already lapses later
+  readonly lapseAt: number;
+}
+
+// The records that change a memory proposal: its creation, a later write that merged into it, your
+// approval, your rejection, and its lapse.
 export type ProposalRecord =
   | ProposedRecord
+  | MergedRecord
   | {
       readonly kind: 'memory.approval_recorded';
       readonly proposalID: string;
@@ -92,6 +119,9 @@ export type ProposalRecord =
 export function parseProposalRecord(record: EnvelopeRecord): ProposalRecord | null {
   if (record.kind === 'memory.proposed') {
     return { kind: record.kind, ...proposed.parse(record.payload) };
+  }
+  if (record.kind === 'memory.proposal_merged') {
+    return { kind: record.kind, ...merged.parse(record.payload) };
   }
   if (record.kind === 'memory.approval_recorded') {
     return { kind: record.kind, ...approvalRecorded.parse(record.payload) };

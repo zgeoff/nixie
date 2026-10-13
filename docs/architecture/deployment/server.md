@@ -137,7 +137,9 @@ An answer names the proposal and the action hash the listing showed. The gate re
 under another hash, to a proposal that closed or lapsed since the listing, or to one whose item
 moved on, and applies nothing. Its approval record names the host as the identity that answered,
 because a shell in the container reaches the socket and no device session does. The memory commands
-answer once the memory store starts, and refuse before then.
+answer once the memory store starts, and refuse before then. An approval that the gate holds for a
+close match prints the matching item, and the user answers it again as a revision of that item or as
+a new item.
 
 ## The image and the release bundle
 

@@ -1,11 +1,12 @@
 import { findRecordKeys } from '@heynixie/log';
 import { decodeProposalText } from './decode-proposal-text';
-import type { MemoryProposal } from './gate-types';
+import type { MemoryProposal, MemoryProposalRow, ProposalSource } from './gate-types';
 import { parseEvidence } from './parse-evidence';
 import type { MemoryTables, StoreParts } from './types';
 
-// Reads the proposals that wait for your answer, oldest first, with their text opened. A proposal
-// whose item was forgotten has no key left, so it reads as nothing and drops out of the list.
+// Reads the proposals that wait for your answer, oldest first, with their text opened and every
+// source that proposed each one. A proposal whose item was forgotten has no key left, so it reads
+// as nothing and drops out of the list.
 export async function readPendingProposals(parts: StoreParts): Promise<readonly MemoryProposal[]> {
   const log = parts.context.log;
   const rows = await log.writer.db
@@ -20,6 +21,7 @@ export async function readPendingProposals(parts: StoreParts): Promise<readonly 
     log,
     rows.map((row) => row.item_id),
   );
+  const merges = await readMergeSources(parts, rows);
   const proposals = await Promise.all(
     rows.map(async (row) => {
       const key = keys.get(row.item_id);
@@ -41,6 +43,7 @@ export async function readPendingProposals(parts: StoreParts): Promise<readonly 
         source: row.source,
         createdAt: row.created_at,
         lapseAt: row.lapse_at,
+        sources: [buildFirstSource(row), ...(merges.get(row.proposal_id) ?? [])],
         text: text.text,
         quote: text.quote,
         evidence: parseEvidence(row.evidence),
@@ -49,4 +52,50 @@ export async function readPendingProposals(parts: StoreParts): Promise<readonly 
   );
 
   return proposals.filter((proposal) => proposal !== null);
+}
+
+// each proposal's merged sources, oldest first
+async function readMergeSources(
+  parts: StoreParts,
+  rows: readonly MemoryProposalRow[],
+): Promise<ReadonlyMap<string, readonly ProposalSource[]>> {
+  if (rows.length === 0) {
+    return new Map();
+  }
+  const merges = await parts.context.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_proposal_merges')
+    .selectAll()
+    .where(
+      'proposal_id',
+      'in',
+      rows.map((row) => row.proposal_id),
+    )
+    .orderBy('sequence')
+    .execute();
+  const sources = new Map<string, ProposalSource[]>();
+
+  for (const merge of merges) {
+    const list = sources.get(merge.proposal_id) ?? [];
+
+    list.push({
+      origin: merge.origin,
+      thread: merge.thread,
+      taskID: merge.task_id,
+      model: merge.model,
+      proposedAt: merge.recorded_at,
+    });
+    sources.set(merge.proposal_id, list);
+  }
+  return sources;
+}
+
+function buildFirstSource(row: MemoryProposalRow): ProposalSource {
+  return {
+    origin: row.origin,
+    thread: row.thread,
+    taskID: row.task_id,
+    model: row.model,
+    proposedAt: row.created_at,
+  };
 }

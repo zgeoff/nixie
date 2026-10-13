@@ -1,16 +1,16 @@
 import { findRecordKeys, removeRecordKey, writeKeyStoreCheckpoint } from '@heynixie/log';
 import type { MemoryTables, StoreParts } from './types';
 
-// Removes each key that a rejected or lapsed proposal for a new item left in the key store, because
-// a crash or a failed removal after the close commits leaves the key behind. Store start and each
-// lapse sweep run it. It returns how many keys it removed.
+// Removes each key that a closed new item's proposal left with no item under it, rejected, lapsed or
+// approved as a revision of another item, which a crash after the close leaves behind. Store start
+// and each lapse sweep run it. It returns how many keys it removed.
 export async function removeClosedProposalKeys(parts: StoreParts): Promise<number> {
   const log = parts.context.log;
   const rows = await log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .select('item_id')
-    .where('status', 'in', ['rejected', 'lapsed'])
+    .where('status', 'in', ['rejected', 'lapsed', 'consumed'])
     .where('is_new_item', '=', 1)
     .where((eb) =>
       eb.not(
