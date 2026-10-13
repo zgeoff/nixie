@@ -24,7 +24,10 @@ export async function startServerParts(options: ServerPartsOptions): Promise<Ser
   const port = await startHTTPServer({ ...options, state, tools, apiContext: base.apiContext });
 
   options.log('http.listening', { port });
-  await startHostCommands(options.config.server.dataDir, base.apiContext, options.cleanup);
+  await startHostCommands(
+    { dataDir: options.config.server.dataDir, apiContext: base.apiContext, memory: tools.memory },
+    options.cleanup,
+  );
 
   const failed = Promise.withResolvers<unknown>();
   const ready = startInBackground({

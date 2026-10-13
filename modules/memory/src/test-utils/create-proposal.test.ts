@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { readRecords } from '@heynixie/log';
+import { buildMockWriteCaller } from './build-mock-write-caller';
 import { createProposal } from './create-proposal';
 import { startTestMemory } from './start-test-memory';
 
@@ -32,4 +34,18 @@ test('it returns the pending proposal for an edit of the item it names', async (
     targetVersion: 1,
     text: 'Lives on Oak Avenue',
   });
+});
+
+test('it makes the proposal through the caller given', async () => {
+  const memory = await startTestMemory();
+
+  const proposal = await createProposal(memory.store, {
+    text: 'Likes jazz',
+    caller: buildMockWriteCaller({ model: 'claude-test-1' }),
+  });
+  const records = await readRecords(memory.log, { afterSequence: 0, kinds: ['memory.proposed'] });
+
+  expect(records.map((entry) => entry.record.payload)).toMatchObject([
+    { proposalID: proposal.proposalID, model: 'claude-test-1' },
+  ]);
 });
