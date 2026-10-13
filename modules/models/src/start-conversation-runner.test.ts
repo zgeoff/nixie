@@ -565,7 +565,7 @@ test('it marks the first turn after a rebuild as rebuilt, and the turn after it 
   });
 });
 
-test('it records each compaction with its token counts and no summary text', async () => {
+test('it records each compaction with its token counts, its recall mark and no summary text', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -601,6 +601,7 @@ test('it records each compaction with its token counts and no summary text', asy
         trigger: 'auto',
         preTokens: 150_000,
         postTokens: 400,
+        recalledThrough: 0,
       },
       erasable: { status: 'none' },
     },

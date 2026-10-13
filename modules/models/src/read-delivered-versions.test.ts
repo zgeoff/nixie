@@ -330,3 +330,53 @@ test('it leaves out a recall that came after the last result its turn ended at',
 
   expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
 });
+
+test('it keeps a recall that came after a compaction in the same step', async () => {
+  const ctx = await setupTest();
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await createConversationTask(ctx.tasks.context);
+
+  const [, summarized, held] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.step_started',
+      definitions,
+      thread: 'conversation',
+      payload: { taskID: 'conversation', stepKey: 'conversation:1', generation: 1 },
+    },
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: { items: [{ itemID: 'item-1', version: 1 }] },
+    },
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: { items: [{ itemID: 'item-2', version: 2 }] },
+    },
+  ]);
+
+  invariant(summarized && held);
+
+  // the step commits its compaction after every recall, marked at the recall it summarized
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.compacted',
+      definitions,
+      thread: 'conversation',
+      payload: { recalledThrough: summarized.sequence },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions,
+      thread: 'conversation',
+      payload: { retrieved: [{ itemID: 'item-3', version: 1 }], recalledThrough: held.sequence },
+    },
+  ]);
+
+  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+
+  expect(delivered).toStrictEqual([{ itemID: 'item-2', version: 2 }]);
+});

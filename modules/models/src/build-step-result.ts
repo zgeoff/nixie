@@ -61,8 +61,8 @@ export function buildStepResult(
   };
 }
 
-// a record per reply with text, one per compaction with its token counts and no summary, and one
-// for the turn's end with the memory it placed
+// a record per reply with text, one per compaction with its token counts, the newest recall it
+// summarized and no summary, and one for the turn's end with the memory it placed
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the rule reads a ReadonlySet's methods as mutable
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
   return [
@@ -80,6 +80,7 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
           trigger: compaction.trigger,
           preTokens: compaction.preTokens,
           postTokens: compaction.postTokens,
+          ...(compaction.mark === undefined ? {} : { recalledThrough: compaction.mark }),
         },
       }),
     ),
