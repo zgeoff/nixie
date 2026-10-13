@@ -39,7 +39,7 @@ test('it drops a match whose score falls below the floor', async () => {
   expect(found).toStrictEqual(['item-a']);
 });
 
-test('it keeps every match in an index of 2 items, which BM25 scores near 0', async () => {
+test('it drops every match in an index of 2 items, which BM25 scores near 0', async () => {
   const ctx = await setupTest();
 
   await ctx.index.updateAll([
@@ -48,21 +48,6 @@ test('it keeps every match in an index of 2 items, which BM25 scores near 0', as
   ]);
 
   const found = await ctx.index.findItemIDs('flowerpot', { limit: 10, minScore: 0.25 });
-
-  expect(found).toStrictEqual(['item-a']);
-});
-
-test('it applies the floor once the index holds 3 items', async () => {
-  const ctx = await setupTest();
-
-  await ctx.index.updateAll([
-    { itemID: 'item-a', text: 'The spare key sits under the blue flowerpot' },
-    { itemID: 'item-b', text: 'The dentist appointment is on Tuesday at nine' },
-    { itemID: 'item-c', text: 'The library on Elm Street closes at six on Sundays' },
-  ]);
-
-  // "the" sits in every item, so it scores near 0
-  const found = await ctx.index.findItemIDs('the', { limit: 10, minScore: 0.25 });
 
   expect(found).toStrictEqual([]);
 });

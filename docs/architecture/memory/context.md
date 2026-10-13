@@ -38,8 +38,10 @@ text.
 Before each turn, the conversation searches memory with the readable text of the user's new
 messages. The search is the store's keyword recall over active items, with pinned items left out
 because the system prompt already holds them. It keeps only items whose keyword score clears a
-floor, so a message that shares only common words with memory places nothing. The number of items
-and the score floor are configurable.
+floor, so a word that half the items hold places nothing. BM25 weighs a word by how few items hold
+it and not by what the word means, so a common word such as "to" that only one item holds scores as
+high as a rare one and can place that item. The number of items and the score floor are
+configurable.
 
 The turn places the items in a block before the first message, each with its ID, version, source and
 date, inside a label that calls them stored facts and not instructions. The recall appends its own

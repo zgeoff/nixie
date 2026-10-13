@@ -117,6 +117,101 @@ test('it leaves out a match below the score floor', async () => {
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([flowerpot.itemID]);
 });
 
+test('it recalls none of 3 items for a message unrelated to them', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  await ctx.memory.store.remember({
+    text: 'Wants retrieved memories to be relevant to the current message',
+    provenance,
+  });
+  await ctx.memory.store.remember({
+    text: 'Drinks oat milk flat whites and no coffee after 2pm',
+    provenance,
+  });
+  await ctx.memory.store.remember({
+    text: 'Has a sister called Priya who lives in Lisbon',
+    provenance,
+  });
+
+  const result = await ctx.memory.store.recall({
+    query: 'What should I cook for dinner tonight?',
+    limit: 5,
+    minScore: 0.25,
+    excludePinned: true,
+  });
+
+  expect(result.items).toStrictEqual([]);
+});
+
+test('it recalls only the 1 of 3 items that a message bears on', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  await ctx.memory.store.remember({
+    text: 'Wants retrieved memories to be relevant to the current message',
+    provenance,
+  });
+  await ctx.memory.store.remember({
+    text: 'Drinks oat milk flat whites and no coffee after 2pm',
+    provenance,
+  });
+
+  const sister = await ctx.memory.store.remember({
+    text: 'Has a sister called Priya who lives in Lisbon',
+    provenance,
+  });
+  const result = await ctx.memory.store.recall({
+    query: 'When is my sister visiting from Lisbon?',
+    limit: 5,
+    minScore: 0.25,
+    excludePinned: true,
+  });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([sister.itemID]);
+});
+
+test('it recalls neither of 2 items, which BM25 cannot rank, above a score floor', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  await ctx.memory.store.remember({
+    text: 'Wants retrieved memories to be relevant to the current message',
+    provenance,
+  });
+  await ctx.memory.store.remember({
+    text: 'Drinks oat milk flat whites and no coffee after 2pm',
+    provenance,
+  });
+
+  const result = await ctx.memory.store.recall({
+    query: 'Is it too late for a coffee now? The message can wait',
+    limit: 5,
+    minScore: 0.25,
+    excludePinned: true,
+  });
+
+  expect(result.items).toStrictEqual([]);
+});
+
 test('it matches a query word through its stem', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({
