@@ -8,8 +8,9 @@
 Once the offsite replica from [0032](0032-offsite-backups-and-replication.md) ships, a restore after
 total host loss loses at most 5 minutes of encrypted content. A key change triggers a key snapshot
 once 60 seconds pass with no further key change, and never later than 5 minutes after the first
-unpublished key change. The hourly key snapshot stays as a fallback. nixie sends a push when a key
-change stays unpublished for more than 5 minutes.
+unpublished key change. The hourly key snapshot stays as a fallback. The bound counts until the key
+snapshot is published, so nixie sends a push when a key change stays unpublished for more than 5
+minutes, such as behind a slow upload.
 
 Until the replica ships, the data snapshot runs hourly, so the bound stays 1 hour.
 

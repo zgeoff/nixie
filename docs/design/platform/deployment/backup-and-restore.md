@@ -160,9 +160,16 @@ it.
 A key change makes nixie stage a key set once 60 seconds pass with no further key change, and never
 later than 5 minutes after the first unpublished key change. **Why:** the quiet wait turns a burst
 of new memories into one snapshot, and the cap holds the bound while keys keep changing. The hourly
-key set stays as a fallback. nixie sends a push when a key change stays unpublished for more than 5
-minutes. A triggered key set follows the same sequence and publication rules as a scheduled one, and
-a forget's own key set never waits for the quiet period.
+key set stays as a fallback.
+
+The bound counts until the key set is published, not until it is staged, so the cap holds it only
+while publication takes seconds. The [paired recovery spike](../spikes/paired-recovery/README.md)
+published a key set in under a second on a local backend, and
+[GEO-273](https://linear.app/zgeoff/issue/GEO-273) measures a real backend. A slow upload or an
+earlier set ahead in the sequence can push publication past the bound, so nixie sends a push when a
+key change stays unpublished for more than 5 minutes. A triggered key set follows the same sequence
+and publication rules as a scheduled one, and a forget's own key set never waits for the quiet
+period.
 
 ## Restoring on a new host
 
