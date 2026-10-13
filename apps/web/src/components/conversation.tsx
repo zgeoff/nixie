@@ -6,6 +6,7 @@ import type { LiveRecord } from '../use-live-records';
 import { useLiveRecords } from '../use-live-records';
 import { useOutbox } from '../use-outbox';
 import { Composer } from './composer';
+import { ConversationFailureNotice } from './conversation-failure-notice';
 import { ConversationList } from './conversation-list';
 import { ConversationScroller } from './conversation-scroller';
 import { ThemePicker } from './theme-picker';
@@ -38,6 +39,7 @@ export function Conversation(props: ConversationProps): ReactNode {
         <ThemePicker />
       </header>
       {live.unavailable ? <LiveUpdatesNotice /> : null}
+      <ConversationFailureNotice lastStepEnd={page.data.lastStepEnd} records={records} />
       <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
         <ConversationList entries={outbox.entries} onRetry={outbox.retry} records={records} />
       </ConversationScroller>

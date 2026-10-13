@@ -47,6 +47,7 @@ test('it rebuilds the tasks table equal to the live one after a step error', asy
     error: new Error('the model profile is unreachable'),
     maxStepErrors: 3,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
 
   const live = await ctx.db.selectFrom('tasks').selectAll().execute();

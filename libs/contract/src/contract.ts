@@ -23,9 +23,14 @@ const spanSchema = z.object({
 
 const jsonObjectSchema = z.record(z.string(), z.unknown());
 
-// A failed step's record carries the error its step threw, while the record is readable.
+// A failed step's record carries the error its step threw, while the record is readable, the
+// errors in a row with this one, the limit in force, and when the task tries again. The
+// conversation never fails, so its errors can pass the limit, and a client shows that it is failing.
 const taskSchema = z.object({
   error: z.string().optional(),
+  errorLimit: z.int().positive().optional(),
+  errors: z.int().positive().optional(),
+  retryAt: z.date().optional(),
   stepKey: z.string().optional(),
   taskID: z.string(),
 });
@@ -113,6 +118,11 @@ export const contract = {
           hasEarlier: z.boolean(),
           readAtSequence: sequenceSchema,
           records: z.array(recordSchema),
+
+          // The newest record on the thread that ended a step of its task, at or before
+          // readAtSequence, whether or not the page holds it, so a client knows how the last step
+          // ended when a long step pushes that record off the page.
+          lastStepEnd: recordSchema.nullable().optional(),
         }),
       ),
 

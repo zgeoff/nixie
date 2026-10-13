@@ -4,12 +4,13 @@ import type { TurnNote } from '@heynixie/models';
 import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/models';
 import type { RunStep } from '@heynixie/tasks';
 import { buildRestartKind } from './build-restart-kind';
+import { makeConversationReadinessStep } from './make-conversation-readiness-step';
 import { readTurnNotes } from './read-turn-notes';
 import { startConversation } from './start-conversation';
 import type { ServerParts } from './types';
 
 export interface ConversationImp {
-  // marks the conversation imp unready while the last turn failed
+  // marks the conversation imp ready again after each turn that succeeds
   readonly runStep: RunStep;
 
   // the session cleanup a forget runs, which the memory store takes
@@ -46,17 +47,7 @@ export async function startConversationImp(
   await parts.cleanup.defer(() => conversation.stop());
   parts.state.update({ conversation: { isReady: true, reason: null } });
   return {
-    runStep: async (input) => {
-      try {
-        const result = await conversation.runStep(input);
-
-        parts.state.update({ conversation: { isReady: true, reason: null } });
-        return result;
-      } catch (error) {
-        parts.state.update({ conversation: { isReady: false, reason: 'the last turn failed' } });
-        throw error;
-      }
-    },
+    runStep: makeConversationReadinessStep(parts.state, conversation.runStep),
     cleanupSessions: conversation.cleanupSessions,
   };
 }

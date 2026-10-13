@@ -27,6 +27,7 @@ export type TaskRecord =
       readonly claimableAt: number;
     }
   | { readonly kind: 'task.lease_expired'; readonly taskID: string }
+  | { readonly kind: 'task.revived'; readonly taskID: string }
   | {
       readonly kind: 'timer.fired';
       readonly taskID: string;
@@ -109,6 +110,7 @@ const taskRecordParsers: ReadonlyMap<string, (getField: GetField) => TaskRecord>
     'task.lease_expired',
     (getField) => ({ kind: 'task.lease_expired', taskID: toString(getField('taskID')) }),
   ],
+  ['task.revived', (getField) => ({ kind: 'task.revived', taskID: toString(getField('taskID')) })],
   [
     'timer.fired',
     (getField) => ({

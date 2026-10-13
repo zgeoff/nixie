@@ -37,11 +37,15 @@ export const mockAPIRouter = os.router({
           ),
         { orderBy: { sequence: 'asc' } },
       );
+      const lastStepEnd = page.findLast((record) =>
+        /^task\.(?:step_committed|step_errored|revived)$/u.test(record.kind),
+      );
 
       return {
         hasEarlier: page.length > limit,
         readAtSequence: Math.max(0, ...store.records.all().map((record) => record.sequence)),
         records: page.slice(-limit).map((record) => toLogRecord(record)),
+        lastStepEnd: lastStepEnd === undefined ? null : toLogRecord(lastStepEnd),
       };
     }),
 

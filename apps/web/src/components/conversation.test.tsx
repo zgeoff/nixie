@@ -118,6 +118,34 @@ test('it says live updates are unavailable while the live stream keeps failing',
   expect(notice).toHaveTextContent('Live updates unavailable');
 }, 10_000);
 
+test('it clears the failure notice once a turn succeeds', async () => {
+  await setupTest();
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is it raining?' } });
+  await store.records.create({
+    kind: 'task.step_errored',
+    task: {
+      errorLimit: 3,
+      errors: 3,
+      retryAt: new Date('2026-10-14T09:04:00Z'),
+      stepKey: 'conversation:1',
+      taskID: 'conversation',
+    },
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await rendered.findByRole('alert');
+  await store.records.create({ kind: 'model.reply', message: { text: 'Not yet.' } });
+  await store.records.create({
+    kind: 'task.step_committed',
+    task: { stepKey: 'conversation:1', taskID: 'conversation' },
+  });
+
+  await waitFor(() => {
+    expect(rendered.queryByRole('alert')).toBeNull();
+  });
+});
+
 test('it shows an unsent message as not sent', async () => {
   const ctx = await setupTest();
 

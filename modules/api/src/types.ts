@@ -82,6 +82,7 @@ interface TaskRow {
 interface RecordRow {
   readonly sequence: number;
   readonly thread: string | null;
+  readonly kind: string;
 }
 
 interface ThreadRow {

@@ -55,6 +55,7 @@ async function runNextStep(context: TasksContext, options: TaskStepsOptions): Pr
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
   return true;
 }

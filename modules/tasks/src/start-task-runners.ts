@@ -19,6 +19,7 @@ export interface TaskRunnersOptions {
   readonly pollMs?: number;
   readonly maxStepErrors?: number;
   readonly retryDelayMs?: number;
+  readonly maxRetryDelayMs?: number;
 }
 
 // Starts the task runners: a pool that claims and runs one step per runner, beside a runner that
@@ -37,6 +38,7 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
         leaseMs,
         maxStepErrors: options.maxStepErrors ?? DEFAULT_MAX_STEP_ERRORS,
         retryDelayMs: options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
+        maxRetryDelayMs: options.maxRetryDelayMs ?? DEFAULT_MAX_RETRY_DELAY_MS,
       });
 
       if (errored !== null) {
@@ -77,3 +79,7 @@ const DEFAULT_LEASE_MS = 60_000;
 const DEFAULT_POLL_MS = 1000;
 const DEFAULT_MAX_STEP_ERRORS = 3;
 const DEFAULT_RETRY_DELAY_MS = 30_000;
+
+// Why: 5 min keeps a long outage to one try every 5 min, and a reply waits at most that long once
+// the cause clears; a new message cuts the wait (the tasks projection's inbox fold).
+const DEFAULT_MAX_RETRY_DELAY_MS = 300_000;

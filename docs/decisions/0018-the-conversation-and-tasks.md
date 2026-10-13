@@ -1,6 +1,7 @@
 # 0018: The conversation and tasks
 
 - Date: 2026-10-08
+- Updated: 2026-10-14
 - Status: decided
 - Design: [tasks](../design/platform/core/tasks.md),
   [live view](../design/platform/channels/live-view.md)
@@ -26,6 +27,13 @@ have to open a task to get work done, the design has failed.
 The test between the two: if you might want to talk to it, or it needs to wait for something, it is
 a task. Otherwise it is a worker.
 
+## Failures of the conversation
+
+A task fails after too many failed steps in a row, and a failed task never wakes. The conversation
+is the one exception: it never fails. It retries with a backoff that stops growing at a cap, and
+each failure stays in the record. Once its failures in a row reach the limit at which a task would
+fail, nixie shows you that it is failing to answer, and the next turn that succeeds clears that.
+
 ## Routing and views
 
 The conversation routes your messages to the right task, and says in a few words where it sent each
@@ -49,6 +57,8 @@ projections of data nixie already keeps.
 - One projection behind the conversation's list and both views stops them from disagreeing.
 - The conversation matters most, so it gets the durable machinery that is tested hardest, with no
   second loop to maintain.
+- Every deployment needs the conversation to answer, and a few transient failures in a row, such as
+  an overloaded provider or a tool server that restarts, would otherwise end it for good.
 
 ## Alternatives
 
@@ -57,6 +67,10 @@ projections of data nixie already keeps.
 - **Tasks as the default way to work.** It repeats the way of working nixie replaces.
 - **A separate loop for the conversation.** It keeps the task model free of a special case, and
   duplicates the durable machinery.
+- **A new message wakes a failed conversation.** The conversation stays silent until you write
+  again, and its failure shows only as silence.
+- **A failed conversation waits for an operator.** nixie stops answering until someone resets the
+  task by hand.
 
 ## Consequences
 
@@ -68,3 +82,8 @@ projections of data nixie already keeps.
   outside nixie, is a low priority.
 - Authority given in the conversation for a period, such as "full authority to build and ship
   today", is a mandate: rules that share an expiry. Creating one widens rules, so it asks.
+
+## Changes
+
+- 2026-10-14: the conversation never fails; it retries with a capped backoff and shows you once its
+  failures in a row reach the limit.

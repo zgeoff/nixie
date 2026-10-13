@@ -6,9 +6,9 @@ import type { TaskRecord } from './parse-task-record';
 import { parseTaskRecord } from './parse-task-record';
 import type { TasksTables } from './types';
 
-// One row per task: its state, its inbox cursor, its step count and the step in flight. Every value
-// comes from the record, never from the clock or another table, so a rebuild gives the live rows.
-// An inbox record raises the task's last inbox sequence and wakes a waiting task.
+// One row per task, whose every value comes from a record, never the clock, so a rebuild gives the
+// live rows. An inbox record raises the task's last inbox sequence, wakes a waiting task, and ends
+// the conversation's retry backoff.
 export const tasksProjection: Projection = {
   table: 'tasks',
   keyColumn: 'task_id',
@@ -45,6 +45,12 @@ async function updateInbox(
     .set({ state: 'ready' })
     .where('task_id', '=', taskID)
     .where('state', '=', 'waiting')
+    .execute();
+  await db
+    .updateTable('tasks')
+    .set({ claimable_at: 0 })
+    .where('task_id', '=', taskID)
+    .where('is_conversation', '=', 1)
     .execute();
   return row === undefined ? [] : [taskID];
 }
@@ -113,6 +119,9 @@ function buildTaskUpdate(
     };
   }
 
-  // a lease_expired record: recovery writes it only for a running task, whose runner is gone
-  return { state: 'ready' };
+  // a lease_expired record comes only for a running task, whose runner is gone, and a revived
+  // record only for a conversation an earlier release let fail
+  return parsed.kind === 'task.revived'
+    ? { state: 'ready', step_errors: 0, claimable_at: 0 }
+    : { state: 'ready' };
 }

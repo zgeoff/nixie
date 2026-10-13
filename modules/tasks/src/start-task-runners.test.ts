@@ -94,7 +94,17 @@ test('it reports a step that throws once its error record commits', async () => 
 
   expect(errored).toHaveLength(1);
   expect(onStepErrored.mock.calls).toStrictEqual([
-    [{ taskID, stepKey: `${taskID}:1`, errors: 1, nextState: 'ready', error: failure }],
+    [
+      {
+        taskID,
+        stepKey: `${taskID}:1`,
+        errors: 1,
+        errorLimit: 3,
+        nextState: 'ready',
+        retryAt: 1_030_000,
+        error: failure,
+      },
+    ],
   ]);
 });
 

@@ -22,6 +22,7 @@ stateDiagram-v2
   running --> waiting: the step commits with nothing unread
   running --> done: the step commits as done
   running --> failed: steps throw too many times in a row
+  failed --> ready: a start revives the conversation
   waiting --> ready: a record lands in the inbox
 ```
 
@@ -37,7 +38,8 @@ runner died stays running until a claim or recovery takes it back
 A task's inbox is the records on its thread whose kind is input for it: a message from the user, a
 fired timer, or an action's outcome. A step's own records share the thread and stay out of the
 inbox. Each inbox record raises the task's last inbox sequence, and a waiting task becomes ready in
-the same transaction, through the tasks projection's fold. nixie refuses inbox input for a task that
+the same transaction, through the tasks projection's fold. The same fold ends the conversation's
+retry wait, so the user's next message gets a try at once. nixie refuses inbox input for a task that
 does not exist or has finished, because a finished task never runs again, so the input would stay
 unread.
 
@@ -70,6 +72,15 @@ where the web UI shows it on the failed step and a forget can reach it. After to
 row, the task fails. A commit that refuses the step's result, such as a timer due at no time, counts
 as a step error too. A lost lease or a stale writer counts as no error at all: the runner stops and
 commits nothing, because another runner or another process owns the work now.
+
+The conversation never fails, under [0018](../../decisions/0018-the-conversation-and-tasks.md),
+because every deployment needs it to answer. Its wait before each retry doubles with each error in a
+row up to a cap, so a long outage costs one try per cap and a reply follows soon after the cause
+clears. Each error record holds the errors in a row, the limit at which another task fails, and the
+retry time. Once the conversation's errors reach that limit, the server marks the conversation imp
+unready and the web UI says that nixie is failing to answer; the next turn that commits clears both.
+A start makes a failed conversation ready again with its errors cleared, because a failed task never
+wakes and the conversation must.
 
 ## Timers
 
