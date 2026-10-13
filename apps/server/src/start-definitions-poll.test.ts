@@ -113,7 +113,7 @@ test('it reports every probe, one whose token it seeded already included', async
 
 test('it reports no probe for a probe that throws', async () => {
   const ctx = setupTest();
-  const onProbed = mock();
+  const onProbed = mock<(probed: DefinitionsProbe) => void>();
   const poll = startDefinitionsPoll({
     probe: () => Promise.reject(new Error('the definitions directory is gone')),
     seed: () => Promise.resolve(),
