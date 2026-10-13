@@ -135,6 +135,53 @@ test('it lists the memory tools, web fetch and the time tool to the conversation
   );
 }, 60_000);
 
+test('it calls the owner by the name the secrets file holds, which the configuration names by reference', async () => {
+  const nixie = await startTestNixie({
+    extraConfig: ['owner:', '  name: deployment:owner_name'],
+    extraSecrets: ['settings:', '  owner_name: Wren Halloway'],
+  });
+  const [listening, issued] = await Promise.all([
+    nixie.waitForLogEvent('http.listening'),
+    nixie.waitForLogEvent('enrolment_code.issued'),
+    nixie.waitForLogEvent('ready'),
+  ]);
+  const url = `http://127.0.0.1:${String(listening['port'])}`;
+  const signedOut = createORPCClient<ContractClient>(
+    new RPCLink({ url: `${url}/rpc`, headers: { [clientHeaderName]: 'test' } }),
+  );
+  const session = await signedOut.sessions.enrol({
+    clientActionID: crypto.randomUUID(),
+    code: String(issued['code']),
+    deviceName: 'laptop',
+    tokenDelivery: 'bearer',
+  });
+  const client = createORPCClient<ContractClient>(
+    new RPCLink({
+      url: `${url}/rpc`,
+      headers: { [clientHeaderName]: 'test', authorization: `Bearer ${session.token ?? ''}` },
+    }),
+  );
+
+  nixie.model.addReplies({ text: 'Hello.' });
+  await client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+  await waitForCondition(() =>
+    nixie.model.requests.some((request) => request.path === '/v1/messages'),
+  );
+
+  expect(
+    nixie.model.requests.find((request) => request.path === '/v1/messages')?.body,
+  ).toMatchObject({
+    system: expect.toIncludeAllPartialMembers([
+      { text: expect.toInclude("blocks in Wren Halloway's messages") },
+    ]),
+  });
+}, 60_000);
+
 test('it answers the time tool in the zone of the newest message', async () => {
   const ctx = await setupTest();
 
