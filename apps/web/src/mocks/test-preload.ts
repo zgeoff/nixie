@@ -10,9 +10,11 @@ import { webOrigin } from './web-origin';
 // API, and returns every piece of shared state to its baseline after each test.
 faker.seed(321);
 
-// happy-dom opens on about:blank, where the browser client cannot resolve /rpc.
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the preload registered happy-dom's window
-(globalThis as unknown as Window).happyDOM.setURL(`${webOrigin}/`);
+const window = globalThis as unknown as Window;
+
+// happy-dom opens on about:blank, where the browser client cannot resolve /rpc.
+window.happyDOM.setURL(`${webOrigin}/`);
 
 server.listen({
   // the web server suites call a stub API and the built Start server on loopback ports, and the
@@ -33,6 +35,8 @@ afterEach(() => {
   store.reset();
   browserCookies.clear();
   globalThis.localStorage.clear();
+  window.happyDOM.settings.device.prefersColorScheme = 'light';
+  delete globalThis.document.documentElement.dataset['theme'];
 });
 
 afterAll(() => {

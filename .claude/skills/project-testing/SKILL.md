@@ -38,7 +38,8 @@ The root `bunfig.toml` preloads, in order:
 3. `@zgeoff/bun-test-react`, for happy-dom and the Testing Library matchers.
 4. `apps/web/src/mocks/test-preload.ts`, which seeds faker, points happy-dom at the web origin, and
    runs the web client's MSW server for the whole run. After each test it resets the handlers, the
-   mock store, the browser cookies and `localStorage`.
+   mock store, the browser cookies, `localStorage`, the system's light or dark setting and the
+   document's theme attribute.
 
 The MSW server passes a request to a loopback host or to a host under the reserved `.test` domain
 through to the network, and fails every other unmatched request. The web server suites call stub

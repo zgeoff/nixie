@@ -65,9 +65,9 @@ const messages = {
 
 const spinner = css({
   animation: 'spin',
-  borderColor: 'gray.300',
+  borderColor: 'border',
   borderRadius: 'full',
-  borderTopColor: 'gray.600',
+  borderTopColor: 'textMuted',
   borderWidth: '2px',
   display: 'block',
   height: '4',

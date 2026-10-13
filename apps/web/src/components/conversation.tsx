@@ -8,6 +8,7 @@ import { useOutbox } from '../use-outbox';
 import { Composer } from './composer';
 import { ConversationList } from './conversation-list';
 import { ConversationScroller } from './conversation-scroller';
+import { ThemePicker } from './theme-picker';
 
 export interface ConversationProps {
   readonly thread: string;
@@ -33,6 +34,9 @@ export function Conversation(props: ConversationProps): ReactNode {
 
   return (
     <main className={layout}>
+      <header className={header}>
+        <ThemePicker />
+      </header>
       {live.unavailable ? <LiveUpdatesNotice /> : null}
       <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
         <ConversationList entries={outbox.entries} onRetry={outbox.retry} records={records} />
@@ -52,6 +56,13 @@ export function Conversation(props: ConversationProps): ReactNode {
 // The page fills the window: the messages scroll, and the composer stays below them in view.
 const layout = css({ display: 'flex', flexDirection: 'column', height: '100dvh' });
 
+// A slim bar above the messages that holds the page's settings, aligned with the column.
+const header = css({
+  borderBottomWidth: '1px',
+  paddingBlock: '1',
+  '& > label': { marginInline: 'auto', maxWidth: '3xl', paddingInline: '4', width: 'full' },
+});
+
 const composerBar = css({
   borderTopWidth: '1px',
   paddingBlock: '3',
@@ -68,7 +79,7 @@ function LiveUpdatesNotice(): ReactNode {
 }
 
 const notice = css({
-  color: 'gray.600',
+  color: 'textMuted',
   fontSize: 'sm',
   marginInline: 'auto',
   maxWidth: '3xl',

@@ -69,17 +69,18 @@ function ReplyImage(props: ComponentProps<'img'>): ReactNode {
 }
 
 // The reset strips lists, headings and code of their marks, so a reply gets back only what reading
-// needs.
+// needs. Code sits on the theme's surface colour, so it stands apart from the prose around it.
 const reply = css({
   display: 'flex',
   flexDirection: 'column',
   gap: '2',
   overflowWrap: 'anywhere',
-  '& a': { textDecoration: 'underline' },
+  '& a': { color: 'link', textDecoration: 'underline' },
   '& code': { fontFamily: 'mono', fontSize: 'sm' },
+  '& :not(pre) > code': { backgroundColor: 'surface', borderRadius: 'sm', paddingInline: '1' },
   '& h1, & h2, & h3, & h4': { fontWeight: 'semibold' },
   '& ol': { listStyleType: 'decimal', paddingInlineStart: '6' },
-  '& pre': { borderWidth: '1px', overflowX: 'auto', padding: '2' },
+  '& pre': { backgroundColor: 'surface', borderWidth: '1px', overflowX: 'auto', padding: '2' },
   '& table': { borderCollapse: 'collapse' },
   '& td, & th': { borderWidth: '1px', paddingInline: '2' },
   '& ul': { listStyleType: 'disc', paddingInlineStart: '6' },
