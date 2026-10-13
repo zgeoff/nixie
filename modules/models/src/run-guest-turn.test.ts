@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import type { InboxMessage } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
@@ -103,6 +103,38 @@ test('it drops the reads and replies a guest sent after its last result when it 
     compactions: [],
     failure: null,
   });
+});
+
+test('it reports the mark it read at the last result, before a guest that died sent more', async () => {
+  const ctx = setupTest();
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+  const replyID = '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01';
+  const readEndedMark = mock(() => Promise.resolve(42));
+
+  ctx.stub.setGuestScript(() => [
+    { type: 'assistant', messageID: replyID, text: 'Hello.', toolUses: [] },
+    {
+      type: 'ended',
+      boundary: { sessionID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f', messageID: replyID },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+    { type: 'assistant', messageID: crypto.randomUUID(), text: 'And eggs.', toolUses: [] },
+  ]);
+
+  const turn = await runGuestTurn({
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame(),
+    messages: [],
+    signal: new AbortController().signal,
+    readEndedMark,
+  });
+
+  expect(turn.endedMark).toBe(42);
+  expect(readEndedMark).toHaveBeenCalledOnce();
 });
 
 test('it passes each live message into the running turn', async () => {

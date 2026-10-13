@@ -119,6 +119,43 @@ test('it leaves out a match below the score floor', async () => {
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([flowerpot.itemID]);
 });
 
+test('it ranks the next match in place of an excluded version', async () => {
+  const ctx = await setupTest();
+  const flowerpot = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const garage = await ctx.memory.store.remember({
+    text: 'A second spare key hangs in the garage',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const result = await ctx.memory.store.recall({
+    query: 'spare key flowerpot',
+    limit: 1,
+    excludedVersions: [flowerpot],
+  });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([garage.itemID]);
+});
+
+test('it returns the current version of an item whose earlier version is excluded', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const edited = await ctx.memory.store.remember({
+    text: 'The spare key sits under the doormat',
+    target: first,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const result = await ctx.memory.store.recall({ query: 'spare key', excludedVersions: [first] });
+
+  expect(
+    result.items.map((recalled) => ({ itemID: recalled.itemID, version: recalled.version })),
+  ).toStrictEqual([edited]);
+});
+
 test('it recalls none of 3 items for a message unrelated to them', async () => {
   const ctx = await setupTest();
   const provenance = {

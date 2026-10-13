@@ -1,4 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
+import { readDeliveredVersions } from './read-delivered-versions';
 import { renderCoreChanges } from './render-core-changes';
 import { renderRetrievedItems } from './render-retrieved-items';
 import { renderSystemPrompt } from './render-system-prompt';
@@ -10,6 +11,9 @@ export interface TurnContextQuery {
   // the inbox records the turn takes
   readonly batch: readonly LogRecord[];
   readonly previousCore: readonly MemoryRef[] | null;
+
+  // whether the turn runs on a new session, which holds no item yet
+  readonly isNewSession: boolean;
 }
 
 // What memory adds to one turn: the system prompt with the pinned core, the blocks that go before
@@ -24,10 +28,10 @@ export interface TurnContext {
 }
 
 // Reads the pinned core and the items that match your new messages, and renders them for the turn.
-// Retrieval searches with the text of your messages alone, leaves pinned items out, and records
-// what it placed through the store's recall, which lists references and no text.
+// Retrieval searches your messages' text alone, leaves out pinned items and the versions a resumed
+// session holds, and records what it placed through recall, which lists references and no text.
 export async function readTurnContext(
-  run: Pick<ConversationRun, 'memory' | 'memorySettings' | 'getSystemPrompt'>,
+  run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings' | 'getSystemPrompt'>,
   query: TurnContextQuery,
 ): Promise<TurnContext> {
   const memory = run.memory();
@@ -47,7 +51,7 @@ export async function readTurnContext(
 }
 
 async function readRetrievedItems(
-  run: Pick<ConversationRun, 'memory' | 'memorySettings'>,
+  run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings'>,
   query: TurnContextQuery,
 ): Promise<readonly MemoryItem[]> {
   const text = query.batch
@@ -66,6 +70,9 @@ async function readRetrievedItems(
     limit: run.memorySettings.retrievalItems,
     minScore: run.memorySettings.retrievalMinScore,
     excludePinned: true,
+    excludedVersions: query.isNewSession
+      ? []
+      : await readDeliveredVersions(run.context, query.taskID),
     thread: query.taskID,
   });
 

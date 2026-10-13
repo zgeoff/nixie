@@ -4,6 +4,7 @@ import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
 import { inboxBatchLimit } from './inbox-batch-limit';
 import { readLiveInbox } from './read-live-inbox';
+import { readRecalledThrough } from './read-recalled-through';
 import { runGuestTurn } from './run-guest-turn';
 import { toInboxMessage } from './to-inbox-message';
 import type { ConversationRun, MessageTimeOptions, ResolvedProfile, TurnNote } from './types';
@@ -64,6 +65,7 @@ export async function runLiveTurn(
             times: plan.times,
           }),
       signal: plan.signal,
+      readEndedMark: () => readRecalledThrough(run.context, input.taskID),
     });
 
     return { turn, sent, hasMore, notedThrough: note?.throughSequence ?? null };

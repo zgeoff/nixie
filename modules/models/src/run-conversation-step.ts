@@ -1,7 +1,9 @@
 import type { StepInput, StepResult } from '@heynixie/tasks';
+import type { SessionPoint } from '@heynixie/wire';
 import { buildStepResult } from './build-step-result';
 import { inboxBatchLimit } from './inbox-batch-limit';
 import { parseSessionBoundary } from './parse-session-boundary';
+import type { SessionMarks } from './read-session-marks';
 import { readSessionMarks } from './read-session-marks';
 import { readTurnContext } from './read-turn-context';
 import type { SessionTurn } from './run-planned-turn';
@@ -11,7 +13,7 @@ import type { ConversationRun } from './types';
 
 // Runs one turn step of the conversation, with the pinned core in its system prompt and the
 // retrieved items before your message, resumed at the session boundary on a fork. A session that a
-// forget invalidated or the guest lost is rebuilt from the log.
+// forget invalidated or the guest lost is rebuilt from the log, with its context read again.
 export function runConversationStep(run: ConversationRun, input: StepInput): Promise<StepResult> {
   if (input.inbox.length === 0) {
     return Promise.resolve({
@@ -34,32 +36,54 @@ async function runSessionTurn(
   const source = { definitions: run.context.definitions, model: run.model };
   const marks = await readSessionMarks(run.context, input.taskID);
   const boundary = parseSessionBoundary(input.sessionBoundary);
-  const turn: SessionTurn = {
-    run,
-    input,
-    signal,
-    invalidatedThrough: marks.invalidatedThrough,
-    context: await readTurnContext(run, {
-      taskID: input.taskID,
-      batch: input.inbox.slice(0, inboxBatchLimit),
-      previousCore: marks.previousCore,
-    }),
-  };
+  const step = { run, input, signal, marks };
 
   if (marks.isInvalidated || boundary === null) {
-    return runRebuiltTurn(turn, source, boundary && { reason: 'invalidated', lost: boundary });
+    const rebuilt = await readSessionTurn(step, true);
+
+    return runRebuiltTurn(rebuilt, source, boundary && { reason: 'invalidated', lost: boundary });
   }
+  return runResumedTurn(step, boundary);
+}
+
+// Runs the turn at the session boundary, or on a rebuilt session when the guest lost it, with the
+// context read again for the new session.
+async function runResumedTurn(step: SessionStep, boundary: SessionPoint): Promise<StepResult> {
+  const source = { definitions: step.run.context.definitions, model: step.run.model };
+  const turn = await readSessionTurn(step, false);
   const resumed = await runPlannedTurn(turn, { resume: boundary });
 
   if (resumed.completed.turn.failure?.reason !== 'session_missing') {
-    return buildStepResult(
-      source,
-      {
-        ...resumed.completed,
-        memory: { ...turn.context, invalidatedThrough: turn.invalidatedThrough },
-      },
-      [],
-    );
+    const memory = { ...turn.context, invalidatedThrough: turn.invalidatedThrough };
+
+    return buildStepResult(source, { ...resumed.completed, memory }, []);
   }
-  return runRebuiltTurn(turn, source, { reason: 'missing', lost: boundary });
+  const rebuilt = await readSessionTurn(step, true);
+
+  return runRebuiltTurn(rebuilt, source, { reason: 'missing', lost: boundary });
+}
+
+interface SessionStep {
+  readonly run: ConversationRun;
+  readonly input: StepInput;
+  readonly signal: AbortSignal;
+  readonly marks: SessionMarks;
+}
+
+// a new session holds no item yet, so its retrieval leaves none out
+async function readSessionTurn(step: SessionStep, isNewSession: boolean): Promise<SessionTurn> {
+  const context = await readTurnContext(step.run, {
+    taskID: step.input.taskID,
+    batch: step.input.inbox.slice(0, inboxBatchLimit),
+    previousCore: step.marks.previousCore,
+    isNewSession,
+  });
+
+  return {
+    run: step.run,
+    input: step.input,
+    signal: step.signal,
+    invalidatedThrough: step.marks.invalidatedThrough,
+    context,
+  };
 }
