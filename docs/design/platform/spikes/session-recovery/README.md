@@ -53,7 +53,12 @@ bun test
 - [run.ts](run.ts) runs the comparison and the canonical-state and forget checks.
 - [collect-files-with.ts](collect-files-with.ts) finds every file that holds the forgotten text. It
   reads each file in chunks to its end, whatever its size. The scan outside the task's directory
-  skips that directory, which sits under `/tmp` when the run directory comes from `mktemp -d`.
+  skips that directory, which sits under `/tmp` when the run directory comes from `mktemp -d`. The
+  scan lists each file or folder it cannot read, such as one that belongs to another user, and the
+  run prints that scan as incomplete instead of `none`, because an unread file can still hold a
+  copy. The scan stops short of a throw there, so one unreadable file in `/tmp` leaves the other
+  checks of the run intact. The tests of an unreadable file skip under root, which reads every file
+  whatever its mode.
 - [compact.ts](compact.ts) checks what decides the content of a compaction summary, and runs one
   automatic compaction.
 
