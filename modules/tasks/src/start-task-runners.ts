@@ -3,10 +3,13 @@ import { runDueTimers } from './run-due-timers';
 import { runTaskStep } from './run-task-step';
 import type { RunnerPool } from './start-runner-pool';
 import { startRunnerPool } from './start-runner-pool';
-import type { RunStep, TasksContext } from './types';
+import type { RunStep, StepErrored, TasksContext } from './types';
 
 export interface TaskRunnersOptions {
   readonly runStep: RunStep;
+
+  // takes each step error once its record commits, so the server can log it
+  readonly onStepErrored: (errored: StepErrored) => void;
   readonly onError: (error: unknown) => void;
 
   // 3 steps at once by default, the limit on concurrent work in tier 2
@@ -28,13 +31,18 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
     size: options.size ?? DEFAULT_SIZE,
     pollMs,
     claim: () => claimTask(context, { holder, leaseMs }),
-    run: (claim) =>
-      runTaskStep(context, claim, {
+    run: async (claim) => {
+      const errored = await runTaskStep(context, claim, {
         runStep: options.runStep,
         leaseMs,
         maxStepErrors: options.maxStepErrors ?? DEFAULT_MAX_STEP_ERRORS,
         retryDelayMs: options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
-      }),
+      });
+
+      if (errored !== null) {
+        options.onStepErrored(errored);
+      }
+    },
     onError: options.onError,
   });
 

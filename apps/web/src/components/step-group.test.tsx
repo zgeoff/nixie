@@ -74,6 +74,27 @@ test('it shows the task and each call with its input and result once opened', as
   expect(call).toHaveTextContent('"text": "Example Domain"');
 });
 
+test('it shows the error of a failed step once opened', async () => {
+  const user = userEvent.setup();
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        error: 'the conversation guest exited before it ended its turn',
+        status: 'failed',
+        stepKey: 'conversation:4',
+        taskID: 'conversation',
+      })}
+    />,
+  );
+  const error = rendered.getByText('Error: the conversation guest exited before it ended its turn');
+
+  expect(error).not.toBeVisible();
+
+  await user.click(rendered.getByText('conversation: no tools (failed)'));
+
+  expect(error).toBeVisible();
+});
+
 test('it clips a long result and shows the rest on demand', async () => {
   const user = userEvent.setup();
   const rendered = render(

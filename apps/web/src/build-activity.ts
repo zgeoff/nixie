@@ -17,6 +17,9 @@ export interface StepActivity {
   readonly kind: 'step';
   readonly calls: readonly ToolActivity[];
 
+  // the error a failed step threw, while its record is readable
+  readonly error?: string;
+
   // the sequence of the group's first record, which keys it in the list
   readonly key: number;
   readonly records: readonly LiveRecord[];
@@ -85,9 +88,11 @@ function pickStatus(record: LiveRecord, step: StepActivity): StepStatus {
 function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActivity {
   const task = records.find((record) => record.task !== undefined)?.task;
   const stepKey = records.find((record) => record.task?.stepKey !== undefined)?.task?.stepKey;
+  const error = records.find((record) => record.task?.error !== undefined)?.task?.error;
 
   return {
     calls: collectCalls(records),
+    ...(error === undefined ? {} : { error }),
     key: records[0]?.sequence ?? 0,
     kind: 'step',
     records,

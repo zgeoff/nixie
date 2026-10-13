@@ -41,6 +41,7 @@ export type {
   LeaseKind,
   RunStep,
   SandboxCleanup,
+  StepErrored,
   StepInput,
   StepResult,
   TaskClaim,

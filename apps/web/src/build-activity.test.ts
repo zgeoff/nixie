@@ -91,6 +91,36 @@ test.each([
   expect(buildActivity([started, end])).toMatchObject([{ kind: 'step', status }]);
 });
 
+test('it carries the error of a failed step', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'conversation:4', taskID: 'conversation' },
+  });
+  const errored = buildMockLogRecord({
+    kind: 'task.step_errored',
+    sequence: 2,
+    task: {
+      error: 'the model profile is unreachable',
+      stepKey: 'conversation:4',
+      taskID: 'conversation',
+    },
+  });
+
+  expect(buildActivity([started, errored])).toStrictEqual([
+    {
+      calls: [],
+      error: 'the model profile is unreachable',
+      key: 1,
+      kind: 'step',
+      records: [started, errored],
+      status: 'failed',
+      stepKey: 'conversation:4',
+      taskID: 'conversation',
+    },
+  ]);
+});
+
 test('it joins each result to its call by the call ID', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
   const first = buildMockLogRecord({

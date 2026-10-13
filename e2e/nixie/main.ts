@@ -49,6 +49,7 @@ const sessions = await startTestSessions(context, tools, {
 const holder = `nixie-${process.pid}`;
 const tasks = startTaskRunners(context, {
   runStep: tools.trackSteps(runTestBuildStep),
+  onStepErrored: () => {},
   onError: stopWithError,
   holder,
 });

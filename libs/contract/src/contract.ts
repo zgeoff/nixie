@@ -23,7 +23,12 @@ const spanSchema = z.object({
 
 const jsonObjectSchema = z.record(z.string(), z.unknown());
 
-const taskSchema = z.object({ stepKey: z.string().optional(), taskID: z.string() });
+// A failed step's record carries the error its step threw, while the record is readable.
+const taskSchema = z.object({
+  error: z.string().optional(),
+  stepKey: z.string().optional(),
+  taskID: z.string(),
+});
 
 const toolCallSchema = z.object({
   callID: z.string(),
