@@ -81,6 +81,21 @@ test('it never matches a function word in an item to a query word that stems to 
   expect(found).toStrictEqual(['item-b']);
 });
 
+test('it matches an item with a decomposed accent to a query with the composed accent', async () => {
+  const ctx = await setupTest();
+
+  await ctx.index.updateAll([
+    { itemID: 'item-a', text: 'Has a sister who lives in München' },
+    { itemID: 'item-b', text: 'Allergic to hazelnuts and the cat' },
+    { itemID: 'item-c', text: 'Prefers window seats on trains' },
+  ]);
+
+  // item-a spells "München" with "u" and a combining diaeresis, and the query with the composed "ü"
+  const found = await ctx.index.findItemIDs('München', { limit: 10, minScore: 0.25 });
+
+  expect(found).toStrictEqual(['item-a']);
+});
+
 test('it drops every match in an index of 2 items, which BM25 scores near 0', async () => {
   const ctx = await setupTest();
 

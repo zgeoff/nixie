@@ -2,7 +2,8 @@
 // that the index stores holds one. Porter stems some content words to a function word ("one" to
 // "on"), so a filter on the query side alone lets "one" match an item that holds "on".
 export function splitContentWords(text: string): readonly string[] {
-  return (text.match(/[\p{L}\p{N}]+/gu) ?? []).filter((word) => !isFunctionWord(word));
+  // a combining mark stays inside its word, so a decomposed "München" stays one word
+  return (text.match(/[\p{L}\p{M}\p{N}]+/gu) ?? []).filter((word) => !isFunctionWord(word));
 }
 
 // English function words in lower case, which carry grammar and no topic, and the fragments a
