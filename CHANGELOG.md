@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.0](https://github.com/zgeoff/nixie/compare/v0.11.0...v0.12.0) (2026-10-13)
+
+
+### Features
+
+* **geo-745:** merge a repeated memory proposal into the pending one ([#149](https://github.com/zgeoff/nixie/issues/149)) ([56d754a](https://github.com/zgeoff/nixie/commit/56d754ab58d4bebae9ebf72a0e64986025cc6352))
+* **geo-752:** show memory as the model's own, with how it came up ([#151](https://github.com/zgeoff/nixie/issues/151)) ([af20a9d](https://github.com/zgeoff/nixie/commit/af20a9df5e8b74a2e54dc10f61c014437eb7ef63))
+
+
+### Bug Fixes
+
+* **geo-765:** leave function words out of the memory retrieval query ([#150](https://github.com/zgeoff/nixie/issues/150)) ([52e8efb](https://github.com/zgeoff/nixie/commit/52e8efb8a0bdd2c87874b3653d81701eadd8b5ad))
+
 ## [0.11.0](https://github.com/zgeoff/nixie/compare/v0.10.0...v0.11.0) (2026-10-13)
 
 
