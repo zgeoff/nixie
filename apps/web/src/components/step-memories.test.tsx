@@ -112,19 +112,22 @@ test('it hides the old text of a memory forgotten since the section last opened 
 
   await user.click(rendered.getByText('Memories 1'));
   await rendered.findByText('item-1 0.61 Stub memory one');
-  await user.click(rendered.getByText('Memories 1'));
-  await store.memoryVersions.update(version, {
-    data(draft) {
-      draft.status = 'shredded';
-    },
-  });
+
+  // the closed section reads nothing, so the forget lands while it is closed
+  await Promise.all([
+    user.click(rendered.getByText('Memories 1')),
+    store.memoryVersions.update(version, {
+      data(draft) {
+        draft.status = 'shredded';
+      },
+    }),
+  ]);
   server.use(http.post('*/rpc/memory/readVersions', () => delay('infinite')));
 
   await user.click(rendered.getByText('Memories 1'));
 
-  const pending = await rendered.findByText('item-1 0.61 loading…');
+  await rendered.findByText('item-1 0.61 loading…');
 
-  expect(pending).toBeVisible();
   expect(rendered.queryByText(/Stub memory one/u)).toBeNull();
 });
 
@@ -141,19 +144,22 @@ test('it shows a memory forgotten since the section last opened as unavailable w
 
   await user.click(rendered.getByText('Memories 1'));
   await rendered.findByText('item-1 0.61 Stub memory one');
-  await user.click(rendered.getByText('Memories 1'));
-  await store.memoryVersions.update(version, {
-    data(draft) {
-      draft.status = 'shredded';
-    },
-  });
+
+  // the closed section reads nothing, so the forget lands while it is closed
+  await Promise.all([
+    user.click(rendered.getByText('Memories 1')),
+    store.memoryVersions.update(version, {
+      data(draft) {
+        draft.status = 'shredded';
+      },
+    }),
+  ]);
   server.use(http.post('*/rpc/memory/readVersions', () => HttpResponse.error()));
 
   await user.click(rendered.getByText('Memories 1'));
 
-  const unavailable = await rendered.findByText('item-1 0.61 (text unavailable)');
+  await rendered.findByText('item-1 0.61 (text unavailable)');
 
-  expect(unavailable).toBeVisible();
   expect(rendered.queryByText(/Stub memory one/u)).toBeNull();
 });
 

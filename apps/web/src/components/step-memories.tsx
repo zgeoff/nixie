@@ -41,6 +41,7 @@ function MemoryList(props: StepMemoriesProps): ReactNode {
   const batches = Array.from({ length: Math.ceil(refs.length / batchSize) }, (_, index) =>
     refs.slice(index * batchSize, (index + 1) * batchSize),
   );
+
   // A query keeps its last data while it reads again and after that read fails, and that data can
   // hold the text of a memory forgotten since, so only a finished, successful read gives text.
   const texts = useQueries({
