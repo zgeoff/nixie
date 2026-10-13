@@ -50,6 +50,7 @@ test('it holds a write whose quote is not in its source as a proposal', async ()
         payload: { sourceSequence: 12 },
       },
     ],
+    plan: null,
   });
 });
 

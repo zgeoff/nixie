@@ -122,10 +122,50 @@ test('it lists each pending memory proposal with its text and the hash an answer
       source: 'untrusted',
       createdAt: new Date(proposal.createdAt).toISOString(),
       lapseAt: new Date(proposal.lapseAt).toISOString(),
+      sources: [
+        {
+          origin: 'conversation',
+          thread: 'conversation',
+          proposedAt: new Date(proposal.createdAt).toISOString(),
+        },
+      ],
       text: 'Likes jazz',
       quote: null,
     },
   ]);
+});
+
+test('it answers an approval that an active item closely matches with that item, and applies nothing', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => ctx.memory.store.proposals,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await ctx.memory.store.remember({
+    text: 'The owner swims every Tuesday.',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const proposal = await createProposal(ctx.memory.store, { text: 'Owner swims every Tuesday' });
+
+  const held = await Bun.fetch('http://localhost/memory/proposals/approve', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ proposalID: proposal.proposalID, actionHash: proposal.actionHash }),
+  });
+  const [body, pending] = await Promise.all([
+    held.json(),
+    ctx.memory.store.proposals.listPending(),
+  ]);
+
+  expect(body).toStrictEqual({
+    status: 'close_match',
+    item: { itemID: item.itemID, version: 1, text: 'The owner swims every Tuesday.' },
+  });
+  expect(pending).toMatchObject([{ proposalID: proposal.proposalID }]);
 });
 
 test('it writes the same records for an approval as the memory gate’s own approval path', async () => {

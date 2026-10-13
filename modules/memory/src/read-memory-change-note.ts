@@ -2,7 +2,7 @@ import type { Log } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
 import { memoryWriterTaskID } from './memory-writer-task-id';
-import type { NotedChange } from './render-memory-change-note';
+import type { NotedChange, NotedMerge } from './render-memory-change-note';
 import { renderMemoryChangeNote } from './render-memory-change-note';
 import type { MemoryChange, MemoryOrigin, MemoryStore, MemoryTables } from './types';
 import type { WriterTables } from './writer-types';
@@ -14,9 +14,9 @@ export interface TurnMemoryNote {
   readonly throughSequence: number;
 }
 
-// Reads the memory changes since the conversation's last turn that the conversation did not make
-// itself, such as a writer batch or an edit of yours in the memory view, and renders the note for
-// the next turn. A turn from before the note covered up to its own record.
+// Reads the memory changes since the conversation's last turn that came from outside it, such as a
+// writer batch, and each outside write that merged into its proposals, and renders the next turn's
+// note. A turn from before the note covered up to its own record.
 export async function readMemoryChangeNote(
   log: Pick<Log, 'writer'>,
   store: Pick<MemoryStore, 'recall'>,
@@ -28,10 +28,12 @@ export async function readMemoryChangeNote(
   const caughtUp = await readCaughtUpSequence(log);
   const split = splitCatchUpVersions(versions, caughtUp);
   const changes = await readNotedChanges(store, split.listed.slice(0, cap));
+  const merges = await readOutsideMerges(log, { after, through });
 
   return {
     text: renderMemoryChangeNote({
       changes,
+      merges,
       moreCount: Math.max(split.listed.length - cap, 0),
       catchUpCount: split.catchUpCount,
     }),
@@ -106,6 +108,28 @@ function readOutsideVersions(
     .where('sequence', '<=', range.through)
     .where('origin', '!=', 'conversation')
     .orderBy('sequence')
+    .execute();
+}
+
+// every merge in the range into a proposal the conversation made, from a write outside it
+function readOutsideMerges(
+  log: Pick<Log, 'writer'>,
+  range: VersionRange,
+): Promise<readonly NotedMerge[]> {
+  return log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_proposal_merges')
+    .innerJoin(
+      'memory_proposals',
+      'memory_proposals.proposal_id',
+      'memory_proposal_merges.proposal_id',
+    )
+    .select(['memory_proposal_merges.proposal_id as proposalID', 'memory_proposal_merges.origin'])
+    .where('memory_proposal_merges.sequence', '>', range.after)
+    .where('memory_proposal_merges.sequence', '<=', range.through)
+    .where('memory_proposals.origin', '=', 'conversation')
+    .where('memory_proposal_merges.origin', '!=', 'conversation')
+    .orderBy('memory_proposal_merges.sequence')
     .execute();
 }
 

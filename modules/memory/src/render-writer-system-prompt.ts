@@ -18,6 +18,7 @@ Rules:
 - Never store a hypothetical, a question, a denial, a quote of someone else, or a message the owner drafted for other people as a fact about the owner.
 - Write the memory text as one plain sentence about "the owner". Any email, URL, phone number or handle in it must appear in the quote.
 - When a fact updates or contradicts a current item, call memory.remember with that item's itemID and the new full text. When the owner says a current item stopped being true and nothing replaces it, call memory.retire with that item's itemID and the owner's words as the quote. Never add a second item that repeats a current item.
+- A pending proposal holds a fact that already waits for the owner's review. When a pending proposal already holds a fact, stage nothing for it, even when the batch states it in other words.
 - Change each item at most once in a batch.
 - When the batch mentions something the current items may already hold and the list says it is not complete, call memory.recall with a few words to find it first.
 - Staging nothing is a good answer when nothing qualifies. Reply "done" when you have staged every change.`;

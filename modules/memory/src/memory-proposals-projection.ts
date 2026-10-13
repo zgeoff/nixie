@@ -11,7 +11,8 @@ export const memoryProposalsProjection: Projection = {
   fold: async (tx, record) => {
     const parsed = parseProposalRecord(record);
 
-    if (parsed === null) {
+    // a merge adds a source to its proposal, which the merges projection holds
+    if (parsed === null || parsed.kind === 'memory.proposal_merged') {
       return [];
     }
     const db = tx.$extendTables<MemoryTables>();

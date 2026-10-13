@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createProposal, startTestMemory } from '@heynixie/memory/test-utils';
+import invariant from 'tiny-invariant';
 import { sendMemoryRequest } from './send-memory-request';
 import { startControlSocket } from './start-control-socket';
 
@@ -46,7 +47,38 @@ test('it returns the version an approval applied', async () => {
     actionHash: proposal.actionHash,
   });
 
-  expect(ref).toStrictEqual({ itemID: proposal.itemID, version: 1 });
+  expect(ref).toStrictEqual({ status: 'applied', itemID: proposal.itemID, version: 1 });
+});
+
+test('it sends an approval held for a close match again as a new item, or as a revision', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'The owner swims every Tuesday.',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const [kept, revised] = await Promise.all(
+    ['Owner swims every Tuesday', 'The owner swims every Tuesday morning'].map((text) =>
+      createProposal(ctx.memory.store, { text }),
+    ),
+  );
+
+  invariant(kept && revised);
+
+  const asNew = await sendMemoryRequest(ctx.path, {
+    command: 'approve',
+    proposalID: kept.proposalID,
+    actionHash: kept.actionHash,
+    ignoreCloseMatch: true,
+  });
+  const asRevision = await sendMemoryRequest(ctx.path, {
+    command: 'approve',
+    proposalID: revised.proposalID,
+    actionHash: revised.actionHash,
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  expect(asNew).toStrictEqual({ status: 'applied', itemID: kept.itemID, version: 1 });
+  expect(asRevision).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
 });
 
 test('it returns the proposal a rejection answered', async () => {

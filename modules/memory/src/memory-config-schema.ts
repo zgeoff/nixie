@@ -23,6 +23,7 @@ export const memoryConfigSchema = z
     evidence_window: countSchema.default(defaultGateLimits.evidenceWindow),
     proposal_lapse_days: countSchema.default(defaultGateLimits.proposalLapseMs / dayMs),
     proposal_cap: countSchema.default(defaultGateLimits.proposalCap),
+    close_match_score: z.number().min(0).max(1).default(defaultGateLimits.closeMatchScore),
 
     // a live check took about 9 s, so 20 s keeps a slow one inside the timeout
     checker_timeout_ms: countSchema.default(20_000),
@@ -36,6 +37,7 @@ export const memoryConfigSchema = z
       evidenceWindow: config.evidence_window,
       proposalLapseMs: config.proposal_lapse_days * dayMs,
       proposalCap: config.proposal_cap,
+      closeMatchScore: config.close_match_score,
     },
     checkerTimeoutMs: config.checker_timeout_ms,
     pinnedCoreTokens: config.pinned_core_tokens,

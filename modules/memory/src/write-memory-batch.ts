@@ -1,5 +1,5 @@
 import type { RecordInput } from '@heynixie/log';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { withWriteTransaction } from '@heynixie/log';
 import type { Lease } from '@heynixie/tasks';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
@@ -8,7 +8,7 @@ import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { StoreParts, VersionRef } from './types';
 import { updateVersionIndex } from './update-version-index';
 import { writeAppliedVersions } from './write-applied-versions';
-import type { WrittenVersion } from './write-version-in-transaction';
+import { writePublishedRecords } from './write-published-records';
 import type { BatchBounds, GateVerdict, StagedWrite, WriterTables } from './writer-types';
 
 // One write of a batch with the gate's verdict on it.
@@ -66,10 +66,13 @@ export function writeMemoryBatch(
   });
 }
 
+// the versions the batch applied, as the publish wrote them
+type WrittenVersions = Awaited<ReturnType<typeof writeAppliedVersions>>;
+
 type WrittenBatch =
   | {
       readonly status: 'published';
-      readonly written: readonly WrittenVersion[];
+      readonly written: WrittenVersions;
       readonly outcome: BatchOutcome;
     }
   | { readonly status: 'superseded' };
@@ -90,10 +93,7 @@ async function writeBatchInTransaction(
   const written = await writeAppliedVersions(parts, tx, kept);
   const outcome = buildBatchOutcome(publication, kept, written);
 
-  await writeRecordsInTransaction(tx, parts.context.log, [
-    ...kept.flatMap((gated) => (gated.verdict.outcome === 'propose' ? gated.verdict.records : [])),
-    ...publication.buildRecords(outcome),
-  ]);
+  await writePublishedRecords(parts, tx, { kept, records: publication.buildRecords(outcome) });
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('writer.publish.before', { kind: 'task', id: memoryWriterTaskID });
   }
@@ -103,7 +103,7 @@ async function writeBatchInTransaction(
 function buildBatchOutcome(
   publication: BatchPublication,
   kept: readonly GatedWrite[],
-  written: readonly WrittenVersion[],
+  written: WrittenVersions,
 ): BatchOutcome {
   return {
     applied: written.map((version) => version.ref),

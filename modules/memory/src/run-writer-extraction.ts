@@ -19,8 +19,9 @@ export interface WriterExtraction {
   readonly shownTexts: ReadonlySet<string>;
 }
 
-// Runs one fresh model session over the batch, with the items it may revise, and collects what the
-// session staged. A batch with none of your messages left to read needs no session.
+// Runs one fresh model session over the batch, with the items it may revise and the pending
+// proposals it must not repeat, and collects what the session staged. A batch with none of your
+// messages left to read needs no session.
 export async function runWriterExtraction(
   parts: WriterParts,
   batch: WriterBatch,
@@ -40,7 +41,8 @@ export async function runWriterExtraction(
     sources: batch.sources,
     shown: new Map(shown.items.map((item) => [item.itemID, item.version])),
   });
-  const prompt = renderWriterPrompt({ ...shown, messages: buildBatchMessages(batch) });
+  const proposals = await parts.store.proposals.listPending();
+  const prompt = renderWriterPrompt({ ...shown, proposals, messages: buildBatchMessages(batch) });
   const session = await runSession(parts, { prompt, signal, staged });
 
   if (NIXIE_TEST_BUILD) {

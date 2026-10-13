@@ -3,7 +3,12 @@ import { runWriterGate } from './run-writer-gate';
 import type { GateVerdict } from './writer-types';
 
 test('it releases the verdicts it gathered when a later check throws', async () => {
-  const proposed: GateVerdict = { outcome: 'propose', reason: 'checker_unsure', records: [] };
+  const proposed: GateVerdict = {
+    outcome: 'propose',
+    reason: 'checker_unsure',
+    records: [],
+    plan: null,
+  };
   const check = mock<() => Promise<GateVerdict>>()
     .mockResolvedValueOnce(proposed)
     .mockRejectedValueOnce(new Error('the checker crashed'));

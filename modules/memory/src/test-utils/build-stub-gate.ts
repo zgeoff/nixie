@@ -27,6 +27,7 @@ function buildStubVerdict(write: StagedWrite, source: SourceMessage): GateVerdic
           payload: { sourceSequence: source.sequence },
         },
       ],
+      plan: null,
     };
   }
   return {

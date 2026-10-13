@@ -67,19 +67,24 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
     '/memory/proposals/approve': {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
-        const answer = await parseAnswer(request);
-        const ref = await requireProposals(options).approve({
-          ...answer,
+        const answer = await parseAnswer(request, approvalBody);
+        const result = await requireProposals(options).approve({
+          proposalID: answer.proposalID,
+          actionHash: answer.actionHash,
           identityID: hostIdentityID,
+          ...(answer.revisionOf === undefined ? {} : { revisionOf: answer.revisionOf }),
+          ...(answer.ignoreCloseMatch === undefined
+            ? {}
+            : { ignoreCloseMatch: answer.ignoreCloseMatch }),
         });
 
-        return Response.json(ref);
+        return Response.json(result);
       },
     },
     '/memory/proposals/reject': {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
-        const answer = await parseAnswer(request);
+        const answer = await parseAnswer(request, answerBody);
 
         await requireProposals(options).reject({ ...answer, identityID: hostIdentityID });
         return Response.json({ proposalID: answer.proposalID });
@@ -101,7 +106,8 @@ function requireProposals(options: ControlSocketOptions): MemoryProposals {
   return proposals;
 }
 
-// What a host command shows of a pending proposal: its text, and the hash an answer binds to.
+// What a host command shows of a pending proposal: its text, every source that proposed it, and
+// the hash an answer binds to.
 function buildPendingEntry(proposal: MemoryProposal) {
   return {
     proposalID: proposal.proposalID,
@@ -115,15 +121,23 @@ function buildPendingEntry(proposal: MemoryProposal) {
     source: proposal.source,
     createdAt: new Date(proposal.createdAt).toISOString(),
     lapseAt: new Date(proposal.lapseAt).toISOString(),
+    sources: proposal.sources.map((source) => ({
+      origin: source.origin,
+      thread: source.thread,
+      proposedAt: new Date(source.proposedAt).toISOString(),
+    })),
     text: proposal.text,
     quote: proposal.quote,
   };
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
-async function parseAnswer(request: Request): Promise<z.infer<typeof answerBody>> {
+async function parseAnswer<Schema extends z.ZodType>(
+  request: Request,
+  schema: Schema,
+): Promise<z.infer<Schema>> {
   const body: unknown = await request.json().catch(() => null);
-  const parsed = answerBody.safeParse(body);
+  const parsed = schema.safeParse(body);
 
   if (!parsed.success) {
     throw new ControlRequestError(400, 'an answer takes a proposalID and an actionHash');
@@ -132,6 +146,12 @@ async function parseAnswer(request: Request): Promise<z.infer<typeof answerBody>
 }
 
 const answerBody = z.strictObject({ proposalID: z.string().min(1), actionHash: z.string().min(1) });
+
+// an approval held for a close match is answered again, as a revision of that item or as a new item
+const approvalBody = answerBody.extend({
+  revisionOf: z.strictObject({ itemID: z.string().min(1), version: z.int().positive() }).optional(),
+  ignoreCloseMatch: z.boolean().optional(),
+});
 
 // the memory gate's refusals keep their meaning for the host command; anything else is a failure
 function pickErrorStatus(error: Error): number {
@@ -150,6 +170,7 @@ const errorStatuses = new Map([
   ['STALE_VERSION', 409],
   ['WRONG_STATE', 409],
   ['PINNED_CORE_FULL', 409],
+  ['REVISION_TARGET', 400],
 ]);
 
 // a request the socket refuses before the memory gate sees it, with the status it answers

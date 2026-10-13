@@ -8,7 +8,10 @@ import type { MemoryTables } from './types';
 test("it lapses a proposal past its lapse time and drops its new item's key", async () => {
   const clock = buildTestClock(1_000_000);
   const memory = await startTestMemory({
-    gate: { clock, limits: { evidenceWindow: 20, proposalLapseMs: 5000, proposalCap: 10 } },
+    gate: {
+      clock,
+      limits: { evidenceWindow: 20, proposalLapseMs: 5000, proposalCap: 10, closeMatchScore: 0.6 },
+    },
   });
   const proposed = await createProposal(memory.store, { text: 'Likes jazz' });
 
@@ -31,7 +34,10 @@ test("it lapses a proposal past its lapse time and drops its new item's key", as
 test('it never lapses a proposal before its lapse time', async () => {
   const clock = buildTestClock(1_000_000);
   const memory = await startTestMemory({
-    gate: { clock, limits: { evidenceWindow: 20, proposalLapseMs: 5000, proposalCap: 10 } },
+    gate: {
+      clock,
+      limits: { evidenceWindow: 20, proposalLapseMs: 5000, proposalCap: 10, closeMatchScore: 0.6 },
+    },
   });
 
   await memory.store.writes.remember({

@@ -45,7 +45,7 @@ async function writeRetirementProposal(
   reviewed: ReviewedRetirement,
 ): Promise<WriteOutcome> {
   const review = reviewed.review;
-  const proposalID = await writeMemoryProposal(parts, {
+  const written = await writeMemoryProposal(parts, {
     operation: 'retire',
     target: request.target,
     isPinned: false,
@@ -59,7 +59,7 @@ async function writeRetirementProposal(
     group: reviewed.group,
   });
 
-  return { status: 'proposed', proposalID, reason: review.reason };
+  return { status: 'proposed', ...written, reason: review.reason };
 }
 
 // a forget that completed while the checker answered turns a passing retirement into a proposal

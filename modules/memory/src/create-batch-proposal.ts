@@ -40,6 +40,7 @@ export async function createBatchProposal(
         outcome: 'propose',
         reason: plan.reason,
         records: [buildProposalRecord(parts, { plan, sealed })],
+        plan,
       },
       newItemID,
     };

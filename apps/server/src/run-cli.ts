@@ -43,6 +43,8 @@ const cliOptions = {
   sops: { type: 'string', default: '/usr/local/bin/sops' },
   live: { type: 'boolean', default: false },
   hash: { type: 'string' },
+  revise: { type: 'string' },
+  'as-new': { type: 'boolean', default: false },
 } as const;
 
 interface CLIFlags {
@@ -53,6 +55,11 @@ interface CLIFlags {
 
   // the action hash a memory answer binds to
   readonly hash?: string;
+
+  // an approval held for a close match: apply it as a revision of <itemID>@<version>, or as a new
+  // item anyway
+  readonly revise?: string;
+  readonly 'as-new': boolean;
 }
 
 type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;
@@ -134,9 +141,13 @@ async function runMemoryPending(configPath: string, io: CLIIO): Promise<number> 
 function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
   return async (flags, io, args) => {
     const [proposalID] = args;
+    const revisionOf = flags.revise === undefined ? undefined : parseRevisionTarget(flags.revise);
 
-    if (proposalID === undefined || flags.hash === undefined) {
-      io.print(`nixie memory-${command} takes a proposal ID and --hash <action hash>`);
+    if (proposalID === undefined || flags.hash === undefined || revisionOf === null) {
+      io.print(
+        `nixie memory-${command} takes a proposal ID and --hash <action hash>, and memory-approve ` +
+          'takes --revise <itemID>@<version> or --as-new',
+      );
       return 2;
     }
     const socketPath = await resolveSocketPath(flags.config);
@@ -144,9 +155,21 @@ function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
       command,
       proposalID,
       actionHash: flags.hash,
+      ...(command === 'approve' && revisionOf !== undefined ? { revisionOf } : {}),
+      ...(command === 'approve' && flags['as-new'] ? { ignoreCloseMatch: true } : {}),
     });
 
     io.print(JSON.stringify(answer));
     return 0;
   };
+}
+
+// <itemID>@<version>, as an approval held for a close match prints the item, or null when malformed
+function parseRevisionTarget(flag: string): { itemID: string; version: number } | null {
+  const at = flag.lastIndexOf('@');
+  const version = Number(flag.slice(at + 1));
+
+  return at < 1 || !Number.isInteger(version) || version < 1
+    ? null
+    : { itemID: flag.slice(0, at), version };
 }

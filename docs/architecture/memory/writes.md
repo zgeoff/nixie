@@ -125,12 +125,32 @@ the user as its origin and source and cites no evidence. A retirement takes no e
 a proposal whose item moved on fails as stale and applies nothing, and the proposal stays pending so
 the client can offer it against the current version.
 
+A write that proposes the same change as a pending proposal merges into it instead of adding a
+second proposal. The same change means the same operation on the same target, or on a new item for
+both, with the same pin and the same text once case, spacing and a closing full stop are set aside.
+The check runs inside the write's transaction, so two writes of one fact never both miss it. Each
+proposal's text is sealed under its own item's key, so the check opens the text of each pending
+candidate rather than comparing a stored digest, which would outlive a forget. A merge records the
+second proposer against the proposal, and adds no proposal against the cap. The listing shows every
+source that proposed the change, and the second proposer's result says that it merged. A
+conversation whose proposal another source proposed again learns of it from
+[the change note](./writer.md#the-change-note). A reworded fact stays a proposal of its own: wording
+that differs is the model's to reconcile.
+
+An approval of a proposal for a new item first searches the retrieval index with its text. When an
+active item shares enough of the proposal's content words, the approval holds, applies nothing and
+names that item, because applying would leave 2 active items that state one fact. The user then
+answers again: as a revision of that item, which writes the proposal's text as its next version and
+drops the proposal's own key, or as a new item anyway. How much wording counts as close is a
+configurable share.
+
 A proposal lapses after a configurable time, and a server sweep lapses each overdue proposal. A
 conversation turn, a task run or a writer batch makes at most a configurable number of proposals,
 and the next one refuses, so an injected instruction cannot flood the user's review. A lapsed or
 rejected proposal for a new item deletes that item's key, because the proposal held its only
-reference. The key goes after the close commits, so store start and each lapse sweep delete any key
-that a crash or a failed deletion left behind.
+reference, and so does an approval that applies it as a revision of another item. The key goes after
+the close commits, so store start and each lapse sweep delete any key that a crash or a failed
+deletion left behind.
 
 ## Notices
 

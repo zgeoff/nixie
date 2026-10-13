@@ -237,11 +237,23 @@ interface MemoryVersionTable {
   readonly recorded_at: number;
 }
 
+export interface MemoryProposalMergeTable {
+  readonly merge_id: string;
+  readonly proposal_id: string;
+  readonly origin: MemoryOrigin;
+  readonly task_id: string | null;
+  readonly thread: string | null;
+  readonly model: string | null;
+  readonly sequence: number;
+  readonly recorded_at: number;
+}
+
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 export type MemoryTables = Readonly<{
   memory_items: MemoryItemTable;
   memory_versions: MemoryVersionTable;
   memory_proposals: MemoryProposalTable;
+  memory_proposal_merges: MemoryProposalMergeTable;
   memory_notice_entries: MemoryNoticeEntryTable;
   memory_forgotten_evidence: MemoryForgottenEvidenceTable;
 }>;

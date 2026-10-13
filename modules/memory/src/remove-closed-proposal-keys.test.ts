@@ -85,7 +85,10 @@ test('it never removes the key of a pending proposal', async () => {
 test('it finishes on the next lapse sweep a key removal whose checkpoint a reader blocked', async () => {
   const clock = buildTestClock(1_000_000);
   const memory = await startTestMemory({
-    gate: { clock, limits: { evidenceWindow: 20, proposalLapseMs: 5000, proposalCap: 10 } },
+    gate: {
+      clock,
+      limits: { evidenceWindow: 20, proposalLapseMs: 5000, proposalCap: 10, closeMatchScore: 0.6 },
+    },
   });
 
   await createProposal(memory.store, { text: 'Likes jazz' });

@@ -24,6 +24,7 @@ export function buildRememberTool(memory: ModelWriteStore): ToolDefinition {
         version: 'owner_data',
         proposalID: 'owner_data',
         reason: 'owner_data',
+        merged: 'owner_data',
       },
     },
     execution: 'direct',
@@ -41,7 +42,8 @@ const rememberDescription =
   "version you read. Pass quote: the exact words from one of the owner's own recent " +
   'messages that state the fact. The write applies at once only when those typed words back ' +
   "it; otherwise it waits for the owner's review as a proposal, and the result says why. " +
-  'Set pin to ask for the item in the pinned core, which always waits for review.';
+  'When a pending proposal already holds the same text, the result says merged: the owner ' +
+  'reviews one proposal with both sources. Set pin to ask for the item in the pinned core, which always waits for review.';
 
 const rememberInput = {
   type: 'object',

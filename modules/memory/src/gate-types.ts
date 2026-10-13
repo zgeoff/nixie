@@ -26,6 +26,9 @@ export interface GateLimits {
 
   // the most proposals one conversation turn, task run or writer batch may make
   readonly proposalCap: number;
+
+  // the share of a proposal's content words, from 0 to 1, that makes an active item a close match
+  readonly closeMatchScore: number;
 }
 
 // A rule of yours that names memory.remember and lets a write skip the quote and the checker, as
@@ -100,10 +103,16 @@ export interface GatedRetireRequest {
   readonly caller: WriteCaller;
 }
 
-// A gated write applied at once, or became a proposal with its review reason.
+// A gated write applied at once, or became a proposal with its review reason, or merged into a
+// pending proposal of the same change.
 export type WriteOutcome =
   | { readonly status: 'applied'; readonly itemID: string; readonly version: number }
-  | { readonly status: 'proposed'; readonly proposalID: string; readonly reason: ReviewReason };
+  | {
+      readonly status: 'proposed';
+      readonly proposalID: string;
+      readonly reason: ReviewReason;
+      readonly merged: boolean;
+    };
 
 // The write paths of the model and the memory writer, each behind its gate.
 export interface MemoryWrites {
@@ -134,10 +143,22 @@ export interface MemoryProposal {
   readonly createdAt: number;
   readonly lapseAt: number;
 
+  // who proposed it, the first proposer then each write that merged into it, oldest first
+  readonly sources: readonly ProposalSource[];
+
   // the proposed text, or the item's text for a retirement, and the quote it cited
   readonly text: string;
   readonly quote: string | null;
   readonly evidence: QuoteEvidence | null;
+}
+
+// One write that proposed a change: the proposal's own, or one that merged into it.
+export interface ProposalSource {
+  readonly origin: MemoryOrigin;
+  readonly thread: string | null;
+  readonly taskID: string | null;
+  readonly model: string | null;
+  readonly proposedAt: number;
 }
 
 // Your answer to a proposal from the client, bound to the action hash the client showed. An edit
@@ -147,12 +168,30 @@ export interface ProposalAnswer {
   readonly actionHash: string;
   readonly identityID: string;
   readonly editedText?: string;
+
+  // applies a new item's proposal as a revision of this item, such as a close match
+  readonly revisionOf?: VersionRef;
+
+  // applies a new item's proposal as a new item even when an active item closely matches it
+  readonly ignoreCloseMatch?: boolean;
+}
+
+// An approval applied, or held for the active item that closely matches the proposal.
+export type ApprovalResult =
+  | { readonly status: 'applied'; readonly itemID: string; readonly version: number }
+  | { readonly status: 'close_match'; readonly item: CloseMatch };
+
+// An active item whose wording a proposal shares, with the version a revision binds to.
+export interface CloseMatch {
+  readonly itemID: string;
+  readonly version: number;
+  readonly text: string;
 }
 
 // The proposals in the memory view, and your answers to them.
 export interface MemoryProposals {
   readonly listPending: () => Promise<readonly MemoryProposal[]>;
-  readonly approve: (answer: ProposalAnswer) => Promise<VersionRef>;
+  readonly approve: (answer: ProposalAnswer) => Promise<ApprovalResult>;
   readonly reject: (answer: Omit<ProposalAnswer, 'editedText'>) => Promise<void>;
 
   // lapses every pending proposal past its lapse time, and returns how many

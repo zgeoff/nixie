@@ -1,15 +1,19 @@
 import type { StepInput, TasksContext } from '@heynixie/tasks';
 import type { WriterStaging } from './create-writer-staging';
+import type { MemoryProposals } from './gate-types';
 import type { MemoryStore } from './types';
 import type { BatchPublication, PublishResult } from './write-memory-batch';
 import type { WriterConfig } from './writer-config-schema';
 import type { WriterGate, WriterModel, WriterRow } from './writer-types';
 
-// What the writer's step reaches: the log and the clock, the store's recall and the batch publish,
-// the staging area its tools write to, its model, the content gate and its settings.
+// What the writer's step reaches: the log and the clock, the store's recall, its pending proposals
+// and the batch publish, the staging area its tools write to, its model, the content gate and its
+// settings.
 export interface WriterParts {
   readonly context: TasksContext;
-  readonly store: Pick<MemoryStore, 'recall'>;
+  readonly store: Pick<MemoryStore, 'recall'> & {
+    readonly proposals: Pick<MemoryProposals, 'listPending'>;
+  };
   readonly publish: (publication: BatchPublication) => Promise<PublishResult>;
   readonly staging: WriterStaging;
   readonly model: WriterModel;

@@ -150,14 +150,8 @@ test('it returns superseded when an item a proposal names was forgotten since th
           verdict: {
             outcome: 'propose',
             reason: 'the checker did not assert the quote',
-            records: [
-              {
-                kind: 'test.proposal',
-                definitions: { snapshotHash: 'sha256:test' },
-                thread: 'memory-writer',
-                payload: { sourceSequence: planned.bounds.end },
-              },
-            ],
+            records: [],
+            plan: null,
           },
         },
       ],

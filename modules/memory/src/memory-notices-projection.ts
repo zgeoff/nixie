@@ -46,6 +46,17 @@ function buildNoticeEntry(record: EnvelopeRecord): NoticeEntryValues | null {
   }
   const proposal = version === null ? parseProposalRecord(record) : null;
 
+  // a write that merged into a pending proposal shows that proposal in its own turn's notice
+  if (proposal?.kind === 'memory.proposal_merged' && proposal.noticeKey !== null) {
+    return {
+      entry_key: `merge/${proposal.mergeID}`,
+      notice_key: proposal.noticeKey,
+      item_id: proposal.itemID,
+      version: null,
+      change: 'proposed',
+      proposal_id: proposal.proposalID,
+    };
+  }
   if (proposal?.kind === 'memory.proposed' && proposal.noticeKey !== null) {
     return {
       entry_key: `proposal/${proposal.proposalID}`,
