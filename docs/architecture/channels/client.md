@@ -65,6 +65,13 @@ uncacheable and varies by cookie, because a page holds the conversation of the s
 for it. The build bundles every dependency into Start's server entry, so the web image holds Bun and
 the build output only, and it runs as an unprivileged user.
 
+The web client is installable as an app. Every page links a web app manifest, which holds the app's
+name, nixie, a standalone display with no browser bar, and the dark theme's canvas colour. The
+manifest and its icons keep fixed names, so the web server lets a browser keep them for a short
+while only, and an installed app picks up a changed icon. The client registers no service worker,
+because Chrome offers its install from the browser menu without one, and the client has no offline
+mode for one to serve.
+
 ## The conversation view
 
 The conversation view merges three sources into one list:

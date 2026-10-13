@@ -83,19 +83,36 @@ async function canReachAPI(probe: ContractClient): Promise<boolean> {
   }
 }
 
-// Finds a built browser asset. The URL parser removes dot segments, and the prefix check refuses
-// any path that still escapes the assets folder.
-async function findAsset(clientDir: string, pathname: string): Promise<Response | undefined> {
+// The files the build copies from public/ to the root of the browser assets: the web app manifest
+// and its icons. Their names carry no hash, so the browser keeps each for an hour only, and an
+// installed app picks up a changed manifest or icon.
+const publicPaths = new Set([
+  '/manifest.webmanifest',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-512.png',
+]);
+
+// Finds a built browser asset. A hashed asset never changes under its name, so the browser keeps
+// it for good. The URL parser removes dot segments, and the prefix check refuses any path that
+// still escapes the assets folder.
+function findAsset(clientDir: string, pathname: string): Promise<Response | undefined> | undefined {
+  if (publicPaths.has(pathname)) {
+    return readAsset(join(clientDir, pathname), 'public, max-age=3600');
+  }
+
   const path = join(clientDir, pathname);
 
   if (!pathname.startsWith('/assets/') || !path.startsWith(join(clientDir, 'assets') + sep)) {
     return undefined;
   }
 
+  return readAsset(path, 'public, max-age=31536000, immutable');
+}
+
+async function readAsset(path: string, cacheControl: string): Promise<Response | undefined> {
   const file = Bun.file(path);
   const exists = await file.exists();
 
-  return exists
-    ? new Response(file, { headers: { 'cache-control': 'public, max-age=31536000, immutable' } })
-    : undefined;
+  return exists ? new Response(file, { headers: { 'cache-control': cacheControl } }) : undefined;
 }

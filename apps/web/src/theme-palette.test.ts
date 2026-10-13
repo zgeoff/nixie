@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { join } from 'node:path';
 import { buildContrastRatio } from './test-utils/build-contrast-ratio';
 import { themePalette } from './theme-palette';
 
@@ -24,3 +25,14 @@ test.each([
     ).toBeGreaterThanOrEqual(4.5);
   },
 );
+
+test('it gives the installed app the dark theme canvas colour', async () => {
+  const manifest: unknown = await Bun.file(
+    join(import.meta.dir, '..', 'public', 'manifest.webmanifest'),
+  ).json();
+
+  expect(manifest).toMatchObject({
+    background_color: themePalette.canvas.dark,
+    theme_color: themePalette.canvas.dark,
+  });
+});

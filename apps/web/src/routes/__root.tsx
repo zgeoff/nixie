@@ -4,16 +4,21 @@ import { buildThemeScript } from '../build-theme-script';
 import { NixieClientContext } from '../nixie-client-context';
 import { css } from '../styled-system/css';
 import styles from '../styles.css?url';
+import { themePalette } from '../theme-palette';
 import type { RouterContext } from '../types';
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootDocument,
   head: () => ({
-    links: [{ href: styles, rel: 'stylesheet' }],
+    links: [
+      { href: styles, rel: 'stylesheet' },
+      { href: '/manifest.webmanifest', rel: 'manifest' },
+    ],
     scripts: [{ children: buildThemeScript() }],
     meta: [
       { charSet: 'utf8' },
       { content: 'width=device-width, initial-scale=1', name: 'viewport' },
+      { content: themePalette.canvas.dark, name: 'theme-color' },
       { title: 'nixie' },
     ],
   }),

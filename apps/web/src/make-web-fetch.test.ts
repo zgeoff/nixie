@@ -2,6 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { z } from 'zod';
 import { makeWebFetch } from './make-web-fetch';
 import { startStubAPI } from './test-utils/start-stub-api';
 
@@ -104,6 +105,87 @@ test('it serves a built browser asset', async () => {
   const body = await response.text();
 
   expect(body).toBe('console.log("hi");');
+});
+
+test('it serves the web app manifest for an hour', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.clientDir, 'manifest.webmanifest'), '{"name":"nixie"}');
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/manifest.webmanifest'));
+  const body = await response.text();
+
+  expect(body).toBe('{"name":"nixie"}');
+  expect(response.headers.get('content-type')).toBe('application/manifest+json');
+  expect(response.headers.get('cache-control')).toBe('public, max-age=3600');
+});
+
+test('it serves an app icon for an hour', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.clientDir, 'icons'));
+  await writeFile(join(ctx.clientDir, 'icons', 'icon-192.png'), 'png');
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/icons/icon-192.png'));
+  const body = await response.text();
+
+  expect(body).toBe('png');
+  expect(response.headers.get('content-type')).toBe('image/png');
+  expect(response.headers.get('cache-control')).toBe('public, max-age=3600');
+});
+
+// A PNG holds its width and height as 4-byte integers at bytes 16 and 20, inside its header chunk.
+test('it serves each icon the manifest lists at its listed size', async () => {
+  const publicDir = join(import.meta.dir, '..', 'public');
+  const manifestJSON: unknown = await Bun.file(join(publicDir, 'manifest.webmanifest')).json();
+  const iconSchema = z.object({ sizes: z.string(), src: z.string() });
+  const manifest = z.object({ icons: z.array(iconSchema) }).parse(manifestJSON);
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: publicDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const sizes = await Promise.all(
+    manifest.icons.map(async (icon) => {
+      const response = await webFetch(new Request(`http://web.test${icon.src}`));
+      const bytes = await response.arrayBuffer();
+      const view = new DataView(bytes);
+
+      return `${view.getUint32(16)}x${view.getUint32(20)}`;
+    }),
+  );
+
+  expect(sizes).toStrictEqual(manifest.icons.map((icon) => icon.sizes));
+});
+
+test('it sends any other file at the root of the browser assets to Start', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.clientDir, 'secret.txt'), 'outside');
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('start'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/secret.txt'));
+  const body = await response.text();
+
+  expect(body).toBe('start');
 });
 
 test('it never serves a file outside the browser assets', async () => {
