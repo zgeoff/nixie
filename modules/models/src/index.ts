@@ -9,6 +9,7 @@ export { encodeInboxUUID } from './encode-inbox-uuid';
 export type { CheckerOptions } from './make-checker';
 export { makeChecker } from './make-checker';
 export { checkerOwner } from './start-checker-runner';
+export { agentConfigSchema } from './agent-config-schema';
 export { modelsConfigSchema } from './models-config-schema';
 export { readEventsNote } from './read-events-note';
 export { readTurnNoteRange } from './read-turn-note-range';

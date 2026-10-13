@@ -2,7 +2,7 @@ import { actionsConfigSchema } from '@heynixie/actions';
 import { timeConfigSchema, webFetchConfigSchema } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
 import { memoryConfigSchema, writerConfigSchema } from '@heynixie/memory';
-import { modelsConfigSchema } from '@heynixie/models';
+import { agentConfigSchema, modelsConfigSchema } from '@heynixie/models';
 import { impConfigSchema } from '@heynixie/sandbox-imp';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { z } from 'zod';
@@ -15,6 +15,7 @@ import { serverConfigSchema } from './server-config-schema';
 export const deploymentConfigSchema = z.strictObject({
   server: serverConfigSchema.default(serverConfigSchema.parse({})),
   owner: ownerConfigSchema.default(ownerConfigSchema.parse({})),
+  agent: agentConfigSchema.default(agentConfigSchema.parse({})),
   models: modelsConfigSchema,
   imp: impConfigSchema,
   definitions: definitionsConfigSchema,

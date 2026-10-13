@@ -34,7 +34,11 @@ export async function startConversationImp(
     getSystemPrompt: () => parts.inForce.read()?.persona ?? '',
     readTurnNote: makeTurnNoteReader(parts, memory),
     memory,
-    memorySettings: { ...parts.config.memory, ownerName: parts.config.owner.name },
+    memorySettings: {
+      ...parts.config.memory,
+      ownerName: parts.config.owner.name,
+      agentNames: parts.config.agent.names,
+    },
     defaultZone: parts.config.time.default_zone,
     log: parts.log,
   });

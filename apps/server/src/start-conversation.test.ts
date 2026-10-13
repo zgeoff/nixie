@@ -579,3 +579,112 @@ test('it retrieves an edited item even though the session holds its earlier vers
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...key }], [{ ...edited }]]);
 }, 30_000);
+
+test("it matches your message to an item on its other words and never on the agent's name", async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const [bun, runner] = await Promise.all([
+    ctx.memory.remember({ text: 'Switched the server scripts from Node to Bun', provenance }),
+    ctx.startRunner({
+      image: 'nixie-conversation-0123456789ab',
+      memorySettings: { agentNames: ['Nix', 'Nixie'], ownerName: 'Avery' },
+    }),
+    createConversationTask(ctx.context),
+    ctx.memory.remember({ text: 'Nix booked the dentist for Tuesday', provenance }),
+
+    // BM25 scores a word in half the index at nothing, so each match needs items beside it to pass
+    // the score floor
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
+    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
+    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
+  ]);
+
+  ctx.model.addReplies({ text: 'Bun is quick.' });
+  await sendTestMessage(ctx.context, runner.runStep, 'nix, what do you think about bun');
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrieved']),
+  ).toStrictEqual([[{ ...bun }]]);
+}, 30_000);
+
+test("it retrieves nothing for a message that is only the agent's name", async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const [runner] = await Promise.all([
+    ctx.startRunner({
+      image: 'nixie-conversation-0123456789ab',
+      memorySettings: { agentNames: ['Nix', 'Nixie'], ownerName: 'Avery' },
+    }),
+    createConversationTask(ctx.context),
+    ctx.memory.remember({ text: 'Nix booked the dentist for Tuesday', provenance }),
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
+    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
+    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
+  ]);
+
+  ctx.model.addReplies({ text: 'Yes?' });
+  await sendTestMessage(ctx.context, runner.runStep, 'nix?');
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrieved']),
+  ).toStrictEqual([[]]);
+}, 30_000);
+
+test('it retrieves nothing for a message that is only your name', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const [runner] = await Promise.all([
+    ctx.startRunner({
+      image: 'nixie-conversation-0123456789ab',
+      memorySettings: { agentNames: ['Nix', 'Nixie'], ownerName: 'Avery' },
+    }),
+    createConversationTask(ctx.context),
+    ctx.memory.remember({ text: 'Avery swims every Tuesday', provenance }),
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
+    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
+    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
+  ]);
+
+  ctx.model.addReplies({ text: 'Hello.' });
+  await sendTestMessage(ctx.context, runner.runStep, "It's Avery.");
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrieved']),
+  ).toStrictEqual([[]]);
+}, 30_000);

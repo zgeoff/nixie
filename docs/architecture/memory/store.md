@@ -121,7 +121,9 @@ score floor, which drops each match whose BM25 score falls below it, and can lea
 BM25 gives no weight to a word that half the items hold, so in an index of 1 or 2 items every match
 scores about zero, and a floor above zero drops every match.
 [Per-turn retrieval](./context.md#per-turn-retrieval) uses both, so a word that half the items share
-places nothing, and under a floor above zero a store of 1 or 2 items places nothing per turn.
+places nothing, and under a floor above zero a store of 1 or 2 items places nothing per turn. A
+query can also list excluded words. The index stems them with the same tokenizer as the query, and
+drops each query word whose stems all match one of theirs, so "Nixie's" drops with "nixie".
 
 ### The delivery lock
 

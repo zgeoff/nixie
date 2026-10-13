@@ -131,6 +131,10 @@ export interface RecallRequest {
   // holds, so a newer version still matches
   readonly excludedVersions?: readonly VersionRef[];
 
+  // with a query, leaves out each query word that stems the same as a word of one of these, such
+  // as a name that nearly every item holds
+  readonly excludedWords?: readonly string[];
+
   // the thread the recall record belongs to
   readonly thread?: string;
 }

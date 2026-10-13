@@ -55,12 +55,13 @@ export interface ConversationRunner {
 
 // How memory reaches the conversation when the deployment sets nothing: 5 retrieved items above a
 // keyword score of 0.25, a rebuilt session that starts with up to 30,000 tokens of recent turns,
-// and no owner's name.
+// and no owner's or agent's name.
 const defaultMemorySettings: ConversationMemorySettings = {
   retrievalItems: 5,
   retrievalMinScore: 0.25,
   rebuildTokens: 30_000,
   ownerName: null,
+  agentNames: [],
 };
 
 // Starts the conversation's runner on its role's profile: it stores the profile's credential with

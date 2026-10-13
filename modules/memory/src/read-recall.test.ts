@@ -63,6 +63,27 @@ test('it leaves pinned items out of a query when asked', async () => {
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([unpinned.itemID]);
 });
 
+test('it leaves the excluded words of a query out of the match when asked', async () => {
+  const ctx = await setupTest();
+
+  const bun = await ctx.memory.store.remember({
+    text: 'Switched the server scripts from Node to Bun',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Nix booked the dentist for Tuesday',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await ctx.memory.store.recall({
+    query: 'nix, what do you think about bun',
+    excludedWords: ['Nix'],
+  });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([bun.itemID]);
+});
+
 test('it finds an unpinned match when more pinned matches rank first than recall ranks at most', async () => {
   const ctx = await setupTest();
 

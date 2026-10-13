@@ -28,8 +28,8 @@ export interface TurnContext {
 }
 
 // Reads the pinned core and the items that match your new messages, and renders them for the turn.
-// Retrieval searches your messages' text alone, leaves out pinned items and the versions a resumed
-// session holds, and records what it placed through recall, which lists references and no text.
+// Retrieval searches your messages' text less your name and the agent's, which most items hold,
+// leaves out pinned items and versions the session holds, and records what it placed through recall.
 export async function readTurnContext(
   run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings' | 'getSystemPrompt'>,
   query: TurnContextQuery,
@@ -73,6 +73,10 @@ async function readRetrievedItems(
     excludedVersions: query.isNewSession
       ? []
       : await readDeliveredVersions(run.context, query.taskID),
+    excludedWords: [
+      ...run.memorySettings.agentNames,
+      ...(run.memorySettings.ownerName === null ? [] : [run.memorySettings.ownerName]),
+    ],
     thread: query.taskID,
   });
 
