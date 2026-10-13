@@ -28,18 +28,20 @@ const candidateLimit = 5;
 
 // the words that carry a fact, lower case and without a plural s, so "The owner likes cats" and
 // "Owner likes cat" share every word that matters
-function collectContentWords(text: string): ReadonlySet<string> {
+function collectContentWords(text: string): readonly string[] {
   const words =
     text
       .normalize('NFC')
       .toLowerCase()
       .match(/[\p{L}\p{N}]+/gu) ?? [];
 
-  return new Set(
-    words
-      .filter((word) => !stopWords.has(word))
-      .map((word) => (word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word)),
-  );
+  return [
+    ...new Set(
+      words
+        .filter((word) => !stopWords.has(word))
+        .map((word) => (word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word)),
+    ),
+  ];
 }
 
 const stopWords = new Set([
@@ -67,13 +69,13 @@ const stopWords = new Set([
 ]);
 
 // the Dice coefficient of two word sets: twice the shared words over the words in both
-function buildOverlapScore(first: ReadonlySet<string>, second: ReadonlySet<string>): number {
-  const total = first.size + second.size;
+function buildOverlapScore(first: readonly string[], second: readonly string[]): number {
+  const total = first.length + second.length;
 
   if (total === 0) {
     return 0;
   }
-  const shared = [...first].filter((word) => second.has(word)).length;
+  const shared = first.filter((word) => second.includes(word)).length;
 
   return (2 * shared) / total;
 }

@@ -57,21 +57,20 @@ test('it shows the writer the pending proposals beside the current items, with t
   const batch = await readWriterBatch(ctx.memory.log, planned.bounds);
 
   await runWriterExtraction({ ...ctx.parts, ...session }, batch, new AbortController().signal);
-  const [request] = session.model.runSession.mock.calls[0] as unknown as [
-    { readonly systemPrompt: string; readonly prompt: string },
-  ];
-
   invariant(held.status === 'proposed');
-  expect(request.prompt).toStartWith(
-    [
-      'Current memory items (the complete list):',
-      `- ${item.itemID}: The owner plays the cello.`,
-      '',
-      "Pending proposals, waiting for the owner's review:",
-      `- ${held.proposalID}: The owner is allergic to hazelnuts.`,
-    ].join('\n'),
-  );
-  expect(request.systemPrompt).toInclude(
-    'When a pending proposal already holds a fact, stage nothing for it, even when the batch states it in other words.',
-  );
+  expect(session.model.runSession).toHaveBeenCalledWith({
+    prompt: expect.toStartWith(
+      [
+        'Current memory items (the complete list):',
+        `- ${item.itemID}: The owner plays the cello.`,
+        '',
+        "Pending proposals, waiting for the owner's review:",
+        `- ${held.proposalID}: The owner is allergic to hazelnuts.`,
+      ].join('\n'),
+    ),
+    systemPrompt: expect.toInclude(
+      'When a pending proposal already holds a fact, stage nothing for it, even when the batch states it in other words.',
+    ),
+    signal: expect.any(AbortSignal),
+  });
 });

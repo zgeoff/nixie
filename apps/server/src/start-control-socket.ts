@@ -67,7 +67,7 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
     '/memory/proposals/approve': {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
-        const answer = await parseAnswer(request, approvalBody);
+        const answer = await parseAnswer(request);
         const result = await requireProposals(options).approve({
           proposalID: answer.proposalID,
           actionHash: answer.actionHash,
@@ -84,9 +84,13 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
     '/memory/proposals/reject': {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
-        const answer = await parseAnswer(request, answerBody);
+        const answer = await parseAnswer(request);
 
-        await requireProposals(options).reject({ ...answer, identityID: hostIdentityID });
+        await requireProposals(options).reject({
+          proposalID: answer.proposalID,
+          actionHash: answer.actionHash,
+          identityID: hostIdentityID,
+        });
         return Response.json({ proposalID: answer.proposalID });
       },
     },
@@ -132,12 +136,9 @@ function buildPendingEntry(proposal: MemoryProposal) {
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
-async function parseAnswer<Schema extends z.ZodType>(
-  request: Request,
-  schema: Schema,
-): Promise<z.infer<Schema>> {
+async function parseAnswer(request: Request): Promise<z.infer<typeof answerBody>> {
   const body: unknown = await request.json().catch(() => null);
-  const parsed = schema.safeParse(body);
+  const parsed = answerBody.safeParse(body);
 
   if (!parsed.success) {
     throw new ControlRequestError(400, 'an answer takes a proposalID and an actionHash');
@@ -145,10 +146,10 @@ async function parseAnswer<Schema extends z.ZodType>(
   return parsed.data;
 }
 
-const answerBody = z.strictObject({ proposalID: z.string().min(1), actionHash: z.string().min(1) });
-
 // an approval held for a close match is answered again, as a revision of that item or as a new item
-const approvalBody = answerBody.extend({
+const answerBody = z.strictObject({
+  proposalID: z.string().min(1),
+  actionHash: z.string().min(1),
   revisionOf: z.strictObject({ itemID: z.string().min(1), version: z.int().positive() }).optional(),
   ignoreCloseMatch: z.boolean().optional(),
 });
