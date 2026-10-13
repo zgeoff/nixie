@@ -112,9 +112,9 @@ text or drops an item that left the active state. A query matches any of its wor
 quotes each word, so no character a caller sends reads as FTS5 syntax. A query can also set a score
 floor, which drops each match whose BM25 score falls below it, and can leave pinned items out. BM25
 gives no weight to a word that half the items hold, so in an index of 1 or 2 items every match
-scores about zero, and the store applies the floor only once the index holds 3 items.
+scores about zero, and a floor above zero drops every match.
 [Per-turn retrieval](./context.md#per-turn-retrieval) uses both, so a word that half the items share
-places nothing.
+places nothing, and under a floor above zero a store of 1 or 2 items places nothing per turn.
 
 ### The delivery lock
 

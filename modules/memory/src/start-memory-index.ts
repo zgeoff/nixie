@@ -10,7 +10,8 @@ export interface IndexEntry {
 interface MatchOptions {
   readonly limit: number;
 
-  // drops a match whose BM25 score, negated so higher is better, falls below it
+  // drops a match whose BM25 score, negated so higher is better, falls below it; in an index of 1
+  // or 2 items BM25 gives every word about zero weight, so a floor above zero drops every match
   readonly minScore?: number;
 
   // leaves these items out before the limit applies
@@ -84,8 +85,7 @@ async function findMatches(
   if (match === null) {
     return [];
   }
-  const isRanked = await hasRankedIndex(db);
-  const minScore = isRanked ? (options.minScore ?? 0) : 0;
+  const minScore = options.minScore ?? 0;
   const excludedIDs = options.excludedIDs ?? [];
   const excluded =
     excludedIDs.length === 0 ? sql`` : sql`and item_id not in (${sql.join(excludedIDs)})`;
@@ -94,18 +94,6 @@ async function findMatches(
     order by rank limit ${options.limit}`.execute(db);
 
   return result.rows.map((row) => row.item_id);
-}
-
-// BM25 weighs a word by how few items hold it, and gives a word in at least half the items no
-// weight, so in an index of fewer items than this every match scores about zero
-const smallestRankedIndex = 3;
-
-// whether the index holds enough items for a score floor to tell a rare word from a common one
-async function hasRankedIndex(db: Kysely<unknown>): Promise<boolean> {
-  const result = await sql<{ count: number }>`select count(*) as count from (
-    select 1 from memory_index limit ${smallestRankedIndex})`.execute(db);
-
-  return (result.rows.at(0)?.count ?? 0) >= smallestRankedIndex;
 }
 
 // Quotes each word of a free-text query and joins them with OR, so no character in the query reads

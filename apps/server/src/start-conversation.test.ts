@@ -159,19 +159,21 @@ test('it rebuilds the session with the recent turns once a replaced sandbox has 
 
 test('it removes every session file that holds a forgotten item', async () => {
   const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
   const [key, runner] = await Promise.all([
-    ctx.memory.remember({
-      text: 'The spare key sits under the blue flowerpot',
-      provenance: {
-        origin: 'owner',
-        source: 'owner',
-        taskID: null,
-        proposalID: null,
-        checks: null,
-      },
-    }),
+    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
+
+    // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place the key
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
   ctx.model.addReplies({ text: 'Under the flowerpot.' });
@@ -179,10 +181,7 @@ test('it removes every session file that holds a forgotten item', async () => {
 
   const held = await collectFilesWithText(`${ctx.dataDir}/sandboxes`, 'blue flowerpot');
 
-  await ctx.memory.forget({
-    target: key,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
+  await ctx.memory.forget({ target: key, provenance });
 
   const left = await collectFilesWithText(`${ctx.dataDir}/sandboxes`, 'blue flowerpot');
 
@@ -194,27 +193,26 @@ test('it removes every session file that holds a forgotten item', async () => {
 
 test('it runs the turn after a forget on a rebuilt session without the forgotten item', async () => {
   const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
   const [key, runner] = await Promise.all([
-    ctx.memory.remember({
-      text: 'The spare key sits under the blue flowerpot',
-      provenance: {
-        origin: 'owner',
-        source: 'owner',
-        taskID: null,
-        proposalID: null,
-        checks: null,
-      },
-    }),
+    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
+
+    // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place the key
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
   ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'You are welcome.' });
   await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
-  await ctx.memory.forget({
-    target: key,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
+  await ctx.memory.forget({ target: key, provenance });
   await sendTestMessage(ctx.context, runner.runStep, 'Thanks.');
 
   const records = await ctx.readRecords();
