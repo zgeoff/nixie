@@ -66,6 +66,21 @@ test('it matches no item for a query of only function words', async () => {
   expect(found).toStrictEqual([]);
 });
 
+test('it never matches a function word in an item to a query word that stems to it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.index.updateAll([
+    { itemID: 'item-a', text: 'The dentist is on Tuesday at nine' },
+    { itemID: 'item-b', text: 'Keeps one spare charger in the car' },
+    { itemID: 'item-c', text: 'Works from home on Mondays' },
+  ]);
+
+  // porter stems "one" to "on", which item-a and item-c hold only as a function word
+  const found = await ctx.index.findItemIDs('one sec', { limit: 10 });
+
+  expect(found).toStrictEqual(['item-b']);
+});
+
 test('it drops every match in an index of 2 items, which BM25 scores near 0', async () => {
   const ctx = await setupTest();
 

@@ -1,6 +1,13 @@
+// Splits text into its words and leaves out the function words, so neither a query nor an item
+// that the index stores holds one. Porter stems some content words to a function word ("one" to
+// "on"), so a filter on the query side alone lets "one" match an item that holds "on".
+export function splitContentWords(text: string): readonly string[] {
+  return (text.match(/[\p{L}\p{N}]+/gu) ?? []).filter((word) => !isFunctionWord(word));
+}
+
 // English function words in lower case, which carry grammar and no topic, and the fragments a
-// contraction leaves once a query splits at its apostrophe ("don't" gives "don" and "t").
-export const functionWords: ReadonlySet<string> = new Set([
+// contraction leaves once text splits at its apostrophe ("don't" gives "don" and "t").
+const functionWords: ReadonlySet<string> = new Set([
   // articles and determiners
   'a',
   'all',
@@ -18,6 +25,8 @@ export const functionWords: ReadonlySet<string> = new Set([
   'much',
   'neither',
   'no',
+  'nobody',
+  'nothing',
   'other',
   'own',
   'same',
@@ -31,6 +40,15 @@ export const functionWords: ReadonlySet<string> = new Set([
   'those',
 
   // pronouns
+  'anybody',
+  'anyone',
+  'anything',
+  'everybody',
+  'everyone',
+  'everything',
+  'somebody',
+  'someone',
+  'something',
   'he',
   'her',
   'hers',
@@ -73,11 +91,14 @@ export const functionWords: ReadonlySet<string> = new Set([
   'about',
   'above',
   'across',
+  'after',
   'against',
   'along',
   'among',
   'around',
   'at',
+  'before',
+  'behind',
   'below',
   'beside',
   'between',
@@ -85,6 +106,7 @@ export const functionWords: ReadonlySet<string> = new Set([
   'by',
   'down',
   'during',
+  'except',
   'for',
   'from',
   'in',
@@ -98,12 +120,15 @@ export const functionWords: ReadonlySet<string> = new Set([
   'out',
   'over',
   'per',
+  'since',
   'through',
   'throughout',
   'to',
+  'till',
   'toward',
   'towards',
   'under',
+  'until',
   'up',
   'upon',
   'via',
@@ -126,6 +151,7 @@ export const functionWords: ReadonlySet<string> = new Set([
   'whereas',
   'whether',
   'while',
+  'yet',
 
   // auxiliaries and modals
   'am',
@@ -144,7 +170,6 @@ export const functionWords: ReadonlySet<string> = new Set([
   'have',
   'having',
   'is',
-  'may',
   'might',
   'must',
   'shall',
@@ -157,13 +182,20 @@ export const functionWords: ReadonlySet<string> = new Set([
   // question words, adverbs and particles
   'again',
   'also',
+  'always',
+  'else',
+  'even',
+  'ever',
   'here',
   'how',
   'just',
+  'never',
   'not',
   'now',
+  'once',
   'only',
   'so',
+  'still',
   'then',
   'there',
   'too',
@@ -173,6 +205,7 @@ export const functionWords: ReadonlySet<string> = new Set([
   'why',
 
   // contraction fragments
+  'ain',
   'aren',
   'couldn',
   'd',
@@ -185,12 +218,21 @@ export const functionWords: ReadonlySet<string> = new Set([
   'isn',
   'll',
   'm',
+  'mustn',
+  'needn',
   're',
   's',
+  'shan',
   'shouldn',
   't',
   've',
   'wasn',
   'weren',
+  'won',
   'wouldn',
 ]);
+
+// a word of 2 or more capitals is an acronym, such as "US" or "IT", and never a function word
+function isFunctionWord(word: string): boolean {
+  return !/^\p{Lu}{2,}$/u.test(word) && functionWords.has(word.toLowerCase());
+}
