@@ -55,6 +55,7 @@ test('it reads every section, with the default of each setting the file leaves o
       fetchesPerSandbox: 50,
       sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
     },
+    time: { default_zone: 'Australia/Sydney' },
     tasks: { runners: 3 },
     actions: { runners: 4 },
   });

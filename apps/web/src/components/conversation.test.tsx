@@ -6,6 +6,7 @@ import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
+import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { Conversation } from './conversation';
 
 async function setupTest() {
@@ -75,6 +76,34 @@ test('it sends a message with a span for each way its text arrived', async () =>
       text: 'see this link',
     },
     thread: 'conversation',
+  });
+});
+
+test("it sends a message with the browser's time zone", async () => {
+  const ctx = await setupTest();
+  const sent = mock<(body: unknown) => void>();
+
+  setupBrowserTimeZone('America/Sao_Paulo');
+
+  // the recorder answers nothing, so the request goes on to the mock API
+  server.use(
+    http.post('*/rpc/conversation/send', async (info) => {
+      const body: unknown = await info.request.clone().json();
+
+      sent(body);
+    }),
+  );
+
+  const rendered = render(<Conversation thread="conversation" />);
+  const textBox = await rendered.findByRole('textbox', { name: 'Message' });
+
+  await ctx.user.type(textBox, 'Just landed{Enter}');
+  await waitFor(() => {
+    expect(store.records.count()).toBe(1);
+  });
+
+  expect(sent).toHaveBeenCalledExactlyOnceWith({
+    json: expect.objectContaining({ text: 'Just landed', timeZone: 'America/Sao_Paulo' }),
   });
 });
 
@@ -171,6 +200,7 @@ test('it retries an unsent message with its first client message ID', async () =
       spans: [{ end: 5, source: 'typed', start: 0 }],
       text: 'hello',
       thread: 'conversation',
+      timeZone: 'UTC',
     },
   });
 });

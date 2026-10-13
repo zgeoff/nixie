@@ -72,6 +72,7 @@ async function trySendMessage(
       })),
       text: message.text,
       thread: message.thread,
+      ...(message.timeZone === undefined ? {} : { timeZone: message.timeZone }),
     });
 
     return 'sent';

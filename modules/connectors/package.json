@@ -10,11 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@heynixie/contract": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "@heynixie/wire": "workspace:*",
+    "kysely": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

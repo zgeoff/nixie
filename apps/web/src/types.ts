@@ -27,4 +27,7 @@ export interface OutboxMessage {
   readonly spans: readonly Readonly<Span>[];
   readonly text: string;
   readonly thread: string;
+
+  // the browser's IANA time zone when you wrote the message, so a retry carries the same zone
+  readonly timeZone?: string | undefined;
 }

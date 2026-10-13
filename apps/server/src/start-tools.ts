@@ -19,7 +19,7 @@ export interface Tools {
   readonly endpoint: ToolEndpoint;
   readonly webFetch: WebFetch;
 
-  // the web fetch tool and the 4 memory tools
+  // the web fetch tool, the time tool and the 4 memory tools
   readonly definitions: readonly ToolDefinition[];
   readonly memory: MemorySlot;
 }
@@ -33,8 +33,8 @@ export interface ToolsOptions {
 }
 
 // Starts the sandbox adapter, the web fetch tool on its fetch sandbox, and the tool endpoint that
-// serves it. The adapter resolves a sandbox's endpoint when its guest connects, after the endpoint
-// exists.
+// serves the conversation's tools. The adapter resolves a sandbox's endpoint when its guest connects,
+// after the endpoint exists.
 export async function startTools(options: ToolsOptions): Promise<Tools> {
   const holder: { endpoint: ToolEndpoint | null } = { endpoint: null };
   const slot: { store: ReturnType<MemorySlot['read']> } = { store: null };
