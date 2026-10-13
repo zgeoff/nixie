@@ -300,7 +300,7 @@ test('it recalls a version with its quote, its model and a readable date', async
   onTestFinished(() => {
     setSystemTime();
   });
-  await ctx.memory.store.remember({
+  const item = await ctx.memory.store.remember({
     text: 'Keeps a sourdough starter called Gerald',
     evidenceQuote: 'Gerald the starter needs feeding again',
     provenance: {
@@ -327,7 +327,7 @@ test('it recalls a version with its quote, its model and a readable date', async
   expect(result.structuredContent).toStrictEqual({
     items: [
       {
-        itemID: expect.any(String),
+        itemID: item.itemID,
         isPinned: false,
         version: 1,
         change: 'created',
@@ -351,7 +351,7 @@ test('it recalls a version with no quote or model without them', async () => {
   onTestFinished(() => {
     setSystemTime();
   });
-  await ctx.memory.store.remember({
+  const item = await ctx.memory.store.remember({
     text: 'Plays the cello on Sundays',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
@@ -370,7 +370,7 @@ test('it recalls a version with no quote or model without them', async () => {
   expect(result.structuredContent).toStrictEqual({
     items: [
       {
-        itemID: expect.any(String),
+        itemID: item.itemID,
         isPinned: false,
         version: 1,
         change: 'created',
