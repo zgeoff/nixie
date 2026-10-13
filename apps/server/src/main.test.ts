@@ -89,7 +89,11 @@ test('it puts the snapshot hash of the definitions in force on every record', as
       kind: 'owner_message',
       erasable: {
         status: 'readable',
-        fields: { text: 'Plum-message-7QK2', spans: [{ start: 0, end: 17, source: 'unknown' }] },
+        fields: {
+          text: 'Plum-message-7QK2',
+          spans: [{ start: 0, end: 17, source: 'unknown' }],
+          sessionLabel: 'laptop',
+        },
       },
     },
     {
