@@ -93,6 +93,9 @@ interface MemoryRetrieval {
   // the item versions the session already holds, which stay out so a newer version still matches
   readonly excludedVersions: readonly MemoryRef[];
 
+  // the names that nearly every item holds, which stay out of the query so they match nothing
+  readonly excludedWords: readonly string[];
+
   // the thread the recall record belongs to
   readonly thread: string;
 }
@@ -117,6 +120,10 @@ export interface ConversationMemorySettings {
 
   // the owner's name, which says who saved an item the owner saved, or null for "the owner"
   readonly ownerName: string | null;
+
+  // the names the owner calls the agent by, which retrieval leaves out of the query with the
+  // owner's name
+  readonly agentNames: readonly string[];
 }
 
 // How your message's send time renders: the zone for a message that carries none, and the time

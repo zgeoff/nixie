@@ -66,6 +66,71 @@ test('it matches no item for a query of only function words', async () => {
   expect(found).toStrictEqual([]);
 });
 
+test('it leaves the excluded words of a query out of the match', async () => {
+  const ctx = await setupTest();
+
+  await ctx.index.updateAll([
+    { itemID: 'item-a', text: 'Switched the server scripts from Node to Bun' },
+    { itemID: 'item-b', text: 'Nix booked the dentist for Tuesday' },
+    { itemID: 'item-c', text: 'Prefers window seats on trains' },
+  ]);
+
+  const found = await ctx.index.findItemIDs('nix, what do you think about bun', {
+    limit: 10,
+    excludedWords: ['Nix', 'Nixie'],
+  });
+
+  expect(found).toStrictEqual(['item-a']);
+});
+
+test('it matches no item for a query of only excluded words', async () => {
+  const ctx = await setupTest();
+
+  await ctx.index.updateAll([
+    { itemID: 'item-a', text: 'Nix booked the dentist for Tuesday' },
+    { itemID: 'item-b', text: 'Nixie keeps the spare key list' },
+  ]);
+
+  const found = await ctx.index.findItemIDs('nix?', {
+    limit: 10,
+    excludedWords: ['Nix', 'Nixie'],
+  });
+
+  expect(found).toStrictEqual([]);
+});
+
+test('it leaves out a query word that stems the same as an excluded word in another case', async () => {
+  const ctx = await setupTest();
+
+  await ctx.index.updateAll([
+    { itemID: 'item-a', text: 'Nixie keeps the spare key list' },
+    { itemID: 'item-b', text: 'The spare key sits under the blue flowerpot' },
+  ]);
+
+  const found = await ctx.index.findItemIDs("NIXIE's flowerpot", {
+    limit: 10,
+    excludedWords: ['nixies'],
+  });
+
+  expect(found).toStrictEqual(['item-b']);
+});
+
+test('it leaves out each word of an excluded name of several words', async () => {
+  const ctx = await setupTest();
+
+  await ctx.index.updateAll([
+    { itemID: 'item-a', text: 'Avery Quinn swims every Tuesday' },
+    { itemID: 'item-b', text: 'Quinn renews the car insurance in March' },
+  ]);
+
+  const found = await ctx.index.findItemIDs('quinn swims', {
+    limit: 10,
+    excludedWords: ['Avery Quinn'],
+  });
+
+  expect(found).toStrictEqual(['item-a']);
+});
+
 test('it never matches a function word in an item to a query word that stems to it', async () => {
   const ctx = await setupTest();
 

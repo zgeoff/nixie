@@ -104,6 +104,9 @@ async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): P
   const itemIDs = await parts.index.findItemIDs(query.request.query, {
     limit: query.limit,
     excludedIDs: [...pinned, ...held],
+    ...(query.request.excludedWords === undefined
+      ? {}
+      : { excludedWords: query.request.excludedWords }),
     ...(query.request.minScore === undefined ? {} : { minScore: query.request.minScore }),
   });
 
