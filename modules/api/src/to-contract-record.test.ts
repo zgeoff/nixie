@@ -144,6 +144,79 @@ test('it names the step of a commit from the step key of the record', () => {
   });
 });
 
+test('it carries the error of a failed step', () => {
+  const record = buildMockLogRecord({
+    sequence: 12,
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    kind: 'task.step_errored',
+    thread: 'conversation',
+    payload: {
+      taskID: 'conversation',
+      stepKey: 'conversation:4',
+      nextState: 'ready',
+      errors: 1,
+      claimableAt: 1_000_000,
+    },
+    erasable: { status: 'readable', fields: { message: 'the model profile is unreachable' } },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'task.step_errored',
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    sequence: 12,
+    task: {
+      error: 'the model profile is unreachable',
+      stepKey: 'conversation:4',
+      taskID: 'conversation',
+    },
+    thread: 'conversation',
+  });
+});
+
+test('it keeps a failed step whose error is forgotten with its task and step', () => {
+  const record = buildMockLogRecord({
+    sequence: 12,
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    kind: 'task.step_errored',
+    thread: 'conversation',
+    payload: {
+      taskID: 'conversation',
+      stepKey: 'conversation:4',
+      nextState: 'ready',
+      errors: 1,
+      claimableAt: 1_000_000,
+    },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'task.step_errored',
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    sequence: 12,
+    task: { stepKey: 'conversation:4', taskID: 'conversation' },
+    thread: 'conversation',
+  });
+});
+
+test('it carries no error for a task record of another kind', () => {
+  const record = buildMockLogRecord({
+    sequence: 3,
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    kind: 'task.created',
+    thread: 'task-1',
+    payload: { taskID: 'task-1' },
+    erasable: { status: 'readable', fields: { message: 'a brief' } },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'task.created',
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 3,
+    task: { taskID: 'task-1' },
+    thread: 'task-1',
+  });
+});
+
 test('it carries a tool call with its tool and input', () => {
   expect(
     toContractRecord({

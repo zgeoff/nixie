@@ -3,7 +3,7 @@ import { LeaseLostError } from './lease-lost-error';
 import { readInbox } from './read-inbox';
 import { readSessionBoundary } from './read-session-boundary';
 import { startLeaseRenewal } from './start-lease-renewal';
-import type { RunStep, TaskClaim, TasksContext } from './types';
+import type { RunStep, StepErrored, TaskClaim, TasksContext } from './types';
 import { writeStepCommit } from './write-step-commit';
 import type { StepErrorOptions } from './write-step-error';
 import { writeStepError } from './write-step-error';
@@ -13,26 +13,27 @@ export interface TaskStepOptions extends StepErrorOptions {
   readonly leaseMs: number;
 }
 
-// Runs one claimed step: reads the inbox, runs the step under a renewed lease, and commits its
-// result. Any failure but a lost lease or a stale writer becomes a step error on this task, so one
-// bad step never stops the runners. A lost lease ends the step with nothing written.
+// Runs one claimed step under a renewed lease and commits its result. Any failure but a lost lease
+// or a stale writer becomes a step error, which it returns, so one bad step never stops the runners.
+// A lost lease ends the step with nothing written.
 export async function runTaskStep(
   context: TasksContext,
   claim: TaskClaim,
   options: TaskStepOptions,
-): Promise<void> {
+): Promise<StepErrored | null> {
   const renewal = startLeaseRenewal(context, claim.lease, options.leaseMs);
 
   try {
     const failure = await tryCommitStep(context, claim, { ...options, signal: renewal.signal });
 
-    if (failure !== null) {
-      await writeStepError(context, claim, { ...options, error: failure.error });
-    }
+    return failure === null
+      ? null
+      : await writeStepError(context, claim, { ...options, error: failure.error });
   } catch (error) {
     if (!(error instanceof LeaseLostError)) {
       throw error;
     }
+    return null;
   } finally {
     await renewal.stop();
   }

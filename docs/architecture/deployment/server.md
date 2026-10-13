@@ -107,7 +107,10 @@ event's fields, so a field can never overwrite the event name or the time.
 Most events log only when nixie acts, such as a start, a seed or a check, so a conversation turn and
 an idle nixie write no line. The definitions poll logs each probe, whether or not the definitions
 changed, so the log shows the process and its timers alive between seeds. A seed logs only when the
-probe finds a new revision of the definitions.
+probe finds a new revision of the definitions. A step error logs the task, the step, the errors in a
+row, the task's next state and the error's name, so the log shows a failure that a retry hid. The
+error's message stays on the task's thread, because it may quote a provider's reply or the model's
+input.
 
 ## Stopping
 

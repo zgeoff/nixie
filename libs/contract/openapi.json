@@ -127,6 +127,9 @@
                           "task": {
                             "type": "object",
                             "properties": {
+                              "error": {
+                                "type": "string"
+                              },
                               "stepKey": {
                                 "type": "string"
                               },
@@ -861,6 +864,9 @@
                                 "task": {
                                   "type": "object",
                                   "properties": {
+                                    "error": {
+                                      "type": "string"
+                                    },
                                     "stepKey": {
                                       "type": "string"
                                     },
@@ -1147,6 +1153,9 @@
                                 "task": {
                                   "type": "object",
                                   "properties": {
+                                    "error": {
+                                      "type": "string"
+                                    },
                                     "stepKey": {
                                       "type": "string"
                                     },

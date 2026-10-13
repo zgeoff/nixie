@@ -38,6 +38,16 @@ export interface TaskClaim {
   readonly stepKey: string;
 }
 
+// A step that threw, as its error record states it: the errors in a row with this one, and the
+// state the task moves to, ready for a retry or failed at the limit.
+export interface StepErrored {
+  readonly taskID: string;
+  readonly stepKey: string;
+  readonly errors: number;
+  readonly nextState: 'ready' | 'failed';
+  readonly error: unknown;
+}
+
 // What a step gives back: whether the task has more to do now, waits, or has finished; the inbox
 // sequences it read, over whose contiguous run the cursor moves; and timers that fire into the
 // task's inbox at dueAt.

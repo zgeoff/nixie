@@ -51,17 +51,27 @@ function toMessage(record: LogRecord): Message | undefined {
 
 type Task = NonNullable<ContractRecord['task']>;
 
-// A step's start names its step in the payload, and its commit in the record's own step key.
+// A step's start names its step in the payload, and its commit in the record's own step key. A
+// failed step's record holds the error's message as its one erasable field, and a forgotten one
+// keeps its task and step with no error.
 function toTask(record: LogRecord): Task | undefined {
   const taskID = record.payload['taskID'];
   const payloadKey = record.payload['stepKey'];
   const stepKey = typeof payloadKey === 'string' ? payloadKey : record.stepKey;
+  const error =
+    record.kind === 'task.step_errored' && record.erasable.status === 'readable'
+      ? record.erasable.fields['message']
+      : undefined;
 
   if (typeof taskID !== 'string') {
     return undefined;
   }
 
-  return { ...(typeof stepKey === 'string' ? { stepKey } : {}), taskID };
+  return {
+    ...(typeof error === 'string' ? { error } : {}),
+    ...(typeof stepKey === 'string' ? { stepKey } : {}),
+    taskID,
+  };
 }
 
 // a tool call, and the result that answers it

@@ -1,10 +1,10 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { waitForCondition } from '@heynixie/testing';
 import { claimTask } from './claim-task';
 import { createTask } from './create-task';
 import { startTaskRunners } from './start-task-runners';
 import { startTestTasks } from './test-utils/start-test-tasks';
-import type { StepResult, TasksTables } from './types';
+import type { StepErrored, StepResult, TasksTables } from './types';
 import { writeStepCommit } from './write-step-commit';
 
 async function setupTest() {
@@ -27,6 +27,7 @@ test('it runs 3 steps at once by default', async () => {
       await held.promise;
       return { next: 'done', records: [], acknowledged: [] };
     },
+    onStepErrored: () => {},
     onError: () => {},
   });
 
@@ -53,6 +54,7 @@ test('it runs a claimed step and commits its result', async () => {
   const taskID = await createTask(ctx.context, 'tidy the inbox');
   const runners = startTaskRunners(ctx.context, {
     runStep: () => Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
+    onStepErrored: () => {},
     onError: () => {},
   });
 
@@ -68,6 +70,32 @@ test('it runs a claimed step and commits its result', async () => {
     return task.state === 'done';
   });
   expect(runners).toBeObject();
+});
+
+test('it reports a step that throws once its error record commits', async () => {
+  const ctx = await setupTest();
+  const failure = new Error('the model profile is unreachable');
+  const onStepErrored = mock<(errored: StepErrored) => void>();
+  const taskID = await createTask(ctx.context, 'tidy the inbox');
+  const runners = startTaskRunners(ctx.context, {
+    runStep: () => Promise.reject(failure),
+    onStepErrored,
+    onError: () => {},
+  });
+
+  onTestFinished(() => runners.stop(0));
+  await waitForCondition(() => onStepErrored.mock.calls.length === 1);
+
+  const errored = await ctx.db
+    .selectFrom('records')
+    .select('sequence')
+    .where('kind', '=', 'task.step_errored')
+    .execute();
+
+  expect(errored).toHaveLength(1);
+  expect(onStepErrored.mock.calls).toStrictEqual([
+    [{ taskID, stepKey: `${taskID}:1`, errors: 1, nextState: 'ready', error: failure }],
+  ]);
 });
 
 test('it fires a due timer on its next poll', async () => {
@@ -88,6 +116,7 @@ test('it fires a due timer on its next poll', async () => {
 
   const runners = startTaskRunners(ctx.context, {
     runStep: () => Promise.resolve<StepResult>({ next: 'wait', records: [], acknowledged: [] }),
+    onStepErrored: () => {},
     onError: () => {},
   });
 

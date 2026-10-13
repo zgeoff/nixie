@@ -1,7 +1,7 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { requireLease } from './require-lease';
 import { resetLease } from './reset-lease';
-import type { TaskClaim, TasksContext, TasksTables } from './types';
+import type { StepErrored, TaskClaim, TasksContext, TasksTables } from './types';
 
 export interface StepErrorOptions {
   // how many failed steps in a row end the task as failed
@@ -9,16 +9,17 @@ export interface StepErrorOptions {
   readonly retryDelayMs: number;
 }
 
-// Records a step that threw and frees the lease. The task retries after a delay, and fails once
-// the errors in a row reach the limit. The error's text is free text, so it sits in erasable.
-export async function writeStepError(
+// Records a step that threw and frees the lease, and returns what it recorded. The task retries
+// after a delay, and fails once the errors in a row reach the limit. The error's text is free text,
+// so it sits in erasable.
+export function writeStepError(
   context: TasksContext,
   claim: TaskClaim,
   failure: StepErrorOptions & { readonly error: unknown },
-): Promise<void> {
+): Promise<StepErrored> {
   const taskID = claim.lease.workID;
 
-  await withWriteTransaction(context.log.writer, async (tx) => {
+  return withWriteTransaction(context.log.writer, async (tx) => {
     const now = context.clock.now();
 
     await requireLease(tx, claim.lease, now);
@@ -30,6 +31,7 @@ export async function writeStepError(
       .where('task_id', '=', taskID)
       .executeTakeFirstOrThrow();
     const errors = task.step_errors + 1;
+    const nextState = errors >= failure.maxStepErrors ? 'failed' : 'ready';
 
     await writeRecordsInTransaction(tx, context.log, [
       {
@@ -39,7 +41,7 @@ export async function writeStepError(
         payload: {
           taskID,
           stepKey: claim.stepKey,
-          nextState: errors >= failure.maxStepErrors ? 'failed' : 'ready',
+          nextState,
           errors,
           claimableAt: now + failure.retryDelayMs,
         },
@@ -47,6 +49,7 @@ export async function writeStepError(
       },
     ]);
     await resetLease(tx, claim.lease);
+    return { taskID, stepKey: claim.stepKey, errors, nextState, error: failure.error };
   });
 }
 

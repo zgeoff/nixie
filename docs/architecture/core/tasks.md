@@ -65,10 +65,11 @@ during a step makes the task ready whatever the step chose, because that input s
 read it.
 
 A step that throws records its error and frees the lease, and the task waits a retry delay before
-its next claim. After too many errors in a row, the task fails. A commit that refuses the step's
-result, such as a timer due at no time, counts as a step error too. A lost lease or a stale writer
-counts as no error at all: the runner stops and commits nothing, because another runner or another
-process owns the work now.
+its next claim. The error's message is free text, so the record keeps it in its erasable fields,
+where the web UI shows it on the failed step and a forget can reach it. After too many errors in a
+row, the task fails. A commit that refuses the step's result, such as a timer due at no time, counts
+as a step error too. A lost lease or a stale writer counts as no error at all: the runner stops and
+commits nothing, because another runner or another process owns the work now.
 
 ## Timers
 

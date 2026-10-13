@@ -8,8 +8,8 @@ export interface StepGroupProps {
   readonly step: StepActivity;
 }
 
-// One step of a task as one collapsed line. Opening it names the task and shows each tool call
-// with its input and its result.
+// One step of a task as one collapsed line. Opening it names the task, shows the error of a failed
+// step, and shows each tool call with its input and its result.
 export function StepGroup(props: StepGroupProps): ReactNode {
   return (
     <li className={css({ color: 'textMuted', fontSize: 'sm' })}>
@@ -22,6 +22,7 @@ export function StepGroup(props: StepGroupProps): ReactNode {
             Task {props.step.taskID ?? 'unknown'}
             {props.step.stepKey === undefined ? null : `, step ${props.step.stepKey}`}
           </p>
+          {props.step.error === undefined ? null : <p>Error: {props.step.error}</p>}
           <p>Events: {props.step.records.map((record) => record.kind).join(', ')}</p>
           {props.step.calls.map((call) => (
             <ToolCallDetail call={call} key={call.callID} />
