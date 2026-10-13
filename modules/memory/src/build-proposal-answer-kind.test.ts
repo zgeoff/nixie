@@ -117,6 +117,31 @@ test('it renders an approval with edits, quoting the edited text', async () => {
   ]);
 });
 
+test('it quotes an approval applied as a revision of another item, from the item it revised', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Avery has two cats.',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const proposal = await createProposal(ctx.memory.store, { text: 'Avery has three cats.' });
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+    revisionOf: item,
+  });
+
+  const kind = buildProposalAnswerKind(ctx.memory.log, ctx.memory.store);
+  const events = await kind.read({ after: 0, through: 100 });
+
+  expect(
+    events.map((event) => kind.render(event.detail, { ownerName: 'Avery', timeZone: 'UTC' })),
+  ).toStrictEqual([
+    `Avery approved your memory proposal ${proposal.proposalID}: "Avery has three cats."`,
+  ]);
+});
+
 test('it names the owner in general terms when the configuration sets no name', async () => {
   const ctx = await setupTest();
   const proposal = await createProposal(ctx.memory.store, { text: 'Avery has two cats.' });

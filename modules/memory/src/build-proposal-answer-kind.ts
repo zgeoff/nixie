@@ -84,6 +84,9 @@ interface AnsweredRow {
   readonly sequence: number;
   readonly recorded_at: number;
   readonly payload: string;
+
+  // the item the approval wrote, which differs from the proposal's when the approval revised another
+  readonly version_item_id: string | null;
   readonly version: number | null;
 }
 
@@ -108,6 +111,7 @@ function readAnsweredProposals(
       'records.sequence',
       'records.recorded_at',
       'records.payload',
+      'memory_versions.item_id as version_item_id',
       'memory_versions.version',
     ])
     .where('memory_proposals.status', 'in', ['consumed', 'rejected'])
@@ -127,7 +131,7 @@ async function readApprovedTexts(
     return new Map();
   }
   const result = await store.recall({
-    itemIDs: rows.map((row) => row.item_id),
+    itemIDs: rows.map((row) => row.version_item_id ?? row.item_id),
     includeRetired: true,
     includeHistory: true,
     limit: rows.length,
@@ -138,7 +142,7 @@ async function readApprovedTexts(
   return new Map(
     rows.flatMap((row) => {
       const version = items
-        .get(row.item_id)
+        .get(row.version_item_id ?? row.item_id)
         ?.history?.find((entry) => entry.version === row.version);
 
       return version === undefined ? [] : [[row.proposal_id, version.text] as const];

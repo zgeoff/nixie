@@ -79,7 +79,7 @@ test('it lists exactly 10 events with no count of more', () => {
 
   const block = renderEventsBlock(events, { ownerName: null, timeZone: 'UTC' });
 
-  invariant(block);
+  invariant(block !== null);
   expect(block).not.toInclude('more');
   expect(block.split('\n')).toHaveLength(13);
 });
