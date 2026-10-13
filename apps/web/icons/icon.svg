@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- The app icon: an "n" in the dark theme's text colour on its canvas colour. Export it with
+  rsvg-convert to public/icons/icon-192.png and icon-512.png, then strip the PNG metadata. -->
+  <rect width="512" height="512" rx="112" fill="#18181b"/>
+  <path d="M184 184V352M184 256C184 208 216 184 256 184C296 184 328 208 328 256V352" fill="none" stroke="#f4f4f5" stroke-width="48" stroke-linejoin="round"/>
+</svg>
