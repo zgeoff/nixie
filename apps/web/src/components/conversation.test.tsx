@@ -188,9 +188,7 @@ test('it retries an unsent message with its first client message ID', async () =
 
   await ctx.user.type(textBox, 'hello{Enter}');
 
-  const retry = await rendered.findByRole('button', { name: 'Retry' });
-
-  await ctx.user.click(retry);
+  await rendered.findByRole('button', { name: 'Retry' }).then((retry) => ctx.user.click(retry));
   await waitFor(() => {
     expect(store.records.count()).toBe(1);
   });
