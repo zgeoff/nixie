@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { GuestCommand, ModelSecrets, ModelsConfig, RunCheck } from '@heynixie/models';
 import { resolveModelCredentials, resolveRoleProfile, startCheckerRunner } from '@heynixie/models';
+import type { Logger } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import invariant from 'tiny-invariant';
 
@@ -12,6 +13,7 @@ export interface CheckerOptions {
   // the conversation image's name in impd, from the sandbox manifest
   readonly image: string;
   readonly timeoutMs: number;
+  readonly log: Logger;
 }
 
 // Starts the checker on the checker role's profile, in its own sandbox on the conversation image.
@@ -29,6 +31,7 @@ export function startChecker(options: CheckerOptions): Promise<RunCheck> {
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
     command: buildCheckCommand(),
     timeoutMs: options.timeoutMs,
+    log: options.log,
   });
 }
 

@@ -1,3 +1,4 @@
+import type { Logger } from '@heynixie/ops';
 import type { Sandbox, SandboxAdapter, SandboxLimits, SandboxSpec } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
 import { buildModelGrant } from './build-model-grant';
@@ -15,6 +16,9 @@ export interface CheckerRunnerOptions {
   readonly limits: SandboxLimits;
   readonly command: GuestCommand;
   readonly timeoutMs?: number;
+
+  // takes each check's timings
+  readonly log: Logger;
 }
 
 // Starts the checker on its role's profile, in its own long-lived sandbox on the conversation
@@ -43,6 +47,7 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
         sandbox,
         command: options.command,
         signal,
+        log: options.log,
         request: {
           profile: {
             model: profile.model,

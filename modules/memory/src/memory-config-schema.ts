@@ -23,7 +23,9 @@ export const memoryConfigSchema = z
     evidence_window: countSchema.default(defaultGateLimits.evidenceWindow),
     proposal_lapse_days: countSchema.default(defaultGateLimits.proposalLapseMs / dayMs),
     proposal_cap: countSchema.default(defaultGateLimits.proposalCap),
-    checker_timeout_ms: countSchema.default(10_000),
+
+    // a live check took about 9 s, so 20 s keeps a slow one inside the timeout
+    checker_timeout_ms: countSchema.default(20_000),
     pinned_core_tokens: z.int().positive().default(2000),
     retrieval_items: z.int().nonnegative().max(100).default(5),
     retrieval_min_score: z.number().nonnegative().default(0.25),

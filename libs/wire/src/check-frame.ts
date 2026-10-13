@@ -24,9 +24,18 @@ export const checkRequestSchema = z
 export type CheckRequest = z.infer<typeof checkRequestSchema>;
 
 // The one frame the check guest sends back: the query's structured output, which the host reads
-// as a verdict, or the reason the query failed.
+// as a verdict, or the reason the query failed. An answer carries the query's time in the CLI and
+// the share of it spent on model API calls, so the host can log where a check's time went.
 export const checkReplySchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('answer'), output: z.unknown(), costUSD: z.number() }).readonly(),
+  z
+    .object({
+      kind: z.literal('answer'),
+      output: z.unknown(),
+      costUSD: z.number(),
+      durationMs: z.number().nonnegative(),
+      apiMs: z.number().nonnegative(),
+    })
+    .readonly(),
   z.object({ kind: z.literal('failed'), reason: z.string() }).readonly(),
 ]);
 

@@ -4,7 +4,7 @@ import { memoryConfigSchema } from './memory-config-schema';
 test('it sets the gate, pinned core, retrieval and rebuild defaults', () => {
   expect(memoryConfigSchema.safeParse({}).data).toStrictEqual({
     limits: { evidenceWindow: 20, proposalLapseMs: 1_209_600_000, proposalCap: 10 },
-    checkerTimeoutMs: 10_000,
+    checkerTimeoutMs: 20_000,
     pinnedCoreTokens: 2000,
     retrievalItems: 5,
     retrievalMinScore: 0.25,
