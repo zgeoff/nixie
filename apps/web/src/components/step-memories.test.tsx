@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, delay, http } from 'msw';
+import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -95,6 +97,70 @@ test('it shows a memory forgotten since the section last opened as forgotten', a
   const forgotten = await rendered.findByText('item-1 0.61 (forgotten)');
 
   expect(forgotten).toBeVisible();
+});
+
+test('it hides the old text of a memory forgotten since the section last opened while its read is pending', async () => {
+  const user = userEvent.setup();
+
+  const [version] = await Promise.all([
+    store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
+    createDeviceSession(),
+  ]);
+  const rendered = render(
+    <StepMemories memories={[{ itemID: 'item-1', score: 0.61, version: 1 }]} />,
+  );
+
+  await user.click(rendered.getByText('Memories 1'));
+  await rendered.findByText('item-1 0.61 Stub memory one');
+
+  // the closed section reads nothing, so the forget lands while it is closed
+  await Promise.all([
+    user.click(rendered.getByText('Memories 1')),
+    store.memoryVersions.update(version, {
+      data(draft) {
+        draft.status = 'shredded';
+      },
+    }),
+  ]);
+  server.use(http.post('*/rpc/memory/readVersions', () => delay('infinite')));
+
+  await user.click(rendered.getByText('Memories 1'));
+
+  await rendered.findByText('item-1 0.61 loading…');
+
+  expect(rendered.queryByText(/Stub memory one/u)).toBeNull();
+});
+
+test('it shows a memory forgotten since the section last opened as unavailable when its read fails', async () => {
+  const user = userEvent.setup();
+
+  const [version] = await Promise.all([
+    store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
+    createDeviceSession(),
+  ]);
+  const rendered = render(
+    <StepMemories memories={[{ itemID: 'item-1', score: 0.61, version: 1 }]} />,
+  );
+
+  await user.click(rendered.getByText('Memories 1'));
+  await rendered.findByText('item-1 0.61 Stub memory one');
+
+  // the closed section reads nothing, so the forget lands while it is closed
+  await Promise.all([
+    user.click(rendered.getByText('Memories 1')),
+    store.memoryVersions.update(version, {
+      data(draft) {
+        draft.status = 'shredded';
+      },
+    }),
+  ]);
+  server.use(http.post('*/rpc/memory/readVersions', () => HttpResponse.error()));
+
+  await user.click(rendered.getByText('Memories 1'));
+
+  await rendered.findByText('item-1 0.61 (text unavailable)');
+
+  expect(rendered.queryByText(/Stub memory one/u)).toBeNull();
 });
 
 test('it shows two scores near zero with their significant digits', async () => {
