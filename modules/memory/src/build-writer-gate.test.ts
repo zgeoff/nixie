@@ -354,6 +354,46 @@ test('it refuses a staged edit of an item that moved on since the session read i
   expect(checker).not.toHaveBeenCalled();
 });
 
+test('it refuses a staged edit with an invisible character of an item that moved on, before it proposes', async () => {
+  const memory = await startTestMemory();
+  const item = await memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.remember({
+    text: 'Lives on Oak Avenue',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I moved to 9 Pine Road last week',
+    spans: [{ start: 0, end: 32, source: 'typed' }],
+  });
+
+  const check = memory.store.writes.batch.check(
+    {
+      op: 'remember',
+      text: 'Lives on 9 Pine\u200B Road',
+      quote: '9 Pine Road',
+      sourceSequence: sequence,
+      target: item,
+    },
+    {
+      sequence,
+      text: 'I moved to 9 Pine Road last week',
+      spans: [{ start: 0, end: 32, source: 'typed' }],
+    },
+    { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
+  );
+
+  await check.catch(() => {});
+
+  expect(check).rejects.toMatchObject({ code: 'STALE_VERSION' });
+});
+
 test('it removes the key of a new item whose proposal never published', async () => {
   const memory = await startTestMemory();
   const sequence = await writeOwnerMessageRecord(memory.log, {

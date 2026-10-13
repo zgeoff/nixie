@@ -32,6 +32,8 @@ export async function runBatchGate(
       text: itemText,
     };
   }
+  const item = write.target === null ? null : await requireEditTarget(parts, write.target);
+
   if (invisible.test(write.text)) {
     return {
       gate: buildGateReview('invisible_character', { checks: { tokens: 'fail' } }),
@@ -41,7 +43,6 @@ export async function runBatchGate(
 
   // an edit of a pinned item changes the core that rides every turn, so it waits for review as a
   // pinning write does, and never fails its batch on the core's budget
-  const item = write.target === null ? null : await requireEditTarget(parts, write.target);
   const isPinned = item?.is_pinned === 1;
   const found = await findSourceEvidence(parts.context.log, source, write.quote);
   const gate = await runQuotedGate(
