@@ -41,12 +41,7 @@ export function Conversation(props: ConversationProps): ReactNode {
         <Composer
           onSend={(message) => {
             setSends(sends + 1);
-            outbox.add({
-              ...message,
-              clientMessageId: crypto.randomUUID(),
-              thread: props.thread,
-              timeZone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
-            });
+            outbox.add({ ...message, clientMessageId: crypto.randomUUID(), thread: props.thread });
           }}
         />
       </div>
