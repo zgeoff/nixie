@@ -151,6 +151,26 @@ test('it refuses a credential reference outside the secrets file', () => {
   });
 });
 
+test('it reads the profile the memory consolidator role names', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+    },
+    roles: { conversation: 'chat-direct', 'memory-consolidator': 'chat-direct' },
+  });
+
+  expect(result.data?.roles).toStrictEqual({
+    conversation: 'chat-direct',
+    'memory-consolidator': 'chat-direct',
+  });
+});
+
 test('it refuses an unknown key, so a typo never passes as a default', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {

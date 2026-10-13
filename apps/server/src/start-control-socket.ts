@@ -2,6 +2,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { MemoryProposal } from '@heynixie/memory';
 import { z } from 'zod';
+import { buildConsolidationRoutes } from './build-consolidation-routes';
 import { buildMemoryItemRoutes } from './build-memory-item-routes';
 import { ControlRequestError } from './control-request-error';
 import { parseControlBody } from './parse-control-body';
@@ -66,6 +67,7 @@ export async function startControlSocket(options: ControlSocketOptions): Promise
       ...buildSessionRoutes(options),
       ...buildMemoryRoutes(options),
       ...buildMemoryItemRoutes(options.readMemory),
+      ...buildConsolidationRoutes(options.readMemory),
     },
     fetch: () => new Response('not found', { status: 404 }),
 

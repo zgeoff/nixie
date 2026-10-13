@@ -1,13 +1,9 @@
-import { memoryWriterTaskID } from '@heynixie/memory';
 import { registerSandboxImages } from './register-sandbox-images';
 import { runDefinitionsSeed } from './run-definitions-seed';
 import { runRecoverySteps } from './run-recovery-steps';
 import { runWithRetry } from './run-with-retry';
-import type { ConversationImp } from './start-conversation-imp';
 import { startConversationImp } from './start-conversation-imp';
-import { startMemory } from './start-memory';
-import { startWork } from './start-work';
-import { startWriterTask } from './start-writer-task';
+import { startMemoryAndWork } from './start-memory-and-work';
 import type { ServerParts } from './types';
 
 // The start steps behind the health endpoint: recovery, the images, the conversation imp, memory,
@@ -38,30 +34,6 @@ export async function runStartSequence(parts: ServerParts): Promise<void> {
   );
 
   await startMemoryAndWork(parts, conversation);
-}
-
-// Starts the memory store and hands it to the conversation, then the memory writer and the runners,
-// so no turn runs before the store is there.
-async function startMemoryAndWork(
-  parts: ServerParts,
-  conversation: ConversationImp,
-): Promise<void> {
-  const retry = { signal: parts.cleanup.signal, log: parts.log };
-  const store = await runWithRetry(() => startMemory(parts, conversation.cleanupSessions), {
-    ...retry,
-    step: 'memory',
-  });
-
-  parts.tools.memory.set(store);
-
-  const writerStep = await runWithRetry(() => startWriterTask(parts, store), {
-    ...retry,
-    step: 'memory_writer',
-  });
-
-  await startWork(parts, (input) =>
-    input.taskID === memoryWriterTaskID ? writerStep(input) : conversation.runStep(input),
-  );
 }
 
 async function requireSeeded(parts: ServerParts): Promise<void> {

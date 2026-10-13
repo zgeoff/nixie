@@ -1,11 +1,12 @@
-import type { MemoryProposals, MemoryStore } from '@heynixie/memory';
+import type { MemoryConsolidations, MemoryProposals, MemoryStore } from '@heynixie/memory';
 import { ControlRequestError } from './control-request-error';
 
-// What the memory host commands reach: the pending proposals, and your own changes to an item.
+// What the memory host commands reach: the pending proposals, the consolidator's diff, and your
+// own changes to an item.
 export type HostMemory = Pick<
   MemoryStore,
   'remember' | 'retire' | 'restore' | 'pin' | 'readHistory'
-> & { readonly proposals: MemoryProposals };
+> & { readonly proposals: MemoryProposals; readonly consolidations: MemoryConsolidations };
 
 // Returns the memory store, or refuses the request while the start sequence has not filled it.
 export function requireHostMemory(readMemory: () => HostMemory | null): HostMemory {

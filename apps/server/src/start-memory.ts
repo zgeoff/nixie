@@ -34,7 +34,8 @@ export async function startMemory(
 
   await parts.cleanup.defer(() => store.stop());
 
-  // a proposal past its lapse time lapses on the next sweep, so none waits on a restart
+  // a proposal or a consolidation change past its lapse time lapses on the next sweep, so none waits
+  // on a restart
   const sweep = setInterval(() => {
     void runLapseSweep(parts, store);
   }, lapseSweepMs);
@@ -50,6 +51,7 @@ const lapseSweepMs = 60 * 60 * 1000;
 async function runLapseSweep(parts: ServerParts, store: StartedMemoryStore): Promise<void> {
   try {
     await store.proposals.lapse();
+    await store.consolidations.lapse();
   } catch (error) {
     parts.log('memory.lapse_failed', toErrorFields(error));
   }
