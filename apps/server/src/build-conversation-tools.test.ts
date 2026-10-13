@@ -33,6 +33,25 @@ function buildTimeStandIn(): ToolDefinition {
   });
 }
 
+// a write tool that the read-only rule denies
+function buildWriteStandIn(): ToolDefinition {
+  return {
+    name: 'files.write',
+    description: 'Writes a file.',
+    input: { type: 'object', properties: {}, additionalProperties: false },
+    output: { type: 'object', properties: { text: { type: 'string' } } },
+    declaration: {
+      effects: ['write'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: { text: 'owner_data' },
+    },
+    execution: 'queued',
+    run: () => Promise.resolve({ status: 'ok', result: { text: 'done' } }),
+  };
+}
+
 test('it lists the web fetch tool, the time tool and the 4 memory tools', () => {
   const definitions = buildConversationTools(
     buildWebFetchStandIn(),
@@ -74,37 +93,21 @@ test('it fails a memory call that runs before the memory store starts', () => {
 });
 
 test('it allows the time tool and each memory tool and denies a write tool under the read-only rule', () => {
-  const standIn: ToolDefinition = {
-    name: 'files.write',
-    description: 'Writes a file.',
-    input: { type: 'object', properties: {}, additionalProperties: false },
-    output: { type: 'object', properties: { text: { type: 'string' } } },
-    declaration: {
-      effects: ['write'],
-      destinations: [],
-      amount: null,
-      content: [],
-      results: { text: 'owner_data' },
-    },
-    execution: 'queued',
-    run: () => Promise.resolve({ status: 'ok', result: { text: 'done' } }),
-  };
   const registry = buildToolRegistry([
     ...buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), () => null),
-    standIn,
+    buildWriteStandIn(),
   ]);
   const decide = makeDecisionPoint({
     findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
   });
-  const toolList = [
-    'web.fetch',
+  const readTools = [
     'time.now',
     'memory.recall',
     'memory.remember',
     'memory.edit',
     'memory.retire',
-    'files.write',
   ];
+  const toolList = ['web.fetch', ...readTools, 'files.write'];
   const allowed = {
     decision: {
       outcome: 'allow' as const,
@@ -114,11 +117,9 @@ test('it allows the time tool and each memory tool and denies a write tool under
     sentence: null,
   };
 
-  expect(decide({ tool: 'time.now', toolList })).toStrictEqual(allowed);
-  expect(decide({ tool: 'memory.recall', toolList })).toStrictEqual(allowed);
-  expect(decide({ tool: 'memory.remember', toolList })).toStrictEqual(allowed);
-  expect(decide({ tool: 'memory.edit', toolList })).toStrictEqual(allowed);
-  expect(decide({ tool: 'memory.retire', toolList })).toStrictEqual(allowed);
+  expect(readTools.map((tool) => decide({ tool, toolList }))).toStrictEqual(
+    readTools.map(() => allowed),
+  );
   expect(decide({ tool: 'files.write', toolList })).toMatchObject({
     decision: { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only' } },
   });
