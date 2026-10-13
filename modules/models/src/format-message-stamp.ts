@@ -6,7 +6,7 @@ import type { MessageTimeOptions } from './types';
 // Tue 14 Oct, 14:05, Sydney · phone, so the reply can fit your screen. A message with no label, or
 // one forgotten with its text, shows only the time.
 export function formatMessageStamp(record: LogRecord, times: MessageTimeOptions): string {
-  const time = formatMessageTime(record, times);
+  const time = formatMessageTime(record.recordedAt, record.payload['timeZone'], times);
   const label =
     record.erasable.status === 'readable' ? record.erasable.fields['sessionLabel'] : null;
 

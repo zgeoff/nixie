@@ -31,15 +31,22 @@ test('it renders the recent turns in order inside a labelled block, each message
   });
 
   expect(
-    renderSessionHistory([goodnight, reply, goodMorning], {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-12T20:16:00Z'),
-    }),
+    renderSessionHistory(
+      [
+        { record: goodnight, answered: null },
+        { record: reply, answered: goodnight },
+        { record: goodMorning, answered: null },
+      ],
+      {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-12T20:16:00Z'),
+      },
+    ),
   ).toMatchInlineSnapshot(`
     "<conversation-history>
     This session was rebuilt from nixie records after the earlier one was lost. These are the most recent turns before the new message, oldest first, word for word; older turns are left out.
     [Mon 12 Oct, 22:40, Sydney] owner: Goodnight.
-    [2026-10-12 11:40 UTC] nixie: Sleep well.
+    [Mon 12 Oct, 22:40, Sydney] nixie: Sleep well.
     [Tue 13 Oct, 07:15, Sydney] owner: Good morning.
     </conversation-history>"
   `);

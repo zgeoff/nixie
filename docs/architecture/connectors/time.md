@@ -28,9 +28,10 @@ from an early "good morning" and work out the gap between two messages itself. T
 weekday, the day, the month, the hour and minute without am or pm, and the zone's city, and adds the
 year only when the message came from an earlier year than the current one in that zone. A message
 that carries no zone uses the default zone from the deployment configuration. The inbox and a
-rebuilt session's history render the stamp the same way. In that history each reply keeps its own
-time in UTC, labelled so, because a reply carries no zone and an unlabelled time would read as the
-user's clock.
+rebuilt session's history render the stamp the same way. In that history each reply shows its own
+time in the same format, in the zone of the message it answers, so both sides of the conversation
+read on one clock. A reply carries no zone, so it takes the zone of the newest message before it
+that is not still waiting in the inbox, or the default zone when none comes before it.
 
 The stamp ends with the label of the device session the message came from, such as
 `[Tue 14 Oct, 14:05, Sydney · phone]`, so the model can fit its reply to the screen the user reads
