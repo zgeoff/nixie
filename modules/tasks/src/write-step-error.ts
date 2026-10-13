@@ -12,14 +12,14 @@ export interface StepErrorOptions {
 // Records a step that threw and frees the lease, and returns what it recorded. The task retries
 // after a delay, and fails once the errors in a row reach the limit. The error's text is free text,
 // so it sits in erasable.
-export async function writeStepError(
+export function writeStepError(
   context: TasksContext,
   claim: TaskClaim,
   failure: StepErrorOptions & { readonly error: unknown },
 ): Promise<StepErrored> {
   const taskID = claim.lease.workID;
 
-  return await withWriteTransaction(context.log.writer, async (tx) => {
+  return withWriteTransaction(context.log.writer, async (tx) => {
     const now = context.clock.now();
 
     await requireLease(tx, claim.lease, now);
