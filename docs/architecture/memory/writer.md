@@ -81,11 +81,13 @@ staged write at a time, against the one message the write cites. That message is
 evidence, never a window of the user's latest messages, because a catch-up batch cites messages far
 older than any window. The quote must be typed in that message, a memory's tokens must appear in the
 quote, and the checker must confirm it; a message that backed a forgotten item never backs a write
-again. A write that passes applies with its quote's place in the message as its evidence. Every
-other write becomes a proposal from the memory writer: the gate seals its text and builds its
-records, and the batch publishes them in its own transaction. A batch's proposals share one group
-for the cap and the notice. A retirement whose item moved on, was retired or was forgotten since the
-session read it fails the gate, and the batch runs again at once against the item as it stands.
+again. A write that passes applies with its quote's place in the message as its evidence. An edit of
+a pinned item waits for review even when every check passes, because the pinned core rides every
+turn and a batch must never fail on the core's budget. Every other write becomes a proposal from the
+memory writer: the gate seals its text and builds its records, and the batch publishes them in its
+own transaction. A batch's proposals share one group for the cap and the notice. A retirement whose
+item moved on, was retired or was forgotten since the session read it fails the gate, and the batch
+runs again at once against the item as it stands.
 
 A proposal for a new item seals its text under a key the gate creates before the transaction. When
 the proposal never publishes, because its batch split, ran again or failed, the writer removes that

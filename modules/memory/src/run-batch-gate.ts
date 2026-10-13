@@ -5,7 +5,7 @@ import { memoryWriterTaskID } from './memory-writer-task-id';
 import { readItemText } from './read-item-text';
 import { runQuotedGate } from './run-quoted-gate';
 import { runRetirementChecker } from './run-retirement-checker';
-import type { StoreParts } from './types';
+import type { MemoryTables, StoreParts, VersionRef } from './types';
 import type { SourceMessage, StagedWrite } from './writer-types';
 
 // A batch write's gate outcome, with the text a proposal for it holds: the staged text, or the
@@ -37,9 +37,10 @@ export async function runBatchGate(
     };
   }
   const found = await findSourceEvidence(parts.context.log, source, write.quote);
+  const isPinned = await isPinnedTarget(parts, write.target);
   const gate = await runQuotedGate(
     parts.context,
-    { text: write.text, quote: write.quote, isPinned: false, thread: memoryWriterTaskID },
+    { text: write.text, quote: write.quote, isPinned, thread: memoryWriterTaskID },
     { quote: write.quote, found },
   );
 
@@ -68,4 +69,20 @@ async function runBatchRetirementGate(
     return buildGateReview(found.reason, { checks: { read: 'pass', quote: 'fail' } });
   }
   return runRetirementChecker(parts.context, retirement.itemText, found);
+}
+
+// an edit of a pinned item changes the core that rides every turn, so it waits for review as a
+// pinning write does, and never fails its batch on the core's budget
+async function isPinnedTarget(parts: StoreParts, target: VersionRef | null): Promise<boolean> {
+  if (target === null) {
+    return false;
+  }
+  const row = await parts.context.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('is_pinned')
+    .where('item_id', '=', target.itemID)
+    .executeTakeFirst();
+
+  return row?.is_pinned === 1;
 }

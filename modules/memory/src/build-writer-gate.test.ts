@@ -383,3 +383,86 @@ test('it never removes the key of a proposal that published', async () => {
 
   expect(pending).toMatchObject([{ text: 'Is the king of Leeds', reason: 'checker_unreachable' }]);
 });
+
+test('it proposes an edit of a pinned item that every check passes, because the item rides every turn', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+  const item = await memory.store.remember({
+    text: 'Goes by Sam',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.pin({
+    itemID: item.itemID,
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const history = await memory.store.readHistory(item.itemID);
+  const version = history?.versions.at(-1)?.version ?? 0;
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Call me Samantha from now on',
+    spans: [{ start: 0, end: 28, source: 'typed' }],
+  });
+
+  const verdict = await memory.store.writes.batch.check(
+    {
+      op: 'remember',
+      text: 'Goes by Samantha',
+      quote: 'Call me Samantha',
+      sourceSequence: sequence,
+      target: { itemID: item.itemID, version },
+    },
+    {
+      sequence,
+      text: 'Call me Samantha from now on',
+      spans: [{ start: 0, end: 28, source: 'typed' }],
+    },
+    { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
+  );
+
+  expect(verdict).toMatchObject({ outcome: 'propose', reason: 'pinned' });
+});
+
+test('it removes the key of a new item whose proposal record could not be built', async () => {
+  const memory = await startTestMemory({
+    definitions: () => {
+      throw new Error('the definitions snapshot is unreadable');
+    },
+  });
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Maybe I am the king of Leeds',
+    spans: [{ start: 0, end: 28, source: 'typed' }],
+  });
+  const checking = memory.store.writes.batch.check(
+    {
+      op: 'remember',
+      text: 'Is the king of Leeds',
+      quote: 'I am the king of Leeds',
+      sourceSequence: sequence,
+      target: null,
+    },
+    {
+      sequence,
+      text: 'Maybe I am the king of Leeds',
+      spans: [{ start: 0, end: 28, source: 'typed' }],
+    },
+    { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
+  );
+
+  await checking.catch(() => {});
+
+  const keys = await memory.writer.keys
+    .$extendTables<{ record_keys: { key_id: string } }>()
+    .selectFrom('record_keys')
+    .select('key_id')
+    .execute();
+
+  expect(checking).rejects.toThrow('the definitions snapshot is unreadable');
+
+  // only the message's own key is left
+  expect(keys).toHaveLength(1);
+});

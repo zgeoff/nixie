@@ -27,9 +27,13 @@ export async function startWriterTask(
     },
   });
 
-  await parts.cleanup.defer(() => writer.stop());
+  // a failed read stops this writer, so the start's retry never leaves a second one running
+  const status = await writer.readStatus().catch(async (error: unknown) => {
+    await writer.stop();
+    throw error;
+  });
 
-  const status = await writer.readStatus();
+  await parts.cleanup.defer(() => writer.stop());
 
   parts.log('memory_writer.started', {
     cursor: status.cursor,

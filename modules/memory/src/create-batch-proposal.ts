@@ -1,9 +1,11 @@
+import { removeRecordKey } from '@heynixie/log';
 import { buildProposalRecord } from './build-proposal-record';
 import { buildWriteGroup } from './build-write-group';
 import { createSealedProposal } from './create-sealed-proposal';
 import type { ContentGateResult, WriteCaller } from './gate-types';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { StoreParts } from './types';
+import type { ProposalPlan } from './write-memory-proposal';
 import type { GateBatch, GateVerdict, StagedWrite } from './writer-types';
 
 export interface ReviewedWrite {
@@ -28,6 +30,29 @@ export async function createBatchProposal(
   reviewed: ReviewedWrite,
   batch: GateBatch,
 ): Promise<BatchProposal> {
+  const plan = buildBatchProposalPlan(reviewed, batch);
+  const sealed = await createSealedProposal(parts, plan);
+  const newItemID = plan.target === null ? sealed.itemID : null;
+
+  try {
+    return {
+      verdict: {
+        outcome: 'propose',
+        reason: plan.reason,
+        records: [buildProposalRecord(parts, { plan, sealed })],
+      },
+      newItemID,
+    };
+  } catch (error) {
+    // no verdict carries the new key to release, so a record that fails to build drops it here
+    if (newItemID !== null) {
+      await removeRecordKey(parts.context.log, newItemID);
+    }
+    throw error;
+  }
+}
+
+function buildBatchProposalPlan(reviewed: ReviewedWrite, batch: GateBatch): ProposalPlan {
   const batchID = `${String(batch.bounds.start)}-${String(batch.bounds.end)}`;
   const caller: WriteCaller = {
     origin: 'memory_writer',
@@ -38,7 +63,8 @@ export async function createBatchProposal(
     batchID,
   };
   const review = reviewed.review;
-  const plan = {
+
+  return {
     operation: reviewed.write.op,
     target: reviewed.write.target,
     isPinned: false,
@@ -50,15 +76,5 @@ export async function createBatchProposal(
     checkerReason: review.checkerReason,
     caller,
     group: buildWriteGroup(caller, null),
-  };
-  const sealed = await createSealedProposal(parts, plan);
-
-  return {
-    verdict: {
-      outcome: 'propose',
-      reason: review.reason,
-      records: [buildProposalRecord(parts, { plan, sealed })],
-    },
-    newItemID: plan.target === null ? sealed.itemID : null,
   };
 }
