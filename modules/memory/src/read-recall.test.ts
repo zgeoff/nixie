@@ -33,6 +33,8 @@ test('it returns the items that match a query word for word, with their provenan
         source: 'owner',
         recordedAt: expect.toBeNumber(),
         text: 'The spare key sits under the blue flowerpot',
+        evidenceQuote: null,
+        model: null,
       },
     ],
     next: null,

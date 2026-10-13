@@ -81,8 +81,10 @@ another version fails to decrypt.
 
 Recall takes a query, a list of item IDs, or neither, which lists every active item a page at a time
 in the order they were created. It returns each item's text exactly as stored, with its ID, version,
-origin, source and date, and with its history it returns every version. A recall never summarizes,
-so the user can check an answer about memory against the items themselves.
+origin, source, date, the quote the gate checked and the model that wrote it, and with its history
+it returns every version. A recall never summarizes, so the user can check an answer about memory
+against the items themselves, and the quote lets the model check a summary against the words it came
+from.
 
 ```mermaid
 flowchart LR
@@ -168,11 +170,13 @@ Each write tool runs its gate, and returns either the version it applied or the 
 with its review reason. A missing quote is no tool error, because the gate turns it into a proposal.
 Each tool takes its provenance from the task run: the conversation's thread gives the conversation
 as origin, any other thread gives a task, and the run's model gives the model ID. A recall result
-takes outside content as its source, because the items it returns hold every source memory holds. A
-stale version, a missing item or a wrong state returns to the model as the tool's refusal, so the
-model reads the item again. The model can retire an item and can never restore, undo or forget one.
-The server registers the 3 tools beside web fetch, and the conversation's tool list names them. The
-read-only rule allows them, because they declare `read` and `note` and run direct.
+takes outside content as its source, because the items it returns hold every source memory holds.
+The `memory.recall` result gives each date in readable UTC, and its description tells the model to
+reach for it when a half-remembered detail would change an answer. A stale version, a missing item
+or a wrong state returns to the model as the tool's refusal, so the model reads the item again. The
+model can retire an item and can never restore, undo or forget one. The server registers the 3 tools
+beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
+because they declare `read` and `note` and run direct.
 
 The records of a memory tool call never hold an item's text, so a forget leaves no readable copy in
 them. A recall's result record lists each item and version it returned, as the recall's own record

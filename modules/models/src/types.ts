@@ -64,13 +64,21 @@ export interface MemoryRef {
   readonly version: number;
 }
 
+// Who saved a memory version: the owner in the client, the conversation, a task, or the memory
+// writer.
+export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'memory_writer';
+
 // One memory item as a turn renders it, at the version memory returned.
 export interface MemoryItem extends MemoryRef {
   readonly text: string;
+  readonly origin: MemoryOrigin;
   readonly source: string;
 
   // when the version was recorded, in milliseconds since the epoch
   readonly recordedAt: number;
+
+  // the quote the text was saved from, which a retirement carries over, or null for none
+  readonly evidenceQuote: string | null;
 }
 
 // One turn's retrieval: the text of the user's new messages, with the item limit and score floor.
@@ -103,6 +111,9 @@ export interface ConversationMemorySettings {
 
   // the budget, in tokens, of the recent turns a rebuilt session starts with
   readonly rebuildTokens: number;
+
+  // the owner's name, which says who saved an item the owner saved, or null for "the owner"
+  readonly ownerName: string | null;
 }
 
 // The conversation's runner as one step sees it: its sandbox, its endpoint and its profile.

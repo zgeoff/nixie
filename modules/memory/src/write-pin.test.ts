@@ -128,6 +128,62 @@ test('it rejects a new pinned item that takes the pinned core past 2,000 tokens'
   expect(remember).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
 });
 
+test('it rejects a pin whose quotes take the pinned core past 2,000 tokens', async () => {
+  const ctx = await setupTest();
+
+  // short texts, with quotes of about 1,100 tokens each at 4 characters a token
+  await ctx.memory.store.remember({
+    text: 'Likes the window seat',
+    evidenceQuote: 'I always take the window seat on the train to the coast. '.repeat(77),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const second = await ctx.memory.store.remember({
+    text: 'Drinks oat milk',
+    evidenceQuote: 'Oat milk in the coffee, please, never the dairy kind. '.repeat(81),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const pin = ctx.memory.store.pin({
+    itemID: second.itemID,
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await pin.catch(() => {});
+
+  const row = await ctx.db
+    .selectFrom('memory_items')
+    .select('is_pinned')
+    .where('item_id', '=', second.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(pin).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
+  expect(row.is_pinned).toBe(0);
+});
+
+test('it rejects a new pinned item whose quote takes the pinned core past 2,000 tokens', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Likes the window seat',
+    evidenceQuote: 'I always take the window seat on the train to the coast. '.repeat(77),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const remember = ctx.memory.store.remember({
+    text: 'Drinks oat milk',
+    evidenceQuote: 'Oat milk in the coffee, please, never the dairy kind. '.repeat(81),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await remember.catch(() => {});
+
+  expect(remember).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
+});
+
 test('it pins an item that fits the pinned core beside the items already pinned', async () => {
   const ctx = await setupTest();
 

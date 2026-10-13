@@ -48,10 +48,12 @@ const recalledVersion = {
     state: { type: 'string' },
     origin: { type: 'string' },
     source: { type: 'string' },
-    recordedAt: { type: 'integer' },
+    recordedAt: { type: 'string', description: 'when the version was recorded, in UTC' },
     text: { type: 'string' },
+    quote: { type: 'string', description: 'the words the version came from' },
+    model: { type: ['string', 'null'], description: 'the model that wrote the version' },
   },
-  required: ['version', 'change', 'state', 'origin', 'source', 'recordedAt', 'text'],
+  required: ['version', 'change', 'state', 'origin', 'source', 'recordedAt', 'text', 'model'],
 };
 
 const recallOutput = {
@@ -81,9 +83,11 @@ function buildRecallTool(memory: MemoryToolStore): ToolDefinition {
   return {
     name: 'memory.recall',
     description:
-      'Returns stored memory items word for word, each with its ID, version, origin, source and ' +
-      'date. Pass a query to search, itemIDs to read items by ID, or neither to list every active ' +
-      'item a page at a time. Answer questions about memory from these items, never from a summary.',
+      'Returns stored memory items word for word, each with its ID, version, origin, source, ' +
+      'date, the quote it came from and the model that wrote it. Pass a query to search, itemIDs ' +
+      'to read items by ID, or neither to list every active item a page at a time. Answer ' +
+      'questions about memory from these items, never from a summary. Use it when you ' +
+      'half-remember something said, or when a detail from before would change your answer.',
     input: recallInput,
     output: recallOutput,
     declaration: {
@@ -140,9 +144,18 @@ function toVersionJSON(version: RecalledVersion): JSONObject {
     state: version.state,
     origin: version.origin,
     source: version.source,
-    recordedAt: version.recordedAt,
+    recordedAt: formatRecordedAt(version.recordedAt),
     text: version.text,
+    ...(version.evidenceQuote === null ? {} : { quote: version.evidenceQuote }),
+    model: version.model,
   };
+}
+
+// a minute-precise UTC date, such as 2026-10-01 09:30 UTC
+function formatRecordedAt(time: number): string {
+  const iso = new Date(time).toISOString();
+
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
 const recallArguments = z.object({

@@ -33,12 +33,14 @@ export async function readTurnContext(
   const memory = run.memory();
   const core = await memory.readPinnedCore();
   const retrieved = await readRetrievedItems(run, query);
+  const ownerName = run.memorySettings.ownerName;
 
   return {
-    systemPrompt: renderSystemPrompt(run.getSystemPrompt(), core),
-    preamble: [renderCoreChanges(query.previousCore, core), renderRetrievedItems(retrieved)].filter(
-      (block) => block !== null,
-    ),
+    systemPrompt: renderSystemPrompt(run.getSystemPrompt(), core, ownerName),
+    preamble: [
+      renderCoreChanges(query.previousCore, core),
+      renderRetrievedItems(retrieved, ownerName),
+    ].filter((block) => block !== null),
     pinnedCore: core.map((item) => toMemoryRef(item)),
     retrieved: retrieved.map((item) => toMemoryRef(item)),
   };

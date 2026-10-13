@@ -121,7 +121,9 @@ test('it puts a pinned item in the next turn system prompt, with the change note
 
   const request = ctx.readLastRequest();
 
-  expect(JSON.stringify(request?.system)).toInclude(`- [${item.itemID}] Goes by Sam`);
+  expect(JSON.stringify(request?.system)).toInclude(
+    `- [${item.itemID}, the owner saved] Goes by Sam`,
+  );
   expect(JSON.stringify(request?.messages)).toInclude(
     String.raw`- Pinned [${item.itemID}]: Goes by Sam\n</pinned-memory-changes>\n\nWhat do I go by?`,
   );

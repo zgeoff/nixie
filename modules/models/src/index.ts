@@ -7,6 +7,7 @@ export type { CheckerOptions } from './make-checker';
 export { makeChecker } from './make-checker';
 export { checkerOwner } from './start-checker-runner';
 export { modelsConfigSchema } from './models-config-schema';
+export { renderPinnedItem } from './render-pinned-item';
 export { resolveModelCredentials } from './resolve-model-credentials';
 export { resolveRoleProfile } from './resolve-role-profile';
 export type { GuestCommand } from './run-guest-turn';

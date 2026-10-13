@@ -154,6 +154,8 @@ async function encodePinnableVersion(
     requirePinnedCoreRoom(parts.context, pinned, {
       itemID: version.ref.itemID,
       text: version.next.text.text,
+      origin: version.plan.provenance.origin,
+      evidenceQuote: version.next.text.evidenceQuote,
     });
   }
   return encodeVersionText(version.key, version.ref, version.next.text);
