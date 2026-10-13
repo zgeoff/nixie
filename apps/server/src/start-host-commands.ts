@@ -19,7 +19,7 @@ export async function startHostCommands(
   const control = await startControlSocket({
     path: join(options.dataDir, 'run', 'control.sock'),
     createEnrolmentCode: () => createEnrolmentCode(options.apiContext),
-    readProposals: () => options.memory.read()?.proposals ?? null,
+    readMemory: () => options.memory.read(),
     readSessions: () => readSessions(options.apiContext, null),
     updateSessionLabel: (input) => updateSessionLabel(options.apiContext, input),
   });

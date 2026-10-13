@@ -18,7 +18,7 @@ test('it returns the sessions the running server lists', async () => {
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () =>
       Promise.resolve([
         {
@@ -50,7 +50,7 @@ test('it returns the label the running server set', async () => {
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () =>
       Promise.resolve({
@@ -79,7 +79,7 @@ test('it rejects with the status and the reason when the server refuses the labe
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.resolve({ status: 'not_found' as const }),
   });

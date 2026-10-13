@@ -150,7 +150,15 @@ moved on, and applies nothing. Its approval record names the host as the identit
 because a shell in the container reaches the socket and no device session does. The memory commands
 answer once the memory store starts, and refuse before then. An approval that the gate holds for a
 close match prints the matching item, and the user answers it again as a revision of that item or as
-a new item.
+a new item. An approval may carry the user's own text in place of the proposal's, and the approved
+version then records the user as its origin.
+
+The memory item host commands show one item with every version, and edit, retire, restore, pin or
+unpin it. Each change runs through the memory store as the user's own action, as a change in the
+memory view does, so its version records the user as origin and source, and the earlier versions
+stay in the item's history. An edit, a retirement and a restore name the version the user read, and
+the store refuses one whose item moved past that version. A pin adds no version, because it changes
+where the item shows and not what it says.
 
 ## The image and the release bundle
 

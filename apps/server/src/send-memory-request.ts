@@ -1,3 +1,8 @@
+interface VersionRef {
+  readonly itemID: string;
+  readonly version: number;
+}
+
 export type MemoryRequest =
   | { readonly command: 'pending' }
   | {
@@ -6,30 +11,33 @@ export type MemoryRequest =
       readonly actionHash: string;
 
       // an approval's answer to a close match: a revision of that item, or a new item anyway
-      readonly revisionOf?: { readonly itemID: string; readonly version: number };
+      readonly revisionOf?: VersionRef;
       readonly ignoreCloseMatch?: boolean;
-    };
 
-// A memory host command's request: lists the pending memory proposals, or answers one, through the
-// running server's control socket. It returns the server's JSON answer for the command to print.
-// Bun.fetch, because only Bun's own fetch takes a Unix socket.
+      // an approval's text in place of the proposal's
+      readonly editedText?: string;
+    }
+  | { readonly command: 'show'; readonly itemID: string }
+  | { readonly command: 'edit'; readonly target: VersionRef; readonly text: string }
+  | { readonly command: 'retire' | 'restore'; readonly target: VersionRef }
+  | { readonly command: 'pin'; readonly itemID: string; readonly isPinned: boolean };
+
+// Sends a memory host command's request through the running server's control socket, and returns
+// the server's JSON answer for the command to print. Bun.fetch, because only Bun's own fetch takes
+// a Unix socket.
 export async function sendMemoryRequest(
   socketPath: string,
   request: MemoryRequest,
 ): Promise<unknown> {
+  const route = buildMemoryRoute(request);
   const response =
-    request.command === 'pending'
-      ? await Bun.fetch('http://localhost/memory/proposals', { unix: socketPath })
-      : await Bun.fetch(`http://localhost/memory/proposals/${request.command}`, {
+    route.body === null
+      ? await Bun.fetch(`http://localhost${route.path}`, { unix: socketPath })
+      : await Bun.fetch(`http://localhost${route.path}`, {
           method: 'POST',
           unix: socketPath,
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            proposalID: request.proposalID,
-            actionHash: request.actionHash,
-            ...(request.revisionOf === undefined ? {} : { revisionOf: request.revisionOf }),
-            ...(request.ignoreCloseMatch === true ? { ignoreCloseMatch: true } : {}),
-          }),
+          body: JSON.stringify(route.body),
         });
 
   if (!response.ok) {
@@ -40,4 +48,47 @@ export async function sendMemoryRequest(
     );
   }
   return response.json();
+}
+
+// the control socket's route for a request, and its JSON body, or null for a read
+interface MemoryRoute {
+  readonly path: string;
+  readonly body: object | null;
+}
+
+function buildMemoryRoute(request: MemoryRequest): MemoryRoute {
+  if (request.command === 'pending') {
+    return { path: '/memory/proposals', body: null };
+  }
+  if ('proposalID' in request) {
+    return {
+      path: `/memory/proposals/${request.command}`,
+      body: {
+        proposalID: request.proposalID,
+        actionHash: request.actionHash,
+        ...(request.revisionOf === undefined ? {} : { revisionOf: request.revisionOf }),
+        ...(request.ignoreCloseMatch === true ? { ignoreCloseMatch: true } : {}),
+        ...(request.editedText === undefined ? {} : { editedText: request.editedText }),
+      },
+    };
+  }
+  return buildItemRoute(request);
+}
+
+type ItemRequest = Exclude<MemoryRequest, { readonly command: 'pending' | 'approve' | 'reject' }>;
+
+function buildItemRoute(request: ItemRequest): MemoryRoute {
+  if (request.command === 'show') {
+    return { path: `/memory/items/${encodeURIComponent(request.itemID)}`, body: null };
+  }
+  if (request.command === 'edit') {
+    return { path: '/memory/items/edit', body: { ...request.target, text: request.text } };
+  }
+  if (request.command === 'pin') {
+    return {
+      path: '/memory/items/pin',
+      body: { itemID: request.itemID, isPinned: request.isPinned },
+    };
+  }
+  return { path: `/memory/items/${request.command}`, body: request.target };
 }

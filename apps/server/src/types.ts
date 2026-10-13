@@ -54,3 +54,35 @@ export interface ServerParts {
   // a runner failed, such as when another process took the writer
   readonly onFailure: (error: unknown) => void;
 }
+
+// What a command of the nixie binary reaches: the log, the printed answer and the stop signal.
+export interface CLIIO {
+  // the JSON log, on stdout
+  readonly log: Logger;
+
+  // a host command's answer for a person, on stdout
+  readonly print: (text: string) => void;
+
+  // resolves when the process receives SIGTERM or SIGINT
+  readonly waitForSignal: () => Promise<string>;
+}
+
+export interface CLIFlags {
+  readonly config: string;
+  readonly manifest: string;
+  readonly sops: string;
+  readonly live: boolean;
+
+  // the action hash a memory answer binds to
+  readonly hash?: string;
+
+  // an approval held for a close match: apply it as a revision of <itemID>@<version>, or as a new
+  // item anyway
+  readonly revise?: string;
+  readonly 'as-new': boolean;
+
+  // an edit's new text, or an approval's text in place of the proposal's
+  readonly text?: string;
+}
+
+export type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;

@@ -7,7 +7,7 @@ test('it returns the exit code and the stdout of the command', async () => {
   expect(run).toStrictEqual({
     exitCode: 2,
     stdout:
-      'nixie memory-approve takes a proposal ID and --hash <action hash>, then --revise <itemID>@<version> or --as-new\n',
+      'nixie memory-approve takes a proposal ID and --hash <action hash>, then --text <edited text>, and --revise <itemID>@<version> or --as-new\n',
   });
 });
 
