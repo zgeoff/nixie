@@ -125,7 +125,10 @@ test('it puts a pinned item in the next turn system prompt, with the change note
     `- [${item.itemID}, the owner saved] Goes by Sam`,
   );
   expect(JSON.stringify(request?.messages)).toInclude(
-    String.raw`- Pinned [${item.itemID}]: Goes by Sam\n</pinned-memory-changes>\n\nWhat do I go by?`,
+    String.raw`- Pinned [${item.itemID}]: Goes by Sam\n</pinned-memory-changes>\n\n[`,
+  );
+  expect(JSON.stringify(request?.messages)).toMatch(
+    /<\/pinned-memory-changes>\\n\\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
   );
 }, 30_000);
 
@@ -152,7 +155,8 @@ test('it rebuilds the session with the recent turns once a replaced sandbox has 
     (messages: string) =>
       messages.includes('<conversation-history>') &&
       messages.includes(String.raw`] owner: Say a fruit.\n[`) &&
-      messages.includes(String.raw`] nixie: APPLE\n</conversation-history>\n\nAnother.`),
+      messages.includes(String.raw`] nixie: APPLE\n</conversation-history>\n\n[`) &&
+      messages.includes(String.raw`, UTC] Another.`),
   );
   expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toMatchObject([
     { payload: { reason: 'missing', recentRecords: 2 } },

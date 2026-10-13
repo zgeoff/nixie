@@ -307,9 +307,16 @@ test('it sends each inbox record with its sequence as the message uuid and ackno
   expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
-      text: 'This is a new session; earlier history is in the event log.\n\nFirst.',
+      text: expect.stringMatching(
+        /^This is a new session; earlier history is in the event log\.\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u,
+      ),
     },
-    { uuid: '6e697869-0000-8000-8000-000000000003', text: 'Second.' },
+    {
+      uuid: '6e697869-0000-8000-8000-000000000003',
+      text: expect.stringMatching(
+        /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Second\.$/u,
+      ),
+    },
   ]);
   expect(task).toStrictEqual({ state: 'ready', read_cursor: 2 });
 });
@@ -359,7 +366,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
           text.startsWith('Your context was rebuilt; earlier history is in the event log.') &&
           text.includes('] owner: Hi.\n[') &&
           text.includes('] nixie: Hello.\n</conversation-history>') &&
-          text.endsWith('\n\nHi again.'),
+          /\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
       ),
     },
   ]);
@@ -428,7 +435,9 @@ test('it marks the first turn on a fresh session as a new session', async () => 
     [
       {
         uuid: '6e697869-0000-8000-8000-000000000002',
-        text: 'This is a new session; earlier history is in the event log.\n\nHi.',
+        text: expect.stringMatching(
+          /^This is a new session; earlier history is in the event log\.\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u,
+        ),
       },
     ],
   ]);
@@ -458,13 +467,20 @@ test('it marks the first turn after a rebuild as rebuilt, and the turn after it 
         (text: string) =>
           text.startsWith(
             'Your context was rebuilt; earlier history is in the event log.\n\n<conversation-history>',
-          ) && text.endsWith('\n\nHi again.'),
+          ) && /\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
       ),
     },
   ]);
   expect(resumed).toMatchObject({
     resume: expect.toBeObject(),
-    input: [{ uuid: expect.toBeString(), text: 'And again.' }],
+    input: [
+      {
+        uuid: expect.toBeString(),
+        text: expect.stringMatching(
+          /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] And again\.$/u,
+        ),
+      },
+    ],
   });
 });
 
@@ -871,9 +887,16 @@ test('it puts the memory note before the first message of the turn and leaves th
   expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
-      text: 'This is a new session; earlier history is in the event log.\n\nMemory changed: you moved to Lisbon.\n\nFirst.',
+      text: expect.stringMatching(
+        /^This is a new session; earlier history is in the event log\.\n\nMemory changed: you moved to Lisbon\.\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u,
+      ),
     },
-    { uuid: '6e697869-0000-8000-8000-000000000003', text: 'Second.' },
+    {
+      uuid: '6e697869-0000-8000-8000-000000000003',
+      text: expect.stringMatching(
+        /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Second\.$/u,
+      ),
+    },
   ]);
 });
 
@@ -918,7 +941,9 @@ test('it records the sequence a turn with no memory changes covers and adds no m
   expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
-      text: 'This is a new session; earlier history is in the event log.\n\nHi.',
+      text: expect.stringMatching(
+        /^This is a new session; earlier history is in the event log\.\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u,
+      ),
     },
   ]);
   expect(records).toMatchObject([{ payload: { memoryNotedThrough: 4 } }]);

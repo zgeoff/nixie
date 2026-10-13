@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { countTextTokens } from './count-text-tokens';
 import { renderHistoryLine } from './render-history-line';
+import type { MessageTimeOptions } from './types';
 
 export interface RecentTurnsQuery {
   readonly taskID: string;
@@ -14,6 +15,9 @@ export interface RecentTurnsQuery {
 
   // the history's budget, counted over its rendered lines
   readonly tokens: number;
+
+  // how each line renders your message's send time, which the budget counts
+  readonly times: MessageTimeOptions;
 }
 
 // Reads the thread's most recent messages and replies, word for word, oldest first, up to the
@@ -28,7 +32,7 @@ export async function readRecentTurns(
   for await (const record of readHistoryNewestFirst(context, query.taskID)) {
     const isPending = record.kind === 'owner_message' && record.sequence >= query.beforeSequence;
 
-    total.tokens += isPending ? 0 : countTextTokens(renderHistoryLine(record));
+    total.tokens += isPending ? 0 : countTextTokens(renderHistoryLine(record, query.times));
     if (total.tokens > query.tokens) {
       break;
     }

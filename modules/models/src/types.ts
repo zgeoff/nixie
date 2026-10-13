@@ -116,6 +116,13 @@ export interface ConversationMemorySettings {
   readonly ownerName: string | null;
 }
 
+// How your message's send time renders: the zone for a message that carries none, and the time
+// now, which decides whether the year shows.
+export interface MessageTimeOptions {
+  readonly defaultZone: string;
+  readonly now: Date;
+}
+
 // The conversation's runner as one step sees it: its sandbox, its endpoint and its profile.
 export interface ConversationRun {
   readonly context: TasksContext;
@@ -135,6 +142,9 @@ export interface ConversationRun {
   // the memory store, read at each turn, which starts after the runner
   readonly memory: () => ConversationMemory;
   readonly memorySettings: ConversationMemorySettings;
+
+  // the IANA zone your message renders its send time in when it carries no zone of its own
+  readonly defaultZone: string;
 
   // keeps a forget's session cleanup from meeting a running turn
   readonly session: SessionGuard;

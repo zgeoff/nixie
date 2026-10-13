@@ -6,7 +6,7 @@ import { inboxBatchLimit } from './inbox-batch-limit';
 import { readLiveInbox } from './read-live-inbox';
 import { runGuestTurn } from './run-guest-turn';
 import { toInboxMessage } from './to-inbox-message';
-import type { ConversationRun, ResolvedProfile, TurnNote } from './types';
+import type { ConversationRun, MessageTimeOptions, ResolvedProfile, TurnNote } from './types';
 
 // The session a turn runs on and what it opens with.
 export interface LiveTurnPlan {
@@ -19,6 +19,9 @@ export interface LiveTurnPlan {
 
   // aborts when the step's lease is lost or a forget invalidates the session
   readonly signal: AbortSignal;
+
+  // how each message renders its send time
+  readonly times: MessageTimeOptions;
 }
 
 // Runs one turn in the guest on the step's inbox, up to the batch limit, resuming at the session
@@ -48,13 +51,18 @@ export async function runLiveTurn(
         resume: plan.resume,
         systemPrompt: plan.systemPrompt,
         input: buildTurnInput(
-          batch.map((record) => toInboxMessage(record)),
+          batch.map((record) => toInboxMessage(record, plan.times)),
           [...plan.preamble, note?.text ?? null],
         ),
       },
       messages: hasMore
         ? []
-        : readLiveInbox(run.context, { taskID: input.taskID, sent, signal: live.signal }),
+        : readLiveInbox(run.context, {
+            taskID: input.taskID,
+            sent,
+            signal: live.signal,
+            times: plan.times,
+          }),
       signal: plan.signal,
     });
 
