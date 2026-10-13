@@ -144,10 +144,9 @@ function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
     const revisionOf = flags.revise === undefined ? undefined : parseRevisionTarget(flags.revise);
 
     if (proposalID === undefined || flags.hash === undefined || revisionOf === null) {
-      io.print(
-        `nixie memory-${command} takes a proposal ID and --hash <action hash>, and memory-approve ` +
-          'takes --revise <itemID>@<version> or --as-new',
-      );
+      const options = command === 'approve' ? ', then --revise <itemID>@<version> or --as-new' : '';
+
+      io.print(`nixie memory-${command} takes a proposal ID and --hash <action hash>${options}`);
       return 2;
     }
     const socketPath = await resolveSocketPath(flags.config);

@@ -29,6 +29,7 @@ test('it starts a log with the tasks, sandboxes and memory projections and a fre
     'memory_versions',
     'memory_writer',
     'memory_proposals',
+    'memory_proposal_merges',
     'memory_notice_entries',
     'memory_forgotten_evidence',
   ]);
