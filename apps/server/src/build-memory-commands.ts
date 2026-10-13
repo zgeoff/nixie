@@ -148,9 +148,9 @@ function makeMemoryPin(isPinned: boolean): Command {
 // when malformed
 function parseVersionTarget(flag: string): { itemID: string; version: number } | null {
   const at = flag.lastIndexOf('@');
-  const version = Number(flag.slice(at + 1));
+  const version = flag.slice(at + 1);
 
-  return at < 1 || !Number.isInteger(version) || version < 1
+  return at < 1 || !/^[1-9]\d*$/u.test(version)
     ? null
-    : { itemID: flag.slice(0, at), version };
+    : { itemID: flag.slice(0, at), version: Number(version) };
 }

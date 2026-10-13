@@ -51,40 +51,44 @@ export async function sendMemoryRequest(
 }
 
 // the control socket's route for a request, and its JSON body, or null for a read
-function buildMemoryRoute(request: MemoryRequest): {
+interface MemoryRoute {
   readonly path: string;
   readonly body: object | null;
-} {
-  switch (request.command) {
-    case 'pending': {
-      return { path: '/memory/proposals', body: null };
-    }
-    case 'approve':
-    case 'reject': {
-      return {
-        path: `/memory/proposals/${request.command}`,
-        body: {
-          proposalID: request.proposalID,
-          actionHash: request.actionHash,
-          ...(request.revisionOf === undefined ? {} : { revisionOf: request.revisionOf }),
-          ...(request.ignoreCloseMatch === true ? { ignoreCloseMatch: true } : {}),
-          ...(request.editedText === undefined ? {} : { editedText: request.editedText }),
-        },
-      };
-    }
-    case 'show': {
-      return { path: `/memory/items/${encodeURIComponent(request.itemID)}`, body: null };
-    }
-    case 'edit': {
-      return { path: '/memory/items/edit', body: { ...request.target, text: request.text } };
-    }
-    case 'retire':
-    case 'restore': {
-      return { path: `/memory/items/${request.command}`, body: request.target };
-    }
+}
+
+function buildMemoryRoute(request: MemoryRequest): MemoryRoute {
+  if (request.command === 'pending') {
+    return { path: '/memory/proposals', body: null };
   }
-  return {
-    path: '/memory/items/pin',
-    body: { itemID: request.itemID, isPinned: request.isPinned },
-  };
+  if ('proposalID' in request) {
+    return {
+      path: `/memory/proposals/${request.command}`,
+      body: {
+        proposalID: request.proposalID,
+        actionHash: request.actionHash,
+        ...(request.revisionOf === undefined ? {} : { revisionOf: request.revisionOf }),
+        ...(request.ignoreCloseMatch === true ? { ignoreCloseMatch: true } : {}),
+        ...(request.editedText === undefined ? {} : { editedText: request.editedText }),
+      },
+    };
+  }
+  return buildItemRoute(request);
+}
+
+type ItemRequest = Exclude<MemoryRequest, { readonly command: 'pending' | 'approve' | 'reject' }>;
+
+function buildItemRoute(request: ItemRequest): MemoryRoute {
+  if (request.command === 'show') {
+    return { path: `/memory/items/${encodeURIComponent(request.itemID)}`, body: null };
+  }
+  if (request.command === 'edit') {
+    return { path: '/memory/items/edit', body: { ...request.target, text: request.text } };
+  }
+  if (request.command === 'pin') {
+    return {
+      path: '/memory/items/pin',
+      body: { itemID: request.itemID, isPinned: request.isPinned },
+    };
+  }
+  return { path: `/memory/items/${request.command}`, body: request.target };
 }

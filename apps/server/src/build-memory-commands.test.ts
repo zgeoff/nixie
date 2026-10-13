@@ -89,3 +89,13 @@ test('it approves a proposal with your text, then edits, retires, restores and p
     },
   ]);
 }, 60_000);
+
+test('it refuses a version target that is not a plain decimal before it reads the configuration', async () => {
+  const runs = await runHostCommands('/nonexistent/config.yaml', [
+    ['memory-retire', 'item-1@0x2'],
+    ['memory-restore', 'item-1@ 2'],
+    ['memory-edit', 'item-1@', '--text', 'Likes jazz'],
+  ]);
+
+  expect(runs.map((run) => run.exitCode)).toStrictEqual([2, 2, 2]);
+});
