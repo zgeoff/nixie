@@ -35,6 +35,7 @@ export async function startConversationImp(
     readTurnNote: makeTurnNoteReader(parts, memory),
     memory,
     memorySettings: { ...parts.config.memory, ownerName: parts.config.owner.name },
+    defaultZone: parts.config.time.default_zone,
     log: parts.log,
   });
 

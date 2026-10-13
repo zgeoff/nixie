@@ -3,6 +3,7 @@ import type { TasksContext } from '@heynixie/tasks';
 import { isInboxRecord } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
 import { toInboxMessage } from './to-inbox-message';
+import type { MessageTimeOptions } from './types';
 
 export interface LiveInbox {
   readonly taskID: string;
@@ -10,6 +11,9 @@ export interface LiveInbox {
   // the sequence of each inbox record the turn already took, to which each live one is added
   readonly sent: Set<number>;
   readonly signal: AbortSignal;
+
+  // how each message renders its send time
+  readonly times: MessageTimeOptions;
 }
 
 // Yields every inbox record that lands on the task while its turn runs, until the signal aborts,
@@ -29,7 +33,7 @@ export async function* readLiveInbox(
   for await (const entry of entries) {
     if (isInboxRecord(entry.record) && !live.sent.has(entry.record.sequence)) {
       live.sent.add(entry.record.sequence);
-      yield toInboxMessage(entry.record);
+      yield toInboxMessage(entry.record, live.times);
     }
   }
 }

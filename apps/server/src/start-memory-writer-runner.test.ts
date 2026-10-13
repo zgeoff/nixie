@@ -55,7 +55,7 @@ test('it carries the note of a live batch, cut to its cap, on the next conversat
   await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
 
   expect(JSON.stringify(conversation.model.requests.at(-1)?.body?.messages)).toMatch(
-    /(?<listed>- Remembered \[[^\]]+\]: You have a pet called \w+\.\\n){5}and 1 more\\n<\/memory-changes>\\n\\nHi\./u,
+    /(?<listed>- Remembered \[[^\]]+\]: You have a pet called \w+\.\\n){5}and 1 more\\n<\/memory-changes>\\n\\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\./u,
   );
 }, 60_000);
 

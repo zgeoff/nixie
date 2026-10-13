@@ -39,6 +39,9 @@ export interface ConversationOptions {
   readonly memory: () => ConversationMemory;
   readonly memorySettings?: Partial<ConversationMemorySettings>;
 
+  // the IANA zone your message renders its send time in when it carries no zone of its own
+  readonly defaultZone?: string;
+
   // the server's log, which takes a warning when a replaced sandbox's session does not carry over
   readonly log: Logger;
 }
@@ -65,6 +68,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
     memory: options.memory,
     ...(options.memorySettings === undefined ? {} : { memorySettings: options.memorySettings }),
+    ...(options.defaultZone === undefined ? {} : { defaultZone: options.defaultZone }),
     log: options.log,
   });
 }

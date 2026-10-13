@@ -38,6 +38,9 @@ export interface ConversationRunnerOptions {
   readonly memory: () => ConversationMemory;
   readonly memorySettings?: Partial<ConversationMemorySettings>;
 
+  // the IANA zone your message renders its send time in when it carries no zone of its own
+  readonly defaultZone?: string;
+
   // the server's log, which takes a warning when a replaced sandbox's session does not carry over
   readonly log: ConversationSandboxSpec['log'];
 }
@@ -88,6 +91,9 @@ export async function startConversationRunner(
     endpoint,
     model,
     memorySettings: { ...defaultMemorySettings, ...options.memorySettings },
+
+    // a runner given no zone renders a message that carries none in UTC
+    defaultZone: options.defaultZone ?? 'UTC',
     session: makeSessionGuard(),
   };
 

@@ -172,6 +172,43 @@ test('it answers the time tool in the zone of the newest message', async () => {
   });
 }, 60_000);
 
+test('it shows the model when each message was sent, in its own zone or the default one', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Hello.' }, { text: 'Welcome to Tokyo.' });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Hello.');
+  });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Just landed.',
+    thread: 'conversation',
+    timeZone: 'Asia/Tokyo',
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Welcome to Tokyo.');
+  });
+
+  const sent = JSON.stringify(
+    ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
+  );
+
+  expect(sent).toMatch(/\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney\] Hi\./u);
+  expect(sent).toMatch(/\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo\] Just landed\./u);
+}, 60_000);
+
 test('it applies a remembered fact that the owner typed, with their words as its evidence', async () => {
   const ctx = await setupTest();
 

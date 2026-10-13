@@ -1,12 +1,14 @@
 import type { LogRecord } from '@heynixie/log';
+import { formatMessageTime } from './format-message-time';
+import { renderOwnerText } from './render-owner-text';
+import type { MessageTimeOptions } from './types';
 
-// Renders an inbox record as the text the model reads: your message as you wrote it, and a short
-// line for a fired timer or an action's outcome. A message whose text was forgotten keeps its place
-// with a note, so the model never reads a gap as silence.
-export function renderInboxMessage(record: LogRecord): string {
+// Renders an inbox record as the text the model reads: your message as you wrote it, after the time
+// you sent it, and a short line for a fired timer or an action's outcome.
+export function renderInboxMessage(record: LogRecord, times: MessageTimeOptions): string {
   switch (record.kind) {
     case 'owner_message': {
-      return renderOwnerMessage(record);
+      return `[${formatMessageTime(record, times)}] ${renderOwnerText(record)}`;
     }
     case 'timer.fired': {
       return `A timer fired: ${JSON.stringify(record.payload)}`;
@@ -18,10 +20,4 @@ export function renderInboxMessage(record: LogRecord): string {
       return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;
     }
   }
-}
-
-function renderOwnerMessage(record: LogRecord): string {
-  const text = record.erasable.status === 'readable' ? record.erasable.fields['text'] : undefined;
-
-  return typeof text === 'string' ? text : '[a message you sent, since forgotten]';
 }

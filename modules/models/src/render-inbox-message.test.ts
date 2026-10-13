@@ -2,45 +2,105 @@ import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import { renderInboxMessage } from './render-inbox-message';
 
-test('it renders your message as you wrote it', () => {
+test('it renders your message after the time you sent it, in the zone the message carries', () => {
+  const record = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-13T13:05:00Z'),
+    payload: { timeZone: 'Europe/London' },
+    erasable: { status: 'readable', fields: { text: 'Buy milk.' } },
+  });
+
   expect(
-    renderInboxMessage(
-      buildMockLogRecord({
-        kind: 'owner_message',
-        erasable: { status: 'readable', fields: { text: 'Buy milk.' } },
-      }),
-    ),
-  ).toBe('Buy milk.');
+    renderInboxMessage(record, {
+      defaultZone: 'Australia/Sydney',
+      now: new Date('2026-10-13T15:00:00Z'),
+    }),
+  ).toBe('[Tue 13 Oct, 14:05, London] Buy milk.');
 });
 
-test('it renders a note in place of a message whose text was forgotten', () => {
+test('it renders your message after the time you sent it, in the default zone when the message carries none', () => {
+  const record = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-13T03:05:00Z'),
+    erasable: { status: 'readable', fields: { text: 'Buy milk.' } },
+  });
+
   expect(
-    renderInboxMessage(
-      buildMockLogRecord({ kind: 'owner_message', erasable: { status: 'shredded' } }),
+    renderInboxMessage(record, {
+      defaultZone: 'Australia/Sydney',
+      now: new Date('2026-10-13T05:00:00Z'),
+    }),
+  ).toBe('[Tue 13 Oct, 14:05, Sydney] Buy milk.');
+});
+
+test('it renders two messages a night apart each with its own time', () => {
+  const goodnight = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-12T11:40:00Z'),
+    payload: { timeZone: 'Australia/Sydney' },
+    erasable: { status: 'readable', fields: { text: 'Goodnight.' } },
+  });
+  const goodMorning = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-12T20:15:00Z'),
+    payload: { timeZone: 'Australia/Sydney' },
+    erasable: { status: 'readable', fields: { text: 'Good morning.' } },
+  });
+
+  expect(
+    [goodnight, goodMorning].map((record) =>
+      renderInboxMessage(record, {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-12T20:16:00Z'),
+      }),
     ),
-  ).toBe('[a message you sent, since forgotten]');
+  ).toStrictEqual([
+    '[Mon 12 Oct, 22:40, Sydney] Goodnight.',
+    '[Tue 13 Oct, 07:15, Sydney] Good morning.',
+  ]);
+});
+
+test('it renders a note after the send time in place of a message whose text was forgotten', () => {
+  const record = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-13T03:05:00Z'),
+    erasable: { status: 'shredded' },
+  });
+
+  expect(
+    renderInboxMessage(record, {
+      defaultZone: 'Australia/Sydney',
+      now: new Date('2026-10-13T05:00:00Z'),
+    }),
+  ).toBe('[Tue 13 Oct, 14:05, Sydney] [a message you sent, since forgotten]');
 });
 
 test('it renders a fired timer', () => {
+  const record = buildMockLogRecord({
+    kind: 'timer.fired',
+    payload: { timerID: 't-1' },
+    erasable: { status: 'none' },
+  });
+
   expect(
-    renderInboxMessage(
-      buildMockLogRecord({
-        kind: 'timer.fired',
-        payload: { timerID: 't-1' },
-        erasable: { status: 'none' },
-      }),
-    ),
+    renderInboxMessage(record, {
+      defaultZone: 'Australia/Sydney',
+      now: new Date('2026-10-13T05:00:00Z'),
+    }),
   ).toBe('A timer fired: {"timerID":"t-1"}');
 });
 
 test('it renders an action outcome', () => {
+  const record = buildMockLogRecord({
+    kind: 'action.outcome',
+    payload: { actionID: 'a-1' },
+    erasable: { status: 'none' },
+  });
+
   expect(
-    renderInboxMessage(
-      buildMockLogRecord({
-        kind: 'action.outcome',
-        payload: { actionID: 'a-1' },
-        erasable: { status: 'none' },
-      }),
-    ),
+    renderInboxMessage(record, {
+      defaultZone: 'Australia/Sydney',
+      now: new Date('2026-10-13T05:00:00Z'),
+    }),
   ).toBe('An action settled: {"actionID":"a-1"}');
 });

@@ -41,6 +41,7 @@ export async function runPlannedTurn(
   turn: SessionTurn,
   session: TurnSession,
 ): Promise<PlannedTurn> {
+  const times = { defaultZone: turn.run.defaultZone, now: new Date(turn.run.context.clock.now()) };
   const recent =
     session.resume === null
       ? await readRecentTurns(turn.run.context, {
@@ -50,17 +51,19 @@ export async function runPlannedTurn(
             ...turn.input.inbox.map((record) => record.sequence),
           ),
           tokens: turn.run.memorySettings.rebuildTokens,
+          times,
         })
       : [];
   const opening =
     session.resume === null
-      ? [renderSessionMarker(session.lost), renderSessionHistory(recent)]
+      ? [renderSessionMarker(session.lost), renderSessionHistory(recent, times)]
       : [];
   const completed = await runLiveTurn(turn.run, turn.input, {
     resume: session.resume,
     systemPrompt: turn.context.systemPrompt,
     preamble: [...opening, ...turn.context.preamble].filter((block) => block !== null),
     signal: turn.signal,
+    times,
   });
 
   turn.signal.throwIfAborted();
