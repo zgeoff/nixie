@@ -157,3 +157,34 @@ the profile nixie gave the turn, never from the guest's frames
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
 server, throws, so the tasks module records the error and retries the step after its delay.
+
+## The events block
+
+The conversation hears of what happened outside it through the events block, which goes before the
+user's message on the next turn. The block lists the user's answers to memory proposals, nixie's
+restarts and the conversation's own turns that failed and were retried, each after its time, oldest
+first, up to a cap and then a count of the rest. A turn after which nothing happened gets no block.
+The block reads the same range of the log as
+[the memory change note](../memory/writer.md#the-change-note), from the sequence the last turn's
+note covered to the log's head, so the next turn's note starts where this one ends and no event
+appears twice.
+
+Each kind of event is one entry in a registry: its name, how it reads its events in a range of the
+log, and how one event's line renders. The block merges every entry's events by sequence, so a new
+kind is a new entry and no change to the block. The server builds the registry when the conversation
+starts, and each entry's package owns the records it reads.
+
+- **A proposal answer** reads each proposal the user approved or rejected, from any source, the
+  conversation's own included. An approval quotes the version it wrote, read through recall, so a
+  later forget knows the session saw that text. A rejection quotes only the conversation's own
+  proposed edit, which its session already holds. A rejected new item has no quote, because the
+  rejection removes the item's key and its text with it.
+- **A restart** reads the record the server writes at each start, with nixie's version and the
+  version of the start before it.
+- **A retried turn** reads each failure of a conversation step that the task retries, and quotes the
+  error when the log still holds its text. A failure that ended the task is not a retry, so the
+  block leaves it out.
+
+Each line shows its time in the user's time zone and names the user by name, both from the owner
+section of the deployment configuration. A deployment that sets neither reads times in UTC and calls
+the user "the owner".

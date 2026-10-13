@@ -62,9 +62,10 @@ sends and never in the user's message record, so a rebuilt session's history lea
 out.
 
 The blocks before the first message keep one order: a new session's marker, a rebuilt session's
-history, the pinned-core change note, the retrieved items, then
-[the writer's change note](./writer.md#the-change-note). The user's own words come last, so the
-model reads each block as context for them.
+history, the pinned-core change note, the retrieved items,
+[the writer's change note](./writer.md#the-change-note), then
+[the events block](../core/conversation-turns.md#the-events-block). The user's own words come last,
+so the model reads each block as context for them.
 
 ## Forgetting and the live session
 

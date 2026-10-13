@@ -1,6 +1,9 @@
-import type { StartedMemoryStore } from '@heynixie/memory';
-import { readMemoryChangeNote } from '@heynixie/memory';
+import type { RecallRequest, StartedMemoryStore } from '@heynixie/memory';
+import { buildProposalAnswerKind } from '@heynixie/memory';
+import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/models';
 import type { RunStep } from '@heynixie/tasks';
+import { buildRestartKind } from './build-restart-kind';
+import { readTurnNotes } from './read-turn-notes';
 import { startConversation } from './start-conversation';
 import type { ServerParts } from './types';
 
@@ -13,12 +16,19 @@ export interface ConversationImp {
 }
 
 // Starts the conversation on its image from the manifest, which replaces its sandbox when the image
-// or the profile changed. Each turn reads memory, and the note of outside memory changes, through
-// the getter, because the store starts after the conversation and before any runner claims work.
+// or the profile changed. Each turn reads memory and its note through the getter, because the
+// store starts after the conversation and before any runner claims work.
 export async function startConversationImp(
   parts: ServerParts,
   memory: () => StartedMemoryStore,
 ): Promise<ConversationImp> {
+  const log = parts.context.log;
+  const store = { recall: (request: RecallRequest) => memory().recall(request) };
+  const events = buildEventRegistry([
+    buildProposalAnswerKind(log, store),
+    buildRestartKind(log),
+    buildRetriedTurnKind(log),
+  ]);
   const conversation = await startConversation({
     context: parts.context,
     models: parts.config.models,
@@ -28,9 +38,15 @@ export async function startConversationImp(
     toolNames: parts.tools.definitions.map((definition) => definition.name),
     image: parts.images.conversation.name,
     getSystemPrompt: () => parts.inForce.read()?.persona ?? '',
-    readTurnNote: () => readMemoryChangeNote(parts.context.log, memory(), memoryNoteCap),
+    readTurnNote: () =>
+      readTurnNotes({
+        log,
+        store,
+        events,
+        settings: { ownerName: parts.config.owner.name, timeZone: parts.config.owner.timeZone },
+      }),
     memory,
-    memorySettings: parts.config.memory,
+    memorySettings: { ...parts.config.memory, ownerName: parts.config.owner.name },
     log: parts.log,
   });
 
@@ -51,6 +67,3 @@ export async function startConversationImp(
     cleanupSessions: conversation.cleanupSessions,
   };
 }
-
-// the note lists up to 5 changed items, then how many more
-const memoryNoteCap = 5;

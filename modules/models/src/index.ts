@@ -1,4 +1,7 @@
+export { buildEventRegistry } from './build-event-registry';
 export { buildModelGrant } from './build-model-grant';
+export type { RetriedTurn } from './build-retried-turn-kind';
+export { buildRetriedTurnKind } from './build-retried-turn-kind';
 export { countTextTokens } from './count-text-tokens';
 export { decodeInboxUUID } from './decode-inbox-uuid';
 export { deriveModelSecret } from './derive-model-secret';
@@ -7,6 +10,8 @@ export type { CheckerOptions } from './make-checker';
 export { makeChecker } from './make-checker';
 export { checkerOwner } from './start-checker-runner';
 export { modelsConfigSchema } from './models-config-schema';
+export { readEventsNote } from './read-events-note';
+export { readTurnNoteRange } from './read-turn-note-range';
 export { renderPinnedItem } from './render-pinned-item';
 export { resolveModelCredentials } from './resolve-model-credentials';
 export { resolveRoleProfile } from './resolve-role-profile';
@@ -26,6 +31,9 @@ export type {
   CheckerAnswer,
   CheckerRequest,
   CheckerVerdict,
+  EventKind,
+  EventRegistry,
+  EventSettings,
   ConversationMemory,
   ConversationMemorySettings,
   ModelPrices,
@@ -33,7 +41,10 @@ export type {
   ModelRole,
   ModelSecrets,
   ModelsConfig,
+  NotedEvent,
   ReasoningEffort,
   ResolvedProfile,
   RunCheck,
+  TurnNote,
+  TurnNoteRange,
 } from './types';

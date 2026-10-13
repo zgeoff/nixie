@@ -6,6 +6,7 @@ import { modelsConfigSchema } from '@heynixie/models';
 import { impConfigSchema } from '@heynixie/sandbox-imp';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { z } from 'zod';
+import { ownerConfigSchema } from './owner-config-schema';
 import { serverConfigSchema } from './server-config-schema';
 
 // The deployment configuration, composed from one schema per module for the section it reads.
@@ -13,6 +14,7 @@ import { serverConfigSchema } from './server-config-schema';
 // its section here. No section holds a secret: secrets stay in the encrypted secrets file.
 export const deploymentConfigSchema = z.strictObject({
   server: serverConfigSchema.default(serverConfigSchema.parse({})),
+  owner: ownerConfigSchema.default(ownerConfigSchema.parse({})),
   models: modelsConfigSchema,
   imp: impConfigSchema,
   definitions: definitionsConfigSchema,

@@ -21,7 +21,9 @@ Each image builds for `linux/amd64` only, from the Dockerfile in the package it 
 one flat GHCR namespace: `nixie` for the server and `nixie-<image>` for the conversation, fetch and
 web images. One release-please component at the repository root versions the whole repo, so one
 version covers every image. Conventional Commits drive the bump under Semantic Versioning, the first
-release is `0.1.0`, and before 1.0 a breaking change bumps the minor version.
+release is `0.1.0`, and before 1.0 a breaking change bumps the minor version. The release pull
+request bumps the version in the server's source as well as in the manifest, so the server knows the
+release it runs without reading a tag.
 
 Each image gets the tag `<version>` without the `v`, such as `nixie:0.4.0`, and no image gets
 `latest`, because every consumer pins a digest and a moving tag would invite an unpinned pull.

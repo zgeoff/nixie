@@ -22,7 +22,7 @@ test('it carries the note of a live batch, cut to its cap, on the next conversat
   const ctx = await setupTest();
   const conversation = await startTestConversation(ctx.server, {
     context: ctx.memory.context,
-    readTurnNote: () => readMemoryChangeNote(ctx.memory.context.log, ctx.memory.store, 5),
+    readTurnNote: () => readMemoryChangeNote(ctx.memory.context.log, ctx.memory.store, { cap: 5 }),
   });
 
   await ctx.memory.start();

@@ -4,12 +4,13 @@ import { checkerOwner } from '@heynixie/models';
 import { removeStaleSandboxes } from '@heynixie/sandbox';
 import { conversationTaskID, runRecovery } from '@heynixie/tasks';
 import type { ServerParts } from './types';
+import { writeStartRecord } from './write-start-record';
 
-// Recovery, before any runner starts, under this process's new writer epoch. Its sandbox cleanup
-// keeps the conversation's sandbox and the memory writer's, whose tasks never end, and the
-// checker's, which the deployment owns.
-export function runRecoverySteps(parts: ServerParts): Promise<void> {
-  return runRecovery(parts.context, {
+// Recovery, before any runner starts, under this process's new writer epoch, then the record of
+// this start. Its sandbox cleanup keeps the conversation's and the memory writer's sandboxes, whose
+// tasks never end, and the checker's, which the deployment owns.
+export async function runRecoverySteps(parts: ServerParts): Promise<void> {
+  await runRecovery(parts.context, {
     writeUnknownOutcomes: () => writeUnknownOutcomes(parts.context),
     sandboxes: {
       removeStaleSandboxes: () =>
@@ -20,4 +21,5 @@ export function runRecoverySteps(parts: ServerParts): Promise<void> {
         }),
     },
   });
+  await writeStartRecord(parts.context);
 }
