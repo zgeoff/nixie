@@ -55,10 +55,10 @@ test('it reads the messages and replies before the first inbox record, oldest fi
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
   });
 
-  expect(records.map((record) => record.sequence)).toStrictEqual([1, 2]);
+  expect(records.map((turn) => turn.record.sequence)).toStrictEqual([1, 2]);
 });
 
-test('it keeps a reply that committed after a message still pending', async () => {
+test('it keeps a reply that committed after a message still pending, paired with the message before that one', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.tasks.context.log, [
@@ -90,7 +90,12 @@ test('it keeps a reply that committed after a message still pending', async () =
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
   });
 
-  expect(records.map((record) => record.sequence)).toStrictEqual([1, 3]);
+  expect(
+    records.map((turn) => [turn.record.sequence, turn.answered?.sequence ?? null]),
+  ).toStrictEqual([
+    [1, null],
+    [3, 1],
+  ]);
 });
 
 test('it keeps only the newest turns that fit the token budget', async () => {
@@ -115,7 +120,7 @@ test('it keeps only the newest turns that fit the token budget', async () => {
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
   });
 
-  expect(records.map((record) => record.sequence)).toStrictEqual([2, 3]);
+  expect(records.map((turn) => turn.record.sequence)).toStrictEqual([2, 3]);
 });
 
 test('it reads back past a page of records', async () => {
@@ -139,5 +144,84 @@ test('it reads back past a page of records', async () => {
   });
 
   expect(records).toHaveLength(250);
-  expect(records.at(0)?.sequence).toBe(1);
+  expect(records.at(0)?.record.sequence).toBe(1);
+});
+
+test('it pairs each reply with the newest message before it, and a reply with none before it with nothing', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Good morning.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { timeZone: 'Asia/Tokyo' },
+      erasable: { text: 'Where is the spare key?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'The side gate key is there too.' },
+    },
+  ]);
+
+  const turns = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 5,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+  });
+
+  expect(
+    turns.map((turn) => [turn.record.sequence, turn.answered?.sequence ?? null]),
+  ).toStrictEqual([
+    [1, null],
+    [2, null],
+    [3, 2],
+    [4, 2],
+  ]);
+});
+
+test('it pairs the oldest reply it keeps with the message it answers, though the budget leaves that message out', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { timeZone: 'Asia/Tokyo' },
+      erasable: { text: `Where is the spare key? ${'x'.repeat(200)}` },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+  ]);
+
+  const turns = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 3,
+    tokens: 30,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+  });
+
+  expect(
+    turns.map((turn) => [turn.record.sequence, turn.answered?.sequence ?? null]),
+  ).toStrictEqual([[2, 1]]);
 });

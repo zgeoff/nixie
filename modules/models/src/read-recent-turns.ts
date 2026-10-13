@@ -20,27 +20,51 @@ export interface RecentTurnsQuery {
   readonly times: MessageTimeOptions;
 }
 
+// One record of a rebuilt session's history, with the message a reply answers: the newest of your
+// messages before it that is not pending, or null for a reply with none, and for your messages.
+export interface HistoryTurn {
+  readonly record: LogRecord;
+  readonly answered: LogRecord | null;
+}
+
 // Reads the thread's most recent messages and replies, word for word, oldest first, up to the
-// token budget. A message from the turn's first inbox record on stays out. Older turns stay out, and reach a rebuilt session only through recall.
+// token budget, each reply with the message it answers. A message from the turn's first inbox
+// record on stays out. Older turns stay out, and reach a rebuilt session only through recall.
 export async function readRecentTurns(
   context: Pick<TasksContext, 'log'>,
   query: RecentTurnsQuery,
-): Promise<readonly LogRecord[]> {
-  const kept: LogRecord[] = [];
+): Promise<readonly HistoryTurn[]> {
+  const kept: HistoryTurn[] = [];
   const total = { tokens: 0 };
 
-  for await (const record of readHistoryNewestFirst(context, query.taskID)) {
-    const isPending = record.kind === 'owner_message' && record.sequence >= query.beforeSequence;
-
-    total.tokens += isPending ? 0 : countTextTokens(renderHistoryLine(record, query.times));
+  for await (const turn of readTurnsNewestFirst(context, query)) {
+    total.tokens += countTextTokens(renderHistoryLine(turn, query.times));
     if (total.tokens > query.tokens) {
       break;
     }
-    if (!isPending) {
-      kept.push(record);
-    }
+    kept.push(turn);
   }
   return kept.toReversed();
+}
+
+// The history's records, newest first, each reply with the newest message before it. A reply waits
+// for the next message read, and a pending message answers none, because a reply after it belongs
+// to an earlier turn.
+async function* readTurnsNewestFirst(
+  context: Pick<TasksContext, 'log'>,
+  query: RecentTurnsQuery,
+): AsyncGenerator<HistoryTurn> {
+  const unanswered: LogRecord[] = [];
+
+  for await (const record of readHistoryNewestFirst(context, query.taskID)) {
+    if (record.kind === 'model.reply') {
+      unanswered.push(record);
+    } else if (record.sequence < query.beforeSequence) {
+      yield* unanswered.splice(0).map((reply) => ({ record: reply, answered: record }));
+      yield { record, answered: null };
+    }
+  }
+  yield* unanswered.map((reply) => ({ record: reply, answered: null }));
 }
 
 // the records a rebuilt session's history holds: your messages and nixie's replies

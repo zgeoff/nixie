@@ -1,17 +1,16 @@
 import { isTimeZone } from '@heynixie/contract';
-import type { LogRecord } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { MessageTimeOptions } from './types';
 
-// Formats when your message was sent, in the zone it was sent from, as in Tue 14 Oct, 14:05,
-// Sydney. A message that carries no zone, or one this runtime does not know, uses the default zone.
-// The year shows only when it is not the current year in that zone.
-export function formatMessageTime(record: LogRecord, options: MessageTimeOptions): string {
-  const zone = pickZone(record.payload['timeZone'], options.defaultZone);
-  const sent = readDateParts(record.recordedAt, zone);
-  const year = sent.year === readDateParts(options.now, zone).year ? '' : ` ${sent.year}`;
+// Formats when a message was sent, in the zone given, as in Tue 14 Oct, 14:05, Sydney. A zone that
+// is missing, or one this runtime does not know, gives way to the default zone. The year shows only
+// when it is not the current year in that zone.
+export function formatMessageTime(at: Date, zone: unknown, options: MessageTimeOptions): string {
+  const shown = pickZone(zone, options.defaultZone);
+  const sent = readDateParts(at, shown);
+  const year = sent.year === readDateParts(options.now, shown).year ? '' : ` ${sent.year}`;
 
-  return `${sent.weekday} ${sent.day} ${sent.month}${year}, ${sent.hour}:${sent.minute}, ${formatZoneCity(zone)}`;
+  return `${sent.weekday} ${sent.day} ${sent.month}${year}, ${sent.hour}:${sent.minute}, ${formatZoneCity(shown)}`;
 }
 
 function pickZone(zone: unknown, defaultZone: string): string {

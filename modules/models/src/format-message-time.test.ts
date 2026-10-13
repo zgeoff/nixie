@@ -1,40 +1,27 @@
 import { expect, test } from 'bun:test';
-import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import { formatMessageTime } from './format-message-time';
 
-test('it formats the send time in the zone the message carries', () => {
-  const record = buildMockLogRecord({
-    recordedAt: new Date('2026-10-13T13:05:00Z'),
-    payload: { timeZone: 'Europe/London' },
-  });
-
+test('it formats the send time in the zone given', () => {
   expect(
-    formatMessageTime(record, {
+    formatMessageTime(new Date('2026-10-13T13:05:00Z'), 'Europe/London', {
       defaultZone: 'Australia/Sydney',
       now: new Date('2026-10-13T15:00:00Z'),
     }),
   ).toBe('Tue 13 Oct, 14:05, London');
 });
 
-test('it formats the send time in the default zone when the message carries none', () => {
-  const record = buildMockLogRecord({ recordedAt: new Date('2026-10-13T03:05:00Z') });
-
+test('it formats the send time in the default zone when no zone is given', () => {
   expect(
-    formatMessageTime(record, {
+    formatMessageTime(new Date('2026-10-13T03:05:00Z'), undefined, {
       defaultZone: 'Australia/Sydney',
       now: new Date('2026-10-13T05:00:00Z'),
     }),
   ).toBe('Tue 13 Oct, 14:05, Sydney');
 });
 
-test('it formats the send time in the default zone when the message carries a zone this runtime does not know', () => {
-  const record = buildMockLogRecord({
-    recordedAt: new Date('2026-10-13T03:05:00Z'),
-    payload: { timeZone: 'Atlantis/Poseidonia' },
-  });
-
+test('it formats the send time in the default zone when the zone is one this runtime does not know', () => {
   expect(
-    formatMessageTime(record, {
+    formatMessageTime(new Date('2026-10-13T03:05:00Z'), 'Atlantis/Poseidonia', {
       defaultZone: 'Australia/Sydney',
       now: new Date('2026-10-13T05:00:00Z'),
     }),
@@ -42,10 +29,8 @@ test('it formats the send time in the default zone when the message carries a zo
 });
 
 test('it adds the year to a message sent in a past year', () => {
-  const record = buildMockLogRecord({ recordedAt: new Date('2025-10-14T03:05:00Z') });
-
   expect(
-    formatMessageTime(record, {
+    formatMessageTime(new Date('2025-10-14T03:05:00Z'), undefined, {
       defaultZone: 'Australia/Sydney',
       now: new Date('2026-10-13T05:00:00Z'),
     }),
@@ -53,10 +38,8 @@ test('it adds the year to a message sent in a past year', () => {
 });
 
 test('it leaves out the year for a message sent this year in its zone, though UTC was still in the year before', () => {
-  const record = buildMockLogRecord({ recordedAt: new Date('2025-12-31T13:30:00Z') });
-
   expect(
-    formatMessageTime(record, {
+    formatMessageTime(new Date('2025-12-31T13:30:00Z'), undefined, {
       defaultZone: 'Australia/Sydney',
       now: new Date('2026-10-13T05:00:00Z'),
     }),
@@ -64,13 +47,8 @@ test('it leaves out the year for a message sent this year in its zone, though UT
 });
 
 test('it names a zone whose city has a space with the space', () => {
-  const record = buildMockLogRecord({
-    recordedAt: new Date('2026-10-13T18:05:00Z'),
-    payload: { timeZone: 'America/New_York' },
-  });
-
   expect(
-    formatMessageTime(record, {
+    formatMessageTime(new Date('2026-10-13T18:05:00Z'), 'America/New_York', {
       defaultZone: 'Australia/Sydney',
       now: new Date('2026-10-13T20:00:00Z'),
     }),

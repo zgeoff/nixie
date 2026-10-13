@@ -11,10 +11,13 @@ test('it renders your message with the time you sent it, in the zone the message
   });
 
   expect(
-    renderHistoryLine(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
+    renderHistoryLine(
+      { record, answered: null },
+      {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-13T05:00:00Z'),
+      },
+    ),
   ).toBe('[Mon 12 Oct, 19:31, Tokyo] owner: Where is the spare key?');
 });
 
@@ -26,10 +29,13 @@ test('it renders your message with the time you sent it, in the default zone whe
   });
 
   expect(
-    renderHistoryLine(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
+    renderHistoryLine(
+      { record, answered: null },
+      {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-13T05:00:00Z'),
+      },
+    ),
   ).toBe('[Mon 12 Oct, 21:31, Sydney] owner: Where is the spare key?');
 });
 
@@ -44,26 +50,85 @@ test('it renders your message with the label of the session you sent it from', (
   });
 
   expect(
-    renderHistoryLine(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
+    renderHistoryLine(
+      { record, answered: null },
+      {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-13T05:00:00Z'),
+      },
+    ),
   ).toBe('[Mon 12 Oct, 21:31, Sydney · phone] owner: Where is the spare key?');
 });
 
-test('it renders a reply as nixie with its time in UTC', () => {
+test('it renders a reply as nixie with its time in the zone of the message it answers', () => {
+  const answered = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2025-10-14T03:05:00Z'),
+    payload: { timeZone: 'Australia/Sydney' },
+    erasable: { status: 'readable', fields: { text: 'Where is the spare key?' } },
+  });
   const record = buildMockLogRecord({
     kind: 'model.reply',
-    recordedAt: new Date('2026-10-12T10:32:00Z'),
+    recordedAt: new Date('2025-10-14T03:06:00Z'),
     erasable: { status: 'readable', fields: { text: 'Under the blue flowerpot.' } },
   });
 
   expect(
-    renderHistoryLine(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
-  ).toBe('[2026-10-12 10:32 UTC] nixie: Under the blue flowerpot.');
+    renderHistoryLine(
+      { record, answered },
+      { defaultZone: 'Asia/Tokyo', now: new Date('2025-10-14T05:00:00Z') },
+    ),
+  ).toBe('[Tue 14 Oct, 14:06, Sydney] nixie: Under the blue flowerpot.');
+});
+
+test('it renders a reply as nixie with its time in the default zone when it answers no message', () => {
+  const record = buildMockLogRecord({
+    kind: 'model.reply',
+    recordedAt: new Date('2025-10-14T03:06:00Z'),
+    erasable: { status: 'readable', fields: { text: 'Under the blue flowerpot.' } },
+  });
+
+  expect(
+    renderHistoryLine(
+      { record, answered: null },
+      { defaultZone: 'Australia/Sydney', now: new Date('2025-10-14T05:00:00Z') },
+    ),
+  ).toBe('[Tue 14 Oct, 14:06, Sydney] nixie: Under the blue flowerpot.');
+});
+
+test('it renders a reply in the default zone when the message it answers carries no zone', () => {
+  const answered = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2025-10-14T03:05:00Z'),
+    erasable: { status: 'readable', fields: { text: 'Where is the spare key?' } },
+  });
+  const record = buildMockLogRecord({
+    kind: 'model.reply',
+    recordedAt: new Date('2025-10-14T03:06:00Z'),
+    erasable: { status: 'readable', fields: { text: 'Under the blue flowerpot.' } },
+  });
+
+  expect(
+    renderHistoryLine(
+      { record, answered },
+      { defaultZone: 'Australia/Sydney', now: new Date('2025-10-14T05:00:00Z') },
+    ),
+  ).toBe('[Tue 14 Oct, 14:06, Sydney] nixie: Under the blue flowerpot.');
+});
+
+test('it renders a reply from a past year with its year', () => {
+  const record = buildMockLogRecord({
+    kind: 'model.reply',
+    recordedAt: new Date('2025-10-14T03:06:00Z'),
+    erasable: { status: 'readable', fields: { text: 'Under the blue flowerpot.' } },
+  });
+
+  expect(
+    renderHistoryLine(
+      { record, answered: null },
+      { defaultZone: 'Australia/Sydney', now: new Date('2026-10-14T05:00:00Z') },
+    ),
+  ).toBe('[Tue 14 Oct 2025, 14:06, Sydney] nixie: Under the blue flowerpot.');
 });
 
 test('it renders a note in place of a reply whose text was forgotten', () => {
@@ -74,11 +139,14 @@ test('it renders a note in place of a reply whose text was forgotten', () => {
   });
 
   expect(
-    renderHistoryLine(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
-  ).toBe('[2026-10-12 10:32 UTC] nixie: [a reply, since forgotten]');
+    renderHistoryLine(
+      { record, answered: null },
+      {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-13T05:00:00Z'),
+      },
+    ),
+  ).toBe('[Mon 12 Oct, 21:32, Sydney] nixie: [a reply, since forgotten]');
 });
 
 test('it renders a span you pasted in your message inside a pasted block', () => {
@@ -97,10 +165,13 @@ test('it renders a span you pasted in your message inside a pasted block', () =>
       },
     },
   });
-  const line = renderHistoryLine(record, {
-    defaultZone: 'Australia/Sydney',
-    now: new Date('2026-10-13T05:00:00Z'),
-  });
+  const line = renderHistoryLine(
+    { record, answered: null },
+    {
+      defaultZone: 'Australia/Sydney',
+      now: new Date('2026-10-13T05:00:00Z'),
+    },
+  );
   const blockID = /<pasted id="(?<blockID>\w+)">/u.exec(line)?.groups?.['blockID'];
 
   expect(line).toBe(
