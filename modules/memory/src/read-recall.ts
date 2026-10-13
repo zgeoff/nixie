@@ -41,7 +41,7 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
     if (NIXIE_TEST_BUILD) {
       await waitAtFaultPoint('memory.recall.checked', { kind: 'memory', id: null });
     }
-    await writeRecallRecord(parts, request, items);
+    await writeRecallRecord(parts, { request, items, scores: candidates.scores });
     return { items, next: candidates.next };
   });
 }
@@ -58,6 +58,9 @@ interface CandidateQuery {
 interface Candidates {
   readonly itemIDs: readonly string[];
   readonly next: string | null;
+
+  // each candidate's match score, for a query only
+  readonly scores?: ReadonlyMap<string, number>;
 }
 
 async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise<Candidates> {
@@ -101,7 +104,7 @@ async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): P
     query.request.excludePinned === true ? readPinnedItemIDs(parts) : [],
     readCurrentItemIDs(parts, query.request.excludedVersions ?? []),
   ]);
-  const itemIDs = await parts.index.findItemIDs(query.request.query, {
+  const matches = await parts.index.findMatches(query.request.query, {
     limit: query.limit,
     excludedIDs: [...pinned, ...held],
     ...(query.request.excludedWords === undefined
@@ -110,7 +113,11 @@ async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): P
     ...(query.request.minScore === undefined ? {} : { minScore: query.request.minScore }),
   });
 
-  return { itemIDs, next: null };
+  return {
+    itemIDs: matches.map((match) => match.itemID),
+    next: null,
+    scores: new Map(matches.map((match) => [match.itemID, match.score])),
+  };
 }
 
 async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> {
@@ -173,14 +180,18 @@ function parseCursor(after: string | undefined): number {
   return Number(after);
 }
 
+interface RecallRecord {
+  readonly request: RecallRequest;
+  readonly items: readonly RecalledItem[];
+  readonly scores: ReadonlyMap<string, number> | undefined;
+}
+
 // The record holds references and no text, so a later forget leaves no readable copy of what the
-// recall delivered.
-async function writeRecallRecord(
-  parts: StoreParts,
-  request: RecallRequest,
-  items: readonly RecalledItem[],
-): Promise<void> {
+// recall delivered. A query's record gives each item its match score, so retrieval can be tuned
+// from what each turn was given.
+async function writeRecallRecord(parts: StoreParts, recall: RecallRecord): Promise<void> {
   const log = parts.context.log;
+  const request = recall.request;
 
   await withWriteTransaction(log.writer, (tx) =>
     writeRecordsInTransaction(tx, log, [
@@ -189,12 +200,15 @@ async function writeRecallRecord(
         definitions: parts.context.definitions(),
         ...(request.thread === undefined ? {} : { thread: request.thread }),
         payload: {
-          items: items.flatMap((item) =>
-            (item.history ?? [item]).map((version) => ({
-              itemID: item.itemID,
-              version: version.version,
-            })),
-          ),
+          items: recall.items.flatMap((item) => {
+            const score = recall.scores?.get(item.itemID);
+
+            return (item.history ?? [item]).map((version) =>
+              score === undefined
+                ? { itemID: item.itemID, version: version.version }
+                : { itemID: item.itemID, version: version.version, score },
+            );
+          }),
         },
       },
     ]),

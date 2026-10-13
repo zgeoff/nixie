@@ -28,9 +28,10 @@ test('it shows the conversation the API holds', async () => {
 
 test('it folds the records of a step into one line between the messages', async () => {
   await setupTest();
-  await store.records.create({ kind: 'owner_message', message: { text: 'Is it raining?' } });
+  await store.records.create({ kind: 'owner_message', message: { text: 'Rain?' } });
   await store.records.create({
     kind: 'task.step_started',
+    recordedAt: new Date(0),
     task: { stepKey: 'step-1', taskID: 'conversation' },
   });
   await store.records.create({
@@ -42,7 +43,7 @@ test('it folds the records of a step into one line between the messages', async 
     toolCall: { callID: 'call-1', content: { result: { text: 'dry' } }, outcome: 'result' },
   });
   await store.records.create({ kind: 'model.reply', message: { text: 'Not yet.' } });
-  await store.records.create({ kind: 'task.step_committed', task: { taskID: 'conversation' } });
+  await store.records.create({ kind: 'task.step_committed', recordedAt: new Date(4200) });
 
   const rendered = render(<Conversation thread="conversation" />);
   const list = await rendered.findByRole('list', { name: 'Conversation' });
@@ -51,7 +52,7 @@ test('it folds the records of a step into one line between the messages', async 
     [...list.children].map(
       (item) => item.querySelector('summary')?.textContent ?? item.textContent,
     ),
-  ).toStrictEqual(['You Is it raining?', 'web fetch: weather.test', 'nixie Not yet.']);
+  ).toStrictEqual(['You Rain?', 'conversation · web fetch: weather.test · 4.2s', 'nixie Not yet.']);
 });
 
 test('it sends a message with a span for each way its text arrived', async () => {

@@ -43,6 +43,23 @@ const toolCallSchema = z.object({
   tool: z.string().optional(),
 });
 
+const versionRefSchema = z.object({
+  itemID: z.string().min(1).max(200),
+  version: z.int().nonnegative(),
+});
+
+// A recall's delivered versions, each with its match score when a query ranked it. The record
+// holds references and scores, never text; memory.readVersions reads the text.
+const recallItemSchema = versionRefSchema.extend({ score: z.number().optional() });
+
+const recallSchema = z.object({ items: z.array(recallItemSchema) });
+
+// A version's text while its key exists. A forgotten item's version reads as shredded.
+const versionTextSchema = versionRefSchema.extend({
+  status: z.enum(['readable', 'shredded', 'unreadable', 'missing']),
+  text: z.string().optional(),
+});
+
 const recordSchema = z.object({
   // The kind decides how a client renders the record, and a client shows an unfamiliar kind by
   // its name.
@@ -56,6 +73,9 @@ const recordSchema = z.object({
       text: z.string(),
     })
     .optional(),
+
+  // Set on a memory.recalled record: the memory versions the recall delivered.
+  recall: recallSchema.optional(),
   recordedAt: z.date(),
   sequence: sequenceSchema,
   thread: threadSchema,
@@ -145,6 +165,12 @@ export const contract = {
       .output(z.object({ duplicate: z.boolean(), sequence: sequenceSchema })),
   },
   memory: {
+    // Reads the text of named memory versions, such as those a recall delivered, in the order
+    // named. A forgotten item's version reads as shredded and carries no text.
+    readVersions: signedIn
+      .input(z.object({ versions: z.array(versionRefSchema).min(1).max(100) }))
+      .output(z.object({ versions: z.array(versionTextSchema) })),
+
     // The memory writer's progress: its cursor over the event log, how many of your messages wait
     // for it, whether its catch-up over the log from before memory is still running, and its last
     // error with when it tries again. The writer never stops on an error; it backs off.

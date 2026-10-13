@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test';
+import { within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import invariant from 'tiny-invariant';
+import { store } from '../mocks/store';
+import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
 import { buildMockStepActivity } from '../test-utils/build-mock-step-activity';
+import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { StepGroup } from './step-group';
 
@@ -34,16 +37,16 @@ test('it shows a step with three web fetches as one collapsed line naming the to
     />,
   );
   const summary = rendered.getByText(
-    'web fetch: theverge.com, arstechnica.com, news.ycombinator.com',
+    'conversation · web fetch: theverge.com, arstechnica.com, news.ycombinator.com',
   );
 
   expect(rendered.getAllByRole('listitem')).toHaveLength(1);
   expect(summary).toBeVisible();
-  expect(rendered.getByRole('group')).not.toHaveAttribute('open');
-  expect(rendered.getByText('Task conversation')).not.toBeVisible();
+  expect(summary.parentElement).not.toHaveAttribute('open');
+  expect(rendered.getByText('Step')).not.toBeVisible();
 });
 
-test('it shows the task and each call with its input and result once opened', async () => {
+test('it shows each call with its input and result once its section opens', async () => {
   const user = userEvent.setup();
   const rendered = render(
     <StepGroup
@@ -57,24 +60,50 @@ test('it shows the task and each call with its input and result once opened', as
             tool: 'web_fetch',
           },
         ],
-        stepKey: 'step-3',
         taskID: 'conversation',
       })}
     />,
   );
 
-  await user.click(rendered.getByText('web fetch: example.com'));
+  await user.click(rendered.getByText('conversation · web fetch: example.com'));
+  await user.click(rendered.getByText('Tools 1'));
 
   const call = rendered.getByRole('region', { name: 'web_fetch' });
 
-  expect(rendered.getByText('Task conversation, step step-3')).toBeVisible();
   expect(call).toBeVisible();
   expect(call).toHaveTextContent('"url": "https://example.com/"');
   expect(call).toHaveTextContent('Result (result)');
   expect(call).toHaveTextContent('"text": "Example Domain"');
 });
 
-test('it shows the error of a failed step once opened', async () => {
+test('it names the task, the step and its events once the step section opens', async () => {
+  const user = userEvent.setup();
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        records: [
+          buildMockLogRecord({ kind: 'task.step_started' }),
+          buildMockLogRecord({ kind: 'memory.recalled' }),
+          buildMockLogRecord({ kind: 'model.turn_ended' }),
+          buildMockLogRecord({ kind: 'task.step_committed' }),
+        ],
+        stepKey: 'conversation:146',
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText('conversation · no tools'));
+  await user.click(rendered.getByText('Step'));
+
+  expect(
+    rendered.getByText(
+      'task conversation · step conversation:146 · events: started, memory.recalled, turn_ended, committed',
+    ),
+  ).toBeVisible();
+});
+
+test('it shows the error of a failed step once its section opens', async () => {
   const user = userEvent.setup();
   const rendered = render(
     <StepGroup
@@ -86,73 +115,16 @@ test('it shows the error of a failed step once opened', async () => {
       })}
     />,
   );
-  const error = rendered.getByText('Error: the conversation guest exited before it ended its turn');
+  const error = rendered.getByText('the conversation guest exited before it ended its turn');
 
-  expect(error).not.toBeVisible();
-
-  await user.click(rendered.getByText('conversation: no tools (failed)'));
+  await user.click(
+    rendered.getByText(
+      'conversation · failed: the conversation guest exited before it ended its turn · no tools',
+    ),
+  );
+  await user.click(rendered.getByText('Error'));
 
   expect(error).toBeVisible();
-});
-
-test('it clips a long result and shows the rest on demand', async () => {
-  const user = userEvent.setup();
-  const rendered = render(
-    <StepGroup
-      step={buildMockStepActivity({
-        calls: [
-          {
-            callID: 'a',
-            content: { result: { text: `${'x'.repeat(2000)}the end` } },
-            input: { url: 'https://example.com/' },
-            outcome: 'result',
-            tool: 'web_fetch',
-          },
-        ],
-      })}
-    />,
-  );
-
-  await user.click(rendered.getByText('web fetch: example.com'));
-
-  const call = rendered.getByRole('region', { name: 'web_fetch' });
-  const clipped = call.textContent;
-
-  await user.click(rendered.getByRole('button', { name: /^Show all 2,0\d\d characters$/u }));
-
-  expect(clipped).not.toInclude('the end');
-  expect(call).toHaveTextContent('the end');
-});
-
-test('it closes an opened result again from a control above the text', async () => {
-  const user = userEvent.setup();
-  const rendered = render(
-    <StepGroup
-      step={buildMockStepActivity({
-        calls: [
-          {
-            callID: 'a',
-            content: { result: { text: `${'x'.repeat(2000)}the end` } },
-            input: { url: 'https://example.com/' },
-            outcome: 'result',
-            tool: 'web_fetch',
-          },
-        ],
-      })}
-    />,
-  );
-
-  await user.click(rendered.getByText('web fetch: example.com'));
-  await user.click(rendered.getByRole('button', { name: /^Show all 2,0\d\d characters$/u }));
-
-  const showLess = rendered.getByRole('button', { name: 'Show less' });
-  const text = rendered.getByText(/the end/u);
-
-  await user.click(showLess);
-
-  expect(showLess.compareDocumentPosition(text)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  expect(rendered.getByRole('region', { name: 'web_fetch' })).not.toHaveTextContent('the end');
-  expect(rendered.getByRole('group')).toHaveAttribute('open');
 });
 
 test('it keeps the toggles of a long input and a long result each with its own text', async () => {
@@ -173,7 +145,8 @@ test('it keeps the toggles of a long input and a long result each with its own t
     />,
   );
 
-  await user.click(rendered.getByText(/^web fetch: example\.com/u));
+  await user.click(rendered.getByText(/^task · web fetch: example\.com/u));
+  await user.click(rendered.getByText('Tools 1'));
 
   const inputBox = rendered.getByRole('button', {
     name: /^Show all 1,0\d\d characters$/u,
@@ -182,9 +155,102 @@ test('it keeps the toggles of a long input and a long result each with its own t
     name: /^Show all 2,0\d\d characters$/u,
   }).parentElement;
 
-  invariant(inputBox && resultBox);
   expect(inputBox).toHaveTextContent('input-start');
   expect(inputBox).not.toHaveTextContent('result start');
   expect(resultBox).toHaveTextContent('result start');
   expect(resultBox).not.toHaveTextContent('input-start');
+});
+
+test('it shows a turn with 5 memories as one line, and each memory with its score and one line of its text', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+  await Promise.all([
+    store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
+    store.memoryVersions.create({ itemID: 'item-2', text: 'Stub memory two', version: 3 }),
+    store.memoryVersions.create({ itemID: 'item-3', text: 'Stub three\nline two', version: 1 }),
+    store.memoryVersions.create({ itemID: 'item-4', text: 'Stub memory four', version: 2 }),
+    store.memoryVersions.create({ itemID: 'item-5', status: 'shredded', version: 1 }),
+  ]);
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        durationMs: 12_300,
+        memories: [
+          { itemID: 'item-1', score: 0.61, version: 1 },
+          { itemID: 'item-2', score: 0.5, version: 3 },
+          { itemID: 'item-3', score: 0.42, version: 1 },
+          { itemID: 'item-4', score: 0.3, version: 2 },
+          { itemID: 'item-5', score: 0.25, version: 1 },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText('conversation · 5 memories · no tools · 12.3s'));
+  await user.click(rendered.getByText('Memories 5'));
+
+  const memories = rendered.getByRole('group', { name: 'Memories 5' });
+
+  await within(memories).findByText('item-1 0.61 Stub memory one');
+
+  expect(
+    within(memories)
+      .getAllByRole('group')
+      .map((row) => row.querySelector('summary')?.textContent),
+  ).toStrictEqual([
+    'item-1  0.61  Stub memory one',
+    'item-2  0.50  Stub memory two',
+    'item-3  0.42  Stub three…',
+    'item-4  0.30  Stub memory four',
+    'item-5  0.25  (forgotten)',
+  ]);
+});
+
+test('it opens one section of a step and leaves the others closed', async () => {
+  const user = userEvent.setup();
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [{ callID: 'a', input: { url: 'https://example.com/' }, tool: 'web_fetch' }],
+        error: 'the model profile is unreachable',
+        memories: [],
+        status: 'failed',
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · failed/u));
+  await user.click(rendered.getByText('Tools 1'));
+
+  expect(rendered.getByRole('group', { name: 'Tools 1' })).toHaveAttribute('open');
+  expect(rendered.getByRole('group', { name: 'Step' })).not.toHaveAttribute('open');
+  expect(rendered.getByRole('group', { name: 'Memories 0' })).not.toHaveAttribute('open');
+  expect(rendered.getByRole('group', { name: 'Error' })).not.toHaveAttribute('open');
+});
+
+test('it closes one section of a step and leaves another open', async () => {
+  const user = userEvent.setup();
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [{ callID: 'a', input: { url: 'https://example.com/' }, tool: 'web_fetch' }],
+        memories: [],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · 0 memories/u));
+  await user.click(rendered.getByText('Step'));
+  await user.click(rendered.getByText('Memories 0'));
+
+  await user.click(rendered.getByText('Step'));
+
+  expect(rendered.getByRole('group', { name: 'Step' })).not.toHaveAttribute('open');
+  expect(rendered.getByRole('group', { name: 'Memories 0' })).toHaveAttribute('open');
+  expect(rendered.getByRole('group', { name: 'Tools 1' })).not.toHaveAttribute('open');
 });

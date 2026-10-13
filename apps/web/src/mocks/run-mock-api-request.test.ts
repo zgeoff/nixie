@@ -218,3 +218,60 @@ test('it refuses the memory writer status to a caller with no session', () => {
 
   expect(client.memory.writerStatus()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
+
+test('it carries the versions a recall delivered on its record', async () => {
+  const ctx = setupTest();
+  const session = await store.sessions.create({});
+  const client = ctx.buildClient({
+    authorization: `Bearer ${session.token}`,
+    'x-nixie-client': 'web',
+  });
+
+  await store.records.create({
+    kind: 'memory.recalled',
+    recall: { items: [{ itemID: 'item-a', score: 0.61, version: 2 }] },
+  });
+
+  const page = await client.conversation.read({ thread: 'conversation' });
+
+  expect(page.records).toMatchObject([
+    { kind: 'memory.recalled', recall: { items: [{ itemID: 'item-a', score: 0.61, version: 2 }] } },
+  ]);
+});
+
+test('it reads the text of each named memory version, and one it lacks as missing', async () => {
+  const ctx = setupTest();
+  const session = await store.sessions.create({});
+  const client = ctx.buildClient({
+    authorization: `Bearer ${session.token}`,
+    'x-nixie-client': 'web',
+  });
+
+  await store.memoryVersions.create({ itemID: 'item-a', text: 'Stub memory', version: 2 });
+  await store.memoryVersions.create({ itemID: 'item-b', status: 'shredded', version: 1 });
+
+  const read = await client.memory.readVersions({
+    versions: [
+      { itemID: 'item-a', version: 2 },
+      { itemID: 'item-b', version: 1 },
+      { itemID: 'item-c', version: 1 },
+    ],
+  });
+
+  expect(read).toStrictEqual({
+    versions: [
+      { itemID: 'item-a', status: 'readable', text: 'Stub memory', version: 2 },
+      { itemID: 'item-b', status: 'shredded', version: 1 },
+      { itemID: 'item-c', status: 'missing', version: 1 },
+    ],
+  });
+});
+
+test('it refuses memory versions to a caller with no session', () => {
+  const ctx = setupTest();
+  const client = ctx.buildClient({ 'x-nixie-client': 'web' });
+
+  expect(
+    client.memory.readVersions({ versions: [{ itemID: 'item-a', version: 1 }] }),
+  ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});

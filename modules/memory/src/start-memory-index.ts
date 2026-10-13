@@ -8,6 +8,12 @@ export interface IndexEntry {
   readonly text: string;
 }
 
+// A match of the index: the item and its BM25 score, negated so higher is better.
+interface IndexMatch {
+  readonly itemID: string;
+  readonly score: number;
+}
+
 interface MatchOptions {
   readonly limit: number;
 
@@ -35,6 +41,9 @@ export interface MemoryIndex {
   // the IDs of the items that match any word of query other than a function word or an excluded
   // word, best match first
   readonly findItemIDs: (query: string, options: MatchOptions) => Promise<readonly string[]>;
+
+  // the same matches with their scores, best match first
+  readonly findMatches: (query: string, options: MatchOptions) => Promise<readonly IndexMatch[]>;
   readonly stop: () => Promise<void>;
 }
 
@@ -78,7 +87,12 @@ export async function startMemoryIndex(): Promise<MemoryIndex> {
     remove: async (itemID) => {
       await sql`delete from memory_index where item_id = ${itemID}`.execute(db);
     },
-    findItemIDs: (query, options) => findMatches(db, query, options),
+    findItemIDs: async (query, options) => {
+      const matches = await findMatches(db, query, options);
+
+      return matches.map((match) => match.itemID);
+    },
+    findMatches: (query, options) => findMatches(db, query, options),
     stop: () => db.destroy(),
   };
 }
@@ -95,7 +109,7 @@ async function findMatches(
   db: Kysely<unknown>,
   query: string,
   options: MatchOptions,
-): Promise<readonly string[]> {
+): Promise<readonly IndexMatch[]> {
   const words = await readQueryWords(db, query, options.excludedWords ?? []);
 
   if (words.length === 0) {
@@ -105,11 +119,11 @@ async function findMatches(
   const excludedIDs = options.excludedIDs ?? [];
   const excluded =
     excludedIDs.length === 0 ? sql`` : sql`and item_id not in (${sql.join(excludedIDs)})`;
-  const result = await sql<{ item_id: string }>`select item_id from memory_index
+  const result = await sql<{ item_id: string; rank: number }>`select item_id, rank from memory_index
     where memory_index match ${buildMatchExpression(words)} and rank <= ${-minScore} ${excluded}
     order by rank limit ${options.limit}`.execute(db);
 
-  return result.rows.map((row) => row.item_id);
+  return result.rows.map((row) => ({ itemID: row.item_id, score: -row.rank }));
 }
 
 // The content words of a query, less each one whose stems all belong to an excluded word. A message

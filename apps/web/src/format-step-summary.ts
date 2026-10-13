@@ -1,9 +1,39 @@
 import type { StepActivity } from './build-activity';
 
-// Formats the one line a collapsed step shows: each tool the step called with the targets it
-// called it on, such as "web fetch: theverge.com, arstechnica.com". A step that called no tool
-// names its task, and a step that has not ended says how it stands.
+// Formats a collapsed step's one line: the task, how it stands unless done, how many memories its
+// recalls delivered, each tool with its targets, such as "web fetch: theverge.com", and how long
+// it ran. A part shows only once its data exists.
 export function formatStepSummary(step: StepActivity): string {
+  const parts = [
+    step.taskID ?? 'task',
+    ...formatStatus(step),
+    ...(step.memories === undefined ? [] : [formatMemoryCount(step.memories.length)]),
+    formatTools(step),
+    ...(step.durationMs === undefined ? [] : [formatDuration(step.durationMs)]),
+  ];
+
+  return parts.join(' · ');
+}
+
+const errorLimit = 80;
+
+function formatStatus(step: StepActivity): readonly string[] {
+  if (step.status === 'done') {
+    return [];
+  }
+  if (step.status !== 'failed' || step.error === undefined) {
+    return [step.status];
+  }
+  const error = step.error.length > errorLimit ? `${step.error.slice(0, errorLimit)}…` : step.error;
+
+  return [`failed: ${error}`];
+}
+
+function formatMemoryCount(count: number): string {
+  return count === 1 ? '1 memory' : `${count} memories`;
+}
+
+function formatTools(step: StepActivity): string {
   const byTool = new Map<string, string[]>();
 
   for (const call of step.calls) {
@@ -17,9 +47,17 @@ export function formatStepSummary(step: StepActivity): string {
   const tools = [...byTool].map(([tool, targets]) =>
     targets.length === 0 ? formatToolName(tool) : `${formatToolName(tool)}: ${targets.join(', ')}`,
   );
-  const line = tools.length === 0 ? `${step.taskID ?? 'task'}: no tools` : tools.join('; ');
 
-  return step.status === 'done' ? line : `${line} (${step.status})`;
+  return tools.length === 0 ? 'no tools' : tools.join('; ');
+}
+
+// 12.3s under a minute, and 1m 5s from a minute on
+function formatDuration(durationMs: number): string {
+  const seconds = Math.max(0, durationMs) / 1000;
+
+  return seconds < 60
+    ? `${seconds.toFixed(1)}s`
+    : `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
 }
 
 // web_fetch reads as "web fetch"
