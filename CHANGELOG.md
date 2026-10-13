@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.14.0](https://github.com/zgeoff/nixie/compare/v0.13.0...v0.14.0) (2026-10-13)
+
+
+### Features
+
+* **geo-779:** show how full the context is and mark each compaction ([#176](https://github.com/zgeoff/nixie/issues/176)) ([29aa1cc](https://github.com/zgeoff/nixie/commit/29aa1cc584c23c3d9ba12f09ee0eae452dde41f1))
+* **geo-790:** edit, retire, restore and pin a memory item from the host ([#179](https://github.com/zgeoff/nixie/issues/179)) ([a816a3b](https://github.com/zgeoff/nixie/commit/a816a3bea330d68fc14dbd19ac4c6f159a23af8a))
+* **geo-799:** show what each turn was given ([#172](https://github.com/zgeoff/nixie/issues/172)) ([654572a](https://github.com/zgeoff/nixie/commit/654572a748dd98960d77fd01ad0eecdeb7058d2f))
+* **geo-817:** read the owner's name from the secrets file by reference ([#181](https://github.com/zgeoff/nixie/issues/181)) ([593a4fc](https://github.com/zgeoff/nixie/commit/593a4fcbe324146bc8f25a1682e8ca581bae95ac))
+
+
+### Bug Fixes
+
+* **geo-810:** keep the recalls after a compaction as delivered ([#178](https://github.com/zgeoff/nixie/issues/178)) ([6273869](https://github.com/zgeoff/nixie/commit/62738693bb5256ea120850538433f345d5b0fe5a))
+* **geo-815:** report the forget scan as incomplete when it cannot read a file ([#175](https://github.com/zgeoff/nixie/issues/175)) ([8c53c42](https://github.com/zgeoff/nixie/commit/8c53c4218d81a9138334ec0bd05526b581a900da))
+* **geo-818:** hide cached memory text until a fresh read succeeds ([#180](https://github.com/zgeoff/nixie/issues/180)) ([1205c08](https://github.com/zgeoff/nixie/commit/1205c0899f70d0bf86b18d9ff881e78a311515f6))
+
 ## [0.13.0](https://github.com/zgeoff/nixie/compare/v0.12.0...v0.13.0) (2026-10-13)
 
 
