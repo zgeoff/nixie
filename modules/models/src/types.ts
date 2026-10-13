@@ -77,7 +77,7 @@ export interface MemoryItem extends MemoryRef {
   // when the version was recorded, in milliseconds since the epoch
   readonly recordedAt: number;
 
-  // the quote the gate checked the version against, or null when it had none
+  // the quote the text was saved from, which a retirement carries over, or null for none
   readonly evidenceQuote: string | null;
 }
 

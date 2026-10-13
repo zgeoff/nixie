@@ -136,7 +136,7 @@ export interface RecalledVersion {
   readonly recordedAt: number;
   readonly text: string;
 
-  // the quote the gate checked the version against, or null when it had none
+  // the quote the text was saved from, which a retirement carries over, or null for none
   readonly evidenceQuote: string | null;
 
   // the model ID of the call that wrote the version, or null for your own action
