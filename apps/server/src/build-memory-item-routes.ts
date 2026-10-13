@@ -13,6 +13,7 @@ type ReadMemory = () => HostMemory | null;
 export function buildMemoryItemRoutes(readMemory: ReadMemory) {
   return {
     '/memory/items/:itemID': {
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       GET: async (request: Bun.BunRequest<'/memory/items/:itemID'>) => {
         const history = await requireHostMemory(readMemory).readHistory(request.params.itemID);
 

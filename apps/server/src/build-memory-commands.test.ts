@@ -71,7 +71,7 @@ test('it approves a proposal with your text, then edits, retires, restores and p
     ['memory-show', itemID],
   ]);
 
-  expect(runs.map((run) => JSON.parse(run.stdout))).toMatchObject([
+  expect(runs.map((run): unknown => JSON.parse(run.stdout))).toMatchObject([
     { status: 'applied', itemID, version: 1 },
     { itemID, version: 2 },
     { itemID, version: 3 },

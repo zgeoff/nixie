@@ -82,11 +82,9 @@ function buildMemoryRoute(request: MemoryRequest): {
     case 'restore': {
       return { path: `/memory/items/${request.command}`, body: request.target };
     }
-    case 'pin': {
-      return {
-        path: '/memory/items/pin',
-        body: { itemID: request.itemID, isPinned: request.isPinned },
-      };
-    }
   }
+  return {
+    path: '/memory/items/pin',
+    body: { itemID: request.itemID, isPinned: request.isPinned },
+  };
 }
