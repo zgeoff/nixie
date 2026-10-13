@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../use-nixie-client';
+import { ThemePicker } from './theme-picker';
 
 export interface EnrolFormProps {
   readonly onEnrolled: () => void;
@@ -22,6 +23,7 @@ export function EnrolForm(props: EnrolFormProps): ReactNode {
 
   return (
     <main className={page}>
+      <ThemePicker />
       <h1 className={heading}>Enrol this browser</h1>
       <form
         className={fields}
@@ -62,7 +64,12 @@ export function EnrolForm(props: EnrolFormProps): ReactNode {
 }
 
 // A narrow column with one field per line, so the form reads on a phone.
-const page = css({ marginInline: 'auto', maxWidth: 'md', padding: '4' });
+const page = css({
+  marginInline: 'auto',
+  maxWidth: 'md',
+  padding: '4',
+  '& > label': { marginBottom: '4' },
+});
 
 const heading = css({ fontSize: 'xl', fontWeight: 'bold', marginBottom: '4' });
 
@@ -70,8 +77,15 @@ const fields = css({
   display: 'flex',
   flexDirection: 'column',
   gap: '3',
-  '& input': { borderWidth: '1px', display: 'block', padding: '2', width: 'full' },
-  '& button': { borderWidth: '1px', paddingBlock: '2' },
+  '& input': {
+    backgroundColor: 'surface',
+    borderColor: 'borderStrong',
+    borderWidth: '1px',
+    display: 'block',
+    padding: '2',
+    width: 'full',
+  },
+  '& button': { borderColor: 'borderStrong', borderWidth: '1px', paddingBlock: '2' },
 });
 
 interface Attempt {

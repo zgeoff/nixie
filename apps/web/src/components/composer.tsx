@@ -39,21 +39,34 @@ export function Composer(props: ComposerProps): ReactNode {
           pendingInput.current = undefined;
           setMessage((current) => buildSpanState(current, pending, text));
         }}
-        className={css({ borderWidth: '1px', flex: '1', padding: '2', resize: 'vertical' })}
+        className={messageBox}
         onKeyDown={handleKeyDown}
         ref={textBox}
         rows={3}
         value={message.text}
       />
-      <button
-        className={css({ borderWidth: '1px', paddingBlock: '2', paddingInline: '4' })}
-        type="submit"
-      >
+      <button className={sendButton} type="submit">
         Send
       </button>
     </form>
   );
 }
+
+const messageBox = css({
+  backgroundColor: 'surface',
+  borderColor: 'borderStrong',
+  borderWidth: '1px',
+  flex: '1',
+  padding: '2',
+  resize: 'vertical',
+});
+
+const sendButton = css({
+  borderColor: 'borderStrong',
+  borderWidth: '1px',
+  paddingBlock: '2',
+  paddingInline: '4',
+});
 
 // Enter sends the message, and Shift+Enter starts a new line.
 function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {

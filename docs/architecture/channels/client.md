@@ -113,9 +113,17 @@ position. The user's own message always brings the view to the end. Below the li
 shows while nixie works: from a sent message until a reply follows it or a step fails or stops, and
 while any step runs. The spinner keeps its slot when it goes, so the list never jumps. A message
 that failed to send stops the spinner, because it waits on the user and not on nixie. Styles come
-from Panda CSS with its own presets and no theme of nixie's, and they set only what reading needs: a
-readable column width, spacing between records, and wrapping for a long word or link. The build runs
-the React Compiler, so no component memoizes by hand.
+from Panda CSS with its own presets, and they set only what reading needs: a readable column width,
+spacing between records, wrapping for a long word or link, and the colours of a light and a dark
+theme.
+
+The theme follows the system's light or dark setting until the user picks light or dark in the theme
+picker, and the device keeps that choice in local storage. The colours are tokens with a light and a
+dark value, and every text colour meets WCAG AA contrast on the backgrounds of its theme. The server
+cannot read local storage, so a script in the document's head sets the theme on the page before the
+first paint, and a dark page never flashes light. While the choice is the system's, the page follows
+a change to the system setting without a reload. The build runs the React Compiler, so no component
+memoizes by hand.
 
 ## The outbox
 

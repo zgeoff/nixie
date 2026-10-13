@@ -12,7 +12,7 @@ export interface StepGroupProps {
 // with its input and its result.
 export function StepGroup(props: StepGroupProps): ReactNode {
   return (
-    <li className={css({ color: 'gray.600', fontSize: 'sm' })}>
+    <li className={css({ color: 'textMuted', fontSize: 'sm' })}>
       <details>
         <summary className={css({ cursor: 'pointer' })}>{formatStepSummary(props.step)}</summary>
         <div
@@ -70,7 +70,7 @@ function ClippedText(props: ClippedTextProps): ReactNode {
       {isLong ? (
         <button
           className={css({
-            backgroundColor: 'white',
+            backgroundColor: 'canvas',
             display: 'block',
             position: 'sticky',
             textDecoration: 'underline',
