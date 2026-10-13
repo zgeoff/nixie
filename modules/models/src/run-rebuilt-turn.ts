@@ -12,14 +12,15 @@ export interface LostSession {
   readonly lost: SessionPoint;
 }
 
-// Runs the turn on a new session whose first turn carries the recent turns, and records the
-// session it replaced. A first turn, with no session to lose, starts the same way unrecorded.
+// Runs the turn on a new session whose first turn carries a marker and the recent turns, and records
+// the session it replaced. A first turn, with no session to lose, starts the same way unrecorded,
+// with the fresh-session marker in place of the rebuilt one.
 export async function runRebuiltTurn(
   turn: SessionTurn,
   source: ModelRecordSource,
   lost: LostSession | null,
 ): Promise<StepResult> {
-  const rebuilt = await runPlannedTurn(turn, null);
+  const rebuilt = await runPlannedTurn(turn, { resume: null, lost });
   const before =
     lost === null
       ? []

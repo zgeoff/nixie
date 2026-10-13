@@ -14,7 +14,7 @@ export interface LiveTurnPlan {
   readonly resume: SessionPoint | null;
   readonly systemPrompt: string;
 
-  // the blocks that go before the turn's first message, such as a rebuilt session's history
+  // the blocks that go before the turn's first message, such as a new session's marker and history
   readonly preamble: readonly string[];
 
   // aborts when the step's lease is lost or a forget invalidates the session

@@ -110,15 +110,20 @@ resumes no session when a newer invalidation exists, so a step that commits afte
 never saw leaves the session invalid. When the guest instead reports the session lost, the step runs
 the turn again on a rebuilt session.
 
-A rebuilt session's first turn opens with the thread's recent turns, then the turn's own messages.
-The recent turns are the user's messages and the replies, word for word and oldest first, newest
-back to a token budget that the deployment configuration sets. The history leaves out every message
-from the turn's first inbox record on, so a pending message reaches the model once, as a live
-message. It keeps every committed reply, because a turn that left messages for the next step commits
-its reply after them. Older turns reach the new session only through recall. The step writes a
-session-rebuilt record that names the lost session, the reason and the count of records the history
-holds. The SDK transcript is a cache, so a rebuild restores the conversation's recent context from
-the event log rather than an identical session.
+Every new session's first turn opens with a one-line marker, so the model knows at once that its
+context starts there. A rebuilt session's marker says the context was rebuilt, and a fresh session's
+marker says the session is new. Both say that earlier history is in the event log. A turn that
+resumes its session carries no marker.
+
+A rebuilt session's first turn opens with its marker, the thread's recent turns, then the turn's own
+messages. The recent turns are the user's messages and the replies, word for word and oldest first,
+newest back to a token budget that the deployment configuration sets. The history leaves out every
+message from the turn's first inbox record on, so a pending message reaches the model once, as a
+live message. It keeps every committed reply, because a turn that left messages for the next step
+commits its reply after them. Older turns reach the new session only through recall. The step writes
+a session-rebuilt record that names the lost session, the reason and the count of records the
+history holds. The SDK transcript is a cache, so a rebuild restores the conversation's recent
+context from the event log rather than an identical session.
 
 ## Inbox records as messages
 

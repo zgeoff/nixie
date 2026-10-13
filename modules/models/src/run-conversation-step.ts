@@ -49,7 +49,7 @@ async function runSessionTurn(
   if (marks.isInvalidated || boundary === null) {
     return runRebuiltTurn(turn, source, boundary && { reason: 'invalidated', lost: boundary });
   }
-  const resumed = await runPlannedTurn(turn, boundary);
+  const resumed = await runPlannedTurn(turn, { resume: boundary });
 
   if (resumed.completed.turn.failure?.reason !== 'session_missing') {
     return buildStepResult(
