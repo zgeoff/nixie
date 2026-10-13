@@ -342,3 +342,33 @@ test('it shows no record that belongs to no thread', () => {
 
   expect(toContractRecord(record)).toBeNull();
 });
+
+test('it carries the versions a recall delivered with their scores, and no text', () => {
+  const record = buildMockLogRecord({
+    sequence: 11,
+    recordedAt: new Date('2026-10-10T12:00:02Z'),
+    kind: 'memory.recalled',
+    thread: 'conversation',
+    payload: {
+      items: [
+        { itemID: 'item-a', version: 2, score: 0.61 },
+        { itemID: 'item-b', version: 1 },
+        { itemID: 'item-c' },
+      ],
+    },
+    erasable: { status: 'none' },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'memory.recalled',
+    recall: {
+      items: [
+        { itemID: 'item-a', version: 2, score: 0.61 },
+        { itemID: 'item-b', version: 1 },
+      ],
+    },
+    recordedAt: new Date('2026-10-10T12:00:02Z'),
+    sequence: 11,
+    thread: 'conversation',
+  });
+});

@@ -11,10 +11,12 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
   const message = messageKinds.has(record.kind) ? toMessage(record) : undefined;
   const task = record.kind.startsWith('task.') ? toTask(record) : undefined;
   const toolCall = toolKinds.has(record.kind) ? toToolCall(record) : undefined;
+  const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
 
   return {
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
+    ...(recall === undefined ? {} : { recall }),
     recordedAt: record.recordedAt,
     sequence: record.sequence,
     thread: record.thread,
@@ -115,6 +117,32 @@ function toToolCall(record: LogRecord): ToolCall | undefined {
     ...(typeof outcome === 'string' ? { outcome } : {}),
     ...(typeof tool === 'string' ? { tool } : {}),
   };
+}
+
+type Recall = NonNullable<ContractRecord['recall']>;
+type RecallItem = Recall['items'][number];
+
+// A recall's record lists the versions it delivered, each with its match score when a query ranked
+// it, and holds no text. An item without an ID and a version is left out.
+function toRecall(record: LogRecord): Recall {
+  const items = record.payload['items'];
+
+  return { items: Array.isArray(items) ? items.flatMap((item) => toRecallItem(item)) : [] };
+}
+
+function toRecallItem(item: JSONValue): readonly RecallItem[] {
+  if (!isJSONObject(item)) {
+    return [];
+  }
+  const itemID = item['itemID'];
+  const version = item['version'];
+  const score = item['score'];
+
+  if (typeof itemID !== 'string' || typeof version !== 'number') {
+    return [];
+  }
+
+  return [{ itemID, version, ...(typeof score === 'number' ? { score } : {}) }];
 }
 
 function isJSONObject(value: JSONValue | undefined): value is JSONObject {
