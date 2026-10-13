@@ -19,6 +19,13 @@ test('it keeps no name when the configuration sets none', () => {
   });
 });
 
+test('it refuses a reference that names an inherited property, not a settings entry', () => {
+  expect(() => resolveOwnerConfig({ name: 'deployment:toString' }, {})).toThrowWithMessage(
+    Error,
+    "the owner's name is deployment:toString, and the secrets file has no settings entry toString",
+  );
+});
+
 test('it refuses a reference whose settings entry is missing', () => {
   expect(() =>
     resolveOwnerConfig({ name: 'deployment:owner_name' }, { other_name: 'Wren Halloway' }),

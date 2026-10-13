@@ -11,7 +11,7 @@ export function resolveOwnerConfig(
     return config;
   }
   const key = config.name.slice('deployment:'.length);
-  const name = settings[key];
+  const name = Object.hasOwn(settings, key) ? settings[key] : undefined;
 
   if (name === undefined) {
     throw new Error(
