@@ -42,6 +42,9 @@ const messageSchema = z.object({
 const jsonObjectSchema = z.record(z.string(), z.unknown());
 
 const taskSchema = z.object({
+  errorLimit: z.int().optional(),
+  errors: z.int().optional(),
+  retryAt: z.date().optional(),
   stepKey: z.string().optional(),
   taskID: z.string().default(() => faker.string.uuid()),
 });

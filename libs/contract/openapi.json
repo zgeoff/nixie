@@ -130,6 +130,23 @@
                               "error": {
                                 "type": "string"
                               },
+                              "errorLimit": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "exclusiveMinimum": 0
+                              },
+                              "errors": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "exclusiveMinimum": 0
+                              },
+                              "retryAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
                               "stepKey": {
                                 "type": "string"
                               },
@@ -872,6 +889,23 @@
                                     "error": {
                                       "type": "string"
                                     },
+                                    "errorLimit": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "errors": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "retryAt": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "x-native-type": "date"
+                                    },
                                     "stepKey": {
                                       "type": "string"
                                     },
@@ -1160,6 +1194,23 @@
                                   "properties": {
                                     "error": {
                                       "type": "string"
+                                    },
+                                    "errorLimit": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "errors": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "retryAt": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "x-native-type": "date"
                                     },
                                     "stepKey": {
                                       "type": "string"

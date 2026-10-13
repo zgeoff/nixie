@@ -166,10 +166,38 @@ test('it carries the error of a failed step', () => {
     sequence: 12,
     task: {
       error: 'the model profile is unreachable',
+      errors: 1,
+      retryAt: new Date(1_000_000),
       stepKey: 'conversation:4',
       taskID: 'conversation',
     },
     thread: 'conversation',
+  });
+});
+
+test('it carries the errors in a row, the error limit and the retry time of a failed step', () => {
+  const record = buildMockLogRecord({
+    sequence: 14,
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    kind: 'task.step_errored',
+    thread: 'conversation',
+    payload: {
+      taskID: 'conversation',
+      stepKey: 'conversation:4',
+      nextState: 'ready',
+      errors: 4,
+      errorLimit: 3,
+      claimableAt: Date.parse('2026-10-10T12:04:04Z'),
+    },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record)?.task).toStrictEqual({
+    errorLimit: 3,
+    errors: 4,
+    retryAt: new Date('2026-10-10T12:04:04Z'),
+    stepKey: 'conversation:4',
+    taskID: 'conversation',
   });
 });
 
@@ -193,7 +221,12 @@ test('it keeps a failed step whose error is forgotten with its task and step', (
     kind: 'task.step_errored',
     recordedAt: new Date('2026-10-10T12:00:04Z'),
     sequence: 12,
-    task: { stepKey: 'conversation:4', taskID: 'conversation' },
+    task: {
+      errors: 1,
+      retryAt: new Date(1_000_000),
+      stepKey: 'conversation:4',
+      taskID: 'conversation',
+    },
     thread: 'conversation',
   });
 });
