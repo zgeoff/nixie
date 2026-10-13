@@ -61,6 +61,17 @@ later forget leaves no readable copy of what a turn saw. The block rides in the 
 sends and never in the user's message record, so a rebuilt session's history leaves retrieved text
 out.
 
+Retrieval on a resumed session also leaves out each item version that the session already holds, so
+an item placed on one turn takes no slot on the next, and the next best match above the floor takes
+its place. The conversation finds those versions by replaying the thread's records from the start of
+the step that wrote its last compaction, rebuild or invalidation. A version counts as held when a
+recall delivered it in a step whose turn ended, because a step that errored or stopped ran on a
+session that its retry starts again from the last boundary. A compaction summarizes everything
+delivered before it, its own step's recalls included, so those items match again. A rebuilt session
+holds only what its own turn retrieved, and a turn that finds its session lost reads its context
+again without the exclusion. An edit makes a new version, which the session has not seen, so an
+edited item matches again. A recall that the model calls itself excludes nothing.
+
 The blocks before the first message keep one order: a new session's marker, a rebuilt session's
 history, the pinned-core change note, the retrieved items,
 [the writer's change note](./writer.md#the-change-note), then

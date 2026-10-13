@@ -127,6 +127,10 @@ export interface RecallRequest {
   // leaves out pinned items, which the system prompt already holds
   readonly excludePinned?: boolean;
 
+  // with a query, leaves out an item whose current version is listed, which the reader already
+  // holds, so a newer version still matches
+  readonly excludedVersions?: readonly VersionRef[];
+
   // the thread the recall record belongs to
   readonly thread?: string;
 }

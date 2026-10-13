@@ -9,6 +9,7 @@ import type {
   RecallResult,
   RecalledItem,
   StoreParts,
+  VersionRef,
 } from './types';
 
 // Returns stored items word for word. Candidates are ranked outside the delivery lock; under it each
@@ -29,9 +30,12 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
       states,
       includeHistory: request.includeHistory === true,
     });
+    const excluded = buildVersionKeys(request.excludedVersions ?? []);
     const items = deliverable.filter(
       (item) =>
-        !(request.excludePinned === true && item.isPinned) && isAtNamedVersion(item, request),
+        !(request.excludePinned === true && item.isPinned) &&
+        !excluded.has(buildVersionKey(item)) &&
+        isAtNamedVersion(item, request),
     );
 
     if (NIXIE_TEST_BUILD) {
@@ -89,13 +93,17 @@ interface QueryCandidates extends CandidateQuery {
   readonly request: RecallRequest & { readonly query: string };
 }
 
-// The ranking leaves pinned items out before the limit applies, so pinned matches never crowd out
-// the unpinned ones. The delivery drops an item pinned after the ranking.
+// The ranking leaves pinned items and excluded versions out before the limit applies, so they never
+// crowd out the next matches. The delivery drops an item pinned after the ranking, or one whose
+// excluded version is still current after an edit the ranking saw.
 async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): Promise<Candidates> {
-  const pinned = query.request.excludePinned === true ? await readPinnedItemIDs(parts) : [];
+  const [pinned, held] = await Promise.all([
+    query.request.excludePinned === true ? readPinnedItemIDs(parts) : [],
+    readCurrentItemIDs(parts, query.request.excludedVersions ?? []),
+  ]);
   const itemIDs = await parts.index.findItemIDs(query.request.query, {
     limit: query.limit,
-    excludedIDs: pinned,
+    excludedIDs: [...pinned, ...held],
     ...(query.request.minScore === undefined ? {} : { minScore: query.request.minScore }),
   });
 
@@ -120,6 +128,35 @@ function isAtNamedVersion(item: RecalledItem, request: RecallRequest): boolean {
     request.versions === undefined ||
     request.versions.some((ref) => ref.itemID === item.itemID && ref.version === item.version)
   );
+}
+
+// the items whose current version is one of the refs
+async function readCurrentItemIDs(
+  parts: StoreParts,
+  refs: readonly VersionRef[],
+): Promise<readonly string[]> {
+  if (refs.length === 0) {
+    return [];
+  }
+  const keys = buildVersionKeys(refs);
+  const rows = await parts.context.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['item_id', 'version'])
+    .where('item_id', 'in', [...new Set(refs.map((ref) => ref.itemID))])
+    .execute();
+
+  return rows
+    .filter((row) => keys.has(buildVersionKey({ itemID: row.item_id, version: row.version })))
+    .map((row) => row.item_id);
+}
+
+function buildVersionKeys(refs: readonly VersionRef[]): ReadonlySet<string> {
+  return new Set(refs.map((ref) => buildVersionKey(ref)));
+}
+
+function buildVersionKey(ref: VersionRef): string {
+  return `${ref.itemID}@${ref.version}`;
 }
 
 // a cursor is the creation sequence of the last item on a page

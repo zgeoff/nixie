@@ -17,6 +17,7 @@ interface RunnerConfig {
   // the conversation image's name, whose change replaces the conversation's sandbox
   readonly image: string;
   readonly contextTokens?: number;
+  readonly memorySettings?: Parameters<typeof startConversation>[0]['memorySettings'];
 }
 
 // a test server, the scripted model, a recorder for the server's log, the folder of the process
@@ -50,6 +51,7 @@ async function setupTest() {
       runners.last = await startConversation({
         context,
         models: buildTestModelsConfig({ modelURL: model.url, ...config }),
+        ...(config.memorySettings === undefined ? {} : { memorySettings: config.memorySettings }),
         secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
         sandboxes: server.sandboxes,
         tools: server.endpoint,
@@ -414,4 +416,162 @@ test('it starts a fresh session on the new sandbox when the old sandbox no longe
     reason: expect.toInclude('holds no transcript'),
   });
   expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toHaveLength(1);
+}, 30_000);
+
+test('it gives the next best match the slot of an item the session already holds', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const [flowerpot, garage, runner] = await Promise.all([
+    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.memory.remember({ text: 'A second spare key hangs in the garage', provenance }),
+    ctx.startRunner({
+      image: 'nixie-conversation-0123456789ab',
+      memorySettings: { retrievalItems: 1 },
+    }),
+    createConversationTask(ctx.context),
+
+    // BM25 scores a word in half the index at nothing, so both keys need 6 items beside them to
+    // pass the score floor
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
+    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
+    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
+    ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
+  ]);
+
+  ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'In the garage.' });
+  await sendTestMessage(ctx.context, runner.runStep, 'Is the spare key under the blue flowerpot?');
+  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrieved']),
+  ).toStrictEqual([[{ ...flowerpot }], [{ ...garage }]]);
+  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude(
+    String.raw`A second spare key hangs in the garage\n`,
+  );
+}, 30_000);
+
+test('it retrieves an item again after a compaction leaves it out of the session', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const [key, runner] = await Promise.all([
+    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab', contextTokens: 100_000 }),
+    createConversationTask(ctx.context),
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+  ]);
+
+  // the tool call reports a context past the window, so the CLI compacts in the second turn
+  ctx.model.addReplies(
+    { text: 'APPLE' },
+    { toolUse: { name: 'mcp__nixie__notes_read', input: {} }, inputTokens: 150_000 },
+    { text: 'SUMMARY: the owner asked about a key.' },
+    { text: 'BANANA' },
+    { text: 'CHERRY' },
+  );
+  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
+  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key again?');
+  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key now?');
+
+  const records = await ctx.readRecords();
+
+  expect(records.filter((record) => record.kind === 'model.compacted')).toHaveLength(1);
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrieved']),
+  ).toStrictEqual([[{ ...key }], [], [{ ...key }]]);
+}, 30_000);
+
+test('it retrieves an item again on a rebuilt session that lost the turn it came in', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const [key, first] = await Promise.all([
+    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+  ]);
+
+  await sendTestMessage(ctx.context, first.runStep, 'Where is the spare key?');
+
+  // with every transcript gone, the replacement has no session to carry over
+  await Bun.$`find . -name '*.jsonl' -delete`.cwd(ctx.sandboxesDir);
+
+  const second = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
+
+  await sendTestMessage(ctx.context, second.runStep, 'Where is the spare key again?');
+
+  const records = await ctx.readRecords();
+
+  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toMatchObject([
+    { payload: { reason: 'missing' } },
+  ]);
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrieved']),
+  ).toStrictEqual([[{ ...key }], [{ ...key }]]);
+}, 30_000);
+
+test('it retrieves an edited item even though the session holds its earlier version', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const [key, runner] = await Promise.all([
+    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+  ]);
+
+  ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'Under the doormat.' });
+  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
+
+  const edited = await ctx.memory.remember({
+    text: 'The spare key sits under the doormat',
+    target: key,
+    provenance,
+  });
+
+  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key again?');
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrieved']),
+  ).toStrictEqual([[{ ...key }], [{ ...edited }]]);
 }, 30_000);

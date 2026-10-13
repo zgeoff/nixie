@@ -90,6 +90,9 @@ interface MemoryRetrieval {
   // pinned items stay out, because the system prompt holds them
   readonly excludePinned: true;
 
+  // the item versions the session already holds, which stay out so a newer version still matches
+  readonly excludedVersions: readonly MemoryRef[];
+
   // the thread the recall record belongs to
   readonly thread: string;
 }
