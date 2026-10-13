@@ -5,7 +5,7 @@ import { pickLeastTrustedSource } from './pick-least-trusted-source';
 
 // An item the session was shown: the version it read, the text and source of that version, and
 // whether the item is pinned.
-export interface ShownItem {
+interface ShownItem {
   readonly version: number;
   readonly text: string;
   readonly source: ContentSource;
@@ -35,7 +35,7 @@ export interface ConsolidationStaging {
   readonly stage: (requests: readonly ChangeRequest[]) => StageResult;
 }
 
-export interface ConsolidationHandle {
+interface ConsolidationHandle {
   // closes this run, if it is still the open one, and returns its diff, or null when the session
   // staged none
   readonly close: () => readonly StagedChange[] | null;

@@ -32,7 +32,7 @@ export type StagedChange =
       readonly source: ContentSource;
     };
 
-export type ChangeStatus = 'pending' | 'consumed' | 'rejected' | 'lapsed';
+type ChangeStatus = 'pending' | 'consumed' | 'rejected' | 'lapsed';
 
 // One input of a change as your review reads it: the version the change read, its text then, and
 // whether the item still stands at that version.

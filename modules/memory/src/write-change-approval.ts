@@ -43,6 +43,9 @@ export async function writeChangeApproval(
       // oxlint-disable-next-line no-await-in-loop -- the index takes one entry at a time
       await updateVersionIndex(parts, version.ref.itemID, version.next);
     }
-    return written.map((version) => version.ref);
+    const refs = written.map((version) => version.ref);
+
+    // the change's own item first, though it writes last
+    return [...refs.slice(-1), ...refs.slice(0, -1)];
   });
 }

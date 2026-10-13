@@ -7,9 +7,9 @@ import { readChangeText } from './read-change-text';
 import type { Provenance, StoreParts, VersionRef } from './types';
 import type { VersionPlan } from './write-version-in-transaction';
 
-// Plans the versions a change writes, the first carrying your approval: a merge's text on its
-// first input and a retirement of each other input, a rewrite's text, or a retirement. A forget of
-// the first input takes the key the text opens under, so nothing is left to apply.
+// Plans the versions a change writes, the last carrying your approval: a merge retires its other
+// inputs first, so the pinned core's room counts the core the merge leaves, then writes its text on
+// the first; a rewrite writes its text, and a retirement retires its one input.
 export async function planChangeVersions(
   parts: StoreParts,
   row: ConsolidationChangeRow,
@@ -28,7 +28,7 @@ export async function planChangeVersions(
       : planActiveEdit(first, opened.text, provenance);
   const retired = rest.map((target) => planRetiredVersion({ target, provenance }));
 
-  return [{ ...lead, approval: buildApproval(parts, row, answer) }, ...retired];
+  return [...retired, { ...lead, approval: buildApproval(parts, row, answer) }];
 }
 
 // A change's versions take the consolidator as a task for their origin, and the least trusted

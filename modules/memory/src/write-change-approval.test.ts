@@ -55,6 +55,57 @@ test('it writes a merged item with the least trusted source among its inputs', a
   ]);
 });
 
+test('it merges 2 pinned items into one that fits the pinned core once the other input retires', async () => {
+  const ctx = await setupTest();
+
+  // about 920 tokens each at 4 characters a token, so both fit the 2,000-token core
+  const [kept, dropped] = await Promise.all(
+    ['Keeps a long packing list for trips. ', 'Keeps a long reading list for winter. '].map(
+      (line) =>
+        ctx.memory.store.remember({
+          text: line.repeat(98),
+          isPinned: true,
+          provenance: {
+            origin: 'owner',
+            source: 'owner',
+            taskID: null,
+            proposalID: null,
+            checks: null,
+          },
+        }),
+    ),
+  );
+
+  invariant(kept && dropped);
+
+  // about 1,100 tokens: past the core beside the other input, within it alone
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [
+      {
+        kind: 'merge',
+        inputs: [kept, dropped],
+        text: 'Keeps long packing and reading lists. '.repeat(116),
+        reason: 'Both items are lists the user keeps.',
+        source: 'owner',
+      },
+    ],
+  });
+  const [change] = diff.changes;
+
+  invariant(change);
+
+  const versions = await ctx.memory.store.consolidations.approve({
+    changeID: change.changeID,
+    actionHash: change.actionHash,
+    identityID: 'device-1',
+  });
+
+  expect(versions).toIncludeSameMembers([
+    { itemID: kept.itemID, version: 2 },
+    { itemID: dropped.itemID, version: 2 },
+  ]);
+});
+
 test('it retires every input but the first when it applies a merge, each keeping its own source', async () => {
   const ctx = await setupTest();
   const kept = await createMemoryItem(ctx.memory.store, { text: 'Is allergic to peanuts' });
