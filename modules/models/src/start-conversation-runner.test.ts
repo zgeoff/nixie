@@ -665,6 +665,56 @@ test('it fails the step and records no reply when nixie tool server is not conne
   expect(task).toStrictEqual({ state: 'ready', step_errors: 1, read_cursor: 0 });
 });
 
+test('it answers your next message after 4 turns failed in a row, past the error limit of 3', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    { type: 'failed', reason: 'tools_not_connected', detail: "nixie's tool server is failed" },
+  ]);
+  await ['Hi.', 'Hello?', 'Anyone?', 'Still there?'].reduce(
+    (sent, text) => sent.then(() => ctx.sendMessage(runner, text)),
+    Promise.resolve(),
+  );
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      text: 'I am here.',
+      toolUses: [],
+    },
+    {
+      type: 'ended',
+      boundary: {
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'Are you there?');
+
+  const [replies, errored] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('task.step_errored'),
+  ]);
+
+  expect(replies).toMatchObject([
+    { erasable: { status: 'readable', fields: { text: 'I am here.' } } },
+  ]);
+  expect(errored).toHaveLength(4);
+});
+
 test('it passes a message that lands during the turn into it and acknowledges it', async () => {
   const ctx = await setupTest();
 

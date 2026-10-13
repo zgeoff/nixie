@@ -9,7 +9,9 @@ test('it logs a step error with its task, step, count, next state and error name
     taskID: 'conversation',
     stepKey: 'conversation:4',
     errors: 2,
+    errorLimit: 3,
     nextState: 'ready',
+    retryAt: 1_060_000,
     error: new RangeError('the guest exited before it ended its turn'),
   });
 
@@ -21,6 +23,7 @@ test('it logs a step error with its task, step, count, next state and error name
         stepKey: 'conversation:4',
         errors: 2,
         nextState: 'ready',
+        retryAt: 1_060_000,
         error: 'RangeError',
       },
     ],
@@ -34,14 +37,23 @@ test('it logs the type of a thrown value that is not an error', () => {
     taskID: 'task-1',
     stepKey: 'task-1:3',
     errors: 3,
+    errorLimit: 3,
     nextState: 'failed',
+    retryAt: 1_030_000,
     error: 'a thrown string',
   });
 
   expect(log.mock.calls).toStrictEqual([
     [
       'task.step_errored',
-      { taskID: 'task-1', stepKey: 'task-1:3', errors: 3, nextState: 'failed', error: 'string' },
+      {
+        taskID: 'task-1',
+        stepKey: 'task-1:3',
+        errors: 3,
+        nextState: 'failed',
+        retryAt: 1_030_000,
+        error: 'string',
+      },
     ],
   ]);
 });
