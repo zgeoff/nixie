@@ -273,8 +273,8 @@ test('it gives each match its score, the better match scoring higher', async () 
 
   invariant(best && next);
   expect(found).toStrictEqual([
-    { itemID: 'item-b', score: expect.any(Number) },
-    { itemID: 'item-a', score: expect.any(Number) },
+    { itemID: 'item-b', score: expect.toBePositive() },
+    { itemID: 'item-a', score: expect.toBePositive() },
   ]);
   expect(best.score).toBeGreaterThan(next.score);
 });

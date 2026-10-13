@@ -127,7 +127,7 @@ type RecallItem = Recall['items'][number];
 function toRecall(record: LogRecord): Recall {
   const items = record.payload['items'];
 
-  return { items: Array.isArray(items) ? items.flatMap((item) => toRecallItem(item)) : [] };
+  return { items: isJSONArray(items) ? items.flatMap((item) => toRecallItem(item)) : [] };
 }
 
 function toRecallItem(item: JSONValue): readonly RecallItem[] {
@@ -143,6 +143,10 @@ function toRecallItem(item: JSONValue): readonly RecallItem[] {
   }
 
   return [{ itemID, version, ...(typeof score === 'number' ? { score } : {}) }];
+}
+
+function isJSONArray(value: JSONValue | undefined): value is readonly JSONValue[] {
+  return Array.isArray(value);
 }
 
 function isJSONObject(value: JSONValue | undefined): value is JSONObject {

@@ -18,7 +18,12 @@ test('it says each time it opens and closes', async () => {
   const user = userEvent.setup();
   const onToggle = mock();
   const rendered = render(
-    <StepSection onToggle={onToggle} title="Step">
+    <StepSection
+      onToggle={(isOpen) => {
+        onToggle(isOpen);
+      }}
+      title="Step"
+    >
       <p>task conversation</p>
     </StepSection>,
   );
