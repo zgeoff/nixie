@@ -1,5 +1,5 @@
 // The nixie release this code is, which release-please bumps in each release PR.
 // x-release-please-start-version
-export const nixieVersion = '0.12.0';
+export const nixieVersion = '0.13.0';
 
 // x-release-please-end
