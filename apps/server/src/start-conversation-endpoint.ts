@@ -29,7 +29,10 @@ export async function startConversationEndpoint(
     findTimeZone: () => findMessageTimeZone(options.context.log),
     defaultZone: options.config.time.default_zone,
   });
-  const definitions = buildConversationTools(tools.webFetch, time, tools.readStore);
+  const definitions = buildConversationTools(tools.webFetch, time, {
+    readStore: tools.readStore,
+    clock: options.context.clock,
+  });
   const registry = buildToolRegistry(definitions);
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),

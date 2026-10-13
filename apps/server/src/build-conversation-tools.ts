@@ -1,17 +1,25 @@
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildMemoryTools } from '@heynixie/memory';
+import type { Clock } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 
-// Builds the conversation's tool definitions: the web fetch tool, the time tool and the 4 memory
+// What the memory tools reach: the store through readStore, which returns null until it starts,
+// and the clock that memory.pending measures a proposal's age on.
+export interface ConversationMemory {
+  readonly readStore: () => MemoryToolStore | null;
+  readonly clock: Pick<Clock, 'now'>;
+}
+
+// Builds the conversation's tool definitions: the web fetch tool, the time tool and the 5 memory
 // tools. The registry exists before the memory store starts, so the memory tools reach the store
-// through readStore, which returns null until it starts. A call before that throws.
+// through readStore. A call before the store starts throws.
 export function buildConversationTools(
   webFetch: ToolDefinition,
   time: ToolDefinition,
-  readStore: () => MemoryToolStore | null,
+  memory: ConversationMemory,
 ): readonly ToolDefinition[] {
   const requireStore = (): MemoryToolStore => {
-    const store = readStore();
+    const store = memory.readStore();
 
     if (store === null) {
       throw new Error('a tool call ran before the memory store started');
@@ -22,12 +30,16 @@ export function buildConversationTools(
   return [
     webFetch,
     time,
-    ...buildMemoryTools({
-      recall: (request) => requireStore().recall(request),
-      writes: {
-        remember: (request) => requireStore().writes.remember(request),
-        retire: (request) => requireStore().writes.retire(request),
+    ...buildMemoryTools(
+      {
+        recall: (request) => requireStore().recall(request),
+        proposals: { listPending: () => requireStore().proposals.listPending() },
+        writes: {
+          remember: (request) => requireStore().writes.remember(request),
+          retire: (request) => requireStore().writes.retire(request),
+        },
       },
-    }),
+      memory.clock,
+    ),
   ];
 }

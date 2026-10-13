@@ -160,11 +160,12 @@ one the server passes in from the conversation, and
 
 ## The model's tools
 
-The model reaches memory through 4 tools over the same interface:
+The model reaches memory through 5 tools over the same interface:
 
 | Tool              | Effect | Does                                                       |
 | ----------------- | ------ | ---------------------------------------------------------- |
 | `memory.recall`   | `read` | Recalls items by query, by ID or a page at a time          |
+| `memory.pending`  | `read` | Lists the proposals that wait for the user's review        |
 | `memory.remember` | `note` | Creates an item, with a quote                              |
 | `memory.edit`     | `note` | Edits an item at a version it read, with a quote           |
 | `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote |
@@ -180,13 +181,21 @@ takes outside content as its source, because the items it returns hold every sou
 The `memory.recall` result gives each date in readable UTC, and its description tells the model to
 reach for it when a half-remembered detail would change an answer. A stale version, a missing item
 or a wrong state returns to the model as the tool's refusal, so the model reads the item again. The
-model can retire an item and can never restore, undo or forget one. The server registers the 4 tools
+model can retire an item and can never restore, undo or forget one. The server registers the 5 tools
 beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
 because they declare `read` and `note` and run direct.
 
+`memory.pending` lists every pending proposal, the model's own and the note-taker's, so the model
+knows what it proposed after a compaction drops the turn it proposed in, and never proposes a change
+that already waits. Each entry gives the proposal's text, its review reason, its age, and who noted
+it in the words the model reads elsewhere: the conversation reads as the model itself, and the
+memory writer as the note-taker. The tool lists and never answers, because only the user approves or
+rejects a proposal. Its result takes outside content as its source, as a recall result does.
+
 The records of a memory tool call never hold an item's text, so a forget leaves no readable copy in
 them. A recall's result record lists each item and version it returned, as the recall's own record
-does, while the model reads the items word for word. Each call record leaves out the free text the
-model wrote: the search words, the memory text and both quotes. The model can copy an item's text
-into any of them, and the record holds them before a gate checks a quote. The version keeps the
-memory text under its item's key, and its evidence points at the quote in the user's message.
+does, while the model reads the items word for word. A pending call's result record lists only the
+proposal IDs. Each call record leaves out the free text the model wrote: the search words, the
+memory text and both quotes. The model can copy an item's text into any of them, and the record
+holds them before a gate checks a quote. The version keeps the memory text under its item's key, and
+its evidence points at the quote in the user's message.

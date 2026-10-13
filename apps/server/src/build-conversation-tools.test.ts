@@ -52,17 +52,17 @@ function buildWriteStandIn(): ToolDefinition {
   };
 }
 
-test('it lists the web fetch tool, the time tool and the 4 memory tools', () => {
-  const definitions = buildConversationTools(
-    buildWebFetchStandIn(),
-    buildTimeStandIn(),
-    () => null,
-  );
+test('it lists the web fetch tool, the time tool and the 5 memory tools', () => {
+  const definitions = buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), {
+    readStore: () => null,
+    clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+  });
 
   expect(definitions.map((definition) => definition.name)).toStrictEqual([
     'web.fetch',
     'time.now',
     'memory.recall',
+    'memory.pending',
     'memory.remember',
     'memory.edit',
     'memory.retire',
@@ -70,11 +70,10 @@ test('it lists the web fetch tool, the time tool and the 4 memory tools', () => 
 });
 
 test('it fails a memory call that runs before the memory store starts', () => {
-  const definitions = buildConversationTools(
-    buildWebFetchStandIn(),
-    buildTimeStandIn(),
-    () => null,
-  );
+  const definitions = buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), {
+    readStore: () => null,
+    clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+  });
   const recall = definitions.find((definition) => definition.name === 'memory.recall');
 
   expect(
@@ -94,7 +93,10 @@ test('it fails a memory call that runs before the memory store starts', () => {
 
 test('it allows the time tool and each memory tool and denies a write tool under the read-only rule', () => {
   const registry = buildToolRegistry([
-    ...buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), () => null),
+    ...buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), {
+      readStore: () => null,
+      clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+    }),
     buildWriteStandIn(),
   ]);
   const decide = makeDecisionPoint({
@@ -103,6 +105,7 @@ test('it allows the time tool and each memory tool and denies a write tool under
   const readTools = [
     'time.now',
     'memory.recall',
+    'memory.pending',
     'memory.remember',
     'memory.edit',
     'memory.retire',
