@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.7.0](https://github.com/zgeoff/nixie/compare/v0.6.2...v0.7.0) (2026-10-13)
+
+
+### Features
+
+* **geo-531:** let the batch harness read turns from a file ([#136](https://github.com/zgeoff/nixie/issues/136)) ([09d509a](https://github.com/zgeoff/nixie/commit/09d509a1706396a72155aff85be67c00a25c1592))
+* **geo-535:** keep every nixie sandbox out of impd's backups ([#132](https://github.com/zgeoff/nixie/issues/132)) ([d4a4a05](https://github.com/zgeoff/nixie/commit/d4a4a05d7d6dcfa74369f1a7de43586a8e09b286))
+* **geo-737:** give the conversation the memory tools ([#134](https://github.com/zgeoff/nixie/issues/134)) ([2aaee75](https://github.com/zgeoff/nixie/commit/2aaee750b81380bf1eab747b7c77dff274a09320))
+
+
+### Bug Fixes
+
+* **geo-735:** move to imp-client 1.0.0 to speak impd 1.0 ([#135](https://github.com/zgeoff/nixie/issues/135)) ([ea8ca7d](https://github.com/zgeoff/nixie/commit/ea8ca7d64a1fe6907a7e35aa9ad73dd6534ac059))
+
 ## [0.6.2](https://github.com/zgeoff/nixie/compare/v0.6.1...v0.6.2) (2026-10-12)
 
 
