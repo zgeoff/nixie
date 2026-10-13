@@ -61,14 +61,20 @@ async function runGuestCheck(check: SandboxCheck, marks: CheckMarks): Promise<un
 
   marks.spawned();
 
-  const reply = await readGuestReply(check, stream);
+  const reply = await readGuestReply(check, stream, marks);
 
-  marks.replied(reply);
   return toCheckOutput(reply);
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream has no readonly form
-async function readGuestReply(check: SandboxCheck, stream: ExecStream): Promise<CheckReply> {
+// marks the reply as soon as it is read, so the guest's stop counts toward the total and never
+// toward the reply time
+async function readGuestReply(
+  check: SandboxCheck,
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream has no readonly form
+  stream: ExecStream,
+  marks: CheckMarks,
+): Promise<CheckReply> {
   const stopGuest = () => {
     void stream.stop();
   };
@@ -78,7 +84,11 @@ async function readGuestReply(check: SandboxCheck, stream: ExecStream): Promise<
     // a timeout that fired while the guest started finds no listener, so the guest stops here
     check.signal.throwIfAborted();
     await stream.send(new TextEncoder().encode(JSON.stringify(check.request)));
-    return await readCheckReply(stream.messages);
+
+    const reply = await readCheckReply(stream.messages);
+
+    marks.replied(reply);
+    return reply;
   } finally {
     check.signal.removeEventListener('abort', stopGuest);
     await stream.stop();
