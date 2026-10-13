@@ -171,14 +171,18 @@ appears twice.
 
 Each kind of event is one entry in a registry: its name, how it reads its events in a range of the
 log, and how one event's line renders. The block merges every entry's events by sequence, so a new
-kind is a new entry and no change to the block. The server builds the registry when the conversation
-starts, and each entry's package owns the records it reads.
+kind is a new entry and no change to the block. An entry may also complete the events the block
+lists, such as by reading text through recall. The block asks for that only after its cap, because a
+recall records what it delivered and the block must never record an event it leaves out. The server
+builds the registry when the conversation starts, and each entry's package owns the records it
+reads.
 
 - **A proposal answer** reads each proposal the user approved or rejected, from any source, the
-  conversation's own included. An approval quotes the version it wrote, read through recall, so a
-  later forget knows the session saw that text. A rejection quotes only the conversation's own
-  proposed edit, which its session already holds. A rejected new item has no quote, because the
-  rejection removes the item's key and its text with it.
+  conversation's own included. A listed approval quotes the version it wrote while that version is
+  still current, through a recall of that version alone. The recall record then names only the text
+  the block shows, which the forget and the retirement gate's read check trust. A rejection quotes
+  only the conversation's own proposed edit, which its session already holds. A rejected new item
+  has no quote, because the rejection removes the item's key and its text with it.
 - **A restart** reads the record the server writes at each start, with nixie's version and the
   version of the start before it.
 - **A retried turn** reads each failure of a conversation step that the task retries, and quotes the

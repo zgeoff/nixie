@@ -481,6 +481,48 @@ test('it records every version that a history recall delivered', async () => {
   });
 });
 
+test('it delivers and records an item named at its current version', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await ctx.memory.store.recall({ versions: [item], thread: 'conversation' });
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(result.items).toMatchObject([
+    { itemID: item.itemID, version: 1, text: 'Lives on Elm Street' },
+  ]);
+  expect(records.at(-1)?.record).toMatchObject({
+    kind: 'memory.recalled',
+    payload: { items: [{ itemID: item.itemID, version: 1 }] },
+  });
+});
+
+test('it leaves out an item named at a version that is no longer current, and records none of it', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Lives on Oak Avenue',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await ctx.memory.store.recall({ versions: [item], thread: 'conversation' });
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(result.items).toStrictEqual([]);
+  expect(records.at(-1)?.record).toMatchObject({
+    kind: 'memory.recalled',
+    payload: { items: [] },
+  });
+});
+
 test('it holds a forget until a recall that checked the item has recorded its delivery', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({

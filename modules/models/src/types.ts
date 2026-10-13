@@ -178,20 +178,36 @@ export interface EventSettings {
 export interface EventKind<Detail> {
   readonly name: string;
   readonly read: (range: TurnNoteRange) => Promise<readonly NotedEvent<Detail>[]>;
+
+  // fills in what only a listed event shows, such as text whose delivery a recall records, for
+  // this kind's events that the block lists after its cap
+  readonly complete?: (
+    events: readonly NotedEvent<Detail>[],
+  ) => Promise<readonly NotedEvent<Detail>[]>;
   readonly render: (detail: Detail, settings: EventSettings) => string;
 }
 
-// An event with its kind's renderer bound to it, so events of every kind sort and render together.
+// An event as the registry read it, before the block picks the events it lists.
+export interface ReadEvent {
+  // the name of the kind that read it
+  readonly kind: string;
+  readonly sequence: number;
+  readonly at: number;
+}
+
+// A listed event with its kind's renderer bound to it, so events of every kind render together.
 export interface BoundEvent {
   readonly sequence: number;
   readonly at: number;
   readonly render: (settings: EventSettings) => string;
 }
 
-// The event kinds the events block reads, each with its detail type bound inside it.
+// The event kinds the events block reads, each with its detail type bound inside it. Complete takes
+// only the kind's own events, and returns them bound, in the order given.
 export type EventRegistry = readonly {
   readonly name: string;
-  readonly read: (range: TurnNoteRange) => Promise<readonly BoundEvent[]>;
+  readonly read: (range: TurnNoteRange) => Promise<readonly ReadEvent[]>;
+  readonly complete: (events: readonly ReadEvent[]) => Promise<readonly BoundEvent[]>;
 }[];
 
 // A checker's verdict on one question. Only asserted lets the gate that asked go ahead.

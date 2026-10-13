@@ -29,8 +29,10 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
       states,
       includeHistory: request.includeHistory === true,
     });
-    const items =
-      request.excludePinned === true ? deliverable.filter((item) => !item.isPinned) : deliverable;
+    const items = deliverable.filter(
+      (item) =>
+        !(request.excludePinned === true && item.isPinned) && isAtNamedVersion(item, request),
+    );
 
     if (NIXIE_TEST_BUILD) {
       await waitAtFaultPoint('memory.recall.checked', { kind: 'memory', id: null });
@@ -60,8 +62,10 @@ async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise
   if (request.query !== undefined) {
     return findQueryCandidates(parts, { ...query, request: { ...request, query: request.query } });
   }
-  if (request.itemIDs !== undefined) {
-    return { itemIDs: [...new Set(request.itemIDs)].slice(0, query.limit), next: null };
+  const named = request.versions?.map((ref) => ref.itemID) ?? request.itemIDs;
+
+  if (named !== undefined) {
+    return { itemIDs: [...new Set(named)].slice(0, query.limit), next: null };
   }
   const rows = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
@@ -107,6 +111,15 @@ async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> 
     .execute();
 
   return rows.map((row) => row.item_id);
+}
+
+// an item a request named at a version is delivered only at that version, so its recall record
+// never lists a version the caller did not ask for
+function isAtNamedVersion(item: RecalledItem, request: RecallRequest): boolean {
+  return (
+    request.versions === undefined ||
+    request.versions.some((ref) => ref.itemID === item.itemID && ref.version === item.version)
+  );
 }
 
 // a cursor is the creation sequence of the last item on a page

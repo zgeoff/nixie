@@ -107,14 +107,15 @@ test('it renders an approval with edits, quoting the edited text', async () => {
     editedText: 'Avery has three cats.',
   });
 
-  const kind = buildProposalAnswerKind(ctx.memory.log, ctx.memory.store);
-  const events = await kind.read({ after: 0, through: 100 });
+  const note = await readEventsNote(
+    buildEventRegistry([buildProposalAnswerKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
 
-  expect(
-    events.map((event) => kind.render(event.detail, { ownerName: 'Avery', timeZone: 'UTC' })),
-  ).toStrictEqual([
-    `Avery approved your memory proposal ${proposal.proposalID} with edits: "Avery has three cats."`,
-  ]);
+  expect(note).toInclude(
+    ` · Avery approved your memory proposal ${proposal.proposalID} with edits: "Avery has three cats."\n`,
+  );
 });
 
 test('it quotes an approval applied as a revision of another item, from the item it revised', async () => {
@@ -132,14 +133,15 @@ test('it quotes an approval applied as a revision of another item, from the item
     revisionOf: item,
   });
 
-  const kind = buildProposalAnswerKind(ctx.memory.log, ctx.memory.store);
-  const events = await kind.read({ after: 0, through: 100 });
+  const note = await readEventsNote(
+    buildEventRegistry([buildProposalAnswerKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
 
-  expect(
-    events.map((event) => kind.render(event.detail, { ownerName: 'Avery', timeZone: 'UTC' })),
-  ).toStrictEqual([
-    `Avery approved your memory proposal ${proposal.proposalID}: "Avery has three cats."`,
-  ]);
+  expect(note).toInclude(
+    ` · Avery approved your memory proposal ${proposal.proposalID}: "Avery has three cats."\n`,
+  );
 });
 
 test('it names the owner in general terms when the configuration sets no name', async () => {
@@ -152,14 +154,15 @@ test('it names the owner in general terms when the configuration sets no name', 
     identityID: 'identity-1',
   });
 
-  const kind = buildProposalAnswerKind(ctx.memory.log, ctx.memory.store);
-  const events = await kind.read({ after: 0, through: 100 });
+  const note = await readEventsNote(
+    buildEventRegistry([buildProposalAnswerKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: null, timeZone: 'UTC' },
+  );
 
-  expect(
-    events.map((event) => kind.render(event.detail, { ownerName: null, timeZone: 'UTC' })),
-  ).toStrictEqual([
-    `The owner approved your memory proposal ${proposal.proposalID}: "Avery has two cats."`,
-  ]);
+  expect(note).toInclude(
+    ` · The owner approved your memory proposal ${proposal.proposalID}: "Avery has two cats."\n`,
+  );
 });
 
 test('it names who made a proposal from outside the conversation, without its rejected text', async () => {
@@ -203,7 +206,11 @@ test('it records the approved text it quotes as recalled into the conversation',
     identityID: 'identity-1',
   });
 
-  await buildProposalAnswerKind(ctx.memory.log, ctx.memory.store).read({ after: 0, through: 100 });
+  await readEventsNote(
+    buildEventRegistry([buildProposalAnswerKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
 
   const recalls = await readRecords(ctx.memory.log, {
     afterSequence: 0,
@@ -214,6 +221,68 @@ test('it records the approved text it quotes as recalled into the conversation',
   expect(recalls.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
     ['conversation', { items: [{ itemID: proposal.itemID, version: 1 }] }],
   ]);
+});
+
+test('it records only the approved version it quotes, never the rest of the item history', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Avery has two cats.',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const proposal = await createProposal(ctx.memory.store, {
+    text: 'Avery has three cats.',
+    target: item,
+  });
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const note = await readEventsNote(
+    buildEventRegistry([buildProposalAnswerKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
+  const recalls = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(note).toInclude(': "Avery has three cats."\n');
+  expect(recalls.map((entry) => entry.record.payload)).toStrictEqual([
+    { items: [{ itemID: item.itemID, version: 2 }] },
+  ]);
+});
+
+test('it leaves an approval unquoted once its item changed again, and records nothing of it', async () => {
+  const ctx = await setupTest();
+  const proposal = await createProposal(ctx.memory.store, { text: 'Avery has two cats.' });
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+  });
+  await ctx.memory.store.remember({
+    text: 'Avery has four cats.',
+    target: { itemID: proposal.itemID, version: 1 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const note = await readEventsNote(
+    buildEventRegistry([buildProposalAnswerKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: 'Avery', timeZone: 'UTC' },
+  );
+  const recalls = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(note).toInclude(` · Avery approved your memory proposal ${proposal.proposalID}.\n`);
+  expect(recalls.map((entry) => entry.record.payload)).toStrictEqual([{ items: [] }]);
 });
 
 test('it reads only the answers inside the range, and leaves out a pending proposal', async () => {
@@ -242,6 +311,12 @@ test('it reads only the answers inside the range, and leaves out a pending propo
   });
 
   expect(events.map((event) => event.detail)).toStrictEqual([
-    { proposalID: second.proposalID, answer: 'rejected', origin: 'conversation', text: null },
+    {
+      proposalID: second.proposalID,
+      answer: 'rejected',
+      origin: 'conversation',
+      written: null,
+      text: null,
+    },
   ]);
 });

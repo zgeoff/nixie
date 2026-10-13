@@ -4,7 +4,7 @@ import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
 import { decodeProposalText } from './decode-proposal-text';
 import { findItemKey } from './find-item-key';
-import type { MemoryOrigin, MemoryStore, MemoryTables } from './types';
+import type { MemoryOrigin, MemoryStore, MemoryTables, VersionRef } from './types';
 
 // The owner's answer to a memory proposal, with the text it quotes, or null when none is readable.
 export interface ProposalAnswerEvent {
@@ -13,12 +13,15 @@ export interface ProposalAnswerEvent {
 
   // who proposed it: the conversation's own proposal reads as "your"
   readonly origin: MemoryOrigin;
+
+  // the item and version an approval wrote, which the block quotes when it lists the event
+  readonly written: VersionRef | null;
   readonly text: string | null;
 }
 
 // The event kind for the owner's answer to a memory proposal from any source, the conversation's
-// own included. An approval quotes its version through recall, so a forget knows the session saw
-// it; a rejection quotes only the conversation's own edit, which its session already holds.
+// own included. A listed approval quotes the current version it wrote, recalled so the record names
+// only what the block shows; a rejection quotes only the conversation's own edit.
 export function buildProposalAnswerKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   store: Pick<MemoryStore, 'recall'>,
@@ -27,22 +30,16 @@ export function buildProposalAnswerKind(
     name: 'proposal_answer',
     read: async (range) => {
       const rows = await readAnsweredProposals(log, range);
-      const approved = await readApprovedTexts(
-        store,
-        rows.filter((row) => row.status === 'consumed'),
-      );
 
       return Promise.all(
         rows.map(async (row) => {
-          const text =
-            row.status === 'consumed'
-              ? (approved.get(row.proposal_id) ?? null)
-              : await readRejectedText(log, row);
+          const text = row.status === 'consumed' ? null : await readRejectedText(log, row);
 
           return buildAnswerEvent(row, text);
         }),
       );
     },
+    complete: (events) => readApprovedTexts(store, events),
     render: (detail, settings) => {
       const owner = settings.ownerName ?? 'The owner';
       const proposal =
@@ -121,33 +118,36 @@ function readAnsweredProposals(
     .execute();
 }
 
-// Each approval's version text, through recall, which records what it delivered and leaves out an
-// item that a forget has begun.
+// Each listed approval's text, through a recall of the exact version it wrote, which records only
+// that version and leaves out an item that a forget has begun or that changed since.
 async function readApprovedTexts(
   store: Pick<MemoryStore, 'recall'>,
-  rows: readonly AnsweredRow[],
-): Promise<ReadonlyMap<string, string>> {
-  if (rows.length === 0) {
-    return new Map();
+  events: readonly NotedEvent<ProposalAnswerEvent>[],
+): Promise<readonly NotedEvent<ProposalAnswerEvent>[]> {
+  const versions = events.flatMap((event) =>
+    event.detail.written === null ? [] : [event.detail.written],
+  );
+
+  if (versions.length === 0) {
+    return events;
   }
   const result = await store.recall({
-    itemIDs: rows.map((row) => row.version_item_id ?? row.item_id),
+    versions,
     includeRetired: true,
-    includeHistory: true,
-    limit: rows.length,
+    limit: versions.length,
     thread: conversationTaskID,
   });
-  const items = new Map(result.items.map((item) => [item.itemID, item]));
-
-  return new Map(
-    rows.flatMap((row) => {
-      const version = items
-        .get(row.version_item_id ?? row.item_id)
-        ?.history?.find((entry) => entry.version === row.version);
-
-      return version === undefined ? [] : [[row.proposal_id, version.text] as const];
-    }),
+  const texts = new Map(
+    result.items.map((item) => [`${item.itemID}@${String(item.version)}`, item.text]),
   );
+
+  return events.map((event) => {
+    const written = event.detail.written;
+    const text =
+      written === null ? undefined : texts.get(`${written.itemID}@${String(written.version)}`);
+
+    return text === undefined ? event : { ...event, detail: { ...event.detail, text } };
+  });
 }
 
 // The conversation's own proposed edit, which its session already holds. A new item's key goes
@@ -181,6 +181,20 @@ function buildAnswerEvent(row: AnsweredRow, text: string | null): NotedEvent<Pro
   return {
     sequence: row.sequence,
     at: row.recorded_at,
-    detail: { proposalID: row.proposal_id, answer, origin: row.origin, text },
+    detail: {
+      proposalID: row.proposal_id,
+      answer,
+      origin: row.origin,
+      written: buildWrittenVersion(row),
+      text,
+    },
   };
+}
+
+// the version an approval wrote, on the item it wrote it to, which differs from the proposal's
+// item when the approval revised another
+function buildWrittenVersion(row: AnsweredRow): VersionRef | null {
+  return row.status === 'consumed' && row.version !== null
+    ? { itemID: row.version_item_id ?? row.item_id, version: row.version }
+    : null;
 }

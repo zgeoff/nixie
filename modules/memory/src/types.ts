@@ -106,10 +106,14 @@ export interface VersionRef {
   readonly version: number;
 }
 
-// A query, a list of item IDs, or neither, which lists every active item a page at a time.
+// A query, a list of item IDs, items at named versions, or none, which lists every active item
+// a page at a time.
 export interface RecallRequest {
   readonly query?: string;
   readonly itemIDs?: readonly string[];
+
+  // items at named versions: each item is delivered only while its current version is the one named
+  readonly versions?: readonly VersionRef[];
   readonly limit?: number;
 
   // the cursor a page returned as next
