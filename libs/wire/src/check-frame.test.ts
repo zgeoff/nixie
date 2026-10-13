@@ -32,9 +32,27 @@ test('it refuses a check request with an empty input', () => {
 });
 
 test('it accepts an answer reply with any structured output', () => {
-  const payload = { kind: 'answer' as const, output: { verdict: 'asserted' }, costUSD: 0.003 };
+  const payload = {
+    kind: 'answer' as const,
+    output: { verdict: 'asserted' },
+    costUSD: 0.003,
+    durationMs: 2400,
+    apiMs: 2100,
+  };
 
   expect(checkReplySchema.safeParse(payload).data).toStrictEqual(payload);
+});
+
+test('it refuses an answer reply with a negative API time', () => {
+  const result = checkReplySchema.safeParse({
+    kind: 'answer',
+    output: { verdict: 'asserted' },
+    costUSD: 0.003,
+    durationMs: 2400,
+    apiMs: -1,
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['apiMs'] });
 });
 
 test('it refuses a failed reply with no reason', () => {

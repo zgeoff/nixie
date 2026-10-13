@@ -26,7 +26,13 @@ export async function runCheckQuery(
     for await (const message of session) {
       if (message.type === 'result') {
         return message.subtype === 'success'
-          ? { kind: 'answer', output: message.structured_output, costUSD: message.total_cost_usd }
+          ? {
+              kind: 'answer',
+              output: message.structured_output,
+              costUSD: message.total_cost_usd,
+              durationMs: message.duration_ms,
+              apiMs: message.duration_api_ms,
+            }
           : { kind: 'failed', reason: message.subtype };
       }
     }

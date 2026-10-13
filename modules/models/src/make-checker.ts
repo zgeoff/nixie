@@ -43,7 +43,7 @@ export function makeChecker(options: CheckerOptions): RunCheck {
   };
 }
 
-const defaultTimeoutMs = 10_000;
+const defaultTimeoutMs = 20_000;
 
 // what the race settles to when the timeout fires first, which no structured output can equal
 const timedOut: unique symbol = Symbol('timed out');

@@ -60,6 +60,8 @@ test('it answers a check request with the model verdict in one reply frame', asy
     kind: 'answer',
     output: { verdict: 'asserted', reason: 'The owner states it.' },
     costUSD: expect.toBeNumber(),
+    durationMs: expect.toBeNumber(),
+    apiMs: expect.toBeNumber(),
   });
 });
 
