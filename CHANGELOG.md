@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/zgeoff/nixie/compare/v0.9.0...v0.10.0) (2026-10-13)
+
+
+### Features
+
+* **geo-746:** answer memory proposals through host commands ([#143](https://github.com/zgeoff/nixie/issues/143)) ([f7e4924](https://github.com/zgeoff/nixie/commit/f7e4924cba9f09312cfdce36caf192ea3bf31fc4))
+
 ## [0.9.0](https://github.com/zgeoff/nixie/compare/v0.8.0...v0.9.0) (2026-10-13)
 
 
