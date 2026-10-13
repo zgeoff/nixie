@@ -145,6 +145,8 @@ const errorStatuses = new Map([
   ['PROPOSAL_HASH', 409],
   ['PROPOSAL_CLOSED', 409],
   ['STALE_VERSION', 409],
+  ['WRONG_STATE', 409],
+  ['PINNED_CORE_FULL', 409],
 ]);
 
 // a request the socket refuses before the memory gate sees it, with the status it answers

@@ -126,12 +126,13 @@ Starting the server removes a stale socket file first, because the writer lock p
 server runs.
 
 The memory host commands list the pending memory proposals and approve or reject one. The server
-answers each through the memory gate, the path every other answer takes, so an approval applies the
-bound operation with its approval record and keeps the proposal's provenance
-([memory writes](../memory/writes.md)). An answer names the proposal and the action hash the user
-saw, so a proposal that changed since the listing refuses it. Its approval record names the host as
-the identity that answered, because a shell in the container reaches the socket and no device
-session does. The memory commands answer once the memory store starts, and refuse before then.
+answers each through the memory gate's own answer path, so an approval applies the bound operation
+with its approval record and keeps the proposal's provenance ([memory writes](../memory/writes.md)).
+An answer names the proposal and the action hash the listing showed. The gate refuses an answer
+under another hash, to a proposal that closed or lapsed since the listing, or to one whose item
+moved on, and applies nothing. Its approval record names the host as the identity that answered,
+because a shell in the container reaches the socket and no device session does. The memory commands
+answer once the memory store starts, and refuse before then.
 
 ## The image and the release bundle
 
