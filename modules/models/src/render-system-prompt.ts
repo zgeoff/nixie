@@ -1,5 +1,4 @@
-import { formatOrigin } from './format-origin';
-import { renderItemQuote } from './render-item-quote';
+import { renderPinnedItem } from './render-pinned-item';
 import type { MemoryItem } from './types';
 
 // Renders the system prompt from the persona and the pinned core, each item with its ID, who saved
@@ -13,10 +12,7 @@ export function renderSystemPrompt(
   if (core.length === 0) {
     return persona;
   }
-  const lines = core.flatMap((item) => [
-    `- [${item.itemID}, ${formatOrigin(item.origin, ownerName)}] ${item.text}`,
-    ...renderItemQuote(item),
-  ]);
+  const lines = core.flatMap((item) => renderPinnedItem(item, ownerName));
 
   return [
     persona,

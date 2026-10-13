@@ -29,9 +29,10 @@ the log.
 The core has a token budget, configurable in the deployment configuration, because it rides in the
 cached prefix of every turn and every change to it costs a cache write. The store refuses a pin, or
 an edit or undo of a pinned item, that would take the core past the budget, with the
-`PINNED_CORE_FULL` error code, so the user unpins something first. The store counts tokens as a
-fixed share of characters, which needs no tokenizer and errs toward the larger count for English
-text.
+`PINNED_CORE_FULL` error code, so the user unpins something first. The store counts each item as the
+system prompt renders it, quote included, because a long quote takes as much of the prefix as a long
+text. Only the user's name is left at its default in that count. The store counts tokens as a fixed
+share of characters, which needs no tokenizer and errs toward the larger count for English text.
 
 ## How an item reads
 

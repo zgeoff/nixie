@@ -52,6 +52,6 @@ async function requireItemCoreRoom(parts: StoreParts, itemID: string): Promise<v
   });
 
   if (item !== undefined) {
-    requirePinnedCoreRoom(parts.context, pinned, { itemID, text: item.text });
+    requirePinnedCoreRoom(parts.context, pinned, item);
   }
 }
