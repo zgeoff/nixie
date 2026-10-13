@@ -5,22 +5,25 @@
   [0023](../../../decisions/0023-lifting-always-ask.md),
   [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
   [0028](../../../decisions/0028-policy-design.md),
-  [0033](../../../decisions/0033-model-profiles.md)
+  [0033](../../../decisions/0033-model-profiles.md),
+  [0043](../../../decisions/0043-paid-tool-budgets.md)
 
-nixie spends money in 2 ways and keeps them apart. Spending in the world, such as a purchase, is a
-tool call with the `spend` effect, which always asks unless a lifting rule covers it. Model cost is
-what nixie pays its model provider for each turn, which budgets per job and a hard spending stop
-limit. A budget is one kind of record for both: a limit over a period, and raising one always asks.
+nixie spends money in 3 ways and keeps them apart. Spending in the world, such as a purchase, is a
+tool call with the `spend` effect, which always asks unless a lifting rule covers it. A paid tool,
+such as search, costs money for each call without the `spend` effect, and its own budget limits it.
+Model cost is what nixie pays its model provider for each turn, which budgets per job and a hard
+spending stop limit. A budget is one kind of record for both: a limit over a period, and raising one
+always asks.
 
 ## Budgets
 
-| Field  | Holds                                                              |
-| ------ | ------------------------------------------------------------------ |
-| ID     | A stable slug, such as `shopping-month`                            |
-| Counts | Spending through `spend` tools, or model dollars, tokens or turns  |
-| Limit  | An amount in your currency, a token count or a turn count          |
-| Period | A day, a week or a month, reset at local midnight on its first day |
-| Scope  | The whole deployment, one job, or the lifting rules that name it   |
+| Field  | Holds                                                                                  |
+| ------ | -------------------------------------------------------------------------------------- |
+| ID     | A stable slug, such as `shopping-month`                                                |
+| Counts | Spending through `spend` tools, a paid tool's calls, or model dollars, tokens or turns |
+| Limit  | An amount in your currency, a token count or a turn count                              |
+| Period | A day, a week or a month, reset at local midnight on its first day                     |
+| Scope  | The whole deployment, one job, one paid tool, or the lifting rules that name it        |
 
 The limit is definition data inside the [snapshot hash](rules.md#the-snapshot-hash). The spent
 amount is state in a ledger projection, which every charge updates in the same transaction as its
@@ -51,6 +54,20 @@ covers, and a merchant outside them asks.
 A charge reaches the ledger when the action queues, before the provider call, and a failed action
 credits it back. **Why:** 2 purchases queued together cannot both fit under the last of a budget,
 and an unknown outcome stays charged until you settle it.
+
+## Paid tools
+
+Each paid tool has a budget scoped to that tool, under
+[0043](../../../decisions/0043-paid-tool-budgets.md), and the tool states its price per call. The
+default limits are $5 a day and $50 a month, and the deployment configuration overrides them. A paid
+tool gets its budget in the same change that builds the tool.
+
+nixie charges the tool's budget when the call starts, before the provider sees it, and credits back
+a call that fails, the same way the spending ledger charges a purchase. At the limit, the tool
+returns "budget reached" to the model and nixie sends you a push. Raising a tool budget is a
+`budget_raise`, which always asks and takes the passkey check. **Why:** model dollars are notional
+on a subscription and tool dollars are real, so the tool budget stays apart from the model limits,
+and a looping search hits it long before it costs much.
 
 ## Model cost
 

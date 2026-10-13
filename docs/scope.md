@@ -39,7 +39,7 @@ adding it later means a redesign.
 
 | Requirement                                                                                                                      | Source                       | Decisions                                                                                | ★   |
 | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------- | --- |
-| Voice in both directions, with interruption                                                                                      | Why nixie                    | [0009](decisions/0009-first-channel.md)                                                  | ★   |
+| Voice in both directions, with interruption                                                                                      | Why nixie                    | [0009](decisions/0009-first-channel.md), [0040](decisions/0040-voice-pipeline.md)        | ★   |
 | One conversation that continues across channels                                                                                  | Why nixie                    | [0009](decisions/0009-first-channel.md)                                                  | ★   |
 | The Android app, built with Expo React Native                                                                                    | Why nixie                    | [0009](decisions/0009-first-channel.md)                                                  | ★   |
 | Execution that resumes at its last step after a restart, with every action safe to repeat                                        | Background work; survey      | [0001](decisions/0001-durable-layer.md), [0002](decisions/0002-approvals.md)             | ★   |
@@ -54,9 +54,10 @@ adding it later means a redesign.
 | Health checks reported through another channel, safe upgrades with rollback, and backups of personal data                        | Your data stays home; survey | [0020](decisions/0020-deployment.md)                                                     |     |
 | Trust rules for skills: signed, pinned, scanned, with review of skills that nixie writes itself                                  | Survey                       | [0038](decisions/0038-skills.md)                                                         |     |
 
-nixie integrates a realtime voice model through an adapter and does not build one. nixie owns the
-voice session itself: it reconnects when a provider session ends, keeps a transcript of what you
-heard, and brings in results without interrupting.
+nixie runs voice as a pipeline of speech-to-text, its own turn and text-to-speech, under
+[0040](decisions/0040-voice-pipeline.md), and builds none of those models. nixie owns the voice
+session itself: it reconnects when a provider session ends, keeps a transcript of what you heard,
+and brings in results without interrupting.
 
 ### Tier 3
 

@@ -238,7 +238,7 @@ Rules, effects, taint, approvals and auto-mode.
 - [0008: auto-mode decides the grey zone](decisions/0008-auto-mode.md) — auto-mode decides what the
   deterministic layers leave open, and nixie runs fully without it
 - [0012: High-risk approvals](decisions/0012-high-risk-approvals.md) — a passkey check for the
-  always-ask set, and a tap for everything else
+  always-ask set and for any rule wider than the card's, and a tap for everything else
 - [0015: Where taint applies](decisions/0015-taint-scope.md) — the conversation is always untrusted,
   and taint applies to jobs and workers in stages
 - [0023: Lifting the always-ask set](decisions/0023-lifting-always-ask.md) — a bounded rule can lift
@@ -246,6 +246,8 @@ Rules, effects, taint, approvals and auto-mode.
 - [0028: The policy design](decisions/0028-policy-design.md) — the consent checker, your ask rules
   as their own prompt cause, the spending stop as a host proxy, YAML rule files, and the permissive
   starter set with notices for jobs
+- [0043: Budgets for paid tools](decisions/0043-paid-tool-budgets.md) — a budget per paid tool,
+  charged before each call, with a push at the limit
 
 ### Memory
 
@@ -267,6 +269,8 @@ The memory store, its writes, how it reaches the model, and definition versionin
   model's reflections, reached by tool call and by links from memory items
 - [0039: The local encoder](decisions/0039-local-encoder.md) — `mdbr-leaf-ir` int8 on ONNX Runtime,
   with 256-number int8 vectors and weights pinned by checksum
+- [0042: Dictated text and memory](decisions/0042-dictated-text-and-memory.md) — dictated text never
+  backs a memory, so a write that quotes it is a proposal
 
 ### Skills
 
@@ -284,6 +288,10 @@ Clients, push and voice.
   conversation, approvals and voice, and chat apps carry content-free pushes
 - [0029: Channels and clients](decisions/0029-channels-and-clients.md) — oRPC, Start and Expo,
   device sessions, Defer, two push levels and native Android paste capture
+- [0040: The voice pipeline](decisions/0040-voice-pipeline.md) — speech-to-text, nixie's own turn
+  and text-to-speech, with an opening that never claims an outcome
+- [0041: Approvals during a voice call](decisions/0041-approvals-during-a-voice-call.md) — the card
+  in the call screen, announced by a fixed line, and a spoken "yes" never approves
 
 ### Connectors
 
@@ -318,6 +326,8 @@ Definitions and deployment models.
 - [0036: Deployment configuration and reference manifests](decisions/0036-deployment-configuration-and-reference-manifests.md)
   — one YAML file validated by a zod schema, and generic Kubernetes manifests shipped beside the
   Compose recipe
+- [0044: The recovery bound](decisions/0044-recovery-bound.md) — at most 5 minutes of encrypted
+  content lost once the replica ships, with a key snapshot after each key change
 
 ## Archive
 
