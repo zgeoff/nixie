@@ -65,7 +65,7 @@ export async function runLiveTurn(
             times: plan.times,
           }),
       signal: plan.signal,
-      readEndedMark: () => readRecalledThrough(run.context, input.taskID),
+      readRecallMark: () => readRecalledThrough(run.context, input.taskID),
     });
 
     return { turn, sent, hasMore, notedThrough: note?.throughSequence ?? null };

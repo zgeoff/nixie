@@ -96,9 +96,9 @@ resumes at, so the session changes only inside a step that holds the task's leas
 
 The CLI compacts between model calls inside a turn, and the guest reports each compaction with its
 trigger and its token counts before and after. The step writes one compacted record per compaction,
-with those counts and no text. The summary the CLI writes stays in the session, because the model
-wrote it from the conversation, and nixie keeps model text out of its records unless a reply holds
-it.
+with those counts, the newest recall the compaction summarized and no text. The summary the CLI
+writes stays in the session, because the model wrote it from the conversation, and nixie keeps model
+text out of its records unless a reply holds it.
 
 ## Rebuilding a session
 

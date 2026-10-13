@@ -34,9 +34,9 @@ interface PendingRecall {
 
 const emptyState: SessionState = { delivered: new Map(), pending: [], isCompacted: false };
 
-// A reset commits after its step's recalls and drops them: a compaction summarized them, and a lost
-// session's rebuild lists what its turn retrieved. A turn drops a recall after its last result,
-// which reached a session that no turn resumes.
+// A reset commits after its step's recalls and drops them: a compaction summarized those through
+// its mark, and a lost session's rebuild lists what its turn retrieved. A turn drops a recall after
+// its last result, which reached a session that no turn resumes.
 function buildSessionState(state: SessionState, record: LogRecord): SessionState {
   switch (record.kind) {
     case 'memory.recalled': {
@@ -45,17 +45,7 @@ function buildSessionState(state: SessionState, record: LogRecord): SessionState
       return { ...state, pending: [...state.pending, recall] };
     }
     case 'model.turn_ended': {
-      const retrieved = state.isCompacted ? [] : parseRefs(record.payload['retrieved']);
-      const through = parseRecalledThrough(record.payload['recalledThrough']);
-      const recalled = state.pending
-        .filter((recall) => recall.sequence <= through)
-        .flatMap((recall) => recall.refs);
-
-      return {
-        ...state,
-        delivered: mergeRefs(state.delivered, [...recalled, ...retrieved]),
-        pending: [],
-      };
+      return buildTurnEnd(state, record);
     }
     case 'task.step_started': {
       return { ...state, pending: [], isCompacted: false };
@@ -67,14 +57,35 @@ function buildSessionState(state: SessionState, record: LogRecord): SessionState
         pending: record.payload['reason'] === 'invalidated' ? state.pending : [],
       };
     }
-    default: {
+    case 'model.compacted': {
+      const through = parseRecalledThrough(record.payload['recalledThrough']);
+
       return {
         delivered: new Map(),
-        pending: [],
-        isCompacted: state.isCompacted || record.kind === 'model.compacted',
+        pending: state.pending.filter((recall) => recall.sequence > through),
+        isCompacted: true,
       };
     }
+    default: {
+      return { ...state, delivered: new Map(), pending: [] };
+    }
   }
+}
+
+// the turn keeps its step's recalls through its mark, and what it retrieved unless a compaction
+// summarized it
+function buildTurnEnd(state: SessionState, record: LogRecord): SessionState {
+  const retrieved = state.isCompacted ? [] : parseRefs(record.payload['retrieved']);
+  const through = parseRecalledThrough(record.payload['recalledThrough']);
+  const recalled = state.pending
+    .filter((recall) => recall.sequence <= through)
+    .flatMap((recall) => recall.refs);
+
+  return {
+    ...state,
+    delivered: mergeRefs(state.delivered, [...recalled, ...retrieved]),
+    pending: [],
+  };
 }
 
 function mergeRefs(
@@ -151,7 +162,7 @@ function parseRefs(value: unknown): readonly MemoryRef[] {
   return parsed.success ? parsed.data : [];
 }
 
-// a turn recorded before turns kept the mark took every recall of its step
+// a turn or compaction recorded before it kept the mark took every recall of its step
 function parseRecalledThrough(value: unknown): number {
   const parsed = z.int().nonnegative().safeParse(value);
 

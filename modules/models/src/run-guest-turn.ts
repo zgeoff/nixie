@@ -30,9 +30,13 @@ export interface GuestTurnSpec {
   // aborts when the step's lease is lost, which stops the guest
   readonly signal: AbortSignal;
 
-  // read at each ended frame, so the turn reports the mark its last result saw
-  readonly readEndedMark?: () => Promise<number>;
+  // read at each ended and compacted frame, so the turn reports the mark its last result and each
+  // compaction saw
+  readonly readRecallMark?: () => Promise<number>;
 }
+
+// a compaction the guest reported, with the mark read when it arrived, when the spec reads one
+export type Compaction = CompactedFrame & { readonly mark?: number };
 
 // What the guest reported for one turn: each assistant message, the uuids of the inbox messages
 // the model read, each model turn that ended at a result, each compaction, and the failure that
@@ -41,7 +45,7 @@ export interface GuestTurn {
   readonly assistants: readonly AssistantFrame[];
   readonly read: readonly string[];
   readonly ended: readonly EndedFrame[];
-  readonly compactions: readonly CompactedFrame[];
+  readonly compactions: readonly Compaction[];
   readonly failure: FailedFrame | null;
 
   // the mark read at the last ended frame, when the spec reads one
@@ -65,7 +69,7 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
     spec.signal.throwIfAborted();
     await stream.send(encodeTurnFrame(spec.turn));
     void sendMessages(stream, spec.messages);
-    return await collectTurn(stream, spec.readEndedMark);
+    return await collectTurn(stream, spec.readRecallMark);
   } catch (error) {
     await stream.stop();
     throw error;
@@ -107,19 +111,19 @@ interface MutableTurn {
   readonly assistants: AssistantFrame[];
   readonly read: string[];
   readonly ended: EndedFrame[];
-  readonly compactions: CompactedFrame[];
+  readonly compactions: Compaction[];
   failure: FailedFrame | null;
   endedMark: number | null;
   settled: { readonly assistants: number; readonly read: number; readonly compactions: number };
 }
 
-type MarkReader = GuestTurnSpec['readEndedMark'];
+type MarkReader = GuestTurnSpec['readRecallMark'];
 
 // Only the frames up to the last ended frame count, because the next turn resumes at that frame's
 // boundary: a reply or a read after it, from a guest that died before its next result, belongs to a
 // session no turn resumes, so its inbox records stay unread and the next step sends them again.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
-async function collectTurn(stream: ExecStream, readEndedMark: MarkReader): Promise<GuestTurn> {
+async function collectTurn(stream: ExecStream, readRecallMark: MarkReader): Promise<GuestTurn> {
   const turn: MutableTurn = {
     assistants: [],
     read: [],
@@ -133,10 +137,9 @@ async function collectTurn(stream: ExecStream, readEndedMark: MarkReader): Promi
   for await (const message of stream.messages) {
     const frame = decodeTurnFrame(guestFrameSchema, message);
 
-    updateTurn(turn, frame);
-    if (frame.type === 'ended' && readEndedMark !== undefined) {
-      turn.endedMark = await readEndedMark();
-    }
+    const mark = await readFrameMark(frame, readRecallMark);
+
+    updateTurn(turn, frame, mark);
   }
   const exit = await stream.exit;
 
@@ -151,21 +154,34 @@ async function collectTurn(stream: ExecStream, readEndedMark: MarkReader): Promi
   };
 }
 
+// the newest recall at an ended or compacted frame, read before the turn moves past it
+async function readFrameMark(
+  frame: GuestFrame,
+  readRecallMark: MarkReader,
+): Promise<number | undefined> {
+  const isMarked = frame.type === 'ended' || frame.type === 'compacted';
+
+  return isMarked && readRecallMark !== undefined ? await readRecallMark() : undefined;
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the turn this collects
-function updateTurn(turn: MutableTurn, frame: GuestFrame): void {
+function updateTurn(turn: MutableTurn, frame: GuestFrame, mark: number | undefined): void {
   if (frame.type === 'assistant') {
     turn.assistants.push(frame);
   } else if (frame.type === 'read') {
     turn.read.push(...frame.uuids);
   } else if (frame.type === 'ended') {
     turn.ended.push(frame);
+    turn.endedMark = mark ?? null;
     turn.settled = {
       assistants: turn.assistants.length,
       read: turn.read.length,
       compactions: turn.compactions.length,
     };
   } else if (frame.type === 'compacted') {
-    turn.compactions.push(frame);
+    const compaction = mark === undefined ? frame : { ...frame, mark };
+
+    turn.compactions.push(compaction);
   } else if (frame.type === 'failed') {
     turn.failure = frame;
   } else {

@@ -73,7 +73,9 @@ recall delivered it in a step whose turn ended, before the turn's last result. A
 or stopped ran on a session that its retry starts again from the last boundary, and a recall after
 the last result reached a part of the session that the next turn never resumes. The turn's record
 keeps the newest recall it saw at that result for this reason. A compaction summarizes everything
-delivered before it, its own step's recalls included, so those items match again. A session rebuilt
+delivered before it, its own step's earlier recalls included, so those items match again. A recall
+later in the same step reaches the compacted session whole, so the compaction's record also keeps
+the newest recall it saw, and only the recalls through that mark match again. A session rebuilt
 after an invalidation holds what its step delivered. A turn that finds its session lost reads its
 context again without the exclusion, and the new session counts only what that turn retrieved,
 because the step's first recall served the lost session. An edit makes a new version, which the
