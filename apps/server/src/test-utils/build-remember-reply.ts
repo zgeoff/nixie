@@ -6,9 +6,6 @@ export interface RememberCall {
 
   // the sequence of the message the quote comes from
   readonly sourceID: number | undefined;
-
-  // the item the call revises, or none for a new item
-  readonly itemID?: string;
 }
 
 // Builds the scripted model reply that calls the writer's memory.remember tool, as the guest names

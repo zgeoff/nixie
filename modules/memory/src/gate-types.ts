@@ -31,20 +31,22 @@ export interface GateLimits {
   readonly closeMatchScore: number;
 }
 
-// A rule of yours that names memory.remember and lets a write skip the quote and the checker, as
-// the rule's ID and revision.
+// A rule of yours that names memory.remember or memory.edit and lets a write through that tool skip
+// the quote and the checker, as the rule's ID and revision.
 export interface AllowRuleMatch {
   readonly ruleID: string;
   readonly revision: number;
 }
 
-// Finds your allow rule on memory.remember that matches a write from the thread, or null. No rule
-// exists until policy ships, so the lookup the server passes returns null.
+// Finds your allow rule on the write's tool that matches a write from the thread, or null. A rule
+// on one tool never covers the other. No rule exists until policy ships, so the lookup the server
+// passes returns null.
 export type FindAllowRule = (call: AllowRuleCall) => Promise<AllowRuleMatch | null>;
 
-// The call an allow rule must match: the tool and the thread it came from.
+// The call an allow rule must match: the tool, memory.remember for a new item or memory.edit for a
+// change to one, and the thread it came from.
 export interface AllowRuleCall {
-  readonly tool: 'memory.remember';
+  readonly tool: 'memory.remember' | 'memory.edit';
   readonly thread: string;
 }
 

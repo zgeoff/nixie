@@ -10,9 +10,9 @@ import type { MemoryTables, StoreParts } from './types';
 import { writeMemoryProposal } from './write-memory-proposal';
 import { writeRememberedItem } from './write-remembered-item';
 
-// Runs a memory.remember through the content gate. A write that passes applies at once under its
-// turn's notice, and every other write becomes a proposal, a missing quote included. An edit of a
-// missing item or a moved-on version is refused before any check runs.
+// Runs a memory.remember, or a memory.edit when the write names its target, through the content
+// gate under that tool's allow rule. A passing write applies at once, any other becomes a proposal,
+// and an edit of a missing item or a moved-on version is refused before any check runs.
 export async function writeGatedRemember(
   parts: StoreParts,
   request: GatedRememberRequest,
@@ -24,12 +24,17 @@ export async function writeGatedRemember(
       states: ['active', 'retired'],
     });
   }
-  const gate = await runContentGate(parts.context, {
-    text: request.text,
-    quote: request.quote ?? null,
-    isPinned: request.isPinned === true,
-    thread: request.caller.thread,
-  });
+  const tool = request.target === undefined ? 'memory.remember' : 'memory.edit';
+  const gate = await runContentGate(
+    parts.context,
+    {
+      text: request.text,
+      quote: request.quote ?? null,
+      isPinned: request.isPinned === true,
+      thread: request.caller.thread,
+    },
+    tool,
+  );
   const newest = await findNewestMessage(parts.context.log, request.caller.thread);
   const group = buildWriteGroup(request.caller, newest);
 
