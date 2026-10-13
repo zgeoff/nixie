@@ -38,11 +38,19 @@ test('it puts a renamed label on the next message, and leaves the message before
   expect(messages.map((entry) => entry.record.erasable)).toStrictEqual([
     {
       status: 'readable',
-      fields: { text: 'Before.', spans: expect.any(Array), sessionLabel: 'Browser' },
+      fields: {
+        text: 'Before.',
+        spans: [{ start: 0, end: 7, source: 'unknown' }],
+        sessionLabel: 'Browser',
+      },
     },
     {
       status: 'readable',
-      fields: { text: 'After.', spans: expect.any(Array), sessionLabel: 'phone' },
+      fields: {
+        text: 'After.',
+        spans: [{ start: 0, end: 6, source: 'unknown' }],
+        sessionLabel: 'phone',
+      },
     },
   ]);
 });
