@@ -32,6 +32,11 @@ rebuilt session's history render the stamp the same way. In that history each re
 time in UTC, labelled so, because a reply carries no zone and an unlabelled time would read as the
 user's clock.
 
+The stamp ends with the label of the device session the message came from, such as
+`[Tue 14 Oct, 14:05, Sydney · phone]`, so the model can fit its reply to the screen the user reads
+it on. [The API](../channels/api.md#device-sessions) covers where the label comes from. A message
+whose label was forgotten with its text, or one that holds no label, shows the time alone.
+
 ## The tool
 
 The tool reads nixie's clock and returns the time in UTC, the local time with its UTC offset, the

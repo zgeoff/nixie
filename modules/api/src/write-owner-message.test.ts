@@ -199,6 +199,7 @@ test('it encrypts the spans with the text and keeps neither in plain text', asyn
         { start: 0, end: 2, source: 'typed' },
         { start: 2, end: 20, source: 'pasted' },
       ],
+      sessionLabel: 'laptop',
     },
   });
   expect(database).not.toInclude('a distinctive phrase');
@@ -226,8 +227,42 @@ test('it labels the whole message unknown when its spans leave a gap', async () 
   expect(message?.payload['spans']).toBe('unknown');
   expect(message?.erasable).toStrictEqual({
     status: 'readable',
-    fields: { text: 'hello PASTED', spans: [{ start: 0, end: 12, source: 'unknown' }] },
+    fields: {
+      text: 'hello PASTED',
+      spans: [{ start: 0, end: 12, source: 'unknown' }],
+      sessionLabel: 'laptop',
+    },
   });
+});
+
+test('it keeps on each message the label of the session it came from', async () => {
+  const ctx = await setupTest();
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const phone = await createDeviceSession(ctx.context, 'phone');
+
+  await writeOwnerMessage(ctx.context, laptop.caller, {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'From the desk.',
+    spans: [],
+  });
+  await writeOwnerMessage(ctx.context, phone.caller, {
+    clientMessageId: '1c8e7a2f-5b3d-4e6a-8f9c-2d4b6a8c0e12',
+    thread: 'conversation',
+    text: 'From the train.',
+    spans: [],
+  });
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['owner_message'],
+  });
+
+  expect(entries.map((entry) => entry.record.erasable)).toMatchObject([
+    { status: 'readable', fields: { text: 'From the desk.', sessionLabel: 'laptop' } },
+    { status: 'readable', fields: { text: 'From the train.', sessionLabel: 'phone' } },
+  ]);
 });
 
 test('it refuses a caller whose session was revoked after the call resolved it', async () => {

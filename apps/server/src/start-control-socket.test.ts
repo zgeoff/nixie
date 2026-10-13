@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -28,6 +28,8 @@ test('it issues an enrolment code to a request on the socket', async () => {
     createEnrolmentCode: () =>
       Promise.resolve({ code: 'ABCD-EFGH', expiresAt: new Date('2026-10-11T12:15:00.000Z') }),
     readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -50,6 +52,8 @@ test('it keeps the socket in a directory only nixie’s user may enter', async (
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -65,6 +69,8 @@ test('it answers any other request with 404', async () => {
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -80,6 +86,8 @@ test('it answers 500 with the reason when the code cannot be issued', async () =
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('the database is locked')),
     readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -94,12 +102,154 @@ test('it answers 500 with the reason when the code cannot be issued', async () =
   expect(reason).toBe('the database is locked');
 });
 
+test('it lists the live device sessions', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => null,
+    readSessions: () =>
+      Promise.resolve([
+        {
+          sessionID: '7d2c4e6a-8b0f-4a1c-9e3d-5f7a9b1c3d5e',
+          deviceName: 'Browser',
+          createdAt: new Date('2026-10-01T09:00:00.000Z'),
+          lastUsedAt: new Date('2026-10-13T08:30:00.000Z'),
+        },
+      ]),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/sessions', { unix: ctx.path });
+  const body = await response.json();
+
+  expect(body).toStrictEqual([
+    {
+      sessionID: '7d2c4e6a-8b0f-4a1c-9e3d-5f7a9b1c3d5e',
+      deviceName: 'Browser',
+      createdAt: '2026-10-01T09:00:00.000Z',
+      lastUsedAt: '2026-10-13T08:30:00.000Z',
+    },
+  ]);
+});
+
+test('it sets the label of a session and answers with the label it kept', async () => {
+  const ctx = await setupTest();
+  const updateSessionLabel = mock(() =>
+    Promise.resolve({
+      status: 'labelled' as const,
+      sessionID: '7d2c4e6a-8b0f-4a1c-9e3d-5f7a9b1c3d5e',
+      label: 'work PC',
+    }),
+  );
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/sessions/label', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ sessionID: '7d2c4e6a-8b0f-4a1c-9e3d-5f7a9b1c3d5e', label: 'work  PC' }),
+  });
+  const body = await response.json();
+
+  expect(updateSessionLabel).toHaveBeenCalledExactlyOnceWith({
+    sessionID: '7d2c4e6a-8b0f-4a1c-9e3d-5f7a9b1c3d5e',
+    label: 'work  PC',
+  });
+  expect(body).toStrictEqual({
+    sessionID: '7d2c4e6a-8b0f-4a1c-9e3d-5f7a9b1c3d5e',
+    label: 'work PC',
+  });
+});
+
+test('it answers 404 to a label for a session that is not signed in', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.resolve({ status: 'not_found' as const }),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/sessions/label', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ sessionID: '7d2c4e6a-8b0f-4a1c-9e3d-5f7a9b1c3d5e', label: 'phone' }),
+  });
+  const reason = await response.text();
+
+  expect(response.status).toBe(404);
+  expect(reason).toBe('no device session that is still signed in has that ID');
+});
+
+test('it answers 400 to a label the session cannot take', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.resolve({ status: 'invalid_label' as const }),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/sessions/label', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ sessionID: '7d2c4e6a-8b0f-4a1c-9e3d-5f7a9b1c3d5e', label: ' ' }),
+  });
+  const reason = await response.text();
+
+  expect(response.status).toBe(400);
+  expect(reason).toBe('a label holds 1 to 100 characters besides spaces');
+});
+
+test('it answers 400 to a label request with no session ID', async () => {
+  const ctx = await setupTest();
+  const updateSessionLabel = mock(() => Promise.reject(new Error('unused')));
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/sessions/label', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ label: 'phone' }),
+  });
+  const reason = await response.text();
+
+  expect(response.status).toBe(400);
+  expect(reason).toBe('a label takes a sessionID and a label');
+  expect(updateSessionLabel).not.toHaveBeenCalled();
+});
+
 test('it lists each pending memory proposal with its text and the hash an answer binds to', async () => {
   const ctx = await setupTest();
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => ctx.memory.store.proposals,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -141,6 +291,8 @@ test('it answers an approval that an active item closely matches with that item,
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => ctx.memory.store.proposals,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -174,6 +326,8 @@ test('it writes the same records for an approval as the memory gate’s own appr
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => ctx.memory.store.proposals,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -218,6 +372,8 @@ test('it rejects a memory proposal, which leaves the pending list', async () => 
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => ctx.memory.store.proposals,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -248,6 +404,8 @@ test('it answers 409 to an answer under another action hash, and applies nothing
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => ctx.memory.store.proposals,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -275,6 +433,8 @@ test('it answers 404 to an answer for a memory proposal that does not exist', as
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => ctx.memory.store.proposals,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -294,6 +454,8 @@ test('it answers 400 to an answer with no action hash', async () => {
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => ctx.memory.store.proposals,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -315,6 +477,8 @@ test('it answers 503 to a memory request before the memory store starts', async 
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());

@@ -24,6 +24,37 @@ test('it leaves out a revoked session', async () => {
   expect(sessions.map((session) => session.deviceName)).toStrictEqual(['laptop']);
 });
 
+test('it marks the caller’s own session as current', async () => {
+  const ctx = await setupTest();
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  ctx.clock.advance(1);
+  await createDeviceSession(ctx.context, 'phone');
+
+  const sessions = await readSessions(ctx.context, laptop.caller);
+
+  expect(sessions.map((session) => [session.deviceName, session.current])).toStrictEqual([
+    ['laptop', true],
+    ['phone', false],
+  ]);
+});
+
+test('it marks no session as current for a read with no caller', async () => {
+  const ctx = await setupTest();
+
+  await createDeviceSession(ctx.context, 'laptop');
+  ctx.clock.advance(1);
+  await createDeviceSession(ctx.context, 'phone');
+
+  const sessions = await readSessions(ctx.context, null);
+
+  expect(sessions.map((session) => [session.deviceName, session.current])).toStrictEqual([
+    ['laptop', false],
+    ['phone', false],
+  ]);
+});
+
 test('it leaves out a lapsed session', async () => {
   const ctx = await setupTest();
 

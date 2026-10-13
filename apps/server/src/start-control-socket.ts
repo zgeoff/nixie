@@ -10,7 +10,27 @@ export interface ControlSocketOptions {
 
   // the memory proposals, or null until the memory store starts
   readonly readProposals: () => MemoryProposals | null;
+  readonly readSessions: () => Promise<readonly HostSession[]>;
+  readonly updateSessionLabel: (input: SessionLabel) => Promise<SessionLabelResult>;
 }
+
+// A live device session as a host command lists it.
+export interface HostSession {
+  readonly sessionID: string;
+  readonly deviceName: string;
+  readonly createdAt: Date;
+  readonly lastUsedAt: Date;
+}
+
+export interface SessionLabel {
+  readonly sessionID: string;
+  readonly label: string;
+}
+
+export type SessionLabelResult =
+  | { readonly status: 'labelled'; readonly sessionID: string; readonly label: string }
+  | { readonly status: 'invalid_label' }
+  | { readonly status: 'not_found' };
 
 export interface EnrolmentCode {
   readonly code: string;
@@ -22,8 +42,8 @@ export interface ControlSocket {
 }
 
 // Starts the control socket that host commands reach the server through, since only the writer
-// lock's holder may write: enrolment codes, and memory proposals through the memory gate. A stale
-// socket file is removed first: the writer lock already proves no other server runs.
+// lock's holder may write: enrolment codes, session labels, and memory proposals through the memory
+// gate. A stale socket file is removed first: the writer lock already proves no other server runs.
 export async function startControlSocket(options: ControlSocketOptions): Promise<ControlSocket> {
   await mkdir(dirname(options.path), { recursive: true, mode: 0o700 });
   await rm(options.path, { force: true });
@@ -38,6 +58,7 @@ export async function startControlSocket(options: ControlSocketOptions): Promise
           return Response.json({ code: issued.code, expiresAt: issued.expiresAt.toISOString() });
         },
       },
+      ...buildSessionRoutes(options),
       ...buildMemoryRoutes(options),
     },
     fetch: () => new Response('not found', { status: 404 }),
@@ -53,6 +74,51 @@ export async function startControlSocket(options: ControlSocketOptions): Promise
     },
   };
 }
+
+// lists the live device sessions, and sets the label of one
+function buildSessionRoutes(options: ControlSocketOptions) {
+  return {
+    '/sessions': {
+      GET: async () => {
+        const sessions = await options.readSessions();
+
+        return Response.json(
+          sessions.map((session) => ({
+            sessionID: session.sessionID,
+            deviceName: session.deviceName,
+            createdAt: session.createdAt.toISOString(),
+            lastUsedAt: session.lastUsedAt.toISOString(),
+          })),
+        );
+      },
+    },
+    '/sessions/label': {
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
+      POST: async (request: Request) => {
+        const body: unknown = await request.json().catch(() => null);
+        const parsed = labelBody.safeParse(body);
+
+        if (!parsed.success) {
+          throw new ControlRequestError(400, 'a label takes a sessionID and a label');
+        }
+        const result = await options.updateSessionLabel(parsed.data);
+
+        if (result.status === 'not_found') {
+          throw new ControlRequestError(
+            404,
+            'no device session that is still signed in has that ID',
+          );
+        }
+        if (result.status === 'invalid_label') {
+          throw new ControlRequestError(400, 'a label holds 1 to 100 characters besides spaces');
+        }
+        return Response.json({ sessionID: result.sessionID, label: result.label });
+      },
+    },
+  } as const;
+}
+
+const labelBody = z.strictObject({ sessionID: z.string().min(1), label: z.string() });
 
 // lists the pending proposals, and answers one under the action hash the host command showed
 function buildMemoryRoutes(options: ControlSocketOptions) {

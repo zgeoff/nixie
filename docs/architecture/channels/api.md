@@ -19,8 +19,10 @@ except enrolment resolves the session to a row of the identity record first, and
 
 Each device session is one row of the identity record: its channel, an external ID that for a device
 session is the session's own ID, a label from the device name, and when it was paired, last seen and
-revoked. The row holds only the SHA-256 hash of its token, because a random token cannot be guessed
-back from its hash, so a copy of the database grants no session.
+revoked. A host command sets a session's label, which replaces the device name it enrolled with, so
+the user names each device as they think of it, such as phone or PC. The row holds only the SHA-256
+hash of its token, because a random token cannot be guessed back from its hash, so a copy of the
+database grants no session.
 
 An enrolment code turns into a session once. nixie keeps only the code's hash, and a code lapses
 unused after the enrolment code lifetime. The host's code comes from a function the server calls at
@@ -41,9 +43,10 @@ record reaches it.
 
 The identity record, the enrolment codes and the checked-action results are plain tables, not
 projections, because a call moves a session's last seen time without a record. Each change an audit
-needs writes a record in the same transaction: a code issued, a session enrolled, and a session
-revoked. The enrolment record encrypts the device name, while the identity row keeps it in plain
-text, because the session list shows it on every device and a session's label is no message.
+needs writes a record in the same transaction: a code issued, a session enrolled, a session's label
+set, and a session revoked. The enrolment record encrypts the device name and the label record
+encrypts the label, while the identity row keeps it in plain text, because the session list shows it
+on every device and a session's label is no message.
 
 Each checked action checks inside its own write transaction that the caller's session is still live,
 so a revoke that commits after the call resolved its session still stops the action.
@@ -79,11 +82,13 @@ page load and the web server's readiness check make such calls.
 
 The API writes the user's message as an `owner_message` record in the inbox of the task its thread
 names, in the transaction that keeps its client message ID, so a retry can never write it twice. The
-text and its spans sit in the record's erasable fields under one key, so forgetting the message
-forgets how it arrived too. The payload holds the client message ID, the identity row it came
-through, whether the spans are the client's own, and the sending device's time zone when the client
-sent one the server knows, which [time](../connectors/time.md) covers. A send to a thread whose task
-does not exist or has ended gets `THREAD_NOT_FOUND`.
+text, its spans and the label of the session it came from sit in the record's erasable fields under
+one key, so forgetting the message forgets how it arrived too. The message keeps the label its
+session had when it was sent, so a new label reaches the next message and leaves the earlier ones as
+they were. The payload holds the client message ID, the identity row it came through, whether the
+spans are the client's own, and the sending device's time zone when the client sent one the server
+knows, which [time](../connectors/time.md) covers. A send to a thread whose task does not exist or
+has ended gets `THREAD_NOT_FOUND`.
 
 The API keeps the spans only when they run from the start of the text to its end in order, each
 non-empty, with no gap and no overlap, counted in UTF-16 code units. Otherwise the whole message

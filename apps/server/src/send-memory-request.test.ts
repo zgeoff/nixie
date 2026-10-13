@@ -17,6 +17,8 @@ async function setupTest() {
     path: join(dir, 'control.sock'),
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readProposals: () => memory.store.proposals,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
