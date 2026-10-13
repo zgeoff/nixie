@@ -51,9 +51,9 @@ bun test
   proposal and action rows, and the session records. It renders the canonical state block and the
   rebuild's first turn.
 - [run.ts](run.ts) runs the comparison and the canonical-state and forget checks.
-- [collect-files-with.ts](collect-files-with.ts) finds every file that holds the forgotten text. The
-  scan outside the task's directory skips that directory, which sits under `/tmp` when the run
-  directory comes from `mktemp -d`.
+- [collect-files-with.ts](collect-files-with.ts) finds every file that holds the forgotten text. It
+  reads each file in chunks to its end, whatever its size. The scan outside the task's directory
+  skips that directory, which sits under `/tmp` when the run directory comes from `mktemp -d`.
 - [compact.ts](compact.ts) checks what decides the content of a compaction summary, and runs one
   automatic compaction.
 

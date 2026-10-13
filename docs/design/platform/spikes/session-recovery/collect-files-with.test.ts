@@ -48,3 +48,31 @@ test('it finds every matching file when nothing is excluded', () => {
     join(ctx.dir, 'task', 'session.jsonl'),
   ]);
 });
+
+test('it finds the text at the end of a file of 50 MB', () => {
+  const ctx = setupTest();
+  const content = Buffer.alloc(50_000_000, 'a');
+  content.write('GATE-1234', content.length - 'GATE-1234'.length);
+
+  writeFileSync(join(ctx.dir, 'large.jsonl'), content);
+
+  expect(collectFilesWith([ctx.dir], 'GATE-1234')).toStrictEqual([join(ctx.dir, 'large.jsonl')]);
+});
+
+test('it finds the text where it crosses a read boundary in a file of 50 MB', () => {
+  const ctx = setupTest();
+  const content = Buffer.alloc(50_000_000, 'a');
+  content.write('GATE-1234', 16 * 1024 * 1024 - 4);
+
+  writeFileSync(join(ctx.dir, 'large.jsonl'), content);
+
+  expect(collectFilesWith([ctx.dir], 'GATE-1234')).toStrictEqual([join(ctx.dir, 'large.jsonl')]);
+});
+
+test('it reports no file when a file of 50 MB does not hold the text', () => {
+  const ctx = setupTest();
+
+  writeFileSync(join(ctx.dir, 'large.jsonl'), Buffer.alloc(50_000_000, 'a'));
+
+  expect(collectFilesWith([ctx.dir], 'GATE-1234')).toStrictEqual([]);
+});
