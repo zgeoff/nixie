@@ -14,11 +14,12 @@ interface ThreadPage {
   readonly hasEarlier: boolean;
   readonly readAtSequence: number;
   readonly records: readonly ContractRecord[];
+  readonly lastStepEnd: ContractRecord | null;
 }
 
-// Reads one page of a thread, newest last, and the log sequence the page was read at. The page
-// holds no record past that sequence, so a client that follows the log from it misses no record and
-// repeats none. Answers null when no thread has the ID.
+// Reads one page of a thread, newest last, its newest step end, and the log sequence the page was
+// read at. Nothing read is past that sequence, so a client that follows the log from it misses no
+// record and repeats none. Answers null when no thread has the ID.
 export async function readThreadPage(
   context: APIContext,
   input: ThreadPageInput,
@@ -55,6 +56,7 @@ export async function readThreadPage(
     hasEarlier: window.hasEarlier,
     readAtSequence: last.sequence,
     records: entries.flatMap((entry) => toContractRecord(entry.record) ?? []),
+    lastStepEnd: await readLastStepEnd(context, input.thread, last.sequence),
   };
 }
 
@@ -92,3 +94,36 @@ async function findPageWindow(context: APIContext, bounds: PageBounds): Promise<
     hasEarlier: newest.length > bounds.limit,
   };
 }
+
+// the newest record on the thread that ended a step, at or before the sequence the page was read at
+async function readLastStepEnd(
+  context: APIContext,
+  thread: string,
+  readAtSequence: number,
+): Promise<ContractRecord | null> {
+  const row = await context.log.writer.db
+    .$extendTables<APITables>()
+    .selectFrom('records')
+    .select('sequence')
+    .where('thread', '=', thread)
+    .where('kind', 'in', stepEndKinds)
+    .where('sequence', '<=', readAtSequence)
+    .orderBy('sequence', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+
+  if (row === undefined) {
+    return null;
+  }
+
+  const entries = await readRecords(context.log, {
+    afterSequence: row.sequence - 1,
+    limit: 1,
+    thread,
+  });
+  const record = entries[0]?.record;
+
+  return record === undefined ? null : toContractRecord(record);
+}
+
+const stepEndKinds = ['task.step_committed', 'task.step_errored', 'task.revived'];

@@ -377,6 +377,7 @@ test('#conversation.read returns a page of the thread and the sequence it read a
         thread: 'conversation',
       },
     ],
+    lastStepEnd: null,
   });
 });
 

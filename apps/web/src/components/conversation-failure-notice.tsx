@@ -5,12 +5,17 @@ import type { LiveRecord } from '../use-live-records';
 
 export interface ConversationFailureNoticeProps {
   readonly records: readonly LiveRecord[];
+
+  // the thread's newest step end when the page was read, which a long step can push off the page
+  readonly lastStepEnd?: LiveRecord | null | undefined;
 }
 
 // Sits above the messages while the conversation's turns fail at or past the error limit, and goes
 // once a turn succeeds. The conversation keeps trying, and your next message makes it try at once.
 export function ConversationFailureNotice(props: ConversationFailureNoticeProps): ReactNode {
-  const failure = findConversationFailure(props.records);
+  const lastStepEnd = props.lastStepEnd ?? null;
+  const records = lastStepEnd === null ? props.records : [lastStepEnd, ...props.records];
+  const failure = findConversationFailure(records);
 
   if (failure === null) {
     return null;

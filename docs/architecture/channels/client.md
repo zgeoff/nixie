@@ -100,7 +100,9 @@ opens again.
 The page also says when nixie is failing to answer: the conversation's last step failed and its
 errors in a row reached the limit at which another task would fail. The notice gives the time of the
 next try, and goes once a step commits. The page reads all of it from the failed step's record,
-which holds the errors in a row, the limit and the retry time, so it needs no call of its own.
+which holds the errors in a row, the limit and the retry time. A long step can push that record off
+the newest page, so the page read also returns the thread's newest step end, and the notice reads it
+beside the records.
 
 Each message stands on its own line, and every other record folds into the step it belongs to, from
 the step's start to its end. A record before a step, such as the task's creation, folds into the

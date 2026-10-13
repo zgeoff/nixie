@@ -22,6 +22,31 @@ test('it shows that nixie is failing once its turns fail the error limit of time
   );
 });
 
+test('it shows the failure from the last step end when the page no longer holds it', () => {
+  const errored = buildMockLogRecord({
+    kind: 'task.step_errored',
+    sequence: 10,
+    task: {
+      errorLimit: 3,
+      errors: 3,
+      retryAt: new Date('2026-10-14T09:04:00Z'),
+      stepKey: 'conversation:1',
+      taskID: 'conversation',
+    },
+  });
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 11,
+    task: { stepKey: 'conversation:1', taskID: 'conversation' },
+  });
+
+  const rendered = render(<ConversationFailureNotice lastStepEnd={errored} records={[started]} />);
+
+  expect(rendered.getByRole('alert')).toHaveTextContent(
+    /^nixie failed to answer 3 times in a row/u,
+  );
+});
+
 test('it shows nothing while the turns that failed in a row stay under the limit', () => {
   const errored = buildMockLogRecord({
     kind: 'task.step_errored',

@@ -39,7 +39,7 @@ export function Conversation(props: ConversationProps): ReactNode {
         <ThemePicker />
       </header>
       {live.unavailable ? <LiveUpdatesNotice /> : null}
-      <ConversationFailureNotice records={records} />
+      <ConversationFailureNotice lastStepEnd={page.data.lastStepEnd} records={records} />
       <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
         <ConversationList entries={outbox.entries} onRetry={outbox.retry} records={records} />
       </ConversationScroller>

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readThreadPage } from './read-thread-page';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -44,6 +45,51 @@ test('it reads a whole short thread with no earlier page', async () => {
 
   expect(page?.hasEarlier).toBeFalse();
   expect(page?.records.map((record) => record.kind)).toStrictEqual(['task.created']);
+});
+
+test("it reads the thread's newest step end when newer records push it off the page", async () => {
+  const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeRecordsInTransaction(tx, ctx.context.log, [
+      {
+        kind: 'task.step_errored',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        payload: {
+          taskID: 'conversation',
+          stepKey: 'conversation:1',
+          nextState: 'ready',
+          errors: 3,
+          errorLimit: 3,
+          claimableAt: 1_120_000,
+        },
+        erasable: { message: 'the provider is overloaded' },
+      },
+      {
+        kind: 'task.step_started',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        payload: { taskID: 'conversation', stepKey: 'conversation:1' },
+      },
+    ]),
+  );
+
+  const page = await readThreadPage(ctx.context, { thread: 'conversation', limit: 1 });
+
+  expect(page?.records.map((record) => record.kind)).toStrictEqual(['task.step_started']);
+  expect(page?.lastStepEnd).toMatchObject({
+    kind: 'task.step_errored',
+    task: { errorLimit: 3, errors: 3, taskID: 'conversation' },
+  });
+});
+
+test('it reads no step end for a thread whose task never ended a step', async () => {
+  const ctx = await setupTest();
+
+  const page = await readThreadPage(ctx.context, { thread: 'conversation' });
+
+  expect(page?.lastStepEnd).toBeNull();
 });
 
 test('it answers null for a thread with no records', async () => {
