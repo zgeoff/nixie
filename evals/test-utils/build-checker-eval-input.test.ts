@@ -28,6 +28,30 @@ test('it marks the quote as evidence and each pasted span, then gives the candid
   );
 });
 
+test('it marks the original words of a quote that matched with its whitespace collapsed', () => {
+  expect(
+    buildCheckerEvalInput(
+      {
+        id: 'vegetarian',
+        message: {
+          text: 'I am  vegetarian. Since May.',
+          spans: [{ start: 0, end: 28, source: 'typed' }],
+        },
+        pairs: [],
+      },
+      {
+        asserted: true,
+        bucket: 'plain statement',
+        memory: 'The owner is vegetarian.',
+        quote: 'I am vegetarian.',
+      },
+    ),
+  ).toBe(
+    '<owner_message>\n«evidence»I am  vegetarian.«/evidence» Since May.\n</owner_message>\n\n' +
+      '<candidate_memory>\nThe owner is vegetarian.\n</candidate_memory>',
+  );
+});
+
 test('it refuses a pair whose quote the gate would not find in typed text', () => {
   expect(() =>
     buildCheckerEvalInput(
