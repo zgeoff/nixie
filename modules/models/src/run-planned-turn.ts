@@ -4,7 +4,9 @@ import type { CompletedTurn } from './build-step-result';
 import { readRecentTurns } from './read-recent-turns';
 import type { TurnContext } from './read-turn-context';
 import { renderSessionHistory } from './render-session-history';
+import { renderSessionMarker } from './render-session-marker';
 import { runLiveTurn } from './run-live-turn';
+import type { LostSession } from './run-rebuilt-turn';
 import type { ConversationRun } from './types';
 
 // One step's turn: the run, the step, what memory adds, and the signal that stops it.
@@ -20,6 +22,11 @@ export interface SessionTurn {
   readonly signal: AbortSignal;
 }
 
+// Where a turn runs: at a session point, or on a new session in place of the lost one, if any.
+export type TurnSession =
+  | { readonly resume: SessionPoint }
+  | { readonly resume: null; readonly lost: LostSession | null };
+
 export interface PlannedTurn {
   readonly completed: CompletedTurn;
 
@@ -27,15 +34,15 @@ export interface PlannedTurn {
   readonly recentRecords: number;
 }
 
-// Runs the turn at the session point, or on a new session whose first turn carries the thread's
-// recent turns before your message. A turn that a forget invalidated while it ran throws, so the
-// step retries on a rebuilt session and never commits a boundary in a session the forget removed.
+// Runs the turn at the session point, or on a new session that opens with its marker and the
+// thread's recent turns. A turn that a forget invalidated while it ran throws, so the step retries
+// on a rebuilt session and never commits a boundary in a session the forget removed.
 export async function runPlannedTurn(
   turn: SessionTurn,
-  resume: SessionPoint | null,
+  session: TurnSession,
 ): Promise<PlannedTurn> {
   const recent =
-    resume === null
+    session.resume === null
       ? await readRecentTurns(turn.run.context, {
           taskID: turn.input.taskID,
           beforeSequence: Math.min(
@@ -45,11 +52,14 @@ export async function runPlannedTurn(
           tokens: turn.run.memorySettings.rebuildTokens,
         })
       : [];
-  const history = renderSessionHistory(recent);
+  const opening =
+    session.resume === null
+      ? [renderSessionMarker(session.lost), renderSessionHistory(recent)]
+      : [];
   const completed = await runLiveTurn(turn.run, turn.input, {
-    resume,
+    resume: session.resume,
     systemPrompt: turn.context.systemPrompt,
-    preamble: history === null ? turn.context.preamble : [history, ...turn.context.preamble],
+    preamble: [...opening, ...turn.context.preamble].filter((block) => block !== null),
     signal: turn.signal,
   });
 

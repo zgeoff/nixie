@@ -48,9 +48,10 @@ Neither record holds the text, so a later forget leaves no readable copy of what
 block rides in the message the guest sends and never in the user's message record, so a rebuilt
 session's history leaves retrieved text out.
 
-The blocks before the first message keep one order: a rebuilt session's history, the pinned-core
-change note, the retrieved items, then [the writer's change note](./writer.md#the-change-note). The
-user's own words come last, so the model reads each block as context for them.
+The blocks before the first message keep one order: a new session's marker, a rebuilt session's
+history, the pinned-core change note, the retrieved items, then
+[the writer's change note](./writer.md#the-change-note). The user's own words come last, so the
+model reads each block as context for them.
 
 ## Forgetting and the live session
 

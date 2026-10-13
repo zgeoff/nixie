@@ -305,7 +305,10 @@ test('it sends each inbox record with its sequence as the message uuid and ackno
     .executeTakeFirstOrThrow();
 
   expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
-    { uuid: '6e697869-0000-8000-8000-000000000002', text: 'First.' },
+    {
+      uuid: '6e697869-0000-8000-8000-000000000002',
+      text: 'This is a new session; earlier history is in the event log.\n\nFirst.',
+    },
     { uuid: '6e697869-0000-8000-8000-000000000003', text: 'Second.' },
   ]);
   expect(task).toStrictEqual({ state: 'ready', read_cursor: 2 });
@@ -353,7 +356,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
       uuid: expect.toBeString(),
       text: expect.toSatisfy(
         (text: string) =>
-          text.startsWith('<conversation-history>') &&
+          text.startsWith('Your context was rebuilt; earlier history is in the event log.') &&
           text.includes('] owner: Hi.\n[') &&
           text.includes('] nixie: Hello.\n</conversation-history>') &&
           text.endsWith('\n\nHi again.'),
@@ -407,6 +410,62 @@ test('it records the rebuild and the session it replaced when the guest has lost
       },
     },
   ]);
+});
+
+test('it marks the first turn on a fresh session as a new session', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  expect(ctx.sandboxes.turns.map((turn) => turn.input)).toStrictEqual([
+    [
+      {
+        uuid: '6e697869-0000-8000-8000-000000000002',
+        text: 'This is a new session; earlier history is in the event log.\n\nHi.',
+      },
+    ],
+  ]);
+});
+
+test('it marks the first turn after a rebuild as rebuilt, and the turn after it not at all', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+  await runner.cleanupSessions('0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01');
+  await ctx.sendMessage(runner, 'Hi again.');
+  await ctx.sendMessage(runner, 'And again.');
+
+  const [, rebuilt, resumed] = ctx.sandboxes.turns;
+
+  expect(rebuilt?.input).toStrictEqual([
+    {
+      uuid: expect.toBeString(),
+      text: expect.toSatisfy(
+        (text: string) =>
+          text.startsWith(
+            'Your context was rebuilt; earlier history is in the event log.\n\n<conversation-history>',
+          ) && text.endsWith('\n\nHi again.'),
+      ),
+    },
+  ]);
+  expect(resumed).toMatchObject({
+    resume: expect.toBeObject(),
+    input: [{ uuid: expect.toBeString(), text: 'And again.' }],
+  });
 });
 
 test('it records each compaction with its token counts and no summary text', async () => {
@@ -812,7 +871,7 @@ test('it puts the memory note before the first message of the turn and leaves th
   expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
-      text: 'Memory changed: you moved to Lisbon.\n\nFirst.',
+      text: 'This is a new session; earlier history is in the event log.\n\nMemory changed: you moved to Lisbon.\n\nFirst.',
     },
     { uuid: '6e697869-0000-8000-8000-000000000003', text: 'Second.' },
   ]);
@@ -840,7 +899,7 @@ test('it records the sequence the memory note covers on the turn end', async () 
   expect(records).toMatchObject([{ payload: { memoryNotedThrough: 7 } }]);
 });
 
-test('it records the sequence a turn with no memory changes covers and sends the message as is', async () => {
+test('it records the sequence a turn with no memory changes covers and adds no memory note', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -857,7 +916,10 @@ test('it records the sequence a turn with no memory changes covers and sends the
   const records = await ctx.readKinds('model.turn_ended');
 
   expect(ctx.sandboxes.turns[0]?.input).toStrictEqual([
-    { uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' },
+    {
+      uuid: '6e697869-0000-8000-8000-000000000002',
+      text: 'This is a new session; earlier history is in the event log.\n\nHi.',
+    },
   ]);
   expect(records).toMatchObject([{ payload: { memoryNotedThrough: 4 } }]);
 });
