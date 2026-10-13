@@ -2,6 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { z } from 'zod';
 import { makeWebFetch } from './make-web-fetch';
 import { startStubAPI } from './test-utils/start-stub-api';
 
@@ -148,9 +149,9 @@ test('it serves an app icon for an hour', async () => {
 // A PNG holds its width and height as 4-byte integers at bytes 16 and 20, inside its header chunk.
 test('it serves each icon the manifest lists at its listed size', async () => {
   const publicDir = join(import.meta.dir, '..', 'public');
-  const manifest = (await Bun.file(join(publicDir, 'manifest.webmanifest')).json()) as {
-    readonly icons: readonly { readonly sizes: string; readonly src: string }[];
-  };
+  const manifestJSON: unknown = await Bun.file(join(publicDir, 'manifest.webmanifest')).json();
+  const iconSchema = z.object({ sizes: z.string(), src: z.string() });
+  const manifest = z.object({ icons: z.array(iconSchema) }).parse(manifestJSON);
   const webFetch = makeWebFetch({
     apiURL: 'http://127.0.0.1:9',
     clientDir: publicDir,
