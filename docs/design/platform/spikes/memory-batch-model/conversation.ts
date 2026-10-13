@@ -55,7 +55,11 @@ export const conversation: Conversation = {
   stale: {
     g7: { fresh: 'Quay Street', stale: 'Elm Row' },
     g8: { fresh: 'Mensah', stale: 'Okafor|Harbour' },
-    g10: { fresh: null, stale: 'pottery' },
+    // A revision that says the class ended is fresh; one that leaves it ongoing is stale.
+    g10: {
+      fresh: '\\b(?:ended|closed|finished|stopped|done|quit|gave up|no longer|used to|former(?:ly)?|previously)\\b',
+      stale: 'pottery',
+    },
     g13: { fresh: 'afternoon', stale: 'morning meetings' },
   },
   traps: {
