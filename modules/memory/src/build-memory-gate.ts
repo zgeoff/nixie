@@ -1,13 +1,10 @@
+import { buildMemoryProposals } from './build-memory-proposals';
 import { buildWriterGate } from './build-writer-gate';
 import type { MemoryNotice, MemoryProposals, MemoryWrites } from './gate-types';
 import { readMemoryNotices } from './read-memory-notices';
-import { readPendingProposals } from './read-pending-proposals';
-import { runProposalLapses } from './run-proposal-lapses';
 import type { StoreParts } from './types';
 import { writeGatedRemember } from './write-gated-remember';
 import { writeGatedRetirement } from './write-gated-retirement';
-import { writeProposalApproval } from './write-proposal-approval';
-import { writeProposalRejection } from './write-proposal-rejection';
 
 export interface MemoryGate {
   // the gated write paths of the model and the memory writer
@@ -24,12 +21,7 @@ export function buildMemoryGate(parts: StoreParts): MemoryGate {
       retire: (request) => writeGatedRetirement(parts, request),
       batch: buildWriterGate(parts),
     },
-    proposals: {
-      listPending: () => readPendingProposals(parts),
-      approve: (answer) => writeProposalApproval(parts, answer),
-      reject: (answer) => writeProposalRejection(parts, answer),
-      lapse: () => runProposalLapses(parts),
-    },
+    proposals: buildMemoryProposals(parts),
     readNotices: (thread) => readMemoryNotices(parts, thread),
   };
 }

@@ -2,8 +2,7 @@ import type { Log } from '@heynixie/log';
 import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
-import { decodeProposalText } from './decode-proposal-text';
-import { findItemKey } from './find-item-key';
+import type { MemoryProposals } from './gate-types';
 import type { MemoryOrigin, MemoryStore, MemoryTables, VersionRef } from './types';
 
 // The owner's answer to a memory proposal, with the text it quotes, or null when none is readable.
@@ -19,27 +18,30 @@ export interface ProposalAnswerEvent {
   readonly text: string | null;
 }
 
+// What the kind reads its quotes through, so each passes the delivery lock and no forget's item.
+export type AnswerQuoteSource = Pick<MemoryStore, 'recall'> & {
+  readonly proposals: Pick<MemoryProposals, 'readRejectedEdits'>;
+};
+
 // The event kind for the owner's answer to a memory proposal from any source, the conversation's
 // own included. A listed approval quotes the current version it wrote, recalled so the record names
 // only what the block shows; a rejection quotes only the conversation's own edit.
 export function buildProposalAnswerKind(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
-  store: Pick<MemoryStore, 'recall'>,
+  log: Pick<Log, 'writer'>,
+  store: AnswerQuoteSource,
 ): EventKind<ProposalAnswerEvent> {
   return {
     name: 'proposal_answer',
     read: async (range) => {
       const rows = await readAnsweredProposals(log, range);
 
-      return Promise.all(
-        rows.map(async (row) => {
-          const text = row.status === 'consumed' ? null : await readRejectedText(log, row);
-
-          return buildAnswerEvent(row, text);
-        }),
-      );
+      return rows.map((row) => buildAnswerEvent(row));
     },
-    complete: (events) => readApprovedTexts(store, events),
+    complete: async (events) => {
+      const approved = await readApprovedTexts(store, events);
+
+      return readRejectedTexts(store, approved);
+    },
     render: (detail, settings) => {
       const owner = settings.ownerName ?? 'The owner';
       const proposal =
@@ -74,9 +76,7 @@ type RecordTables = Readonly<{
 interface AnsweredRow {
   readonly proposal_id: string;
   readonly item_id: string;
-  readonly is_new_item: number;
   readonly status: string;
-  readonly sealed: string;
   readonly origin: MemoryOrigin;
   readonly sequence: number;
   readonly recorded_at: number;
@@ -101,9 +101,7 @@ function readAnsweredProposals(
     .select([
       'memory_proposals.proposal_id',
       'memory_proposals.item_id',
-      'memory_proposals.is_new_item',
       'memory_proposals.status',
-      'memory_proposals.sealed',
       'memory_proposals.origin',
       'records.sequence',
       'records.recorded_at',
@@ -150,31 +148,29 @@ async function readApprovedTexts(
   });
 }
 
-// The conversation's own proposed edit, which its session already holds. A new item's key goes
-// with its rejection, and a proposal from another source was never the conversation's to read.
-async function readRejectedText(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
-  row: AnsweredRow,
-): Promise<string | null> {
-  if (row.origin !== 'conversation' || row.is_new_item === 1) {
-    return null;
-  }
-  const key = await findItemKey(log, row.item_id);
-
-  if (key === null || key === undefined) {
-    return null;
-  }
-
-  // a text that fails to decrypt is left unquoted, so it never stops the turn
-  return decodeProposalText(key, row.proposal_id, row.sealed).then(
-    (proposed) => proposed.text,
-    () => null,
+// Each listed rejection's text, which the store gives only for the conversation's own edit of an
+// item no forget has begun, so the session reads back only what it proposed.
+async function readRejectedTexts(
+  store: AnswerQuoteSource,
+  events: readonly NotedEvent<ProposalAnswerEvent>[],
+): Promise<readonly NotedEvent<ProposalAnswerEvent>[]> {
+  const texts = await store.proposals.readRejectedEdits(
+    events.flatMap((event) =>
+      event.detail.answer === 'rejected' ? [event.detail.proposalID] : [],
+    ),
   );
+
+  return events.map((event) => {
+    const text =
+      event.detail.answer === 'rejected' ? texts.get(event.detail.proposalID) : undefined;
+
+    return text === undefined ? event : { ...event, detail: { ...event.detail, text } };
+  });
 }
 
 const approvalPayload = z.object({ answer: z.enum(['approved', 'edited']) });
 
-function buildAnswerEvent(row: AnsweredRow, text: string | null): NotedEvent<ProposalAnswerEvent> {
+function buildAnswerEvent(row: AnsweredRow): NotedEvent<ProposalAnswerEvent> {
   const approval = approvalPayload.safeParse(JSON.parse(row.payload));
   const answer = row.status === 'rejected' ? 'rejected' : (approval.data?.answer ?? 'approved');
 
@@ -186,7 +182,7 @@ function buildAnswerEvent(row: AnsweredRow, text: string | null): NotedEvent<Pro
       answer,
       origin: row.origin,
       written: buildWrittenVersion(row),
-      text,
+      text: null,
     },
   };
 }

@@ -1,5 +1,6 @@
-import type { RecallRequest, StartedMemoryStore } from '@heynixie/memory';
+import type { AnswerQuoteSource, StartedMemoryStore } from '@heynixie/memory';
 import { buildProposalAnswerKind } from '@heynixie/memory';
+import type { TurnNote } from '@heynixie/models';
 import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/models';
 import type { RunStep } from '@heynixie/tasks';
 import { buildRestartKind } from './build-restart-kind';
@@ -22,13 +23,6 @@ export async function startConversationImp(
   parts: ServerParts,
   memory: () => StartedMemoryStore,
 ): Promise<ConversationImp> {
-  const log = parts.context.log;
-  const store = { recall: (request: RecallRequest) => memory().recall(request) };
-  const events = buildEventRegistry([
-    buildProposalAnswerKind(log, store),
-    buildRestartKind(log),
-    buildRetriedTurnKind(log),
-  ]);
   const conversation = await startConversation({
     context: parts.context,
     models: parts.config.models,
@@ -38,14 +32,7 @@ export async function startConversationImp(
     toolNames: parts.tools.definitions.map((definition) => definition.name),
     image: parts.images.conversation.name,
     getSystemPrompt: () => parts.inForce.read()?.persona ?? '',
-    readTurnNote: () =>
-      readTurnNotes({
-        log,
-        store,
-        events,
-        ownerName: parts.config.owner.name,
-        defaultZone: parts.config.time.default_zone,
-      }),
+    readTurnNote: makeTurnNoteReader(parts, memory),
     memory,
     memorySettings: { ...parts.config.memory, ownerName: parts.config.owner.name },
     log: parts.log,
@@ -67,4 +54,33 @@ export async function startConversationImp(
     },
     cleanupSessions: conversation.cleanupSessions,
   };
+}
+
+// The note before each turn: the memory changes and the events, whose kinds read memory through the
+// getter.
+function makeTurnNoteReader(
+  parts: ServerParts,
+  memory: () => StartedMemoryStore,
+): () => Promise<TurnNote> {
+  const log = parts.context.log;
+  const store: AnswerQuoteSource = {
+    recall: (request) => memory().recall(request),
+    proposals: {
+      readRejectedEdits: (proposalIDs) => memory().proposals.readRejectedEdits(proposalIDs),
+    },
+  };
+  const events = buildEventRegistry([
+    buildProposalAnswerKind(log, store),
+    buildRestartKind(log),
+    buildRetriedTurnKind(log),
+  ]);
+
+  return () =>
+    readTurnNotes({
+      log,
+      store,
+      events,
+      ownerName: parts.config.owner.name,
+      defaultZone: parts.config.time.default_zone,
+    });
 }

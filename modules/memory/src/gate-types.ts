@@ -196,6 +196,12 @@ export interface MemoryProposals {
 
   // lapses every pending proposal past its lapse time, and returns how many
   readonly lapse: () => Promise<number>;
+
+  // the proposed text of each of the conversation's rejected edits, by proposal ID, for an item no
+  // forget has begun
+  readonly readRejectedEdits: (
+    proposalIDs: readonly string[],
+  ) => Promise<ReadonlyMap<string, string>>;
 }
 
 // One entry of a turn's or a batch's notice, with the version an undo binds to.

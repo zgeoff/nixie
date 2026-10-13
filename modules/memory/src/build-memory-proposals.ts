@@ -1,0 +1,19 @@
+import type { MemoryProposals } from './gate-types';
+import { readPendingProposals } from './read-pending-proposals';
+import { readRejectedEdits } from './read-rejected-edits';
+import { runProposalLapses } from './run-proposal-lapses';
+import type { StoreParts } from './types';
+import { writeProposalApproval } from './write-proposal-approval';
+import { writeProposalRejection } from './write-proposal-rejection';
+
+// The proposals in the memory view over the store's parts: the pending ones, your answers to them,
+// their lapses, and the conversation's own rejected edits.
+export function buildMemoryProposals(parts: StoreParts): MemoryProposals {
+  return {
+    listPending: () => readPendingProposals(parts),
+    approve: (answer) => writeProposalApproval(parts, answer),
+    reject: (answer) => writeProposalRejection(parts, answer),
+    lapse: () => runProposalLapses(parts),
+    readRejectedEdits: (proposalIDs) => readRejectedEdits(parts, proposalIDs),
+  };
+}

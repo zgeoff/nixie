@@ -181,8 +181,10 @@ reads.
   conversation's own included. A listed approval quotes the version it wrote while that version is
   still current, through a recall of that version alone. The recall record then names only the text
   the block shows, which the forget and the retirement gate's read check trust. A rejection quotes
-  only the conversation's own proposed edit, which its session already holds. A rejected new item
-  has no quote, because the rejection removes the item's key and its text with it.
+  only the conversation's own proposed edit, which its session already holds. The store reads that
+  edit under the delivery lock and only while its item is active or retired, so no text reaches the
+  model once a forget of the item began. A rejected new item has no quote, because the rejection
+  removes the item's key and its text with it.
 - **A restart** reads the record the server writes at each start, with nixie's version and the
   version of the start before it.
 - **A retried turn** reads each failure of a conversation step that the task retries, and quotes the
