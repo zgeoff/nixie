@@ -11,17 +11,30 @@ export interface ToolActivity {
   readonly tool: string;
 }
 
+// A memory version a recall in the step delivered, with its match score when a query ranked it.
+export interface RecalledMemory {
+  readonly itemID: string;
+  readonly score?: number | undefined;
+  readonly version: number;
+}
+
 type StepStatus = 'done' | 'failed' | 'interrupted' | 'running';
 
 export interface StepActivity {
   readonly kind: 'step';
   readonly calls: readonly ToolActivity[];
 
+  // how long the step ran, from its start to its end, once it has ended
+  readonly durationMs?: number;
+
   // the error a failed step threw, while its record is readable
   readonly error?: string;
 
   // the sequence of the group's first record, which keys it in the list
   readonly key: number;
+
+  // what the step's recalls delivered, in order; absent when the step recalled nothing
+  readonly memories?: readonly RecalledMemory[];
   readonly records: readonly LiveRecord[];
   readonly status: StepStatus;
   readonly stepKey?: string;
@@ -89,17 +102,33 @@ function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActi
   const task = records.find((record) => record.task !== undefined)?.task;
   const stepKey = records.find((record) => record.task?.stepKey !== undefined)?.task?.stepKey;
   const error = records.find((record) => record.task?.error !== undefined)?.task?.error;
+  const durationMs = status === 'running' ? undefined : findDuration(records);
+  const recalls = records.filter((record) => record.recall !== undefined);
 
   return {
     calls: collectCalls(records),
+    ...(durationMs === undefined ? {} : { durationMs }),
     ...(error === undefined ? {} : { error }),
     key: records[0]?.sequence ?? 0,
     kind: 'step',
+    ...(recalls.length === 0
+      ? {}
+      : { memories: recalls.flatMap((record) => record.recall?.items ?? []) }),
     records,
     status,
     ...(stepKey === undefined ? {} : { stepKey }),
     ...(task === undefined ? {} : { taskID: task.taskID }),
   };
+}
+
+// the time from the step's start record to its end record
+function findDuration(records: readonly LiveRecord[]): number | undefined {
+  const started = records.find((record) => record.kind === 'task.step_started');
+  const ended = records.findLast((record) => stepEnds[record.kind] !== undefined);
+
+  return started === undefined || ended === undefined
+    ? undefined
+    : ended.recordedAt.getTime() - started.recordedAt.getTime();
 }
 
 // Joins each call to its result by the call ID, in the order the calls started.

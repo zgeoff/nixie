@@ -1,10 +1,11 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import type { LogRecord } from '@heynixie/contract';
 import { contract, sessionCookieName } from '@heynixie/contract';
 import { implement, withEventMeta } from '@orpc/server';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 import type { ReadonlyDeep } from '../types';
+import { readMemoryVersion } from './read-memory-version';
 import { store } from './store';
+import { toLogRecord } from './to-log-record';
 
 interface MockAPIContext extends ResponseHeadersPluginContext {
   // The device session's token, from the bearer header or the cookie.
@@ -75,6 +76,13 @@ export const mockAPIRouter = os.router({
   },
   log: { follow: followProcedure },
   memory: {
+    // the stored text of each named version, and a version the store lacks as missing
+    readVersions: os.memory.readVersions.handler((options) => {
+      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return { versions: options.input.versions.map((ref) => readMemoryVersion(ref)) };
+    }),
+
     // a writer that has caught up with every record in the store
     writerStatus: os.memory.writerStatus.handler((options) => {
       requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
@@ -200,34 +208,6 @@ async function* toRecordEvents(stream: RecordStream) {
     // oxlint-disable-next-line no-await-in-loop -- the stream sleeps until the next record
     await waitForRecord(stream.signal);
   }
-}
-
-function toLogRecord(record: StoredRecord): LogRecord {
-  return {
-    kind: record.kind,
-    ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
-    recordedAt: record.recordedAt,
-    sequence: record.sequence,
-    ...(record.task === undefined ? {} : { task: structuredClone(record.task) }),
-    thread: record.thread,
-    ...(record.toolCall === undefined ? {} : { toolCall: structuredClone(record.toolCall) }),
-  };
-}
-
-type LogMessage = NonNullable<LogRecord['message']>;
-
-function toLogMessage(message: NonNullable<StoredRecord['message']>): LogMessage {
-  const spans = message.spans?.map((span) => ({
-    end: span.end,
-    source: span.source,
-    start: span.start,
-  }));
-
-  return {
-    ...(message.clientMessageId === undefined ? {} : { clientMessageId: message.clientMessageId }),
-    ...(spans === undefined ? {} : { spans }),
-    text: message.text,
-  };
 }
 
 function findRecordsAfter(after: number, thread: string | undefined): readonly StoredRecord[] {

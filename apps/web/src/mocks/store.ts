@@ -57,10 +57,19 @@ const toolCallSchema = z.object({
   tool: z.string().optional(),
 });
 
+const recallItemSchema = z.object({
+  itemID: z.string(),
+  score: z.number().optional(),
+  version: z.int().nonnegative(),
+});
+
+const recallSchema = z.object({ items: z.array(recallItemSchema) });
+
 const records = new Collection({
   schema: z.object({
     kind: z.string().default('owner_message'),
     message: messageSchema.optional(),
+    recall: recallSchema.optional(),
     recordedAt: z.date().default(() => new Date()),
     sequence: z.int().default(() => {
       counter.lastSequence += 1;
@@ -73,14 +82,27 @@ const records = new Collection({
   }),
 });
 
+// A memory version's text as nixie's memory store holds it. A forgotten item's version is
+// shredded and keeps no text.
+const memoryVersions = new Collection({
+  schema: z.object({
+    itemID: z.string().default(() => faker.string.uuid()),
+    status: z.enum(['readable', 'shredded', 'unreadable']).default('readable'),
+    text: z.string().optional(),
+    version: z.int().nonnegative().default(1),
+  }),
+});
+
 // The mock API's state: what nixie's API would hold in its database.
 export const store = {
   enrolmentCodes,
+  memoryVersions,
   records,
 
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
     records.clear();
+    memoryVersions.clear();
     enrolmentCodes.clear();
     sessions.clear();
     counter.lastSequence = 0;

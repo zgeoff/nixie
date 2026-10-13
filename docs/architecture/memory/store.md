@@ -99,8 +99,10 @@ flowchart LR
 The index and the listing rank candidate IDs and never supply the returned text. Under the delivery
 lock, recall reads each candidate's current row again, drops any that is not in a state the request
 allows or whose key is gone, decrypts the rest, and appends a recall record that lists each item and
-version it delivered. The record holds references and no text, so a later forget leaves no readable
-copy of what a recall delivered.
+version it delivered. For a query, each item in the record carries its match score from the index,
+so the client can show what each turn was given and how well it matched. The record holds references
+and scores and no text, so a later forget leaves no readable copy of what a recall delivered. A
+client reads a delivered version's text through the API while its key exists.
 
 ### The index
 

@@ -40,6 +40,7 @@ test('it keeps each message on its own and folds a step into one group', () => {
             tool: 'web_fetch',
           },
         ],
+        durationMs: expect.toBeNumber(),
         key: 2,
         kind: 'step',
         records: [started, called, result, ended, committed],
@@ -110,6 +111,7 @@ test('it carries the error of a failed step', () => {
   expect(buildActivity([started, errored])).toStrictEqual([
     {
       calls: [],
+      durationMs: expect.toBeNumber(),
       error: 'the model profile is unreachable',
       key: 1,
       kind: 'step',
@@ -164,4 +166,61 @@ test('it groups the records after the last step on their own', () => {
   expect(buildActivity([created])).toStrictEqual([
     { calls: [], key: 1, kind: 'step', records: [created], status: 'done', taskID: 'conversation' },
   ]);
+});
+
+test('it times a step from its start to its end', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    recordedAt: new Date('2026-10-10T12:00:00.000Z'),
+    sequence: 1,
+  });
+  const committed = buildMockLogRecord({
+    kind: 'task.step_committed',
+    recordedAt: new Date('2026-10-10T12:00:12.300Z'),
+    sequence: 2,
+  });
+
+  expect(buildActivity([started, committed])).toMatchObject([{ durationMs: 12_300 }]);
+});
+
+test('it leaves a running step untimed', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
+  expect(buildActivity([started])).toStrictEqual([
+    { calls: [], key: 1, kind: 'step', records: [started], status: 'running' },
+  ]);
+});
+
+test('it collects what each recall of a step delivered, in order', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+  const first = buildMockLogRecord({
+    kind: 'memory.recalled',
+    recall: { items: [{ itemID: 'item-a', score: 0.61, version: 2 }] },
+    sequence: 2,
+  });
+  const second = buildMockLogRecord({
+    kind: 'memory.recalled',
+    recall: { items: [{ itemID: 'item-b', version: 1 }] },
+    sequence: 3,
+  });
+
+  expect(buildActivity([started, first, second])).toMatchObject([
+    {
+      memories: [
+        { itemID: 'item-a', score: 0.61, version: 2 },
+        { itemID: 'item-b', version: 1 },
+      ],
+    },
+  ]);
+});
+
+test('it counts a recall that delivered nothing as a recall', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+  const recalled = buildMockLogRecord({
+    kind: 'memory.recalled',
+    recall: { items: [] },
+    sequence: 2,
+  });
+
+  expect(buildActivity([started, recalled])).toMatchObject([{ memories: [] }]);
 });

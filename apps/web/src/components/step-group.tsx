@@ -1,36 +1,182 @@
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import type { StepActivity, ToolActivity } from '../build-activity';
+import type { RecalledMemory, StepActivity, ToolActivity } from '../build-activity';
 import { formatStepSummary } from '../format-step-summary';
 import { css } from '../styled-system/css';
+import { useNixieClient } from '../use-nixie-client';
+import { ClippedText } from './clipped-text';
 
 export interface StepGroupProps {
   readonly step: StepActivity;
 }
 
-// One step of a task as one collapsed line. Opening it names the task, shows the error of a failed
-// step, and shows each tool call with its input and its result.
+// One step of a task as one collapsed line. Opening it shows one collapsible section per source of
+// what the step was given and did: the step itself, the memories its recalls delivered, its tool
+// calls with their inputs and results, and the error of a failed step.
 export function StepGroup(props: StepGroupProps): ReactNode {
+  const step = props.step;
+
   return (
     <li className={css({ color: 'textMuted', fontSize: 'sm' })}>
       <details>
-        <summary className={css({ cursor: 'pointer' })}>{formatStepSummary(props.step)}</summary>
+        <summary className={css({ cursor: 'pointer' })}>{formatStepSummary(step)}</summary>
         <div
           className={css({ display: 'flex', flexDirection: 'column', gap: '3', paddingBlock: '2' })}
         >
-          <p>
-            Task {props.step.taskID ?? 'unknown'}
-            {props.step.stepKey === undefined ? null : `, step ${props.step.stepKey}`}
-          </p>
-          {props.step.error === undefined ? null : <p>Error: {props.step.error}</p>}
-          <p>Events: {props.step.records.map((record) => record.kind).join(', ')}</p>
-          {props.step.calls.map((call) => (
-            <ToolCallDetail call={call} key={call.callID} />
-          ))}
+          <Section title="Step">
+            <p>{formatStepLine(step)}</p>
+          </Section>
+          {step.memories === undefined ? null : <MemoriesSection memories={step.memories} />}
+          <Section title={`Tools ${step.calls.length}`}>
+            {step.calls.map((call) => (
+              <ToolCallDetail call={call} key={call.callID} />
+            ))}
+          </Section>
+          {step.error === undefined ? null : (
+            <Section title="Error">
+              <p>{step.error}</p>
+            </Section>
+          )}
         </div>
       </details>
     </li>
   );
+}
+
+// task conversation · step conversation:146 · events: started, memory.recalled, committed
+function formatStepLine(step: StepActivity): string {
+  const events = step.records.map((record) => record.kind.replace(/^(?:task\.step_|model\.)/u, ''));
+
+  return [
+    `task ${step.taskID ?? 'unknown'}`,
+    ...(step.stepKey === undefined ? [] : [`step ${step.stepKey}`]),
+    `events: ${events.join(', ')}`,
+  ].join(' · ');
+}
+
+interface SectionProps {
+  readonly children: ReactNode;
+  readonly title: string;
+
+  // called each time the section opens or closes
+  readonly onToggle?: (isOpen: boolean) => void;
+}
+
+// One collapsible section of an opened step, closed until you open it.
+function Section(props: SectionProps): ReactNode {
+  return (
+    <details
+      aria-label={props.title}
+      onToggle={(event) => {
+        props.onToggle?.(event.currentTarget.open);
+      }}
+    >
+      <summary className={css({ cursor: 'pointer', fontWeight: 'semibold' })}>
+        {props.title}
+      </summary>
+      <div className={css({ paddingInlineStart: '4' })}>{props.children}</div>
+    </details>
+  );
+}
+
+interface MemoriesSectionProps {
+  readonly memories: readonly RecalledMemory[];
+}
+
+// The memories the step's recalls delivered, each with its match score. Their text loads when the
+// section first opens, because a recall record holds no text.
+function MemoriesSection(props: MemoriesSectionProps): ReactNode {
+  const [hasOpened, setHasOpened] = useState(false);
+
+  return (
+    <Section
+      onToggle={(isOpen) => {
+        setHasOpened((opened) => opened || isOpen);
+      }}
+      title={`Memories ${props.memories.length}`}
+    >
+      {hasOpened && props.memories.length > 0 ? <MemoryList memories={props.memories} /> : null}
+    </Section>
+  );
+}
+
+function MemoryList(props: MemoriesSectionProps): ReactNode {
+  const nixie = useNixieClient();
+  const texts = useQuery(
+    nixie.queryUtils.memory.readVersions.queryOptions({
+      input: {
+        versions: props.memories.map((memory) => ({
+          itemID: memory.itemID,
+          version: memory.version,
+        })),
+      },
+      staleTime: Number.POSITIVE_INFINITY,
+    }),
+  );
+  const byVersion = new Map(
+    (texts.data?.versions ?? []).map((version) => [
+      `${version.itemID}@${version.version}`,
+      formatMemoryText(version),
+    ]),
+  );
+  const fallback = texts.isError ? '(text unavailable)' : 'loading…';
+
+  return (
+    <ul>
+      {props.memories.map((memory) => (
+        <MemoryRow
+          key={`${memory.itemID}@${memory.version}`}
+          memory={memory}
+          text={byVersion.get(`${memory.itemID}@${memory.version}`) ?? fallback}
+        />
+      ))}
+    </ul>
+  );
+}
+
+interface VersionText {
+  readonly status: 'readable' | 'shredded' | 'unreadable' | 'missing';
+  readonly text?: string | undefined;
+}
+
+function formatMemoryText(version: VersionText): string {
+  if (version.status === 'readable') {
+    return version.text ?? '';
+  }
+
+  return version.status === 'shredded' ? '(forgotten)' : `(${version.status})`;
+}
+
+interface MemoryRowProps {
+  readonly memory: RecalledMemory;
+  readonly text: string;
+}
+
+// One memory as one line, its ID, score and the start of its text; opened, its full text.
+function MemoryRow(props: MemoryRowProps): ReactNode {
+  const score = props.memory.score === undefined ? '–' : props.memory.score.toFixed(2);
+
+  return (
+    <li>
+      <details aria-label={props.memory.itemID}>
+        <summary className={css({ cursor: 'pointer' })}>
+          {`${props.memory.itemID}  ${score}  ${formatOneLine(props.text)}`}
+        </summary>
+        <p className={css({ whiteSpace: 'pre-wrap' })}>{props.text}</p>
+      </details>
+    </li>
+  );
+}
+
+const lineLimit = 80;
+
+// the text's first line, clipped
+function formatOneLine(text: string): string {
+  const firstLine = text.split('\n', 1)[0] ?? '';
+  const isClipped = firstLine.length > lineLimit || firstLine.length < text.trimEnd().length;
+
+  return isClipped ? `${firstLine.slice(0, lineLimit)}…` : firstLine;
 }
 
 interface ToolCallDetailProps {
@@ -51,43 +197,4 @@ function ToolCallDetail(props: ToolCallDetailProps): ReactNode {
 
 function formatJSON(value: unknown): string {
   return value === undefined ? 'none' : JSON.stringify(value, null, 2);
-}
-
-// A page's text can run to many kilobytes, so a long value shows its start and opens in full on
-// demand. Its toggle sticks to the top of the view until its own text ends, so an open value
-// closes again without a scroll back to find the control.
-const clipLength = 600;
-
-interface ClippedTextProps {
-  readonly text: string;
-}
-
-function ClippedText(props: ClippedTextProps): ReactNode {
-  const [isOpen, setIsOpen] = useState(false);
-  const isLong = props.text.length > clipLength;
-
-  return (
-    <div>
-      {isLong ? (
-        <button
-          className={css({
-            backgroundColor: 'canvas',
-            display: 'block',
-            position: 'sticky',
-            textDecoration: 'underline',
-            top: '0',
-          })}
-          onClick={() => {
-            setIsOpen(!isOpen);
-          }}
-          type="button"
-        >
-          {isOpen ? 'Show less' : `Show all ${props.text.length.toLocaleString('en')} characters`}
-        </button>
-      ) : null}
-      <pre className={css({ overflowX: 'auto', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' })}>
-        {isLong && !isOpen ? `${props.text.slice(0, clipLength)}…` : props.text}
-      </pre>
-    </div>
-  );
 }
