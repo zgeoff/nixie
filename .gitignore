@@ -16,6 +16,7 @@ Thumbs.db
 
 # agent scratch; .claude/skills stays tracked
 .reviews
+.scratch/
 .claude/settings.local.json
 
 # local credentials
