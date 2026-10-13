@@ -122,6 +122,7 @@ test('it lists the memory tools, web fetch and the time tool to the conversation
       tools: expect.toIncludeAllPartialMembers([
         { name: 'mcp__nixie__memory_remember' },
         { name: 'mcp__nixie__memory_recall' },
+        { name: 'mcp__nixie__memory_pending' },
         { name: 'mcp__nixie__memory_retire' },
         { name: 'mcp__nixie__web_fetch' },
         { name: 'mcp__nixie__time_now' },
@@ -253,6 +254,53 @@ test('it applies a remembered fact that the owner typed, with their words as its
     },
   ]);
   expect(run.records.filter((record) => record.kind === 'memory.proposed')).toStrictEqual([]);
+}, 60_000);
+
+test('it lists the proposal the model made when the model calls the pending tool', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Keeps two cats' } } },
+    { text: 'Noted.' },
+    { toolUse: { name: 'mcp__nixie__memory_pending', input: {} } },
+    { text: 'One proposal waits.' },
+  );
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'I keep two cats.',
+    thread: 'conversation',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Noted.');
+  });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'What still waits for me?',
+    thread: 'conversation',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'One proposal waits.');
+  });
+
+  // the model's request after the call carries the tool's result
+  const sent = JSON.stringify(
+    ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
+  );
+  const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+  expect(sent).toInclude(
+    String.raw`\"change\":\"new\",\"text\":\"Keeps two cats\",\"notedBy\":[\"you noted it\"],\"reason\":\"no_quote\",\"age\":\"under a minute\"`,
+  );
+  expect(page.records.findLast((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({
+    outcome: 'result',
+    content: { result: { proposals: [{ proposalID: expect.toBeString() }] } },
+  });
 }, 60_000);
 
 test('it starts the memory writer with the batch gate, its catch-up from the first record', async () => {

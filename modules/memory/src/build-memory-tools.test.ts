@@ -14,7 +14,7 @@ import type { MemoryTables } from './types';
 // call runs under, which record each call and its result in the memory's log
 async function setupTest(config: TestMemoryOptions = {}) {
   const memory = await startTestMemory(config);
-  const registry = buildToolRegistry(buildMemoryTools(memory.store));
+  const registry = buildToolRegistry(buildMemoryTools(memory.store, { now: () => Date.now() }));
 
   return {
     memory,
@@ -40,15 +40,20 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for recall and note for remember, edit and retire', async () => {
+test('it declares read for recall and pending and note for remember, edit and retire', async () => {
   const ctx = await setupTest();
 
-  const effects = ['memory.recall', 'memory.remember', 'memory.edit', 'memory.retire'].map(
-    (name) => [name, ctx.registry.findTool(name)?.definition.declaration.effects],
-  );
+  const effects = [
+    'memory.recall',
+    'memory.pending',
+    'memory.remember',
+    'memory.edit',
+    'memory.retire',
+  ].map((name) => [name, ctx.registry.findTool(name)?.definition.declaration.effects]);
 
   expect(effects).toStrictEqual([
     ['memory.recall', ['read']],
+    ['memory.pending', ['read']],
     ['memory.remember', ['note']],
     ['memory.edit', ['note']],
     ['memory.retire', ['note']],
@@ -59,7 +64,9 @@ test('it applies a backed fact with the caller and model of the run, never of th
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
-  const tool = buildToolRegistry(buildMemoryTools(memory.store)).findTool('memory.remember');
+  const tool = buildToolRegistry(
+    buildMemoryTools(memory.store, { now: () => Date.now() }),
+  ).findTool('memory.remember');
 
   invariant(tool);
   await writeOwnerMessageRecord(memory.log, {
@@ -304,7 +311,9 @@ test('it retires an item the model read and you asked to retire', async () => {
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
-  const tool = buildToolRegistry(buildMemoryTools(memory.store)).findTool('memory.retire');
+  const tool = buildToolRegistry(
+    buildMemoryTools(memory.store, { now: () => Date.now() }),
+  ).findTool('memory.retire');
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -349,7 +358,9 @@ test('it returns a full proposal cap to the model as an error', async () => {
       limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 1, closeMatchScore: 0.6 },
     },
   });
-  const tool = buildToolRegistry(buildMemoryTools(memory.store)).findTool('memory.remember');
+  const tool = buildToolRegistry(
+    buildMemoryTools(memory.store, { now: () => Date.now() }),
+  ).findTool('memory.remember');
   const call = {
     callID: 'call-1',
     tool: 'memory.remember',
