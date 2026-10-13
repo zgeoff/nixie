@@ -113,14 +113,13 @@ interface MutableTurn {
   settled: { readonly assistants: number; readonly read: number; readonly compactions: number };
 }
 
+type MarkReader = GuestTurnSpec['readEndedMark'];
+
 // Only the frames up to the last ended frame count, because the next turn resumes at that frame's
 // boundary: a reply or a read after it, from a guest that died before its next result, belongs to a
 // session no turn resumes, so its inbox records stay unread and the next step sends them again.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
-async function collectTurn(
-  stream: ExecStream,
-  readEndedMark: GuestTurnSpec['readEndedMark'],
-): Promise<GuestTurn> {
+async function collectTurn(stream: ExecStream, readEndedMark: MarkReader): Promise<GuestTurn> {
   const turn: MutableTurn = {
     assistants: [],
     read: [],
@@ -136,7 +135,6 @@ async function collectTurn(
 
     updateTurn(turn, frame);
     if (frame.type === 'ended' && readEndedMark !== undefined) {
-      // oxlint-disable-next-line no-await-in-loop -- the mark belongs to this frame, before the next
       turn.endedMark = await readEndedMark();
     }
   }
