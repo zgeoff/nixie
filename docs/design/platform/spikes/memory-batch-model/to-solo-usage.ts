@@ -1,13 +1,20 @@
 import type { Usage } from './run-writer.ts';
 
 // Samples run in parallel, so a batch can read a cache another sample wrote. A lone writer starts
-// cold: its first batch writes the shared preamble to the cache, and each later batch reads only
-// that preamble and writes the rest. The excess read is therefore repriced as a write.
-const SHARED_PREFIX = 1067;
+// cold: the first call of its first batch writes the shared preamble to the cache, and each later
+// call, a clash retry included, reads only that preamble and writes the rest. The excess read is
+// therefore repriced as a write.
+export const SHARED_PREFIX = 1067;
 
-// Returns the usage a lone writer pays for the batch at `batchIndex` in its sample.
-export function toSoloUsage(usage: Usage, batchIndex: number): Usage {
-  const cached = batchIndex === 0 ? 0 : SHARED_PREFIX;
-  const excess = Math.max(0, usage.cacheRead - cached);
-  return { ...usage, cacheRead: usage.cacheRead - excess, cacheWrite: usage.cacheWrite + excess };
+// Returns the usage a lone writer pays for the batch at `batchIndex` in its sample. A retried
+// batch's usage sums 2 calls, and the retry is always warm.
+export function toSoloUsage(batch: { retried: boolean; usage: Usage }, batchIndex: number): Usage {
+  const calls = batch.retried ? 2 : 1;
+  const warmCalls = batchIndex === 0 ? calls - 1 : calls;
+  const excess = Math.max(0, batch.usage.cacheRead - warmCalls * SHARED_PREFIX);
+  return {
+    ...batch.usage,
+    cacheRead: batch.usage.cacheRead - excess,
+    cacheWrite: batch.usage.cacheWrite + excess,
+  };
 }

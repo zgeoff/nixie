@@ -159,14 +159,15 @@ shipped writer's staging tools or its rule against storing short-lived plans.
 The estimate takes 20,000 turns, about a year at 55 turns a day. A straight-line fit over all 42
 recorded batches gives 1,965 input tokens per batch plus 47 per turn, and 3.2 seconds per batch plus
 0.26 seconds per turn. The batches run one after another, because each one reads the items the one
-before it wrote. The last column prices each turn at 400 tokens, closer to a real reply than the
-fixture's one-line replies.
+before it wrote. A backfill starts cold only once, so the fit prices every batch as a warm one and
+the estimate adds a single cold start. The last column prices each turn at 400 tokens, closer to a
+real reply than the fixture's one-line replies.
 
 | Turns per batch | Batches | Input tokens | Cost  | Serial time | Cost at 400-token turns |
 | --------------- | ------- | ------------ | ----- | ----------- | ----------------------- |
-| 4               | 5,000   | 10.8 M       | $2.24 | 5.9 h       | $3.66                   |
-| 20              | 1,000   | 2.9 M        | $1.17 | 2.3 h       | $2.59                   |
-| 40              | 500     | 1.9 M        | $1.04 | 1.9 h       | $2.45                   |
+| 4               | 5,000   | 10.8 M       | $2.14 | 5.9 h       | $3.56                   |
+| 20              | 1,000   | 2.9 M        | $1.07 | 2.3 h       | $2.49                   |
+| 40              | 500     | 1.9 M        | $0.94 | 1.9 h       | $2.35                   |
 
 The fit holds the full item list, at most 20 items here. A backfill grows the store to hundreds of
 items, so it needs the writer's recall to send only the relevant ones; at about 20 tokens an item,
@@ -175,7 +176,7 @@ items, so it needs the writer's recall to send only the relevant ones; at about 
 ## Recommendation
 
 Build Memory 1's writer on Haiku 5.5 at low effort with the default triggers, and run the backfill
-through the same 4-turn batches. A year of history then costs $2.20 to $3.70 and about 6 hours in
+through the same 4-turn batches. A year of history then costs $2.10 to $3.60 and about 6 hours in
 the background. Larger batches save about $1 and 4 hours, but in 5 of 6 samples they lost a fact
 that 4-turn batches kept or left 2 contradicting items, and a dollar does not pay for that. The
 backfill resumes from the committed cursor after a crash, as the
