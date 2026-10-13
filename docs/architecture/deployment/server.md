@@ -91,7 +91,7 @@ this build holds:
 | database         | Migrations finished and the integrity check at start passed |
 | definitions      | The last seed applied, with no refused snapshot pending     |
 | imp host         | impd answers, and every image in the manifest is added      |
-| conversation imp | Its sandbox started, and its last turn did not fail         |
+| conversation imp | Its sandbox started, and its turns are not failing          |
 | disk             | The data volume is under the fill limit                     |
 
 The imp host and disk checks run on each request, and the rest read state that the start sequence
@@ -110,9 +110,9 @@ Most events log only when nixie acts, such as a start, a seed or a check, so a c
 an idle nixie write no line. The definitions poll logs each probe, whether or not the definitions
 changed, so the log shows the process and its timers alive between seeds. A seed logs only when the
 probe finds a new revision of the definitions. A step error logs the task, the step, the errors in a
-row, the task's next state and the error's name, so the log shows a failure that a retry hid. The
-error's message stays on the task's thread, because it may quote a provider's reply or the model's
-input.
+row, the task's next state, its retry time and the error's name, so the log shows a failure that a
+retry hid. The error's message stays on the task's thread, because it may quote a provider's reply
+or the model's input.
 
 ## Stopping
 

@@ -97,6 +97,11 @@ After a few failures in a row the page says live updates are unavailable, so a s
 blocker, a down server or a revoked session stops fails visibly. The notice goes once the stream
 opens again.
 
+The page also says when nixie is failing to answer: the conversation's last step failed and its
+errors in a row reached the limit at which another task would fail. The notice gives the time of the
+next try, and goes once a step commits. The page reads all of it from the failed step's record,
+which holds the errors in a row, the limit and the retry time, so it needs no call of its own.
+
 Each message stands on its own line, and every other record folds into the step it belongs to, from
 the step's start to its end. A record before a step, such as the task's creation, folds into the
 step that follows it. A step shows as one collapsed line that names each tool it called with its
