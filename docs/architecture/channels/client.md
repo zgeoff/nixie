@@ -111,11 +111,11 @@ its recalls delivered, each tool it called with its targets, such as the host of
 fetch read, and how long it ran. A fact shows only once its record exists. Opening the step shows
 one collapsible section per source: the step with its records, the memories with each one's match
 score and the first line of its text, each call with its input and its result, and a failed step's
-error. Each section opens on its own, and the memories section reads the memory text only when it
-first opens, because a recall record holds no text. A long value shows its start and opens in full
-on demand, because a fetched page's text runs to many kilobytes. Its toggle sits above the text and
-sticks to the top of the view while the text scrolls past, so the user closes an open value without
-scrolling back to find the control.
+error. Each section opens on its own. A recall record holds no text, so the memories section reads
+the text each time it opens, and a memory forgotten since then shows as forgotten. A long value
+shows its start and opens in full on demand, because a fetched page's text runs to many kilobytes.
+Its toggle sits above the text and sticks to the top of the view while the text scrolls past, so the
+user closes an open value without scrolling back to find the control.
 
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol

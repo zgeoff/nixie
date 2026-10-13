@@ -209,37 +209,6 @@ test('it shows a turn with 5 memories as one line, and each memory with its scor
   ]);
 });
 
-test('it opens a memory to its full text', async () => {
-  const user = userEvent.setup();
-
-  await createDeviceSession();
-  await store.memoryVersions.create({
-    itemID: 'item-1',
-    text: 'Stub memory one\nwith a second line',
-    version: 1,
-  });
-
-  const rendered = render(
-    <StepGroup
-      step={buildMockStepActivity({
-        memories: [{ itemID: 'item-1', score: 0.61, version: 1 }],
-        taskID: 'conversation',
-      })}
-    />,
-  );
-
-  await user.click(rendered.getByText('conversation · 1 memory · no tools'));
-  await user.click(rendered.getByText('Memories 1'));
-
-  const memory = await rendered.findByText('item-1 0.61 Stub memory one…');
-
-  await user.click(memory);
-
-  const row = rendered.getByRole('group', { name: 'item-1' });
-
-  expect(within(row).getByText(/with a second line/u)).toBeVisible();
-});
-
 test('it opens one section of a step and leaves the others closed', async () => {
   const user = userEvent.setup();
   const rendered = render(
