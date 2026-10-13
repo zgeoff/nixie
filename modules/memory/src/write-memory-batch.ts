@@ -1,14 +1,14 @@
 import type { RecordInput } from '@heynixie/log';
-import { findRecordKeys, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Lease } from '@heynixie/tasks';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
+import { findReadableWrites } from './find-readable-writes';
 import { memoryWriterTaskID } from './memory-writer-task-id';
-import { planRememberedVersion } from './plan-remembered-version';
-import { planRetiredVersion } from './plan-retired-version';
-import type { Provenance, StoreParts, VersionRef } from './types';
+import { planBatchVersion } from './plan-batch-version';
+import type { StoreParts, VersionRef } from './types';
 import { updateVersionIndex } from './update-version-index';
-import type { VersionPlan, WrittenVersion } from './write-version-in-transaction';
+import type { WrittenVersion } from './write-version-in-transaction';
 import { writeVersionInTransaction } from './write-version-in-transaction';
 import type { BatchBounds, GateVerdict, StagedWrite, WriterTables } from './writer-types';
 
@@ -42,8 +42,8 @@ export type PublishResult =
   | { readonly status: 'superseded' };
 
 // Publishes one writer batch in one transaction under the delivery lock: the applied versions, the
-// proposals, the notices and the advanced cursor. A write whose source became unreadable during
-// extraction never publishes, and a stale revision fails the whole batch.
+// proposals, the notices and the advanced cursor. A write whose source was forgotten never
+// publishes, and a stale revision fails the whole batch.
 export function writeMemoryBatch(
   parts: StoreParts,
   publication: BatchPublication,
@@ -100,17 +100,6 @@ async function writeBatchInTransaction(
   return { status: 'published', written, outcome };
 }
 
-// the writes whose cited source is still readable
-async function findReadableWrites(
-  parts: StoreParts,
-  tx: Transaction<unknown>,
-  writes: readonly GatedWrite[],
-): Promise<readonly GatedWrite[]> {
-  const readable = await readReadableSources(parts, tx, writes);
-
-  return writes.filter((gated) => readable.has(gated.write.sourceSequence));
-}
-
 function buildBatchOutcome(
   publication: BatchPublication,
   kept: readonly GatedWrite[],
@@ -141,42 +130,6 @@ async function isPendingBatch(tx: Transaction<unknown>, bounds: BatchBounds): Pr
   );
 }
 
-interface SourceRow {
-  readonly sequence: number;
-  readonly key_id: string | null;
-}
-
-// Every cited source whose erasable fields still decrypt. A forget of a message deletes its key, so
-// the source reads as gone here. The key store is a separate database, so a key deleted after this
-// read and before the commit still publishes; no message forget exists yet to race it.
-async function readReadableSources(
-  parts: StoreParts,
-  tx: Transaction<unknown>,
-  writes: readonly GatedWrite[],
-): Promise<ReadonlySet<number>> {
-  const sequences = [...new Set(writes.map((gated) => gated.write.sourceSequence))];
-
-  if (sequences.length === 0) {
-    return new Set();
-  }
-  const rows: readonly SourceRow[] = await tx
-    .$extendTables<{ records: SourceRow }>()
-    .selectFrom('records')
-    .select(['sequence', 'key_id'])
-    .where('sequence', 'in', sequences)
-    .execute();
-  const keys = await findRecordKeys(
-    parts.context.log,
-    rows.flatMap((row) => (row.key_id === null ? [] : [row.key_id])),
-  );
-
-  return new Set(
-    rows
-      .filter((row) => row.key_id !== null && (keys.get(row.key_id) ?? null) !== null)
-      .map((row) => row.sequence),
-  );
-}
-
 async function writeAppliedVersions(
   parts: StoreParts,
   tx: Transaction<unknown>,
@@ -201,36 +154,4 @@ async function writeAppliedVersions(
     }
   }
   return written;
-}
-
-// The version an applied write adds. Its provenance names the writer and takes its source, checks
-// and evidence from the gate, never from the model.
-function planBatchVersion(
-  write: StagedWrite,
-  verdict: Extract<GateVerdict, { readonly outcome: 'apply' }>,
-): VersionPlan {
-  const provenance: Provenance = {
-    origin: 'memory_writer',
-    source: verdict.source,
-    taskID: memoryWriterTaskID,
-    proposalID: null,
-    checks: verdict.checks,
-    thread: memoryWriterTaskID,
-  };
-
-  if (write.op === 'retire') {
-    return planRetiredVersion({
-      target: write.target,
-      provenance,
-      intentQuote: write.quote,
-      intentEvidence: verdict.evidence,
-    });
-  }
-  return planRememberedVersion({
-    text: write.text,
-    provenance,
-    evidenceQuote: write.quote,
-    evidence: verdict.evidence,
-    ...(write.target === null ? {} : { target: write.target }),
-  });
 }

@@ -1,31 +1,36 @@
 import { buildGateReview } from './build-gate-review';
 import { findMissingToken } from './find-missing-token';
-import { findQuoteEvidence } from './find-quote-evidence';
+import type { QuoteEvidenceResult } from './find-quote-evidence';
 import type { ContentGateRequest, ContentGateResult } from './gate-types';
 import { runMemoryChecker } from './run-memory-checker';
 import type { MemoryContext } from './types';
 
+export interface QuotedEvidence {
+  readonly quote: string;
+
+  // where the quote's evidence lies, as the caller's lookup found it
+  readonly found: QuoteEvidenceResult;
+}
+
 // The gate for a write with a quote: the quote must be one you typed, the memory's tokens must
 // appear in it, and the checker must find the quote asserts the memory.
-export async function runQuotedGate(
-  context: Pick<MemoryContext, 'log' | 'gate'>,
+export function runQuotedGate(
+  context: Pick<MemoryContext, 'gate'>,
   request: ContentGateRequest,
-  quote: string,
+  quoted: QuotedEvidence,
 ): Promise<ContentGateResult> {
-  const found = await findQuoteEvidence(context.log, {
-    thread: request.thread,
-    quote,
-    window: context.gate.limits.evidenceWindow,
-  });
+  const found = quoted.found;
 
   if (found.status === 'review') {
-    return buildGateReview(found.reason, { checks: { quote: 'fail' } });
+    return Promise.resolve(buildGateReview(found.reason, { checks: { quote: 'fail' } }));
   }
-  if (findMissingToken(request.text, quote) !== null) {
-    return buildGateReview('token_missing', {
-      evidence: found.evidence,
-      checks: { quote: 'pass', tokens: 'fail' },
-    });
+  if (findMissingToken(request.text, quoted.quote) !== null) {
+    return Promise.resolve(
+      buildGateReview('token_missing', {
+        evidence: found.evidence,
+        checks: { quote: 'pass', tokens: 'fail' },
+      }),
+    );
   }
   return runMemoryChecker(context, request, found);
 }

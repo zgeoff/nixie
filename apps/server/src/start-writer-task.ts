@@ -1,21 +1,16 @@
 import { join } from 'node:path';
-import type { StartedMemoryStore, WriterGate } from '@heynixie/memory';
+import type { StartedMemoryStore } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
 import { startMemoryWriterRunner } from './start-memory-writer-runner';
 import type { ServerParts } from './types';
 
-// Starts the memory writer when a content gate exists, and returns its step. With no gate the
-// writer stays off rather than apply unchecked text, and its cursor stays at the first record of
-// the log, so the catch-up later covers everything from before.
+// Starts the memory writer with the store's batch gate, and returns its step. Its first start
+// leaves the cursor at the first record of the log, so the catch-up covers everything from before
+// and starts by itself.
 export async function startWriterTask(
   parts: ServerParts,
   store: StartedMemoryStore,
-  gate: WriterGate | null,
-): Promise<RunStep | null> {
-  if (gate === null) {
-    parts.log('memory_writer.off', { reason: 'no content gate' });
-    return null;
-  }
+): Promise<RunStep> {
   const writer = await startMemoryWriterRunner({
     context: parts.context,
     models: parts.config.models,
@@ -24,7 +19,7 @@ export async function startWriterTask(
     socketDir: join(parts.config.server.dataDir, 'run', 'tools'),
     image: parts.images.conversation.name,
     store,
-    gate,
+    gate: store.writes.batch,
     config: parts.config.memory_writer,
     getPersona: () => parts.inForce.read()?.persona ?? '',
     onError: (error) => {
@@ -33,5 +28,14 @@ export async function startWriterTask(
   });
 
   await parts.cleanup.defer(() => writer.stop());
+
+  const status = await writer.readStatus();
+
+  parts.log('memory_writer.started', {
+    cursor: status.cursor,
+    startSequence: status.startSequence,
+    backlog: status.backlog,
+    isCatchingUp: status.isCatchingUp,
+  });
   return writer.runStep;
 }

@@ -65,7 +65,22 @@ export type GateVerdict =
 // the source record it cites, never against a window of recent messages, and runs outside the
 // publish transaction.
 export interface WriterGate {
-  readonly check: (write: StagedWrite, source: SourceMessage) => Promise<GateVerdict>;
+  readonly check: (
+    write: StagedWrite,
+    source: SourceMessage,
+    batch: GateBatch,
+  ) => Promise<GateVerdict>;
+
+  // removes what the gate made for each proposal that never published, such as a new item's key,
+  // once the batch publishes, splits or fails
+  readonly release: (verdicts: readonly GateVerdict[]) => Promise<void>;
+}
+
+// The batch a gated write belongs to, which its proposal names: the batch's bounds group its
+// proposals and their notice, and the model is the writer session's.
+export interface GateBatch {
+  readonly bounds: BatchBounds;
+  readonly model: string;
 }
 
 // The token counts of one writer session.

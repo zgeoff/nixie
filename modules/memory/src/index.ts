@@ -76,9 +76,10 @@ export type {
   VersionState,
 } from './types';
 export type { BatchPublication, GatedWrite, PublishResult } from './write-memory-batch';
-export type { WriterConfig } from './writer-config-schema';
+export type { WriterConfig, WriterConfigInput } from './writer-config-schema';
 export { writerConfigSchema } from './writer-config-schema';
 export type {
+  GateBatch,
   GateVerdict,
   SourceMessage,
   StagedWrite,

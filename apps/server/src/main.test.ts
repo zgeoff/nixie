@@ -174,6 +174,15 @@ test('it applies a remembered fact that the owner typed, with their words as its
   expect(run.records.filter((record) => record.kind === 'memory.proposed')).toStrictEqual([]);
 }, 60_000);
 
+test('it starts the memory writer with the batch gate, its catch-up from the first record', async () => {
+  const ctx = await setupTest();
+
+  const started = await ctx.waitForLogEvent('memory_writer.started');
+
+  expect(started).toMatchObject({ cursor: 0, startSequence: expect.toBeNumber() });
+  expect(ctx.readOutput()).not.toInclude('memory_writer.off');
+}, 60_000);
+
 test('it answers liveness per part', async () => {
   const ctx = await setupTest();
 

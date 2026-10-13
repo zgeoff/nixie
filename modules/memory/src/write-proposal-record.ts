@@ -1,5 +1,6 @@
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import { buildProposalRecord } from './build-proposal-record';
 import { ProposalCapError } from './proposal-cap-error';
 import type { MemoryTables, StoreParts } from './types';
 import type { ProposalPlan } from './write-memory-proposal';
@@ -31,34 +32,10 @@ export async function writeProposalRecord(
     .select((eb) => eb.fn.countAll<number>().as('count'))
     .where('cap_group', '=', plan.group.capGroup)
     .executeTakeFirstOrThrow();
-  const gate = parts.context.gate;
+  const limits = parts.context.gate.limits;
 
-  if (made.count >= gate.limits.proposalCap) {
-    throw new ProposalCapError(gate.limits.proposalCap);
+  if (made.count >= limits.proposalCap) {
+    throw new ProposalCapError(limits.proposalCap);
   }
-  await writeRecordsInTransaction(tx, parts.context.log, [
-    {
-      kind: 'memory.proposed',
-      definitions: parts.context.definitions(),
-      thread: plan.caller.thread,
-      contentSource: 'untrusted',
-      payload: {
-        ...pending.sealed,
-        isNewItem: plan.target === null,
-        operation: plan.operation,
-        targetVersion: plan.target?.version ?? null,
-        isPinned: plan.isPinned,
-        reviewReason: plan.reason,
-        evidence: plan.evidence === null ? null : { ...plan.evidence },
-        origin: plan.caller.origin,
-        source: 'untrusted',
-        taskID: plan.caller.taskID,
-        capGroup: plan.group.capGroup,
-        checks: plan.checks,
-        model: plan.caller.model,
-        noticeKey: plan.group.noticeKey,
-        lapseAt: gate.clock.now() + gate.limits.proposalLapseMs,
-      },
-    },
-  ]);
+  await writeRecordsInTransaction(tx, parts.context.log, [buildProposalRecord(parts, pending)]);
 }

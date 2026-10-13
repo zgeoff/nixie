@@ -1,6 +1,12 @@
 import { onTestFinished } from 'bun:test';
 import { readdir } from 'node:fs/promises';
-import type { GateContext, RecalledItem, StartedMemoryStore, WriterStatus } from '@heynixie/memory';
+import type {
+  GateContext,
+  RecalledItem,
+  StartedMemoryStore,
+  WriterConfigInput,
+  WriterStatus,
+} from '@heynixie/memory';
 import {
   defaultGateLimits,
   findNoAllowRule,
@@ -8,6 +14,7 @@ import {
   writerConfigSchema,
 } from '@heynixie/memory';
 import { buildStubGate } from '@heynixie/memory/test-utils';
+import type { RunCheck } from '@heynixie/models';
 import { modelsConfigSchema } from '@heynixie/models';
 import type { RunStep, TasksContext } from '@heynixie/tasks';
 import type { ScriptedModel, TestClock } from '@heynixie/testing';
@@ -42,6 +49,15 @@ export interface TestMemoryWriter {
   readonly readStatus: () => Promise<WriterStatus>;
 }
 
+export interface TestMemoryWriterOptions {
+  // the store's checker; with one, the writer checks its batches through the store's own batch
+  // gate, else through the stub gate while the store's checker fails closed
+  readonly check?: RunCheck;
+
+  // the writer's settings as the deployment configuration writes them, over one message a batch
+  readonly writerConfig?: WriterConfigInput;
+}
+
 interface WriterStart {
   readonly context?: TasksContext;
 }
@@ -52,24 +68,18 @@ interface WriterRun {
 }
 
 // Starts memory on a test server: the store, a scripted model for the writer, and the writer on
-// that model with the stub gate and one message a batch, once the test calls start. Everything it
-// starts stops before the server does.
-export async function startTestMemoryWriter(server: TestServer): Promise<TestMemoryWriter> {
+// that model once the test calls start. Everything it starts stops before the server does.
+export async function startTestMemoryWriter(
+  server: TestServer,
+  options: TestMemoryWriterOptions = {},
+): Promise<TestMemoryWriter> {
   const clock = buildTestClock(1_000_000);
   const context = { ...server.context, clock };
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
 
-  const store = await startMemoryStore({
-    log: context.log,
-    definitions: context.definitions,
-    cleanupSessions: () => Promise.resolve(),
-    gate: buildClosedGate(clock),
-  });
-
-  server.defer(() => store.stop());
-
+  const store = await startTestStore(server, { context, clock, check: options.check });
   const started: { writer: MemoryWriterRunner | null } = { writer: null };
   const socketDir = `${server.dataDir}/tools`;
 
@@ -85,6 +95,7 @@ export async function startTestMemoryWriter(server: TestServer): Promise<TestMem
         model,
         store,
         socketDir,
+        options,
       });
       return started.writer;
     },
@@ -103,11 +114,37 @@ export async function startTestMemoryWriter(server: TestServer): Promise<TestMem
   };
 }
 
+interface StoreWiring {
+  readonly context: TasksContext;
+  readonly clock: TestClock;
+  readonly check: RunCheck | undefined;
+}
+
+// the store, whose checker fails closed unless the test passes one
+async function startTestStore(
+  server: TestServer,
+  wiring: StoreWiring,
+): Promise<StartedMemoryStore> {
+  const store = await startMemoryStore({
+    log: wiring.context.log,
+    definitions: wiring.context.definitions,
+    cleanupSessions: () => Promise.resolve(),
+    gate: {
+      ...buildClosedGate(wiring.clock),
+      ...(wiring.check === undefined ? {} : { check: wiring.check }),
+    },
+  });
+
+  server.defer(() => store.stop());
+  return store;
+}
+
 interface WriterWiring {
   readonly context: TasksContext;
   readonly model: ScriptedModel;
   readonly store: StartedMemoryStore;
   readonly socketDir: string;
+  readonly options: TestMemoryWriterOptions;
 }
 
 async function startTestWriterRunner(
@@ -133,8 +170,10 @@ async function startTestWriterRunner(
     socketDir: wiring.socketDir,
     image: 'nixie-conversation-0123456789ab',
     store: wiring.store,
-    gate: buildStubGate(),
-    config: writerConfigSchema.parse({ batch_messages: 1 }),
+
+    // the store's batch gate when the test passes a checker, else the stub gate
+    gate: wiring.options.check === undefined ? buildStubGate() : wiring.store.writes.batch,
+    config: writerConfigSchema.parse({ batch_messages: 1, ...wiring.options.writerConfig }),
     getPersona: () => '',
     onError: (error) => {
       throw error;
@@ -165,7 +204,8 @@ async function runWriterSteps(wiring: StepsWiring, run: WriterRun = {}): Promise
   });
 }
 
-// the writer checks its batches through the stub gate, so the store's own checker fails closed
+// with no checker from the test, the writer checks its batches through the stub gate, so the
+// store's own checker fails closed
 function buildClosedGate(clock: TestClock): GateContext {
   return {
     check: () =>

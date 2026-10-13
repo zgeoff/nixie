@@ -1,13 +1,13 @@
 import type { ToolCall, ToolContext, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildWriteCaller } from './build-write-caller';
+import type { ModelWriteStore } from './gate-types';
 import { makeInputRecorder } from './make-input-recorder';
 import { memoryWriteOutput } from './memory-write-output';
 import { runWriteCall } from './run-write-call';
-import type { StartedMemoryStore } from './start-memory-store';
 
 // Builds memory.retire, which declares note and runs each retirement through the intent gate.
-export function buildRetireTool(memory: Pick<StartedMemoryStore, 'writes'>): ToolDefinition {
+export function buildRetireTool(memory: ModelWriteStore): ToolDefinition {
   return {
     name: 'memory.retire',
     description:

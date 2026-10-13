@@ -2,7 +2,7 @@ import type { Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 
 // Records your messages on the conversation thread, oldest first, the way a past conversation left
-// them, and returns their sequences.
+// them, each typed in full, and returns their sequences.
 export async function writeOwnerMessages(
   log: Log,
   texts: readonly string[],
@@ -13,7 +13,7 @@ export async function writeOwnerMessages(
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
-      erasable: { text },
+      erasable: { text, spans: [{ start: 0, end: text.length, source: 'typed' }] },
     })),
   );
 

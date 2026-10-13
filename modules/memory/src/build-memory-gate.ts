@@ -1,3 +1,4 @@
+import { buildWriterGate } from './build-writer-gate';
 import type { MemoryNotice, MemoryProposals, MemoryWrites } from './gate-types';
 import { readMemoryNotices } from './read-memory-notices';
 import { readPendingProposals } from './read-pending-proposals';
@@ -21,6 +22,7 @@ export function buildMemoryGate(parts: StoreParts): MemoryGate {
     writes: {
       remember: (request) => writeGatedRemember(parts, request),
       retire: (request) => writeGatedRetirement(parts, request),
+      batch: buildWriterGate(parts),
     },
     proposals: {
       listPending: () => readPendingProposals(parts),

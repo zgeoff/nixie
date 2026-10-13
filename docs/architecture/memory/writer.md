@@ -39,10 +39,12 @@ record and takes the same bounds, so the batch it runs again is the one it lost.
 
 ## The catch-up
 
-The writer's first start records the log's head sequence as the point where memory started. Every
-batch that begins before that point is part of the catch-up, which reads the conversation from the
-start of the log. A catch-up batch stops at the start point, so a message that arrived after memory
-started always runs in a live batch.
+The server starts the writer, with the store's batch gate, on every start of nixie. The writer's
+first start records the log's head sequence as the point where memory started. Every batch that
+begins before that point is part of the catch-up, which reads the conversation from the start of the
+log. A catch-up batch stops at the start point, so a message that arrived after memory started
+always runs in a live batch. The cursor starts at the first record of the log, so the catch-up
+begins by itself on that first start.
 
 A catch-up batch posts no notice, because a notice per batch of old history would bury the
 conversation. The batch that ends the catch-up posts one quiet notice with the count of items it
@@ -71,9 +73,23 @@ closes only its own staging, so it never empties the staging of the step that re
 ## Publishing
 
 The host runs the content gate over each staged write outside the database transaction, because a
-gate check can call a model. The gate applies a write, or turns it into a proposal with its own
-records. A write that repeats the text of an item the session was shown skips the gate and writes
-nothing.
+gate check can call a model. A write that repeats the text of an item the session was shown skips
+the gate and writes nothing.
+
+The batch gate runs the checks that [memory writes](./writes.md) sets out for a single write, one
+staged write at a time, against the one message the write cites. That message is the write's whole
+evidence, never a window of the user's latest messages, because a catch-up batch cites messages far
+older than any window. The quote must be typed in that message, a memory's tokens must appear in the
+quote, and the checker must confirm it; a message that backed a forgotten item never backs a write
+again. A write that passes applies with its quote's place in the message as its evidence. Every
+other write becomes a proposal from the memory writer: the gate seals its text and builds its
+records, and the batch publishes them in its own transaction. A batch's proposals share one group
+for the cap and the notice. A retirement whose item moved on, was retired or was forgotten since the
+session read it fails the gate, and the batch runs again at once against the item as it stands.
+
+A proposal for a new item seals its text under a key the gate creates before the transaction. When
+the proposal never publishes, because its batch split, ran again or failed, the writer removes that
+key, so a key in the key store always seals a record or a published proposal.
 
 One transaction then publishes the batch:
 
@@ -82,7 +98,8 @@ One transaction then publishes the batch:
 2. It checks that the batch is still the one the cursor waits on, so a rerun after a commit that a
    crash hid publishes nothing twice.
 3. It reads each cited message again and leaves out every write whose message the user forgot during
-   the session, and the batch counts them as dropped.
+   the session, or whose message backed an item the user forgot since the gate ran, and the batch
+   counts them as dropped.
 4. It applies each write at the version the session read. A write whose item changed in the meantime
    aborts the transaction, and the batch runs again at once against the new version.
 5. It writes the proposals' records, the batch's notice and the advanced cursor.
@@ -111,9 +128,3 @@ batch or an edit in the memory view, and puts a note of them before the user's m
 lists changes up to a cap, then how many more, and counts the catch-up's items without listing them.
 The turn's end record holds the last sequence the note covered, so the next turn's note starts after
 it.
-
-## The writer stays off without a gate
-
-The server starts the writer only when a content gate is configured, because a writer with no gate
-would apply text no check has read. With no gate, its cursor stays at the start of the log, and the
-catch-up covers everything once a gate arrives.

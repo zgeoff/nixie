@@ -1,12 +1,9 @@
 import type { LogTables } from '@heynixie/log';
 import { sql } from 'kysely';
 import { buildGateReview } from './build-gate-review';
-import type { QuoteEvidenceResult } from './find-quote-evidence';
 import { findQuoteEvidence } from './find-quote-evidence';
 import type { ContentGateResult } from './gate-types';
-import { pickCheckerReviewReason } from './pick-checker-review-reason';
-import { renderCheckerInput } from './render-checker-input';
-import { retirementCheckerPrompt } from './retirement-checker-prompt';
+import { runRetirementChecker } from './run-retirement-checker';
 import type { MemoryContext, VersionRef } from './types';
 
 export interface IntentGateRequest {
@@ -40,37 +37,7 @@ export async function runIntentGate(
   if (found.status === 'review') {
     return buildGateReview(found.reason, { checks: { read: 'pass', quote: 'fail' } });
   }
-  return runRetirementChecker(context, request, found);
-}
-
-type FoundEvidence = Extract<QuoteEvidenceResult, { readonly status: 'found' }>;
-
-async function runRetirementChecker(
-  context: Pick<MemoryContext, 'gate'>,
-  request: IntentGateRequest,
-  found: FoundEvidence,
-): Promise<ContentGateResult> {
-  const answer = await context.gate.check({
-    prompt: retirementCheckerPrompt,
-    input: renderCheckerInput(found.message, found.evidence, {
-      kind: 'item_to_retire',
-      text: request.itemText,
-    }),
-  });
-  const checks = {
-    read: 'pass',
-    quote: 'pass',
-    checker: { verdict: answer.verdict, model: answer.model, failure: answer.failure },
-  };
-
-  if (answer.verdict === 'asserted') {
-    return { status: 'pass', source: 'owner', evidence: found.evidence, checks };
-  }
-  return buildGateReview(pickCheckerReviewReason(answer), {
-    evidence: found.evidence,
-    checks,
-    checkerReason: answer.reason,
-  });
+  return runRetirementChecker(context, request.itemText, found);
 }
 
 // A recall record lists each item and version it delivered to the thread, so the thread read the

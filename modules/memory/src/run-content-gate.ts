@@ -1,4 +1,5 @@
 import { buildGateReview } from './build-gate-review';
+import { findQuoteEvidence } from './find-quote-evidence';
 import type { ContentGateRequest, ContentGateResult } from './gate-types';
 import { runQuotedGate } from './run-quoted-gate';
 import { runRuleGate } from './run-rule-gate';
@@ -25,7 +26,13 @@ export async function runContentGate(
   if (request.quote === null) {
     return buildGateReview('no_quote', { checks: { quote: 'fail' } });
   }
-  return runQuotedGate(context, request, request.quote);
+  const found = await findQuoteEvidence(context.log, {
+    thread: request.thread,
+    quote: request.quote,
+    window: context.gate.limits.evidenceWindow,
+  });
+
+  return runQuotedGate(context, request, { quote: request.quote, found });
 }
 
 // Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order

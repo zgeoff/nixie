@@ -22,7 +22,10 @@ async function setupTest() {
     publish: memory.store.writeBatch,
     staging: createWriterStaging(),
     model: { model: 'claude-test-1', profile: 'writer-direct', runSession: session.call },
-    gate: { check: () => Promise.reject(new Error('no write reaches the gate')) },
+    gate: {
+      check: () => Promise.reject(new Error('no write reaches the gate')),
+      release: () => Promise.resolve(),
+    },
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
     onError: () => {},
