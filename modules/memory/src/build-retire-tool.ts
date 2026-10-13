@@ -1,6 +1,7 @@
 import type { ToolCall, ToolContext, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildWriteCaller } from './build-write-caller';
+import { makeInputRecorder } from './make-input-recorder';
 import { memoryWriteOutput } from './memory-write-output';
 import { runWriteCall } from './run-write-call';
 import type { StartedMemoryStore } from './start-memory-store';
@@ -40,6 +41,9 @@ export function buildRetireTool(memory: Pick<StartedMemoryStore, 'writes'>): Too
       },
     },
     execution: 'direct',
+
+    // the model can copy the item's text into the intent quote before the gate checks it
+    recordInput: makeInputRecorder(['intentQuote']),
     run: (call: ToolCall, context: ToolContext) =>
       runWriteCall(() => {
         const input = retireArguments.parse(call.input);

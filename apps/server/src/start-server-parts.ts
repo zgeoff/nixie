@@ -30,7 +30,7 @@ export async function startServerParts(options: ServerPartsOptions): Promise<Ser
   const ready = startInBackground({
     ...options,
     ...base,
-    ...buildSeedInputs(options.config, [tools.webFetch.tool]),
+    ...buildSeedInputs(options.config, tools.definitions),
     state,
     context: base.apiContext,
     tools,

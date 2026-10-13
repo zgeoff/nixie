@@ -166,4 +166,12 @@ as origin, any other thread gives a task, and the run's model gives the model ID
 takes outside content as its source, because the items it returns hold every source memory holds. A
 stale version, a missing item or a wrong state returns to the model as the tool's refusal, so the
 model reads the item again. The model can retire an item and can never restore, undo or forget one.
-The server's tool registry leaves the 3 tools out, so no model reaches memory.
+The server registers the 3 tools beside web fetch, and the conversation's tool list names them. The
+read-only rule allows them, because they declare `read` and `note` and run direct.
+
+The records of a memory tool call never hold an item's text, so a forget leaves no readable copy in
+them. A recall's result record lists each item and version it returned, as the recall's own record
+does, while the model reads the items word for word. Each call record leaves out the free text the
+model wrote: the search words, the memory text and both quotes. The model can copy an item's text
+into any of them, and the record holds them before a gate checks a quote. The version keeps the
+memory text under its item's key, and its evidence points at the quote in the user's message.

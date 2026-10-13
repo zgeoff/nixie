@@ -11,6 +11,7 @@ import type {
   ToolCall,
   ToolRegistry,
   ToolRun,
+  TypedResult,
 } from './types';
 
 export interface ToolCallOptions {
@@ -93,6 +94,7 @@ function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions
   // one snapshot for both records, so a replay of the decision reads the definitions it ran under
   const definitions = options.definitions();
   const ids = { callID: call.callID, runID: run.runID, toolUseID: call.toolUseID };
+  const recordInput = options.registry.findTool(call.tool)?.definition.recordInput;
 
   return {
     writeCall: async (policy) => {
@@ -102,7 +104,7 @@ function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions
           definitions,
           thread: run.thread,
           payload: { ...ids, tool: call.tool, model: run.model.model, profile: run.model.profile },
-          erasable: { input: call.input },
+          erasable: { input: recordInput?.(call.input) ?? call.input },
           ...(policy === null ? {} : { decision: policy.decision }),
         },
       ]);
@@ -237,14 +239,17 @@ async function runDirect(allowed: AllowedCall): Promise<Settled> {
   // a tool's error can quote what an outside service said, so it counts as outside content
   return outcome.status === 'error'
     ? buildMessage('error', outcome.message, { source: 'untrusted' })
-    : buildTypedResult(allowed.registered, outcome.result, null);
+    : buildTypedResult(allowed.registered, outcome, null);
 }
 
+// The model reads the whole result, and the record holds the tool's record form of it, if any.
 function buildTypedResult(
   registered: RegisteredTool,
-  result: JSONObject,
+  typed: TypedResult,
   actionID: string | null,
 ): Settled {
+  const result = typed.result;
+
   if (!registered.parseOutput(result).isValid) {
     const messageOptions = actionID === null ? {} : { actionID };
 
@@ -258,7 +263,7 @@ function buildTypedResult(
     outcome: 'result',
     actionID,
     sources: registered.definition.declaration.results,
-    content: { result },
+    content: { result: typed.record ?? result },
     reply: { kind: 'typed', result },
   };
 }
@@ -280,7 +285,7 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
     return buildMessage('queued', `queued as ${actionID}`, { isError: false, actionID });
   }
   if (outcome.outcome === 'done') {
-    return buildTypedResult(allowed.registered, outcome.result, actionID);
+    return buildTypedResult(allowed.registered, outcome, actionID);
   }
 
   // the call was allowed and the action ran, so its outcome is no tool error

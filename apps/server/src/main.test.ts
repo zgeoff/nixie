@@ -6,6 +6,7 @@ import type { LogRecord } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
+import invariant from 'tiny-invariant';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
 // nixie in a test build at ready, with a device signed in through the code it printed at start
@@ -99,6 +100,78 @@ test('it puts the snapshot hash of the definitions in force on every record', as
   expect(run.records).toSatisfyAll(
     (record: LogRecord) => record.definitions.snapshotHash === seeded['snapshotHash'],
   );
+}, 60_000);
+
+test('it lists the memory tools and web fetch to the conversation model', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Hello.' });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+  await waitForCondition(() =>
+    ctx.model.requests.some((request) => request.path === '/v1/messages'),
+  );
+
+  expect(ctx.model.requests.find((request) => request.path === '/v1/messages')?.body).toMatchObject(
+    {
+      tools: expect.toIncludeAllPartialMembers([
+        { name: 'mcp__nixie__memory_remember' },
+        { name: 'mcp__nixie__memory_recall' },
+        { name: 'mcp__nixie__memory_retire' },
+        { name: 'mcp__nixie__web_fetch' },
+      ]),
+    },
+  );
+}, 60_000);
+
+test('it applies a remembered fact that the owner typed, with their words as its evidence', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    {
+      toolUse: {
+        name: 'mcp__nixie__memory_remember',
+        input: { text: 'Sister Ada lives in Leeds', quote: 'my sister Ada lives in Leeds' },
+      },
+    },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+    { text: 'Noted.' },
+  );
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [{ start: 0, end: 43, source: 'typed' }],
+    text: 'Remember that my sister Ada lives in Leeds.',
+    thread: 'conversation',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Noted.');
+  });
+  ctx.sendSignal('SIGTERM');
+  const run = await ctx.waitForExit();
+  const message = run.records.find((record) => record.kind === 'owner_message');
+
+  invariant(message, 'the run recorded no owner message');
+
+  // the evidence is the quote's span in the typed message: characters 14 to 42
+  expect(run.records.filter((record) => record.kind === 'memory.version_added')).toMatchObject([
+    {
+      contentSource: 'owner',
+      payload: {
+        change: 'created',
+        origin: 'conversation',
+        source: 'owner',
+        state: 'active',
+        evidence: { recordSequence: message.sequence, start: 14, end: 42 },
+      },
+    },
+  ]);
+  expect(run.records.filter((record) => record.kind === 'memory.proposed')).toStrictEqual([]);
 }, 60_000);
 
 test('it answers liveness per part', async () => {

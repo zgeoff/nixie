@@ -3,6 +3,7 @@ import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildRememberTool } from './build-remember-tool';
 import { buildRetireTool } from './build-retire-tool';
+import { makeInputRecorder } from './make-input-recorder';
 import type { StartedMemoryStore } from './start-memory-store';
 import type { RecallRequest, RecalledItem, RecalledVersion } from './types';
 
@@ -92,6 +93,9 @@ function buildRecallTool(memory: MemoryToolStore): ToolDefinition {
       results: { items: 'untrusted', next: 'owner_data' },
     },
     execution: 'direct',
+
+    // the model can search with an item's own words
+    recordInput: makeInputRecorder(['query']),
     run: async (call, context) => {
       const input = recallArguments.parse(call.input);
       const request: RecallRequest = {
@@ -105,9 +109,15 @@ function buildRecallTool(memory: MemoryToolStore): ToolDefinition {
       };
       const result = await memory.recall(request);
 
+      // the record holds references, as the recall's own record does, so a forget leaves no
+      // readable copy of what the model read
       return {
         status: 'ok',
         result: { items: result.items.map((item) => toItemJSON(item)), next: result.next },
+        record: {
+          items: result.items.map((item) => ({ itemID: item.itemID, version: item.version })),
+          next: result.next,
+        },
       };
     },
   };
