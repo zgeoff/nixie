@@ -89,6 +89,9 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
         pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
         retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
         invalidatedThrough: completed.memory.invalidatedThrough,
+        ...(completed.turn.endedMark === undefined
+          ? {}
+          : { recalledThrough: completed.turn.endedMark }),
         ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
       },
     }),

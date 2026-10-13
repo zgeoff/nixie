@@ -22,44 +22,55 @@ export async function readDeliveredVersions(
 interface SessionState {
   readonly delivered: ReadonlyMap<string, MemoryRef>;
 
-  // what the running step's recalls delivered, which its turn's end keeps
-  readonly pending: ReadonlyMap<string, MemoryRef>;
+  // the running step's recalls, which its turn's end keeps up to its last result
+  readonly pending: readonly PendingRecall[];
   readonly isCompacted: boolean;
 }
 
-const emptyState: SessionState = { delivered: new Map(), pending: new Map(), isCompacted: false };
+interface PendingRecall {
+  readonly sequence: number;
+  readonly refs: readonly MemoryRef[];
+}
 
-// A reset commits with its step's turn, after the step's recalls. A compaction summarized those
-// recalls, so it drops them. A rebuild after a lost session drops them too, because the step's first
-// recall served the lost session, and the turn's record lists what the rebuilt turn retrieved.
+const emptyState: SessionState = { delivered: new Map(), pending: [], isCompacted: false };
+
+// A reset commits after its step's recalls and drops them: a compaction summarized them, and a lost
+// session's rebuild lists what its turn retrieved. A turn drops a recall after its last result,
+// which reached a session that no turn resumes.
 function buildSessionState(state: SessionState, record: LogRecord): SessionState {
   switch (record.kind) {
     case 'memory.recalled': {
-      return { ...state, pending: mergeRefs(state.pending, parseRefs(record.payload['items'])) };
+      const recall = { sequence: record.sequence, refs: parseRefs(record.payload['items']) };
+
+      return { ...state, pending: [...state.pending, recall] };
     }
     case 'model.turn_ended': {
       const retrieved = state.isCompacted ? [] : parseRefs(record.payload['retrieved']);
+      const through = parseRecalledThrough(record.payload['recalledThrough']);
+      const recalled = state.pending
+        .filter((recall) => recall.sequence <= through)
+        .flatMap((recall) => recall.refs);
 
       return {
         ...state,
-        delivered: mergeRefs(state.delivered, [...state.pending.values(), ...retrieved]),
-        pending: new Map(),
+        delivered: mergeRefs(state.delivered, [...recalled, ...retrieved]),
+        pending: [],
       };
     }
     case 'task.step_started': {
-      return { ...state, pending: new Map(), isCompacted: false };
+      return { ...state, pending: [], isCompacted: false };
     }
     case 'model.session_rebuilt': {
       return {
         ...state,
         delivered: new Map(),
-        pending: record.payload['reason'] === 'invalidated' ? state.pending : new Map(),
+        pending: record.payload['reason'] === 'invalidated' ? state.pending : [],
       };
     }
     default: {
       return {
         delivered: new Map(),
-        pending: new Map(),
+        pending: [],
         isCompacted: state.isCompacted || record.kind === 'model.compacted',
       };
     }
@@ -138,4 +149,11 @@ function parseRefs(value: unknown): readonly MemoryRef[] {
   const parsed = refsSchema.safeParse(value);
 
   return parsed.success ? parsed.data : [];
+}
+
+// a turn recorded before turns kept the mark took every recall of its step
+function parseRecalledThrough(value: unknown): number {
+  const parsed = z.int().nonnegative().safeParse(value);
+
+  return parsed.success ? parsed.data : Number.MAX_SAFE_INTEGER;
 }

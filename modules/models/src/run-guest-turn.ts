@@ -29,6 +29,9 @@ export interface GuestTurnSpec {
 
   // aborts when the step's lease is lost, which stops the guest
   readonly signal: AbortSignal;
+
+  // read at each ended frame, so the turn reports the mark its last result saw
+  readonly readEndedMark?: () => Promise<number>;
 }
 
 // What the guest reported for one turn: each assistant message, the uuids of the inbox messages
@@ -40,6 +43,9 @@ export interface GuestTurn {
   readonly ended: readonly EndedFrame[];
   readonly compactions: readonly CompactedFrame[];
   readonly failure: FailedFrame | null;
+
+  // the mark read at the last ended frame, when the spec reads one
+  readonly endedMark?: number;
 }
 
 // Runs one turn in the conversation guest: it starts the guest, sends the turn frame and then each
@@ -59,7 +65,7 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
     spec.signal.throwIfAborted();
     await stream.send(encodeTurnFrame(spec.turn));
     void sendMessages(stream, spec.messages);
-    return await collectTurn(stream);
+    return await collectTurn(stream, spec.readEndedMark);
   } catch (error) {
     await stream.stop();
     throw error;
@@ -103,6 +109,7 @@ interface MutableTurn {
   readonly ended: EndedFrame[];
   readonly compactions: CompactedFrame[];
   failure: FailedFrame | null;
+  endedMark: number | null;
   settled: { readonly assistants: number; readonly read: number; readonly compactions: number };
 }
 
@@ -110,18 +117,28 @@ interface MutableTurn {
 // boundary: a reply or a read after it, from a guest that died before its next result, belongs to a
 // session no turn resumes, so its inbox records stay unread and the next step sends them again.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
-async function collectTurn(stream: ExecStream): Promise<GuestTurn> {
+async function collectTurn(
+  stream: ExecStream,
+  readEndedMark: GuestTurnSpec['readEndedMark'],
+): Promise<GuestTurn> {
   const turn: MutableTurn = {
     assistants: [],
     read: [],
     ended: [],
     compactions: [],
     failure: null,
+    endedMark: null,
     settled: { assistants: 0, read: 0, compactions: 0 },
   };
 
   for await (const message of stream.messages) {
-    updateTurn(turn, decodeTurnFrame(guestFrameSchema, message));
+    const frame = decodeTurnFrame(guestFrameSchema, message);
+
+    updateTurn(turn, frame);
+    if (frame.type === 'ended' && readEndedMark !== undefined) {
+      // oxlint-disable-next-line no-await-in-loop -- the mark belongs to this frame, before the next
+      turn.endedMark = await readEndedMark();
+    }
   }
   const exit = await stream.exit;
 
@@ -132,6 +149,7 @@ async function collectTurn(stream: ExecStream): Promise<GuestTurn> {
     ended: turn.ended,
     compactions: turn.compactions.slice(0, turn.settled.compactions),
     failure: turn.failure,
+    ...(turn.endedMark === null ? {} : { endedMark: turn.endedMark }),
   };
 }
 
@@ -157,7 +175,7 @@ function updateTurn(turn: MutableTurn, frame: GuestFrame): void {
   }
 }
 
-function requireTurnEnd(turn: GuestTurn, exit: StreamExit): void {
+function requireTurnEnd(turn: Pick<GuestTurn, 'ended' | 'failure'>, exit: StreamExit): void {
   if (turn.ended.length > 0 || turn.failure !== null) {
     return;
   }

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { createConversationTask } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 import { readDeliveredVersions } from './read-delivered-versions';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
@@ -284,4 +285,48 @@ test('it lists nothing that another thread delivered', async () => {
   const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
 
   expect(delivered).toStrictEqual([]);
+});
+
+test('it leaves out a recall that came after the last result its turn ended at', async () => {
+  const ctx = await setupTest();
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await createConversationTask(ctx.tasks.context);
+
+  const [, settled] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.step_started',
+      definitions,
+      thread: 'conversation',
+      payload: { taskID: 'conversation', stepKey: 'conversation:1', generation: 1 },
+    },
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: { items: [{ itemID: 'item-1', version: 1 }] },
+    },
+  ]);
+
+  invariant(settled);
+
+  // a recall for a live message, from a guest that died before its next result
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: { items: [{ itemID: 'item-2', version: 1 }] },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions,
+      thread: 'conversation',
+      payload: { retrieved: [], recalledThrough: settled.sequence },
+    },
+  ]);
+
+  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+
+  expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
 });
