@@ -8,8 +8,8 @@
 
 The [memory writes](../../../architecture/memory/writes.md) architecture doc covers the content
 gate, the retirement intent gate, provenance, memory proposals and notices as built. This design
-covers the parts still to build: the memory writer that captures facts from batches of turns, what
-the client shows for a proposal and a notice, and consolidation.
+covers the parts still to build: the memory writer that captures facts from batches of turns, and
+what the client shows for a proposal and a notice.
 
 ## Who writes
 
@@ -77,12 +77,3 @@ Retirement uses the same grouping with its own label. A batch that finishes afte
 quiet notice in that thread, with no push and no entry in the approval digest. A task's writes
 appear in its thread and in its next report to the conversation. A notice also links the checked
 [forget](../../../architecture/memory/store.md#forgetting) action.
-
-## Consolidation
-
-Consolidation comes after the first build. It runs weekly by default as a system task in its own
-imp, with `memory.recall` and `memory.consolidate` as its only tools. It reads active items, never
-the conversation, and proposes merges, rewrites and retirements as one diff, at most 30 changes. It
-never forgets. Each change binds to the versions it read, and a merged item takes the least trusted
-source among its inputs. You approve the whole diff or each change alone, and each approval is its
-own record under [0006](../../../decisions/0006-approval-record.md).
