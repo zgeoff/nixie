@@ -5,6 +5,7 @@ import { toErrorFields } from '@heynixie/ops';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { sendEnrolmentCodeRequest } from './send-enrolment-code-request';
 import { sendMemoryRequest } from './send-memory-request';
+import { sendSessionRequest } from './send-session-request';
 import { startServer } from './start-server';
 
 export interface CLIIO {
@@ -70,6 +71,10 @@ type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<
 const commands = new Map<string, Command>([
   ['serve', (flags, io) => runServe(flags, io)],
   ['enrol-code', (flags, io) => runEnrolCode(flags.config, io)],
+
+  // sessions lists the live device sessions as JSON; session-label sets the label of one
+  ['sessions', (flags, io) => runSessions(flags.config, io)],
+  ['session-label', (flags, io, args) => runSessionLabel(flags.config, io, args)],
   ['health', (flags) => runHealth(flags.config, flags.live)],
   ['memory-pending', (flags, io) => runMemoryPending(flags.config, io)],
   ['memory-approve', makeMemoryAnswer('approve')],
@@ -108,6 +113,37 @@ async function runEnrolCode(configPath: string, io: CLIIO): Promise<number> {
   const issued = await sendEnrolmentCodeRequest(socketPath);
 
   io.print(`${issued.code}\nThe code works once, until ${issued.expiresAt.toISOString()}.`);
+  return 0;
+}
+
+async function runSessions(configPath: string, io: CLIIO): Promise<number> {
+  const socketPath = await resolveSocketPath(configPath);
+  const sessions = await sendSessionRequest(socketPath, { command: 'list' });
+
+  io.print(JSON.stringify(sessions));
+  return 0;
+}
+
+// the label is every word after the session's ID, so a label with spaces needs no quotes
+async function runSessionLabel(
+  configPath: string,
+  io: CLIIO,
+  args: readonly string[],
+): Promise<number> {
+  const [sessionID, ...words] = args;
+
+  if (sessionID === undefined || words.length === 0) {
+    io.print('nixie session-label takes a session ID and a label');
+    return 2;
+  }
+  const socketPath = await resolveSocketPath(configPath);
+  const labelled = await sendSessionRequest(socketPath, {
+    command: 'label',
+    sessionID,
+    label: words.join(' '),
+  });
+
+  io.print(JSON.stringify(labelled));
   return 0;
 }
 

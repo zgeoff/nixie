@@ -23,7 +23,7 @@ async function setupTest() {
     new RPCLink({ url: `${url}/rpc`, headers: { [clientHeaderName]: 'test' } }),
   );
 
-  // boot data: every procedure but enrol needs a device session, and no test reads the device
+  // boot data: every procedure but enrol needs a device session, whose name each message carries
   const session = await signedOut.sessions.enrol({
     clientActionID: crypto.randomUUID(),
     code: String(issued['code']),
@@ -89,7 +89,11 @@ test('it puts the snapshot hash of the definitions in force on every record', as
       kind: 'owner_message',
       erasable: {
         status: 'readable',
-        fields: { text: 'Plum-message-7QK2', spans: [{ start: 0, end: 17, source: 'unknown' }] },
+        fields: {
+          text: 'Plum-message-7QK2',
+          spans: [{ start: 0, end: 17, source: 'unknown' }],
+          sessionLabel: 'laptop',
+        },
       },
     },
     {
@@ -206,8 +210,46 @@ test('it shows the model when each message was sent, in its own zone or the defa
     ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
   );
 
-  expect(sent).toMatch(/\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney\] Hi\./u);
-  expect(sent).toMatch(/\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo\] Just landed\./u);
+  expect(sent).toMatch(/\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney · laptop\] Hi\./u);
+  expect(sent).toMatch(
+    /\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo · laptop\] Just landed\./u,
+  );
+}, 60_000);
+
+test('it shows the model the label you set on a session through the session commands', async () => {
+  const ctx = await setupTest();
+  const listed = await runHostCommand(ctx.configPath, ['sessions']);
+  const [session] = z.tuple([z.object({ sessionID: z.string() })]).parse(JSON.parse(listed.stdout));
+
+  const labelled = await runHostCommand(ctx.configPath, [
+    'session-label',
+    session.sessionID,
+    'work',
+    'PC',
+  ]);
+
+  ctx.model.addReplies({ text: 'Hello.' });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Hi.',
+    thread: 'conversation',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Hello.');
+  });
+
+  const sent = JSON.stringify(
+    ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
+  );
+
+  expect(JSON.parse(labelled.stdout)).toStrictEqual({
+    sessionID: session.sessionID,
+    label: 'work PC',
+  });
+  expect(sent).toMatch(/\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney · work PC\] Hi\./u);
 }, 60_000);
 
 test('it applies a remembered fact that the owner typed, with their words as its evidence', async () => {

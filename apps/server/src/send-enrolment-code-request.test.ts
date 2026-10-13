@@ -20,6 +20,8 @@ test('it returns the code the running server issues', async () => {
     createEnrolmentCode: () =>
       Promise.resolve({ code: 'ABCD-EFGH', expiresAt: new Date('2026-10-11T12:15:00.000Z') }),
     readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());
@@ -38,6 +40,8 @@ test('it rejects with the status and the reason when the server fails to issue a
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('the database is locked')),
     readProposals: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
   onTestFinished(() => socket.stop());

@@ -33,6 +33,24 @@ test('it renders your message with the time you sent it, in the default zone whe
   ).toBe('[Mon 12 Oct, 21:31, Sydney] owner: Where is the spare key?');
 });
 
+test('it renders your message with the label of the session you sent it from', () => {
+  const record = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-12T10:31:05Z'),
+    erasable: {
+      status: 'readable',
+      fields: { text: 'Where is the spare key?', sessionLabel: 'phone' },
+    },
+  });
+
+  expect(
+    renderHistoryLine(record, {
+      defaultZone: 'Australia/Sydney',
+      now: new Date('2026-10-13T05:00:00Z'),
+    }),
+  ).toBe('[Mon 12 Oct, 21:31, Sydney · phone] owner: Where is the spare key?');
+});
+
 test('it renders a reply as nixie with its time in UTC', () => {
   const record = buildMockLogRecord({
     kind: 'model.reply',

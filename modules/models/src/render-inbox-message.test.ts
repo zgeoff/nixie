@@ -60,6 +60,33 @@ test('it renders two messages a night apart each with its own time', () => {
   ]);
 });
 
+test('it renders messages from two device sessions each with its session’s label beside the send time', () => {
+  const fromPhone = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-14T03:05:00Z'),
+    payload: { timeZone: 'Australia/Sydney' },
+    erasable: { status: 'readable', fields: { text: 'On the train.', sessionLabel: 'phone' } },
+  });
+  const fromPC = buildMockLogRecord({
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-14T08:40:00Z'),
+    payload: { timeZone: 'Australia/Sydney' },
+    erasable: { status: 'readable', fields: { text: 'Back at my desk.', sessionLabel: 'PC' } },
+  });
+
+  expect(
+    [fromPhone, fromPC].map((record) =>
+      renderInboxMessage(record, {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-14T09:00:00Z'),
+      }),
+    ),
+  ).toStrictEqual([
+    '[Wed 14 Oct, 14:05, Sydney · phone] On the train.',
+    '[Wed 14 Oct, 19:40, Sydney · PC] Back at my desk.',
+  ]);
+});
+
 test('it renders a note after the send time in place of a message whose text was forgotten', () => {
   const record = buildMockLogRecord({
     kind: 'owner_message',

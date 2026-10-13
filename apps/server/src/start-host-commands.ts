@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { APIContext } from '@heynixie/api';
-import { createEnrolmentCode } from '@heynixie/api';
+import { createEnrolmentCode, readSessions, updateSessionLabel } from '@heynixie/api';
 import { startControlSocket } from './start-control-socket';
 import type { Cleanup, MemorySlot } from './types';
 
@@ -20,6 +20,8 @@ export async function startHostCommands(
     path: join(options.dataDir, 'run', 'control.sock'),
     createEnrolmentCode: () => createEnrolmentCode(options.apiContext),
     readProposals: () => options.memory.read()?.proposals ?? null,
+    readSessions: () => readSessions(options.apiContext, null),
+    updateSessionLabel: (input) => updateSessionLabel(options.apiContext, input),
   });
 
   await cleanup.defer(() => control.stop());

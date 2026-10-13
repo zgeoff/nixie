@@ -137,6 +137,10 @@ server over a Unix control socket in the data directory, in a folder only nixie'
 Starting the server removes a stale socket file first, because the writer lock proves that no other
 server runs.
 
+The session host commands list the live device sessions and set the label of one, which writes the
+label record [the API](../channels/api.md#device-sessions) describes. A label is one line of text,
+because each message renders it beside the send time.
+
 The memory host commands list the pending memory proposals and approve or reject one. The server
 answers each through the memory gate's own answer path, so an approval applies the bound operation
 with its approval record and keeps the proposal's provenance ([memory writes](../memory/writes.md)).

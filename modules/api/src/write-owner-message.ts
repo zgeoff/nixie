@@ -26,7 +26,7 @@ type OwnerMessageResult =
   | { readonly status: 'unauthorized' };
 
 // Writes your message once per client message ID into the inbox of the task its thread names, with
-// the text and spans encrypted together. A retry answers with the first sequence, and the same ID
+// the text, its spans and the label of the session it came from encrypted together. A retry answers with the first sequence, and the same ID
 // with another thread or text is refused; once the text is forgotten, only the thread is compared.
 export async function writeOwnerMessage(
   context: APIContext,
@@ -82,6 +82,7 @@ async function writeMessage(
     return { status: 'thread_not_found' };
   }
   const spans = normalizeSpans(input.text, input.spans);
+  const sessionLabel = await readSessionLabel(tx, pending.caller.identityID);
   const [record] = await writeInboxRecordsInTransaction(tx, context, [
     {
       kind: 'owner_message',
@@ -94,7 +95,7 @@ async function writeMessage(
         spans: spans.labelled,
         ...pickTimeZone(input.timeZone),
       },
-      erasable: { text: input.text, spans: spans.spans.map(toSpanJSON) },
+      erasable: { text: input.text, spans: spans.spans.map(toSpanJSON), sessionLabel },
     },
   ]);
 
@@ -108,6 +109,22 @@ async function writeMessage(
     recordedAt: context.clock.now(),
   });
   return { status: 'written', duplicate: false, sequence: record.sequence };
+}
+
+// The message keeps the label its session had when it was sent, so a later rename reaches the next
+// message and leaves the ones before it as they were. The label sits beside the text, as every free
+// text field does, and a forget of the message forgets it too.
+async function readSessionLabel(tx: Transaction<unknown>, identityID: string): Promise<string> {
+  const row = await tx
+    .$extendTables<APITables>()
+    .selectFrom('identities')
+    .select('label')
+    .where('identity_id', '=', identityID)
+    .executeTakeFirst();
+
+  // the caller's session was live in this transaction, so its row is there
+  invariant(row, 'the live session has no identity row');
+  return row.label;
 }
 
 // The payload holds the zone, outside the erasable fields, so a reader finds where you were without
