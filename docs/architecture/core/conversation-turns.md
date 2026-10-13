@@ -185,6 +185,6 @@ starts, and each entry's package owns the records it reads.
   error when the log still holds its text. A failure that ended the task is not a retry, so the
   block leaves it out.
 
-Each line shows its time in the user's time zone and names the user by name, both from the owner
-section of the deployment configuration. A deployment that sets neither reads times in UTC and calls
-the user "the owner".
+Each line shows its time in the zone that [the time tool](../connectors/time.md) answers in, which
+is the zone of the user's newest message. Each line names the user by the name in the owner section
+of the deployment configuration, or calls the user "the owner" when the section sets none.

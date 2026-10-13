@@ -38,7 +38,8 @@ test('it joins the memory note and the events block, both over one range', async
     log: ctx.log,
     store: ctx.store,
     events: buildEventRegistry([buildRestartKind(ctx.log)]),
-    settings: { ownerName: 'Avery', timeZone: 'Australia/Sydney' },
+    ownerName: 'Avery',
+    defaultZone: 'Australia/Sydney',
   });
 
   invariant(last);
@@ -58,6 +59,33 @@ test('it joins the memory note and the events block, both over one range', async
   });
 });
 
+test("it shows events in the zone of the owner's newest message over the default zone", async () => {
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 22, 40)));
+  onTestFinished(() => setSystemTime());
+
+  await writeStartRecord(ctx.context, '0.12.0');
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { timeZone: 'Europe/London' },
+    },
+  ]);
+
+  const note = await readTurnNotes({
+    log: ctx.log,
+    store: ctx.store,
+    events: buildEventRegistry([buildRestartKind(ctx.log)]),
+    ownerName: 'Avery',
+    defaultZone: 'Australia/Sydney',
+  });
+
+  expect(note.text).toInclude('- Mon 13 Oct, 23:40, London · nixie restarted on version 0.12.0.');
+});
+
 test('it renders no note when nothing happened since the last turn', async () => {
   const ctx = await setupTest();
 
@@ -75,7 +103,8 @@ test('it renders no note when nothing happened since the last turn', async () =>
     log: ctx.log,
     store: ctx.store,
     events: buildEventRegistry([buildRestartKind(ctx.log)]),
-    settings: { ownerName: 'Avery', timeZone: 'UTC' },
+    ownerName: 'Avery',
+    defaultZone: 'UTC',
   });
 
   invariant(turn);

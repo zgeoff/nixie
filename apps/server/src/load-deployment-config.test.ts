@@ -42,7 +42,7 @@ test('it reads every section, with the default of each setting the file leaves o
       port: 8080,
       secretsFile: '/etc/nixie/secrets.yaml',
     },
-    owner: { name: null, timeZone: 'UTC' },
+    owner: { name: null },
     imp: {
       url: 'http://127.0.0.1:7070',
       publicEgress: { hostAddresses: ['192.0.2.10/32'], egressDeny: [] },
