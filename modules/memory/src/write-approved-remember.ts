@@ -1,9 +1,10 @@
+import type { Kysely } from 'kysely';
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
 import type { ProposalAnswer } from './gate-types';
 import { parseEvidence } from './parse-evidence';
 import type { OpenedProposal } from './read-open-proposal';
-import type { StoreParts, VersionRef } from './types';
+import type { MemoryTables, StoreParts, VersionRef } from './types';
 import { writeRememberedItem } from './write-remembered-item';
 
 export interface ApprovedRemember {
@@ -12,6 +13,9 @@ export interface ApprovedRemember {
 
   // the item and version the text revises, or null to create the proposal's new item
   readonly target: VersionRef | null;
+
+  // a check the version's transaction runs after the approval's own, under the delivery lock
+  readonly requireInTransaction?: (db: Kysely<MemoryTables>) => Promise<void>;
 }
 
 // Applies an approved remember proposal at its target. It keeps the proposal's evidence, and your
@@ -27,7 +31,14 @@ export function writeApprovedRemember(
   const isEdited = answer.editedText !== undefined;
   const evidence = isEdited ? null : parseEvidence(row.evidence);
   const approvalExtras = buildApprovalExtras(parts, row, answer);
-  const extras = target === null ? { ...approvalExtras, newItemID: row.item_id } : approvalExtras;
+  const extras = {
+    ...approvalExtras,
+    requireInTransaction: async (db: Kysely<MemoryTables>) => {
+      await approvalExtras.requireInTransaction?.(db);
+      await approved.requireInTransaction?.(db);
+    },
+    ...(target === null ? { newItemID: row.item_id } : {}),
+  };
 
   return writeRememberedItem(
     parts,

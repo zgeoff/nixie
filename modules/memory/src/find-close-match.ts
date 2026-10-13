@@ -1,19 +1,32 @@
+import type { Kysely } from 'kysely';
 import type { CloseMatch } from './gate-types';
+import { readDeliverableItems } from './read-deliverable-items';
 import { readRecall } from './read-recall';
-import type { StoreParts } from './types';
+import type { MemoryTables, RecalledItem, StoreParts } from './types';
+
+export interface CloseMatchQuery {
+  readonly text: string;
+
+  // a write transaction that holds the delivery lock, which reads the candidates with no recall
+  // record; through a recall, which records what it delivered, when unset
+  readonly db?: Kysely<MemoryTables>;
+}
 
 // Finds the active item that best matches a proposal's text: the retrieval index ranks the
 // candidates, and the item that shares the most content words with the text, at or above the
 // close-match score, is the match. It returns null when no item comes that close.
-export async function findCloseMatch(parts: StoreParts, text: string): Promise<CloseMatch | null> {
-  const itemIDs = await parts.index.findItemIDs(text, { limit: candidateLimit });
+export async function findCloseMatch(
+  parts: StoreParts,
+  query: CloseMatchQuery,
+): Promise<CloseMatch | null> {
+  const itemIDs = await parts.index.findItemIDs(query.text, { limit: candidateLimit });
 
   if (itemIDs.length === 0) {
     return null;
   }
-  const recalled = await readRecall(parts, { itemIDs, limit: itemIDs.length });
-  const words = collectContentWords(text);
-  const scored = recalled.items
+  const items = await readCandidates(parts, itemIDs, query.db);
+  const words = collectContentWords(query.text);
+  const scored = items
     .map((item) => ({ item, score: buildOverlapScore(words, collectContentWords(item.text)) }))
     .filter((entry) => entry.score >= parts.context.gate.limits.closeMatchScore)
     .toSorted((first, second) => second.score - first.score);
@@ -25,6 +38,19 @@ export async function findCloseMatch(parts: StoreParts, text: string): Promise<C
 }
 
 const candidateLimit = 5;
+
+async function readCandidates(
+  parts: StoreParts,
+  itemIDs: readonly string[],
+  db: Kysely<MemoryTables> | undefined,
+): Promise<readonly RecalledItem[]> {
+  if (db !== undefined) {
+    return readDeliverableItems(parts, { itemIDs, states: ['active'], includeHistory: false, db });
+  }
+  const recalled = await readRecall(parts, { itemIDs, limit: itemIDs.length });
+
+  return recalled.items;
+}
 
 // the words that carry a fact, lower case and without a plural s, so "The owner likes cats" and
 // "Owner likes cat" share every word that matters

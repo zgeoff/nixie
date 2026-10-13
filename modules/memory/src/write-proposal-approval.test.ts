@@ -409,3 +409,28 @@ test('it refuses to apply an edit proposal as a revision of another item', async
 
   expect(approval).rejects.toMatchObject({ code: 'REVISION_TARGET' });
 });
+
+test('it applies one of 2 reworded proposals approved at once, and holds the other for the item the first created', async () => {
+  const memory = await startTestMemory();
+  const first = await createProposal(memory.store, { text: 'Owner swims every Tuesday' });
+  const second = await createProposal(memory.store, { text: 'The owner swims each Tuesday.' });
+
+  const results = await Promise.all(
+    [first, second].map((pending) =>
+      memory.store.proposals.approve({
+        proposalID: pending.proposalID,
+        actionHash: pending.actionHash,
+        identityID: 'identity-1',
+      }),
+    ),
+  );
+  const active = await memory.store.recall({ limit: 10 });
+  const [item] = active.items;
+
+  invariant(item);
+  expect(active.items).toHaveLength(1);
+  expect(results.toSorted((a, b) => a.status.localeCompare(b.status))).toStrictEqual([
+    { status: 'applied', itemID: item.itemID, version: 1 },
+    { status: 'close_match', item: { itemID: item.itemID, version: 1, text: item.text } },
+  ]);
+});
