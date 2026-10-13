@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.13.0](https://github.com/zgeoff/nixie/compare/v0.12.0...v0.13.0) (2026-10-13)
+
+
+### Features
+
+* **geo-479:** keep the conversation answering after failed turns ([#166](https://github.com/zgeoff/nixie/issues/166)) ([0333b38](https://github.com/zgeoff/nixie/commit/0333b380863208773f17d43daf12c5c3d99ceddc))
+* **geo-755:** log the revision and content hash a seed put in force ([#170](https://github.com/zgeoff/nixie/issues/170)) ([5a73269](https://github.com/zgeoff/nixie/commit/5a732695cde8b087bcc4753a86d8244fd4f07828))
+* **geo-774:** show why a task step failed in the web view and the log ([#157](https://github.com/zgeoff/nixie/issues/157)) ([8080160](https://github.com/zgeoff/nixie/commit/8080160080f7a604f0dcba9318662a5007635901))
+* **geo-778:** add a dark theme that follows the system setting ([#153](https://github.com/zgeoff/nixie/issues/153)) ([b3e9fdf](https://github.com/zgeoff/nixie/commit/b3e9fdf264ed3abaf6a477140f9d4a7f66f7d42c))
+* **geo-780:** add the time tool and a time zone on each message ([#155](https://github.com/zgeoff/nixie/issues/155)) ([9393135](https://github.com/zgeoff/nixie/commit/9393135feec02f5cbf26653f2ac574db806d80ef))
+* **geo-781:** show the model when each of your messages was sent ([#162](https://github.com/zgeoff/nixie/issues/162)) ([14f71b2](https://github.com/zgeoff/nixie/commit/14f71b2ba024bd8e277736de9b49bdef310f786c))
+* **geo-782:** tell the conversation what happened outside it ([#158](https://github.com/zgeoff/nixie/issues/158)) ([2f3cafd](https://github.com/zgeoff/nixie/commit/2f3cafdace7c1db0ab1ee282b0f960c78e674df3))
+* **geo-787:** mark the text you pasted or dropped in your messages ([#169](https://github.com/zgeoff/nixie/issues/169)) ([6cdc045](https://github.com/zgeoff/nixie/commit/6cdc04556c6a5cb8ca4aa1439adf56d10be1deaf))
+* **geo-788:** list the memory proposals that still wait for review ([#171](https://github.com/zgeoff/nixie/issues/171)) ([b941a5b](https://github.com/zgeoff/nixie/commit/b941a5b5355a237199f68e7e0faee6cbea5f2c16))
+* **geo-789:** give memory edits their own tool, memory.edit ([#154](https://github.com/zgeoff/nixie/issues/154)) ([f2bb867](https://github.com/zgeoff/nixie/commit/f2bb867eef2e3d2f26bd6e81ae2ca4a206d74971))
+* **geo-796:** show the device session each message came from ([#173](https://github.com/zgeoff/nixie/issues/173)) ([726f3d8](https://github.com/zgeoff/nixie/commit/726f3d84ba48749a4f5ff3d9279b4b17d97df231))
+* **geo-798:** make the web client installable as an app ([#160](https://github.com/zgeoff/nixie/issues/160)) ([045163a](https://github.com/zgeoff/nixie/commit/045163a1afaa131130e1dd5d6c6943ecaf70bac3))
+* **geo-800:** leave out memories the session already holds ([#161](https://github.com/zgeoff/nixie/issues/161)) ([6b58d02](https://github.com/zgeoff/nixie/commit/6b58d022fa3fd020041e9f624ad11cd0a68e481b))
+* **geo-801:** leave the owner's and the agent's names out of retrieval ([#165](https://github.com/zgeoff/nixie/issues/165)) ([76109c0](https://github.com/zgeoff/nixie/commit/76109c0ff03c74287a2b30e174f41531dbdb2f9a))
+* **geo-805:** split the memory writer's edit from remember ([#163](https://github.com/zgeoff/nixie/issues/163)) ([d7a22c9](https://github.com/zgeoff/nixie/commit/d7a22c9c60b57fa16b70cf85760daa6a522842de))
+
+
+### Bug Fixes
+
+* **geo-551:** price a cold first batch and score an ended class in the spike ([#164](https://github.com/zgeoff/nixie/issues/164)) ([c2ee32c](https://github.com/zgeoff/nixie/commit/c2ee32c276b9dd72f844150501576a233e4c657d))
+* **geo-553:** read every file to its end in the forget scan ([#168](https://github.com/zgeoff/nixie/issues/168)) ([d7e23c5](https://github.com/zgeoff/nixie/commit/d7e23c557041574177a352a4d1a74bdb1110481a))
+
 ## [0.12.0](https://github.com/zgeoff/nixie/compare/v0.11.0...v0.12.0) (2026-10-13)
 
 
