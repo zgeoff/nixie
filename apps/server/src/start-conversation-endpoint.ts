@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { buildTimeTool, findMessageTimeZone } from '@heynixie/connectors';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
@@ -16,14 +17,19 @@ export interface ConversationEndpoint {
   readonly definitions: readonly ToolDefinition[];
 }
 
-// Starts the tool endpoint over the conversation's tools, the web fetch tool and the memory tools,
-// and stops it on cleanup. The registry is fixed here, so the memory tools reach the store through
+// Starts the tool endpoint over the conversation's tools, the web fetch tool, the time tool and the
+// memory tools, and stops it on cleanup. The registry is fixed here, so the memory tools reach the store through
 // readStore.
 export async function startConversationEndpoint(
   options: ToolsOptions,
   tools: ConversationEndpointTools,
 ): Promise<ConversationEndpoint> {
-  const definitions = buildConversationTools(tools.webFetch, tools.readStore);
+  const time = buildTimeTool({
+    clock: options.context.clock,
+    findTimeZone: () => findMessageTimeZone(options.context.log),
+    defaultZone: options.config.time.default_zone,
+  });
+  const definitions = buildConversationTools(tools.webFetch, time, tools.readStore);
   const registry = buildToolRegistry(definitions);
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),
@@ -40,9 +46,9 @@ export async function startConversationEndpoint(
   return { endpoint, definitions };
 }
 
-// No tool in a slice 1 release runs queued: the memory tools declare note and read and run direct,
-// and the read-only rule denies every call with an effect outside nixie before it reaches the
-// queue.
+// No tool in a slice 1 release runs queued: the memory and time tools declare note and read and run
+// direct, and the read-only rule denies every call with an effect outside nixie before it reaches
+// the queue.
 const refusingQueue: ActionQueue = {
   enqueue: () => Promise.reject(new Error('no tool in this build runs queued')),
   waitForOutcome: () => Promise.resolve(null),

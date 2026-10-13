@@ -171,6 +171,7 @@ test('it retries an unsent message with its first client message ID', async () =
       spans: [{ end: 5, source: 'typed', start: 0 }],
       text: 'hello',
       thread: 'conversation',
+      timeZone: 'UTC',
     },
   });
 });

@@ -35,8 +35,15 @@ export function useOutbox() {
     },
     [client],
   );
+
+  // A new message takes the browser's time zone as you write it, and keeps it through every retry.
   const add = useCallback(
-    (message: OutboxMessage) => {
+    (written: Omit<OutboxMessage, 'timeZone'>) => {
+      const message = {
+        ...written,
+        timeZone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
+      };
+
       setEntries((current) => [...current, { message, status: 'sending' }]);
       void sendEntry(message);
     },
@@ -72,6 +79,7 @@ async function trySendMessage(
       })),
       text: message.text,
       thread: message.thread,
+      ...(message.timeZone === undefined ? {} : { timeZone: message.timeZone }),
     });
 
     return 'sent';

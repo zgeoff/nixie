@@ -103,7 +103,7 @@ test('it puts the snapshot hash of the definitions in force on every record', as
   );
 }, 60_000);
 
-test('it lists the memory tools and web fetch to the conversation model', async () => {
+test('it lists the memory tools, web fetch and the time tool to the conversation model', async () => {
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'Hello.' });
@@ -124,9 +124,52 @@ test('it lists the memory tools and web fetch to the conversation model', async 
         { name: 'mcp__nixie__memory_recall' },
         { name: 'mcp__nixie__memory_retire' },
         { name: 'mcp__nixie__web_fetch' },
+        { name: 'mcp__nixie__time_now' },
       ]),
     },
   );
+}, 60_000);
+
+test('it answers the time tool in the zone of the newest message', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { text: 'Safe travels.' },
+    { toolUse: { name: 'mcp__nixie__time_now', input: {} } },
+    { text: 'It is evening in London.' },
+  );
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Flying out of Tokyo tonight.',
+    thread: 'conversation',
+    timeZone: 'Asia/Tokyo',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Safe travels.');
+  });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Landed. What time is it here?',
+    thread: 'conversation',
+    timeZone: 'Europe/London',
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'It is evening in London.');
+  });
+
+  const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+  expect(page.records.find((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({
+    outcome: 'result',
+    content: { result: { timeZone: 'Europe/London', timeZoneFrom: 'message' } },
+  });
 }, 60_000);
 
 test('it applies a remembered fact that the owner typed, with their words as its evidence', async () => {

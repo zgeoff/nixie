@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildTimeTool } from '@heynixie/connectors';
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry } from '@heynixie/tools';
@@ -23,11 +24,44 @@ function buildWebFetchStandIn(): ToolDefinition {
   };
 }
 
-test('it lists the web fetch tool and the 4 memory tools', () => {
-  const definitions = buildConversationTools(buildWebFetchStandIn(), () => null);
+// the time tool on a fixed clock, with no message zone
+function buildTimeStandIn(): ToolDefinition {
+  return buildTimeTool({
+    clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+    findTimeZone: () => Promise.resolve(null),
+    defaultZone: 'Australia/Sydney',
+  });
+}
+
+// a write tool that the read-only rule denies
+function buildWriteStandIn(): ToolDefinition {
+  return {
+    name: 'files.write',
+    description: 'Writes a file.',
+    input: { type: 'object', properties: {}, additionalProperties: false },
+    output: { type: 'object', properties: { text: { type: 'string' } } },
+    declaration: {
+      effects: ['write'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: { text: 'owner_data' },
+    },
+    execution: 'queued',
+    run: () => Promise.resolve({ status: 'ok', result: { text: 'done' } }),
+  };
+}
+
+test('it lists the web fetch tool, the time tool and the 4 memory tools', () => {
+  const definitions = buildConversationTools(
+    buildWebFetchStandIn(),
+    buildTimeStandIn(),
+    () => null,
+  );
 
   expect(definitions.map((definition) => definition.name)).toStrictEqual([
     'web.fetch',
+    'time.now',
     'memory.recall',
     'memory.remember',
     'memory.edit',
@@ -36,7 +70,11 @@ test('it lists the web fetch tool and the 4 memory tools', () => {
 });
 
 test('it fails a memory call that runs before the memory store starts', () => {
-  const definitions = buildConversationTools(buildWebFetchStandIn(), () => null);
+  const definitions = buildConversationTools(
+    buildWebFetchStandIn(),
+    buildTimeStandIn(),
+    () => null,
+  );
   const recall = definitions.find((definition) => definition.name === 'memory.recall');
 
   expect(
@@ -54,37 +92,22 @@ test('it fails a memory call that runs before the memory store starts', () => {
   ).rejects.toThrowWithMessage(Error, 'a tool call ran before the memory store started');
 });
 
-test('it allows each memory tool and denies a write tool under the read-only rule', () => {
-  const standIn: ToolDefinition = {
-    name: 'files.write',
-    description: 'Writes a file.',
-    input: { type: 'object', properties: {}, additionalProperties: false },
-    output: { type: 'object', properties: { text: { type: 'string' } } },
-    declaration: {
-      effects: ['write'],
-      destinations: [],
-      amount: null,
-      content: [],
-      results: { text: 'owner_data' },
-    },
-    execution: 'queued',
-    run: () => Promise.resolve({ status: 'ok', result: { text: 'done' } }),
-  };
+test('it allows the time tool and each memory tool and denies a write tool under the read-only rule', () => {
   const registry = buildToolRegistry([
-    ...buildConversationTools(buildWebFetchStandIn(), () => null),
-    standIn,
+    ...buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), () => null),
+    buildWriteStandIn(),
   ]);
   const decide = makeDecisionPoint({
     findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
   });
-  const toolList = [
-    'web.fetch',
+  const readTools = [
+    'time.now',
     'memory.recall',
     'memory.remember',
     'memory.edit',
     'memory.retire',
-    'files.write',
   ];
+  const toolList = ['web.fetch', ...readTools, 'files.write'];
   const allowed = {
     decision: {
       outcome: 'allow' as const,
@@ -94,10 +117,9 @@ test('it allows each memory tool and denies a write tool under the read-only rul
     sentence: null,
   };
 
-  expect(decide({ tool: 'memory.recall', toolList })).toStrictEqual(allowed);
-  expect(decide({ tool: 'memory.remember', toolList })).toStrictEqual(allowed);
-  expect(decide({ tool: 'memory.edit', toolList })).toStrictEqual(allowed);
-  expect(decide({ tool: 'memory.retire', toolList })).toStrictEqual(allowed);
+  expect(readTools.map((tool) => decide({ tool, toolList }))).toStrictEqual(
+    readTools.map(() => allowed),
+  );
   expect(decide({ tool: 'files.write', toolList })).toMatchObject({
     decision: { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only' } },
   });

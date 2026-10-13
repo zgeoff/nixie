@@ -72,6 +72,8 @@ below, and planned work lives in Linear.
   route, the imp adapter and the process double
 - [Web fetch](architecture/connectors/web-fetch.md) — the fetch sandbox, the fetcher's address
   checks, the limits and the result
+- [Time](architecture/connectors/time.md) — the time zone on each message, and the time tool that
+  answers in the user's newest zone
 
 ### Channels
 

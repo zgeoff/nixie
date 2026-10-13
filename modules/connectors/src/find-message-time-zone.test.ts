@@ -1,0 +1,52 @@
+import { expect, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
+import { findMessageTimeZone } from './find-message-time-zone';
+import { startTestLog } from './test-utils/start-test-log';
+
+async function setupTest() {
+  return { log: await startTestLog() };
+}
+
+const definitions = { snapshotHash: 'sha256:test' };
+
+test('it finds the zone of the newest owner message that carries one, in any thread', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions,
+      thread: 'conversation',
+      payload: { timeZone: 'Asia/Tokyo' },
+    },
+    {
+      kind: 'owner_message',
+      definitions,
+      thread: 'trip-plans',
+      payload: { timeZone: 'Europe/London' },
+    },
+    { kind: 'owner_message', definitions, thread: 'conversation', payload: {} },
+    {
+      kind: 'model.reply',
+      definitions,
+      thread: 'conversation',
+      payload: { timeZone: 'America/Lima' },
+    },
+  ]);
+
+  const zone = await findMessageTimeZone(ctx.log);
+
+  expect(zone).toBe('Europe/London');
+});
+
+test('it finds no zone when no owner message carries one', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    { kind: 'owner_message', definitions, thread: 'conversation', payload: {} },
+  ]);
+
+  const zone = await findMessageTimeZone(ctx.log);
+
+  expect(zone).toBeNull();
+});

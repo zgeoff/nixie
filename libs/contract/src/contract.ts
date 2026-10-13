@@ -126,6 +126,10 @@ export const contract = {
           spans: z.array(spanSchema).max(100_000),
           text: z.string().min(1).max(100_000),
           thread: threadSchema,
+
+          // The sending device's IANA time zone, such as Europe/London. The server stores a zone
+          // it knows with the message and drops one it does not, and the message still sends.
+          timeZone: z.string().min(1).max(100).optional(),
         }),
       )
       .output(z.object({ duplicate: z.boolean(), sequence: sequenceSchema })),

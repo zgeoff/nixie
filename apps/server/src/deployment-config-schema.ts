@@ -1,5 +1,5 @@
 import { actionsConfigSchema } from '@heynixie/actions';
-import { webFetchConfigSchema } from '@heynixie/connectors';
+import { timeConfigSchema, webFetchConfigSchema } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
 import { memoryConfigSchema, writerConfigSchema } from '@heynixie/memory';
 import { modelsConfigSchema } from '@heynixie/models';
@@ -17,6 +17,7 @@ export const deploymentConfigSchema = z.strictObject({
   imp: impConfigSchema,
   definitions: definitionsConfigSchema,
   web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
+  time: timeConfigSchema.default(timeConfigSchema.parse({})),
   tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
   actions: actionsConfigSchema.default(actionsConfigSchema.parse({})),
   memory_writer: writerConfigSchema.default(writerConfigSchema.parse({})),

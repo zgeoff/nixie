@@ -1,4 +1,5 @@
 import type { Span } from '@heynixie/contract';
+import { isTimeZone } from '@heynixie/contract';
 import type { JSONObject } from '@heynixie/log';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
@@ -15,6 +16,7 @@ interface OwnerMessageInput {
   readonly thread: string;
   readonly text: string;
   readonly spans: readonly Span[];
+  readonly timeZone?: string | undefined;
 }
 
 type OwnerMessageResult =
@@ -90,6 +92,7 @@ async function writeMessage(
         clientMessageId: input.clientMessageId,
         identityID: pending.caller.identityID,
         spans: spans.labelled,
+        ...pickTimeZone(input.timeZone),
       },
       erasable: { text: input.text, spans: spans.spans.map(toSpanJSON) },
     },
@@ -105,6 +108,12 @@ async function writeMessage(
     recordedAt: context.clock.now(),
   });
   return { status: 'written', duplicate: false, sequence: record.sequence };
+}
+
+// The payload holds the zone, outside the erasable fields, so a reader finds where you were without
+// a key. A zone the server does not know is left out.
+function pickTimeZone(zone: string | undefined): { readonly timeZone?: string } {
+  return zone !== undefined && isTimeZone(zone) ? { timeZone: zone } : {};
 }
 
 function toSpanJSON(span: Span): JSONObject {
