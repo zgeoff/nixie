@@ -2,17 +2,24 @@ import { join } from 'node:path';
 import type { APIContext } from '@heynixie/api';
 import { createEnrolmentCode } from '@heynixie/api';
 import { startControlSocket } from './start-control-socket';
-import type { Cleanup } from './types';
+import type { Cleanup, MemorySlot } from './types';
 
-// Opens the control socket the host commands reach the server through, in the data directory.
+export interface HostCommandsOptions {
+  readonly dataDir: string;
+  readonly apiContext: APIContext;
+  readonly memory: MemorySlot;
+}
+
+// Opens the control socket the host commands reach the server through, in the data directory. The
+// memory commands answer once the start sequence fills the memory slot.
 export async function startHostCommands(
-  dataDir: string,
-  apiContext: APIContext,
+  options: HostCommandsOptions,
   cleanup: Cleanup,
 ): Promise<void> {
   const control = await startControlSocket({
-    path: join(dataDir, 'run', 'control.sock'),
-    createEnrolmentCode: () => createEnrolmentCode(apiContext),
+    path: join(options.dataDir, 'run', 'control.sock'),
+    createEnrolmentCode: () => createEnrolmentCode(options.apiContext),
+    readProposals: () => options.memory.read()?.proposals ?? null,
   });
 
   await cleanup.defer(() => control.stop());

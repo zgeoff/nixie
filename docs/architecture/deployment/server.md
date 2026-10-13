@@ -125,6 +125,14 @@ server over a Unix control socket in the data directory, in a folder only nixie'
 Starting the server removes a stale socket file first, because the writer lock proves that no other
 server runs.
 
+The memory host commands list the pending memory proposals and approve or reject one. The server
+answers each through the memory gate, the path every other answer takes, so an approval applies the
+bound operation with its approval record and keeps the proposal's provenance
+([memory writes](../memory/writes.md)). An answer names the proposal and the action hash the user
+saw, so a proposal that changed since the listing refuses it. Its approval record names the host as
+the identity that answered, because a shell in the container reaches the socket and no device
+session does. The memory commands answer once the memory store starts, and refuse before then.
+
 ## The image and the release bundle
 
 The release build bundles the server into a single script with the test-build flag set false, so the

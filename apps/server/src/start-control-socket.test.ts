@@ -2,6 +2,13 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { readRecords } from '@heynixie/log';
+import {
+  buildMockWriteCaller,
+  createProposal,
+  readApprovalRecords,
+  startTestMemory,
+} from '@heynixie/memory/test-utils';
 import { startControlSocket } from './start-control-socket';
 
 async function setupTest() {
@@ -9,7 +16,9 @@ async function setupTest() {
 
   onTestFinished(() => rm(dir, { recursive: true, force: true }));
 
-  return { path: join(dir, 'run', 'control.sock') };
+  const memory = await startTestMemory();
+
+  return { path: join(dir, 'run', 'control.sock'), memory };
 }
 
 test('it issues an enrolment code to a request on the socket', async () => {
@@ -18,6 +27,7 @@ test('it issues an enrolment code to a request on the socket', async () => {
     path: ctx.path,
     createEnrolmentCode: () =>
       Promise.resolve({ code: 'ABCD-EFGH', expiresAt: new Date('2026-10-11T12:15:00.000Z') }),
+    readProposals: () => null,
   });
 
   onTestFinished(() => socket.stop());
@@ -39,6 +49,7 @@ test('it keeps the socket in a directory only nixie’s user may enter', async (
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => null,
   });
 
   onTestFinished(() => socket.stop());
@@ -53,6 +64,7 @@ test('it answers any other request with 404', async () => {
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => null,
   });
 
   onTestFinished(() => socket.stop());
@@ -67,6 +79,7 @@ test('it answers 500 with the reason when the code cannot be issued', async () =
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('the database is locked')),
+    readProposals: () => null,
   });
 
   onTestFinished(() => socket.stop());
@@ -79,4 +92,196 @@ test('it answers 500 with the reason when the code cannot be issued', async () =
 
   expect(response.status).toBe(500);
   expect(reason).toBe('the database is locked');
+});
+
+test('it lists each pending memory proposal with its text and the hash an answer binds to', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => ctx.memory.store.proposals,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const proposal = await createProposal(ctx.memory.store, { text: 'Likes jazz' });
+
+  const response = await Bun.fetch('http://localhost/memory/proposals', { unix: ctx.path });
+  const body = await response.json();
+
+  expect(body).toStrictEqual([
+    {
+      proposalID: proposal.proposalID,
+      operation: 'remember',
+      itemID: proposal.itemID,
+      targetVersion: null,
+      isPinned: false,
+      reason: 'no_quote',
+      actionHash: proposal.actionHash,
+      origin: 'conversation',
+      source: 'untrusted',
+      createdAt: new Date(proposal.createdAt).toISOString(),
+      lapseAt: new Date(proposal.lapseAt).toISOString(),
+      text: 'Likes jazz',
+      quote: null,
+    },
+  ]);
+});
+
+test('it writes the same records for an approval as the memory gate’s own approval path', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => ctx.memory.store.proposals,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const throughGate = await createProposal(ctx.memory.store, {
+    text: 'Likes jazz',
+    caller: buildMockWriteCaller({ model: 'claude-test-1' }),
+  });
+  const throughSocket = await createProposal(ctx.memory.store, {
+    text: 'Likes tea',
+    caller: buildMockWriteCaller({ model: 'claude-test-1' }),
+  });
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: throughGate.proposalID,
+    actionHash: throughGate.actionHash,
+    identityID: 'host',
+  });
+  await Bun.fetch('http://localhost/memory/proposals/approve', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({
+      proposalID: throughSocket.proposalID,
+      actionHash: throughSocket.actionHash,
+    }),
+  });
+  const [gateRecords, socketRecords] = await Promise.all([
+    readApprovalRecords(ctx.memory.log, throughGate),
+    readApprovalRecords(ctx.memory.log, throughSocket),
+  ]);
+
+  expect(gateRecords.map((record) => record['kind'])).toStrictEqual([
+    'memory.approval_recorded',
+    'memory.version_added',
+  ]);
+  expect(socketRecords).toStrictEqual(gateRecords);
+});
+
+test('it rejects a memory proposal, which leaves the pending list', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => ctx.memory.store.proposals,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const proposal = await createProposal(ctx.memory.store, { text: 'Likes jazz' });
+
+  const response = await Bun.fetch('http://localhost/memory/proposals/reject', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ proposalID: proposal.proposalID, actionHash: proposal.actionHash }),
+  });
+  const [body, records, pending] = await Promise.all([
+    response.json(),
+    readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['memory.proposal_rejected'] }),
+    ctx.memory.store.proposals.listPending(),
+  ]);
+
+  expect(body).toStrictEqual({ proposalID: proposal.proposalID });
+  expect(records.map((entry) => entry.record.payload)).toStrictEqual([
+    { proposalID: proposal.proposalID },
+  ]);
+  expect(pending).toStrictEqual([]);
+});
+
+test('it answers 409 to an answer under another action hash, and applies nothing', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => ctx.memory.store.proposals,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const proposal = await createProposal(ctx.memory.store, { text: 'Likes jazz' });
+
+  const response = await Bun.fetch('http://localhost/memory/proposals/approve', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ proposalID: proposal.proposalID, actionHash: 'sha256:other' }),
+  });
+  const reason = await response.text();
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(response.status).toBe(409);
+  expect(reason).toBe(
+    `the answer to memory proposal ${proposal.proposalID} names another action hash`,
+  );
+  expect(pending.map((entry) => entry.proposalID)).toStrictEqual([proposal.proposalID]);
+});
+
+test('it answers 404 to an answer for a memory proposal that does not exist', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => ctx.memory.store.proposals,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/memory/proposals/reject', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ proposalID: 'proposal-1', actionHash: 'sha256:any' }),
+  });
+
+  expect(response.status).toBe(404);
+});
+
+test('it answers 400 to an answer with no action hash', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => ctx.memory.store.proposals,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/memory/proposals/approve', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ proposalID: 'proposal-1' }),
+  });
+  const reason = await response.text();
+
+  expect(response.status).toBe(400);
+  expect(reason).toBe('an answer takes a proposalID and an actionHash');
+});
+
+test('it answers 503 to a memory request before the memory store starts', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readProposals: () => null,
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/memory/proposals', { unix: ctx.path });
+  const reason = await response.text();
+
+  expect(response.status).toBe(503);
+  expect(reason).toBe('the memory store has not started yet');
 });

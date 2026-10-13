@@ -1,5 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { join } from 'node:path';
+import { expect, test } from 'bun:test';
 import type { ContractClient } from '@heynixie/contract';
 import { clientHeaderName } from '@heynixie/contract';
 import type { LogRecord } from '@heynixie/log';
@@ -7,6 +6,8 @@ import { waitForCondition } from '@heynixie/testing';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
+import { runHostCommand } from './test-utils/run-host-command';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
 // nixie in a test build at ready, with a device signed in through the code it printed at start
@@ -241,34 +242,57 @@ test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exi
 
 test('it issues a code from the running server through the enrol-code command', async () => {
   const ctx = await setupTest();
-  const command = Bun.spawn(
-    [
-      process.execPath,
-      '--define',
-      'NIXIE_TEST_BUILD=true',
-      join(import.meta.dir, 'main.ts'),
-      'enrol-code',
-      '--config',
-      ctx.configPath,
-    ],
-    { stdout: 'pipe', stderr: 'pipe' },
-  );
-
-  onTestFinished(() => {
-    command.kill();
-  });
-
-  const exitCode = await command.exited;
-  const output = await new Response(command.stdout).text();
+  const command = await runHostCommand(ctx.configPath, ['enrol-code']);
   const session = await ctx.signedOut.sessions.enrol({
     clientActionID: crypto.randomUUID(),
-    code: output.split('\n')[0] ?? '',
+    code: command.stdout.split('\n')[0] ?? '',
     deviceName: 'phone',
     tokenDelivery: 'bearer',
   });
 
-  expect(exitCode).toBe(0);
+  expect(command.exitCode).toBe(0);
   expect(session.token).toBeString();
+}, 60_000);
+
+test('it lists a pending memory proposal and approves it through the memory commands', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Likes jazz' } } },
+    { text: 'Noted.' },
+  );
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'I like jazz.',
+    thread: 'conversation',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Noted.');
+  });
+  const listed = await runHostCommand(ctx.configPath, ['memory-pending']);
+  const [proposal] = z
+    .tuple([
+      z.object({
+        proposalID: z.string(),
+        itemID: z.string(),
+        actionHash: z.string(),
+        text: z.string(),
+      }),
+    ])
+    .parse(JSON.parse(listed.stdout));
+
+  const approved = await runHostCommand(ctx.configPath, [
+    'memory-approve',
+    proposal.proposalID,
+    '--hash',
+    proposal.actionHash,
+  ]);
+
+  expect(proposal.text).toBe('Likes jazz');
+  expect(JSON.parse(approved.stdout)).toStrictEqual({ itemID: proposal.itemID, version: 1 });
 }, 60_000);
 
 test('it refuses to start on a key no module reads, and exits 1', async () => {

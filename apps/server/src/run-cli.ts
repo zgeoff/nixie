@@ -4,6 +4,7 @@ import type { Logger } from '@heynixie/ops';
 import { toErrorFields } from '@heynixie/ops';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { sendEnrolmentCodeRequest } from './send-enrolment-code-request';
+import { sendMemoryRequest } from './send-memory-request';
 import { startServer } from './start-server';
 
 export interface CLIIO {
@@ -29,7 +30,7 @@ export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number
     return 2;
   }
   try {
-    return await run(parsed.values, io);
+    return await run(parsed.values, io, parsed.positionals.slice(1));
   } catch (error) {
     io.log('command.failed', { command, ...toErrorFields(error) });
     return 1;
@@ -41,6 +42,7 @@ const cliOptions = {
   manifest: { type: 'string', default: '/app/sandbox-manifest.json' },
   sops: { type: 'string', default: '/usr/local/bin/sops' },
   live: { type: 'boolean', default: false },
+  hash: { type: 'string' },
 } as const;
 
 interface CLIFlags {
@@ -48,16 +50,23 @@ interface CLIFlags {
   readonly manifest: string;
   readonly sops: string;
   readonly live: boolean;
+
+  // the action hash a memory answer binds to
+  readonly hash?: string;
 }
 
-type Command = (flags: CLIFlags, io: CLIIO) => Promise<number>;
+type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;
 
 // serve runs the server until SIGTERM; enrol-code asks the running server for a code that signs
-// one device in; health exits 0 when the running server answers ready, or live with --live.
+// one device in; health exits 0 when the running server answers ready, or live with --live; the
+// memory commands list the pending memory proposals as JSON, or answer one under --hash.
 const commands = new Map<string, Command>([
   ['serve', (flags, io) => runServe(flags, io)],
   ['enrol-code', (flags, io) => runEnrolCode(flags.config, io)],
   ['health', (flags) => runHealth(flags.config, flags.live)],
+  ['memory-pending', (flags, io) => runMemoryPending(flags.config, io)],
+  ['memory-approve', makeMemoryAnswer('approve')],
+  ['memory-reject', makeMemoryAnswer('reject')],
 ]);
 
 // Bun as PID 1 ignores SIGTERM unless the process handles it, so serve waits for the signal
@@ -88,12 +97,17 @@ async function waitForFailure(failed: Promise<unknown>): Promise<number> {
 }
 
 async function runEnrolCode(configPath: string, io: CLIIO): Promise<number> {
-  const config = await loadDeploymentConfig(configPath);
-  const socketPath = join(config.server.dataDir, 'run', 'control.sock');
+  const socketPath = await resolveSocketPath(configPath);
   const issued = await sendEnrolmentCodeRequest(socketPath);
 
   io.print(`${issued.code}\nThe code works once, until ${issued.expiresAt.toISOString()}.`);
   return 0;
+}
+
+async function resolveSocketPath(configPath: string): Promise<string> {
+  const config = await loadDeploymentConfig(configPath);
+
+  return join(config.server.dataDir, 'run', 'control.sock');
 }
 
 // the container runtime's check from inside the container, where a wildcard address answers on
@@ -106,4 +120,33 @@ async function runHealth(configPath: string, isLive: boolean): Promise<number> {
   const response = await Bun.fetch(`http://${host}:${config.server.port}/health/${path}`);
 
   return response.ok ? 0 : 1;
+}
+
+async function runMemoryPending(configPath: string, io: CLIIO): Promise<number> {
+  const socketPath = await resolveSocketPath(configPath);
+  const pending = await sendMemoryRequest(socketPath, { command: 'pending' });
+
+  io.print(JSON.stringify(pending));
+  return 0;
+}
+
+// the answer takes the proposal's ID and the action hash that memory-pending printed for it
+function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
+  return async (flags, io, args) => {
+    const [proposalID] = args;
+
+    if (proposalID === undefined || flags.hash === undefined) {
+      io.print(`nixie memory-${command} takes a proposal ID and --hash <action hash>`);
+      return 2;
+    }
+    const socketPath = await resolveSocketPath(flags.config);
+    const answer = await sendMemoryRequest(socketPath, {
+      command,
+      proposalID,
+      actionHash: flags.hash,
+    });
+
+    io.print(JSON.stringify(answer));
+    return 0;
+  };
 }
