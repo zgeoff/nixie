@@ -15,19 +15,19 @@ export interface ControlSocketOptions {
 }
 
 // A live device session as a host command lists it.
-export interface HostSession {
+interface HostSession {
   readonly sessionID: string;
   readonly deviceName: string;
   readonly createdAt: Date;
   readonly lastUsedAt: Date;
 }
 
-export interface SessionLabel {
+interface SessionLabel {
   readonly sessionID: string;
   readonly label: string;
 }
 
-export type SessionLabelResult =
+type SessionLabelResult =
   | { readonly status: 'labelled'; readonly sessionID: string; readonly label: string }
   | { readonly status: 'invalid_label' }
   | { readonly status: 'not_found' };
