@@ -4,7 +4,7 @@ import type { Database } from 'bun:sqlite';
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Task, TurnResult } from './cli';
-import { collectFilesWith } from './collect-files-with';
+import { collectFilesWith, type FileScan } from './collect-files-with';
 import {
   createTask,
   findBoundary,
@@ -353,8 +353,12 @@ async function waitForTranscript(conversation: Task, before: Set<string>, marker
   throw new Error(`no new transcript holds ${marker}`);
 }
 
-function formatPaths(paths: string[], base: string): string {
-  return paths.length === 0 ? 'none' : paths.map((path) => path.replace(base, '<task>').replace(/[0-9a-f]{8}-[0-9a-f-]{27}/g, '<session>')).join(', ');
+// A scan that could not read a path is incomplete, so it never prints 'none'.
+function formatScan(scan: FileScan, base: string): string {
+  const formatPaths = (paths: string[]): string =>
+    paths.map((path) => path.replace(base, '<task>').replace(/[0-9a-f]{8}-[0-9a-f-]{27}/g, '<session>')).join(', ');
+  const found = scan.found.length === 0 ? 'none' : formatPaths(scan.found);
+  return scan.unread.length === 0 ? found : `incomplete, ${scan.unread.length} unread (${formatPaths(scan.unread)}), found: ${found}`;
 }
 
 // The forget check. The task's SDK state lives in its own directory, with TMPDIR left at the
@@ -374,8 +378,8 @@ async function runForget(): Promise<void> {
     fork: true,
   });
   const compacted = await runTurn(forgetTask, '/compact', { sessionID: second.sessionID, fork: true });
-  console.log(`  copies after 2 turns and a compaction: ${formatPaths(collectFilesWith([home], canary), forgetTask.dir)}`);
-  console.log(`  copies outside the task directory: ${formatPaths(collectFilesWith(tmpDirs, canary, [forgetTask.dir]), forgetTask.dir)}`);
+  console.log(`  copies after 2 turns and a compaction: ${formatScan(collectFilesWith([home], canary), forgetTask.dir)}`);
+  console.log(`  copies outside the task directory: ${formatScan(collectFilesWith(tmpDirs, canary, [forgetTask.dir]), forgetTask.dir)}`);
 
   // the hazard: removing the directory while a writer still runs
   const before = new Set(collectTranscripts(forgetTask));
@@ -387,7 +391,7 @@ async function runForget(): Promise<void> {
   rmSync(home, { recursive: true, force: true });
   console.log(`  removed the directory under a live writer: gone=${!existsSync(home)}`);
   await writer.exited;
-  console.log(`  after the writer exited: ${formatPaths(collectFilesWith([forgetTask.dir], canary), forgetTask.dir)}`);
+  console.log(`  after the writer exited: ${formatScan(collectFilesWith([forgetTask.dir], canary), forgetTask.dir)}`);
 
   // the design's order: invalidate, stop the writer and wait for its exit, remove, check
   rmSync(forgetTask.dir, { recursive: true, force: true });
@@ -414,8 +418,8 @@ async function runForget(): Promise<void> {
   const gone = !existsSync(safeHome);
   writeRecord(db, 'forget-safe', 'session_cleanup_completed');
   await Bun.sleep(3000);
-  console.log(`  removed: gone=${gone}, copies 3 s later: ${formatPaths(collectFilesWith([safeTask.dir], canary), safeTask.dir)}`);
-  console.log(`  copies outside the task directory: ${formatPaths(collectFilesWith(tmpDirs, canary, [safeTask.dir]), safeTask.dir)}`);
+  console.log(`  removed: gone=${gone}, copies 3 s later: ${formatScan(collectFilesWith([safeTask.dir], canary), safeTask.dir)}`);
+  console.log(`  copies outside the task directory: ${formatScan(collectFilesWith(tmpDirs, canary, [safeTask.dir]), safeTask.dir)}`);
   console.log(`  cleanup completed: a new query is refused=${isTaskBlocked(db, 'forget-safe')}`);
 }
 

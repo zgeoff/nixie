@@ -1,46 +1,43 @@
 import { closeSync, openSync, readdirSync, readSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
+export interface FileScan {
+  found: string[];
+  // every file or folder the scan could not read, such as one that belongs to another user; a
+  // scan with an unread path is incomplete, so it never shows that the text is gone
+  unread: string[];
+}
+
 // Every file under the folders that holds the text, found by reading each file in chunks, so a
 // file of any size is read to its end. It skips the excluded folders, so a scan of /tmp leaves out
-// a task directory that itself sits under /tmp.
-export function collectFilesWith(dirs: string[], text: string, excluded: string[] = []): string[] {
-  const found: string[] = [];
+// a task directory that itself sits under /tmp. A path that disappears during the scan holds no
+// copy, so the scan leaves it out of both lists.
+export function collectFilesWith(dirs: string[], text: string, excluded: string[] = []): FileScan {
+  const scan: FileScan = { found: [], unread: [] };
   const needle = Buffer.from(text);
   const visit = (path: string): void => {
     if (excluded.some((dir) => isInside(path, dir))) {
       return;
     }
-    let stat;
     try {
-      stat = statSync(path);
-    } catch {
-      return;
-    }
-    if (stat.isDirectory()) {
-      let names: string[] = [];
-      try {
-        names = readdirSync(path);
-      } catch {
-        return;
-      }
-      for (const name of names) {
-        visit(join(path, name));
-      }
-    } else if (stat.isFile()) {
-      try {
-        if (hasText(path, needle)) {
-          found.push(path);
+      const stat = statSync(path);
+      if (stat.isDirectory()) {
+        for (const name of readdirSync(path)) {
+          visit(join(path, name));
         }
-      } catch {
-        // a file the scan cannot read belongs to another user
+      } else if (stat.isFile() && hasText(path, needle)) {
+        scan.found.push(path);
+      }
+    } catch (error) {
+      if (!isMissing(error)) {
+        scan.unread.push(path);
       }
     }
   };
   for (const dir of dirs) {
     visit(dir);
   }
-  return found;
+  return scan;
 }
 
 const chunkSize = 8 * 1024 * 1024;
@@ -73,4 +70,8 @@ function hasText(path: string, needle: Buffer): boolean {
 function isInside(path: string, dir: string): boolean {
   const rel = relative(dir, path);
   return rel === '' || (!rel.startsWith('..') && !rel.startsWith('/'));
+}
+
+function isMissing(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
