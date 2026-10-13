@@ -7,13 +7,15 @@
   [0021](../../../decisions/0021-action-outcomes.md),
   [0023](../../../decisions/0023-lifting-always-ask.md),
   [0027](../../../decisions/0027-tasks-and-actions.md),
-  [0028](../../../decisions/0028-policy-design.md)
+  [0028](../../../decisions/0028-policy-design.md),
+  [0041](../../../decisions/0041-approvals-during-a-voice-call.md)
 
 When the [decision point](decision-point.md) asks, the tool creates a proposal and the turn ends.
-You answer a proposal with a checked action in the client, never with a chat message. An approval
-holds the hash of one exact action and is used once. Proposals that wait for you gather on the
-approval digest. Policy owns the data and the rules here; [channels](../channels/approvals.md)
-covers how the client shows cards, the approval digest and push.
+You answer a proposal with a checked action in the client, never with a chat message or a spoken
+"yes". An approval holds the hash of one exact action and is used once. Proposals that wait for you
+gather on the approval digest. Policy owns the data and the rules here;
+[channels](../channels/approvals.md) covers how the client shows cards, the approval digest and
+push.
 
 ## The proposal
 
@@ -78,7 +80,8 @@ distinctly:
 
 An always-ask or lifting approval takes the passkey check from
 [0012](../../../decisions/0012-high-risk-approvals.md) once that check ships, and a tap in the first
-build.
+build. One exception: an unchanged "always allow" on a routine proposal stays a tap, as
+[Always allow](#always-allow) covers.
 
 ## The approval
 
@@ -118,10 +121,16 @@ once and creates that rule, which has no expiry.
 Creating the rule is a widening, and the card is its ask: you read the rule before the tap. The
 proposal carries a rule hash beside the action hash, and your answer echoes both, so you approve
 exactly the rule you read. After the tap, the client shows the rule under the reply with Edit and
-Undo. Undo deletes the rule, a narrowing that applies at once. Once the passkey check ships, "always
-allow" takes it, because the rule widens policy; the first build approves with the tap. **Why:** you
-see what the rule allows before it exists, without a second confirmation, and a free-text field such
-as an email body never pins a rule to one message.
+Undo. Undo deletes the rule, a narrowing that applies at once. **Why:** you see what the rule allows
+before it exists, without a second confirmation, and a free-text field such as an email body never
+pins a rule to one message.
+
+An unchanged "always allow" stays a tap once the passkey check ships. A rule wider than the card's
+rule takes the passkey check: a rule you edit wider before you approve it, a gap rule that covers
+several destinations, a mandate, or a lifting rule. The host decides which applies with its widening
+check against the card's rule, never the client. **Why:** the card's rule pins its destinations, so
+injected content cannot redirect it, and a passkey on every "always allow" would add prompts on the
+main route to the 0-prompt target.
 
 The host supplies the choices each proposal permits and checks them again on your answer, so a
 client cannot add one:

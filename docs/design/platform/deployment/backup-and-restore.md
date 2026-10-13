@@ -2,7 +2,8 @@
 
 - Decisions: [0032](../../../decisions/0032-offsite-backups-and-replication.md),
   [0010](../../../decisions/0010-memory-store.md), [0020](../../../decisions/0020-deployment.md),
-  [0035](../../../decisions/0035-backup-sidecar.md)
+  [0035](../../../decisions/0035-backup-sidecar.md),
+  [0044](../../../decisions/0044-recovery-bound.md)
 
 nixie backs up its SQLite database and its key store every hour by default. nixie copies each with
 `VACUUM INTO`, and the backup sidecar sends the copies to 2 restic repos that hold only ciphertext.
@@ -77,7 +78,9 @@ one release therefore leaves no set or receipt that the older containers cannot 
 | Pre-migration copies | The newest 3, on the data volume        |
 
 The interval and the data retention are settings. The key repo's single snapshot is part of forget,
-not a tuning value. The interval bounds the writes a failed disk loses.
+not a tuning value. Until the offsite replica ships, the interval bounds the writes a failed disk
+loses. With the replica, a key change sets the bound, as [the recovery bound](#the-recovery-bound)
+describes.
 
 nixie sends a push notice when a set gets a failed receipt or none within the interval, and
 readiness reports backups unready once the last successful receipt is older than twice the interval.
@@ -140,11 +143,26 @@ transaction. Its WAL checkpoints go through SQLite's own locks, which hold becau
 run on one kernel. The replica stage's spike sets nixie's checkpoint settings beside it.
 
 Litestream never replicates `keys.db`, because its retained history would keep deleted keys. Hourly
-key snapshots alone leave new encrypted items unrecoverable for up to an hour after host loss, so
-the replica waits on a matching-key recovery path. The
-[paired recovery spike](../spikes/paired-recovery/README.md) restores new content once the matching
-key snapshot exists. The [replica encryption spike](../spikes/replica-encryption/README.md) tests
-the gateway through process outages. Neither tests a cloud provider.
+key snapshots alone would leave new encrypted items unrecoverable for up to an hour after host loss,
+so the replica ships with the key snapshot trigger that [the recovery bound](#the-recovery-bound)
+describes. The [paired recovery spike](../spikes/paired-recovery/README.md) restores new content
+once the matching key snapshot exists. The
+[replica encryption spike](../spikes/replica-encryption/README.md) tests the gateway through process
+outages. Neither tests a cloud provider.
+
+### The recovery bound
+
+Once the replica ships, a restore after total host loss loses at most 5 minutes of encrypted
+content, under [0044](../../../decisions/0044-recovery-bound.md). The replica keeps the data within
+seconds, so the key snapshot sets the bound: new content restores only with the key that encrypts
+it.
+
+A key change makes nixie stage a key set once 60 seconds pass with no further key change, and never
+later than 5 minutes after the first unpublished key change. **Why:** the quiet wait turns a burst
+of new memories into one snapshot, and the cap holds the bound while keys keep changing. The hourly
+key set stays as a fallback. nixie sends a push when a key change stays unpublished for more than 5
+minutes. A triggered key set follows the same sequence and publication rules as a scheduled one, and
+a forget's own key set never waits for the quiet period.
 
 ## Restoring on a new host
 

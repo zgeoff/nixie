@@ -4,7 +4,8 @@
   [0002](../../../decisions/0002-approvals.md), [0006](../../../decisions/0006-approval-record.md),
   [0012](../../../decisions/0012-high-risk-approvals.md),
   [0023](../../../decisions/0023-lifting-always-ask.md),
-  [0028](../../../decisions/0028-policy-design.md)
+  [0028](../../../decisions/0028-policy-design.md),
+  [0041](../../../decisions/0041-approvals-during-a-voice-call.md)
 
 You approve in nixie's own client, through a checked action bound to one proposal, never through a
 chat message. Each proposal shows as a card in the thread that asked, and every waiting item also
@@ -26,8 +27,8 @@ a named action is harder to approve by reflex.
 | Lifting    | "Lifts the always-ask set"     | The warning frame, inverted | One tap after the rule's bounds show   |
 
 A rule proposal and a mandate render as always-ask cards, because they widen policy. With
-[0012](../../../decisions/0012-high-risk-approvals.md), always-ask and lifting approvals and Always
-allow ask for the passkey.
+[0012](../../../decisions/0012-high-risk-approvals.md), always-ask and lifting approvals ask for the
+passkey, and so does Always allow when its rule is wider than the rule the card showed.
 
 ## Your choices
 
@@ -60,6 +61,15 @@ an optional note.
    why.
 
 Defer authorizes nothing, so it needs no passkey, and policy runs again on the later approval.
+
+## During a voice call
+
+During a voice call, a proposal's card appears in the call screen of the device that carries the
+call, under [0041](../../../decisions/0041-approvals-during-a-voice-call.md). The turn announces it
+with a fixed template line, such as "It's on your screen", so the model never describes the card. A
+spoken "yes" gets the fixed reply "Tap the card to approve" and approves nothing. A card that needs
+the passkey shows the passkey prompt over the call screen. No push goes to your other devices during
+the call, and a card you leave stays on the approval digest.
 
 ## How the server checks an answer
 
