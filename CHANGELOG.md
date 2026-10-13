@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/zgeoff/nixie/compare/v0.8.0...v0.9.0) (2026-10-13)
+
+
+### Features
+
+* **geo-567:** mark the first turn of a new or rebuilt session ([#141](https://github.com/zgeoff/nixie/issues/141)) ([9adb5fb](https://github.com/zgeoff/nixie/commit/9adb5fb8ef2ad61f954f78f679abdefd7661f288))
+
+
+### Bug Fixes
+
+* **geo-751:** apply the retrieval score floor in a small memory index ([#142](https://github.com/zgeoff/nixie/issues/142)) ([33494b1](https://github.com/zgeoff/nixie/commit/33494b197abfa71dfee0db1d3a10cb7e24e17b26))
+* **geo-756:** recheck a proposed write's item before the batch publishes ([#144](https://github.com/zgeoff/nixie/issues/144)) ([9ca5223](https://github.com/zgeoff/nixie/commit/9ca5223ffc0e0a28bef51a62f444eaf5f5e7b179))
+
 ## [0.8.0](https://github.com/zgeoff/nixie/compare/v0.7.0...v0.8.0) (2026-10-13)
 
 
