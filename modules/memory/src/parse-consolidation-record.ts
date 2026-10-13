@@ -1,0 +1,61 @@
+import type { EnvelopeRecord } from '@heynixie/log';
+import { z } from 'zod';
+
+const versionRef = z.strictObject({ itemID: z.string(), version: z.int().min(1) });
+
+const change = z.strictObject({
+  changeID: z.string(),
+  kind: z.enum(['merge', 'rewrite', 'retire']),
+  itemID: z.string(),
+  inputs: z.array(versionRef).min(1),
+  source: z.enum(['owner', 'owner_data', 'untrusted']),
+  actionHash: z.string(),
+  sealed: z.base64(),
+  lapseAt: z.int(),
+});
+
+const proposed = z.strictObject({
+  diffID: z.string(),
+  at: z.int(),
+  model: z.string().nullable(),
+  shownItems: z.int().min(0),
+  changes: z.array(change),
+});
+
+const approved = z.strictObject({
+  changeID: z.string(),
+  approvalID: z.string(),
+  actionHash: z.string(),
+  identityID: z.string(),
+});
+
+const rejected = z.strictObject({ changeID: z.string(), identityID: z.string() });
+
+const lapsed = z.strictObject({ changeID: z.string() });
+
+// The records of memory consolidation: a run's diff, then your approval or rejection of each of
+// its changes, or a change's lapse.
+export type ConsolidationRecord =
+  | ({ readonly kind: 'memory.consolidation_proposed' } & z.infer<typeof proposed>)
+  | ({ readonly kind: 'memory.consolidation_approved' } & z.infer<typeof approved>)
+  | ({ readonly kind: 'memory.consolidation_rejected' } & z.infer<typeof rejected>)
+  | ({ readonly kind: 'memory.consolidation_lapsed' } & z.infer<typeof lapsed>);
+
+// Reads a consolidation record's payload into its typed shape, or null for a record of another
+// kind. A consolidation record whose payload breaks its shape throws, so a fold never writes a
+// half-read row.
+export function parseConsolidationRecord(record: EnvelopeRecord): ConsolidationRecord | null {
+  if (record.kind === 'memory.consolidation_proposed') {
+    return { kind: record.kind, ...proposed.parse(record.payload) };
+  }
+  if (record.kind === 'memory.consolidation_approved') {
+    return { kind: record.kind, ...approved.parse(record.payload) };
+  }
+  if (record.kind === 'memory.consolidation_rejected') {
+    return { kind: record.kind, ...rejected.parse(record.payload) };
+  }
+  if (record.kind === 'memory.consolidation_lapsed') {
+    return { kind: record.kind, ...lapsed.parse(record.payload) };
+  }
+  return null;
+}

@@ -3,6 +3,24 @@ export { buildCheckerRules } from './build-checker-rules';
 export type { MemoryToolStore } from './build-memory-tools';
 export { buildMemoryTools } from './build-memory-tools';
 export { buildWriterTools } from './build-writer-tools';
+export { buildConsolidatorTools } from './build-consolidator-tools';
+export type { ConsolidationConfig, ConsolidationConfigInput } from './consolidation-config-schema';
+export { consolidationConfigSchema } from './consolidation-config-schema';
+export type {
+  ChangeAnswer,
+  ChangeInput,
+  ChangeKind,
+  ChangeOutcome,
+  ConsolidationChange,
+  ConsolidationDiff,
+  ConsolidationSchedule,
+  MemoryConsolidations,
+} from './consolidation-types';
+export type { ConsolidationStaging } from './create-consolidation-staging';
+export { createConsolidationStaging } from './create-consolidation-staging';
+export { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
+export type { MemoryConsolidator } from './start-memory-consolidator';
+export { startMemoryConsolidator } from './start-memory-consolidator';
 export type { WriterStaging } from './create-writer-staging';
 export { createWriterStaging } from './create-writer-staging';
 export { defaultGateLimits } from './default-gate-limits';
