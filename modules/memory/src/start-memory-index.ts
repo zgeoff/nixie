@@ -1,6 +1,7 @@
 import { startDatabase } from '@heynixie/db';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+import { splitContentWords } from './split-content-words';
 
 export interface IndexEntry {
   readonly itemID: string;
@@ -28,7 +29,7 @@ export interface MemoryIndex {
   readonly update: (entry: IndexEntry) => Promise<void>;
   readonly remove: (itemID: string) => Promise<void>;
 
-  // the IDs of the items that match any word of query, best match first
+  // the IDs of the items that match any word of query other than a function word, best match first
   readonly findItemIDs: (query: string, options: MatchOptions) => Promise<readonly string[]>;
   readonly stop: () => Promise<void>;
 }
@@ -55,17 +56,13 @@ export async function startMemoryIndex(): Promise<MemoryIndex> {
         await sql`delete from memory_index`.execute(tx);
         for (const entry of entries) {
           // oxlint-disable-next-line no-await-in-loop -- one connection runs one statement at a time
-          await sql`insert into memory_index (item_id, text) values (${entry.itemID}, ${entry.text})`.execute(
-            tx,
-          );
+          await writeEntry(tx, entry);
         }
       }),
     update: (entry) =>
       db.transaction().execute(async (tx) => {
         await sql`delete from memory_index where item_id = ${entry.itemID}`.execute(tx);
-        await sql`insert into memory_index (item_id, text) values (${entry.itemID}, ${entry.text})`.execute(
-          tx,
-        );
+        await writeEntry(tx, entry);
       }),
     remove: async (itemID) => {
       await sql`delete from memory_index where item_id = ${itemID}`.execute(db);
@@ -73,6 +70,14 @@ export async function startMemoryIndex(): Promise<MemoryIndex> {
     findItemIDs: (query, options) => findMatches(db, query, options),
     stop: () => db.destroy(),
   };
+}
+
+// stores the item's content words only, so a function word in its text never matches a query word
+// that stems to it
+async function writeEntry(db: Kysely<unknown>, entry: IndexEntry): Promise<void> {
+  const text = splitContentWords(entry.text).join(' ');
+
+  await sql`insert into memory_index (item_id, text) values (${entry.itemID}, ${text})`.execute(db);
 }
 
 async function findMatches(
@@ -97,9 +102,10 @@ async function findMatches(
 }
 
 // Quotes each word of a free-text query and joins them with OR, so no character in the query reads
-// as FTS5 syntax, or null for a query with no word in it.
+// as FTS5 syntax, or null for a query with no content word in it. It leaves function words out,
+// because a message that shares only "to" or "a" with an item says nothing about that item.
 function buildMatchExpression(query: string): string | null {
-  const words = query.match(/[\p{L}\p{N}]+/gu) ?? [];
+  const words = splitContentWords(query);
 
   return words.length === 0 ? null : words.map((word) => `"${word}"`).join(' OR ');
 }

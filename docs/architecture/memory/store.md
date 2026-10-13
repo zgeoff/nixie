@@ -109,9 +109,14 @@ full-text index keeps forgotten words after their key is gone, as the
 from the readable active items. A version's record is the index's invalidation record: after the
 record commits, still under the delivery lock, the store replaces the item's entry with its current
 text or drops an item that left the active state. A query matches any of its words, and the store
-quotes each word, so no character a caller sends reads as FTS5 syntax. A query can also set a score
-floor, which drops each match whose BM25 score falls below it, and can leave pinned items out. BM25
-gives no weight to a word that half the items hold, so in an index of 1 or 2 items every match
+quotes each word, so no character a caller sends reads as FTS5 syntax. The index leaves function
+words, such as "to" and "a", out of both the query and the text it stores. BM25 weighs a word by how
+few items hold it and not by what it means, so a function word that one item holds would score as
+high as a topic word and bring back an item the query says nothing about. The filter covers the
+stored text too, because the porter tokenizer stems some content words to a function word, such as
+"one" to "on". A word in capitals, such as "US", is an acronym and stays. A query can also set a
+score floor, which drops each match whose BM25 score falls below it, and can leave pinned items out.
+BM25 gives no weight to a word that half the items hold, so in an index of 1 or 2 items every match
 scores about zero, and a floor above zero drops every match.
 [Per-turn retrieval](./context.md#per-turn-retrieval) uses both, so a word that half the items share
 places nothing, and under a floor above zero a store of 1 or 2 items places nothing per turn.
