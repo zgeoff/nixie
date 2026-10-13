@@ -11,47 +11,66 @@ export async function readDeliveredVersions(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
 ): Promise<readonly MemoryRef[]> {
-  const state: SessionState = { delivered: new Map(), pending: new Map(), isCompacted: false };
+  const state = { current: emptyState };
 
   for await (const record of readSessionRecords(context, taskID)) {
-    updateSessionState(state, record);
+    state.current = buildSessionState(state.current, record);
   }
-  return [...state.delivered.values()];
+  return [...state.current.delivered.values()];
 }
 
 interface SessionState {
-  readonly delivered: Map<string, MemoryRef>;
+  readonly delivered: ReadonlyMap<string, MemoryRef>;
 
   // what the running step's recalls delivered, which its turn's end keeps
-  readonly pending: Map<string, MemoryRef>;
-  isCompacted: boolean;
+  readonly pending: ReadonlyMap<string, MemoryRef>;
+  readonly isCompacted: boolean;
 }
 
-// A reset commits with its step's turn, after the step's recalls, so it drops them too: a
-// compaction summarized them, and a rebuild's step may hold a recall for the session it lost. The
-// turn's record lists what a rebuilt session's turn retrieved.
-function updateSessionState(state: SessionState, record: LogRecord): void {
-  if (record.kind === 'memory.recalled') {
-    updateRefs(state.pending, parseRefs(record.payload['items']));
-  } else if (record.kind === 'model.turn_ended') {
-    const retrieved = state.isCompacted ? [] : parseRefs(record.payload['retrieved']);
+const emptyState: SessionState = { delivered: new Map(), pending: new Map(), isCompacted: false };
 
-    updateRefs(state.delivered, [...state.pending.values(), ...retrieved]);
-    state.pending.clear();
-  } else if (record.kind === 'task.step_started') {
-    state.pending.clear();
-    state.isCompacted = false;
-  } else {
-    state.delivered.clear();
-    state.pending.clear();
-    state.isCompacted ||= record.kind === 'model.compacted';
+// A reset commits with its step's turn, after the step's recalls. A compaction summarized those
+// recalls, so it drops them. A rebuild after a lost session drops them too, because the step's first
+// recall served the lost session, and the turn's record lists what the rebuilt turn retrieved.
+function buildSessionState(state: SessionState, record: LogRecord): SessionState {
+  switch (record.kind) {
+    case 'memory.recalled': {
+      return { ...state, pending: mergeRefs(state.pending, parseRefs(record.payload['items'])) };
+    }
+    case 'model.turn_ended': {
+      const retrieved = state.isCompacted ? [] : parseRefs(record.payload['retrieved']);
+
+      return {
+        ...state,
+        delivered: mergeRefs(state.delivered, [...state.pending.values(), ...retrieved]),
+        pending: new Map(),
+      };
+    }
+    case 'task.step_started': {
+      return { ...state, pending: new Map(), isCompacted: false };
+    }
+    case 'model.session_rebuilt': {
+      return {
+        ...state,
+        delivered: new Map(),
+        pending: record.payload['reason'] === 'invalidated' ? state.pending : new Map(),
+      };
+    }
+    default: {
+      return {
+        delivered: new Map(),
+        pending: new Map(),
+        isCompacted: state.isCompacted || record.kind === 'model.compacted',
+      };
+    }
   }
 }
 
-function updateRefs(refs: Map<string, MemoryRef>, added: readonly MemoryRef[]): void {
-  for (const ref of added) {
-    refs.set(`${ref.itemID}@${ref.version}`, ref);
-  }
+function mergeRefs(
+  refs: ReadonlyMap<string, MemoryRef>,
+  added: readonly MemoryRef[],
+): ReadonlyMap<string, MemoryRef> {
+  return new Map([...refs, ...added.map((ref) => [`${ref.itemID}@${ref.version}`, ref] as const)]);
 }
 
 // the records that end what a session holds

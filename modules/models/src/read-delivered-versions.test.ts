@@ -180,6 +180,38 @@ test('it keeps what a rebuilt turn retrieved and drops the recall for the sessio
   expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
 });
 
+test('it keeps every recall of a turn on a session rebuilt after an invalidation', async () => {
+  const ctx = await setupTest();
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await createConversationTask(ctx.tasks.context);
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.step_started',
+      definitions,
+      thread: 'conversation',
+      payload: { taskID: 'conversation', stepKey: 'conversation:1', generation: 1 },
+    },
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: { items: [{ itemID: 'item-1', version: 1 }] },
+    },
+    {
+      kind: 'model.session_rebuilt',
+      definitions,
+      thread: 'conversation',
+      payload: { reason: 'invalidated' },
+    },
+    { kind: 'model.turn_ended', definitions, thread: 'conversation', payload: { retrieved: [] } },
+  ]);
+
+  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+
+  expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
+});
+
 test('it lists nothing that a step delivered before a compaction in that step', async () => {
   const ctx = await setupTest();
   const definitions = { snapshotHash: 'sha256:test' };
