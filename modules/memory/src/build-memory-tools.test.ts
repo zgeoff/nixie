@@ -40,17 +40,17 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for recall and note for remember and retire', async () => {
+test('it declares read for recall and note for remember, edit and retire', async () => {
   const ctx = await setupTest();
 
-  const effects = ['memory.recall', 'memory.remember', 'memory.retire'].map((name) => [
-    name,
-    ctx.registry.findTool(name)?.definition.declaration.effects,
-  ]);
+  const effects = ['memory.recall', 'memory.remember', 'memory.edit', 'memory.retire'].map(
+    (name) => [name, ctx.registry.findTool(name)?.definition.declaration.effects],
+  );
 
   expect(effects).toStrictEqual([
     ['memory.recall', ['read']],
     ['memory.remember', ['note']],
+    ['memory.edit', ['note']],
     ['memory.retire', ['note']],
   ]);
 });
@@ -136,9 +136,136 @@ test('it returns a proposal, not an error, for a fact with no quote', async () =
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });
 
+test('it applies a backed edit as a new version and keeps the old version in history', async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'I live on Oak Avenue now',
+    spans: [{ start: 0, end: 24, source: 'typed' }],
+  });
+
+  const result = await runToolCall(
+    {
+      tool: 'memory.edit',
+      input: {
+        itemID: item.itemID,
+        version: 1,
+        text: 'Lives on Oak Avenue',
+        quote: 'I live on Oak Avenue now',
+      },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.edit'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+  const history = await ctx.memory.store.readHistory(item.itemID);
+
+  expect(result.structuredContent).toStrictEqual({
+    status: 'applied',
+    itemID: item.itemID,
+    version: 2,
+  });
+  expect(history?.versions).toMatchObject([
+    { version: 1, change: 'created', text: 'Lives on Elm Street' },
+    { version: 2, change: 'edited', origin: 'conversation', text: 'Lives on Oak Avenue' },
+  ]);
+});
+
+test('it turns an edit with no backing words into a proposal with its reason', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Drinks oat milk',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await runToolCall(
+    {
+      tool: 'memory.edit',
+      input: { itemID: item.itemID, version: 1, text: 'Drinks almond milk' },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.edit'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+  const pending = await ctx.memory.store.proposals.listPending();
+  const history = await ctx.memory.store.readHistory(item.itemID);
+
+  expect(result.structuredContent).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    reason: 'no_quote',
+    merged: false,
+  });
+  expect(pending).toMatchObject([
+    {
+      operation: 'remember',
+      itemID: item.itemID,
+      targetVersion: 1,
+      text: 'Drinks almond milk',
+      reason: 'no_quote',
+    },
+  ]);
+  expect(history?.versions).toMatchObject([{ version: 1, text: 'Drinks oat milk' }]);
+});
+
+test('it records an edit call with neither its text nor its quote, which the gate has not checked', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Owns a tabby cat called Miso',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await runToolCall(
+    {
+      tool: 'memory.edit',
+      input: {
+        itemID: item.itemID,
+        version: 1,
+        text: 'Owns two tabby cats called Miso and Udon',
+        quote: 'Owns two tabby cats called Miso and Udon',
+      },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.edit'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  expect(entries.find((entry) => entry.record.kind === 'tool_called')?.record).toMatchObject({
+    erasable: {
+      status: 'readable',
+      fields: { input: { itemID: item.itemID, version: 1 } },
+    },
+  });
+  expect(JSON.stringify(entries)).not.toInclude('Udon');
+});
+
 test('it returns a stale edit to the model as an error', async () => {
   const ctx = await setupTest();
-  const tool = ctx.registry.findTool('memory.remember');
+  const tool = ctx.registry.findTool('memory.edit');
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -153,8 +280,8 @@ test('it returns a stale edit to the model as an error', async () => {
   const outcome = await tool.definition.run(
     {
       callID: 'call-1',
-      tool: 'memory.remember',
-      input: { text: 'Lives on Oak Avenue', itemID: item.itemID, version: 1 },
+      tool: 'memory.edit',
+      input: { itemID: item.itemID, version: 1, text: 'Lives on Oak Avenue' },
       toolUseID: null,
     },
     {
@@ -497,8 +624,16 @@ test('it records a remember call with neither its text nor its quote, which the 
 });
 
 test.each([
-  ['a remember with an itemID and no version', 'memory.remember', { text: 'x', itemID: 'item-a' }],
-  ['a remember with no text', 'memory.remember', { itemID: 'item-a', version: 1 }],
+  [
+    'a remember with an itemID and a version',
+    'memory.remember',
+    { text: 'x', itemID: 'item-a', version: 1 },
+  ],
+  ['a remember with no text', 'memory.remember', { quote: 'x' }],
+  ['an edit with no version', 'memory.edit', { itemID: 'item-a', text: 'x' }],
+  ['an edit with no itemID', 'memory.edit', { version: 1, text: 'x' }],
+  ['an edit with no text', 'memory.edit', { itemID: 'item-a', version: 1 }],
+  ['an edit with a pin', 'memory.edit', { itemID: 'item-a', version: 1, text: 'x', pin: true }],
   ['a retire with no version', 'memory.retire', { itemID: 'item-a' }],
   ['a remember with an empty quote', 'memory.remember', { text: 'x', quote: '' }],
   ['a recall with an unknown argument', 'memory.recall', { everything: true }],

@@ -23,13 +23,14 @@ function buildWebFetchStandIn(): ToolDefinition {
   };
 }
 
-test('it lists the web fetch tool and the 3 memory tools', () => {
+test('it lists the web fetch tool and the 4 memory tools', () => {
   const definitions = buildConversationTools(buildWebFetchStandIn(), () => null);
 
   expect(definitions.map((definition) => definition.name)).toStrictEqual([
     'web.fetch',
     'memory.recall',
     'memory.remember',
+    'memory.edit',
     'memory.retire',
   ]);
 });
@@ -80,6 +81,7 @@ test('it allows each memory tool and denies a write tool under the read-only rul
     'web.fetch',
     'memory.recall',
     'memory.remember',
+    'memory.edit',
     'memory.retire',
     'files.write',
   ];
@@ -94,6 +96,7 @@ test('it allows each memory tool and denies a write tool under the read-only rul
 
   expect(decide({ tool: 'memory.recall', toolList })).toStrictEqual(allowed);
   expect(decide({ tool: 'memory.remember', toolList })).toStrictEqual(allowed);
+  expect(decide({ tool: 'memory.edit', toolList })).toStrictEqual(allowed);
   expect(decide({ tool: 'memory.retire', toolList })).toStrictEqual(allowed);
   expect(decide({ tool: 'files.write', toolList })).toMatchObject({
     decision: { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only' } },

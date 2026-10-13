@@ -6,7 +6,7 @@ import { makeInputRecorder } from './make-input-recorder';
 import { memoryWriteOutput } from './memory-write-output';
 import { runWriteCall } from './run-write-call';
 
-// Builds memory.remember, which declares note and runs each write through the content gate.
+// Builds memory.remember, which declares note and runs each new fact through the content gate.
 export function buildRememberTool(memory: ModelWriteStore): ToolDefinition {
   return {
     name: 'memory.remember',
@@ -38,24 +38,21 @@ export function buildRememberTool(memory: ModelWriteStore): ToolDefinition {
 }
 
 const rememberDescription =
-  'Stores one fact as a new memory item, or edits an item when you pass its itemID and the ' +
-  "version you read. Pass quote: the exact words from one of the owner's own recent " +
-  'messages that state the fact. The write applies at once only when those typed words back ' +
-  "it; otherwise it waits for the owner's review as a proposal, and the result says why. " +
-  'When a pending proposal already holds the same text, the result says merged: the owner ' +
-  'reviews one proposal with both sources. Set pin to ask for the item in the pinned core, which always waits for review.';
+  'Stores one fact as a new memory item. To change an item that exists, use memory.edit. Pass ' +
+  "quote: the exact words from one of the owner's own recent messages that state the fact. The " +
+  'write applies at once only when those typed words back it; otherwise it waits for the ' +
+  "owner's review as a proposal, and the result says why. When a pending proposal already " +
+  'holds the same text, the result says merged: the owner reviews one proposal with both ' +
+  'sources. Set pin to ask for the item in the pinned core, which always waits for review.';
 
 const rememberInput = {
   type: 'object',
   properties: {
     text: { type: 'string', minLength: 1, maxLength: 2000 },
     quote: { type: 'string', minLength: 1, maxLength: 2000 },
-    itemID: { type: 'string' },
-    version: { type: 'integer', minimum: 1 },
     pin: { type: 'boolean' },
   },
   required: ['text'],
-  dependentRequired: { itemID: ['version'], version: ['itemID'] },
   additionalProperties: false,
 };
 
@@ -66,9 +63,6 @@ function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememb
     text: input.text,
     caller: buildWriteCaller(context),
     ...(input.quote === undefined ? {} : { quote: input.quote }),
-    ...(input.itemID === undefined || input.version === undefined
-      ? {}
-      : { target: { itemID: input.itemID, version: input.version } }),
     ...(input.pin === undefined ? {} : { isPinned: input.pin }),
   };
 }
@@ -76,7 +70,5 @@ function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememb
 const rememberArguments = z.object({
   text: z.string(),
   quote: z.string().optional(),
-  itemID: z.string().optional(),
-  version: z.int().optional(),
   pin: z.boolean().optional(),
 });
