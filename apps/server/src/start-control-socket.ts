@@ -1,15 +1,20 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import type { MemoryProposal, MemoryProposals } from '@heynixie/memory';
+import type { MemoryProposal } from '@heynixie/memory';
 import { z } from 'zod';
+import { buildMemoryItemRoutes } from './build-memory-item-routes';
+import { ControlRequestError } from './control-request-error';
+import { parseControlBody } from './parse-control-body';
+import type { HostMemory } from './require-host-memory';
+import { requireHostMemory } from './require-host-memory';
 
 export interface ControlSocketOptions {
   // a Unix socket in a directory only nixie's user may enter
   readonly path: string;
   readonly createEnrolmentCode: () => Promise<EnrolmentCode>;
 
-  // the memory proposals, or null until the memory store starts
-  readonly readProposals: () => MemoryProposals | null;
+  // the memory store, or null until it starts
+  readonly readMemory: () => HostMemory | null;
   readonly readSessions: () => Promise<readonly HostSession[]>;
   readonly updateSessionLabel: (input: SessionLabel) => Promise<SessionLabelResult>;
 }
@@ -42,8 +47,8 @@ export interface ControlSocket {
 }
 
 // Starts the control socket that host commands reach the server through, since only the writer
-// lock's holder may write: enrolment codes, session labels, and memory proposals through the memory
-// gate. A stale socket file is removed first: the writer lock already proves no other server runs.
+// lock's holder may write. A stale socket file is removed first: the writer lock already proves no
+// other server runs.
 export async function startControlSocket(options: ControlSocketOptions): Promise<ControlSocket> {
   await mkdir(dirname(options.path), { recursive: true, mode: 0o700 });
   await rm(options.path, { force: true });
@@ -60,6 +65,7 @@ export async function startControlSocket(options: ControlSocketOptions): Promise
       },
       ...buildSessionRoutes(options),
       ...buildMemoryRoutes(options),
+      ...buildMemoryItemRoutes(options.readMemory),
     },
     fetch: () => new Response('not found', { status: 404 }),
 
@@ -125,7 +131,7 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
   return {
     '/memory/proposals': {
       GET: async () => {
-        const pending = await requireProposals(options).listPending();
+        const pending = await requireHostMemory(options.readMemory).proposals.listPending();
 
         return Response.json(pending.map((proposal) => buildPendingEntry(proposal)));
       },
@@ -133,11 +139,12 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
     '/memory/proposals/approve': {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
-        const answer = await parseAnswer(request);
-        const result = await requireProposals(options).approve({
+        const answer = await parseControlBody(request, answerBody, answerUsage);
+        const result = await requireHostMemory(options.readMemory).proposals.approve({
           proposalID: answer.proposalID,
           actionHash: answer.actionHash,
           identityID: hostIdentityID,
+          ...(answer.editedText === undefined ? {} : { editedText: answer.editedText }),
           ...(answer.revisionOf === undefined ? {} : { revisionOf: answer.revisionOf }),
           ...(answer.ignoreCloseMatch === undefined
             ? {}
@@ -150,9 +157,12 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
     '/memory/proposals/reject': {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
-        const answer = await parseAnswer(request);
+        const answer = await parseControlBody(request, answerBody, answerUsage);
 
-        await requireProposals(options).reject({
+        if (answer.editedText !== undefined) {
+          throw new ControlRequestError(400, 'a rejection takes no edited text');
+        }
+        await requireHostMemory(options.readMemory).proposals.reject({
           proposalID: answer.proposalID,
           actionHash: answer.actionHash,
           identityID: hostIdentityID,
@@ -166,15 +176,6 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
 // An answer through the socket comes from a shell in nixie's container, which no device session
 // reaches, so its approval record names the host as the identity that answered.
 const hostIdentityID = 'host';
-
-function requireProposals(options: ControlSocketOptions): MemoryProposals {
-  const proposals = options.readProposals();
-
-  if (proposals === null) {
-    throw new ControlRequestError(503, 'the memory store has not started yet');
-  }
-  return proposals;
-}
 
 // What a host command shows of a pending proposal: its text, every source that proposed it, and
 // the hash an answer binds to.
@@ -201,24 +202,18 @@ function buildPendingEntry(proposal: MemoryProposal) {
   };
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
-async function parseAnswer(request: Request): Promise<z.infer<typeof answerBody>> {
-  const body: unknown = await request.json().catch(() => null);
-  const parsed = answerBody.safeParse(body);
-
-  if (!parsed.success) {
-    throw new ControlRequestError(400, 'an answer takes a proposalID and an actionHash');
-  }
-  return parsed.data;
-}
-
-// an approval held for a close match is answered again, as a revision of that item or as a new item
+// An approval held for a close match is answered again, as a revision of that item or as a new
+// item. Edited text replaces the proposal's, and makes you the approved version's origin.
 const answerBody = z.strictObject({
   proposalID: z.string().min(1),
   actionHash: z.string().min(1),
   revisionOf: z.strictObject({ itemID: z.string().min(1), version: z.int().positive() }).optional(),
   ignoreCloseMatch: z.boolean().optional(),
+  editedText: z.string().max(2000).regex(/\S/u).optional(),
 });
+
+const answerUsage =
+  'an answer takes a proposalID and an actionHash, and edited text of 1 to 2,000 characters';
 
 // the memory gate's refusals keep their meaning for the host command; anything else is a failure
 function pickErrorStatus(error: Error): number {
@@ -238,15 +233,5 @@ const errorStatuses = new Map([
   ['WRONG_STATE', 409],
   ['PINNED_CORE_FULL', 409],
   ['REVISION_TARGET', 400],
+  ['RETIREMENT_EDIT', 400],
 ]);
-
-// a request the socket refuses before the memory gate sees it, with the status it answers
-class ControlRequestError extends Error {
-  override readonly name = 'ControlRequestError';
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}

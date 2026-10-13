@@ -16,7 +16,7 @@ async function setupTest() {
   const socket = await startControlSocket({
     path: join(dir, 'control.sock'),
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => memory.store.proposals,
+    readMemory: () => memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -112,4 +112,79 @@ test('it rejects with the status and the reason when the server refuses the answ
     Error,
     `nixie answered the memory approve request with 409: the answer to memory proposal ${proposal.proposalID} names another action hash`,
   );
+});
+
+test('it sends an approval with your edited text in place of the proposal’s', async () => {
+  const ctx = await setupTest();
+
+  const proposal = await createProposal(ctx.memory.store, { text: 'Likes jaz' });
+
+  const ref = await sendMemoryRequest(ctx.path, {
+    command: 'approve',
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    editedText: 'Likes jazz',
+  });
+  const history = await ctx.memory.store.readHistory(proposal.itemID);
+
+  expect(ref).toStrictEqual({ status: 'applied', itemID: proposal.itemID, version: 1 });
+  expect(history?.versions).toMatchObject([{ origin: 'owner', text: 'Likes jazz' }]);
+});
+
+test('it returns an item with its history, and the version an edit added', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Drinks oat milk',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const edited = await sendMemoryRequest(ctx.path, {
+    command: 'edit',
+    target: item,
+    text: 'Drinks soy milk',
+  });
+  const shown = await sendMemoryRequest(ctx.path, { command: 'show', itemID: item.itemID });
+
+  expect(edited).toStrictEqual({ itemID: item.itemID, version: 2 });
+  expect(shown).toMatchObject({
+    itemID: item.itemID,
+    state: 'active',
+    versions: [
+      { version: 1, change: 'created', text: 'Drinks oat milk' },
+      { version: 2, change: 'edited', origin: 'owner', text: 'Drinks soy milk' },
+    ],
+  });
+});
+
+test('it returns the versions a retirement and a restore added', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives in Lisbon',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const retired = await sendMemoryRequest(ctx.path, { command: 'retire', target: item });
+  const restored = await sendMemoryRequest(ctx.path, {
+    command: 'restore',
+    target: { itemID: item.itemID, version: 2 },
+  });
+
+  expect(retired).toStrictEqual({ itemID: item.itemID, version: 2 });
+  expect(restored).toStrictEqual({ itemID: item.itemID, version: 3 });
+});
+
+test('it returns the pin it set', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Is allergic to peanuts',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const pinned = await sendMemoryRequest(ctx.path, {
+    command: 'pin',
+    itemID: item.itemID,
+    isPinned: true,
+  });
+
+  expect(pinned).toStrictEqual({ itemID: item.itemID, isPinned: true });
 });

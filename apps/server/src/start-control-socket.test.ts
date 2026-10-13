@@ -9,6 +9,7 @@ import {
   readApprovalRecords,
   startTestMemory,
 } from '@heynixie/memory/test-utils';
+import invariant from 'tiny-invariant';
 import { startControlSocket } from './start-control-socket';
 
 async function setupTest() {
@@ -27,7 +28,7 @@ test('it issues an enrolment code to a request on the socket', async () => {
     path: ctx.path,
     createEnrolmentCode: () =>
       Promise.resolve({ code: 'ABCD-EFGH', expiresAt: new Date('2026-10-11T12:15:00.000Z') }),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -51,7 +52,7 @@ test('it keeps the socket in a directory only nixie’s user may enter', async (
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -68,7 +69,7 @@ test('it answers any other request with 404', async () => {
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -85,7 +86,7 @@ test('it answers 500 with the reason when the code cannot be issued', async () =
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('the database is locked')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -107,7 +108,7 @@ test('it lists the live device sessions', async () => {
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () =>
       Promise.resolve([
         {
@@ -147,7 +148,7 @@ test('it sets the label of a session and answers with the label it kept', async 
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel,
   });
@@ -176,7 +177,7 @@ test('it answers 404 to a label for a session that is not signed in', async () =
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.resolve({ status: 'not_found' as const }),
   });
@@ -199,7 +200,7 @@ test('it answers 400 to a label the session cannot take', async () => {
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.resolve({ status: 'invalid_label' as const }),
   });
@@ -223,7 +224,7 @@ test('it answers 400 to a label request with no session ID', async () => {
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel,
   });
@@ -247,7 +248,7 @@ test('it lists each pending memory proposal with its text and the hash an answer
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => ctx.memory.store.proposals,
+    readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -290,7 +291,7 @@ test('it answers an approval that an active item closely matches with that item,
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => ctx.memory.store.proposals,
+    readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -325,7 +326,7 @@ test('it writes the same records for an approval as the memory gate’s own appr
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => ctx.memory.store.proposals,
+    readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -371,7 +372,7 @@ test('it rejects a memory proposal, which leaves the pending list', async () => 
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => ctx.memory.store.proposals,
+    readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -403,7 +404,7 @@ test('it answers 409 to an answer under another action hash, and applies nothing
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => ctx.memory.store.proposals,
+    readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -432,7 +433,7 @@ test('it answers 404 to an answer for a memory proposal that does not exist', as
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => ctx.memory.store.proposals,
+    readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -453,7 +454,7 @@ test('it answers 400 to an answer with no action hash', async () => {
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => ctx.memory.store.proposals,
+    readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -468,7 +469,9 @@ test('it answers 400 to an answer with no action hash', async () => {
   const reason = await response.text();
 
   expect(response.status).toBe(400);
-  expect(reason).toBe('an answer takes a proposalID and an actionHash');
+  expect(reason).toBe(
+    'an answer takes a proposalID and an actionHash, and edited text of 1 to 2,000 characters',
+  );
 });
 
 test('it answers 503 to a memory request before the memory store starts', async () => {
@@ -476,7 +479,7 @@ test('it answers 503 to a memory request before the memory store starts', async 
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readProposals: () => null,
+    readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
@@ -488,4 +491,426 @@ test('it answers 503 to a memory request before the memory store starts', async 
 
   expect(response.status).toBe(503);
   expect(reason).toBe('the memory store has not started yet');
+});
+
+test('it shows a memory item with its state and every version, oldest first', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await ctx.memory.store.remember({
+    text: 'Drinks oat milk',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const history = await ctx.memory.store.readHistory(item.itemID);
+
+  invariant(history);
+
+  const response = await Bun.fetch(`http://localhost/memory/items/${item.itemID}`, {
+    unix: ctx.path,
+  });
+  const body = await response.json();
+
+  expect(body).toStrictEqual({
+    itemID: item.itemID,
+    state: 'active',
+    versions: [
+      {
+        version: 1,
+        change: 'created',
+        state: 'active',
+        origin: 'owner',
+        source: 'owner',
+        recordedAt: new Date(history.versions[0]?.recordedAt ?? 0).toISOString(),
+        status: 'readable',
+        text: 'Drinks oat milk',
+      },
+    ],
+  });
+});
+
+test('it answers 404 to a memory item that does not exist', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch(
+    'http://localhost/memory/items/0b8f1d2e-4c6a-4e9b-8d3f-1a2b3c4d5e6f',
+    { unix: ctx.path },
+  );
+  const reason = await response.text();
+
+  expect(response.status).toBe(404);
+  expect(reason).toBe('no memory item has that ID');
+});
+
+test('it edits a memory item as a new version of yours, and keeps the old one in its history', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await createProposal(ctx.memory.store, { text: 'Likes jaz' }).then((proposal) =>
+    ctx.memory.store.proposals.approve({
+      proposalID: proposal.proposalID,
+      actionHash: proposal.actionHash,
+      identityID: 'host',
+    }),
+  );
+
+  invariant(item.status === 'applied');
+
+  const response = await Bun.fetch('http://localhost/memory/items/edit', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ itemID: item.itemID, version: 1, text: 'Likes jazz' }),
+  });
+  const [body, history] = await Promise.all([
+    response.json(),
+    ctx.memory.store.readHistory(item.itemID),
+  ]);
+
+  expect(body).toStrictEqual({ itemID: item.itemID, version: 2 });
+  expect(history?.versions).toMatchObject([
+    { version: 1, change: 'created', origin: 'conversation', text: 'Likes jaz' },
+    { version: 2, change: 'edited', origin: 'owner', source: 'owner', text: 'Likes jazz' },
+  ]);
+});
+
+test('it answers 409 to an edit of a version the item has moved past, and adds none', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await ctx.memory.store.remember({
+    text: 'Walks to work',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Cycles to work',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const response = await Bun.fetch('http://localhost/memory/items/edit', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ itemID: item.itemID, version: 1, text: 'Runs to work' }),
+  });
+  const history = await ctx.memory.store.readHistory(item.itemID);
+
+  expect(response.status).toBe(409);
+  expect(history?.versions.map((version) => version.version)).toStrictEqual([1, 2]);
+});
+
+test('it answers 400 to an edit with blank text', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/memory/items/edit', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({
+      itemID: '0b8f1d2e-4c6a-4e9b-8d3f-1a2b3c4d5e6f',
+      version: 1,
+      text: '  ',
+    }),
+  });
+  const reason = await response.text();
+
+  expect(response.status).toBe(400);
+  expect(reason).toBe(
+    'an edit takes an itemID, the version it read, and text of 1 to 2,000 characters',
+  );
+});
+
+test('it retires a memory item as your own change', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await ctx.memory.store.remember({
+    text: 'Lives in Lisbon',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const response = await Bun.fetch('http://localhost/memory/items/retire', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ itemID: item.itemID, version: 1 }),
+  });
+  const [body, history] = await Promise.all([
+    response.json(),
+    ctx.memory.store.readHistory(item.itemID),
+  ]);
+
+  expect(body).toStrictEqual({ itemID: item.itemID, version: 2 });
+  expect(history).toMatchObject({
+    state: 'retired',
+    versions: [
+      { version: 1, change: 'created', state: 'active' },
+      { version: 2, change: 'retired', state: 'retired', origin: 'owner', text: 'Lives in Lisbon' },
+    ],
+  });
+});
+
+test('it restores a retired memory item as your own change', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await ctx.memory.store.remember({
+    text: 'Lives in Lisbon',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const retired = await ctx.memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const response = await Bun.fetch('http://localhost/memory/items/restore', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify(retired),
+  });
+  const [body, history] = await Promise.all([
+    response.json(),
+    ctx.memory.store.readHistory(item.itemID),
+  ]);
+
+  expect(body).toStrictEqual({ itemID: item.itemID, version: 3 });
+  expect(history).toMatchObject({
+    state: 'active',
+    versions: [
+      { version: 1 },
+      { version: 2, change: 'retired' },
+      { version: 3, change: 'restored', state: 'active', origin: 'owner', text: 'Lives in Lisbon' },
+    ],
+  });
+});
+
+test('it answers 409 to a restore of an item that is not retired', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await ctx.memory.store.remember({
+    text: 'Lives in Lisbon',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const response = await Bun.fetch('http://localhost/memory/items/restore', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify(item),
+  });
+
+  expect(response.status).toBe(409);
+});
+
+test('it pins a memory item into the pinned core', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await ctx.memory.store.remember({
+    text: 'Is allergic to peanuts',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const response = await Bun.fetch('http://localhost/memory/items/pin', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ itemID: item.itemID, isPinned: true }),
+  });
+  const [body, core] = await Promise.all([response.json(), ctx.memory.store.readPinnedCore()]);
+
+  expect(body).toStrictEqual({ itemID: item.itemID, isPinned: true });
+  expect(core.map((entry) => entry.itemID)).toStrictEqual([item.itemID]);
+});
+
+test('it unpins a memory item, which leaves the pinned core', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await ctx.memory.store.remember({
+    text: 'Is allergic to peanuts',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.pin({
+    itemID: item.itemID,
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const response = await Bun.fetch('http://localhost/memory/items/pin', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ itemID: item.itemID, isPinned: false }),
+  });
+  const [body, core] = await Promise.all([response.json(), ctx.memory.store.readPinnedCore()]);
+
+  expect(body).toStrictEqual({ itemID: item.itemID, isPinned: false });
+  expect(core).toStrictEqual([]);
+});
+
+test('it answers 404 to a pin of a memory item that does not exist', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const response = await Bun.fetch('http://localhost/memory/items/pin', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({ itemID: '0b8f1d2e-4c6a-4e9b-8d3f-1a2b3c4d5e6f', isPinned: true }),
+  });
+
+  expect(response.status).toBe(404);
+});
+
+test('it approves a memory proposal with your edited text, as your own version', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const proposal = await createProposal(ctx.memory.store, { text: 'Likes jaz' });
+
+  const response = await Bun.fetch('http://localhost/memory/proposals/approve', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({
+      proposalID: proposal.proposalID,
+      actionHash: proposal.actionHash,
+      editedText: 'Likes jazz',
+    }),
+  });
+  const [body, history] = await Promise.all([
+    response.json(),
+    ctx.memory.store.readHistory(proposal.itemID),
+  ]);
+
+  expect(body).toStrictEqual({ status: 'applied', itemID: proposal.itemID, version: 1 });
+  expect(history?.versions).toMatchObject([
+    { version: 1, change: 'created', origin: 'owner', source: 'owner', text: 'Likes jazz' },
+  ]);
+});
+
+test('it answers 400 to a rejection that carries edited text, and rejects nothing', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const proposal = await createProposal(ctx.memory.store, { text: 'Likes jazz' });
+
+  const response = await Bun.fetch('http://localhost/memory/proposals/reject', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({
+      proposalID: proposal.proposalID,
+      actionHash: proposal.actionHash,
+      editedText: 'Likes blues',
+    }),
+  });
+  const [reason, pending] = await Promise.all([
+    response.text(),
+    ctx.memory.store.proposals.listPending(),
+  ]);
+
+  expect(response.status).toBe(400);
+  expect(reason).toBe('a rejection takes no edited text');
+  expect(pending.map((entry) => entry.proposalID)).toStrictEqual([proposal.proposalID]);
 });
