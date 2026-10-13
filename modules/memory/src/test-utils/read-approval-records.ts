@@ -26,12 +26,14 @@ export async function readApprovalRecords(
         [record.approval.approvalID, '<approval>'],
       ]);
 
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a parse of a stringified JSONObject
-      return JSON.parse(JSON.stringify(record), (key, value: unknown) => {
+      const restored: unknown = JSON.parse(JSON.stringify(record), (key, value: unknown) => {
         if (key === 'sealed') {
           return '<sealed>';
         }
         return typeof value === 'string' ? (placeholders.get(value) ?? value) : value;
-      }) as JSONObject;
+      });
+
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a parse of a stringified JSONObject
+      return restored as JSONObject;
     });
 }

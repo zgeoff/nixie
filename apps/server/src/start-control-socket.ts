@@ -65,6 +65,7 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
       },
     },
     '/memory/proposals/approve': {
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
         const answer = await parseAnswer(request);
         const ref = await requireProposals(options).approve({
@@ -76,6 +77,7 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
       },
     },
     '/memory/proposals/reject': {
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
         const answer = await parseAnswer(request);
 
@@ -118,6 +120,7 @@ function buildPendingEntry(proposal: MemoryProposal) {
   };
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
 async function parseAnswer(request: Request): Promise<z.infer<typeof answerBody>> {
   const body: unknown = await request.json().catch(() => null);
   const parsed = answerBody.safeParse(body);
