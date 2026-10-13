@@ -36,7 +36,7 @@ export interface GuestTurnSpec {
 }
 
 // a compaction the guest reported, with the mark read when it arrived, when the spec reads one
-export type Compaction = CompactedFrame & { readonly mark?: number };
+type Compaction = CompactedFrame & { readonly mark?: number };
 
 // What the guest reported for one turn: each assistant message, the uuids of the inbox messages
 // the model read, each model turn that ended at a result, each compaction, and the failure that
