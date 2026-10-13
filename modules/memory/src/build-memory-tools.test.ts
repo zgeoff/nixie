@@ -306,17 +306,12 @@ test('it gives the model a recalled item and leaves no readable copy once the it
   expect(result.structuredContent).toMatchObject({
     items: [{ itemID: item.itemID, text: 'Sister Ada lives in Leeds' }],
   });
-  expect(entries).toIncludeAllPartialMembers([
-    {
-      record: expect.objectContaining({
-        kind: 'tool_result',
-        erasable: {
-          status: 'readable',
-          fields: { result: { items: [{ itemID: item.itemID, version: 1 }], next: null } },
-        },
-      }),
+  expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
+    erasable: {
+      status: 'readable',
+      fields: { result: { items: [{ itemID: item.itemID, version: 1 }], next: null } },
     },
-  ]);
+  });
   expect(JSON.stringify(entries)).not.toInclude('Leeds');
 });
 

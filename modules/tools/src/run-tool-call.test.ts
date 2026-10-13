@@ -166,7 +166,7 @@ test("it records the call's input in the record form the tool gives", async () =
       buildMockToolDefinition({
         name: 'notes_write',
         declaration: { effects: ['note'] },
-        recordInput: (input) => ({ length: String(input['query']).length }),
+        recordInput: (input) => ({ keys: Object.keys(input) }),
       }),
     ],
   });
@@ -186,7 +186,7 @@ test("it records the call's input in the record form the tool gives", async () =
 
   expect(entries[0]?.record).toMatchObject({
     kind: 'tool_called',
-    erasable: { status: 'readable', fields: { input: { length: 8 } } },
+    erasable: { status: 'readable', fields: { input: { keys: ['query'] } } },
   });
 });
 
