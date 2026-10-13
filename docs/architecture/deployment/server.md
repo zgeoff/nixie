@@ -104,6 +104,11 @@ line that copied them would keep them after their key is gone
 ([erasable fields](../core/erasable-fields.md)). The logger writes the envelope on both sides of the
 event's fields, so a field can never overwrite the event name or the time.
 
+Most events log only when nixie acts, such as a start, a seed or a check, so a conversation turn and
+an idle nixie write no line. The definitions poll logs each probe, whether or not the definitions
+changed, so the log shows the process and its timers alive between seeds. A seed logs only when the
+probe finds a new revision of the definitions.
+
 ## Stopping
 
 nixie handles SIGTERM and SIGINT itself, because Bun running as PID 1 ignores a signal that the

@@ -1,11 +1,20 @@
 import type { Clock } from '@heynixie/tasks';
 
+export interface DefinitionsProbe {
+  // the token differs from the one the last good seed ran for, so a seed follows
+  readonly isChanged: boolean;
+}
+
 export interface DefinitionsPollOptions {
   // the source's probe token, which changes when the definitions change
   readonly probe: () => Promise<string>;
   readonly seed: () => Promise<void>;
   readonly clock: Clock;
   readonly intervalMs: number;
+
+  // takes each probe that answered, whether or not its token was new, so every interval leaves a
+  // trace even when the definitions never change
+  readonly onProbed: (probed: DefinitionsProbe) => void;
   readonly onError: (error: unknown) => void;
 }
 
@@ -53,8 +62,10 @@ async function runProbe(
 ): Promise<string | null> {
   try {
     const token = await options.probe();
+    const isChanged = token !== lastToken;
 
-    if (token !== lastToken) {
+    options.onProbed({ isChanged });
+    if (isChanged) {
       await options.seed();
     }
     return token;
