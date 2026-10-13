@@ -2,8 +2,11 @@
 import { readFileSync } from 'node:fs';
 import { conversation } from './conversation.ts';
 import type { PlannedBatch } from './plan-batches.ts';
+import { PRICES, priceUsage } from './price-usage.ts';
 import type { JudgedCandidate } from './run-judge.ts';
 import type { Usage } from './run-writer.ts';
+import { splitCapturedGold } from './split-captured-gold.ts';
+import { SHARED_PREFIX, toSoloUsage } from './to-solo-usage.ts';
 
 // Prints the quality, delay and cost tables for one or more recorded runs, then the backfill
 // estimate from a straight-line fit of input tokens against turns per batch.
@@ -13,7 +16,13 @@ interface Run {
   model: string;
   plan: PlannedBatch[];
   samples: {
-    batches: { plan: PlannedBatch; reportedUSD: number; usage: Usage; wallMs: number }[];
+    batches: {
+      plan: PlannedBatch;
+      reportedUSD: number;
+      retried: boolean;
+      usage: Usage;
+      wallMs: number;
+    }[];
     candidates: {
       batch: number;
       index: number;
@@ -26,14 +35,6 @@ interface Run {
     sample: number;
   }[];
 }
-
-// Claude Haiku 5.5 list prices in USD per million tokens. Claude Code asks for the 1-hour cache, so
-// a cache write costs twice the input price.
-const PRICES = { cacheRead: 0.01, cacheWrite: 0.2, input: 0.1, output: 0.5 };
-// Samples run in parallel, so a batch can read a cache another sample wrote. A lone writer reads
-// only the shared preamble from the cache and writes the rest, so the excess read is repriced as a
-// write.
-const SHARED_PREFIX = 1067;
 
 const LONG_LOG_TURNS = 20_000;
 // A real reply runs longer than the fixture's one-line replies; this sizes a turn for the estimate.
@@ -96,27 +97,20 @@ for (const { path, run } of runs) {
       }
     }
     const active = sample.history.filter((item) => item.active).map((item) => item.versions.at(-1)!);
-    let partial = 0;
-    for (const [id, rule] of Object.entries(conversation.stale)) {
-      const stale = active.some(
-        (text) =>
-          new RegExp(rule.stale, 'iu').test(text) &&
-          (rule.fresh === null || !new RegExp(rule.fresh, 'iu').test(text)),
-      );
-      if (stale && appliedGold.delete(id)) {
-        partial += 1;
-      }
-    }
-    const reviewOnly = [...proposedGold].filter((id) => !appliedGold.has(id)).length;
+    const { captured, partial } = splitCapturedGold(appliedGold, active);
+    const reviewOnly = [...proposedGold].filter((id) => !captured.includes(id)).length;
     console.log(
-      `| ${sample.sample} | ${appliedGold.size}/${Object.keys(conversation.gold).length} | ${partial} | ${reviewOnly} | ${badApplied} | ${badStopped} | ${extra} | ${sample.judge.error === null ? 'none' : 'yes'} |`,
+      `| ${sample.sample} | ${captured.length}/${Object.keys(conversation.gold).length} | ${partial.length} | ${reviewOnly} | ${badApplied} | ${badStopped} | ${extra} | ${sample.judge.error === null ? 'none' : 'yes'} |`,
     );
-    for (const batch of sample.batches) {
+    for (const [batchIndex, batch] of sample.batches.entries()) {
       walls.push(batch.wallMs / 1000);
       const turns = batch.plan.end - batch.plan.start;
       const tokens = batch.usage.input + batch.usage.cacheWrite + batch.usage.cacheRead;
-      const batchUSD = priceUsage(toSoloUsage(batch.usage));
-      points.push({ tokens, turns, usd: batchUSD, wallMs: batch.wallMs });
+      const batchUSD = priceUsage(toSoloUsage(batch, batchIndex));
+      // A backfill starts cold only once, so the fit prices every batch as a warm later batch and
+      // the backfill adds the one cold start.
+      const warmUSD = priceUsage(toSoloUsage(batch, 1));
+      points.push({ tokens, turns, usd: warmUSD, wallMs: batch.wallMs });
       inputTokens += tokens;
       outputTokens += batch.usage.output;
       usd += batchUSD;
@@ -159,6 +153,7 @@ function printBackfill(data: typeof points): void {
   const tokenFit = fitLine(data.map((point) => ({ turns: point.turns, value: point.tokens })));
   const costFit = fitLine(data.map((point) => ({ turns: point.turns, value: point.usd })));
   const wallFit = fitLine(data.map((point) => ({ turns: point.turns, value: point.wallMs })));
+  const coldStartUSD = (SHARED_PREFIX * (PRICES.cacheWrite - PRICES.cacheRead)) / 1e6;
   // A longer turn adds its extra tokens to the batch text, which Claude Code writes to the cache.
   const longTurnUSD = ((LONG_TURN_TOKENS - tokenFit.slope) * PRICES.cacheWrite) / 1e6;
   console.log(
@@ -171,27 +166,12 @@ function printBackfill(data: typeof points): void {
   for (const size of [4, 20, 40]) {
     const batches = Math.ceil(LONG_LOG_TURNS / size);
     const tokens = batches * tokenFit.intercept + LONG_LOG_TURNS * tokenFit.slope;
-    const cost = batches * costFit.intercept + LONG_LOG_TURNS * costFit.slope;
+    const cost = coldStartUSD + batches * costFit.intercept + LONG_LOG_TURNS * costFit.slope;
     const hours = (batches * wallFit.intercept + LONG_LOG_TURNS * wallFit.slope) / 3.6e6;
     console.log(
       `| ${size} | ${batches} | ${formatMillions(tokens)} | $${cost.toFixed(2)} | ${hours.toFixed(1)} h | $${(cost + LONG_LOG_TURNS * longTurnUSD).toFixed(2)} |`,
     );
   }
-}
-
-function toSoloUsage(usage: Usage): Usage {
-  const excess = Math.max(0, usage.cacheRead - SHARED_PREFIX);
-  return { ...usage, cacheRead: usage.cacheRead - excess, cacheWrite: usage.cacheWrite + excess };
-}
-
-function priceUsage(usage: Usage): number {
-  return (
-    (usage.input * PRICES.input +
-      usage.cacheWrite * PRICES.cacheWrite +
-      usage.cacheRead * PRICES.cacheRead +
-      usage.output * PRICES.output) /
-    1e6
-  );
 }
 
 function getQuantile(values: number[], quantile: number): number {

@@ -74,8 +74,8 @@ env -u ANTHROPIC_API_KEY bun --no-env-file run.ts --samples 1 --input <turns_fil
   writer.
 
 A gold fact counts as captured when an applied candidate carries it and no active item still states
-its older form, such as the old address with no mention of the move. The judge labels candidates
-only; code scores the final memory.
+its older form, such as the old address with no mention of the move, or the pottery class with no
+mention that it ended. The judge labels candidates only; code scores the final memory.
 
 ## Results
 
@@ -125,12 +125,15 @@ A live batch of 4 turns sent a mean of 2,136 input tokens and produced 383 outpu
 input, 1,067 tokens are the system prompt and harness preamble, a cache read from the second batch
 on. Claude Code writes the rest, the batch text and the active items, to a 1-hour cache that no
 later batch reads, at twice the input price. One batch cost $0.0004 at Haiku 5.5 list prices, and
-the conversation cost $0.0046, or $0.011 per 100 turns. The harness reported the 1-hour cache write
+the conversation cost $0.0048, or $0.012 per 100 turns. The harness reported the 1-hour cache write
 itself, and its own cost figure matched the priced token counts in every run, which confirms the
 price table in [report.ts](report.ts).
 
-The samples ran in parallel, so 5 first batches read a cached prompt that another sample wrote. The
-report reprices that read as a write, as a lone writer pays it; the recorded figure was $0.0044 a
+The samples ran in parallel, so a batch could read cached text that another sample wrote, and every
+first batch in these runs read at least the 1,067-token preamble from the cache. A lone writer
+starts cold: its first batch writes its whole prompt to the cache, and each later batch reads only
+the preamble. The report therefore prices a first batch's cache read as a write, and any later
+batch's read beyond the preamble too, as a lone writer pays them; the recorded figure was $0.0044 a
 conversation.
 
 ### Persona in the system prompt
@@ -156,8 +159,9 @@ shipped writer's staging tools or its rule against storing short-lived plans.
 The estimate takes 20,000 turns, about a year at 55 turns a day. A straight-line fit over all 42
 recorded batches gives 1,965 input tokens per batch plus 47 per turn, and 3.2 seconds per batch plus
 0.26 seconds per turn. The batches run one after another, because each one reads the items the one
-before it wrote. The last column prices each turn at 400 tokens, closer to a real reply than the
-fixture's one-line replies.
+before it wrote. A backfill starts cold only once, so the fit prices every batch as a warm one and
+the estimate adds a single cold start. The last column prices each turn at 400 tokens, closer to a
+real reply than the fixture's one-line replies.
 
 | Turns per batch | Batches | Input tokens | Cost  | Serial time | Cost at 400-token turns |
 | --------------- | ------- | ------------ | ----- | ----------- | ----------------------- |
