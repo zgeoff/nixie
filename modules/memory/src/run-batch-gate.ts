@@ -3,9 +3,10 @@ import { findSourceEvidence } from './find-source-evidence';
 import type { ContentGateResult } from './gate-types';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import { readItemText } from './read-item-text';
+import { requireItem } from './require-item';
 import { runQuotedGate } from './run-quoted-gate';
 import { runRetirementChecker } from './run-retirement-checker';
-import type { MemoryTables, StoreParts, VersionRef } from './types';
+import type { MemoryItemRow, MemoryTables, StoreParts, VersionRef } from './types';
 import type { SourceMessage, StagedWrite } from './writer-types';
 
 // A batch write's gate outcome, with the text a proposal for it holds: the staged text, or the
@@ -16,7 +17,8 @@ export interface BatchGateResult {
 }
 
 // Runs a batch's staged write through the content gate outside any transaction, with the message
-// it cites as its only evidence. A missing item, a stale version or a retired item is refused.
+// it cites as its only evidence. A write whose item is missing or moved on is refused before any
+// check runs, and so is a retirement of a retired item.
 export async function runBatchGate(
   parts: StoreParts,
   write: StagedWrite,
@@ -36,8 +38,12 @@ export async function runBatchGate(
       text: write.text,
     };
   }
+
+  // an edit of a pinned item changes the core that rides every turn, so it waits for review as a
+  // pinning write does, and never fails its batch on the core's budget
+  const item = write.target === null ? null : await requireEditTarget(parts, write.target);
+  const isPinned = item?.is_pinned === 1;
   const found = await findSourceEvidence(parts.context.log, source, write.quote);
-  const isPinned = await isPinnedTarget(parts, write.target);
   const gate = await runQuotedGate(
     parts.context,
     { text: write.text, quote: write.quote, isPinned, thread: memoryWriterTaskID },
@@ -71,18 +77,12 @@ async function runBatchRetirementGate(
   return runRetirementChecker(parts.context, retirement.itemText, found);
 }
 
-// an edit of a pinned item changes the core that rides every turn, so it waits for review as a
-// pinning write does, and never fails its batch on the core's budget
-async function isPinnedTarget(parts: StoreParts, target: VersionRef | null): Promise<boolean> {
-  if (target === null) {
-    return false;
-  }
-  const row = await parts.context.log.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_items')
-    .select('is_pinned')
-    .where('item_id', '=', target.itemID)
-    .executeTakeFirst();
-
-  return row?.is_pinned === 1;
+// an edit of an item that moved on since the session read it could only become a proposal no one
+// can approve, so it fails as stale and the batch runs again
+function requireEditTarget(parts: StoreParts, target: VersionRef): Promise<MemoryItemRow> {
+  return requireItem(parts.context.log.writer.db.$extendTables<MemoryTables>(), {
+    target,
+    operation: 'edit',
+    states: ['active', 'retired'],
+  });
 }

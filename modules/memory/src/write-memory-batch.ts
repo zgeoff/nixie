@@ -5,11 +5,10 @@ import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import { findReadableWrites } from './find-readable-writes';
 import { memoryWriterTaskID } from './memory-writer-task-id';
-import { planBatchVersion } from './plan-batch-version';
 import type { StoreParts, VersionRef } from './types';
 import { updateVersionIndex } from './update-version-index';
+import { writeAppliedVersions } from './write-applied-versions';
 import type { WrittenVersion } from './write-version-in-transaction';
-import { writeVersionInTransaction } from './write-version-in-transaction';
 import type { BatchBounds, GateVerdict, StagedWrite, WriterTables } from './writer-types';
 
 // One write of a batch with the gate's verdict on it.
@@ -43,7 +42,7 @@ export type PublishResult =
 
 // Publishes one writer batch in one transaction under the delivery lock: the applied versions, the
 // proposals, the notices and the advanced cursor. A write whose source was forgotten never
-// publishes, and a stale revision fails the whole batch.
+// publishes, and a stale revision fails the whole batch, a proposed one included.
 export function writeMemoryBatch(
   parts: StoreParts,
   publication: BatchPublication,
@@ -76,7 +75,8 @@ type WrittenBatch =
   | { readonly status: 'superseded' };
 
 // The transaction checks the step's lease and that the batch is still the one the cursor waits on,
-// then reads every cited source again and leaves out each write whose source is gone.
+// then reads every cited source again and leaves out each write whose source is gone. A kept
+// proposal whose item moved on fails the batch, so every proposal it publishes can be approved.
 async function writeBatchInTransaction(
   parts: StoreParts,
   tx: Transaction<unknown>,
@@ -128,30 +128,4 @@ async function isPendingBatch(tx: Transaction<unknown>, bounds: BatchBounds): Pr
     row.pending_start === bounds.start &&
     row.pending_end === bounds.end
   );
-}
-
-async function writeAppliedVersions(
-  parts: StoreParts,
-  tx: Transaction<unknown>,
-  kept: readonly GatedWrite[],
-): Promise<readonly WrittenVersion[]> {
-  const written: WrittenVersion[] = [];
-
-  for (const gated of kept) {
-    if (gated.verdict.outcome === 'apply') {
-      // oxlint-disable-next-line no-await-in-loop -- each version reads the rows the one before wrote
-      const version = await writeVersionInTransaction(
-        parts,
-        tx,
-        planBatchVersion(gated.write, gated.verdict),
-      );
-
-      written.push(version);
-      if (NIXIE_TEST_BUILD && written.length === 1) {
-        // oxlint-disable-next-line no-await-in-loop -- the harness holds the first write only
-        await waitAtFaultPoint('writer.publish.inside', { kind: 'task', id: memoryWriterTaskID });
-      }
-    }
-  }
-  return written;
 }
