@@ -1,6 +1,7 @@
 import { startDatabase } from '@heynixie/db';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
+import { functionWords } from './function-words';
 
 export interface IndexEntry {
   readonly itemID: string;
@@ -28,7 +29,7 @@ export interface MemoryIndex {
   readonly update: (entry: IndexEntry) => Promise<void>;
   readonly remove: (itemID: string) => Promise<void>;
 
-  // the IDs of the items that match any word of query, best match first
+  // the IDs of the items that match any word of query other than a function word, best match first
   readonly findItemIDs: (query: string, options: MatchOptions) => Promise<readonly string[]>;
   readonly stop: () => Promise<void>;
 }
@@ -97,9 +98,12 @@ async function findMatches(
 }
 
 // Quotes each word of a free-text query and joins them with OR, so no character in the query reads
-// as FTS5 syntax, or null for a query with no word in it.
+// as FTS5 syntax, or null for a query with no word in it. It leaves function words out, because a
+// message that shares only "to" or "a" with an item says nothing about that item.
 function buildMatchExpression(query: string): string | null {
-  const words = query.match(/[\p{L}\p{N}]+/gu) ?? [];
+  const words = (query.match(/[\p{L}\p{N}]+/gu) ?? []).filter(
+    (word) => !functionWords.has(word.toLowerCase()),
+  );
 
   return words.length === 0 ? null : words.map((word) => `"${word}"`).join(' OR ');
 }

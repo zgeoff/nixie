@@ -29,14 +29,41 @@ test('it drops a match whose score falls below the floor', async () => {
   await ctx.index.updateAll([
     { itemID: 'item-a', text: 'The spare key sits under the blue flowerpot' },
     { itemID: 'item-b', text: 'The dentist appointment is on Tuesday at nine' },
-    { itemID: 'item-c', text: 'The library on Elm Street closes at six on Sundays' },
-    { itemID: 'item-d', text: 'Allergic to hazelnuts and the cat' },
+    { itemID: 'item-c', text: 'The library on Elm Street closes early on Tuesday' },
+    { itemID: 'item-d', text: 'Waters the ferns every Tuesday' },
   ]);
 
-  // "the" sits in every item, so it scores near 0, and "flowerpot" sits in one
-  const found = await ctx.index.findItemIDs('the flowerpot', { limit: 10, minScore: 0.25 });
+  // "Tuesday" sits in 3 of the 4 items, so it scores near 0, and "flowerpot" sits in one
+  const found = await ctx.index.findItemIDs('Tuesday flowerpot', { limit: 10, minScore: 0.25 });
 
   expect(found).toStrictEqual(['item-a']);
+});
+
+test('it leaves the function words of a query out of the match', async () => {
+  const ctx = await setupTest();
+
+  await ctx.index.updateAll([
+    { itemID: 'item-a', text: 'Allergic to hazelnuts and the cat' },
+    { itemID: 'item-b', text: 'Has a sister called Priya who lives in Lisbon' },
+    { itemID: 'item-c', text: 'Prefers window seats on trains' },
+  ]);
+
+  const found = await ctx.index.findItemIDs('I need to book a train to Manchester', { limit: 10 });
+
+  expect(found).toStrictEqual(['item-c']);
+});
+
+test('it matches no item for a query of only function words', async () => {
+  const ctx = await setupTest();
+
+  await ctx.index.updateAll([
+    { itemID: 'item-a', text: 'Allergic to hazelnuts and the cat' },
+    { itemID: 'item-b', text: 'Has a sister called Priya who lives in Lisbon' },
+  ]);
+
+  const found = await ctx.index.findItemIDs("Who is it that's in there?", { limit: 10 });
+
+  expect(found).toStrictEqual([]);
 });
 
 test('it drops every match in an index of 2 items, which BM25 scores near 0', async () => {
@@ -70,11 +97,11 @@ test('it keeps every match with no floor', async () => {
   const ctx = await setupTest();
 
   await ctx.index.updateAll([
-    { itemID: 'item-a', text: 'The spare key sits under the blue flowerpot' },
+    { itemID: 'item-a', text: 'The spare key sits under the blue flowerpot on Tuesday' },
     { itemID: 'item-b', text: 'The dentist appointment is on Tuesday at nine' },
   ]);
 
-  const found = await ctx.index.findItemIDs('the', { limit: 10 });
+  const found = await ctx.index.findItemIDs('Tuesday', { limit: 10 });
 
   expect(found).toIncludeSameMembers(['item-a', 'item-b']);
 });

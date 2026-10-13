@@ -109,10 +109,10 @@ test('it leaves out a match below the score floor', async () => {
   });
 
   await ctx.memory.store.remember({ text: 'The dentist is on Tuesday at nine', provenance });
-  await ctx.memory.store.remember({ text: 'The library closes at six on Sundays', provenance });
-  await ctx.memory.store.remember({ text: 'Allergic to hazelnuts and the cat', provenance });
+  await ctx.memory.store.remember({ text: 'The library closes early on Tuesday', provenance });
+  await ctx.memory.store.remember({ text: 'Waters the ferns every Tuesday', provenance });
 
-  const result = await ctx.memory.store.recall({ query: 'the flowerpot', minScore: 0.25 });
+  const result = await ctx.memory.store.recall({ query: 'Tuesday flowerpot', minScore: 0.25 });
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([flowerpot.itemID]);
 });
@@ -210,6 +210,99 @@ test('it recalls neither of 2 items, which BM25 cannot rank, above a score floor
   });
 
   expect(result.items).toStrictEqual([]);
+});
+
+test('it recalls only the train item of 10 for a message that shares function words with others', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  await Promise.all([
+    ctx.memory.store.remember({
+      text: 'Wants retrieved memories to be relevant to the current message',
+      provenance,
+    }),
+    ctx.memory.store.remember({
+      text: 'Drinks oat milk flat whites and no coffee after 2pm',
+      provenance,
+    }),
+    ctx.memory.store.remember({
+      text: 'Has a sister called Priya who lives in Lisbon',
+      provenance,
+    }),
+    ctx.memory.store.remember({ text: 'Allergic to hazelnuts and the cat', provenance }),
+    ctx.memory.store.remember({ text: 'The dentist is on Tuesday at nine', provenance }),
+    ctx.memory.store.remember({ text: 'Works from home on Mondays and Fridays', provenance }),
+    ctx.memory.store.remember({ text: 'The library closes at six on Sundays', provenance }),
+    ctx.memory.store.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance,
+    }),
+    ctx.memory.store.remember({ text: 'Waters the ferns every Tuesday', provenance }),
+  ]);
+
+  const train = await ctx.memory.store.remember({
+    text: 'Prefers window seats on trains',
+    provenance,
+  });
+  const result = await ctx.memory.store.recall({
+    query: 'I need to book a train to Manchester next week',
+    limit: 5,
+    minScore: 0.25,
+    excludePinned: true,
+  });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([train.itemID]);
+});
+
+test('it recalls only the coffee item of 10 for a message that shares function words with others', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  await Promise.all([
+    ctx.memory.store.remember({
+      text: 'Wants retrieved memories to be relevant to the current message',
+      provenance,
+    }),
+    ctx.memory.store.remember({
+      text: 'Has a sister called Priya who lives in Lisbon',
+      provenance,
+    }),
+    ctx.memory.store.remember({ text: 'Allergic to hazelnuts and the cat', provenance }),
+    ctx.memory.store.remember({ text: 'Prefers window seats on trains', provenance }),
+    ctx.memory.store.remember({ text: 'The dentist is on Tuesday at nine', provenance }),
+    ctx.memory.store.remember({ text: 'Works from home on Mondays and Fridays', provenance }),
+    ctx.memory.store.remember({ text: 'The library closes at six on Sundays', provenance }),
+    ctx.memory.store.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance,
+    }),
+    ctx.memory.store.remember({ text: 'Waters the ferns every Tuesday', provenance }),
+  ]);
+
+  const coffee = await ctx.memory.store.remember({
+    text: 'Drinks oat milk flat whites and no coffee after 2pm',
+    provenance,
+  });
+  const result = await ctx.memory.store.recall({
+    query: 'Is it too late for a coffee now?',
+    limit: 5,
+    minScore: 0.25,
+    excludePinned: true,
+  });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([coffee.itemID]);
 });
 
 test('it matches a query word through its stem', async () => {
