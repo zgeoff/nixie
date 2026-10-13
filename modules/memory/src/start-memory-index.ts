@@ -9,7 +9,7 @@ export interface IndexEntry {
 }
 
 // A match of the index: the item and its BM25 score, negated so higher is better.
-export interface IndexMatch {
+interface IndexMatch {
   readonly itemID: string;
   readonly score: number;
 }
