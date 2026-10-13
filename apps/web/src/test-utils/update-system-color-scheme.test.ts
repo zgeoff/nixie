@@ -1,4 +1,4 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { updateSystemColorScheme } from './update-system-color-scheme';
 
 test('it makes the dark color scheme query match', () => {
@@ -7,15 +7,18 @@ test('it makes the dark color scheme query match', () => {
   expect(globalThis.matchMedia('(prefers-color-scheme: dark)').matches).toBeTrue();
 });
 
-test('it tells a color scheme query listener about the change', () => {
+test('it tells a color scheme query handleChange about the change', () => {
   const query = globalThis.matchMedia('(prefers-color-scheme: dark)');
-  const listener = mock<NonNullable<MediaQueryList['onchange']>>();
+  const seen: boolean[] = [];
+  const handleChange = (): void => {
+    seen.push(query.matches);
+  };
 
-  query.addEventListener('change', listener);
+  query.addEventListener('change', handleChange);
   onTestFinished(() => {
-    query.removeEventListener('change', listener);
+    query.removeEventListener('change', handleChange);
   });
   updateSystemColorScheme('dark');
 
-  expect(listener).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ matches: true }));
+  expect(seen).toStrictEqual([true]);
 });
