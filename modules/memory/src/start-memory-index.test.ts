@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { startMemoryIndex } from './start-memory-index';
 
 async function setupTest() {
@@ -256,4 +257,24 @@ test('it empties the index before it fills it again', async () => {
   const result = await ctx.index.findItemIDs('Elm', { limit: 10 });
 
   expect(result).toStrictEqual(['item-b']);
+});
+
+test('it gives each match its score, the better match scoring higher', async () => {
+  const ctx = await setupTest();
+
+  await ctx.index.updateAll([
+    { itemID: 'item-a', text: 'The library closes at six' },
+    { itemID: 'item-b', text: 'The library on Elm Street closes at six on Sundays' },
+    { itemID: 'item-c', text: 'Allergic to hazelnuts' },
+  ]);
+
+  const found = await ctx.index.findMatches('Sundays library', { limit: 10 });
+  const [best, next] = found;
+
+  invariant(best && next);
+  expect(found).toStrictEqual([
+    { itemID: 'item-b', score: expect.any(Number) },
+    { itemID: 'item-a', score: expect.any(Number) },
+  ]);
+  expect(best.score).toBeGreaterThan(next.score);
 });

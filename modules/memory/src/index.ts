@@ -25,6 +25,8 @@ export type { MemoryNoteOptions, TurnMemoryNote } from './read-memory-change-not
 export type { AnswerQuoteSource, ProposalAnswerEvent } from './build-proposal-answer-kind';
 export { buildProposalAnswerKind } from './build-proposal-answer-kind';
 export { readMemoryChangeNote } from './read-memory-change-note';
+export type { VersionTextResult } from './read-version-texts';
+export { readVersionTexts } from './read-version-texts';
 export type { WriterStatus } from './read-writer-status';
 export { readWriterStatus } from './read-writer-status';
 export { PinnedCoreFullError } from './pinned-core-full-error';

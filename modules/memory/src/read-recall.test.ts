@@ -512,6 +512,49 @@ test('it records each item and version it delivered, and no text', async () => {
   ]);
 });
 
+test('it records the match score of each item a query delivered', async () => {
+  const ctx = await setupTest();
+  const both = await ctx.memory.store.remember({
+    text: 'The library on Elm Street closes at six on Sundays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const one = await ctx.memory.store.remember({
+    text: 'The library closes at six',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Allergic to hazelnuts',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  await ctx.memory.store.recall({ query: 'Sundays library', thread: 'conversation' });
+
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(records.at(-1)?.record.payload).toStrictEqual({
+    items: [
+      { itemID: both.itemID, version: 1, score: expect.toBePositive() },
+      { itemID: one.itemID, version: 1, score: expect.toBePositive() },
+    ],
+  });
+});
+
+test('it records no score for items recalled by ID', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(records.at(-1)?.record.payload).toStrictEqual({
+    items: [{ itemID: item.itemID, version: 1 }],
+  });
+});
+
 test('it records every version that a history recall delivered', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({
