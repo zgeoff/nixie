@@ -16,8 +16,9 @@ pipeline if the pipeline misses a median of 2.5 s from the end of your speech to
 ## Why
 
 - On a live process, the first-token spike measured Haiku 5.5's first token at 0.57 s median and
-  1.24 s at the 90th percentile. A full reply comes about 2 s after you stop speaking, so reply time
-  does not rule out the pipeline.
+  1.24 s at the 90th percentile. Added to the 1.3 to 1.5 s that speech-to-text and text-to-speech
+  take, you hear the start of a reply about 2 s after you stop speaking, so reply time does not rule
+  out the pipeline.
 - One runtime keeps one persona, one memory context and one route through the
   [decision point](../design/platform/policy/decision-point.md) for typed and spoken turns alike.
 - Speech-to-text and text-to-speech can run on the host, so your audio stays home.

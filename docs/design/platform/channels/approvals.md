@@ -26,9 +26,10 @@ a named action is harder to approve by reflex.
 | Always-ask | "Always asks", with the effect | A heavy warning frame       | One tap on its own card, never batched |
 | Lifting    | "Lifts the always-ask set"     | The warning frame, inverted | One tap after the rule's bounds show   |
 
-A rule proposal and a mandate render as always-ask cards, because they widen policy. With
-[0012](../../../decisions/0012-high-risk-approvals.md), always-ask and lifting approvals ask for the
-passkey, and so does Always allow when its rule is wider than the rule the card showed.
+A rule proposal and a mandate render as always-ask cards, because they widen policy. Once the
+passkey check from [0012](../../../decisions/0012-high-risk-approvals.md) ships, always-ask and
+lifting approvals ask for the passkey, and so does Always allow when its rule is wider than the rule
+the card showed.
 
 ## Your choices
 
