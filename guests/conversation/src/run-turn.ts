@@ -5,6 +5,8 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
 import type { TurnFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
+import { countContextTokens } from './count-context-tokens';
+import { getCompactWindow } from './get-compact-window';
 import type { TurnInputState } from './read-turn-input';
 import { readTurnInput } from './read-turn-input';
 import { removeStaleSessions } from './remove-stale-sessions';
@@ -34,6 +36,8 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
   const state: TurnState = {
     pending: new Set(),
     boundary: null,
+    contextSize: null,
+    compactWindow: getCompactWindow(turn.profile),
     inputFailed: Promise.withResolvers(),
     ended: Promise.withResolvers(),
   };
@@ -84,6 +88,10 @@ async function drainSession(
 interface TurnState extends TurnInputState {
   // the session's last chain entry so far
   boundary: SessionPoint | null;
+
+  // the tokens the last main-chain model call read, or null before one reports its usage
+  contextSize: number | null;
+  readonly compactWindow: number;
 }
 
 type MessageOutcome = 'continue' | 'result' | 'stop';
@@ -170,6 +178,11 @@ async function emitAssistant(
     return 'continue';
   }
   state.boundary = { sessionID: message.session_id, messageID: message.uuid };
+
+  // the CLI's own message for an API error carries no usage from the model
+  if (message.error === undefined) {
+    state.contextSize = countContextTokens(message.message.usage);
+  }
   await emitReads(deps, state, [message.user_message_uuid, ...(message.user_message_uuids ?? [])]);
   await deps.emit({
     type: 'assistant',
@@ -255,13 +268,14 @@ async function emitResult(
     await deps.emit({ type: 'failed', reason: 'error', detail: 'the turn wrote no chain entry' });
     return 'stop';
   }
-  await deps.emit(buildEnded(message, state.boundary));
+  await deps.emit(buildEnded(message, state.boundary, state));
   return 'result';
 }
 
 function buildEnded(
   message: Extract<SDKResultMessage, { subtype: 'success' }>,
   boundary: SessionPoint,
+  state: TurnState,
 ): GuestFrame {
   return {
     type: 'ended',
@@ -276,5 +290,8 @@ function buildEnded(
       cacheReadTokens: message.usage.cache_read_input_tokens,
       cacheWriteTokens: message.usage.cache_creation_input_tokens,
     },
+    ...(state.contextSize === null
+      ? {}
+      : { context: { size: state.contextSize, window: state.compactWindow } }),
   };
 }

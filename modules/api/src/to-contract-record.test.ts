@@ -343,6 +343,86 @@ test('it shows no record that belongs to no thread', () => {
   expect(toContractRecord(record)).toBeNull();
 });
 
+test('it carries the context a turn end recorded for its last model call', () => {
+  const record = buildMockLogRecord({
+    sequence: 21,
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    kind: 'model.turn_ended',
+    thread: 'conversation',
+    payload: {
+      model: 'claude-test-1',
+      profile: 'chat-direct',
+      inputTokens: 500,
+      contextSize: 41_000,
+      contextWindow: 400_000,
+    },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    context: { size: 41_000, window: 400_000 },
+    kind: 'model.turn_ended',
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    sequence: 21,
+    thread: 'conversation',
+  });
+});
+
+test('it carries no context on a turn end recorded before the context was', () => {
+  const record = buildMockLogRecord({
+    sequence: 21,
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    kind: 'model.turn_ended',
+    thread: 'conversation',
+    payload: { model: 'claude-test-1', profile: 'chat-direct', inputTokens: 500 },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'model.turn_ended',
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    sequence: 21,
+    thread: 'conversation',
+  });
+});
+
+test('it carries a compaction with its trigger and its token counts before and after', () => {
+  const record = buildMockLogRecord({
+    sequence: 20,
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    kind: 'model.compacted',
+    thread: 'conversation',
+    payload: {
+      model: 'claude-test-1',
+      profile: 'chat-direct',
+      trigger: 'auto',
+      preTokens: 384_000,
+      postTokens: 42_000,
+    },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    compaction: { postTokens: 42_000, preTokens: 384_000, trigger: 'auto' },
+    kind: 'model.compacted',
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    sequence: 20,
+    thread: 'conversation',
+  });
+});
+
+test('it carries a compaction whose session reported no after count without one', () => {
+  const record = buildMockLogRecord({
+    sequence: 20,
+    recordedAt: new Date('2026-10-10T12:00:04Z'),
+    kind: 'model.compacted',
+    thread: 'conversation',
+    payload: { trigger: 'manual', preTokens: 384_000, postTokens: null },
+  });
+
+  expect(toContractRecord(record)?.compaction).toStrictEqual({
+    preTokens: 384_000,
+    trigger: 'manual',
+  });
+});
+
 test('it carries the versions a recall delivered with their scores, and no text', () => {
   const record = buildMockLogRecord({
     sequence: 11,

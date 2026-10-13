@@ -91,6 +91,53 @@ test('it streams the input tokens a scripted reply sets in its message start', a
   expect(text).toInclude('"usage":{"input_tokens":150000,"output_tokens":1}');
 });
 
+test('it reports the cache tokens a scripted reply sets beside its input tokens', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({
+    text: 'cached',
+    inputTokens: 300,
+    cacheReadTokens: 38_000,
+    cacheWriteTokens: 2700,
+  });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+  const body = await response.json();
+
+  expect(body).toMatchObject({
+    usage: {
+      input_tokens: 300,
+      cache_read_input_tokens: 38_000,
+      cache_creation_input_tokens: 2700,
+      output_tokens: 5,
+    },
+  });
+});
+
+test('it streams the cache tokens a scripted reply sets in its message start', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({
+    text: 'cached',
+    inputTokens: 300,
+    cacheReadTokens: 38_000,
+    cacheWriteTokens: 2700,
+  });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', stream: true, messages: [] }),
+  });
+  const text = await response.text();
+
+  expect(text).toInclude(
+    '"usage":{"input_tokens":300,"cache_read_input_tokens":38000,"cache_creation_input_tokens":2700,"output_tokens":1}',
+  );
+});
+
 test('it refuses a request past the end of its script with a 400', async () => {
   const ctx = setupTest();
 

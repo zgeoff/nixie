@@ -20,6 +20,51 @@ test('it copies a message record with its text and spans', async () => {
   });
 });
 
+test('it copies a turn end with its context', async () => {
+  const record = await store.records.create({
+    context: { size: 41_000, window: 400_000 },
+    kind: 'model.turn_ended',
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 3,
+    thread: 'conversation',
+  });
+
+  expect(toLogRecord(record)).toStrictEqual({
+    context: { size: 41_000, window: 400_000 },
+    kind: 'model.turn_ended',
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 3,
+    thread: 'conversation',
+  });
+});
+
+test('it copies a compaction with its counts before and after', async () => {
+  const record = await store.records.create({
+    compaction: { postTokens: 42_000, preTokens: 384_000, trigger: 'auto' },
+    kind: 'model.compacted',
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 4,
+    thread: 'conversation',
+  });
+
+  expect(toLogRecord(record)).toStrictEqual({
+    compaction: { postTokens: 42_000, preTokens: 384_000, trigger: 'auto' },
+    kind: 'model.compacted',
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 4,
+    thread: 'conversation',
+  });
+});
+
+test('it leaves the after count out of a compaction that has none', async () => {
+  const record = await store.records.create({
+    compaction: { preTokens: 384_000, trigger: 'manual' },
+    kind: 'model.compacted',
+  });
+
+  expect(toLogRecord(record).compaction).toStrictEqual({ preTokens: 384_000, trigger: 'manual' });
+});
+
 test('it copies a recall with each score, and leaves the score out where none exists', async () => {
   const record = await store.records.create({
     kind: 'memory.recalled',

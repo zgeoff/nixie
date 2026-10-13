@@ -229,6 +229,83 @@ test('it records the model and the profile on the turn end and on every tool cal
   ]);
 });
 
+test('it records the context of the last model call that reported one on the turn end', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 200, outputTokens: 5, cacheReadTokens: 30_000, cacheWriteTokens: 4000 },
+      context: { size: 34_200, window: 400_000 },
+    },
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 300, outputTokens: 5, cacheReadTokens: 38_000, cacheWriteTokens: 2700 },
+      context: { size: 41_000, window: 400_000 },
+    },
+  ]);
+  await ctx.sendMessage(runner, 'Hi.');
+
+  const records = await ctx.readKinds('model.turn_ended');
+
+  expect(records).toMatchObject([
+    {
+      payload: {
+        inputTokens: 500,
+        cacheReadTokens: 68_000,
+        cacheWriteTokens: 6700,
+        contextSize: 41_000,
+        contextWindow: 400_000,
+      },
+    },
+  ]);
+});
+
+test('it records no context on a turn end whose model calls reported none', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'stop_sequence',
+      isError: true,
+      turns: 1,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+  await ctx.sendMessage(runner, 'Hi.');
+
+  const records = await ctx.readKinds('model.turn_ended');
+
+  expect(
+    records.map((record) => 'contextSize' in record.payload || 'contextWindow' in record.payload),
+  ).toStrictEqual([false]);
+});
+
 test('it commits the session boundary and resumes the next turn at it', async () => {
   const ctx = await setupTest();
 

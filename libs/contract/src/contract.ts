@@ -54,6 +54,20 @@ const recallItemSchema = versionRefSchema.extend({ score: z.number().optional() 
 
 const recallSchema = z.object({ items: z.array(recallItemSchema) });
 
+const tokenCountSchema = z.int().nonnegative();
+
+// The context the conversation's last model call read, in tokens, and the window its session
+// compacts within.
+const contextSchema = z.object({ size: tokenCountSchema, window: z.int().positive() });
+
+// A compaction of the conversation's session: what started it, and the context's tokens before and
+// after, the after count absent when the session did not report one. It never holds the summary.
+const compactionSchema = z.object({
+  postTokens: tokenCountSchema.optional(),
+  preTokens: tokenCountSchema,
+  trigger: z.enum(['manual', 'auto']),
+});
+
 // A version's text while its key exists. A forgotten item's version reads as shredded.
 const versionTextSchema = versionRefSchema.extend({
   status: z.enum(['readable', 'shredded', 'unreadable', 'missing']),
@@ -61,6 +75,12 @@ const versionTextSchema = versionRefSchema.extend({
 });
 
 const recordSchema = z.object({
+  // Set on a model.compacted record.
+  compaction: compactionSchema.optional(),
+
+  // Set on a model.turn_ended record whose turn reported the context of its last model call.
+  context: contextSchema.optional(),
+
   // The kind decides how a client renders the record, and a client shows an unfamiliar kind by
   // its name.
   kind: z.string(),

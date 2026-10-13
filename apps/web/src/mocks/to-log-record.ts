@@ -8,6 +8,8 @@ type StoredRecord = ReadonlyDeep<ReturnType<typeof store.records.all>[number]>;
 // own objects.
 export function toLogRecord(record: StoredRecord): LogRecord {
   return {
+    ...(record.compaction === undefined ? {} : { compaction: toLogCompaction(record.compaction) }),
+    ...(record.context === undefined ? {} : { context: { ...record.context } }),
     kind: record.kind,
     ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
     ...(record.recall === undefined ? {} : { recall: toLogRecall(record.recall) }),
@@ -16,6 +18,17 @@ export function toLogRecord(record: StoredRecord): LogRecord {
     ...(record.task === undefined ? {} : { task: structuredClone(record.task) }),
     thread: record.thread,
     ...(record.toolCall === undefined ? {} : { toolCall: structuredClone(record.toolCall) }),
+  };
+}
+
+type LogCompaction = NonNullable<LogRecord['compaction']>;
+
+// keeps an after count only where one exists
+function toLogCompaction(compaction: NonNullable<StoredRecord['compaction']>): LogCompaction {
+  return {
+    ...(compaction.postTokens === undefined ? {} : { postTokens: compaction.postTokens }),
+    preTokens: compaction.preTokens,
+    trigger: compaction.trigger,
   };
 }
 

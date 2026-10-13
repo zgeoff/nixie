@@ -1,14 +1,16 @@
 import type { StepActivity } from './build-activity';
+import { formatContext } from './format-context';
 
-// Formats a collapsed step's one line: the task, how it stands unless done, how many memories its
-// recalls delivered, each tool with its targets, such as "web fetch: theverge.com", and how long
-// it ran. A part shows only once its data exists.
+// Formats a collapsed step's one line: the task, how it stands unless done, its memory count, each
+// tool with its targets, such as "web fetch: theverge.com", its context, such as "41k / 400k", and
+// how long it ran. A part shows only once its data exists.
 export function formatStepSummary(step: StepActivity): string {
   const parts = [
     step.taskID ?? 'task',
     ...formatStatus(step),
     ...(step.memories === undefined ? [] : [formatMemoryCount(step.memories.length)]),
     formatTools(step),
+    ...(step.context === undefined ? [] : [formatContext(step.context)]),
     ...(step.durationMs === undefined ? [] : [formatDuration(step.durationMs)]),
   ];
 

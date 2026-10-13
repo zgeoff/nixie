@@ -18,11 +18,27 @@ export interface RecalledMemory {
   readonly version: number;
 }
 
+// The context the step's last model call read, in tokens, and the window its session compacts
+// within.
+export type ContextActivity = NonNullable<LiveRecord['context']>;
+
+// A compaction of the session during the step, with its tokens before and after, and the sequence
+// of its record, which keys it in a list.
+export type CompactionActivity = NonNullable<LiveRecord['compaction']> & {
+  readonly sequence: number;
+};
+
 type StepStatus = 'done' | 'failed' | 'interrupted' | 'running';
 
 export interface StepActivity {
   readonly kind: 'step';
   readonly calls: readonly ToolActivity[];
+
+  // each compaction in the step, in order; absent when the session did not compact
+  readonly compactions?: readonly CompactionActivity[];
+
+  // the context of the step's last turn end that recorded one
+  readonly context?: ContextActivity;
 
   // how long the step ran, from its start to its end, once it has ended
   readonly durationMs?: number;
@@ -104,9 +120,15 @@ function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActi
   const error = records.find((record) => record.task?.error !== undefined)?.task?.error;
   const durationMs = status === 'running' ? undefined : findDuration(records);
   const recalls = records.filter((record) => record.recall !== undefined);
+  const context = records.findLast((record) => record.context !== undefined)?.context;
+  const compactions = records.flatMap((record) =>
+    record.compaction === undefined ? [] : [{ ...record.compaction, sequence: record.sequence }],
+  );
 
   return {
     calls: collectCalls(records),
+    ...(compactions.length === 0 ? {} : { compactions }),
+    ...(context === undefined ? {} : { context }),
     ...(durationMs === undefined ? {} : { durationMs }),
     ...(error === undefined ? {} : { error }),
     key: records[0]?.sequence ?? 0,

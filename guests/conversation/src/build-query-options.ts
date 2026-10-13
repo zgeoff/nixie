@@ -1,5 +1,6 @@
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
+import { getCompactWindow } from './get-compact-window';
 import { getConfigDir } from './get-config-dir';
 import { getHome } from './get-home';
 import { getWorkDir } from './get-work-dir';
@@ -14,9 +15,6 @@ export interface QueryContext {
   // nixie's tool server: the run's HTTP endpoint in production, an in-process server in a test
   readonly toolServer: McpServerConfig;
 }
-
-// the auto-compact window of a profile that sets no context cap
-const defaultCompactWindow = 200_000;
 
 // Builds the options of every query(): nixie's tools alone, a system prompt rendered fresh on every
 // request, and the SDK's compaction pinned to run only inside a turn. options.env replaces the
@@ -39,8 +37,7 @@ export function buildQueryOptions(turn: TurnFrame, context: QueryContext): Optio
       autoDreamEnabled: false,
       autoCompactEnabled: true,
 
-      // the profile's context cap, which the CLI compacts within instead of the model's own window
-      autoCompactWindow: turn.profile.contextTokens ?? defaultCompactWindow,
+      autoCompactWindow: getCompactWindow(turn.profile),
       precomputeCompactionEnabled: false,
 
       // a compaction runs only inside a turn, so its record lands with that turn's

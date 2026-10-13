@@ -12,8 +12,12 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
   const task = record.kind.startsWith('task.') ? toTask(record) : undefined;
   const toolCall = toolKinds.has(record.kind) ? toToolCall(record) : undefined;
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
+  const context = record.kind === 'model.turn_ended' ? toContext(record) : undefined;
+  const compaction = record.kind === 'model.compacted' ? toCompaction(record) : undefined;
 
   return {
+    ...(compaction === undefined ? {} : { compaction }),
+    ...(context === undefined ? {} : { context }),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
     ...(recall === undefined ? {} : { recall }),
@@ -143,6 +147,33 @@ function toRecallItem(item: JSONValue): readonly RecallItem[] {
   }
 
   return [{ itemID, version, ...(typeof score === 'number' ? { score } : {}) }];
+}
+
+type Context = NonNullable<ContractRecord['context']>;
+
+// A turn end names the context its last model call read and the window it compacts within; one
+// from before nixie recorded them has neither.
+function toContext(record: LogRecord): Context | undefined {
+  const size = record.payload['contextSize'];
+  const window = record.payload['contextWindow'];
+
+  return typeof size === 'number' && typeof window === 'number' ? { size, window } : undefined;
+}
+
+type Compaction = NonNullable<ContractRecord['compaction']>;
+
+// A compaction's record holds its trigger and its token counts, and a null after count when the
+// session reported none.
+function toCompaction(record: LogRecord): Compaction | undefined {
+  const trigger = record.payload['trigger'];
+  const preTokens = record.payload['preTokens'];
+  const postTokens = record.payload['postTokens'];
+
+  if ((trigger !== 'manual' && trigger !== 'auto') || typeof preTokens !== 'number') {
+    return undefined;
+  }
+
+  return { ...(typeof postTokens === 'number' ? { postTokens } : {}), preTokens, trigger };
 }
 
 function isJSONArray(value: JSONValue | undefined): value is readonly JSONValue[] {
