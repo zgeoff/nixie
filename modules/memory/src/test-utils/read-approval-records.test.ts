@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { buildMockWriteCaller } from './build-mock-write-caller';
 import { createProposal } from './create-proposal';
 import { readApprovalRecords } from './read-approval-records';
@@ -73,6 +74,34 @@ test('it reads the version the approval applied, with placeholders for its item 
       noticeKey: null,
     },
   });
+});
+
+test('it reads an approval that the log holds past its first page of records', async () => {
+  const memory = await startTestMemory();
+
+  // more records than one page of a log read returns
+  await writeRecords(
+    memory.log,
+    Array.from({ length: 150 }, () => ({
+      kind: 'test.filler',
+      definitions: { snapshotHash: 'sha256:test' },
+      payload: {},
+    })),
+  );
+  const proposal = await createProposal(memory.store, { text: 'Likes jazz' });
+
+  await memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const records = await readApprovalRecords(memory.log, proposal);
+
+  expect(records.map((record) => record['kind'])).toStrictEqual([
+    'memory.approval_recorded',
+    'memory.version_added',
+  ]);
 });
 
 test('it reads no record of another proposal or of a proposal still pending', async () => {

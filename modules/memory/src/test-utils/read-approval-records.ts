@@ -1,16 +1,16 @@
-import type { JSONObject, Log } from '@heynixie/log';
+import type { JSONObject, Log, RecordWithChanges } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import type { MemoryProposal } from '../gate-types';
 
-// Reads the records that the approval of one proposal wrote, oldest first. The values no two
-// approvals share read as placeholders: the proposal, item and approval IDs, the action hash, the
-// sealed text, the sequence and the time. Two approvals' records then compare whole.
+// Reads the records that one proposal's approval wrote, oldest first, from every page of the log.
+// Values no two approvals share read as placeholders: the proposal, item and approval IDs, the
+// action hash, the sealed text, the sequence and the time, so two approvals' records compare whole.
 export async function readApprovalRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   proposal: Pick<MemoryProposal, 'proposalID' | 'itemID' | 'actionHash'>,
 ): Promise<readonly JSONObject[]> {
-  const entries = await readRecords(log, { afterSequence: 0 });
+  const entries = await readEveryRecord(log, 0);
 
   return entries
     .filter((entry) => entry.record.approval?.proposalID === proposal.proposalID)
@@ -36,4 +36,17 @@ export async function readApprovalRecords(
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a parse of a stringified JSONObject
       return restored as JSONObject;
     });
+}
+
+// one page at a time, since a read returns at most one page of the log
+async function readEveryRecord(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  afterSequence: number,
+): Promise<readonly RecordWithChanges[]> {
+  const page = await readRecords(log, { afterSequence });
+  const last = page.at(-1);
+
+  return last === undefined
+    ? page
+    : [...page, ...(await readEveryRecord(log, last.record.sequence))];
 }
