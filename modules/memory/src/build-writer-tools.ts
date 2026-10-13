@@ -3,9 +3,9 @@ import { z } from 'zod';
 import type { WriterStaging } from './create-writer-staging';
 import type { MemoryStore } from './types';
 
-// Builds the memory writer's 3 tools, which stage a batch's changes instead of applying them, so a
-// session that dies leaves nothing behind. recall declares read, and remember and retire declare
-// note, as the conversation's memory tools do.
+// Builds the memory writer's 4 tools, which stage a batch's changes instead of applying them, so a
+// session that dies leaves nothing behind. As in the conversation, recall declares read, the rest
+// declare note, remember only creates an item, and edit is the one tool that changes its text.
 export function buildWriterTools(
   store: Pick<MemoryStore, 'recall'>,
   staging: WriterStaging,
@@ -14,6 +14,7 @@ export function buildWriterTools(
   return [
     buildRecallTool(store, staging, topItems),
     buildRememberTool(staging),
+    buildEditTool(staging),
     buildRetireTool(staging),
   ];
 }
@@ -94,16 +95,14 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
   return {
     name: 'memory.remember',
     description:
-      'Stages one durable fact about the owner as a new memory item, or as the new text of a ' +
-      'current item when you pass its itemID. quote is the exact words from the owner message ' +
-      'whose ID is sourceID.',
+      'Stages one durable fact about the owner as a new memory item. To change a current item, ' +
+      'use memory.edit. quote is the exact words from the owner message whose ID is sourceID.',
     input: {
       type: 'object',
       properties: {
         text: { type: 'string', minLength: 1, maxLength: 2000 },
         quote: { type: 'string', minLength: 1, maxLength: 2000 },
         sourceID: { type: 'integer', minimum: 1 },
-        itemID: { type: 'string' },
       },
       required: ['text', 'quote', 'sourceID'],
       additionalProperties: false,
@@ -127,7 +126,7 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
             text: input.text,
             quote: input.quote,
             sourceSequence: input.sourceID,
-            itemID: input.itemID ?? null,
+            itemID: null,
           }),
         ),
       );
@@ -135,11 +134,58 @@ function buildRememberTool(staging: WriterStaging): ToolDefinition {
   };
 }
 
-const rememberArguments = z.object({
+const rememberArguments = z.object({ text: z.string(), quote: z.string(), sourceID: z.int() });
+
+// An edit names its item, and the staging area binds it to the version a recall showed the session.
+function buildEditTool(staging: WriterStaging): ToolDefinition {
+  return {
+    name: 'memory.edit',
+    description:
+      'Stages the new full text of a current item, by its itemID, when the owner updates or ' +
+      'contradicts it. quote is the exact words from the owner message whose ID is sourceID.',
+    input: {
+      type: 'object',
+      properties: {
+        itemID: { type: 'string' },
+        text: { type: 'string', minLength: 1, maxLength: 2000 },
+        quote: { type: 'string', minLength: 1, maxLength: 2000 },
+        sourceID: { type: 'integer', minimum: 1 },
+      },
+      required: ['itemID', 'text', 'quote', 'sourceID'],
+      additionalProperties: false,
+    },
+    output: stagedOutput,
+    declaration: {
+      effects: ['note'],
+      destinations: [],
+      amount: null,
+      content: ['text', 'quote'],
+      results: { staged: 'owner_data' },
+    },
+    execution: 'direct',
+    run: (call) => {
+      const input = editArguments.parse(call.input);
+
+      return Promise.resolve(
+        toOutcome(
+          staging.stage({
+            op: 'remember',
+            text: input.text,
+            quote: input.quote,
+            sourceSequence: input.sourceID,
+            itemID: input.itemID,
+          }),
+        ),
+      );
+    },
+  };
+}
+
+const editArguments = z.object({
+  itemID: z.string(),
   text: z.string(),
   quote: z.string(),
   sourceID: z.int(),
-  itemID: z.string().optional(),
 });
 
 function buildRetireTool(staging: WriterStaging): ToolDefinition {

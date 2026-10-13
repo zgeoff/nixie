@@ -4,6 +4,7 @@ import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
 import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
+import { makeToolAllowRule } from './test-utils/make-tool-allow-rule';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
@@ -468,6 +469,52 @@ test('it proposes a write under your allow rule whose token you never typed', as
   });
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
+});
+
+test('it runs the full gate on an edit when your allow rule names only memory.remember', async () => {
+  const memory = await startTestMemory({
+    gate: { findAllowRule: makeToolAllowRule('memory.remember') },
+  });
+  const item = await memory.store.remember({
+    text: 'Likes jazz',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const created = await memory.store.writes.remember({
+    text: 'Likes opera',
+    caller: buildMockWriteCaller(),
+  });
+  const edited = await memory.store.writes.remember({
+    text: 'Likes blues',
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(created).toMatchObject({ status: 'applied' });
+  expect(edited).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+});
+
+test('it runs the full gate on a new item when your allow rule names only memory.edit', async () => {
+  const memory = await startTestMemory({
+    gate: { findAllowRule: makeToolAllowRule('memory.edit') },
+  });
+  const item = await memory.store.remember({
+    text: 'Likes jazz',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const edited = await memory.store.writes.remember({
+    text: 'Likes blues',
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+  const created = await memory.store.writes.remember({
+    text: 'Likes opera',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(edited).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+  expect(created).toMatchObject({ status: 'proposed', reason: 'no_quote' });
 });
 
 test("it groups a turn's applied writes and proposals under one notice", async () => {

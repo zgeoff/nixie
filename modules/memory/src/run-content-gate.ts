@@ -1,22 +1,23 @@
 import { buildGateReview } from './build-gate-review';
 import { findQuoteEvidence } from './find-quote-evidence';
-import type { ContentGateRequest, ContentGateResult } from './gate-types';
+import type { AllowRuleCall, ContentGateRequest, ContentGateResult } from './gate-types';
 import { runQuotedGate } from './run-quoted-gate';
 import { runRuleGate } from './run-rule-gate';
 import type { MemoryContext } from './types';
 
 // Runs the content gate outside any transaction: quote, tokens, then checker, and the first that
 // fails becomes the review reason. A pinning write waits for review even when every check passes,
-// and your allow rule on memory.remember leaves only the token check.
+// and your allow rule on the write's own tool leaves only the token check.
 export async function runContentGate(
   context: Pick<MemoryContext, 'log' | 'gate'>,
   request: ContentGateRequest,
+  tool: AllowRuleCall['tool'],
 ): Promise<ContentGateResult> {
   if (invisible.test(request.text)) {
     return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
   }
   const rule = await context.gate.findAllowRule({
-    tool: 'memory.remember',
+    tool,
     thread: request.thread,
   });
 

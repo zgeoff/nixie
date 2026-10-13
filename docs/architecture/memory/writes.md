@@ -106,8 +106,10 @@ from the run's thread, the task, and the model ID of the call that asked. A vers
 passed takes the user's words as its source and holds each check's verdict. Any other write has no
 version until the user approves it.
 
-The user's allow rule on `memory.remember` lets a write through either content-gate tool skip the
-quote and the checker, never the token check, which then compares against everything the user typed
+The user's allow rule on a content-gate tool lets a write through that tool skip the quote and the
+checker. The gate looks up the rule by the tool the write came through, `memory.edit` for a write
+that names an item and `memory.remember` for a new item, so a rule on one tool never covers the
+other. The rule never skips the token check, which then compares against everything the user typed
 in the window. No quote of the user's backs such a write, so its source is outside content. The
 policy engine has no user rules, so the gate finds no allow rule and every write runs the full gate.
 

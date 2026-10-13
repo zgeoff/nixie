@@ -86,12 +86,17 @@ test('it ends a catch-up over a changed address with one active item that holds 
   const [first] = await ctx.memory.listItems();
 
   ctx.memory.model.addReplies(
-    buildRememberReply({
-      text: 'You live at 9 Oak Lane.',
-      quote: 'I live at 9 Oak Lane',
-      sourceID: sequences[1],
-      itemID: first?.itemID ?? 'no-item',
-    }),
+    {
+      toolUse: {
+        name: 'mcp__nixie__memory_edit',
+        input: {
+          itemID: first?.itemID ?? 'no-item',
+          text: 'You live at 9 Oak Lane.',
+          quote: 'I live at 9 Oak Lane',
+          sourceID: sequences[1],
+        },
+      },
+    },
     { text: 'Staged.' },
   );
   await ctx.memory.run();
