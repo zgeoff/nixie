@@ -27,5 +27,6 @@ export async function sendTestMessage(
     leaseMs: 60_000,
     maxStepErrors: 1,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
 }

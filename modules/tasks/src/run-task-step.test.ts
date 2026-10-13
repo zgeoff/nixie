@@ -41,6 +41,7 @@ test('it gives the step its unread inbox and commits what the step returns', asy
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
 
   const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
@@ -87,6 +88,7 @@ test('it gives the next step the session boundary the last commit recorded', asy
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
 
   const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
@@ -98,6 +100,7 @@ test('it gives the next step the session boundary the last commit recorded', asy
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
 
   expect(runStep.mock.calls).toMatchObject([
@@ -126,6 +129,7 @@ test('it records the error when the step throws', async () => {
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
 
   const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
@@ -160,6 +164,7 @@ test('it records the error when the commit refuses what the step returned', asyn
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
 
   const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
@@ -197,6 +202,7 @@ test('it aborts the step and commits nothing once the lease is lost', async () =
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
 
   const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();

@@ -38,13 +38,18 @@ export interface TaskClaim {
   readonly stepKey: string;
 }
 
-// A step that threw, as its error record states it: the errors in a row with this one, and the
-// state the task moves to, ready for a retry or failed at the limit.
+// A step that threw, as its error record states it: the errors in a row with this one, the limit
+// in force, and the state the task moves to, ready for a retry or failed at the limit. The
+// conversation never fails, so its errors can pass the limit.
 export interface StepErrored {
   readonly taskID: string;
   readonly stepKey: string;
   readonly errors: number;
+  readonly errorLimit: number;
   readonly nextState: 'ready' | 'failed';
+
+  // when the task can next be claimed
+  readonly retryAt: number;
   readonly error: unknown;
 }
 

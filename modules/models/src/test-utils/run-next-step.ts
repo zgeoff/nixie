@@ -14,5 +14,6 @@ export async function runNextStep(context: TasksContext, runStep: RunStep): Prom
     leaseMs: 60_000,
     maxStepErrors: 3,
     retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
   });
 }
