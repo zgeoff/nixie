@@ -19,7 +19,7 @@ test('it renders no note when memory did not change', async () => {
     },
   ]);
 
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
   invariant(message);
   expect(note).toStrictEqual({ text: null, throughSequence: message.sequence });
@@ -43,7 +43,7 @@ test('it lists a change made outside the conversation and leaves out the convers
     },
   });
 
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
   expect(note.text).toBe(
     [
@@ -79,7 +79,7 @@ test('it counts the catch-up versions without listing them', async () => {
     },
   });
 
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
   expect(note.text).toBe(
     [
@@ -131,7 +131,7 @@ test('it lists a writer version from after the catch-up ended', async () => {
       checks: null,
     },
   });
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
   expect(note.text).toInclude(`- Remembered [${street.itemID}]: Lives on Elm Street`);
 });
@@ -156,7 +156,7 @@ test('it starts after the last turn that ended', async () => {
     text: 'Keeps bees on the roof',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
   expect(note.text).toBe(
     [
@@ -184,7 +184,7 @@ test('it starts after the sequence the last turn noted through', async () => {
     },
   ]);
 
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
   expect(note.text).toInclude(`- Remembered [${street.itemID}]: Lives on Elm Street`);
 });
@@ -205,7 +205,7 @@ test('it lists changes up to the cap and counts the rest', async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 1);
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 1 });
 
   expect(note.text).toMatch(
     /^<memory-changes>\n[^\n]+\n- Remembered \[[^\]]+\]: Lives on Elm Street\nand 2 more\n<\/memory-changes>$/u,
@@ -229,7 +229,7 @@ test("it names each of the conversation's proposals that a write from outside me
     caller: { ...caller, origin: 'task', thread: 'task-7', taskID: 'task-7' },
   });
 
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
   invariant(first.status === 'proposed');
   expect(note.text).toBe(
@@ -263,7 +263,7 @@ test('it leaves out a merge into a proposal that closed before the next turn', a
   invariant(pending);
   await ctx.memory.store.proposals.reject({ ...pending, identityID: 'identity-1' });
 
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, 5);
+  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
   expect(note.text).toBeNull();
 });

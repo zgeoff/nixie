@@ -1,6 +1,10 @@
-import type { StartedMemoryStore } from '@heynixie/memory';
-import { readMemoryChangeNote } from '@heynixie/memory';
+import type { AnswerQuoteSource, StartedMemoryStore } from '@heynixie/memory';
+import { buildProposalAnswerKind } from '@heynixie/memory';
+import type { TurnNote } from '@heynixie/models';
+import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/models';
 import type { RunStep } from '@heynixie/tasks';
+import { buildRestartKind } from './build-restart-kind';
+import { readTurnNotes } from './read-turn-notes';
 import { startConversation } from './start-conversation';
 import type { ServerParts } from './types';
 
@@ -13,8 +17,8 @@ export interface ConversationImp {
 }
 
 // Starts the conversation on its image from the manifest, which replaces its sandbox when the image
-// or the profile changed. Each turn reads memory, and the note of outside memory changes, through
-// the getter, because the store starts after the conversation and before any runner claims work.
+// or the profile changed. Each turn reads memory and its note through the getter, because the
+// store starts after the conversation and before any runner claims work.
 export async function startConversationImp(
   parts: ServerParts,
   memory: () => StartedMemoryStore,
@@ -28,9 +32,9 @@ export async function startConversationImp(
     toolNames: parts.tools.definitions.map((definition) => definition.name),
     image: parts.images.conversation.name,
     getSystemPrompt: () => parts.inForce.read()?.persona ?? '',
-    readTurnNote: () => readMemoryChangeNote(parts.context.log, memory(), memoryNoteCap),
+    readTurnNote: makeTurnNoteReader(parts, memory),
     memory,
-    memorySettings: parts.config.memory,
+    memorySettings: { ...parts.config.memory, ownerName: parts.config.owner.name },
     log: parts.log,
   });
 
@@ -52,5 +56,31 @@ export async function startConversationImp(
   };
 }
 
-// the note lists up to 5 changed items, then how many more
-const memoryNoteCap = 5;
+// The note before each turn: the memory changes and the events, whose kinds read memory through the
+// getter.
+function makeTurnNoteReader(
+  parts: ServerParts,
+  memory: () => StartedMemoryStore,
+): () => Promise<TurnNote> {
+  const log = parts.context.log;
+  const store: AnswerQuoteSource = {
+    recall: (request) => memory().recall(request),
+    proposals: {
+      readRejectedEdits: (proposalIDs) => memory().proposals.readRejectedEdits(proposalIDs),
+    },
+  };
+  const events = buildEventRegistry([
+    buildProposalAnswerKind(log, store),
+    buildRestartKind(log),
+    buildRetriedTurnKind(log),
+  ]);
+
+  return () =>
+    readTurnNotes({
+      log,
+      store,
+      events,
+      ownerName: parts.config.owner.name,
+      defaultZone: parts.config.time.default_zone,
+    });
+}

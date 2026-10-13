@@ -54,7 +54,9 @@ writes, recovery included. Recovery runs under the new writer epoch and before a
 it sees every lease the last process left and settles each one
 ([crash recovery](../core/leases-and-recovery.md#crash-recovery)). Its sandbox cleanup destroys
 every sandbox whose owner no longer runs, and keeps the conversation's sandbox, whose task never
-ends, and the memory checker's, which the deployment owns.
+ends, and the memory checker's, which the deployment owns. Recovery ends with a record of the start,
+which holds nixie's version and the version of the start before it, so the conversation hears of the
+restart ([the events block](../core/conversation-turns.md#the-events-block)).
 
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
 that creates a sandbox on an image impd lacks would fail. The conversation imp then starts on its

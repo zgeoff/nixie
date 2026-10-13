@@ -128,8 +128,8 @@ export interface ConversationRun {
   // the persona in force, read at each turn so a new seed reaches the next turn
   readonly getSystemPrompt: () => string;
 
-  // the note of memory changes made outside the conversation since its last turn, which goes
-  // before the turn's first message, and the sequence it covers
+  // the note of what happened outside the conversation since its last turn, such as memory changes
+  // and events, which goes before the turn's first message, and the sequence it covers
   readonly readTurnNote?: () => Promise<TurnNote>;
 
   // the memory store, read at each turn, which starts after the runner
@@ -146,6 +146,69 @@ export interface TurnNote {
   readonly text: string | null;
   readonly throughSequence: number;
 }
+
+// The records a turn's note covers: those after the sequence the last turn's note covered, through
+// the log's head when the note was read.
+export interface TurnNoteRange {
+  readonly after: number;
+  readonly through: number;
+}
+
+// One thing that happened outside the conversation, as its event kind read it from the log.
+export interface NotedEvent<Detail> {
+  // the sequence of the record it came from, which orders events of every kind, oldest first
+  readonly sequence: number;
+
+  // when it happened, in epoch milliseconds
+  readonly at: number;
+  readonly detail: Detail;
+}
+
+// What an event's line reads beside its detail.
+export interface EventSettings {
+  // the owner's name, or null for "The owner"
+  readonly ownerName: string | null;
+
+  // the IANA time zone each event's time shows in, such as Europe/London
+  readonly timeZone: string;
+}
+
+// One kind of event the events block lists: its name, how it reads its events in a range of the
+// log, and how one event's line renders after its time.
+export interface EventKind<Detail> {
+  readonly name: string;
+  readonly read: (range: TurnNoteRange) => Promise<readonly NotedEvent<Detail>[]>;
+
+  // fills in what only a listed event shows, such as text whose delivery a recall records, for
+  // this kind's events that the block lists after its cap
+  readonly complete?: (
+    events: readonly NotedEvent<Detail>[],
+  ) => Promise<readonly NotedEvent<Detail>[]>;
+  readonly render: (detail: Detail, settings: EventSettings) => string;
+}
+
+// An event as the registry read it, before the block picks the events it lists.
+export interface ReadEvent {
+  // the name of the kind that read it
+  readonly kind: string;
+  readonly sequence: number;
+  readonly at: number;
+}
+
+// A listed event with its kind's renderer bound to it, so events of every kind render together.
+export interface BoundEvent {
+  readonly sequence: number;
+  readonly at: number;
+  readonly render: (settings: EventSettings) => string;
+}
+
+// The event kinds the events block reads, each with its detail type bound inside it. Complete takes
+// only the kind's own events, and returns them bound, in the order given.
+export type EventRegistry = readonly {
+  readonly name: string;
+  readonly read: (range: TurnNoteRange) => Promise<readonly ReadEvent[]>;
+  readonly complete: (events: readonly ReadEvent[]) => Promise<readonly BoundEvent[]>;
+}[];
 
 // A checker's verdict on one question. Only asserted lets the gate that asked go ahead.
 export type CheckerVerdict = 'asserted' | 'not_asserted' | 'unsure';

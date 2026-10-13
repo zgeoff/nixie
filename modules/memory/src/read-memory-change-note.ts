@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
+import type { TurnNoteRange } from '@heynixie/models';
+import { readTurnNoteRange } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
-import { z } from 'zod';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { NotedChange, NotedMerge } from './render-memory-change-note';
 import { renderMemoryChangeNote } from './render-memory-change-note';
@@ -14,21 +15,27 @@ export interface TurnMemoryNote {
   readonly throughSequence: number;
 }
 
-// Reads the memory changes since the conversation's last turn that came from outside it, such as a
-// writer batch, and each outside write that merged into its proposals, and renders the next turn's
-// note. A turn from before the note covered up to its own record.
+export interface MemoryNoteOptions {
+  // how many changed items the note lists before it counts the rest
+  readonly cap: number;
+  readonly range?: TurnNoteRange;
+}
+
+// Reads the memory changes in the range that came from outside the conversation, such as a writer
+// batch, and each outside write that merged into its proposals, and renders the next turn's note.
+// The range is the turn note's, read here when the caller passes none.
 export async function readMemoryChangeNote(
   log: Pick<Log, 'writer'>,
   store: Pick<MemoryStore, 'recall'>,
-  cap: number,
+  options: MemoryNoteOptions,
 ): Promise<TurnMemoryNote> {
-  const after = await readNotedThrough(log);
-  const through = await readHeadSequence(log);
-  const versions = await readOutsideVersions(log, { after, through });
+  const noted = await readNoteRange(log, options.range);
+  const cap = options.cap;
+  const versions = await readOutsideVersions(log, noted);
   const caughtUp = await readCaughtUpSequence(log);
   const split = splitCatchUpVersions(versions, caughtUp);
   const changes = await readNotedChanges(store, split.listed.slice(0, cap));
-  const merges = await readOutsideMerges(log, { after, through });
+  const merges = await readOutsideMerges(log, noted);
 
   return {
     text: renderMemoryChangeNote({
@@ -37,19 +44,16 @@ export async function readMemoryChangeNote(
       moreCount: Math.max(split.listed.length - cap, 0),
       catchUpCount: split.catchUpCount,
     }),
-    throughSequence: through,
+    throughSequence: noted.through,
   };
 }
 
-// mapped types, because Kysely's table map needs the index signature an interface lacks
-type RecordTables = Readonly<{
-  records: {
-    readonly sequence: number;
-    readonly thread: string | null;
-    readonly kind: string;
-    readonly payload: string;
-  };
-}>;
+function readNoteRange(
+  log: Pick<Log, 'writer'>,
+  range: TurnNoteRange | undefined,
+): Promise<TurnNoteRange> {
+  return range === undefined ? readTurnNoteRange(log) : Promise.resolve(range);
+}
 
 interface NotedVersion {
   readonly item_id: string;
@@ -59,46 +63,10 @@ interface NotedVersion {
   readonly sequence: number;
 }
 
-const turnEnded = z.object({ memoryNotedThrough: z.int().optional() });
-
-async function readNotedThrough(log: Pick<Log, 'writer'>): Promise<number> {
-  const last = await log.writer.db
-    .$extendTables<RecordTables>()
-    .selectFrom('records')
-    .select(['sequence', 'payload'])
-    .where('thread', '=', conversationTaskID)
-    .where('kind', '=', 'model.turn_ended')
-    .orderBy('sequence', 'desc')
-    .limit(1)
-    .executeTakeFirst();
-
-  if (last === undefined) {
-    return 0;
-  }
-  const payload = turnEnded.safeParse(JSON.parse(last.payload));
-
-  return payload.success ? (payload.data.memoryNotedThrough ?? last.sequence) : last.sequence;
-}
-
-async function readHeadSequence(log: Pick<Log, 'writer'>): Promise<number> {
-  const head = await log.writer.db
-    .$extendTables<RecordTables>()
-    .selectFrom('records')
-    .select((eb) => eb.fn.max('sequence').as('head'))
-    .executeTakeFirst();
-
-  return head?.head ?? 0;
-}
-
-interface VersionRange {
-  readonly after: number;
-  readonly through: number;
-}
-
 // every version in the range that the conversation did not write, oldest first
 function readOutsideVersions(
   log: Pick<Log, 'writer'>,
-  range: VersionRange,
+  range: TurnNoteRange,
 ): Promise<readonly NotedVersion[]> {
   return log.writer.db
     .$extendTables<MemoryTables>()
@@ -114,7 +82,7 @@ function readOutsideVersions(
 // every merge in the range into a proposal the conversation made, from a write outside it
 function readOutsideMerges(
   log: Pick<Log, 'writer'>,
-  range: VersionRange,
+  range: TurnNoteRange,
 ): Promise<readonly NotedMerge[]> {
   return log.writer.db
     .$extendTables<MemoryTables>()
