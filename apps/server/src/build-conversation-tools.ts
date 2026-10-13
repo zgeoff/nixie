@@ -2,7 +2,7 @@ import type { MemoryToolStore } from '@heynixie/memory';
 import { buildMemoryTools } from '@heynixie/memory';
 import type { ToolDefinition } from '@heynixie/tools';
 
-// Builds the conversation's tool definitions: the web fetch tool and the 3 memory tools. The
+// Builds the conversation's tool definitions: the web fetch tool and the 4 memory tools. The
 // registry exists before the memory store starts, so the memory tools reach the store through
 // readStore, which returns null until it starts. A call before that throws.
 export function buildConversationTools(

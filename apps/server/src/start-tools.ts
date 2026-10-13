@@ -19,7 +19,7 @@ export interface Tools {
   readonly endpoint: ToolEndpoint;
   readonly webFetch: WebFetch;
 
-  // the web fetch tool and the 3 memory tools
+  // the web fetch tool and the 4 memory tools
   readonly definitions: readonly ToolDefinition[];
   readonly memory: MemorySlot;
 }

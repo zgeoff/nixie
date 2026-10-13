@@ -1,6 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { buildEditTool } from './build-edit-tool';
 import { buildRememberTool } from './build-remember-tool';
 import { buildRetireTool } from './build-retire-tool';
 import type { ModelWriteStore } from './gate-types';
@@ -11,11 +12,16 @@ import type { RecallRequest, RecalledItem, RecalledVersion } from './types';
 // What the model's tools reach: recall, and the gated write paths.
 export type MemoryToolStore = Pick<StartedMemoryStore, 'recall'> & ModelWriteStore;
 
-// Builds the model's memory tools. recall declares read, and remember and retire declare note.
+// Builds the model's memory tools. recall declares read, and the 3 write tools declare note.
 // Every write runs through its gate, which sets the provenance from the run and the checks, never
 // from the model's arguments.
 export function buildMemoryTools(memory: MemoryToolStore): readonly ToolDefinition[] {
-  return [buildRecallTool(memory), buildRememberTool(memory), buildRetireTool(memory)];
+  return [
+    buildRecallTool(memory),
+    buildRememberTool(memory),
+    buildEditTool(memory),
+    buildRetireTool(memory),
+  ];
 }
 
 const recallInput = {

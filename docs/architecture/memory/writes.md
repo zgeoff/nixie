@@ -1,12 +1,12 @@
 # Memory writes
 
 A model write to memory applies at once only when the user's own typed words back it. Every other
-write waits for the user's review as a memory proposal. `memory.remember` passes a content gate and
-`memory.retire` passes an intent gate. Each gate runs code checks on a quote from a message the user
-typed, then asks a separate checker model whether the message asserts the memory. The first check
-that fails ends the gate, and the write becomes a proposal with that check as its review reason. A
-write that fails a check therefore waits for the user instead of failing, and nothing the model
-writes reaches memory on the model's word alone.
+write waits for the user's review as a memory proposal. `memory.remember` and `memory.edit` pass a
+content gate, and `memory.retire` passes an intent gate. Each gate runs code checks on a quote from
+a message the user typed, then asks a separate checker model whether the message asserts the memory.
+The first check that fails ends the gate, and the write becomes a proposal with that check as its
+review reason. A write that fails a check therefore waits for the user instead of failing, and
+nothing the model writes reaches memory on the model's word alone.
 
 [The memory store](./store.md) covers the items, versions and keys that a write changes. The gates
 follow [0011](../../decisions/0011-memory-writes.md). [The memory writer](./writer.md) covers the
@@ -15,8 +15,10 @@ consolidation that is not built.
 
 ## The content gate
 
-`memory.remember` takes the memory text and a quote. The gate runs outside any database transaction,
-because the checker is a model call, and runs these steps in order:
+`memory.remember` takes the memory text and a quote, and `memory.edit` takes the same with the item
+and the version the thread read. An edit of a missing item or a moved-on version fails before any
+check runs. The gate runs outside any database transaction, because the checker is a model call, and
+runs these steps in order:
 
 1. **Find the evidence.** The gate reads the user's latest messages in the calling thread, newest
    first, within a configurable window. The newest message that holds the quote as typed text backs
@@ -104,10 +106,10 @@ from the run's thread, the task, and the model ID of the call that asked. A vers
 passed takes the user's words as its source and holds each check's verdict. Any other write has no
 version until the user approves it.
 
-The user's allow rule on `memory.remember` lets a write skip the quote and the checker, never the
-token check, which then compares against everything the user typed in the window. No quote of the
-user's backs such a write, so its source is outside content. The policy engine has no user rules, so
-the gate finds no allow rule and every write runs the full gate.
+The user's allow rule on `memory.remember` lets a write through either content-gate tool skip the
+quote and the checker, never the token check, which then compares against everything the user typed
+in the window. No quote of the user's backs such a write, so its source is outside content. The
+policy engine has no user rules, so the gate finds no allow rule and every write runs the full gate.
 
 ## Memory proposals
 
