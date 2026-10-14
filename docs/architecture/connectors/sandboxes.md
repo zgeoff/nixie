@@ -68,9 +68,16 @@ tool endpoint that is down fails one connection, never the host process. The loo
 guest's proxy bypass list, so tool calls skip the credential broker's proxy.
 
 A sleep ends the forward inside the imp, so the adapter closes its own side before imp sleeps the
-imp, and opens it again after the wake. impd can also sleep an idle imp on its own, so every command
-opens the forward first when it has closed, and the route stands again after a sleep nobody asked
-for.
+imp, and opens it again after the wake. impd also sleeps an idle imp on its own. It holds the imp
+through the snapshot, and a call that arrives meanwhile waits for the sleep and then wakes the imp.
+impd ends the forward only once the snapshot is written, and never restores it after the wake, so a
+command that waited out the sleep would start a guest whose tool connections are refused. Before a
+command runs in a sandbox with a tool route, the adapter therefore asks impd to wake the imp: the
+wake waits out a sleep in progress, the forward has ended by the time it returns, and the adapter
+listens again on the woken imp before the guest starts. An idle sleep can also start between that
+wake and the command, and the command then waits out that sleep too. impd reports when the command
+has started, which comes after any such wake, so the adapter waits for that report and then listens
+again if the forward ended in the meantime.
 
 ## The imp adapter
 

@@ -1,5 +1,7 @@
 // An exec in an imp, as the adapter drives it.
 export interface ImpExec {
+  // resolves once impd started the command, after any wake the exec waited for
+  readonly started: Promise<unknown>;
   readonly stdout: ReadableStream<Uint8Array>;
   readonly stderr: ReadableStream<Uint8Array>;
   readonly write: (data: Uint8Array) => Promise<void>;

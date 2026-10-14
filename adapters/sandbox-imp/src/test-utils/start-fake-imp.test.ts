@@ -99,15 +99,40 @@ test('it refuses the features call, as an impd that does not answer, when told t
 test('it refuses an exec that requires the broker and replaces a broker variable', async () => {
   const imp = await startFakeImp();
 
-  expect(
-    imp.port.openExec('nixie-a', ['true'], {
-      env: { NO_PROXY: 'example.com' },
-      killGraceMs: 5000,
-      requireBroker: true,
-    }),
-  ).rejects.toThrow(
+  const exec = await imp.port.openExec('nixie-a', ['true'], {
+    env: { NO_PROXY: 'example.com' },
+    killGraceMs: 5000,
+    requireBroker: true,
+  });
+
+  expect(exec.started).rejects.toThrow(
     "the broker is not ready for this exec: the exec's env sets NO_PROXY, which the broker sets",
   );
+});
+
+test('it returns an exec handle during an idle sleep and starts the exec once the sleep ends', async () => {
+  const imp = await startFakeImp();
+  const snapshot = Promise.withResolvers<void>();
+
+  void imp.startIdleSleep('nixie-a', snapshot.promise);
+
+  const exec = await imp.port.openExec('nixie-a', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+  const before = await Promise.race([exec.started, Promise.resolve('starting')]);
+
+  snapshot.resolve();
+  await exec.started;
+
+  expect(before).toBe('starting');
+  expect(imp.calls).toStrictEqual([
+    'idle-sleep nixie-a',
+    'wait exec nixie-a',
+    'slept nixie-a',
+    'woken by exec nixie-a',
+  ]);
 });
 
 test('it runs an exec with the broker variables when the exec requires the broker', async () => {
@@ -167,6 +192,73 @@ test('it listens for a reverse forward on its guest tool port and logs its stop'
 
   expect(port).toBe(imp.guestToolPort);
   expect(imp.calls).toStrictEqual(['forward nixie-a 8901', 'forward-stopped nixie-a']);
+});
+
+test('it holds a wake, an exec and a listen until an idle sleep ends, then wakes the imp once', async () => {
+  const imp = await startFakeImp();
+  const snapshot = Promise.withResolvers<void>();
+
+  void imp.startIdleSleep('nixie-a', snapshot.promise);
+
+  const wake = imp.port.wakeImp('nixie-a');
+  const exec = imp.port.openExec('nixie-a', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
+
+  snapshot.resolve();
+  await Promise.all([wake, exec, forward.listening]);
+
+  expect(imp.calls).toStrictEqual([
+    'idle-sleep nixie-a',
+    'wait wake nixie-a',
+    'wait exec nixie-a',
+    'forward nixie-a 8901',
+    'wait listen nixie-a',
+    'slept nixie-a',
+    'woken by wake nixie-a',
+    'wake nixie-a',
+  ]);
+});
+
+test('it ends each forward of the imp as lost when an idle sleep ends', async () => {
+  const imp = await startFakeImp();
+  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
+
+  await forward.listening;
+
+  await imp.startIdleSleep('nixie-a', Promise.resolve());
+  const ended = await forward.ended;
+
+  expect(ended).toStrictEqual({ kind: 'lost' });
+});
+
+test('it starts the idle sleep set for the next wake of the imp once that wake ends', async () => {
+  const imp = await startFakeImp();
+  const snapshot = Promise.withResolvers<void>();
+
+  imp.sleepsAfterWake.set('nixie-a', snapshot.promise);
+
+  await imp.port.wakeImp('nixie-a');
+  const exec = await imp.port.openExec('nixie-a', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  snapshot.resolve();
+  await exec.started;
+
+  expect(imp.sleepsAfterWake.size).toBe(0);
+  expect(imp.calls).toStrictEqual([
+    'wake nixie-a',
+    'idle-sleep nixie-a',
+    'wait exec nixie-a',
+    'slept nixie-a',
+    'woken by exec nixie-a',
+  ]);
 });
 
 test('it kills each exec process group and closes each forward when the test finishes', async () => {

@@ -74,6 +74,16 @@ async function startImpProcess(ctx: ImpSandboxContext, command: ExecSpec) {
     requireBroker: ctx.spec.grants.length > 0,
   });
 
+  // an idle sleep that impd starts between the route's open and the exec's arrival holds the exec
+  // until it wakes the imp, and ends the forward meanwhile, so the forward listens again once the
+  // exec has started, which imp's client reports after it returns the handle
+  try {
+    await exec.started;
+    await ctx.routes.open(ctx.id, ctx.spec);
+  } catch (error) {
+    exec.close();
+    throw error;
+  }
   return toProcessIO(exec, ctx.killGraceMs);
 }
 
@@ -92,11 +102,14 @@ function buildImpExecEnv(
   return { ...merged, ...env };
 }
 
-// Opening the forward and running an exec both wake a sleeping imp, so a call on an imp the adapter
-// put to sleep wakes it first and records the wake.
+// A call on an imp the adapter put to sleep wakes it first and records the wake. impd holds an imp
+// through an idle sleep and ends its forward only after the snapshot, so the wake waits that out and
+// the forward listens again on the woken imp before the guest connects.
 async function startRoute(ctx: ImpSandboxContext): Promise<void> {
   if (ctx.sleeping.isAsleep(ctx.id)) {
     await updateImpAwake(ctx);
+  } else if (ctx.spec.toolRoute) {
+    await ctx.port.wakeImp(ctx.id);
   }
   await ctx.routes.open(ctx.id, ctx.spec);
 }
