@@ -128,25 +128,23 @@ test('it applies a backed fact with the caller and model of the run, never of th
 });
 
 test('it applies a fact quoted from a message outside the window by its event ID', async () => {
-  const memory = await startTestMemory({
+  const ctx = await setupTest({
     gate: {
       check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })),
       limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10, closeMatchScore: 0.6 },
     },
   });
-  const tool = buildToolRegistry(
-    buildMemoryTools(memory.store, { now: () => Date.now() }),
-  ).findTool('memory.remember');
+  const tool = ctx.registry.findTool('memory.remember');
 
   invariant(tool);
 
-  const sequence = await writeOwnerMessageRecord(memory.log, {
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',
     text: 'My bike is the green one',
     spans: [{ start: 0, end: 24, source: 'typed' }],
   });
 
-  await writeOwnerMessageRecord(memory.log, {
+  await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',
     text: 'Thanks',
     spans: [{ start: 0, end: 6, source: 'typed' }],
