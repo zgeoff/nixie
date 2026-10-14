@@ -16,7 +16,7 @@ test("it renders each reason's full sentence with the owner's name and pronouns"
       "quote_not_typed: Saved as a proposal for Avery to review. The quote is in text Avery pasted or dropped in, not words she typed.",
       "quote_in_quoted_block: Saved as a proposal for Avery to review. The quote is inside a quoted block, so it may be someone else's words.",
       "invisible_character: Saved as a proposal for Avery to review. The new text or the quote contains a hidden character.",
-      "token_missing: Saved as a proposal for Avery to review. The new text has a number, address, handle or link that the quote doesn't have.",
+      "token_missing: Saved as a proposal for Avery to review. The new text has a number, address, handle or link that isn't in the quote, or in what Avery typed in her last 12 messages when an allow rule skips the quote.",
       "checker_not_asserted: Saved as a proposal for Avery to review. Avery's words didn't clearly say this.",
       "checker_unsure: Saved as a proposal for Avery to review. It wasn't clear whether Avery's words say this.",
       "checker_unreachable: Saved as a proposal for Avery to review. The check failed or didn't answer in time.",

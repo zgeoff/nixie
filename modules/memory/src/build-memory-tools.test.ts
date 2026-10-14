@@ -5,7 +5,12 @@ import invariant from 'tiny-invariant';
 import { buildMemoryTools } from './build-memory-tools';
 import { defaultGateLimits } from './default-gate-limits';
 import type { TestMemoryOptions } from './test-utils';
-import { buildMockCheckerAnswer, readItemShortID, startTestMemory } from './test-utils';
+import {
+  buildMockCheckerAnswer,
+  makeToolAllowRule,
+  readItemShortID,
+  startTestMemory,
+} from './test-utils';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
@@ -143,6 +148,74 @@ test('it returns a proposal with the sentence for its reason, not an error, for 
     merged: false,
   });
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
+});
+
+test('it gives the token sentence for a fact with a number its typed quote lacks', async () => {
+  const ctx = await setupTest({ gate: { ownerName: 'Avery' } });
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'My phone number changed',
+    spans: [{ start: 0, end: 23, source: 'typed' }],
+  });
+
+  const result = await runToolCall(
+    {
+      tool: 'memory.remember',
+      input: { text: 'Phone number is 0412 555 019', quote: 'My phone number changed' },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    reason:
+      "token_missing: Saved as a proposal for Avery to review. The new text has a number, address, handle or link that isn't in the quote, or in what Avery typed in their last 20 messages when an allow rule skips the quote.",
+    merged: false,
+  });
+});
+
+test('it gives the token sentence under an allow rule when the owner never typed the number, even though the quote holds it', async () => {
+  const ctx = await setupTest({
+    gate: { findAllowRule: makeToolAllowRule('memory.remember'), ownerName: 'Avery' },
+  });
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'My phone number changed',
+    spans: [{ start: 0, end: 23, source: 'typed' }],
+  });
+
+  const result = await runToolCall(
+    {
+      tool: 'memory.remember',
+      input: { text: 'Phone number is 0412 555 019', quote: 'Phone number is 0412 555 019' },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.remember'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    reason:
+      "token_missing: Saved as a proposal for Avery to review. The new text has a number, address, handle or link that isn't in the quote, or in what Avery typed in their last 20 messages when an allow rule skips the quote.",
+    merged: false,
+  });
 });
 
 test("it names the gate's configured window in the sentence for a quote older than that window", async () => {

@@ -30,14 +30,14 @@ const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => str
   no_quote: (words) =>
     words.window === 1
       ? `The write gave no quote, or ${words.owner}'s last message doesn't contain it.`
-      : `The write gave no quote, or none of ${words.owner}'s last ${words.window} messages contains it.`,
+      : `The write gave no quote, or none of ${words.owner}'s ${formatWindow(words.window)} contains it.`,
   quote_not_typed: (words) =>
     `The quote is in text ${words.owner} pasted or dropped in, not words ${words.they} typed.`,
   quote_in_quoted_block: () =>
     "The quote is inside a quoted block, so it may be someone else's words.",
   invisible_character: () => 'The new text or the quote contains a hidden character.',
-  token_missing: () =>
-    "The new text has a number, address, handle or link that the quote doesn't have.",
+  token_missing: (words) =>
+    `The new text has a number, address, handle or link that isn't in the quote, or in what ${words.owner} typed in ${words.their} ${formatWindow(words.window)} when an allow rule skips the quote.`,
   checker_not_asserted: (words) => `${words.owner}'s words didn't clearly say this.`,
   checker_unsure: (words) => `It wasn't clear whether ${words.owner}'s words say this.`,
   checker_unreachable: () => "The check failed or didn't answer in time.",
@@ -46,6 +46,10 @@ const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => str
   ambiguous_target: () => "You haven't recalled this version of the item here.",
   pinned: (words) => `Pinned items always wait for ${words.their} review.`,
 };
+
+function formatWindow(window: number): string {
+  return window === 1 ? 'last message' : `last ${window} messages`;
+}
 
 // "the owner" opens a sentence as "The owner"
 function toSentenceCase(sentence: string): string {
