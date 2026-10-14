@@ -14,7 +14,7 @@ export const memoryConsolidationChangesProjection: Projection = {
   fold: (tx, record) => {
     const parsed = parseConsolidationRecord(record);
 
-    if (parsed === null) {
+    if (parsed === null || parsed.kind === 'memory.consolidation_summarized') {
       return Promise.resolve([]);
     }
     return writeChangeRows(tx.$extendTables<ConsolidationTables>(), record, parsed);
@@ -24,7 +24,7 @@ export const memoryConsolidationChangesProjection: Projection = {
 async function writeChangeRows(
   db: Kysely<ConsolidationTables>,
   record: EnvelopeRecord,
-  parsed: ConsolidationRecord,
+  parsed: Exclude<ConsolidationRecord, { kind: 'memory.consolidation_summarized' }>,
 ): Promise<readonly string[]> {
   if (parsed.kind === 'memory.consolidation_proposed') {
     if (parsed.changes.length === 0) {

@@ -37,7 +37,24 @@ test('it writes the diff on the consolidator thread and returns its pending chan
         comment: null,
       },
     ],
+    summary: null,
   });
+});
+
+test('it writes the summary the request gives, sealed under the items it names', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Is in Lisbon until May',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [],
+    summary: { text: 'Nothing needed tidying.', itemIDs: [item.itemID] },
+  });
+
+  expect(diff.summary).toStrictEqual({ text: 'Nothing needed tidying.', itemIDs: [item.itemID] });
+  expect(diff.changes).toStrictEqual([]);
 });
 
 test('it dates the run and lapses each change at the times the request gives', async () => {

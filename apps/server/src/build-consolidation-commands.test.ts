@@ -128,6 +128,55 @@ test('it prints the comment the conversation left through memory.comment beside 
   });
 }, 60_000);
 
+test('it prints the summary of a conflict beside the changes of its diff', async () => {
+  const ctx = await setupTest();
+  const [oat, black, trip] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
+    createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
+    createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
+  ]);
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [{ kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' }],
+    summary: {
+      text: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+      itemIDs: [oat.itemID, black.itemID, trip.itemID],
+    },
+  });
+
+  const run = await runHostCommand(ctx.configPath, ['memory-diff']);
+
+  expect(JSON.parse(run.stdout)).toMatchObject({
+    diffID: diff.diffID,
+    changes: [{ changeID: diff.changes[0]?.changeID }],
+    summary: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+  });
+}, 60_000);
+
+test('it prints the summary alone when the run proposed no change', async () => {
+  const ctx = await setupTest();
+  const [oat, black] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
+    createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
+  ]);
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [],
+    summary: {
+      text: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+      itemIDs: [oat.itemID, black.itemID],
+    },
+  });
+
+  const run = await runHostCommand(ctx.configPath, ['memory-diff']);
+
+  expect(JSON.parse(run.stdout)).toStrictEqual({
+    diffID: diff.diffID,
+    model: 'claude-test-1',
+    createdAt: new Date(diff.createdAt).toISOString(),
+    changes: [],
+    summary: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+  });
+}, 60_000);
+
 test('it approves the whole diff when it names every change', async () => {
   const ctx = await setupTest();
   const [stale, trip] = await Promise.all([

@@ -66,3 +66,24 @@ test('it stages the diff again in each later run, bound to the versions that run
   expect(second.close()).toMatchObject([{ inputs: [{ itemID: 'item-1', version: 4 }] }]);
   expect(stub.model.runSession).toHaveBeenCalledTimes(2);
 });
+
+test('it stages the summary it is given beside an empty diff', async () => {
+  const stub = buildStubConsolidatorSession([], 'Two items about tea conflict.');
+  const item = {
+    shortID: 'k3x9m2p7qa',
+    version: 1,
+    text: 'Drinks green tea',
+    source: 'owner',
+    isPinned: false,
+  } as const;
+  const run = stub.staging.open(new Map([['item-1', item]]), 30);
+
+  await stub.model.runSession({
+    systemPrompt: '',
+    prompt: '',
+    signal: new AbortController().signal,
+  });
+
+  expect(run.readSummary()).toBe('Two items about tea conflict.');
+  expect(run.close()).toStrictEqual([]);
+});

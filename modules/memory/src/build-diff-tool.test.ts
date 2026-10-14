@@ -341,3 +341,108 @@ test('it records only the change IDs of its result, never a text', async () => {
   });
   expect(JSON.stringify(entries)).not.toInclude('brass buttons');
 });
+
+test('it shows the summary the consolidator left beside the changes, and records no word of it', async () => {
+  const ctx = await setupTest();
+  const [oat, black, trip] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
+    createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
+    createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
+  ]);
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [{ kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' }],
+    summary: {
+      text: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+      itemIDs: [oat.itemID, black.itemID, trip.itemID],
+    },
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.diff', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.diff'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  expect(result.structuredContent).toMatchObject({
+    changes: [{ changeID: diff.changes[0]?.shortID, kind: 'retire' }],
+    summary: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+  });
+  expect(JSON.stringify(entries)).not.toInclude('oat milk');
+});
+
+test('it shows the summary of a run that proposed no change', async () => {
+  const ctx = await setupTest();
+  const [oat, black] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
+    createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
+  ]);
+
+  await createConsolidationDiff(ctx.memory, {
+    changes: [],
+    summary: {
+      text: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+      itemIDs: [oat.itemID, black.itemID],
+    },
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.diff', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.diff'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({
+    proposedAt: '2026-10-12 03:00 UTC',
+    changes: [],
+    summary: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+  });
+});
+
+test('it leaves out the summary once a forget starts on an item it is sealed under, before its key is gone', async () => {
+  const ctx = await setupTest();
+  const [oat, black] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
+    createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
+  ]);
+
+  await createConsolidationDiff(ctx.memory, {
+    changes: [],
+    summary: {
+      text: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+      itemIDs: [oat.itemID, black.itemID],
+    },
+  });
+
+  // the record a forget commits first, which leaves the item forgetting with its key still held
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.forget_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      payload: { itemID: oat.itemID, version: 1, evidenceSequences: [] },
+    },
+  ]);
+
+  const result = await runToolCall(
+    { tool: 'memory.diff', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.diff'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({ changes: [] });
+});

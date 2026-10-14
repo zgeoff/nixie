@@ -76,6 +76,7 @@ test('it shows the pending diff with each input at the version its change read, 
         comment: null,
       },
     ],
+    summary: null,
   });
 });
 

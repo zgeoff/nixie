@@ -2,9 +2,9 @@ import type { ConsolidationDiff } from './consolidation-types';
 import { readPendingDiff } from './read-pending-diff';
 import type { MemoryTables, StoreParts } from './types';
 
-// Reads the pending diff for the model under the delivery lock that recall takes, so a forget
-// either starts after the read or before it. A change with an input that is forgetting or forgotten
-// drops out whole, because a merged or rewritten text can hold that input's words.
+// Reads the pending diff for the model under recall's delivery lock, so a forget starts after the
+// read or before it. A change with an input that is forgetting or forgotten drops out whole, as
+// does a summary sealed under such an item, because either can hold that item's words.
 export function readDeliveredDiff(parts: StoreParts): Promise<ConsolidationDiff | null> {
   return parts.lock(async () => {
     const diff = await readPendingDiff(parts);
@@ -12,15 +12,18 @@ export function readDeliveredDiff(parts: StoreParts): Promise<ConsolidationDiff 
     if (diff === null) {
       return null;
     }
-    const gone = await readForgottenItemIDs(
-      parts,
-      diff.changes.flatMap((change) => change.inputs.map((input) => input.itemID)),
-    );
+    const gone = await readForgottenItemIDs(parts, [
+      ...diff.changes.flatMap((change) => change.inputs.map((input) => input.itemID)),
+      ...(diff.summary?.itemIDs ?? []),
+    ]);
     const changes = diff.changes.filter((change) =>
       change.inputs.every((input) => !gone.has(input.itemID)),
     );
+    const isSummaryGone =
+      diff.summary !== null && diff.summary.itemIDs.some((itemID) => gone.has(itemID));
+    const summary = isSummaryGone ? null : diff.summary;
 
-    return changes.length === 0 ? null : { ...diff, changes };
+    return changes.length === 0 && summary === null ? null : { ...diff, changes, summary };
   });
 }
 
