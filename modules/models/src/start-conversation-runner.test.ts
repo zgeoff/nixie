@@ -451,7 +451,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
   ]);
 });
 
-test('it tells a resumed session when its last reply was sent, in the zone of your message, before your next message', async () => {
+test('it gives a resumed session your next message after its send time, with no recap of the last turn', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -479,9 +479,7 @@ test('it tells a resumed session when its last reply was sent, in the zone of yo
       {
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
-          /^<reply-times>\nYour replies in your last turn, each with the time it was sent:\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney\] Hello\.\n<\/reply-times>\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(
-            text,
-          ),
+          /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
         ),
       },
     ],
@@ -595,9 +593,7 @@ test('it marks the first turn after a rebuild as rebuilt, and the turn after it 
       {
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
-          /^<reply-times>\nYour replies in your last turn, each with the time it was sent:\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hello\.\n<\/reply-times>\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] And again\.$/u.test(
-            text,
-          ),
+          /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] And again\.$/u.test(text),
         ),
       },
     ],
