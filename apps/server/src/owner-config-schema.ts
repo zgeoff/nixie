@@ -3,8 +3,8 @@ import { defaultOwnerPronouns } from '@heynixie/memory';
 import { z } from 'zod';
 
 // The owner section of the deployment configuration: the owner's name or null, and pronouns that
-// default to they and their. The name may be a deployment:<name> reference to the secrets file,
-// which resolveOwnerConfig follows at start.
+// default to they and their. The name and each pronoun may be a deployment:<name> reference to the
+// secrets file, which resolveOwnerConfig follows at start.
 export const ownerConfigSchema = z
   .strictObject({
     name: z.string().min(1).optional(),

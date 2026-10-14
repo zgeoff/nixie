@@ -529,3 +529,21 @@ test('it refuses to start on a key no module reads, and exits 1', async () => {
     message: expect.toInclude('tasks: Unrecognized key: "runner"'),
   });
 }, 60_000);
+
+test('it refuses to start when a pronoun names a settings entry the secrets file lacks, and exits 1', async () => {
+  const nixie = await startTestNixie({
+    extraConfig: ['owner:', '  pronouns: { they: deployment:owner_they, their: their }'],
+    extraSecrets: ['settings:', '  owner_name: Wren Halloway'],
+  });
+
+  const exitCode = await nixie.exited;
+  const failure = await nixie.waitForLogEvent('command.failed');
+
+  expect(exitCode).toBe(1);
+  expect(failure).toMatchObject({
+    command: 'serve',
+    message: expect.toInclude(
+      "the owner's pronoun they is deployment:owner_they, and the secrets file has no settings entry owner_they",
+    ),
+  });
+}, 60_000);

@@ -1,22 +1,35 @@
 import type { OwnerConfig } from './owner-config-schema';
 
-// Resolves an owner's name of deployment:<name> to the entry <name> under the secrets' settings,
-// and keeps a plain name and the pronouns. It refuses a missing entry, so nixie stops at start
-// rather than calling the owner by the reference.
+// Resolves each of the owner's name and pronouns that is a deployment:<name> reference to the entry
+// <name> under the secrets' settings, and keeps each plain value. It refuses a missing entry, so
+// nixie stops at start rather than showing the model the reference.
 export function resolveOwnerConfig(
   config: OwnerConfig,
   settings: Readonly<Record<string, string>>,
 ): OwnerConfig {
-  if (config.name === null || !config.name.startsWith('deployment:')) {
-    return config;
-  }
-  const key = config.name.slice('deployment:'.length);
-  const name = Object.hasOwn(settings, key) ? settings[key] : undefined;
+  return {
+    name:
+      config.name === null ? null : resolveOwnerValue(config.name, "the owner's name", settings),
+    pronouns: {
+      they: resolveOwnerValue(config.pronouns.they, "the owner's pronoun they", settings),
+      their: resolveOwnerValue(config.pronouns.their, "the owner's pronoun their", settings),
+    },
+  };
+}
 
-  if (name === undefined) {
-    throw new Error(
-      `the owner's name is ${config.name}, and the secrets file has no settings entry ${key}`,
-    );
+function resolveOwnerValue(
+  value: string,
+  label: string,
+  settings: Readonly<Record<string, string>>,
+): string {
+  if (!value.startsWith('deployment:')) {
+    return value;
   }
-  return { ...config, name };
+  const key = value.slice('deployment:'.length);
+  const resolved = Object.hasOwn(settings, key) ? settings[key] : undefined;
+
+  if (resolved === undefined) {
+    throw new Error(`${label} is ${value}, and the secrets file has no settings entry ${key}`);
+  }
+  return resolved;
 }
