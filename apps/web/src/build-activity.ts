@@ -11,9 +11,21 @@ export interface ToolActivity {
   readonly tool: string;
 }
 
-// A memory version a recall in the step delivered, with its match score when a query ranked it.
+// The conversation's model's rating of a memory a recall delivered: its verdict, the agent's name
+// when the config gives one, whether a note came with it, and the sequence of the rating's record,
+// which names the note.
+export interface MemoryRating {
+  readonly hasNote: boolean;
+  readonly ratedBy?: string | undefined;
+  readonly sequence: number;
+  readonly verdict: 'helpful' | 'noise' | 'misleading';
+}
+
+// A memory version a recall in the step delivered, with its match score when a query ranked it,
+// and the model's latest rating of it, which can arrive in a later step.
 export interface RecalledMemory {
   readonly itemID: string;
+  readonly rating?: MemoryRating | undefined;
   readonly score?: number | undefined;
   readonly version: number;
 }
@@ -63,7 +75,12 @@ export type ActivityItem = { readonly kind: 'message'; readonly record: LiveReco
 // folds into the step it belongs to. A record before a step, such as the task's creation, folds
 // into the step that follows it; one after the last step forms a group of its own.
 export function buildActivity(records: readonly LiveRecord[]): readonly ActivityItem[] {
-  const state: ActivityState = { items: [], open: null, pending: [] };
+  const state: ActivityState = {
+    items: [],
+    open: null,
+    pending: [],
+    ratings: collectRatings(records),
+  };
 
   for (const record of records) {
     applyRecord(state, record);
@@ -71,11 +88,49 @@ export function buildActivity(records: readonly LiveRecord[]): readonly Activity
 
   return state.pending.length === 0
     ? state.items
-    : [...state.items, buildStep(state.pending, 'done')];
+    : [...state.items, buildStep(state.pending, 'done', state.ratings)];
+}
+
+// a rating by the recall record it rates and the version it rates
+type Ratings = ReadonlyMap<string, MemoryRating>;
+
+function buildRatingKey(
+  recallSequence: number,
+  item: Pick<RecalledMemory, 'itemID' | 'version'>,
+): string {
+  return `${recallSequence}:${item.itemID}@${item.version}`;
+}
+
+// Gathers every rating in the records by what it rates, so a rating in a later step reaches the
+// step whose recall it rates. A later rating of the same version replaces an earlier one.
+function collectRatings(records: readonly LiveRecord[]): Ratings {
+  return new Map(
+    records.flatMap((record) => {
+      const rating = record.rating;
+
+      if (rating === undefined) {
+        return [];
+      }
+
+      return rating.items.map(
+        (item) =>
+          [
+            buildRatingKey(rating.recalledSequence, item),
+            {
+              hasNote: item.hasNote,
+              ...(rating.ratedBy === undefined ? {} : { ratedBy: rating.ratedBy }),
+              sequence: record.sequence,
+              verdict: item.verdict,
+            },
+          ] as const,
+      );
+    }),
+  );
 }
 
 interface ActivityState {
   readonly items: ActivityItem[];
+  readonly ratings: Ratings;
 
   // the step whose end has not arrived yet
   open: StepActivity | null;
@@ -90,14 +145,18 @@ function applyRecord(state: ActivityState, record: LiveRecord): void {
   if (record.message !== undefined) {
     state.items.push({ kind: 'message', record });
   } else if (record.kind === 'task.step_started') {
-    state.open = buildStep([...state.pending, record], 'running');
+    state.open = buildStep([...state.pending, record], 'running', state.ratings);
     state.pending = [];
     state.items.push(state.open);
   } else if (state.open === null) {
     state.pending.push(record);
   } else {
     const index = state.items.indexOf(state.open);
-    const step = buildStep([...state.open.records, record], pickStatus(record, state.open));
+    const step = buildStep(
+      [...state.open.records, record],
+      pickStatus(record, state.open),
+      state.ratings,
+    );
 
     state.items[index] = step;
     state.open = step.status === 'running' ? step : null;
@@ -114,7 +173,11 @@ function pickStatus(record: LiveRecord, step: StepActivity): StepStatus {
   return stepEnds[record.kind] ?? step.status;
 }
 
-function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActivity {
+function buildStep(
+  records: readonly LiveRecord[],
+  status: StepStatus,
+  ratings: Ratings,
+): StepActivity {
   const task = records.find((record) => record.task !== undefined)?.task;
   const stepKey = records.find((record) => record.task?.stepKey !== undefined)?.task?.stepKey;
   const error = records.find((record) => record.task?.error !== undefined)?.task?.error;
@@ -135,12 +198,23 @@ function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActi
     kind: 'step',
     ...(recalls.length === 0
       ? {}
-      : { memories: recalls.flatMap((record) => record.recall?.items ?? []) }),
+      : { memories: recalls.flatMap((record) => collectMemories(record, ratings)) }),
     records,
     status,
     ...(stepKey === undefined ? {} : { stepKey }),
     ...(task === undefined ? {} : { taskID: task.taskID }),
   };
+}
+
+// a recall's versions, each with the rating that names it
+function collectMemories(record: LiveRecord, ratings: Ratings): readonly RecalledMemory[] {
+  return (record.recall?.items ?? []).map((item) => {
+    const rating = ratings.get(buildRatingKey(record.sequence, item));
+
+    return rating === undefined
+      ? item
+      : { itemID: item.itemID, rating, score: item.score, version: item.version };
+  });
 }
 
 // the time from the step's start record to its end record

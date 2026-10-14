@@ -1,10 +1,10 @@
-import { readVersionTexts, readWriterStatus } from '@heynixie/memory';
+import { readRatingNotes, readVersionTexts, readWriterStatus } from '@heynixie/memory';
 import { apiImplementer } from './api-implementer';
 import { requireCaller } from './require-caller';
 import type { APIContext } from './types';
 
-// Builds the memory procedures of a signed-in device: the text of named versions, and the memory
-// writer's status.
+// Builds the memory procedures of a signed-in device: the text of named versions, the notes of
+// named ratings, and the memory writer's status.
 export function buildMemoryProcedures(context: APIContext) {
   return {
     readVersions: apiImplementer.memory.readVersions.handler(async (options) => {
@@ -13,6 +13,14 @@ export function buildMemoryProcedures(context: APIContext) {
       const versions = await readVersionTexts(context.log, options.input.versions);
 
       return { versions: [...versions] };
+    }),
+
+    readRatingNotes: apiImplementer.memory.readRatingNotes.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const notes = await readRatingNotes(context.log, options.input.notes);
+
+      return { notes: [...notes] };
     }),
 
     writerStatus: apiImplementer.memory.writerStatus.handler(async (options) => {

@@ -4,12 +4,13 @@ import type { Clock } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 
 // What the memory tools reach: the store through readStore, which returns null until it starts,
-// the clock that memory.pending measures a proposal's age on, and the owner's name and the zone
-// that each line memory.recall shows under an item reads.
+// the clock memory.pending ages a proposal on, the owner's name and the zone each recalled line
+// reads, and the agent's first name, which the owner sees beside each rating.
 export interface ConversationMemory {
   readonly readStore: () => MemoryToolStore | null;
   readonly clock: Pick<Clock, 'now'>;
   readonly ownerName: string | null;
+  readonly agentName: string | null;
   readonly defaultZone: string;
 }
 
@@ -21,7 +22,7 @@ export interface ConversationReaders {
 }
 
 // Builds the conversation's tool definitions: the web fetch tool, the time tool, the log reader
-// and the 7 memory tools. The registry exists before the memory store starts, so the memory tools reach the store
+// and the 8 memory tools. The registry exists before the memory store starts, so the memory tools reach the store
 // through readStore. A call before the store starts throws.
 export function buildConversationTools(
   readers: ConversationReaders,
@@ -43,6 +44,7 @@ export function buildConversationTools(
     ...buildMemoryTools(
       {
         recall: (request) => requireStore().recall(request),
+        rate: (request) => requireStore().rate(request),
         proposals: { listPending: () => requireStore().proposals.listPending() },
         findItemIDs: (ids) => requireStore().findItemIDs(ids),
         readShortIDs: (itemIDs) => requireStore().readShortIDs(itemIDs),
@@ -56,7 +58,12 @@ export function buildConversationTools(
         },
         renderReviewReason: (reason) => requireStore().renderReviewReason(reason),
       },
-      { clock: memory.clock, ownerName: memory.ownerName, defaultZone: memory.defaultZone },
+      {
+        clock: memory.clock,
+        ownerName: memory.ownerName,
+        agentName: memory.agentName,
+        defaultZone: memory.defaultZone,
+      },
     ),
   ];
 }

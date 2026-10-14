@@ -54,6 +54,22 @@ const recallItemSchema = versionRefSchema.extend({ score: z.number().optional() 
 
 const recallSchema = z.object({ items: z.array(recallItemSchema) });
 
+// The conversation's model's rating of one memory a recall delivered: whether it helped, was noise
+// or misled, and whether a note came with it. The record holds the note sealed under the item's
+// key; memory.readRatingNotes reads it.
+const ratingItemSchema = versionRefSchema.extend({
+  hasNote: z.boolean(),
+  verdict: z.enum(['helpful', 'noise', 'misleading']),
+});
+
+// The ratings of one memory.rate call, the sequence of the memory.recalled record they rate, and
+// the agent's name the deployment config gives, which a client shows beside each rating.
+const ratingSchema = z.object({
+  items: z.array(ratingItemSchema),
+  ratedBy: z.string().optional(),
+  recalledSequence: sequenceSchema,
+});
+
 const tokenCountSchema = z.int().nonnegative();
 
 // The context the conversation's last model call read, in tokens, and the window its session
@@ -66,6 +82,19 @@ const compactionSchema = z.object({
   postTokens: tokenCountSchema.optional(),
   preTokens: tokenCountSchema,
   trigger: z.enum(['manual', 'auto']),
+});
+
+// A rating's note, named by its memory.rated record's sequence and the rated item, while the
+// item's key exists. A forgotten item's note reads as shredded, and a rating with no note as
+// missing.
+const ratingNoteRefSchema = z.object({
+  itemID: z.string().min(1).max(200),
+  sequence: sequenceSchema,
+});
+
+const ratingNoteSchema = ratingNoteRefSchema.extend({
+  status: z.enum(['readable', 'shredded', 'unreadable', 'missing']),
+  text: z.string().optional(),
 });
 
 // A version's text while its key exists. A forgotten item's version reads as shredded.
@@ -93,6 +122,9 @@ const recordSchema = z.object({
       text: z.string(),
     })
     .optional(),
+
+  // Set on a memory.rated record: how the memories of the recall it names worked for the model.
+  rating: ratingSchema.optional(),
 
   // Set on a memory.recalled record: the memory versions the recall delivered.
   recall: recallSchema.optional(),
@@ -190,6 +222,12 @@ export const contract = {
     readVersions: signedIn
       .input(z.object({ versions: z.array(versionRefSchema).min(1).max(100) }))
       .output(z.object({ versions: z.array(versionTextSchema) })),
+
+    // Reads the notes of named ratings, in the order named. A forgotten item's note reads as
+    // shredded and carries no text.
+    readRatingNotes: signedIn
+      .input(z.object({ notes: z.array(ratingNoteRefSchema).min(1).max(100) }))
+      .output(z.object({ notes: z.array(ratingNoteSchema) })),
 
     // The memory writer's progress: its cursor over the event log, how many of your messages wait
     // for it, whether its catch-up over the log from before memory is still running, and its last

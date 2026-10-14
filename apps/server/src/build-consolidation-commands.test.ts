@@ -93,6 +93,7 @@ test('it prints the comment the conversation left through memory.comment beside 
   const comment = buildMemoryTools(ctx.memory.store, {
     clock: { now: () => Date.now() },
     ownerName: null,
+    agentName: null,
     defaultZone: 'UTC',
   }).find((definition) => definition.name === 'memory.comment');
 

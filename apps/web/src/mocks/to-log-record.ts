@@ -12,6 +12,7 @@ export function toLogRecord(record: StoredRecord): LogRecord {
     ...(record.context === undefined ? {} : { context: { ...record.context } }),
     kind: record.kind,
     ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
+    ...(record.rating === undefined ? {} : { rating: toLogRating(record.rating) }),
     ...(record.recall === undefined ? {} : { recall: toLogRecall(record.recall) }),
     recordedAt: record.recordedAt,
     sequence: record.sequence,
@@ -42,6 +43,22 @@ function toLogRecall(recall: NonNullable<StoredRecord['recall']>): LogRecall {
         ? { itemID: item.itemID, version: item.version }
         : { itemID: item.itemID, score: item.score, version: item.version },
     ),
+  };
+}
+
+type LogRating = NonNullable<LogRecord['rating']>;
+
+// keeps the agent's name only where one exists
+function toLogRating(rating: NonNullable<StoredRecord['rating']>): LogRating {
+  return {
+    items: rating.items.map((item) => ({
+      hasNote: item.hasNote,
+      itemID: item.itemID,
+      verdict: item.verdict,
+      version: item.version,
+    })),
+    ...(rating.ratedBy === undefined ? {} : { ratedBy: rating.ratedBy }),
+    recalledSequence: rating.recalledSequence,
   };
 }
 

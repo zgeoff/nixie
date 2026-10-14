@@ -4,6 +4,7 @@ import { implement, withEventMeta } from '@orpc/server';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 import type { ReadonlyDeep } from '../types';
 import { readMemoryVersion } from './read-memory-version';
+import { readRatingNote } from './read-rating-note';
 import { store } from './store';
 import { toLogRecord } from './to-log-record';
 
@@ -81,6 +82,12 @@ export const mockAPIRouter = os.router({
       requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       return { versions: options.input.versions.map((ref) => readMemoryVersion(ref)) };
+    }),
+
+    readRatingNotes: os.memory.readRatingNotes.handler((options) => {
+      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return { notes: options.input.notes.map((ref) => readRatingNote(ref)) };
     }),
 
     // a writer that has caught up with every record in the store

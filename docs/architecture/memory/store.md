@@ -164,7 +164,7 @@ one the server passes in from the conversation, and
 
 ## The model's tools
 
-The model reaches memory through 7 tools over the same interface:
+The model reaches memory through 8 tools over the same interface:
 
 | Tool              | Effect | Does                                                       |
 | ----------------- | ------ | ---------------------------------------------------------- |
@@ -175,9 +175,21 @@ The model reaches memory through 7 tools over the same interface:
 | `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote |
 | `memory.diff`     | `read` | Shows the pending consolidation diff                       |
 | `memory.comment`  | `note` | Leaves a comment on one change of that diff                |
+| `memory.rate`     | `note` | Rates how the items of the thread's latest recall worked   |
 
 Creating and editing are separate tools because the tool list is where the model learns what it can
-do, and a model that finds editing only in the description of a create tool can miss it.
+do, and a model that finds editing only in the description of a create tool can miss it. Rating has
+its own tool for the same reason.
+
+A rating tells the user whether a recalled item helped the model, was noise, or misled it, with an
+optional one-line note. It is no memory write, so it passes no gate and changes no item, and nothing
+acts on it. Each call binds to the thread's latest recall record and refuses an item that recall did
+not deliver, with a plain reason the model reads, so a rating always names an item the model was
+given on that turn. One rating record holds the call's ratings, each by item and the newest version
+the recall delivered, and names the recall it rates, so the user sees the rating beside that turn's
+memories. The note is free text the model can copy an item's words into, so the record seals it
+under the rated item's key, as a consolidation comment is sealed, and a forget leaves the note
+unreadable. The call's own record leaves the notes out.
 
 Each write tool runs its gate, and returns either the version it applied or the proposal it became,
 with its review reason. A missing quote is no tool error, because the gate turns it into a proposal.
@@ -195,7 +207,7 @@ the words the conversation reads ([how an item reads](./context.md#how-an-item-r
 description tells the model to reach for it when a half-remembered detail would change an answer. A
 past version's line names the version that replaced or retired it. A stale version, a missing item
 or a wrong state returns to the model as the tool's refusal, so the model reads the item again. The
-model can retire an item and can never restore, undo or forget one. The server registers the 7 tools
+model can retire an item and can never restore, undo or forget one. The server registers the 8 tools
 beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
 because they declare `read` and `note` and run direct.
 

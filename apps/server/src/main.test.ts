@@ -1,43 +1,22 @@
 import { expect, test } from 'bun:test';
-import type { ContractClient } from '@heynixie/contract';
-import { clientHeaderName } from '@heynixie/contract';
 import type { LogRecord } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
-import { createORPCClient } from '@orpc/client';
-import { RPCLink } from '@orpc/client/fetch';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { buildCheckedRememberReplies } from './test-utils/build-checked-remember-replies';
+import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
+import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
 // nixie in a test build at ready, with a device signed in through the code it printed at start
 async function setupTest() {
   const nixie = await startTestNixie();
-  const listening = await nixie.waitForLogEvent('http.listening');
-  const issued = await nixie.waitForLogEvent('enrolment_code.issued');
-
-  await nixie.waitForLogEvent('ready');
-
-  const url = `http://127.0.0.1:${String(listening['port'])}`;
-  const signedOut = createORPCClient<ContractClient>(
-    new RPCLink({ url: `${url}/rpc`, headers: { [clientHeaderName]: 'test' } }),
-  );
 
   // boot data: every procedure but enrol needs a device session, whose name each message carries
-  const session = await signedOut.sessions.enrol({
-    clientActionID: crypto.randomUUID(),
-    code: String(issued['code']),
-    deviceName: 'laptop',
-    tokenDelivery: 'bearer',
-  });
-  const client = createORPCClient<ContractClient>(
-    new RPCLink({
-      url: `${url}/rpc`,
-      headers: { [clientHeaderName]: 'test', authorization: `Bearer ${session.token ?? ''}` },
-    }),
-  );
+  const clients = await createTestClient(nixie);
 
-  return { ...nixie, url, client, signedOut };
+  return { ...nixie, ...clients };
 }
 
 test('it keeps no message text in nixie.db, the key store or the logs', async () => {
@@ -141,30 +120,10 @@ test('it calls the owner by the name the secrets file holds, which the configura
     extraConfig: ['owner:', '  name: deployment:owner_name'],
     extraSecrets: ['settings:', '  owner_name: Wren Halloway'],
   });
-  const [listening, issued] = await Promise.all([
-    nixie.waitForLogEvent('http.listening'),
-    nixie.waitForLogEvent('enrolment_code.issued'),
-    nixie.waitForLogEvent('ready'),
-  ]);
-  const url = `http://127.0.0.1:${String(listening['port'])}`;
-  const signedOut = createORPCClient<ContractClient>(
-    new RPCLink({ url: `${url}/rpc`, headers: { [clientHeaderName]: 'test' } }),
-  );
-  const session = await signedOut.sessions.enrol({
-    clientActionID: crypto.randomUUID(),
-    code: String(issued['code']),
-    deviceName: 'laptop',
-    tokenDelivery: 'bearer',
-  });
-  const client = createORPCClient<ContractClient>(
-    new RPCLink({
-      url: `${url}/rpc`,
-      headers: { [clientHeaderName]: 'test', authorization: `Bearer ${session.token ?? ''}` },
-    }),
-  );
+  const signedIn = await createTestClient(nixie);
 
   nixie.model.addReplies({ text: 'Hello.' });
-  await client.conversation.send({
+  await signedIn.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'Hi.',
@@ -344,6 +303,57 @@ test('it applies a remembered fact that the owner typed, with their words as its
     },
   ]);
   expect(run.records.filter((record) => record.kind === 'memory.proposed')).toStrictEqual([]);
+}, 60_000);
+
+test('it keeps the ratings the model gives two retrieved items against the turn that retrieved them', async () => {
+  const ctx = await setupTest();
+
+  // retrieval scores a word by how few items hold it, so memory holds 3 items beside the 2 rated
+  const quotes = [
+    'boiler code is 4471',
+    'bins go out on Tuesday',
+    'cat eats at six',
+    'car is due in March',
+    'bulbs are in the hall',
+  ];
+
+  ctx.model.addReplies(...buildCheckedRememberReplies(quotes), { text: 'Noted all five.' });
+  const remembered = await sendClientMessage(
+    ctx.client,
+    {
+      text: `Remember that ${quotes.join(', ')}.`,
+      spans: [{ start: 0, end: 119, source: 'typed' }],
+    },
+    'Noted all five.',
+  );
+  const [boilerID, binsID] = remembered.flatMap(
+    (record) =>
+      z.object({ result: z.object({ itemID: z.string() }) }).safeParse(record.toolCall?.content)
+        .data?.result.itemID ?? [],
+  );
+  const ratings = [
+    { item: binsID, verdict: 'helpful' },
+    { item: boilerID, verdict: 'noise', note: 'the code had nothing to do with bins' },
+  ];
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__memory_rate', input: { ratings } } },
+    { text: 'Tuesday.' },
+  );
+  const records = await sendClientMessage(
+    ctx.client,
+    { text: 'Which day do the bins go out, and is the boiler code still 4471?' },
+    'Tuesday.',
+  );
+  const turn = records.slice(records.findLastIndex((record) => record.kind === 'owner_message'));
+
+  expect(turn.find((record) => record.kind === 'memory.rated')?.rating).toStrictEqual({
+    items: [
+      { hasNote: false, itemID: expect.toBeString(), verdict: 'helpful', version: 1 },
+      { hasNote: true, itemID: expect.toBeString(), verdict: 'noise', version: 1 },
+    ],
+    recalledSequence: turn.find((record) => record.kind === 'memory.recalled')?.sequence ?? -1,
+  });
 }, 60_000);
 
 test('it lists the proposal the model made when the model calls the pending tool', async () => {

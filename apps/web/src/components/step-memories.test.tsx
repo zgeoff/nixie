@@ -48,6 +48,76 @@ test('it shows a dash for a memory recalled without a score', async () => {
   expect(row).toBeVisible();
 });
 
+test('it shows each rating with its note beside the memory it rates', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+  await Promise.all([
+    store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
+    store.memoryVersions.create({ itemID: 'item-2', text: 'Stub memory two', version: 1 }),
+    store.memoryVersions.create({ itemID: 'item-3', text: 'Stub memory three', version: 1 }),
+    store.ratingNotes.create({ itemID: 'item-2', sequence: 40, text: 'matches any question' }),
+  ]);
+
+  const rendered = render(
+    <StepMemories
+      memories={[
+        {
+          itemID: 'item-1',
+          rating: { hasNote: false, ratedBy: 'Pip', sequence: 40, verdict: 'helpful' },
+          version: 1,
+        },
+        {
+          itemID: 'item-2',
+          rating: { hasNote: true, ratedBy: 'Pip', sequence: 40, verdict: 'noise' },
+          version: 1,
+        },
+        { itemID: 'item-3', version: 1 },
+      ]}
+    />,
+  );
+
+  await user.click(rendered.getByText('Memories 3'));
+  await rendered.findByText('item-2 – Stub memory two [Pip: noise · "matches any question"]');
+
+  expect(
+    rendered.getAllByRole('group').map((row) => row.querySelector('summary')?.textContent),
+  ).toStrictEqual([
+    'Memories 3',
+    'item-1  –  Stub memory one  [Pip: helpful]',
+    'item-2  –  Stub memory two  [Pip: noise · "matches any question"]',
+    'item-3  –  Stub memory three',
+  ]);
+});
+
+test('it shows the note of a forgotten memory as forgotten, under the plain label when the config names no agent', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+  await Promise.all([
+    store.memoryVersions.create({ itemID: 'item-1', status: 'shredded', version: 1 }),
+    store.ratingNotes.create({ itemID: 'item-1', sequence: 12, status: 'shredded' }),
+  ]);
+
+  const rendered = render(
+    <StepMemories
+      memories={[
+        {
+          itemID: 'item-1',
+          rating: { hasNote: true, sequence: 12, verdict: 'noise' },
+          version: 1,
+        },
+      ]}
+    />,
+  );
+
+  await user.click(rendered.getByText('Memories 1'));
+
+  const row = await rendered.findByText('item-1 – (forgotten) [agent: noise · (note forgotten)]');
+
+  expect(row).toBeVisible();
+});
+
 test('it reads the text of more memories than one call to the API takes', async () => {
   const user = userEvent.setup();
   const memories = Array.from({ length: 101 }, (_, index) => ({

@@ -107,18 +107,21 @@ beside the records.
 Each message stands on its own line, and every other record folds into the step it belongs to, from
 the step's start to its end. A record before a step, such as the task's creation, folds into the
 step that follows it. A step shows as one collapsed line of short facts: its task, how many memories
-its recalls delivered, each tool it called with its targets, such as the host of each page a web
-fetch read, how full the context stood at its last model call against the auto-compact window, and
-how long it ran. A fact shows only once its record exists. Each compaction in the step adds a marker
-under that line with the context's tokens before and after, so the user can compare the turns on
-each side of it. Opening the step shows one collapsible section per source: the step with its
-records, the memories with each one's match score and the first line of its text, the context with
-each compaction, each call with its input and its result, and a failed step's error. Each section
-opens on its own. A recall record holds no text, so the memories section reads the text each time it
-opens, and a memory forgotten since then shows as forgotten. A long value shows its start and opens
-in full on demand, because a fetched page's text runs to many kilobytes. Its toggle sits above the
-text and sticks to the top of the view while the text scrolls past, so the user closes an open value
-without scrolling back to find the control.
+its recalls delivered with how many of them the model rated as noise, each tool it called with its
+targets, such as the host of each page a web fetch read, how full the context stood at its last
+model call against the auto-compact window, and how long it ran. A fact shows only once its record
+exists. Each compaction in the step adds a marker under that line with the context's tokens before
+and after, so the user can compare the turns on each side of it. Opening the step shows one
+collapsible section per source: the step with its records, the memories with each one's match score,
+the first line of its text and the model's rating with its note, the context with each compaction,
+each call with its input and its result, and a failed step's error. Each section opens on its own. A
+recall record holds no text and a rating record holds its note sealed, so the memories section reads
+the texts and the notes each time it opens, and a memory forgotten since then shows as forgotten. A
+rating can arrive in a later step than the recall it rates, and the view shows it beside the memory
+in the step that recalled it. A long value shows its start and opens in full on demand, because a
+fetched page's text runs to many kilobytes. Its toggle sits above the text and sticks to the top of
+the view while the text scrolls past, so the user closes an open value without scrolling back to
+find the control.
 
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol

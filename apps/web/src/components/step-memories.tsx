@@ -1,7 +1,7 @@
 import { useQueries } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import type { RecalledMemory } from '../build-activity';
+import type { MemoryRating, RecalledMemory } from '../build-activity';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../use-nixie-client';
 import { StepSection } from './step-section';
@@ -10,9 +10,9 @@ export interface StepMemoriesProps {
   readonly memories: readonly RecalledMemory[];
 }
 
-// The memories the step's recalls delivered, each with its match score. A recall record holds no
-// text, so the list reads the text each time the section opens, and a memory forgotten since then
-// shows as forgotten.
+// The memories the step's recalls delivered, each with its match score and the model's rating. The
+// records hold no text and no open note, so the list reads both each time the section opens, and a
+// memory forgotten since then shows as forgotten.
 export function StepMemories(props: StepMemoriesProps): ReactNode {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -38,9 +38,6 @@ function MemoryList(props: StepMemoriesProps): ReactNode {
       ]),
     ).values(),
   ];
-  const batches = Array.from({ length: Math.ceil(refs.length / batchSize) }, (_, index) =>
-    refs.slice(index * batchSize, (index + 1) * batchSize),
-  );
 
   // A query keeps its last data while it reads again and after that read fails, and that data can
   // hold the text of a memory forgotten since, so only a finished, successful read gives text.
@@ -51,10 +48,11 @@ function MemoryList(props: StepMemoriesProps): ReactNode {
         result.isSuccess && !result.isFetching ? result.data.versions : [],
       ),
     }),
-    queries: batches.map((versions) =>
+    queries: splitBatches(refs).map((versions) =>
       nixie.queryUtils.memory.readVersions.queryOptions({ input: { versions } }),
     ),
   });
+  const byNote = useRatingNotes(props.memories);
   const byVersion = new Map(
     texts.versions.map((version) => [buildVersionKey(version), formatMemoryText(version)]),
   );
@@ -66,10 +64,56 @@ function MemoryList(props: StepMemoriesProps): ReactNode {
         <MemoryRow
           key={`${buildVersionKey(memory)}#${index}`}
           memory={memory}
+          note={
+            memory.rating === undefined
+              ? undefined
+              : byNote.get(buildNoteKey(memory.rating.sequence, memory.itemID))
+          }
           text={byVersion.get(buildVersionKey(memory)) ?? fallback}
         />
       ))}
     </ul>
+  );
+}
+
+// Reads the note of each rating that has one, by its note key, the same way the list reads texts.
+function useRatingNotes(
+  memories: readonly RecalledMemory[],
+): ReadonlyMap<string, string | undefined> {
+  const nixie = useNixieClient();
+  const refs = [
+    ...new Map(
+      memories.flatMap((memory) =>
+        memory.rating?.hasNote === true
+          ? [
+              [
+                buildNoteKey(memory.rating.sequence, memory.itemID),
+                { itemID: memory.itemID, sequence: memory.rating.sequence },
+              ] as const,
+            ]
+          : [],
+      ),
+    ).values(),
+  ];
+  const notes = useQueries({
+    combine: (results) =>
+      results.flatMap((result) =>
+        result.isSuccess && !result.isFetching ? result.data.notes : [],
+      ),
+    queries: splitBatches(refs).map((batch) =>
+      nixie.queryUtils.memory.readRatingNotes.queryOptions({ input: { notes: batch } }),
+    ),
+  });
+
+  return new Map(
+    notes.map((note) => [buildNoteKey(note.sequence, note.itemID), formatNoteText(note)]),
+  );
+}
+
+// the refs in batches the API accepts
+function splitBatches<Ref>(refs: readonly Ref[]): Ref[][] {
+  return Array.from({ length: Math.ceil(refs.length / batchSize) }, (_, index) =>
+    refs.slice(index * batchSize, (index + 1) * batchSize),
   );
 }
 
@@ -80,6 +124,10 @@ interface VersionRef {
 
 function buildVersionKey(ref: VersionRef): string {
   return `${ref.itemID}@${ref.version}`;
+}
+
+function buildNoteKey(sequence: number, itemID: string): string {
+  return `${sequence}:${itemID}`;
 }
 
 interface VersionText {
@@ -95,25 +143,49 @@ function formatMemoryText(version: VersionText): string {
   return version.status === 'shredded' ? '(forgotten)' : `(${version.status})`;
 }
 
+// A note shows its text in quotes while readable, and a forgotten item's note shows as forgotten.
+// One that is still loading, failed or is missing shows nothing.
+function formatNoteText(note: VersionText): string | undefined {
+  if (note.status === 'readable') {
+    return `"${note.text ?? ''}"`;
+  }
+
+  return note.status === 'shredded' ? '(note forgotten)' : undefined;
+}
+
 interface MemoryRowProps {
   readonly memory: RecalledMemory;
+
+  // the rating's note, once read
+  readonly note: string | undefined;
   readonly text: string;
 }
 
-// One memory as one line, its ID, score and the start of its text; opened, its full text.
+// One memory as one line, its ID, score, the start of its text and the model's rating, such as
+// [Pip: noise · "matches anything"]; opened, its full text.
 function MemoryRow(props: MemoryRowProps): ReactNode {
   const score = props.memory.score === undefined ? '–' : formatScore(props.memory.score);
+  const line = `${props.memory.itemID}  ${score}  ${formatOneLine(props.text)}`;
 
   return (
     <li>
       <details aria-label={props.memory.itemID}>
         <summary className={css({ cursor: 'pointer' })}>
-          {`${props.memory.itemID}  ${score}  ${formatOneLine(props.text)}`}
+          {props.memory.rating === undefined
+            ? line
+            : `${line}  ${formatRating(props.memory.rating, props.note)}`}
         </summary>
         <p className={css({ whiteSpace: 'pre-wrap' })}>{props.text}</p>
       </details>
     </li>
   );
+}
+
+// the agent's verdict, with its note once read
+function formatRating(rating: MemoryRating, note: string | undefined): string {
+  const by = rating.ratedBy ?? 'agent';
+
+  return note === undefined ? `[${by}: ${rating.verdict}]` : `[${by}: ${rating.verdict} · ${note}]`;
 }
 
 // BM25 gives a common word a score near zero, such as 1.1e-6, so a score below 0.01 shows its

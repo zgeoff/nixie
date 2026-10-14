@@ -73,7 +73,7 @@ function buildWriteStandIn(): ToolDefinition {
   };
 }
 
-test('it lists the web fetch tool, the time tool, the log reader and the 7 memory tools', async () => {
+test('it lists the web fetch tool, the time tool, the log reader and the 8 memory tools', async () => {
   const ctx = await setupTest();
   const definitions = buildConversationTools(
     { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
@@ -81,6 +81,7 @@ test('it lists the web fetch tool, the time tool, the log reader and the 7 memor
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
       ownerName: null,
+      agentName: null,
       defaultZone: 'Australia/Sydney',
     },
   );
@@ -90,6 +91,7 @@ test('it lists the web fetch tool, the time tool, the log reader and the 7 memor
     'time.now',
     'log.read',
     'memory.recall',
+    'memory.rate',
     'memory.pending',
     'memory.remember',
     'memory.edit',
@@ -107,6 +109,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
       ownerName: null,
+      agentName: null,
       defaultZone: 'Australia/Sydney',
     },
   );
@@ -136,6 +139,7 @@ test('it allows the time tool, the log reader and each memory tool and denies a 
         readStore: () => null,
         clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
         ownerName: null,
+        agentName: null,
         defaultZone: 'Australia/Sydney',
       },
     ),
@@ -148,6 +152,7 @@ test('it allows the time tool, the log reader and each memory tool and denies a 
     'time.now',
     'log.read',
     'memory.recall',
+    'memory.rate',
     'memory.pending',
     'memory.remember',
     'memory.edit',
@@ -181,6 +186,7 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
       ownerName: null,
+      agentName: null,
       defaultZone: 'Australia/Sydney',
     },
   );
