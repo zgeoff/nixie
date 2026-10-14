@@ -9,7 +9,7 @@ export const memoryConsolidationSummaryMigration: Migration = {
   name: 'add a sealed summary to each consolidation run',
   up: async (tx) => {
     await createColumn(tx, 'summary', 'text');
-    await createColumn(tx, 'summary_shares', 'text check (json_valid(summary_shares))');
+    await createColumn(tx, 'summary_shares', 'text');
     await createColumn(tx, 'summary_lapse_at', 'integer');
   },
 };
@@ -17,7 +17,7 @@ export const memoryConsolidationSummaryMigration: Migration = {
 async function createColumn(
   tx: Transaction<unknown>,
   name: string,
-  definition: 'text' | 'text check (json_valid(summary_shares))' | 'integer',
+  definition: 'text' | 'integer',
 ): Promise<void> {
   const columns = await sql<{ name: string }>`
     select name from pragma_table_info('memory_consolidations')

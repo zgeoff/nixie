@@ -9,6 +9,9 @@ import { createConsolidationDiff } from './test-utils/create-consolidation-diff'
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';
 
+// the shares a stored summary holds, as the test reads them back from the raw row
+type Shares = Parameters<typeof decodeConsolidationSummary>[1]['shares'];
+
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
   const memory = await startTestMemory({ gate: { clock } });
@@ -182,7 +185,7 @@ test('it leaves a stored summary that no key left opens once an item it names is
   expect(
     decodeConsolidationSummary(
       diff.diffID,
-      { sealed: run.summary ?? '', shares: JSON.parse(run.summary_shares ?? '[]') },
+      { sealed: run.summary ?? '', shares: JSON.parse(run.summary_shares ?? '[]') as Shares },
       new Map([
         [oat.itemID, kept],
         [black.itemID, kept],

@@ -19,7 +19,9 @@ export function readDeliveredDiff(parts: StoreParts): Promise<ConsolidationDiff 
     const changes = diff.changes.filter((change) =>
       change.inputs.every((input) => !gone.has(input.itemID)),
     );
-    const summary = diff.summary?.itemIDs.some((itemID) => gone.has(itemID)) ? null : diff.summary;
+    const isSummaryGone =
+      diff.summary !== null && diff.summary.itemIDs.some((itemID) => gone.has(itemID));
+    const summary = isSummaryGone ? null : diff.summary;
 
     return changes.length === 0 && summary === null ? null : { ...diff, changes, summary };
   });
