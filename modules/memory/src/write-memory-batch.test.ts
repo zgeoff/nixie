@@ -334,7 +334,7 @@ test('it rejects a publish whose lease expired while it waited for the delivery 
   const [, published] = await Promise.allSettled([recall, publish]);
 
   expect({ published, row: await readWriterRow(ctx.memory.log) }).toMatchObject({
-    published: { status: 'rejected', reason: expect.any(LeaseLostError) },
+    published: { status: 'rejected', reason: { name: 'LeaseLostError' } },
     row: { cursor: 0, pending_start: 0, pending_end: planned.bounds.end, batches: 0 },
   });
 });
