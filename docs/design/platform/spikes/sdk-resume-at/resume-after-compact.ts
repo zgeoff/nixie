@@ -238,10 +238,9 @@ async function runCrashedTurn(
         configDir ?? '',
         sessionID,
         prompt,
-        JSON.stringify(buildEnv(extraEnv)),
         systemPrompt,
       ],
-      { stderr: 'inherit', stdout: 'pipe' },
+      { env: buildEnv(extraEnv), stderr: 'inherit', stdout: 'pipe' },
     ),
     events: string[] = [],
     needsCompaction = Object.keys(extraEnv).length > 0;

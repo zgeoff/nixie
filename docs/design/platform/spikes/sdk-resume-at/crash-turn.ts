@@ -1,14 +1,15 @@
 // Runs one turn on a session and prints a line per stream event, so that the parent can kill the
 // whole process group in the middle of the turn, as a crash would.
-// Usage: bun --no-env-file crash-turn.ts <config-dir> <session-id> <prompt> <env-json> <system-prompt>
+// Usage: bun --no-env-file crash-turn.ts <config-dir> <session-id> <prompt> <system-prompt>
+// The CLI gets this process's own environment, so the token never travels as an argument.
 import { resolve } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
-const [configDir, sessionID, prompt, envJSON, systemPrompt] = process.argv.slice(2),
+const [configDir, sessionID, prompt, systemPrompt] = process.argv.slice(2),
   cwd = resolve(import.meta.dir);
 
-if (!configDir || !sessionID || !prompt || !envJSON || !systemPrompt) {
-  throw new Error('usage: crash-turn.ts <config-dir> <session-id> <prompt> <env-json> <system-prompt>');
+if (!configDir || !sessionID || !prompt || !systemPrompt) {
+  throw new Error('usage: crash-turn.ts <config-dir> <session-id> <prompt> <system-prompt>');
 }
 
 let hasPrintedText = false;
@@ -16,7 +17,7 @@ let hasPrintedText = false;
 for await (const message of query({
   options: {
     cwd,
-    env: JSON.parse(envJSON) as Record<string, string>,
+    env: process.env,
     includePartialMessages: true,
     maxTurns: 1,
     model: 'claude-haiku-4-5-20251001',
