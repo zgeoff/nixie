@@ -103,8 +103,9 @@ key, so a key in the key store always seals a record or a published proposal.
 
 One transaction then publishes the batch:
 
-1. It checks that the step still holds its lease, so a step that lost the writer to another runner
-   writes nothing.
+1. It checks that the step still holds its lease at the task clock's time inside the transaction, so
+   a step that lost the writer to another runner, or whose lease expired while it waited for the
+   delivery lock, writes nothing.
 2. It checks that the batch is still the one the cursor waits on, so a rerun after a commit that a
    crash hid publishes nothing twice.
 3. It reads each cited message again and leaves out every write whose message the user forgot during

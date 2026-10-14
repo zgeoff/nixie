@@ -5,6 +5,7 @@ import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { readWriterRow } from './read-writer-row';
 import { removeMessageKey } from './test-utils/remove-message-key';
+import { startFaultPointHold } from './test-utils/start-fault-point-hold';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writePlannedBatch } from './test-utils/write-planned-batch';
 
@@ -32,7 +33,7 @@ test('it publishes an applied write as a version the writer made', async () => {
 
   const result = await ctx.memory.store.writeBatch({
     lease: ctx.lease,
-    now: ctx.clock.now(),
+    clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
       {
@@ -72,7 +73,7 @@ test('it publishes a proposal records and counts the proposal', async () => {
 
   const result = await ctx.memory.store.writeBatch({
     lease: ctx.lease,
-    now: ctx.clock.now(),
+    clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
       {
@@ -122,7 +123,7 @@ test('it rejects a batch whose proposal names an item that moved on since the se
 
   const publish = ctx.memory.store.writeBatch({
     lease: ctx.lease,
-    now: ctx.clock.now(),
+    clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
       {
@@ -160,7 +161,7 @@ test('it advances the cursor with the batch own records in the same publish', as
 
   await ctx.memory.store.writeBatch({
     lease: ctx.lease,
-    now: ctx.clock.now(),
+    clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
     buildRecords: (outcome) => [
@@ -197,7 +198,7 @@ test('it leaves out a write whose source was forgotten and counts it', async () 
 
   const result = await ctx.memory.store.writeBatch({
     lease: ctx.lease,
-    now: ctx.clock.now(),
+    clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
       {
@@ -230,7 +231,7 @@ test('it returns superseded for a batch the cursor no longer waits on', async ()
 
   const result = await ctx.memory.store.writeBatch({
     lease: ctx.lease,
-    now: ctx.clock.now(),
+    clock: ctx.clock,
     bounds: { start: 0, end: planned.bounds.end + 1 },
     writes: [
       {
@@ -263,7 +264,7 @@ test('it rejects a publish under a lease another claim replaced', async () => {
 
   const publish = ctx.memory.store.writeBatch({
     lease: { ...ctx.lease, generation: ctx.lease.generation + 1 },
-    now: ctx.clock.now(),
+    clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
     buildRecords: () => [],
@@ -278,9 +279,11 @@ test('it rejects a publish after the lease expired', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
 
+  ctx.clock.advance(ctx.lease.expiresAt - ctx.clock.now());
+
   const publish = ctx.memory.store.writeBatch({
     lease: ctx.lease,
-    now: ctx.lease.expiresAt,
+    clock: ctx.clock,
     bounds: planned.bounds,
     writes: [],
     buildRecords: () => [],
@@ -289,6 +292,51 @@ test('it rejects a publish after the lease expired', async () => {
   await publish.catch(() => {});
 
   expect(publish).rejects.toBeInstanceOf(LeaseLostError);
+});
+
+test('it rejects a publish whose lease expired while it waited for the delivery lock', async () => {
+  const ctx = await setupTest();
+  const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
+  const hold = startFaultPointHold('memory.recall.checked');
+  const recall = ctx.memory.store.recall({ limit: 10 });
+
+  await hold.reached;
+
+  const publish = ctx.memory.store.writeBatch({
+    lease: ctx.lease,
+    clock: ctx.clock,
+    bounds: planned.bounds,
+    writes: [],
+    buildRecords: (outcome) => [
+      {
+        kind: 'memory.batch_published',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'memory-writer',
+        payload: {
+          ...planned.bounds,
+          mode: 'live',
+          at: 1_000_000,
+          applied: [],
+          proposed: outcome.proposed,
+          dropped: outcome.forgotten,
+          catchUpEnded: false,
+          model: null,
+          profile: null,
+          usage: null,
+        },
+      },
+    ],
+  });
+
+  ctx.clock.advance(ctx.lease.expiresAt - ctx.clock.now());
+  hold.release();
+
+  const [, published] = await Promise.allSettled([recall, publish]);
+
+  expect({ published, row: await readWriterRow(ctx.memory.log) }).toMatchObject({
+    published: { status: 'rejected', reason: { name: 'LeaseLostError' } },
+    row: { cursor: 0, pending_start: 0, pending_end: planned.bounds.end, batches: 0 },
+  });
 });
 
 test('it leaves out a write whose message backed an item forgotten after the gate ran', async () => {
@@ -308,7 +356,7 @@ test('it leaves out a write whose message backed an item forgotten after the gat
 
   const result = await ctx.memory.store.writeBatch({
     lease: ctx.lease,
-    now: ctx.clock.now(),
+    clock: ctx.clock,
     bounds: planned.bounds,
     writes: [
       {

@@ -27,7 +27,7 @@ export async function tryWriteBatch(
   try {
     return await parts.publish({
       lease: batch.input.lease,
-      now: parts.context.clock.now(),
+      clock: parts.context.clock,
       bounds: batch.bounds,
       writes: batch.capped.writes,
       buildRecords: (outcome) =>
