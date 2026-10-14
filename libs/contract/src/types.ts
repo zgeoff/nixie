@@ -22,6 +22,10 @@ export type SpanSource = Span['source'];
 export interface SpanState {
   readonly spans: readonly Span[];
   readonly text: string;
+
+  // the typed text the last edit removed, kept only until the next edit: a keyboard that splits a
+  // run-together word deletes it and inserts it again with a space
+  readonly removed?: { readonly at: number; readonly text: string };
 }
 
 // What a client learns before an edit lands: the selection it replaces and how the new text
@@ -33,4 +37,8 @@ export interface PendingInput {
     readonly start: number;
   };
   readonly source: SpanSource;
+
+  // the text of an insertText of several words, which counts as typed only when it puts back the
+  // typed text the edit before it removed, with spaces added
+  readonly respacing?: string;
 }

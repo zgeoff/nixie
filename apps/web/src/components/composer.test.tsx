@@ -35,6 +35,19 @@ test('it sends the message when you press Enter', async () => {
   });
 });
 
+test('it sends only the spans and the text after a delete', async () => {
+  const user = userEvent.setup();
+  const onSend = mock<(message: SpanState) => void>();
+  const rendered = render(<Composer onSend={onSend} />);
+
+  await user.type(rendered.getByRole('textbox', { name: 'Message' }), 'hello{Backspace}{Enter}');
+
+  expect(onSend).toHaveBeenCalledExactlyOnceWith({
+    spans: [{ end: 4, source: 'typed', start: 0 }],
+    text: 'hell',
+  });
+});
+
 test('it clears the box once the message is sent', async () => {
   const user = userEvent.setup();
   const rendered = render(<Composer onSend={mock<(message: SpanState) => void>()} />);

@@ -1,3 +1,4 @@
+import { hasSeveralWords } from './has-several-words';
 import { pickSpanSource } from './pick-span-source';
 import type { PendingInput } from './types';
 
@@ -14,7 +15,7 @@ export interface BeforeInputFields {
 // Builds the pending input from a beforeinput event. The selection is read before the edit lands,
 // so it pins where the edit happens even next to repeated text.
 export function buildPendingInput(fields: BeforeInputFields): PendingInput {
-  return {
+  const pending = {
     selection: {
       backward: fields.inputType.endsWith('Backward'),
       end: fields.selectionEnd,
@@ -22,4 +23,8 @@ export function buildPendingInput(fields: BeforeInputFields): PendingInput {
     },
     source: pickSpanSource(fields.inputType, fields.data),
   };
+
+  return fields.inputType === 'insertText' && fields.data !== null && hasSeveralWords(fields.data)
+    ? { ...pending, respacing: fields.data }
+    : pending;
 }

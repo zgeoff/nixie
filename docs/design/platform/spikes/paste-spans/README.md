@@ -124,6 +124,39 @@ The rule needs the event's `data` in the pending input, which `beforeinput` carr
 The rule leaves one gap: a clipboard item of one word, or an undo that restores one word, still
 lands `typed`.
 
+### Android, a second run
+
+A second run on the same phone, with Chrome 155.0.8059.79 and the same Gboard, tested the rule
+itself. The page in the first run never passed the event's `data` to the span logic, so its chip row
+shows the labels from before the rule. The page now passes it, logs the key events and the text
+after each edit, and walks through the cases with `?guided`. The contract package's fixtures hold
+each recorded sequence, and its tests replay them through the shipped logic.
+
+```text
+typing         insertText "T" "h" "e" " " ...       typed:"The blue kettle is warm"
+completion     insertText "le " after "Kett"        typed:"Kettle warm "
+prediction     insertText "luck " "with " "the "    typed:"Good luck with the "
+tapped fix     deleteContentBackward [8, 11]        typed:"The kettis warm "
+               insertText "le "                     typed:"The kettle is warm "
+split          deleteContentBackward [4, 14]        typed:"The "
+               insertText "garden gate "            typed:"The garden gate "
+long-press     insertFromPaste                      pasted:"long-press test words"
+chip           insertText "chip test words"         unknown:"chip test words"
+```
+
+- **Split of a run-together word:** typing "gardengate" made Gboard delete the word and insert
+  "garden gate " as one `insertText` of 2 words. The multi-word rule labelled those typed words
+  `unknown`, so a quote over them failed as not typed. This was the one path in the run that turned
+  typed text `unknown`. The rule now counts such an insert as typed when it lands where the delete
+  before it removed typed text, and holds the same characters apart from whitespace.
+- **Key events:** Chrome fired a keydown with key code 229 before every Gboard insert, the chip's
+  included, so key events tell no route apart.
+- **A tapped fix:** tapping a misspelled word deleted the wrong letters at that word, then inserted
+  the fix there, so the selection pinned it and the fix stayed typed.
+
+A split that also changes a letter, such as "gardengste" to "garden gate", or a capital, stays
+`unknown`.
+
 ### React Native
 
 The Android run tested the web client in Chrome, not a React Native input. React Native's
@@ -143,7 +176,8 @@ the cost is that a swiped or suggested word never serves as evidence.
 
 ## Untested
 
-- Voice typing, which was not run.
+- Voice typing, because the test phone's microphone did not work.
+- Phrase suggestions of several words, which Gboard on the test phone never offered.
 - An undo by touch alone; the run reached Gboard's undo through Ctrl+Z.
 - Keyboards other than Gboard, and browsers on Android other than Chrome.
 - A real drag and drop; the mapping labels `insertFromDrop` as `dropped`.

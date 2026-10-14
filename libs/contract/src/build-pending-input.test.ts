@@ -37,5 +37,9 @@ test('it labels one insertText of several words as unknown, as the clipboard chi
       selectionEnd: 0,
       selectionStart: 0,
     }),
-  ).toStrictEqual({ selection: { backward: false, end: 0, start: 0 }, source: 'unknown' });
+  ).toStrictEqual({
+    respacing: 'chip test words',
+    selection: { backward: false, end: 0, start: 0 },
+    source: 'unknown',
+  });
 });
