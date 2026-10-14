@@ -1,4 +1,3 @@
-import { createShortID } from '@heynixie/db';
 import type { Definitions, JSONObject, Log, RecordInput } from '@heynixie/log';
 import { findRecordKeys } from '@heynixie/log';
 import { buildConsolidationHash } from './build-consolidation-hash';
@@ -17,7 +16,7 @@ export interface DiffPlan {
 }
 
 // Plans the one record that proposes a run's diff: each change sealed under its first input's
-// key, with its action hash over the versions it read and the short ID the model names it by. A change whose first input lost its key
+// key, with its action hash over the versions it read. A change whose first input lost its key
 // since the session read it, as after a forget, drops out, because no key is left to seal it.
 export async function planDiffRecord(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
@@ -64,7 +63,6 @@ async function encodeChange(
 
   return {
     changeID,
-    shortID: createShortID(),
     kind: change.kind,
     itemID: change.inputs[0].itemID,
     inputs,

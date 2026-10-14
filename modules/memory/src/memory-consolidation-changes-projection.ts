@@ -49,7 +49,9 @@ async function writeChangeRows(
           created_at: parsed.at,
           lapse_at: change.lapseAt,
           resolved_sequence: null,
-          short_id: change.shortID ?? buildShortIDFromUUID(change.changeID),
+
+          // from the random UUID, so the record keeps the shape a release before reads and rebuilds
+          short_id: buildShortIDFromUUID(change.changeID),
           comment: null,
           comment_sequence: null,
         })),

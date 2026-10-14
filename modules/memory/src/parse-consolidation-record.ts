@@ -6,9 +6,6 @@ const versionRef = z.strictObject({ itemID: z.string(), version: z.int().min(1) 
 const change = z
   .strictObject({
     changeID: z.string(),
-
-    // absent on a record from before short IDs, whose change takes the one its UUID gives
-    shortID: z.string().optional(),
     kind: z.enum(['merge', 'rewrite', 'retire']),
     itemID: z.string(),
     inputs: z.array(versionRef).min(1).readonly(),
