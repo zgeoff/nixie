@@ -21,6 +21,9 @@ export interface GuestIO {
 
   // builds nixie's tool server for the turn; production reaches the run's HTTP endpoint
   readonly buildToolServer?: (turn: TurnFrame) => McpServerConfig;
+
+  // the pause before the turn's one reconnect to nixie's tool server
+  readonly waitBeforeReconnect?: () => Promise<void>;
 }
 
 // Runs the conversation guest for one turn: the first host frame starts it, each later message
@@ -62,6 +65,9 @@ async function runFirstFrame(
     toolServer: (run.io.buildToolServer ?? buildHTTPToolServer)(frame),
     messages: readMessages(run.frames),
     emit: run.emit,
+    ...(run.io.waitBeforeReconnect === undefined
+      ? {}
+      : { waitBeforeReconnect: run.io.waitBeforeReconnect }),
   });
 }
 

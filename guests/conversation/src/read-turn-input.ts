@@ -7,15 +7,30 @@ export interface TurnInputState {
   // the uuids of messages the SDK took and has not yet read
   readonly pending: Set<string>;
 
+  // resolves true once nixie's tool server has connected, or false when the turn stops without it
+  readonly toolsReady: PromiseWithResolvers<boolean>;
+
   // resolves with the error the host's message stream threw, which fails the turn at once
   readonly inputFailed: PromiseWithResolvers<Error>;
   readonly ended: PromiseWithResolvers<void>;
 }
 
-// Reads the prompt stream of one turn: the turn's inbox, then each host message until the turn
-// ends. The SDK aborts on an error from its prompt stream, yet the CLI still answers the message it
+// Reads the prompt stream of one turn, once its tools connect: the turn's inbox, then each host
+// message until the turn ends. The SDK aborts on an error from its prompt stream, yet the CLI still answers the message it
 // holds, so a host stream error ends the stream and fails the turn through its state instead.
 export async function* readTurnInput(
+  turn: TurnFrame,
+  messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
+  state: TurnInputState,
+): AsyncGenerator<SDKUserMessage> {
+  const isReady = await state.toolsReady.promise;
+
+  if (isReady) {
+    yield* readInbox(turn, messages, state);
+  }
+}
+
+async function* readInbox(
   turn: TurnFrame,
   messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
   state: TurnInputState,

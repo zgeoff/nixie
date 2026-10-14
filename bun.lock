@@ -133,6 +133,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@modelcontextprotocol/server": "catalog:",
         "tiny-invariant": "catalog:",
       },
     },

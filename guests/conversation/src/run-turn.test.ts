@@ -41,6 +41,9 @@ async function setupTest() {
         return Promise.resolve();
       },
       runQuery: recorder.runQuery,
+
+      // no pause before the one reconnect, so a turn on an unreachable server stops at once
+      waitBeforeReconnect: () => Promise.resolve(),
     },
   };
 }
@@ -134,20 +137,25 @@ test('it offers the model nixie tools alone, on the profile model, with the plac
   ]);
 });
 
-test('it stops the turn with no model output when nixie tool server is not connected', async () => {
+test('it stops the turn with no model output when nixie tool server stays unreachable', async () => {
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'The note says to buy milk.' });
   await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
     ...ctx.deps,
 
-    // nothing listens on the discard port, so the server fails to connect
+    // nothing listens on the discard port, so the server fails to connect, and so does the retry
     toolServer: { type: 'http', url: 'http://127.0.0.1:9/mcp', alwaysLoad: true },
   });
 
   expect(ctx.frames).toStrictEqual([
-    { type: 'failed', reason: 'tools_not_connected', detail: "nixie's tool server is failed" },
+    {
+      type: 'failed',
+      reason: 'tools_not_connected',
+      detail: expect.toStartWith("nixie's tool server is failed: ECONNREFUSED"),
+    },
   ]);
+  expect(ctx.model.requests).toStrictEqual([]);
 });
 
 test('it returns from a turn that ends at a result once the CLI process has exited', async () => {
