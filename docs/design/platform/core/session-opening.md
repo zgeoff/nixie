@@ -155,8 +155,12 @@ step, so a broken compactor stops the conversation where you see it, never in si
 
 A turn can grow past the window on its own, such as from large tool results. Its step then compacts
 the session from the last committed boundary and runs the turn again on the new session, once. Only
-a turn that alone exceeds the window fails for good. How the SDK reports an overflow with
-auto-compaction off is the first thing the build settles.
+a turn that alone exceeds the window fails for good. The guest detects the overflow on the result's
+terminal reason, `blocking_limit` when the CLI refuses the call and `prompt_too_long` when the model
+API does, because no other failure gives either value
+([overflow spike](../spikes/sdk-overflow/README.md)). The CLI refuses below the model's own window
+and ignores the profile's context cap once auto-compaction is off, so the threshold sits under the
+window the CLI assumes.
 
 ### The instruction
 
