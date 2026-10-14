@@ -57,6 +57,39 @@ changed tool's old and new form side by side, and allowing it pins the new hash.
 change what a tool does without changing its listing, so the effect declaration assumes the worst
 for an external tool. The [MCP proxy spike](../spikes/mcp-proxy-pin/README.md) ran these rules.
 
+### A failed listing
+
+A listing fails when the server refuses the connection, returns an error, sends a listing the proxy
+cannot parse, or gives no answer within 10 s by default. A stdio server whose imp fails to start
+fails its listing the same way. A listing the server refuses as unauthorised goes to the credential
+store instead, which refreshes and retries once, as [refresh](credentials.md#refresh) states, and
+the tools then follow the credential's [status](credentials.md#statuses).
+
+When a server fails its listing at the start of a task run, the run keeps the server's pinned tools,
+and the model sees each one in the form you allowed. **Why:** a tool that vanishes reads to the
+model as a missing capability, so the assistant could tell you only that it cannot help, and a run
+that hid the tools would keep the gap after the server recovers. The run's tool list stays the same
+through the failure, which keeps the model's prompt cache.
+
+A call to one of those tools reaches the server only when the proxy's latest listing of that server
+passed and left that tool exposed under the table's rules, so a server cannot dodge the hash check
+by failing its listing. When the latest listing failed, a call makes the next try itself once that
+try is due, and lists the server before it calls the tool. A call whose listing fails, or that comes
+before the next try is due, returns an error that names the server and the next try, such as "atc is
+unreachable, next try 14:05".
+
+The proxy keeps one health state per server, shared by every task run. Failed listings back off as a
+poll does in the [trigger source](../channels/trigger-source.md#polls), from 1 min to 1 h by
+default, and the proxy makes each try on that schedule with no task run waiting on it, unless a call
+makes the try first. A listing a call makes counts toward the backoff and the health state like any
+other. A task run that starts during the backoff skips the listing. After 3 failed listings in a
+row, by default, the server is unhealthy.
+
+The client shows one notice when the server becomes unhealthy, with the last error and the next try,
+and one notice when an unhealthy server passes a listing again. It never shows a notice per task
+run, because a server that is down for an hour would otherwise fill the client with one notice per
+task run, while the model's error covers each call.
+
 ## Effect declarations
 
 Every proxied tool needs an effect declaration before the model sees it, from you or a reviewed
