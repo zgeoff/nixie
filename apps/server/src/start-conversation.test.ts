@@ -124,18 +124,17 @@ test('it puts a pinned item in the next turn system prompt with the line that sa
     sendTestMessage(ctx.context, runner.runStep, 'What do I go by?'),
   ]);
   const request = ctx.readLastRequest();
+  const shortID = String(shortIDs.get(item.itemID));
 
   // the item's day is the day the test runs, so the line's day reads as a placeholder
   expect(
     JSON.stringify(request?.system).replace(/ v1 · \d{1,2} \w{3} · /u, ' v1 · <day> · '),
-  ).toInclude(
-    `- Goes by Sam\\n  ${String(shortIDs.get(item.itemID))} v1 · <day> · the owner said this\\n</pinned-memory>`,
-  );
-  expect(JSON.stringify(request?.messages)).toInclude(
-    String.raw`- Pinned [${String(shortIDs.get(item.itemID))}]: Goes by Sam\n</pinned-memory-changes>\n\n[`,
-  );
+  ).toInclude(`- Goes by Sam\\n  ${shortID} v1 · <day> · the owner said this\\n</pinned-memory>`);
   expect(JSON.stringify(request?.messages)).toMatch(
-    /<\/pinned-memory-changes>\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
+    new RegExp(
+      String.raw`<system-message type=\\"pinned-memory-changes\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- Pinned \[${shortID}\]: Goes by Sam\\n<\/system-message id=\\"\k<blockID>\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?`,
+      'u',
+    ),
   );
 }, 30_000);
 
@@ -466,8 +465,8 @@ test('it gives the next best match the slot of an item the session already holds
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...flowerpot }], [{ ...garage }]]);
-  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude(
-    String.raw`A second spare key hangs in the garage\n`,
+  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toMatch(
+    /<system-message type=\\"retrieved-memory\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- A second spare key hangs in the garage\\n(?:[^<]*\\n)?<\/system-message id=\\"\k<blockID>\\">/u,
   );
 }, 30_000);
 

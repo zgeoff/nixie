@@ -76,6 +76,7 @@ function makeTurnNoteReader(
       log,
       store,
       events,
+      clock: parts.context.clock,
       ownerName: parts.config.owner.name,
       defaultZone: parts.config.time.default_zone,
     });

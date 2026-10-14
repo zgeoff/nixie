@@ -1,5 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import { z } from 'zod';
+import { createBlockID } from './create-block-id';
 
 // Renders your message as you wrote it, with each span you pasted or dropped in wrapped in a block
 // whose fresh random ID is on both tags, so a pasted closing tag cannot end it. A forgotten message
@@ -33,7 +34,7 @@ function renderSpan(part: string, source: string): string {
   if (!isForeignSource(source)) {
     return part;
   }
-  const blockID = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+  const blockID = createBlockID();
 
   return `<${source} id="${blockID}">${part}</${source} id="${blockID}">`;
 }

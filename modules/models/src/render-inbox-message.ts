@@ -2,21 +2,23 @@ import type { LogRecord } from '@heynixie/log';
 import { formatMessageStamp } from './format-message-stamp';
 import { formatMessageTime } from './format-message-time';
 import { renderOwnerText } from './render-owner-text';
+import type { SystemMessageType } from './render-system-message';
+import { renderSystemMessage } from './render-system-message';
 import type { MessageTimeOptions } from './types';
 
-// Renders an inbox record as the text the model reads after its event ID and the time it arrived:
-// your message as you wrote it, with the label of the session you sent it from, or a short line for
-// a fired timer or an action's outcome, so the model knows when each input arrived and can cite it.
+// Renders an inbox record so the model knows when it arrived and can cite it: your message after
+// its event ID, time and session label, or a fired timer or an action's outcome as a system message
+// whose body leads with the event ID.
 export function renderInboxMessage(record: LogRecord, times: MessageTimeOptions): string {
   switch (record.kind) {
     case 'owner_message': {
       return `[${formatMessageStamp(record, times)}] ${renderOwnerText(record)}`;
     }
     case 'timer.fired': {
-      return `[${formatRecordStamp(record, times)}] A timer fired: ${JSON.stringify(record.payload)}`;
+      return renderRecordMessage(record, 'timer', times);
     }
     case 'action.outcome': {
-      return `[${formatRecordStamp(record, times)}] An action settled: ${JSON.stringify(record.payload)}`;
+      return renderRecordMessage(record, 'outcome', times);
     }
     default: {
       return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;
@@ -24,8 +26,20 @@ export function renderInboxMessage(record: LogRecord, times: MessageTimeOptions)
   }
 }
 
-// a timer or an outcome carries no zone of its own, so it reads in the default zone, as a message
-// with no zone does
-function formatRecordStamp(record: LogRecord, times: MessageTimeOptions): string {
-  return `#${record.sequence} · ${formatMessageTime(record.recordedAt, null, times)}`;
+type RecordMessageType = Extract<SystemMessageType, 'timer' | 'outcome'>;
+
+const recordSummaries = { timer: 'A timer fired', outcome: 'An action settled' } as const;
+
+// a timer or an outcome carries no zone of its own, so its time reads in the default zone, as a
+// message with no zone does
+function renderRecordMessage(
+  record: LogRecord,
+  type: RecordMessageType,
+  times: MessageTimeOptions,
+): string {
+  return renderSystemMessage({
+    type,
+    at: formatMessageTime(record.recordedAt, null, times),
+    body: `[#${record.sequence}] ${recordSummaries[type]}: ${JSON.stringify(record.payload)}`,
+  });
 }

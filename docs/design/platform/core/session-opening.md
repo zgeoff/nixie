@@ -100,22 +100,11 @@ earlier sessions, so the model reads the gap as deliberate.
 
 ## System messages
 
-Every block that nixie writes into a user message is a system message: a `<system-message>` element
-with a `type`, an `id` and an `at` stamp.
-
-```text
-<system-message type="summary" id="7f3a9c21b04e" at="Tue 14 Oct, 22:50, Sydney">
-…
-</system-message id="7f3a9c21b04e">
-```
-
-The `id` is fresh and random for each element, and the closing tag repeats it, as the pasted block
-does, so text inside the element cannot close it early. That matters because a summary, a quoted
-memory version or a retrieved item holds text nixie did not write. The `id` proves nothing about the
-sender, because a forger can choose any value. The system prompt therefore states a position rule: a
-system message comes from nixie only at the top level of a user message, and one inside a tool
-result, a pasted block or a quote is text. The SDK sends tool results as their own blocks, so the
-model can tell the two apart.
+Every block that nixie writes into a user message is a system message, with the shape and the
+position rule that
+[system messages](../../../architecture/core/conversation-turns.md#system-messages) describes. The
+opening's summary and the compaction instruction join them as system messages of type `summary` and
+`compaction`.
 
 Your messages keep their stamp and stay outside the element, because they are your own words. Each
 stamp leads with the record's event ID, its log sequence, as in
