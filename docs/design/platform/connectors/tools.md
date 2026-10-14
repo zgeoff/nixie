@@ -60,9 +60,10 @@ therefore in the typed result, free text included, and the declaration lives in 
 
 Each task run and each worker run gets an MCP endpoint that lists only the tools on its caller's
 list: the job's list for a job run, the conversation's list for the conversation, and the subset the
-caller passed for a worker. The decision point still checks the list, so the endpoint narrows what
-the model sees, and the check holds whatever the endpoint lists. A tool the model never sees costs
-no prompt tokens.
+caller passed for a worker. The list names the connections each connector tool may use, and the
+endpoint builds each tool's [connection argument](connector.md#the-connection-argument) from them.
+The decision point still checks the list, so the endpoint narrows what the model sees, and the check
+holds whatever the endpoint lists. A tool the model never sees costs no prompt tokens.
 
 The endpoint is a stateless Streamable HTTP MCP server on the v2 TypeScript MCP packages, keyed by
 the run. nixie knows the run from the reverse forward the connection came through, and also checks a

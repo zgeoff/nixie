@@ -134,7 +134,10 @@ turn. The conversation never waits on a task.
 A job is a definition: a schedule or trigger, instructions, a tool list and allowed destinations,
 under [0015](../../../decisions/0015-taint-scope.md). When its trigger source starts a job run,
 nixie creates a task with the job's definition version pinned for the task's life. The job run can
-call only the tools on the job's list, and the first build treats every job run as untrusted.
+call only the tools on the job's list, and the first build treats every job run as untrusted. The
+list pins each connector tool to the connections the job may use, within the connections its creator
+may use, and a connection added later never joins the job, as the
+[connection argument](../connectors/connector.md#the-connection-argument) covers.
 
 Every job run gets its trigger details in its context: when it was scheduled, when it started,
 whether it is a catch-up, and which scheduled times were skipped. **Why:** a morning report that
