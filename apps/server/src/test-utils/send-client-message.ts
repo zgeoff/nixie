@@ -12,8 +12,8 @@ interface ClientMessage {
   }[];
 }
 
-// Sends the message on the conversation thread through a signed-in client, waits until a record
-// holds the reply's text, and returns the thread's records as they stood then.
+// Sends the message on the conversation thread through a signed-in client, waits for a model reply
+// with the reply's text after the message, and returns the thread's records as they stood then.
 export async function sendClientMessage(
   client: Pick<ContractClient, 'conversation'>,
   message: ClientMessage,
@@ -21,7 +21,7 @@ export async function sendClientMessage(
 ): Promise<readonly LogRecord[]> {
   const page = { records: [] as readonly LogRecord[] };
 
-  await client.conversation.send({
+  const sent = await client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [...(message.spans ?? [])],
     text: message.text,
@@ -33,7 +33,12 @@ export async function sendClientMessage(
 
       page.records = read.records;
 
-      return page.records.some((record) => record.message?.text === replyText);
+      return page.records.some(
+        (record) =>
+          record.kind === 'model.reply' &&
+          record.sequence > sent.sequence &&
+          record.message?.text === replyText,
+      );
     },
     { timeoutMs: 30_000 },
   );
