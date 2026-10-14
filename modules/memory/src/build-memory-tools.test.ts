@@ -39,7 +39,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for recall and pending and note for remember, edit and retire', async () => {
+test('it declares read for recall, pending and diff and note for remember, edit, retire and comment', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -48,6 +48,8 @@ test('it declares read for recall and pending and note for remember, edit and re
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.diff',
+    'memory.comment',
   ].map((name) => [name, ctx.registry.findTool(name)?.definition.declaration.effects]);
 
   expect(effects).toStrictEqual([
@@ -56,6 +58,8 @@ test('it declares read for recall and pending and note for remember, edit and re
     ['memory.remember', ['note']],
     ['memory.edit', ['note']],
     ['memory.retire', ['note']],
+    ['memory.diff', ['read']],
+    ['memory.comment', ['note']],
   ]);
 });
 

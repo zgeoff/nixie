@@ -6,6 +6,9 @@ const versionRef = z.strictObject({ itemID: z.string(), version: z.int().min(1) 
 const change = z
   .strictObject({
     changeID: z.string(),
+
+    // absent on a record from before short IDs, whose change takes the one its UUID gives
+    shortID: z.string().optional(),
     kind: z.enum(['merge', 'rewrite', 'retire']),
     itemID: z.string(),
     inputs: z.array(versionRef).min(1).readonly(),
@@ -39,13 +42,18 @@ const rejected = z.strictObject({ changeID: z.string(), identityID: z.string() }
 
 const lapsed = z.strictObject({ changeID: z.string() }).readonly();
 
+const commented = z
+  .strictObject({ changeID: z.string(), runID: z.string(), sealed: z.base64() })
+  .readonly();
+
 // The records of memory consolidation: a run's diff, then your approval or rejection of each of
-// its changes, or a change's lapse.
+// its changes, a change's lapse, or the conversation's comment on a change.
 export type ConsolidationRecord =
   | ({ readonly kind: 'memory.consolidation_proposed' } & z.infer<typeof proposed>)
   | ({ readonly kind: 'memory.consolidation_approved' } & z.infer<typeof approved>)
   | ({ readonly kind: 'memory.consolidation_rejected' } & z.infer<typeof rejected>)
-  | ({ readonly kind: 'memory.consolidation_lapsed' } & z.infer<typeof lapsed>);
+  | ({ readonly kind: 'memory.consolidation_lapsed' } & z.infer<typeof lapsed>)
+  | ({ readonly kind: 'memory.consolidation_commented' } & z.infer<typeof commented>);
 
 // Reads a consolidation record's payload into its typed shape, or null for a record of another
 // kind. A consolidation record whose payload breaks its shape throws, so a fold never writes a
@@ -54,6 +62,14 @@ export function parseConsolidationRecord(record: EnvelopeRecord): ConsolidationR
   if (record.kind === 'memory.consolidation_proposed') {
     return { kind: record.kind, ...proposed.parse(record.payload) };
   }
+  if (record.kind === 'memory.consolidation_commented') {
+    return { kind: record.kind, ...commented.parse(record.payload) };
+  }
+  return parseAnswerRecord(record);
+}
+
+// the records that close a change: your approval or rejection, or its lapse
+function parseAnswerRecord(record: EnvelopeRecord): ConsolidationRecord | null {
   if (record.kind === 'memory.consolidation_approved') {
     return { kind: record.kind, ...approved.parse(record.payload) };
   }

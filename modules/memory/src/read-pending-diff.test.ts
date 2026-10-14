@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test';
+import { buildShortIDFromUUID } from '@heynixie/db';
+import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
+import { planDiffRecord } from './plan-diff-record';
 import { createConsolidationDiff } from './test-utils/create-consolidation-diff';
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -88,4 +92,44 @@ test('it leaves out a change past its lapse time', async () => {
   const pending = await ctx.memory.store.consolidations.readPending();
 
   expect(pending).toBeNull();
+});
+
+test('it gives a change from a record before short IDs the short ID its UUID gives', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees' });
+  const record = await planDiffRecord(ctx.memory.log, {
+    changes: [{ kind: 'retire', inputs: [item], reason: 'Stale.', source: 'owner' }],
+    model: 'claude-test-1',
+    shownItems: 1,
+    now: ctx.clock.now(),
+    lapseMs: 60_000,
+    definitions: { snapshotHash: 'sha256:test' },
+  });
+  const changes = record.payload?.['changes'];
+
+  invariant(Array.isArray(changes));
+
+  // the record as a build before short IDs wrote it, with no short ID on its change
+  await writeRecords(ctx.memory.log, [
+    {
+      ...record,
+      thread: memoryConsolidatorTaskID,
+      payload: {
+        ...record.payload,
+        changes: changes.map((change) => {
+          invariant(typeof change === 'object' && change !== null && !Array.isArray(change));
+          const { shortID: _, ...rest } = change;
+
+          return rest;
+        }),
+      },
+    },
+  ]);
+
+  const pending = await ctx.memory.store.consolidations.readPending();
+
+  const [change] = pending?.changes ?? [];
+
+  invariant(change);
+  expect(change.shortID).toBe(buildShortIDFromUUID(change.changeID));
 });

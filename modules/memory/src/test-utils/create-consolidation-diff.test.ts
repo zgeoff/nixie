@@ -26,6 +26,7 @@ test('it writes the diff on the consolidator thread and returns its pending chan
     changes: [
       {
         changeID: expect.toBeString(),
+        shortID: expect.stringMatching(/^[a-z][0-9a-z]{9}$/u),
         kind: 'retire',
         inputs: [{ ...item, text: 'Is in Lisbon until May', isCurrent: true }],
         text: null,
@@ -33,6 +34,7 @@ test('it writes the diff on the consolidator thread and returns its pending chan
         source: 'owner',
         actionHash: expect.toSatisfy((hash: string) => /^sha256:[0-9a-f]{64}$/u.test(hash)),
         lapseAt: expect.toBeNumber(),
+        comment: null,
       },
     ],
   });

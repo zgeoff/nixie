@@ -1,0 +1,47 @@
+import type { RawBuilder, Transaction } from 'kysely';
+import { sql } from 'kysely';
+import { buildShortIDFromUUID } from './build-short-id-from-uuid';
+import type { Migration } from './types';
+
+// Gives every consolidation change the short ID the model reads, and a place for the sealed comment
+// the conversation leaves on it with the record that left it. An existing change takes the short ID
+// its UUID gives, as the changes fold does at a rebuild. Each step is safe to run again.
+export const memoryConsolidationCommentsMigration: Migration = {
+  name: 'add a short ID and a comment to each consolidation change',
+  up: async (tx) => {
+    await createColumn(tx, 'short_id', sql`text`);
+    await createColumn(tx, 'comment', sql`text`);
+    await createColumn(tx, 'comment_sequence', sql`integer references records (sequence)`);
+    await sql`create unique index if not exists memory_consolidation_changes_by_short_id
+      on memory_consolidation_changes (short_id)`.execute(tx);
+    await writeShortIDs(tx);
+  },
+};
+
+async function createColumn(
+  tx: Transaction<unknown>,
+  name: string,
+  definition: RawBuilder<unknown>,
+): Promise<void> {
+  const columns = await sql<{ name: string }>`
+    select name from pragma_table_info('memory_consolidation_changes')
+    where name = ${name}`.execute(tx);
+
+  if (columns.rows.length === 0) {
+    await sql`alter table memory_consolidation_changes
+      add column ${sql.id(name)} ${definition}`.execute(tx);
+  }
+}
+
+// the backfill, which fills only the changes still without a short ID
+async function writeShortIDs(tx: Transaction<unknown>): Promise<void> {
+  const changes = await sql<{ change_id: string }>`
+    select change_id from memory_consolidation_changes where short_id is null`.execute(tx);
+
+  for (const change of changes.rows) {
+    // oxlint-disable-next-line no-await-in-loop -- one transaction runs one statement at a time
+    await sql`update memory_consolidation_changes
+      set short_id = ${buildShortIDFromUUID(change.change_id)}
+      where change_id = ${change.change_id}`.execute(tx);
+  }
+}

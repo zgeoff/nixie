@@ -62,6 +62,7 @@ test('it shows the pending diff with each input at the version its change read, 
     changes: [
       {
         changeID: diff.changes[0]?.changeID,
+        shortID: diff.changes[0]?.shortID,
         kind: 'merge',
         inputs: [
           { ...kept, text: 'Is allergic to peanuts', isCurrent: true },
@@ -72,7 +73,52 @@ test('it shows the pending diff with each input at the version its change read, 
         source: 'untrusted',
         actionHash: diff.changes[0]?.actionHash,
         lapseAt: new Date(diff.changes[0]?.lapseAt ?? 0).toISOString(),
+        comment: null,
       },
+    ],
+  });
+});
+
+test('it shows the comment the conversation left beside its change, and none beside the other', async () => {
+  const ctx = await setupTest();
+  const [joke, stale] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Calls the cat the night manager' }),
+    createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' }),
+  ]);
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [
+      {
+        kind: 'rewrite',
+        inputs: [joke],
+        text: 'Has a cat',
+        reason: 'The wording is informal.',
+        source: 'owner',
+      },
+      { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },
+    ],
+  });
+  const [rewrite, retirement] = diff.changes;
+
+  invariant(rewrite && retirement);
+  await ctx.memory.store.consolidations.comment({
+    changeID: rewrite.shortID,
+    text: 'The rewrite drops the joke: the cat is the night manager.',
+    runID: 'run-1',
+  });
+
+  const response = await Bun.fetch('http://localhost/memory/consolidation', { unix: ctx.path });
+  const body = await response.json();
+
+  expect(body).toMatchObject({
+    changes: [
+      {
+        changeID: rewrite.changeID,
+        comment: {
+          text: 'The rewrite drops the joke: the cat is the night manager.',
+          at: expect.toSatisfy((at: string) => !Number.isNaN(Date.parse(at))),
+        },
+      },
+      { changeID: retirement.changeID, comment: null },
     ],
   });
 });

@@ -1,3 +1,4 @@
+import { buildShortIDFromUUID } from '@heynixie/db';
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import type { ConsolidationTables } from './consolidation-types';
@@ -5,8 +6,8 @@ import type { ConsolidationRecord } from './parse-consolidation-record';
 import { parseConsolidationRecord } from './parse-consolidation-record';
 
 // One row per change a consolidator diff proposes. A change waits as pending until your approval
-// consumes it, your rejection closes it, or it lapses. Its text stays sealed under its first
-// input's key, so a forget of that item leaves the change unreadable too.
+// consumes it, your rejection closes it, or it lapses. Its text and its comment stay sealed under
+// its first input's key, so a forget of that item leaves both unreadable.
 export const memoryConsolidationChangesProjection: Projection = {
   table: 'memory_consolidation_changes',
   keyColumn: 'change_id',
@@ -48,14 +49,34 @@ async function writeChangeRows(
           created_at: parsed.at,
           lapse_at: change.lapseAt,
           resolved_sequence: null,
+          short_id: change.shortID ?? buildShortIDFromUUID(change.changeID),
+          comment: null,
+          comment_sequence: null,
         })),
       )
       .execute();
     return parsed.changes.map((change) => change.changeID);
   }
+  if (parsed.kind === 'memory.consolidation_commented') {
+    return updateChangeComment(db, record, parsed);
+  }
   await db
     .updateTable('memory_consolidation_changes')
     .set({ status: statusAfter[parsed.kind], resolved_sequence: record.sequence })
+    .where('change_id', '=', parsed.changeID)
+    .execute();
+  return [parsed.changeID];
+}
+
+// the conversation's comment, which takes the place of any the change held
+async function updateChangeComment(
+  db: Kysely<ConsolidationTables>,
+  record: EnvelopeRecord,
+  parsed: Extract<ConsolidationRecord, { kind: 'memory.consolidation_commented' }>,
+): Promise<readonly string[]> {
+  await db
+    .updateTable('memory_consolidation_changes')
+    .set({ comment: parsed.sealed, comment_sequence: record.sequence })
     .where('change_id', '=', parsed.changeID)
     .execute();
   return [parsed.changeID];

@@ -48,6 +48,9 @@ export interface ChangeInput {
 // One change of a diff as your review reads it, with its sealed text opened.
 export interface ConsolidationChange {
   readonly changeID: string;
+
+  // the short ID the model reads and names the change by
+  readonly shortID: string;
   readonly kind: ChangeKind;
   readonly inputs: readonly ChangeInput[];
 
@@ -57,6 +60,15 @@ export interface ConsolidationChange {
   readonly source: ContentSource;
   readonly actionHash: string;
   readonly lapseAt: number;
+
+  // the conversation's comment on the change, or null when it left none
+  readonly comment: ChangeComment | null;
+}
+
+// What the conversation said about a change, for your review beside it, and when it said it.
+export interface ChangeComment {
+  readonly text: string;
+  readonly at: number;
 }
 
 // The pending changes of one consolidator run, in the order the run proposed them.
@@ -84,6 +96,16 @@ export type ChangeOutcome =
     }
   | { readonly changeID: string; readonly status: 'refused'; readonly code: string };
 
+// The conversation's comment on one pending change, which it names by its short ID or its UUID. A
+// later comment on the same change replaces the one before.
+export interface ChangeCommentRequest {
+  readonly changeID: string;
+  readonly text: string;
+
+  // the task run that left the comment
+  readonly runID: string;
+}
+
 // When the consolidator last ran, and the changes that still wait for your answer.
 export interface ConsolidationSchedule {
   // the time the last run proposed its diff, or null before the first run
@@ -106,6 +128,10 @@ export interface MemoryConsolidations {
   // nothing and leaves the rest to go on
   readonly approveAll: (answers: readonly ChangeAnswer[]) => Promise<readonly ChangeOutcome[]>;
   readonly reject: (answer: ChangeAnswer) => Promise<void>;
+
+  // keeps the conversation's comment beside a pending change, answers nothing, and returns the
+  // change's short ID
+  readonly comment: (request: ChangeCommentRequest) => Promise<string>;
 
   // lapses every pending change past its lapse time, and returns how many
   readonly lapse: () => Promise<number>;
@@ -138,6 +164,13 @@ interface ConsolidationChangeTable {
   readonly created_at: number;
   readonly lapse_at: number;
   readonly resolved_sequence: number | null;
+
+  // null only on a row an older build wrote after the migration that added it
+  readonly short_id: string | null;
+
+  // the conversation's comment, sealed as the change's text is, and the record that left it
+  readonly comment: string | null;
+  readonly comment_sequence: number | null;
 }
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
