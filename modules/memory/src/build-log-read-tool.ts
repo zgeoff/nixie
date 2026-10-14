@@ -87,7 +87,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
       const input = logReadArguments.parse(call.input);
       const range = { from: parseTime(input.from), to: parseTime(input.to) };
 
-      // the pattern passes a month or an hour that does not exist, such as 2026-13-01
+      // the pattern passes a day or an hour that does not exist, such as 2026-02-30
       if (Number.isNaN(range.from) || Number.isNaN(range.to)) {
         return { status: 'error', message: 'from and to must be real UTC dates or times' };
       }
@@ -119,9 +119,19 @@ const logReadArguments = z.object({
   limit: z.int().optional(),
 });
 
-// a UTC date or time in epoch milliseconds, NaN for a date that does not exist, or null for none
+// A UTC date or time in epoch milliseconds, NaN for a date that does not exist, or null for none.
+// Date.parse rolls 2026-02-30 over into March, so the date alone must read back as written.
 function parseTime(value: string | undefined): number | null {
-  return value === undefined ? null : Date.parse(value);
+  if (value === undefined) {
+    return null;
+  }
+  const date = value.slice(0, 10);
+  const day = Date.parse(date);
+
+  if (Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== date) {
+    return Number.NaN;
+  }
+  return Date.parse(value);
 }
 
 function toEntryJSON(entry: LogEntry): JSONObject {

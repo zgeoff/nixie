@@ -144,3 +144,17 @@ test('it refuses a date range with a month that does not exist', async () => {
     message: 'from and to must be real UTC dates or times',
   });
 });
+
+test('it refuses a date range with a day past the end of its month, which a parse would roll over', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: { to: '2026-02-30T12:00Z' }, toolUseID: null },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'from and to must be real UTC dates or times',
+  });
+});
