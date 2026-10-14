@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { APIContext } from '@heynixie/api';
 import { createEnrolmentCode, readSessions, updateSessionLabel } from '@heynixie/api';
+import type { ServerReset } from './run-server-reset';
 import { startControlSocket } from './start-control-socket';
 import type { Cleanup, MemorySlot } from './types';
 
@@ -8,6 +9,7 @@ export interface HostCommandsOptions {
   readonly dataDir: string;
   readonly apiContext: APIContext;
   readonly memory: MemorySlot;
+  readonly runReset: () => Promise<ServerReset>;
 }
 
 // Opens the control socket the host commands reach the server through, in the data directory. The
@@ -22,6 +24,7 @@ export async function startHostCommands(
     readMemory: () => options.memory.read(),
     readSessions: () => readSessions(options.apiContext, null),
     updateSessionLabel: (input) => updateSessionLabel(options.apiContext, input),
+    runReset: options.runReset,
   });
 
   await cleanup.defer(() => control.stop());

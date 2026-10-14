@@ -10,6 +10,9 @@ interface TestClient {
   // a client with no session, which reaches only enrol
   readonly signedOut: ContractClient;
   readonly client: ContractClient;
+
+  // the device's bearer token, which a client built after a restart signs in with
+  readonly token: string;
 }
 
 // Waits for nixie to be ready, then enrols a device named laptop through the code nixie printed at
@@ -39,5 +42,5 @@ export async function createTestClient(
     }),
   );
 
-  return { url, signedOut, client };
+  return { url, signedOut, client, token: session.token ?? '' };
 }

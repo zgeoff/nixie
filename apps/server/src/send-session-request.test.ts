@@ -28,6 +28,7 @@ test('it returns the sessions the running server lists', async () => {
           lastUsedAt: new Date('2026-10-13T08:30:00.000Z'),
         },
       ]),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -52,6 +53,7 @@ test('it returns the label the running server set', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () =>
       Promise.resolve({
         status: 'labelled' as const,
@@ -81,6 +83,7 @@ test('it rejects with the status and the reason when the server refuses the labe
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.resolve({ status: 'not_found' as const }),
   });
 

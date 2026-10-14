@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildTestClient } from '@heynixie/api/test-utils';
 import { createTestClient } from './create-test-client';
 import { startTestNixie } from './start-test-nixie';
 
@@ -13,6 +14,15 @@ test('it signs a client in as a device named laptop', async () => {
 
   const created = await createTestClient(ctx.nixie);
   const listed = await created.client.sessions.list();
+
+  expect(listed.sessions).toMatchObject([{ current: true, deviceName: 'laptop' }]);
+}, 60_000);
+
+test('it gives the device token, which signs in another client as the same device', async () => {
+  const ctx = await setupTest();
+
+  const created = await createTestClient(ctx.nixie);
+  const listed = await buildTestClient(created.url, created.token).sessions.list();
 
   expect(listed.sessions).toMatchObject([{ current: true, deviceName: 'laptop' }]);
 }, 60_000);

@@ -1,0 +1,124 @@
+import { expect, mock, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { runCLI } from './run-cli';
+import { startControlSocket } from './start-control-socket';
+import { writeBootFiles } from './test-utils/write-boot-files';
+
+// the boot files a host command reads its data directory from, and the IO it prints and logs to;
+// no model answers, because no host command starts a server
+async function setupTest() {
+  const dir = await mkdtemp(join(tmpdir(), 'nixie-cli-'));
+
+  onTestFinished(() => rm(dir, { recursive: true, force: true }));
+
+  const files = await writeBootFiles(dir, 'http://127.0.0.1:9', { config: [], secrets: [] });
+
+  return {
+    ...files,
+    socketPath: join(files.dataDir, 'run', 'control.sock'),
+    io: {
+      log: mock(),
+      print: mock(),
+      waitForSignal: () => Promise.withResolvers<string>().promise,
+    },
+  };
+}
+
+test('it refuses a reset without --keep-sessions, and says backups still hold the old data', async () => {
+  const ctx = await setupTest();
+
+  const exitCode = await runCLI(['reset', '--yes', '--config', ctx.configPath], ctx.io);
+
+  expect(exitCode).toBe(2);
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      [
+        'nixie reset runs only with --keep-sessions, which keeps every device that is signed in now signed in.',
+        'A reset removes every record, every memory, the conversation and every sandbox, and keeps the device sessions that are signed in now.',
+        'Only a restore from a backup undoes it.',
+        'Backups from before the reset still hold the old data until they age out.',
+      ].join('\n'),
+    ],
+  ]);
+});
+
+test('it refuses a reset without --yes, and says backups still hold the old data', async () => {
+  const ctx = await setupTest();
+
+  const exitCode = await runCLI(['reset', '--keep-sessions', '--config', ctx.configPath], ctx.io);
+
+  expect(exitCode).toBe(2);
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      [
+        'A reset removes every record, every memory, the conversation and every sandbox, and keeps the device sessions that are signed in now.',
+        'Only a restore from a backup undoes it.',
+        'Backups from before the reset still hold the old data until they age out.',
+        'Run nixie reset --keep-sessions --yes to reset.',
+      ].join('\n'),
+    ],
+  ]);
+});
+
+test('it prints what the server reset, and that backups still hold the old data', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.socketPath,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () =>
+      Promise.resolve({
+        resetAt: new Date('2026-10-14T09:30:00.000Z'),
+        lastSequence: 412,
+        keptSessions: 2,
+      }),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const exitCode = await runCLI(
+    ['reset', '--keep-sessions', '--yes', '--config', ctx.configPath],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(0);
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      [
+        'nixie removed the log up to sequence 412 at 2026-10-14T09:30:00.000Z and kept 2 device sessions signed in.',
+        'The server restarts now, and its next turn starts with no history.',
+        'Backups from before the reset still hold the old data until they age out.',
+      ].join('\n'),
+    ],
+  ]);
+});
+
+test('it exits 1 when the server fails the reset', async () => {
+  const ctx = await setupTest();
+  const socket = await startControlSocket({
+    path: ctx.socketPath,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => null,
+    readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('the runtime refused the destroy')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const exitCode = await runCLI(
+    ['reset', '--keep-sessions', '--yes', '--config', ctx.configPath],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(1);
+  expect(ctx.io.log).toHaveBeenCalledExactlyOnceWith('command.failed', {
+    command: 'reset',
+    error: 'Error',
+    message: 'nixie answered the reset request with 500: the runtime refused the destroy',
+  });
+});

@@ -18,6 +18,7 @@ async function setupTest() {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 

@@ -8,6 +8,7 @@ import { ControlRequestError } from './control-request-error';
 import { parseControlBody } from './parse-control-body';
 import type { HostMemory } from './require-host-memory';
 import { requireHostMemory } from './require-host-memory';
+import type { ServerReset } from './run-server-reset';
 
 export interface ControlSocketOptions {
   // a Unix socket in a directory only nixie's user may enter
@@ -18,6 +19,9 @@ export interface ControlSocketOptions {
   readonly readMemory: () => HostMemory | null;
   readonly readSessions: () => Promise<readonly HostSession[]>;
   readonly updateSessionLabel: (input: SessionLabel) => Promise<SessionLabelResult>;
+
+  // resets the log and keeps the live sessions, then the server stops
+  readonly runReset: () => Promise<ServerReset>;
 }
 
 // A live device session as a host command lists it.
@@ -64,6 +68,17 @@ export async function startControlSocket(options: ControlSocketOptions): Promise
           return Response.json({ code: issued.code, expiresAt: issued.expiresAt.toISOString() });
         },
       },
+      '/reset': {
+        POST: async () => {
+          const reset = await options.runReset();
+
+          return Response.json({
+            resetAt: reset.resetAt.toISOString(),
+            lastSequence: reset.lastSequence,
+            keptSessions: reset.keptSessions,
+          });
+        },
+      },
       ...buildSessionRoutes(options),
       ...buildMemoryRoutes(options),
       ...buildMemoryItemRoutes(options.readMemory),
@@ -75,9 +90,10 @@ export async function startControlSocket(options: ControlSocketOptions): Promise
     error: (error) => new Response(error.message, { status: pickErrorStatus(error) }),
   });
 
+  // the stop lets a request in flight finish, so the reset's answer reaches its host command
   return {
     stop: async () => {
-      await server.stop(true);
+      await server.stop();
       await rm(options.path, { force: true });
     },
   };

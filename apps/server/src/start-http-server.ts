@@ -3,6 +3,7 @@ import { buildAPIApp } from '@heynixie/api';
 import type { Writer } from '@heynixie/log';
 import { buildHealthApp, checkDatabase } from '@heynixie/ops';
 import { Elysia } from 'elysia';
+import type { APIGate } from './build-api-gate';
 import { buildReadinessChecks } from './build-readiness-checks';
 import type { StartState } from './build-start-state';
 import type { DeploymentConfig } from './deployment-config-schema';
@@ -16,6 +17,9 @@ export interface HTTPServerOptions {
   readonly tools: Tools;
   readonly apiContext: APIContext;
   readonly cleanup: Cleanup;
+
+  // the gate a reset closes, which every request passes through
+  readonly gate: APIGate;
 }
 
 // Serves the health endpoint and the API on the configured address. Liveness holds while the
@@ -39,7 +43,7 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
   const http = Bun.serve({
     hostname: options.config.server.hostname,
     port: options.config.server.port,
-    fetch: (request) => app.handle(request),
+    fetch: (request) => options.gate.run(request, (passed) => app.handle(passed)),
   });
 
   await options.cleanup.defer(() => http.stop(true));

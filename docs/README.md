@@ -228,6 +228,8 @@ The runtime, the durable layer, and how the conversation and tasks share work.
   role, the `@heynixie/` scope, and package boundaries checked by tag
 - [0045: Session opening and compaction](decisions/0045-session-opening-and-compaction.md) — one
   opening for every new session, and nixie's own compactor with the summary in the event log
+- [0046: Resetting the event log](decisions/0046-resetting-the-event-log.md) — one exception to the
+  append-only log: a full reset that the running server makes, which keeps the live device sessions
 
 ### Policy
 

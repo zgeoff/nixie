@@ -1,5 +1,5 @@
 import { onTestFinished } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { LogRecord } from '@heynixie/log';
@@ -40,10 +40,17 @@ export interface TestNixie extends BootFiles {
   // waits for nixie to exit, then reads every record with its decrypted fields
   readonly waitForExit: () => Promise<{ readonly exitCode: number; readonly records: LogRecord[] }>;
 
+  // starts nixie again on the same files and data directory, as the container runtime restarts it
+  // once it exits, with an output of its own
+  readonly startAgain: () => TestNixie;
+
   // each file at the data directory's root, such as nixie.db and keys.db, as latin1 text
   readonly readDataFiles: () => Promise<
     readonly { readonly name: string; readonly text: string }[]
   >;
+
+  // the ID of each sandbox whose disk the process double holds in the data directory
+  readonly readSandboxIDs: () => Promise<readonly string[]>;
 }
 
 // Starts nixie as its own process the way the image runs it: a test build of the source, or the
@@ -66,17 +73,33 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
     config: options.extraConfig ?? [],
     secrets: options.extraSecrets ?? [],
   });
-  const child = Bun.spawn([...buildCommand(options.entry), ...buildServeArgs(files)], {
+
+  return startNixieRun({ dir, model, files, entry: options.entry, stack });
+}
+
+interface TestNixieFiles {
+  readonly dir: string;
+  readonly model: ScriptedModel;
+  readonly files: BootFiles;
+  readonly entry: string | undefined;
+
+  // the test's cleanup, which kills each nixie it started before it removes the directory
+  readonly stack: AsyncDisposableStack;
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a disposable stack has no readonly form
+function startNixieRun(start: TestNixieFiles): TestNixie {
+  const child = Bun.spawn([...buildCommand(start.entry), ...buildServeArgs(start.files)], {
     stdin: 'ignore',
     stdout: 'pipe',
     stderr: 'pipe',
   });
 
-  stack.defer(async () => {
+  start.stack.defer(async () => {
     child.kill('SIGKILL');
     await child.exited;
   });
-  return buildTestNixie({ dir, model, files, child });
+  return buildTestNixie({ ...start, child, startAgain: () => startNixieRun(start) });
 }
 
 function buildCommand(entry: string | undefined): readonly string[] {
@@ -102,6 +125,7 @@ interface TestNixieParts {
   readonly model: ScriptedModel;
   readonly files: BootFiles;
   readonly child: Bun.Subprocess<'ignore', 'pipe', 'pipe'>;
+  readonly startAgain: () => TestNixie;
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a subprocess handle has no readonly form
@@ -132,6 +156,8 @@ function buildTestNixie(parts: TestNixieParts): TestNixie {
       return { exitCode, records };
     },
     readDataFiles: () => readDataFiles(parts.files.dataDir),
+    readSandboxIDs: () => readdir(join(parts.files.dataDir, 'sandboxes')),
+    startAgain: parts.startAgain,
   };
 }
 

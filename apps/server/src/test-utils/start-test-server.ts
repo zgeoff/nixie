@@ -1,5 +1,5 @@
 import { onTestFinished } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeDecisionPoint } from '@heynixie/policy';
@@ -22,6 +22,9 @@ export interface TestServer {
 
   // stops a part the test starts on the server before the server's own parts stop
   readonly defer: (stop: () => Promise<void>) => void;
+
+  // the ID of each sandbox whose disk the process double holds
+  readonly readSandboxIDs: () => Promise<readonly string[]>;
 }
 
 // Starts the parts of a test build the conversation runs on: a writer on a fresh data directory, a
@@ -62,6 +65,7 @@ export async function startTestServer(): Promise<TestServer> {
     defer: (stop) => {
       stack.defer(stop);
     },
+    readSandboxIDs: () => readdir(join(dataDir, 'sandboxes')),
   };
 }
 
