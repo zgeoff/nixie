@@ -29,11 +29,11 @@ variable or a Compose secret, so neither the container's configuration nor its d
 deployment key becomes a non-extractable AES-KW key at once. A restart decrypts again, so the
 restart policy alone brings nixie back after a reboot.
 
-The user's name is private without being a credential. A deployment whose configuration lives in a
-public repo therefore puts the name in the secrets file's settings, and the configuration names it
-with a `deployment:<name>` reference in place of the name. The server resolves the reference once
-the secrets load, and refuses to start when the settings lack the entry, so nixie never shows the
-model the reference in place of the name.
+The user's name and pronouns are private without being credentials. A deployment whose configuration
+lives in a public repo therefore puts each of them in the secrets file's settings, and the
+configuration names it with a `deployment:<name>` reference in place of the value. The server
+resolves each reference once the secrets load, and refuses to start when the settings lack the
+entry, so nixie never shows the model a reference in place of a name or a pronoun.
 
 The sandbox manifest fixes the image of each kind of sandbox by digest. The release workflow writes
 it into the nixie image, so the images a release runs are the images it was tested with. The server
