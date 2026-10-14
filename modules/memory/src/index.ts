@@ -46,6 +46,8 @@ export { buildProposalAnswerKind } from './build-proposal-answer-kind';
 export { readMemoryChangeNote } from './read-memory-change-note';
 export type { VersionTextResult } from './read-version-texts';
 export { readVersionTexts } from './read-version-texts';
+export type { RatingNoteRef, RatingNoteResult } from './read-rating-notes';
+export { readRatingNotes } from './read-rating-notes';
 export type { WriterStatus } from './read-writer-status';
 export { readWriterStatus } from './read-writer-status';
 export { PinnedCoreFullError } from './pinned-core-full-error';

@@ -26,6 +26,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
     buildMemoryTools(memory.store, {
       clock: { now: () => Date.now() },
       ownerName: null,
+      agentName: null,
       defaultZone: 'UTC',
     }),
   );
@@ -54,7 +55,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for recall, pending and diff and note for remember, edit, retire and comment', async () => {
+test('it declares read for recall, pending and diff and note for remember, edit, retire, comment and rate', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -65,6 +66,7 @@ test('it declares read for recall, pending and diff and note for remember, edit,
     'memory.retire',
     'memory.diff',
     'memory.comment',
+    'memory.rate',
   ].map((name) => [name, ctx.registry.findTool(name)?.definition.declaration.effects]);
 
   expect(effects).toStrictEqual([
@@ -75,6 +77,7 @@ test('it declares read for recall, pending and diff and note for remember, edit,
     ['memory.retire', ['note']],
     ['memory.diff', ['read']],
     ['memory.comment', ['note']],
+    ['memory.rate', ['note']],
   ]);
 });
 
@@ -574,6 +577,7 @@ test('it returns a full proposal cap to the model as an error', async () => {
     buildMemoryTools(memory.store, {
       clock: { now: () => Date.now() },
       ownerName: null,
+      agentName: null,
       defaultZone: 'UTC',
     }),
   ).findTool('memory.remember');

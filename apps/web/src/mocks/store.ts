@@ -65,6 +65,19 @@ const recallItemSchema = z.object({
 
 const recallSchema = z.object({ items: z.array(recallItemSchema) });
 
+const ratingItemSchema = z.object({
+  hasNote: z.boolean().default(false),
+  itemID: z.string(),
+  verdict: z.enum(['helpful', 'noise', 'misleading']).default('helpful'),
+  version: z.int().nonnegative().default(1),
+});
+
+const ratingSchema = z.object({
+  items: z.array(ratingItemSchema),
+  ratedBy: z.string().optional(),
+  recalledSequence: z.int().nonnegative(),
+});
+
 const contextSchema = z.object({ size: z.int().nonnegative(), window: z.int().positive() });
 
 const compactionSchema = z.object({
@@ -79,6 +92,7 @@ const records = new Collection({
     context: contextSchema.optional(),
     kind: z.string().default('owner_message'),
     message: messageSchema.optional(),
+    rating: ratingSchema.optional(),
     recall: recallSchema.optional(),
     recordedAt: z.date().default(() => new Date()),
     sequence: z.int().default(() => {
@@ -103,16 +117,29 @@ const memoryVersions = new Collection({
   }),
 });
 
+// A rating's note as nixie's memory store holds it, by its rating record's sequence and its item.
+// A forgotten item's note is shredded and keeps no text.
+const ratingNotes = new Collection({
+  schema: z.object({
+    itemID: z.string().default(() => faker.string.uuid()),
+    sequence: z.int().nonnegative(),
+    status: z.enum(['readable', 'shredded', 'unreadable']).default('readable'),
+    text: z.string().optional(),
+  }),
+});
+
 // The mock API's state: what nixie's API would hold in its database.
 export const store = {
   enrolmentCodes,
   memoryVersions,
+  ratingNotes,
   records,
 
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
     records.clear();
     memoryVersions.clear();
+    ratingNotes.clear();
     enrolmentCodes.clear();
     sessions.clear();
     counter.lastSequence = 0;

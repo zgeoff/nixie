@@ -266,3 +266,86 @@ test('it counts a recall that delivered nothing as a recall', () => {
 
   expect(buildActivity([started, recalled])).toMatchObject([{ memories: [] }]);
 });
+
+test('it puts a rating from a later step beside the memory it rates in the step that recalled it', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+  const recalled = buildMockLogRecord({
+    kind: 'memory.recalled',
+    recall: {
+      items: [
+        { itemID: 'item-a', score: 0.61, version: 2 },
+        { itemID: 'item-b', version: 1 },
+      ],
+    },
+    sequence: 2,
+  });
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 3 });
+  const next = buildMockLogRecord({ kind: 'task.step_started', sequence: 4 });
+  const rated = buildMockLogRecord({
+    kind: 'memory.rated',
+    rating: {
+      items: [{ hasNote: true, itemID: 'item-a', verdict: 'noise', version: 2 }],
+      ratedBy: 'Pip',
+      recalledSequence: 2,
+    },
+    sequence: 5,
+  });
+
+  const [recalling, rating] = buildActivity([started, recalled, committed, next, rated]);
+
+  expect(recalling).toMatchObject({
+    memories: [
+      {
+        itemID: 'item-a',
+        rating: { hasNote: true, ratedBy: 'Pip', sequence: 5, verdict: 'noise' },
+        score: 0.61,
+        version: 2,
+      },
+      { itemID: 'item-b', version: 1 },
+    ],
+  });
+  expect(rating).not.toContainKey('memories');
+});
+
+test('it keeps the latest rating of a memory, and none for another recall of the same version', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+  const first = buildMockLogRecord({
+    kind: 'memory.recalled',
+    recall: { items: [{ itemID: 'item-a', version: 1 }] },
+    sequence: 2,
+  });
+  const second = buildMockLogRecord({
+    kind: 'memory.recalled',
+    recall: { items: [{ itemID: 'item-a', version: 1 }] },
+    sequence: 3,
+  });
+  const helpful = buildMockLogRecord({
+    kind: 'memory.rated',
+    rating: {
+      items: [{ hasNote: false, itemID: 'item-a', verdict: 'helpful', version: 1 }],
+      recalledSequence: 3,
+    },
+    sequence: 4,
+  });
+  const misleading = buildMockLogRecord({
+    kind: 'memory.rated',
+    rating: {
+      items: [{ hasNote: false, itemID: 'item-a', verdict: 'misleading', version: 1 }],
+      recalledSequence: 3,
+    },
+    sequence: 5,
+  });
+
+  expect(buildActivity([started, first, second, helpful, misleading])).toMatchObject([
+    {
+      memories: [
+        { itemID: 'item-a', version: 1 },
+        {
+          itemID: 'item-a',
+          rating: { hasNote: false, sequence: 5, verdict: 'misleading' },
+          version: 1,
+        },
+      ],
+    },
+  ]);
+});

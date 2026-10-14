@@ -92,3 +92,31 @@ test('it copies a recall with each score, and leaves the score out where none ex
     thread: 'conversation',
   });
 });
+
+test("it copies a rating with each verdict, and leaves the agent's name out where none exists", async () => {
+  const named = await store.records.create({
+    kind: 'memory.rated',
+    rating: {
+      items: [{ hasNote: true, itemID: 'item-a', verdict: 'noise', version: 2 }],
+      ratedBy: 'Pip',
+      recalledSequence: 2,
+    },
+  });
+  const unnamed = await store.records.create({
+    kind: 'memory.rated',
+    rating: {
+      items: [{ hasNote: false, itemID: 'item-b', verdict: 'helpful', version: 1 }],
+      recalledSequence: 2,
+    },
+  });
+
+  expect(toLogRecord(named).rating).toStrictEqual({
+    items: [{ hasNote: true, itemID: 'item-a', verdict: 'noise', version: 2 }],
+    ratedBy: 'Pip',
+    recalledSequence: 2,
+  });
+  expect(toLogRecord(unnamed).rating).toStrictEqual({
+    items: [{ hasNote: false, itemID: 'item-b', verdict: 'helpful', version: 1 }],
+    recalledSequence: 2,
+  });
+});

@@ -1,6 +1,6 @@
+import { buildRecallStore } from './build-recall-store';
 import { readItemHistory } from './read-item-history';
 import { readPinnedCore } from './read-pinned-core';
-import { readRecall } from './read-recall';
 import { runForget } from './run-forget';
 import type { MemoryStore, StoreParts } from './types';
 import { writePin } from './write-pin';
@@ -12,7 +12,7 @@ import { writeUndo } from './write-undo';
 // The one interface over the store's parts, which the model's tools and the client both call.
 export function buildMemoryStore(parts: StoreParts): MemoryStore {
   return {
-    recall: (request) => readRecall(parts, request),
+    ...buildRecallStore(parts),
     remember: (request) => writeRememberedItem(parts, request),
     retire: (request) => writeRetirement(parts, request),
     restore: (request) => writeRestoration(parts, request),

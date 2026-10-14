@@ -1,14 +1,14 @@
-import type { StepActivity } from './build-activity';
+import type { RecalledMemory, StepActivity } from './build-activity';
 import { formatContext } from './format-context';
 
-// Formats a collapsed step's one line: the task, how it stands unless done, its memory count, each
-// tool with its targets, such as "web fetch: theverge.com", its context, such as "41k / 400k", and
-// how long it ran. A part shows only once its data exists.
+// Formats a collapsed step's one line: the task, its state unless done, its memories with the noise
+// among them, such as "5 memories (1 noise)", each tool with its targets, such as "web fetch:
+// theverge.com", its context, such as "41k / 400k", and its duration, each once its data exists.
 export function formatStepSummary(step: StepActivity): string {
   const parts = [
     step.taskID ?? 'task',
     ...formatStatus(step),
-    ...(step.memories === undefined ? [] : [formatMemoryCount(step.memories.length)]),
+    ...(step.memories === undefined ? [] : [formatMemoryCount(step.memories)]),
     formatTools(step),
     ...(step.context === undefined ? [] : [formatContext(step.context)]),
     ...(step.durationMs === undefined ? [] : [formatDuration(step.durationMs)]),
@@ -31,8 +31,11 @@ function formatStatus(step: StepActivity): readonly string[] {
   return [`failed: ${error}`];
 }
 
-function formatMemoryCount(count: number): string {
-  return count === 1 ? '1 memory' : `${count} memories`;
+function formatMemoryCount(memories: readonly RecalledMemory[]): string {
+  const count = memories.length === 1 ? '1 memory' : `${memories.length} memories`;
+  const noise = memories.filter((memory) => memory.rating?.verdict === 'noise').length;
+
+  return noise === 0 ? count : `${count} (${noise} noise)`;
 }
 
 function formatTools(step: StepActivity): string {

@@ -93,6 +93,35 @@ test.each([
   );
 });
 
+test('it counts the memories the model rated as noise beside the memory count', () => {
+  expect(
+    formatStepSummary(
+      buildMockStepActivity({
+        memories: [
+          {
+            itemID: 'item-a',
+            rating: { hasNote: true, sequence: 9, verdict: 'noise' },
+            version: 1,
+          },
+          {
+            itemID: 'item-b',
+            rating: { hasNote: false, sequence: 9, verdict: 'helpful' },
+            version: 1,
+          },
+          {
+            itemID: 'item-c',
+            rating: { hasNote: false, sequence: 9, verdict: 'misleading' },
+            version: 1,
+          },
+          { itemID: 'item-d', version: 1 },
+          { itemID: 'item-e', version: 1 },
+        ],
+        taskID: 'conversation',
+      }),
+    ),
+  ).toBe('conversation · 5 memories (1 noise) · no tools');
+});
+
 test('it gives a step of a minute or more in minutes and seconds', () => {
   expect(
     formatStepSummary(buildMockStepActivity({ durationMs: 65_400, taskID: 'conversation' })),

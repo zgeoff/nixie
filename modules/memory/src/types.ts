@@ -9,6 +9,7 @@ import type {
 } from './gate-types';
 import type { ItemHistory } from './history-types';
 import type { DeliveryLock } from './make-delivery-lock';
+import type { RateRequest } from './rating-types';
 import type { MemoryIndex } from './start-memory-index';
 
 // Active items reach retrieval and recall. A retired item stays readable with its history. A
@@ -193,6 +194,9 @@ export interface MemoryStore {
   // completes once the key is gone, the index entries are removed and the sessions are cleaned up
   readonly forget: (request: ForgetRequest) => Promise<void>;
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
+
+  // keeps the model's ratings of what the thread's latest recall delivered; changes no item
+  readonly rate: (request: RateRequest) => Promise<void>;
 }
 
 // What a model's memory tool reaches to turn the short IDs the model reads into item IDs and back.

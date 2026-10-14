@@ -12,6 +12,7 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
   const task = record.kind.startsWith('task.') ? toTask(record) : undefined;
   const toolCall = toolKinds.has(record.kind) ? toToolCall(record) : undefined;
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
+  const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
   const context = record.kind === 'model.turn_ended' ? toContext(record) : undefined;
   const compaction = record.kind === 'model.compacted' ? toCompaction(record) : undefined;
 
@@ -20,6 +21,7 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
     ...(context === undefined ? {} : { context }),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
+    ...(rating === undefined ? {} : { rating }),
     ...(recall === undefined ? {} : { recall }),
     recordedAt: record.recordedAt,
     sequence: record.sequence,
@@ -147,6 +149,49 @@ function toRecallItem(item: JSONValue): readonly RecallItem[] {
   }
 
   return [{ itemID, version, ...(typeof score === 'number' ? { score } : {}) }];
+}
+
+type Rating = NonNullable<ContractRecord['rating']>;
+type RatingItem = Rating['items'][number];
+
+// A rating's record names the recall it rates and each item's verdict, and holds each note sealed,
+// which memory.readRatingNotes opens. A record that names no recall gives no rating, and an item
+// without an ID, a version and a known verdict is left out.
+function toRating(record: LogRecord): Rating | undefined {
+  const recalledSequence = record.payload['recalledSequence'];
+  const ratedBy = record.payload['ratedBy'];
+  const items = record.payload['ratings'];
+
+  if (typeof recalledSequence !== 'number') {
+    return undefined;
+  }
+
+  return {
+    items: isJSONArray(items) ? items.flatMap((item) => toRatingItem(item)) : [],
+    ...(typeof ratedBy === 'string' ? { ratedBy } : {}),
+    recalledSequence,
+  };
+}
+
+const verdicts: ReadonlySet<string> = new Set(['helpful', 'noise', 'misleading']);
+
+function toRatingItem(item: JSONValue): readonly RatingItem[] {
+  if (!isJSONObject(item)) {
+    return [];
+  }
+  const itemID = item['itemID'];
+  const version = item['version'];
+  const verdict = item['verdict'];
+
+  if (typeof itemID !== 'string' || typeof version !== 'number' || !isVerdict(verdict)) {
+    return [];
+  }
+
+  return [{ hasNote: typeof item['sealedNote'] === 'string', itemID, verdict, version }];
+}
+
+function isVerdict(value: JSONValue | undefined): value is RatingItem['verdict'] {
+  return typeof value === 'string' && verdicts.has(value);
 }
 
 type Context = NonNullable<ContractRecord['context']>;
