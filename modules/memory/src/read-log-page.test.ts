@@ -309,7 +309,7 @@ test('it puts each pasted span of your message in a block', async () => {
   });
   const [entry] = page.entries;
 
-  invariant(entry?.text);
+  invariant(typeof entry?.text === 'string');
   expect(page.entries).toStrictEqual([
     { sequence, role: 'owner', recordedAt: expect.toBeNumber(), text: entry.text, isCut: false },
   ]);
