@@ -258,6 +258,9 @@ async function runCrashedTurn(
     }
   }
   await child.exited;
+  if (child.signalCode !== 'SIGKILL') {
+    throw new Error(`${label}: the turn ended before the kill, events=[${events.join(' | ')}]`);
+  }
   await Bun.sleep(1000);
   const left = Bun.spawnSync(['pgrep', '-g', String(child.pid)]).stdout.toString().trim();
   console.log(
@@ -299,6 +302,9 @@ function loadTranscript(label: string, sessionID: string, boundary: string | und
 
 function findTranscriptLines(sessionID: string): string[] | undefined {
   const projects = join(configDir ?? '', 'projects');
+  if (!existsSync(projects)) {
+    return undefined;
+  }
   for (const project of readdirSync(projects)) {
     const path = join(projects, project, `${sessionID}.jsonl`);
     if (existsSync(path)) {
