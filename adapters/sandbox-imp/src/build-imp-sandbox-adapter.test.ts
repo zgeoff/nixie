@@ -616,6 +616,40 @@ test('it adds nothing when impd built the name from a reference pinned at the sa
   expect(ctx.imp.calls).toStrictEqual([]);
 });
 
+test('it adds nothing, and succeeds, when impd holds the name and would refuse an add', async () => {
+  const ctx = await setupTest();
+
+  ctx.imp.refuseImageAdd = true;
+  ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', {
+    digest: `sha256:${'a'.repeat(64)}`,
+    ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+  });
+
+  await expect(
+    ctx.adapter.addImage({
+      name: 'nixie-fetch-aaaaaaaaaaaa',
+      ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+    }),
+  ).toResolve();
+  expect(ctx.imp.calls).toStrictEqual([]);
+});
+
+test('it names the image and its reference when impd refuses the add', async () => {
+  const ctx = await setupTest();
+
+  ctx.imp.refuseImageAdd = true;
+
+  expect(
+    ctx.adapter.addImage({
+      name: 'nixie-fetch-aaaaaaaaaaaa',
+      ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+    }),
+  ).rejects.toThrowWithMessage(
+    Error,
+    /^impd did not add the image nixie-fetch-aaaaaaaaaaaa from ghcr\.io\/example\/nixie-fetch@sha256:a{64}: token nixie-test is limited to some imps; this call is host-wide$/u,
+  );
+});
+
 test('it refuses an image whose name impd holds at another digest', async () => {
   const ctx = await setupTest();
 

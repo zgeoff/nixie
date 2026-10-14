@@ -95,9 +95,9 @@ function makeRowSandboxReader(
   };
 }
 
-// A release names each image by its kind and digest, so impd pulls a name once. A held name matches
-// when its digest or the digest its ref pins is the release's. Any other is refused, because a spec
-// that names it would run an image the manifest never pinned.
+// A release names each image by its kind and digest, so impd pulls a name once. A held name matches,
+// with no add impd could refuse, when its digest or the digest its ref pins is the release's. Any
+// other is refused, because a spec that names it would run an image the manifest never pinned.
 function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
   return async (image) => {
     const digest = findPinnedDigest(image.ref);
@@ -109,13 +109,30 @@ function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
     const held = images.find((row) => row.name === image.name);
 
     if (held === undefined) {
-      await port.addImage({ name: image.name, digest, ref: image.ref });
+      await createImpImage(port, { name: image.name, digest, ref: image.ref });
     } else if (held.digest !== digest && findPinnedDigest(held.ref) !== digest) {
       throw new Error(
         `impd holds the image ${image.name} at ${held.digest} from ${held.ref}, not ${digest}`,
       );
     }
   };
+}
+
+// impd's refusal names neither the image nor the ref, so the start step's log could not say which
+// image the host owner has to add
+async function createImpImage(
+  port: ImpPort,
+  image: Parameters<ImpPort['addImage']>[0],
+): Promise<void> {
+  try {
+    await port.addImage(image);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+
+    throw new Error(`impd did not add the image ${image.name} from ${image.ref}: ${reason}`, {
+      cause: error,
+    });
+  }
 }
 
 function findPinnedDigest(ref: string): string | undefined {

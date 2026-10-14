@@ -65,9 +65,11 @@ which holds nixie's version and the version of the start before it, so the conve
 restart ([the events block](../core/conversation-turns.md#the-events-block)).
 
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
-that creates a sandbox on an image impd lacks would fail. The conversation imp then starts on its
-image from the manifest, and the sandbox adapter replaces its sandbox when the image or the model
-profile changed. The memory checker starts next on the conversation image
+that creates a sandbox on an image impd lacks would fail. The server sends no add for an image that
+impd holds under its name at the manifest's digest, so a token that may add no image still starts a
+release once impd's administrator has added that release's images. The conversation imp then starts
+on its image from the manifest, and the sandbox adapter replaces its sandbox when the image or the
+model profile changed. The memory checker starts next on the conversation image
 ([the checker](../memory/writes.md#the-checker)), and the memory store starts behind it. The store
 starts after the conversation imp, because a forget cleans up the conversation's sessions through
 it, and before any runner claims work, so every forget that a crash left pending completes before a
