@@ -21,7 +21,8 @@ resume after the SDK compacted the session past the step's boundary. The
 
 ## Run it
 
-Run the command from this directory. The script runs 7 model calls and prints one line per turn.
+Run the commands from this directory. `resume-at.ts` runs 7 model calls and prints one line per
+turn.
 
 ```bash
 bun install
@@ -34,9 +35,9 @@ env -u ANTHROPIC_API_KEY bun --no-env-file resume-at.ts "$(mktemp -d)"
 env -u ANTHROPIC_API_KEY bun --no-env-file resume-after-compact.ts "$(mktemp -d)"
 ```
 
-Inside a sandbox whose broker adds the model credential, skip the vault read: the script then passes
-a placeholder token and the sandbox's proxy variables. `resume-after-compact.ts` runs about 30 model
-calls, about $0.15 in the SDK's estimate.
+Inside a sandbox whose broker adds the model credential, skip the vault read for
+`resume-after-compact.ts`, which then passes a placeholder token and the sandbox's proxy variables.
+`resume-after-compact.ts` runs about 30 model calls, about $0.15 in the SDK's estimate.
 
 ## Answers
 
