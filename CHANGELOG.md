@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.0](https://github.com/zgeoff/nixie/compare/v0.17.0...v0.18.0) (2026-10-14)
+
+
+### Features
+
+* **geo-838:** keep each item's own words in the consolidation pass ([#200](https://github.com/zgeoff/nixie/issues/200)) ([c44aa9e](https://github.com/zgeoff/nixie/commit/c44aa9e2b660c18807a5719ae1ffd6c5b1e82ba9))
+* **geo-851:** resolve deployment references in the owner's pronouns ([#202](https://github.com/zgeoff/nixie/issues/202)) ([ccc8afd](https://github.com/zgeoff/nixie/commit/ccc8afdca4170ecc83cf43b1b3629bd62ef70b7c))
+
 ## [0.17.0](https://github.com/zgeoff/nixie/compare/v0.16.0...v0.17.0) (2026-10-14)
 
 
