@@ -15,8 +15,9 @@ everything a new session opens with, and a forget can erase all of it.
 A new session opens with these slots, in this order, from what defines the model to the current
 turn:
 
-1. **Persona.** The system prompt holds the persona, the line that says who the note-taker is and
-   the rule for pasted and dropped text, and nothing else.
+1. **Persona.** The system prompt holds the persona, the line that says who the note-taker is, the
+   rule for pasted and dropped text, the rule for system messages, and any other part that only
+   nixie's definitions set. It holds nothing about memory.
 2. **Pinned memory.** The pinned core as it stands when the session opens.
 3. **Status.** A readout taken when the session opens: the kind of start and its reason, the time
    the session started, the nixie version, the model, and the moments kept in the last 7 days.
