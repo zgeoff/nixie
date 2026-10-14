@@ -47,7 +47,13 @@ export async function runBatchGate(
   const found = await findSourceEvidence(parts.context.log, source, write.quote);
   const gate = await runQuotedGate(
     parts.context,
-    { text: write.text, quote: write.quote, isPinned, thread: memoryWriterTaskID },
+    {
+      text: write.text,
+      quote: write.quote,
+      eventID: source.sequence,
+      isPinned,
+      thread: memoryWriterTaskID,
+    },
     { quote: write.quote, found },
   );
 

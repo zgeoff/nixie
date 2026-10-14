@@ -120,6 +120,51 @@ test('it applies a backed fact with the caller and model of the run, never of th
   });
 });
 
+test('it applies a fact quoted from a message outside the window by its event ID', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })),
+      limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10, closeMatchScore: 0.6 },
+    },
+  });
+  const tool = buildToolRegistry(
+    buildMemoryTools(memory.store, { now: () => Date.now() }),
+  ).findTool('memory.remember');
+
+  invariant(tool);
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'My bike is the green one',
+    spans: [{ start: 0, end: 24, source: 'typed' }],
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Thanks',
+    spans: [{ start: 0, end: 6, source: 'typed' }],
+  });
+
+  const outcome = await tool.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.remember',
+      input: {
+        text: 'Bike is the green one',
+        quote: 'My bike is the green one',
+        eventID: String(sequence),
+      },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { status: 'applied', itemID: expect.toBeString(), version: 1 },
+  });
+});
+
 test('it returns a proposal with the sentence for its reason, not an error, for a fact with no quote', async () => {
   const ctx = await setupTest();
   const tool = ctx.registry.findTool('memory.remember');
@@ -868,6 +913,16 @@ test.each([
   ['an edit with a pin', 'memory.edit', { itemID: 'item-a', version: 1, text: 'x', pin: true }],
   ['a retire with no version', 'memory.retire', { itemID: 'item-a' }],
   ['a remember with an empty quote', 'memory.remember', { text: 'x', quote: '' }],
+  [
+    'a remember with an event ID that is not a number',
+    'memory.remember',
+    { text: 'x', eventID: 'e1' },
+  ],
+  [
+    'an edit with an event ID of 0',
+    'memory.edit',
+    { itemID: 'item-a', version: 1, text: 'x', eventID: '0' },
+  ],
   ['a recall with an unknown argument', 'memory.recall', { everything: true }],
   ['a recall with a cursor no page returned', 'memory.recall', { after: 'abc' }],
 ])('it refuses %s', async (_label, name, input) => {

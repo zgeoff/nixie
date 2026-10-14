@@ -48,6 +48,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
             target: { itemID, version: input.version },
             caller: buildWriteCaller(context),
             ...(input.quote === undefined ? {} : { quote: input.quote }),
+            ...(input.eventID === undefined ? {} : { eventID: Number(input.eventID) }),
           }),
         itemID,
       );
@@ -59,8 +60,9 @@ const editDescription =
   'Rewrites an existing memory item as a new version, by its itemID and the version you read ' +
   'with memory.recall. The new text replaces the whole item, and the old version stays in ' +
   "the item's history. Pass quote: the exact words from one of the owner's own recent " +
-  'messages that state the new text. The edit applies at once only when those typed words ' +
-  "back it; otherwise it waits for the owner's review as a proposal, and the result says why.";
+  'messages that state the new text. For words from an older message that log.read returned, ' +
+  "also pass that entry's eventID. The edit applies at once only when those typed words back " +
+  "it; otherwise it waits for the owner's review as a proposal, and the result says why.";
 
 const editInput = {
   type: 'object',
@@ -69,6 +71,11 @@ const editInput = {
     version: { type: 'integer', minimum: 1 },
     text: { type: 'string', minLength: 1, maxLength: 2000 },
     quote: { type: 'string', minLength: 1, maxLength: 2000 },
+    eventID: {
+      type: 'string',
+      pattern: '^[1-9][0-9]{0,14}$',
+      description: 'the eventID of the log.read entry the quote comes from',
+    },
   },
   required: ['itemID', 'version', 'text'],
   additionalProperties: false,
@@ -79,4 +86,5 @@ const editArguments = z.object({
   version: z.int(),
   text: z.string(),
   quote: z.string().optional(),
+  eventID: z.string().optional(),
 });

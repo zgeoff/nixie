@@ -4,6 +4,7 @@ import {
   gboardPastedEvents,
   gboardTypedEvents,
 } from '@heynixie/contract/test-utils';
+import { writeRecords } from '@heynixie/log';
 import { makeChecker } from '@heynixie/models';
 import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -403,6 +404,74 @@ test('it proposes a write whose quote lies only in a message outside the window'
   });
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+});
+
+test('it applies a write whose quote you typed in a message outside the window, cited by its event ID', async () => {
+  const memory = await startTestMemory({
+    gate: {
+      check: () => Promise.resolve(buildMockCheckerAnswer()),
+      limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10, closeMatchScore: 0.6 },
+    },
+  });
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Thanks',
+    spans: [{ start: 0, end: 6, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    eventID: sequence,
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'applied');
+
+  const row = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select(['source', 'evidence'])
+    .where('item_id', '=', outcome.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row).toStrictEqual({
+    source: 'owner',
+    evidence: JSON.stringify({ recordSequence: sequence, start: 0, end: 22 }),
+  });
+});
+
+test('it proposes a write whose quote matches only a fetched page in the log, cited by its event ID', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+  const memory = await startTestMemory({ gate: { check } });
+  const [page] = await writeRecords(memory.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'untrusted',
+      payload: { outcome: 'result', sources: { text: 'untrusted' } },
+      erasable: { result: { text: 'The owner prefers window seats on every flight' } },
+    },
+  ]);
+
+  invariant(page);
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Prefers window seats',
+    quote: 'The owner prefers window seats on every flight',
+    eventID: page.sequence,
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'quote_not_typed' });
+  expect(check).not.toHaveBeenCalled();
 });
 
 test('it refuses a proposal past the cap for the turn', async () => {

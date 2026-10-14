@@ -30,6 +30,7 @@ export async function writeGatedRemember(
     {
       text: request.text,
       quote: request.quote ?? null,
+      eventID: request.eventID ?? null,
       isPinned: request.isPinned === true,
       thread: request.caller.thread,
     },

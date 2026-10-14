@@ -1,4 +1,5 @@
 import { buildGateReview } from './build-gate-review';
+import { findEventEvidence } from './find-event-evidence';
 import { findQuoteEvidence } from './find-quote-evidence';
 import type { AllowRuleCall, ContentGateRequest, ContentGateResult } from './gate-types';
 import { runQuotedGate } from './run-quoted-gate';
@@ -27,11 +28,20 @@ export async function runContentGate(
   if (request.quote === null) {
     return buildGateReview('no_quote', { checks: { quote: 'fail' } });
   }
-  const found = await findQuoteEvidence(context.log, {
-    thread: request.thread,
-    quote: request.quote,
-    window: context.gate.limits.evidenceWindow,
-  });
+
+  // a quote that cites an event ID is checked against that record alone, however old
+  const found =
+    request.eventID === null
+      ? await findQuoteEvidence(context.log, {
+          thread: request.thread,
+          quote: request.quote,
+          window: context.gate.limits.evidenceWindow,
+        })
+      : await findEventEvidence(context.log, {
+          thread: request.thread,
+          quote: request.quote,
+          eventID: request.eventID,
+        });
 
   return runQuotedGate(context, request, { quote: request.quote, found });
 }

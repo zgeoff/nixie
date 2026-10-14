@@ -10,12 +10,18 @@ export interface ConversationMemory {
   readonly clock: Pick<Clock, 'now'>;
 }
 
-// Builds the conversation's tool definitions: the web fetch tool, the time tool and the 7 memory
-// tools. The registry exists before the memory store starts, so the memory tools reach the store
+// The conversation's tools that reach no memory store: web fetch, the time tool and the log reader.
+export interface ConversationReaders {
+  readonly webFetch: ToolDefinition;
+  readonly time: ToolDefinition;
+  readonly logRead: ToolDefinition;
+}
+
+// Builds the conversation's tool definitions: the web fetch tool, the time tool, the log reader
+// and the 7 memory tools. The registry exists before the memory store starts, so the memory tools reach the store
 // through readStore. A call before the store starts throws.
 export function buildConversationTools(
-  webFetch: ToolDefinition,
-  time: ToolDefinition,
+  readers: ConversationReaders,
   memory: ConversationMemory,
 ): readonly ToolDefinition[] {
   const requireStore = (): MemoryToolStore => {
@@ -28,8 +34,9 @@ export function buildConversationTools(
   };
 
   return [
-    webFetch,
-    time,
+    readers.webFetch,
+    readers.time,
+    readers.logRead,
     ...buildMemoryTools(
       {
         recall: (request) => requireStore().recall(request),

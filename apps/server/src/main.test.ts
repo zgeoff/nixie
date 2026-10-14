@@ -107,7 +107,7 @@ test('it puts the snapshot hash of the definitions in force on every record', as
   );
 }, 60_000);
 
-test('it lists the memory tools, web fetch and the time tool to the conversation model', async () => {
+test('it lists the memory tools, web fetch, the time tool and the log reader to the conversation model', async () => {
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'Hello.' });
@@ -130,6 +130,7 @@ test('it lists the memory tools, web fetch and the time tool to the conversation
         { name: 'mcp__nixie__memory_retire' },
         { name: 'mcp__nixie__web_fetch' },
         { name: 'mcp__nixie__time_now' },
+        { name: 'mcp__nixie__log_read' },
       ]),
     },
   );

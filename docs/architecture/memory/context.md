@@ -88,6 +88,30 @@ history, the pinned-core change note, the retrieved items,
 [the events block](../core/conversation-turns.md#the-events-block). The user's own words come last,
 so the model reads each block as context for them.
 
+## Reading the log
+
+The conversation's model reads its own thread of the [event log](../core/event-log.md) with the
+`log.read` tool, so it can look back past what its session holds and propose memories from older
+messages. A read returns one page of the user's messages, the replies and the tool results, oldest
+first, each with its event ID, which is the record's sequence. The model narrows a read by a time
+range or by words that every entry must hold, and pages on with the cursor the read returns. The
+tool never returns the whole log at once: a read decrypts a bounded number of records, so a search
+over a long thread can return a short page with a cursor to go on from. The tool reads only the
+calling run's thread, and the read-only rule allows it because it declares only a read.
+
+The log holds outside text, such as fetched pages and pastes, so every entry counts as outside
+content to the decision point. The user's messages mark each span the user did not type, as the
+writer's batches do. The call's record holds only the event IDs it returned, so a forget leaves no
+readable copy of what the model read, and a forgotten message reads with no text and never matches a
+search.
+
+A memory write that quotes an older message passes that entry's event ID with its quote. The content
+gate then checks the quote against that one record in place of the recent window, under the same
+quote rules: the record must be a message the user sent in the calling thread, and the quote must
+lie in text the user typed. A reply or a tool result never backs a write, because nobody typed it,
+so a quote that only a fetched page holds becomes a proposal. The token check and the checker run as
+for any other write ([the content gate](./writes.md#the-content-gate)).
+
 ## Forgetting and the live session
 
 A forgotten item can sit in the conversation's session: in a retrieved block, in the pinned core of
