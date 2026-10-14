@@ -75,8 +75,10 @@ async function startImpProcess(ctx: ImpSandboxContext, command: ExecSpec) {
   });
 
   // an idle sleep that impd starts between the route's open and the exec's arrival holds the exec
-  // until it wakes the imp, and ends the forward meanwhile, so the forward listens again at once
+  // until it wakes the imp, and ends the forward meanwhile, so the forward listens again once the
+  // exec has started, which imp's client reports after it returns the handle
   try {
+    await exec.started;
     await ctx.routes.open(ctx.id, ctx.spec);
   } catch (error) {
     exec.close();

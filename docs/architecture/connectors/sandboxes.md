@@ -75,8 +75,9 @@ command that waited out the sleep would start a guest whose tool connections are
 command runs in a sandbox with a tool route, the adapter therefore asks impd to wake the imp: the
 wake waits out a sleep in progress, the forward has ended by the time it returns, and the adapter
 listens again on the woken imp before the guest starts. An idle sleep can also start between that
-wake and the command, so once the command opens, the adapter listens again if the forward ended in
-the meantime.
+wake and the command, and the command then waits out that sleep too. impd reports when the command
+has started, which comes after any such wake, so the adapter waits for that report and then listens
+again if the forward ended in the meantime.
 
 ## The imp adapter
 

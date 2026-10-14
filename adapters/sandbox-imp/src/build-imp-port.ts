@@ -125,6 +125,7 @@ function makeExecOpener(client: ImpClient): ImpPort['openExec'] {
     });
 
     return {
+      started: handle.started,
       stdout: handle.stdout,
       stderr: handle.stderr,
       write: handle.write,

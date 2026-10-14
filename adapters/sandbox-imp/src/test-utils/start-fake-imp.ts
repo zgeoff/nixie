@@ -3,6 +3,7 @@ import { createServer } from 'node:net';
 import type { ImpCreateInput, ImpExec, ImpExecOptions, ImpFeatures, ImpPort } from '../types';
 import type { FakeSleeps } from './build-fake-sleeps';
 import { buildFakeSleeps } from './build-fake-sleeps';
+import { buildPendingExec } from './build-pending-exec';
 import { startFakeForward } from './start-fake-forward';
 
 interface FakeExec {
@@ -106,15 +107,15 @@ function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposa
       sleeps.startSleepAfterWake(name);
     },
     ...buildFakeSecretCalls(state, updateCallLog),
-    openExec: async (name, argv, options) => {
+
+    // like imp's client, it returns the handle at once, and the exec starts once the imp is awake
+    openExec: (name, argv, options) => {
       const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
 
       state.execs.push(exec);
-      await sleeps.waitForAwake(name, 'exec');
-      if (options.requireBroker) {
-        requireBrokerEnv(options.env);
-      }
-      return startFakeExec(exec, stack);
+      return Promise.resolve(
+        buildPendingExec(sleeps.waitForAwake(name, 'exec'), () => startFakeExec(exec, stack)),
+      );
     },
     ...buildFakeForwardCall(state, sleeps),
   };
@@ -130,12 +131,13 @@ const brokerEnv: Readonly<Record<string, string>> = {
 };
 
 // An exec that requires the broker gets these, and impd refuses one whose env replaces any.
-function requireBrokerEnv(env: Readonly<Record<string, string>>): void {
+function requireBrokerEnv(options: ImpExecOptions): void {
+  const env = options.env;
   const replaced = Object.keys(brokerEnv).find(
     (key) => env[key] !== undefined && env[key] !== brokerEnv[key],
   );
 
-  if (replaced !== undefined) {
+  if (options.requireBroker && replaced !== undefined) {
     throw new Error(
       `the broker is not ready for this exec: the exec's env sets ${replaced}, which the broker sets`,
     );
@@ -144,6 +146,8 @@ function requireBrokerEnv(env: Readonly<Record<string, string>>): void {
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own exec log and cleanup
 function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
+  requireBrokerEnv(exec.options);
+
   const child = Bun.spawn([...exec.argv], {
     env: {
       PATH: process.env['PATH'] ?? '/usr/bin:/bin',
@@ -162,6 +166,7 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
     sendGroupSignal(child.pid, 'SIGKILL');
   });
   return {
+    started: Promise.resolve(),
     stdout: child.stdout,
     stderr: child.stderr,
     write: async (data) => {
