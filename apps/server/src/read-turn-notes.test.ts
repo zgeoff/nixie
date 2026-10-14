@@ -29,7 +29,7 @@ test('it joins the memory note and the events block, both over one range', async
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await writeStartRecord(ctx.context, '0.12.0');
+  await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.12.0');
 
   const [last] = await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
@@ -66,7 +66,7 @@ test("it shows events in the zone of the owner's newest message over the default
   setSystemTime(new Date(Date.UTC(2025, 9, 13, 22, 40)));
   onTestFinished(() => setSystemTime());
 
-  await writeStartRecord(ctx.context, '0.12.0');
+  await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.12.0');
   await writeRecords(ctx.log, [
     {
       kind: 'owner_message',
@@ -90,7 +90,7 @@ test("it shows events in the zone of the owner's newest message over the default
 test('it renders no note when nothing happened since the last turn', async () => {
   const ctx = await setupTest();
 
-  await writeStartRecord(ctx.context, '0.12.0');
+  await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.12.0');
 
   const [turn] = await writeRecords(ctx.log, [
     {

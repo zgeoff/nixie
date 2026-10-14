@@ -51,7 +51,7 @@ flowchart LR
   W --> H["health endpoint,<br>API, control socket"]
   H --> S0["first seed,<br>if none in force"]
   S0 --> R["recovery"] --> I["add images"] --> C["conversation imp"] --> M["memory"]
-  M --> S["seed"] --> RU["runners claim work"] --> Y["ready"]
+  M --> S["seed"] --> SR["start record"] --> RU["runners claim work"] --> Y["ready"]
 ```
 
 Every record carries the snapshot hash of the definitions in force
@@ -60,9 +60,7 @@ writes, recovery included. Recovery runs under the new writer epoch and before a
 it sees every lease the last process left and settles each one
 ([crash recovery](../core/leases-and-recovery.md#crash-recovery)). Its sandbox cleanup destroys
 every sandbox whose owner no longer runs, and keeps the conversation's sandbox, whose task never
-ends, and the memory checker's, which the deployment owns. Recovery ends with a record of the start,
-which holds nixie's version and the version of the start before it, so the conversation hears of the
-restart ([the events block](../core/conversation-turns.md#the-events-block)).
+ends, and the memory checker's, which the deployment owns.
 
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
 that creates a sandbox on an image impd lacks would fail. The server sends no add for an image that
@@ -74,16 +72,20 @@ model profile changed. The memory checker starts next on the conversation image
 starts after the conversation imp, because a forget cleans up the conversation's sessions through
 it, and before any runner claims work, so every forget that a crash left pending completes before a
 turn can read the item ([forgetting](../memory/store.md#forgetting)). The seed runs after the memory
-store, so a release's new definitions apply to the turns it runs. Only then do the runners claim
-work.
+store, so a release's new definitions apply to the turns it runs. A record of the start follows the
+seed, so the conversation hears of the restart
+([the events block](../core/conversation-turns.md#the-events-block)). The record holds nixie's
+version, the version of the start before it, and what the conversation is given: the names of its
+tools and the version of its persona. Because the record follows the seed, it holds the persona this
+start applies. Only then do the runners claim work.
 
-The first seed, recovery, adding the images, starting the conversation imp and the memory store each
-wait and run again when they fail, with a log line per attempt. nixie therefore stays live and
-unready while impd is down or the definitions refuse to seed, and the container runtime sees why in
-the readiness report instead of a restart loop. Any other failure in the sequence logs the error and
-ends the process, so the container runtime restarts it instead of leaving it live with no runners. A
-stop during the sequence ends it at the next step, and waits for the step in flight before any part
-closes.
+The first seed, recovery, adding the images, starting the conversation imp and the memory store, and
+writing the start record each wait and run again when they fail, with a log line per attempt. nixie
+therefore stays live and unready while impd is down or the definitions refuse to seed, and the
+container runtime sees why in the readiness report instead of a restart loop. Any other failure in
+the sequence logs the error and ends the process, so the container runtime restarts it instead of
+leaving it live with no runners. A stop during the sequence ends it at the next step, and waits for
+the step in flight before any part closes.
 
 ## Health
 
@@ -94,17 +96,20 @@ reason, never an error's message, because a message can quote what the part was 
 Liveness holds when the process answers and the database answers a query. Readiness lists the parts
 this build holds:
 
-| Part             | Ready when                                                  |
-| ---------------- | ----------------------------------------------------------- |
-| database         | Migrations finished and the integrity check at start passed |
-| definitions      | The last seed applied, with no refused snapshot pending     |
-| imp host         | impd answers, and every image in the manifest is added      |
-| conversation imp | Its sandbox started, and its turns are not failing          |
-| disk             | The data volume is under the fill limit                     |
+| Part             | Ready when                                                              |
+| ---------------- | ----------------------------------------------------------------------- |
+| database         | Migrations finished and the integrity check at start passed             |
+| definitions      | The last seed applied, with no refused snapshot pending                 |
+| imp host         | impd answers, and every image in the manifest is added                  |
+| conversation imp | Its sandbox started, the runners started, and its turns are not failing |
+| disk             | The data volume is under the fill limit                                 |
 
 The imp host and disk checks run on each request, and the rest read state that the start sequence
-and the runners keep. Each check runs under a timeout, so a part that hangs reports unready instead
-of holding the endpoint. The image's health check calls the same endpoint from inside the container.
+and the runners keep. The conversation imp stays unready until the runners start, so a start step
+that keeps failing after the conversation imp starts, such as writing the start record, leaves nixie
+unready instead of ready with no runner claiming work. Each check runs under a timeout, so a part
+that hangs reports unready instead of holding the endpoint. The image's health check calls the same
+endpoint from inside the container.
 
 ## Logs
 
