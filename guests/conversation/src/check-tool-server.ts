@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's query and MCP status types have no readonly form
 import { setTimeout as waitForDelay } from 'node:timers/promises';
 import type { McpServerStatus, Query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame } from '@heynixie/wire';

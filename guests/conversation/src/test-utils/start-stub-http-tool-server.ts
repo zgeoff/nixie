@@ -96,7 +96,9 @@ function startRelay(client: Socket, port: number, state: RouteState): void {
 
   for (const socket of [client, upstream]) {
     state.sockets.add(socket);
-    socket.once('close', () => state.sockets.delete(socket));
+    socket.once('close', () => {
+      state.sockets.delete(socket);
+    });
     socket.on('error', () => {
       client.destroy();
       upstream.destroy();
@@ -105,6 +107,7 @@ function startRelay(client: Socket, port: number, state: RouteState): void {
   client.pipe(upstream).pipe(client);
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a node:net server has no readonly form
 function getPort(route: NetServer): number {
   const address = route.address();
 
