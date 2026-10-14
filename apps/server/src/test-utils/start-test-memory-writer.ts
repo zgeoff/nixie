@@ -175,6 +175,7 @@ async function startTestWriterRunner(
     gate: wiring.options.check === undefined ? buildStubGate() : wiring.store.writes.batch,
     config: writerConfigSchema.parse({ batch_messages: 1, ...wiring.options.writerConfig }),
     getPersona: () => '',
+    ownerName: null,
     onError: (error) => {
       throw error;
     },
@@ -218,5 +219,6 @@ function buildClosedGate(clock: TestClock): GateContext {
     clock,
     findAllowRule: findNoAllowRule,
     limits: defaultGateLimits,
+    ownerName: null,
   };
 }

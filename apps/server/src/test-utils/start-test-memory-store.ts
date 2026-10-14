@@ -25,6 +25,7 @@ export async function startTestMemoryStore(
       clock: context.clock,
       findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
+      ownerName: null,
     },
   });
 

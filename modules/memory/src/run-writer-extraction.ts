@@ -82,7 +82,7 @@ async function runSession(
 ): Promise<Pick<WriterExtraction, 'writes' | 'usage'>> {
   try {
     const usage = await parts.model.runSession({
-      systemPrompt: renderWriterSystemPrompt(parts.getPersona()),
+      systemPrompt: renderWriterSystemPrompt(parts.getPersona(), parts.ownerName),
       prompt: session.prompt,
       signal: session.signal,
     });

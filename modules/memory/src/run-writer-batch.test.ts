@@ -25,6 +25,7 @@ async function setupTest(options: TestMemoryOptions = {}) {
     gate: memory.store.writes.batch,
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
+    ownerName: null,
   };
   const input = {
     taskID: 'memory-writer',

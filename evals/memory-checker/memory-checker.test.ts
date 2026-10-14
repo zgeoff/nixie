@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { memoryCheckerPrompt } from '@heynixie/memory';
+import { renderMemoryCheckerPrompt } from '@heynixie/memory';
 import { buildCheckerEvalInput } from '../test-utils/build-checker-eval-input';
 import type { LabelledCall } from '../test-utils/collect-labelled-calls';
 import { collectLabelledCalls } from '../test-utils/collect-labelled-calls';
@@ -9,7 +9,13 @@ import { loadCheckerReport } from '../test-utils/load-checker-report';
 
 interface SetupConfig {
   // the corpus file's name, which names its report too
-  readonly name: 'corpus' | 'held-out-1' | 'held-out-2' | 'held-out-3' | 'held-out-4';
+  readonly name:
+    | 'corpus'
+    | 'held-out-1'
+    | 'held-out-2'
+    | 'held-out-3'
+    | 'held-out-4'
+    | 'held-out-5';
 }
 
 // a committed corpus and the committed report of its last run
@@ -20,25 +26,38 @@ async function setupTest(config: SetupConfig) {
   return { corpus, report };
 }
 
-test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3', 'held-out-4'] as const)(
-  'it checks a %s report that the checker prompt in force produced',
-  async (name) => {
-    const ctx = await setupTest({ name });
+test.each([
+  'corpus',
+  'held-out-1',
+  'held-out-2',
+  'held-out-3',
+  'held-out-4',
+  'held-out-5',
+] as const)('it checks a %s report that the checker prompt in force produced', async (name) => {
+  const ctx = await setupTest({ name });
 
-    const promptHash = new Bun.CryptoHasher('sha256').update(memoryCheckerPrompt).digest('hex');
+  const promptHash = new Bun.CryptoHasher('sha256')
+    .update(renderMemoryCheckerPrompt(ctx.report.ownerName))
+    .digest('hex');
 
-    expect(ctx.report.prompt).toBe(`sha256:${promptHash}`);
-  },
-);
+  expect(ctx.report.prompt).toBe(`sha256:${promptHash}`);
+});
 
-test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3', 'held-out-4'] as const)(
+test.each([
+  'corpus',
+  'held-out-1',
+  'held-out-2',
+  'held-out-3',
+  'held-out-4',
+  'held-out-5',
+] as const)(
   'it checks a %s report that ran every pair, on the input the gate renders, each repeat',
   async (name) => {
     const ctx = await setupTest({ name });
 
     const expected = ctx.corpus.samples.flatMap((sample) =>
       sample.pairs.flatMap((pair, index) => {
-        const input = buildCheckerEvalInput(sample, pair);
+        const input = buildCheckerEvalInput(sample, pair, ctx.report.ownerName);
         const inputHash = new Bun.CryptoHasher('sha256').update(input).digest('hex');
 
         return Array.from({ length: ctx.report.repeats }, (_, repeat) => ({
@@ -60,21 +79,23 @@ test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3', 'held-out-4'] as 
   },
 );
 
-test.each(['corpus', 'held-out-1', 'held-out-2', 'held-out-3', 'held-out-4'] as const)(
-  'it never confirms a memory that a %s message does not assert',
-  async (name) => {
-    const ctx = await setupTest({ name });
+test.each([
+  'corpus',
+  'held-out-1',
+  'held-out-2',
+  'held-out-3',
+  'held-out-4',
+  'held-out-5',
+] as const)('it never confirms a memory that a %s message does not assert', async (name) => {
+  const ctx = await setupTest({ name });
 
-    const unasserted = collectLabelledCalls(ctx.corpus, ctx.report).filter(
-      (labelled) => !labelled.pair.asserted,
-    );
+  const unasserted = collectLabelledCalls(ctx.corpus, ctx.report).filter(
+    (labelled) => !labelled.pair.asserted,
+  );
 
-    expect(unasserted).not.toHaveLength(0);
-    expect(unasserted).toSatisfyAll(
-      (labelled: LabelledCall) => labelled.call.verdict !== 'asserted',
-    );
-  },
-);
+  expect(unasserted).not.toHaveLength(0);
+  expect(unasserted).toSatisfyAll((labelled: LabelledCall) => labelled.call.verdict !== 'asserted');
+});
 
 test.each(['corpus', 'held-out-1', 'held-out-2'] as const)(
   'it confirms every memory that a %s message asserts, on every call the checker answered',

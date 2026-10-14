@@ -48,6 +48,7 @@ export async function startTestSessions(
         }),
       clock: context.clock,
       findAllowRule: findNoAllowRule,
+      ownerName: null,
       limits: defaultGateLimits,
     },
   });

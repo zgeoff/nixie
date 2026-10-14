@@ -27,7 +27,6 @@ export { defaultGateLimits } from './default-gate-limits';
 export { findNoAllowRule } from './find-no-allow-rule';
 export type { MemoryConfig } from './memory-config-schema';
 export { memoryConfigSchema } from './memory-config-schema';
-export { memoryCheckerPrompt } from './memory-checker-prompt';
 export { MemoryProposalNotFoundError } from './memory-proposal-not-found-error';
 export { ProposalCapError } from './proposal-cap-error';
 export { ProposalClosedError } from './proposal-closed-error';
@@ -112,3 +111,4 @@ export type {
 } from './writer-types';
 export { findTypedQuote } from './find-typed-quote';
 export { renderCheckerInput } from './render-checker-input';
+export { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';

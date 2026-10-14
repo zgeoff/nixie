@@ -27,6 +27,7 @@ test('#memory.readVersions reads the text of each named version, and a missing o
       clock: ctx.clock,
       findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
+      ownerName: null,
     },
   });
 

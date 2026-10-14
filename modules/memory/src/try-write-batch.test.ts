@@ -40,6 +40,7 @@ async function setupTest() {
     },
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
+    ownerName: null,
   };
   const input = {
     taskID: 'memory-writer',

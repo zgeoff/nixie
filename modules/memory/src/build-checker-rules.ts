@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { memoryCheckerPrompt } from './memory-checker-prompt';
+import { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';
 import { retirementCheckerPrompt } from './retirement-checker-prompt';
 
 // A checker prompt as a policy snapshot entry: its ID and the SHA-256 of its text.
@@ -8,11 +8,14 @@ export interface CheckerRule {
   readonly prompt: string;
 }
 
-// The memory gate's checker prompts as policy snapshot entries, so a release that changes a prompt
-// changes the snapshot hash that every record carries.
-export function buildCheckerRules(): readonly CheckerRule[] {
+// The memory gate's checker prompts as policy snapshot entries, so a release that changes a prompt,
+// or a change to your configured name, changes the snapshot hash that every record carries.
+export function buildCheckerRules(ownerName: string | null): readonly CheckerRule[] {
   return [
-    { id: 'memory.content-checker', prompt: buildPromptHash(memoryCheckerPrompt) },
+    {
+      id: 'memory.content-checker',
+      prompt: buildPromptHash(renderMemoryCheckerPrompt(ownerName)),
+    },
     { id: 'memory.retirement-checker', prompt: buildPromptHash(retirementCheckerPrompt) },
   ];
 }

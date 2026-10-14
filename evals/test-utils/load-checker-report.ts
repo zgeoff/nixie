@@ -25,6 +25,9 @@ const reportSchema = z
 
     // the SHA-256 of the checker prompt the run used
     prompt: z.string().startsWith('sha256:'),
+
+    // the owner name the prompt and the memories used, or null for "the owner"
+    ownerName: z.string().min(1).nullable(),
     repeats: z.number().int().positive(),
     calls: z.array(callSchema).readonly(),
   })

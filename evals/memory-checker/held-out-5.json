@@ -1,0 +1,354 @@
+{
+  "samples": [
+    {
+      "id": "bedtime",
+      "message": {
+        "text": "I used to be a night owl but these days I'm in bed by ten like a sensible pensioner.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 84,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "statement",
+          "memory": "The owner goes to bed by ten these days.",
+          "quote": "these days I'm in bed by ten"
+        },
+        {
+          "asserted": false,
+          "bucket": "no longer true",
+          "memory": "The owner is a night owl.",
+          "quote": "I used to be a night owl"
+        },
+        {
+          "asserted": false,
+          "bucket": "joke",
+          "memory": "The owner is a pensioner.",
+          "quote": "like a sensible pensioner"
+        }
+      ]
+    },
+    {
+      "id": "car",
+      "message": {
+        "text": "I refuse to own a car. The bike gets me everywhere.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 51,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "distinctive words",
+          "memory": "The owner refuses to own a car.",
+          "quote": "I refuse to own a car."
+        },
+        {
+          "asserted": false,
+          "bucket": "contradiction",
+          "memory": "The owner owns a car.",
+          "quote": "I refuse to own a car."
+        }
+      ]
+    },
+    {
+      "id": "coffee",
+      "message": {
+        "text": "Would I call myself a coffee snob? Maybe.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 41,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": false,
+          "bucket": "question",
+          "memory": "The owner is a coffee snob.",
+          "quote": "Would I call myself a coffee snob?"
+        }
+      ]
+    },
+    {
+      "id": "commute",
+      "message": {
+        "text": "My commute is a daily pilgrimage through roadworks, 50 minutes each way.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 72,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "distinctive words",
+          "memory": "The owner calls their 50-minute commute a daily pilgrimage through roadworks.",
+          "quote": "My commute is a daily pilgrimage through roadworks, 50 minutes each way."
+        },
+        {
+          "asserted": true,
+          "bucket": "statement",
+          "memory": "The owner's commute takes 50 minutes each way.",
+          "quote": "50 minutes each way"
+        },
+        {
+          "asserted": false,
+          "bucket": "changed detail",
+          "memory": "The owner's commute takes an hour each way.",
+          "quote": "50 minutes each way"
+        }
+      ]
+    },
+    {
+      "id": "cook",
+      "message": {
+        "text": "my friend wrote this about me: Honestly the worst cook I know, bless them.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 31,
+            "source": "typed"
+          },
+          {
+            "start": 31,
+            "end": 74,
+            "source": "pasted"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": false,
+          "bucket": "pasted fact",
+          "memory": "The owner is the worst cook their friend knows.",
+          "quote": "my friend wrote this about me"
+        }
+      ]
+    },
+    {
+      "id": "flat",
+      "message": {
+        "text": "My flat is a shoebox with delusions of grandeur, one bedroom above the bakery.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 78,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "statement",
+          "memory": "The owner's flat has one bedroom and is above the bakery.",
+          "quote": "one bedroom above the bakery"
+        },
+        {
+          "asserted": true,
+          "bucket": "distinctive words",
+          "memory": "The owner calls their one-bedroom flat above the bakery a shoebox with delusions of grandeur.",
+          "quote": "My flat is a shoebox with delusions of grandeur, one bedroom above the bakery."
+        },
+        {
+          "asserted": false,
+          "bucket": "changed detail",
+          "memory": "The owner's flat has two bedrooms.",
+          "quote": "one bedroom above the bakery"
+        }
+      ]
+    },
+    {
+      "id": "gardener",
+      "message": {
+        "text": "I'm a chaotic gardener, I let the tomatoes do whatever they want.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 65,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "distinctive words",
+          "memory": "The owner is a chaotic gardener who lets the tomatoes do whatever they want.",
+          "quote": "I'm a chaotic gardener, I let the tomatoes do whatever they want."
+        },
+        {
+          "asserted": false,
+          "bucket": "added detail",
+          "memory": "The owner grows tomatoes for a living.",
+          "quote": "I let the tomatoes do whatever they want"
+        }
+      ]
+    },
+    {
+      "id": "londoner",
+      "message": {
+        "text": "If the new job pans out I'll finally be a proper Londoner.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 58,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": false,
+          "bucket": "dropped condition",
+          "memory": "The owner is a Londoner.",
+          "quote": "I'll finally be a proper Londoner"
+        }
+      ]
+    },
+    {
+      "id": "mornings",
+      "message": {
+        "text": "I'm not a morning person, I'm a mid-afternoon person at best.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 61,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "negated fact",
+          "memory": "The owner is not a morning person.",
+          "quote": "I'm not a morning person"
+        },
+        {
+          "asserted": true,
+          "bucket": "distinctive words",
+          "memory": "The owner is a mid-afternoon person at best.",
+          "quote": "I'm a mid-afternoon person at best"
+        }
+      ]
+    },
+    {
+      "id": "napper",
+      "message": {
+        "text": "haha I'm basically a professional napper at this point",
+        "spans": [
+          {
+            "start": 0,
+            "end": 54,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": false,
+          "bucket": "joke",
+          "memory": "The owner is a professional napper.",
+          "quote": "I'm basically a professional napper"
+        }
+      ]
+    },
+    {
+      "id": "saturday",
+      "message": {
+        "text": "Saturday mornings are sacred: parkrun, then a bacon roll from the van by the gate.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 82,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "distinctive words",
+          "memory": "For the owner, Saturday mornings are sacred: parkrun, then a bacon roll from the van by the gate.",
+          "quote": "Saturday mornings are sacred: parkrun, then a bacon roll from the van by the gate."
+        },
+        {
+          "asserted": false,
+          "bucket": "one-off made standing",
+          "memory": "The owner runs parkrun every day.",
+          "quote": "parkrun"
+        }
+      ]
+    },
+    {
+      "id": "stubborn",
+      "message": {
+        "text": "Mum says I'm the stubborn one in the family.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 44,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "kept attribution",
+          "memory": "The owner's mum says the owner is the stubborn one in the family.",
+          "quote": "Mum says I'm the stubborn one in the family."
+        },
+        {
+          "asserted": false,
+          "bucket": "dropped attribution",
+          "memory": "The owner is the stubborn one in the family.",
+          "quote": "Mum says I'm the stubborn one in the family."
+        }
+      ]
+    },
+    {
+      "id": "worrier",
+      "message": {
+        "text": "My sister Priya is the family's designated worrier.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 51,
+            "source": "typed"
+          }
+        ]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "distinctive words",
+          "memory": "The owner's sister Priya is the family's designated worrier.",
+          "quote": "My sister Priya is the family's designated worrier."
+        },
+        {
+          "asserted": false,
+          "bucket": "added detail",
+          "memory": "The owner's sister Priya has an anxiety disorder.",
+          "quote": "My sister Priya is the family's designated worrier."
+        }
+      ]
+    }
+  ]
+}

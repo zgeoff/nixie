@@ -1,14 +1,14 @@
 // oxlint-disable no-restricted-imports -- the eval swaps the brokered key for the local login
 
-// Runs each corpus pair through the production checker, prompt and gate input, and writes the
-// report the eval suite checks. It calls the model with the local Claude Code login, so CI never
-// runs it: env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts <corpus|held-out-1|held-out-2>
+// Runs each corpus pair through the production checker, prompt and gate input, named as a
+// deployment with the owner name given would be, and writes the report the eval suite checks. It
+// calls the model with the local Claude Code login, so CI never runs it (see the README).
 import { mkdtemp } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { runCheckQuery } from '@heynixie/conversation';
-import { memoryCheckerPrompt } from '@heynixie/memory';
+import { renderMemoryCheckerPrompt } from '@heynixie/memory';
 import { makeChecker } from '@heynixie/models';
 import { buildCheckerEvalInput } from '../test-utils/build-checker-eval-input';
 import type { CheckerSample } from '../test-utils/load-checker-corpus';
@@ -29,6 +29,8 @@ interface PlannedCall {
 
 const dir = import.meta.dir;
 const name = process.argv[2] ?? 'corpus';
+const ownerName = process.argv[3] === undefined || process.argv[3] === '' ? null : process.argv[3];
+const prompt = renderMemoryCheckerPrompt(ownerName);
 const corpus = await loadCheckerCorpus(join(dir, `${name}.json`));
 const home = await mkdtemp(join(tmpdir(), 'nixie-checker-eval-'));
 const planned = corpus.samples.flatMap((sample) => planSampleCalls(sample));
@@ -36,7 +38,8 @@ const calls = await runPlannedCalls(planned, home);
 const report: CheckerReport = {
   model,
   effort,
-  prompt: buildSHA256(memoryCheckerPrompt),
+  prompt: buildSHA256(prompt),
+  ownerName,
   repeats,
   calls,
 };
@@ -49,7 +52,7 @@ function planSampleCalls(sample: CheckerSample): readonly PlannedCall[] {
       sample: sample.id,
       pair: index,
       repeat,
-      input: buildCheckerEvalInput(sample, pair),
+      input: buildCheckerEvalInput(sample, pair, ownerName),
     })),
   );
 }
@@ -104,7 +107,7 @@ async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCal
     },
   });
   const started = performance.now();
-  const answer = await check({ prompt: memoryCheckerPrompt, input: call.input });
+  const answer = await check({ prompt, input: call.input });
 
   return {
     ...call,
@@ -127,7 +130,12 @@ function makeLoggedInQuery(signal: AbortSignal): typeof query {
       ...params,
       options: {
         ...params.options,
-        env: { ...env, CLAUDE_CONFIG_DIR: join(homedir(), '.claude'), PATH: process.env['PATH'] },
+        env: {
+          ...env,
+          ...readProxyEnv(),
+          CLAUDE_CONFIG_DIR: process.env['CLAUDE_CONFIG_DIR'] ?? join(homedir(), '.claude'),
+          PATH: process.env['PATH'],
+        },
       },
     });
 
@@ -146,6 +154,27 @@ function makeLoggedInQuery(signal: AbortSignal): typeof query {
     }
     return session;
   };
+}
+
+// a host that reaches the API through an HTTPS proxy needs the proxy and its CA in the query too
+function readProxyEnv(): Record<string, string> {
+  const names = [
+    'HTTPS_PROXY',
+    'https_proxy',
+    'NO_PROXY',
+    'no_proxy',
+    'NODE_USE_ENV_PROXY',
+    'NODE_EXTRA_CA_CERTS',
+    'SSL_CERT_FILE',
+  ];
+
+  return Object.fromEntries(
+    names.flatMap((key) => {
+      const value = process.env[key];
+
+      return value === undefined ? [] : [[key, value]];
+    }),
+  );
 }
 
 function buildSHA256(text: string): string {
