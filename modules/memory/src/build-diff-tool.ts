@@ -5,7 +5,7 @@ import type { ItemIDStore } from './types';
 
 // What memory.diff reads: the consolidator's pending diff, and the short IDs of the items it names.
 export interface DiffToolStore extends Pick<ItemIDStore, 'readShortIDs'> {
-  readonly consolidations: Pick<MemoryConsolidations, 'readPending'>;
+  readonly consolidations: Pick<MemoryConsolidations, 'readDelivered'>;
 }
 
 const changeInput = {
@@ -71,7 +71,7 @@ export function buildDiffTool(memory: DiffToolStore): ToolDefinition {
     },
     execution: 'direct',
     run: async () => {
-      const diff = await memory.consolidations.readPending();
+      const diff = await memory.consolidations.readDelivered();
 
       if (diff === null) {
         return { status: 'ok', result: { changes: [] }, record: { changes: [] } };

@@ -1,5 +1,5 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildDiffTool } from './build-diff-tool';
@@ -211,6 +211,82 @@ test('it shows the comment left on a change beside that change', async () => {
   expect(result.structuredContent).toMatchObject({
     changes: [{ changeID: change.shortID, comment: 'The optimism is the point of this one.' }],
   });
+});
+
+test('it shows no text of an item once its forget has started, before its key is gone', async () => {
+  const ctx = await setupTest();
+  const [secret, trip] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Hides the spare key under the blue pot' }),
+    createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
+  ]);
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [
+      { kind: 'retire', inputs: [secret], reason: 'Stale.', source: 'owner' },
+      { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
+    ],
+  });
+
+  // the record a forget commits first, which leaves the item forgetting with its key still held
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.forget_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      payload: { itemID: secret.itemID, version: 1, evidenceSequences: [] },
+    },
+  ]);
+
+  const result = await runToolCall(
+    { tool: 'memory.diff', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.diff'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(JSON.stringify(result.structuredContent)).not.toInclude('blue pot');
+  expect(result.structuredContent).toMatchObject({
+    changes: [{ changeID: diff.changes[1]?.shortID, reason: 'The trip has ended.' }],
+  });
+});
+
+test('it leaves out a merge whose later input was forgotten, because its text can hold that input', async () => {
+  const ctx = await setupTest();
+  const [kept, forgotten] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Sees a therapist' }),
+    createMemoryItem(ctx.memory.store, { text: 'Sees Dr Okafor on Thursdays' }),
+  ]);
+
+  await createConsolidationDiff(ctx.memory, {
+    changes: [
+      {
+        kind: 'merge',
+        inputs: [kept, forgotten],
+        text: 'Sees Dr Okafor, a therapist, on Thursdays',
+        reason: 'Both items name the same appointment.',
+        source: 'owner',
+      },
+    ],
+  });
+  await ctx.memory.store.forget({
+    target: forgotten,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.diff', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.diff'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({ changes: [] });
 });
 
 test('it shows no changes when no diff waits', async () => {

@@ -37,7 +37,7 @@ export function buildConversationTools(
         findItemIDs: (ids) => requireStore().findItemIDs(ids),
         readShortIDs: (itemIDs) => requireStore().readShortIDs(itemIDs),
         consolidations: {
-          readPending: () => requireStore().consolidations.readPending(),
+          readDelivered: () => requireStore().consolidations.readDelivered(),
           comment: (request) => requireStore().consolidations.comment(request),
         },
         writes: {

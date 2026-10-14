@@ -119,6 +119,10 @@ export interface ConsolidationSchedule {
 // The diffs, your answers to their changes, and their lapses.
 export interface MemoryConsolidations {
   readonly readPending: () => Promise<ConsolidationDiff | null>;
+
+  // the pending diff as the model may read it, under the delivery lock, with every change that
+  // has a forgetting or forgotten input left out
+  readonly readDelivered: () => Promise<ConsolidationDiff | null>;
   readonly readSchedule: () => Promise<ConsolidationSchedule>;
 
   // applies one change under the hash you saw, with its own approval record

@@ -96,6 +96,11 @@ the conversation's model reads the pending diff through `memory.diff`, which sho
 its short ID with its reason and its inputs, and leaves at most one comment per change through
 `memory.comment`. A second comment on a change replaces the first.
 
+The model reads the diff under the delivery lock that recall takes, so a forget either begins after
+the read or the read finds the item forgetting. A change with any input that is forgetting or
+forgotten drops out of what the model reads, because a merged or rewritten text can hold that
+input's words. The host command reads the diff without that filter.
+
 A comment answers nothing. It writes one `memory.consolidation_commented` record, and the change
 stays pending under the same action hash. The model never sees an action hash, and no conversation
 tool takes one, so the model has no path to approve, reject or edit a change. A change that is
