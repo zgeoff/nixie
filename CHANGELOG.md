@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.19.0](https://github.com/zgeoff/nixie/compare/v0.18.0...v0.19.0) (2026-10-14)
+
+
+### Features
+
+* **geo-776:** show where each memory came from in plain words ([#197](https://github.com/zgeoff/nixie/issues/197)) ([7226762](https://github.com/zgeoff/nixie/commit/7226762f6828be069dfd1e9d0148a00f05ef7760))
+* **geo-852:** stamp timer and outcome inputs, drop reply-times ([#205](https://github.com/zgeoff/nixie/issues/205)) ([cbd70f8](https://github.com/zgeoff/nixie/commit/cbd70f8c825dc526a2aad61197fbd741cde22122))
+
+
+### Bug Fixes
+
+* **geo-854:** wake the imp before a turn so its tool route listens again ([#204](https://github.com/zgeoff/nixie/issues/204)) ([7596eb2](https://github.com/zgeoff/nixie/commit/7596eb2cc29a2f8e91fef3f19827ad5c6fc023ff))
+
 ## [0.18.0](https://github.com/zgeoff/nixie/compare/v0.17.0...v0.18.0) (2026-10-14)
 
 
