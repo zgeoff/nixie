@@ -71,15 +71,15 @@ async function runPoll(options: DefinitionsPollOptions, signal: AbortSignal): Pr
 }
 
 interface ProbeOutcome {
-  // the probe token the last good seed ran for
+  // the probe token the last good seed ran for, or null after a refused seed
   readonly token: string | null;
 
   // the probe threw or the seed was refused, so the next probe comes sooner
   readonly isFailed: boolean;
 }
 
-// Probes once and seeds on a new token. A failed probe or a refused seed keeps the token of the last
-// good seed, so the next probe seeds the same token again.
+// Probes once and seeds on a new token. A refused seed clears the token, so the next probe seeds what
+// it finds even when that is the revision of the last good seed, which clears the refusal.
 async function runProbe(
   options: DefinitionsPollOptions,
   lastToken: string | null,
@@ -90,7 +90,7 @@ async function runProbe(
 
     options.onProbed({ isChanged });
     if (isChanged && !(await options.seed())) {
-      return { token: lastToken, isFailed: true };
+      return { token: null, isFailed: true };
     }
     return { token, isFailed: false };
   } catch (error) {

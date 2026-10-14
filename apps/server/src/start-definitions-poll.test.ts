@@ -304,6 +304,34 @@ test('it seeds the same probe token again after the retry delay when a seed is r
   expect(seed).toHaveBeenCalledTimes(2);
 });
 
+test('it seeds the last good probe token again when the source returns to it after a refused seed', async () => {
+  const ctx = setupTest();
+  const seed = mock(() => Promise.resolve(true))
+    .mockResolvedValueOnce(true)
+    .mockResolvedValueOnce(false);
+  const poll = startDefinitionsPoll({
+    probe: mock(() => Promise.resolve('rev-1'))
+      .mockResolvedValueOnce('rev-1')
+      .mockResolvedValueOnce('rev-2'),
+    seed,
+    clock: ctx.clock,
+    intervalMs: 60_000,
+    retryDelayMs: 1000,
+    isRefusedAtStart: false,
+    onProbed: () => {},
+    onError: () => {},
+  });
+
+  onTestFinished(() => poll.stop());
+  ctx.clock.advance(60_000);
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  ctx.clock.advance(60_000);
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  ctx.clock.advance(1000);
+
+  await expect(waitForCondition(() => seed.mock.calls.length === 3)).toResolve();
+});
+
 test('it waits the interval again once a retried seed applies', async () => {
   const ctx = setupTest();
   const probe = mock(() => Promise.resolve('rev-1'));

@@ -90,9 +90,10 @@ the step in flight before any part closes.
 A start whose database already holds a seed never waits on the definitions. When its seed is
 refused, the runners start on the definitions in force, the definitions part stays unready, and the
 definitions poll probes again after a short wait instead of a full interval. The wait doubles after
-each failed probe or refused seed, up to the interval, and the poll keeps the probe token of the
-last good seed, so it seeds the same revision again. A definitions checkout that lands a moment
-after nixie starts, as a sync sidecar's first checkout can, therefore seeds within seconds.
+each failed probe or refused seed, up to the interval. A refused seed clears the poll's probe token,
+so the next probe seeds whatever revision it finds, the last good one included, and a seed that
+applies clears the refusal. A definitions checkout that lands a moment after nixie starts, as a sync
+sidecar's first checkout can, therefore seeds within seconds.
 
 ## Health
 
