@@ -4,5 +4,6 @@ export { buildStubGate } from './build-stub-gate';
 export type { ProposalRequest } from './create-proposal';
 export { createProposal } from './create-proposal';
 export { readApprovalRecords } from './read-approval-records';
+export { readItemShortID } from './read-item-short-id';
 export type { TestMemory, TestMemoryOptions } from './start-test-memory';
 export { startTestMemory } from './start-test-memory';

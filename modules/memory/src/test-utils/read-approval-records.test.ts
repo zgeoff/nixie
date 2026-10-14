@@ -38,7 +38,7 @@ test('it reads the approval record first, with placeholders for its own IDs and 
   });
 });
 
-test('it reads the version the approval applied, with placeholders for its item and its text', async () => {
+test('it reads the version the approval applied, with placeholders for its item, its short ID and its text', async () => {
   const memory = await startTestMemory();
   const proposal = await createProposal(memory.store, {
     text: 'Likes jazz',
@@ -72,6 +72,7 @@ test('it reads the version the approval applied, with placeholders for its item 
       checks: { quote: 'fail' },
       model: 'claude-test-1',
       noticeKey: null,
+      shortID: '<short-id>',
     },
   });
 });

@@ -16,13 +16,15 @@ and [memory in context](./context.md) covers how memory reaches the conversation
 ## Items and versions
 
 Memory lives in 2 projections of the event log. The items table holds one row per item: its current
-version, its state, whether it is pinned, and the sequences that created it and last changed it. The
-versions table holds one row per version: what changed, the state that version gave the item, the
-sealed text, and the provenance. A version's provenance is its origin (the user, the conversation, a
-task or the memory writer), its source of content, the task and proposal behind it, the verdicts of
-the write checks, and the evidence offsets inside the message the quote came from. nixie sets every
-provenance field from the turn or the client action that wrote the version, and a tool's arguments
-never reach them.
+version, its state, whether it is pinned, its [short ID](../core/database.md#short-ids), and the
+sequences that created it and last changed it. The model reads and names an item by its short ID,
+and the store keys everything else, the item's key included, by the item's UUID. The versions table
+holds one row per version: what changed, the state that version gave the item, the sealed text, and
+the provenance. A version's provenance is its origin (the user, the conversation, a task or the
+memory writer), its source of content, the task and proposal behind it, the verdicts of the write
+checks, and the evidence offsets inside the message the quote came from. nixie sets every provenance
+field from the turn or the client action that wrote the version, and a tool's arguments never reach
+them.
 
 The provenance sits in plain columns, so the memory view and a review of poisoned memory filter on
 it without decrypting anything. The text, the evidence quote and the user's request to retire the

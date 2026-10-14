@@ -70,6 +70,8 @@ export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'memory_writer';
 
 // One memory item as a turn renders it, at the version memory returned.
 export interface MemoryItem extends MemoryRef {
+  // the ID the model reads the item by, in place of itemID
+  readonly shortID: string;
   readonly text: string;
   readonly origin: MemoryOrigin;
   readonly source: string;
@@ -105,6 +107,9 @@ interface MemoryRetrieval {
 export interface ConversationMemory {
   readonly readPinnedCore: () => Promise<readonly MemoryItem[]>;
   readonly recall: (request: MemoryRetrieval) => Promise<{ readonly items: readonly MemoryItem[] }>;
+
+  // the short ID of each item that exists, by item ID, for an item that left the pinned core
+  readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
 }
 
 // How memory reaches the conversation, each setting tunable from the deployment configuration.

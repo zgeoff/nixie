@@ -127,9 +127,12 @@ The check then records each statement of every migration added since the release
 the schema readable by the release before adds only what an insert from that release still
 satisfies: a new table, a non-unique index, and a column that has a default or allows null and holds
 no check. A unique index or a constrained column passes only on a table the same release creates,
-because the release before never writes to it. The check fails on any other statement. A build
-declares that it breaks readability by raising its oldest reader past the last release's schema
-version, and the check then allows every statement.
+because the release before never writes to it. A unique index also passes on columns the same
+release adds without a default, and an update passes when it sets only such columns, because the
+release before leaves them null and a unique index admits any number of nulls. That update is how a
+migration backfills a column it adds. A read passes too, because it changes nothing. The check fails
+on any other statement. A build declares that it breaks readability by raising its oldest reader
+past the last release's schema version, and the check then allows every statement.
 
 The release notes stage runs the same check against the release before, and adds its result to the
 GitHub release: each added migration with its schema version, and whether the release before reads

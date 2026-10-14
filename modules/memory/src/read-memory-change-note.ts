@@ -172,7 +172,7 @@ async function readNotedChanges(
     if (item === undefined) {
       return [];
     }
-    return [{ itemID: item.itemID, change: pickChange(version, item.state), text: item.text }];
+    return [{ shortID: item.shortID, change: pickChange(version, item.state), text: item.text }];
   });
 }
 

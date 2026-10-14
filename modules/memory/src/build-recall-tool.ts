@@ -2,8 +2,9 @@ import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { makeInputRecorder } from './make-input-recorder';
+import { readItemIDs } from './read-item-ids';
 import type { StartedMemoryStore } from './start-memory-store';
-import type { RecallRequest, RecalledItem, RecalledVersion } from './types';
+import type { ItemIDStore, RecallRequest, RecalledItem, RecalledVersion } from './types';
 
 const recallInput = {
   type: 'object',
@@ -66,8 +67,11 @@ const recallOutput = {
 };
 
 // Builds memory.recall, which declares read. The items hold every source that memory holds, so the
-// result takes the most cautious one.
-export function buildRecallTool(memory: Pick<StartedMemoryStore, 'recall'>): ToolDefinition {
+// result takes the most cautious one. The model reads each item by its short ID and names items by
+// it, or by an item ID it read before short IDs; the record keeps the item IDs.
+export function buildRecallTool(
+  memory: Pick<StartedMemoryStore, 'recall'> & Pick<ItemIDStore, 'findItemIDs'>,
+): ToolDefinition {
   return {
     name: 'memory.recall',
     description:
@@ -90,16 +94,7 @@ export function buildRecallTool(memory: Pick<StartedMemoryStore, 'recall'>): Too
     // the model can search with an item's own words
     recordInput: makeInputRecorder(['query']),
     run: async (call, context) => {
-      const input = recallArguments.parse(call.input);
-      const request: RecallRequest = {
-        ...(input.query === undefined ? {} : { query: input.query }),
-        ...(input.itemIDs === undefined ? {} : { itemIDs: input.itemIDs }),
-        ...(input.includeRetired === undefined ? {} : { includeRetired: input.includeRetired }),
-        ...(input.includeHistory === undefined ? {} : { includeHistory: input.includeHistory }),
-        ...(input.after === undefined ? {} : { after: input.after }),
-        ...(input.limit === undefined ? {} : { limit: input.limit }),
-        thread: context.run.thread,
-      };
+      const request = await readRecallRequest(memory, call.input, context.run.thread);
       const result = await memory.recall(request);
 
       // the record holds references, as the recall's own record does, so a forget leaves no
@@ -116,10 +111,31 @@ export function buildRecallTool(memory: Pick<StartedMemoryStore, 'recall'>): Too
   };
 }
 
+// the request a call makes, with each ID the model passed read as the item ID it names
+async function readRecallRequest(
+  memory: Pick<ItemIDStore, 'findItemIDs'>,
+  callInput: unknown,
+  thread: string,
+): Promise<RecallRequest> {
+  const input = recallArguments.parse(callInput);
+  const itemIDs =
+    input.itemIDs === undefined ? undefined : await readItemIDs(memory, input.itemIDs);
+
+  return {
+    ...(input.query === undefined ? {} : { query: input.query }),
+    ...(itemIDs === undefined ? {} : { itemIDs }),
+    ...(input.includeRetired === undefined ? {} : { includeRetired: input.includeRetired }),
+    ...(input.includeHistory === undefined ? {} : { includeHistory: input.includeHistory }),
+    ...(input.after === undefined ? {} : { after: input.after }),
+    ...(input.limit === undefined ? {} : { limit: input.limit }),
+    thread,
+  };
+}
+
 function toItemJSON(item: RecalledItem): JSONObject {
   return {
     ...toVersionJSON(item),
-    itemID: item.itemID,
+    itemID: item.shortID,
     isPinned: item.isPinned,
     ...(item.history === undefined ? {} : { history: item.history.map((v) => toVersionJSON(v)) }),
   };

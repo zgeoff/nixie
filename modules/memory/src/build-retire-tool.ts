@@ -1,13 +1,16 @@
-import type { ToolCall, ToolContext, ToolDefinition } from '@heynixie/tools';
+import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildWriteCaller } from './build-write-caller';
 import type { ModelWriteStore } from './gate-types';
 import { makeInputRecorder } from './make-input-recorder';
 import { memoryWriteOutput } from './memory-write-output';
+import { readItemIDs } from './read-item-ids';
 import { runWriteCall } from './run-write-call';
+import type { ItemIDStore } from './types';
 
-// Builds memory.retire, which declares note and runs each retirement through the intent gate.
-export function buildRetireTool(memory: ModelWriteStore): ToolDefinition {
+// Builds memory.retire, which declares note and runs each retirement through the intent gate. The
+// model names the item by its short ID, or by an item ID it read before short IDs.
+export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefinition {
   return {
     name: 'memory.retire',
     description:
@@ -45,17 +48,28 @@ export function buildRetireTool(memory: ModelWriteStore): ToolDefinition {
 
     // the model can copy the item's text into the intent quote before the gate checks it
     recordInput: makeInputRecorder(['intentQuote']),
-    run: (call: ToolCall, context: ToolContext) =>
-      runWriteCall(() => {
-        const input = retireArguments.parse(call.input);
-
-        return memory.writes.retire({
-          target: { itemID: input.itemID, version: input.version },
-          caller: buildWriteCaller(context),
-          ...(input.intentQuote === undefined ? {} : { intentQuote: input.intentQuote }),
-        });
-      }),
+    run: (call, context) => runRetireCall(memory, call, context),
   };
+}
+
+async function runRetireCall(
+  memory: ModelWriteStore & ItemIDStore,
+  call: ToolCall,
+  context: ToolContext,
+): Promise<ToolOutcome> {
+  const input = retireArguments.parse(call.input);
+  const [itemID = input.itemID] = await readItemIDs(memory, [input.itemID]);
+
+  return runWriteCall(
+    memory,
+    () =>
+      memory.writes.retire({
+        target: { itemID, version: input.version },
+        caller: buildWriteCaller(context),
+        ...(input.intentQuote === undefined ? {} : { intentQuote: input.intentQuote }),
+      }),
+    itemID,
+  );
 }
 
 const retireArguments = z.object({

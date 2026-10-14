@@ -157,6 +157,9 @@ export interface RecalledVersion {
 
 export interface RecalledItem extends RecalledVersion {
   readonly itemID: string;
+
+  // the ID the model reads and passes back in place of itemID
+  readonly shortID: string;
   readonly isPinned: boolean;
 
   // every version, oldest first, when the request asked for history
@@ -201,6 +204,16 @@ export interface MemoryStore {
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
 }
 
+// What a model's memory tool reaches to turn the short IDs the model reads into item IDs and back.
+export interface ItemIDStore {
+  // the item ID each ID names, by the ID given, whether a short ID or an item ID; an ID that names
+  // no item is left out
+  readonly findItemIDs: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>;
+
+  // the short ID of each item that exists, by item ID
+  readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
+}
+
 // The session cleanup a forget runs for every live session, which memory in context supplies. It
 // must be safe to run again, because a forget that a crash cut short runs it again on resume.
 export type CleanupSessions = (itemID: string) => Promise<void>;
@@ -231,6 +244,10 @@ interface MemoryItemTable {
   readonly created_sequence: number;
   readonly updated_sequence: number;
   readonly forgotten_sequence: number | null;
+
+  // the ID the model reads in place of item_id; null only for an item a release before short IDs
+  // made after the backfill, whose short ID its UUID gives
+  readonly short_id: string | null;
 }
 
 interface MemoryVersionTable {

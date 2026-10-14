@@ -133,6 +133,9 @@ writing rules, the size limits and the README contract.
   any other sequence. [The database](docs/architecture/core/database.md#key-store-ids) gives the
   reason.
 - A migration appends to `nixieSchema` and never changes a released one.
+- Every new record the model can see exposes a short ID from `createShortID` in `libs/db`, and the
+  model reads and passes that ID, never the record's UUID.
+  [Short IDs](docs/architecture/core/database.md#short-ids) gives the reason.
 
 ## Public repo
 

@@ -1,6 +1,7 @@
 import { findRecordKeys } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { decodeVersionText } from './decode-version-text';
+import { getItemShortID } from './get-item-short-id';
 import type {
   MemoryItemRow,
   MemoryState,
@@ -84,6 +85,7 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
     }
     return {
       itemID: item.row.item_id,
+      shortID: getItemShortID(item.row),
       isPinned: item.row.is_pinned === 1,
       ...current,
       ...(item.includeHistory ? { history: readable } : {}),

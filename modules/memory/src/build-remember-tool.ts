@@ -5,9 +5,12 @@ import type { GatedRememberRequest, ModelWriteStore } from './gate-types';
 import { makeInputRecorder } from './make-input-recorder';
 import { memoryWriteOutput } from './memory-write-output';
 import { runWriteCall } from './run-write-call';
+import type { ItemIDStore } from './types';
 
 // Builds memory.remember, which declares note and runs each new fact through the content gate.
-export function buildRememberTool(memory: ModelWriteStore): ToolDefinition {
+export function buildRememberTool(
+  memory: ModelWriteStore & Pick<ItemIDStore, 'readShortIDs'>,
+): ToolDefinition {
   return {
     name: 'memory.remember',
     description: rememberDescription,
@@ -29,7 +32,7 @@ export function buildRememberTool(memory: ModelWriteStore): ToolDefinition {
     },
     execution: 'direct',
     run: (call, context) =>
-      runWriteCall(() => memory.writes.remember(buildRememberRequest(call, context))),
+      runWriteCall(memory, () => memory.writes.remember(buildRememberRequest(call, context))),
 
     // the text is the item's, which the version holds under the item's key, and the quote can
     // repeat it before the gate checks the quote

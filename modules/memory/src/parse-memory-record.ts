@@ -25,6 +25,10 @@ const versionAdded = z.strictObject({
   // a version from before the gate carries neither
   model: z.string().nullable().default(null),
   noticeKey: z.string().nullable().default(null),
+
+  // a created version carries its item's short ID; any other version, and a version from before
+  // short IDs, carries none
+  shortID: z.string().nullable().default(null),
 });
 
 const pinned = z.strictObject({ itemID: z.string(), isPinned: z.boolean() });
@@ -56,6 +60,9 @@ interface VersionAddedRecord {
 
   // the turn's or the batch's notice the version joins, or null for your own action
   readonly noticeKey: string | null;
+
+  // the short ID a created version gives its item, or null
+  readonly shortID: string | null;
 }
 
 // The memory records the memory projections fold, each with its plain payload. A version's text

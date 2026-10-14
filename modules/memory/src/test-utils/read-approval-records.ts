@@ -4,8 +4,8 @@ import invariant from 'tiny-invariant';
 import type { MemoryProposal } from '../gate-types';
 
 // Reads the records that one proposal's approval wrote, oldest first, from every page of the log.
-// Values no two approvals share read as placeholders: the proposal, item and approval IDs, the
-// action hash, the sealed text, the sequence and the time, so two approvals' records compare whole.
+// Values no two approvals share read as placeholders, such as the IDs, the action hash, the sealed
+// text and the time, so two approvals' records compare whole.
 export async function readApprovalRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   proposal: Pick<MemoryProposal, 'proposalID' | 'itemID' | 'actionHash'>,
@@ -29,6 +29,9 @@ export async function readApprovalRecords(
       const restored: unknown = JSON.parse(JSON.stringify(record), (key, value: unknown) => {
         if (key === 'sealed') {
           return '<sealed>';
+        }
+        if (key === 'shortID') {
+          return '<short-id>';
         }
         return typeof value === 'string' ? (placeholders.get(value) ?? value) : value;
       });

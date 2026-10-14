@@ -27,6 +27,7 @@ test('it reads every pinned active item in the order you pinned them', async () 
   expect(core).toStrictEqual([
     {
       itemID: pronouns.itemID,
+      shortID: expect.stringMatching(/^[a-z][a-z0-9]{9}$/u),
       version: 1,
       change: 'created',
       state: 'active',
@@ -40,6 +41,7 @@ test('it reads every pinned active item in the order you pinned them', async () 
     },
     {
       itemID: name.itemID,
+      shortID: expect.stringMatching(/^[a-z][a-z0-9]{9}$/u),
       version: 1,
       change: 'created',
       state: 'active',

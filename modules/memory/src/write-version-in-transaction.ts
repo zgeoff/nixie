@@ -1,12 +1,12 @@
 import type { Approval, ContentSource, JSONObject, RecordInput } from '@heynixie/log';
-import { createRecordKey, writeRecordsInTransaction } from '@heynixie/log';
+import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely, Transaction } from 'kysely';
 import { encodeVersionText } from './encode-version-text';
-import { findItemKey } from './find-item-key';
 import { MemoryStateError } from './memory-state-error';
 import { readPinnedItems } from './read-pinned-items';
 import type { ReadableVersion } from './read-version';
 import { readVersion } from './read-version';
+import { readVersionKey } from './read-version-key';
 import type { ItemRequirement } from './require-item';
 import { requireItem } from './require-item';
 import { requirePinnedCoreRoom } from './require-pinned-core-room';
@@ -83,7 +83,7 @@ export async function writeVersionInTransaction(
 
   const item = plan.requirement === null ? null : await requireItem(db, plan.requirement);
   const current = item?.version ?? 0;
-  const versionKey = await readVersionKey(parts, plan, item?.item_id ?? null);
+  const versionKey = await readVersionKey(parts, plan.newItemID, item);
   const next = await plan.buildVersion(
     (version) => readVersion(db, versionKey.key, { itemID: versionKey.itemID, version }),
     current,
@@ -93,6 +93,7 @@ export async function writeVersionInTransaction(
     key: versionKey.key,
     plan,
     ref,
+    shortID: versionKey.shortID,
     next,
     wasPinned: item?.is_pinned === 1,
   });
@@ -100,35 +101,16 @@ export async function writeVersionInTransaction(
   await writeRecordsInTransaction(
     tx,
     parts.context.log,
-    buildRecords(parts, { plan, ref, next, sealed }),
+    buildRecords(parts, { plan, ref, shortID: versionKey.shortID, next, sealed }),
   );
   return { ref, next };
-}
-
-interface VersionKey {
-  readonly itemID: string;
-  readonly key: CryptoKey;
-}
-
-// an existing item, or a new one whose key a proposal already made, uses its key; any other new
-// item gets a fresh ID and key
-async function readVersionKey(
-  parts: StoreParts,
-  plan: VersionPlan,
-  existingID: string | null,
-): Promise<VersionKey> {
-  const itemID = existingID ?? plan.newItemID ?? crypto.randomUUID();
-  const key = await (existingID === null && plan.newItemID === undefined
-    ? createItemKey(parts, itemID)
-    : requireKey(parts, itemID));
-
-  return { itemID, key };
 }
 
 interface PinnableVersion {
   readonly key: CryptoKey;
   readonly plan: VersionPlan;
   readonly ref: VersionRef;
+  readonly shortID: string;
   readonly next: NewVersion;
 
   // whether the item was pinned before this version
@@ -153,6 +135,7 @@ async function encodePinnableVersion(
 
     requirePinnedCoreRoom(parts.context, pinned, {
       itemID: version.ref.itemID,
+      shortID: version.shortID,
       text: version.next.text.text,
       origin: version.plan.provenance.origin,
       evidenceQuote: version.next.text.evidenceQuote,
@@ -161,24 +144,10 @@ async function encodePinnableVersion(
   return encodeVersionText(version.key, version.ref, version.next.text);
 }
 
-async function createItemKey(parts: StoreParts, itemID: string): Promise<CryptoKey> {
-  const created = await createRecordKey(parts.context.log, itemID);
-
-  return created.key;
-}
-
-async function requireKey(parts: StoreParts, itemID: string): Promise<CryptoKey> {
-  const key = await findItemKey(parts.context.log, itemID);
-
-  if (key === null || key === undefined) {
-    throw new Error(`memory item ${itemID} has no readable key`);
-  }
-  return key;
-}
-
 interface SealedVersion {
   readonly plan: VersionPlan;
   readonly ref: VersionRef;
+  readonly shortID: string;
   readonly next: NewVersion;
   readonly sealed: string;
 }
@@ -204,6 +173,7 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
     checks: provenance.checks,
     model: provenance.model ?? null,
     noticeKey: written.plan.noticeKey ?? null,
+    ...(written.next.change === 'created' ? { shortID: written.shortID } : {}),
   };
   const approval = written.plan.approval;
   const version: RecordInput = {

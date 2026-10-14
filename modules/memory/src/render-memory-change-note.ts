@@ -2,7 +2,8 @@ import type { MemoryOrigin } from './types';
 
 // One item that changed outside the conversation, as the note lists it.
 export interface NotedChange {
-  readonly itemID: string;
+  // the item's short ID, which the model reads it by
+  readonly shortID: string;
   readonly change: 'remembered' | 'changed' | 'retired';
   readonly text: string;
 }
@@ -61,7 +62,7 @@ export function renderMemoryChangeNote(note: MemoryChangeNote): string | null {
 function renderChange(change: NotedChange): string {
   const label = { remembered: 'Remembered', changed: 'Changed', retired: 'Retired' }[change.change];
 
-  return `- ${label} [${change.itemID}]: ${change.text}`;
+  return `- ${label} [${change.shortID}]: ${change.text}`;
 }
 
 function renderMerge(merge: NotedMerge): string {

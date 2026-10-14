@@ -47,7 +47,7 @@ export async function checkMigrations(
   const releasedNames = released?.migrations ?? [];
   const readableByReleaseBefore = schema.oldestReader <= releasedNames.length;
   const run = await runRecordedMigrations(schema.migrations, releasedNames.length, dir);
-  const newTables = collectCreatedTables(run.added.flatMap((migration) => migration.statements));
+  const added = collectAddedSchema(run.added.flatMap((migration) => migration.statements));
   const lint = released !== null && readableByReleaseBefore;
 
   return {
@@ -57,7 +57,7 @@ export async function checkMigrations(
       version: migration.version,
       name: migration.name,
       refused: lint
-        ? migration.statements.filter((statement) => !isExpandStatement(statement, newTables))
+        ? migration.statements.filter((statement) => !isExpandStatement(statement, added))
         : [],
     })),
     readableByReleaseBefore,
@@ -166,41 +166,116 @@ function collectChangedObjects(
 }
 
 const createTable = /^create table (?:if not exists )?(?<table>[^\s(]+)/u;
-const createIndex = /^create (?<unique>unique )?index (?:if not exists )?\S+ on (?<table>[^\s(]+)/u;
+const createIndex =
+  /^create (?<unique>unique )?index (?:if not exists )?\S+ on (?<table>[^\s(]+) ?\((?<columns>[^)]*)\)/u;
 const addColumn = /^alter table (?<table>\S+) add (?:column )?(?<definition>.+)$/u;
+const update = /^update (?<table>\S+) set (?<assignments>.+?)(?: where .*)?$/u;
+const select = /^select\b/u;
 
-// the tables that the added migrations create, which the release before never reads or writes
-function collectCreatedTables(statements: readonly string[]): string[] {
-  return statements.flatMap((statement) => {
-    const table = createTable.exec(normalizeStatement(statement))?.groups?.['table'];
-
-    return table === undefined ? [] : [normalizeTable(table)];
-  });
+// What the added migrations build that the release before never reads or writes: the tables they
+// create, and each column they add that an old insert leaves null, as table.column.
+interface AddedSchema {
+  readonly tables: readonly string[];
+  readonly columns: readonly string[];
 }
 
-// A new table, an index the release before cannot trip, or a column the release before can leave
-// out of its inserts: it reads and writes around each of them. A unique index or a constrained
-// column passes only on a table the release creates.
-function isExpandStatement(statement: string, newTables: readonly string[]): boolean {
-  const normalized = normalizeStatement(statement);
-  const index = createIndex.exec(normalized)?.groups;
-  const column = addColumn.exec(normalized)?.groups;
+function collectAddedSchema(statements: readonly string[]): AddedSchema {
+  const normalized = statements.map((statement) => normalizeStatement(statement));
 
-  if (createTable.test(normalized)) {
-    return true;
-  }
-  if (index !== undefined) {
-    return (
-      index['unique'] === undefined || newTables.includes(normalizeTable(index['table'] ?? ''))
+  return {
+    tables: normalized.flatMap((statement) => {
+      const table = createTable.exec(statement)?.groups?.['table'];
+
+      return table === undefined ? [] : [normalizeTable(table)];
+    }),
+    columns: normalized.flatMap((statement) => {
+      const column = addColumn.exec(statement)?.groups;
+      const definition = column?.['definition'] ?? '';
+
+      return column === undefined || /\b(?:not null|default)\b/u.test(definition)
+        ? []
+        : [buildColumnName(column['table'] ?? '', definition.split(' ').at(0) ?? '')];
+    }),
+  };
+}
+
+// A new table, a read, an index or a column an old insert still satisfies, or a backfill of a column
+// the release adds: the release before reads and writes around each of them.
+function isExpandStatement(statement: string, added: AddedSchema): boolean {
+  const normalized = normalizeStatement(statement);
+
+  return (
+    createTable.test(normalized) ||
+    select.test(normalized) ||
+    isExpandIndex(normalized, added) ||
+    isExpandColumn(normalized, added) ||
+    isBackfill(normalized, added)
+  );
+}
+
+// a unique index passes only on a table the release creates, or on columns it adds that the release
+// before leaves null, because a unique index admits any number of nulls
+function isExpandIndex(statement: string, added: AddedSchema): boolean {
+  const index = createIndex.exec(statement)?.groups;
+
+  return (
+    index !== undefined &&
+    (index['unique'] === undefined ||
+      isAddedSchema(added, index['table'] ?? '', splitColumns(index['columns'] ?? '')))
+  );
+}
+
+// a constrained column passes only on a table the release creates
+function isExpandColumn(statement: string, added: AddedSchema): boolean {
+  const column = addColumn.exec(statement)?.groups;
+
+  return (
+    column !== undefined &&
+    (added.tables.includes(normalizeTable(column['table'] ?? '')) ||
+      isOptionalColumn(column['definition'] ?? ''))
+  );
+}
+
+// an update that sets only columns the release adds, which the release before never reads
+function isBackfill(statement: string, added: AddedSchema): boolean {
+  const backfill = update.exec(statement)?.groups;
+
+  return (
+    backfill !== undefined &&
+    isAddedSchema(
+      added,
+      backfill['table'] ?? '',
+      splitAssignedColumns(backfill['assignments'] ?? ''),
+    )
+  );
+}
+
+// whether the release adds the table, or adds every one of the named columns to it
+function isAddedSchema(added: AddedSchema, table: string, columns: readonly string[]): boolean {
+  return (
+    added.tables.includes(normalizeTable(table)) ||
+    (columns.length > 0 &&
+      columns.every((name) => added.columns.includes(buildColumnName(table, name))))
+  );
+}
+
+// an index's columns, each without its sort order or collation
+function splitColumns(columns: string): readonly string[] {
+  return columns.split(',').map((column) => column.trim().split(' ').at(0) ?? '');
+}
+
+// the column each assignment of an update sets; an assignment it cannot read names no column, so
+// the update passes only when every assignment reads as column = value
+function splitAssignedColumns(assignments: string): readonly string[] {
+  return assignments
+    .split(',')
+    .map(
+      (assignment) => /^(?<column>[^\s=]+) ?=/u.exec(assignment.trim())?.groups?.['column'] ?? '',
     );
-  }
-  if (column !== undefined) {
-    return (
-      newTables.includes(normalizeTable(column['table'] ?? '')) ||
-      isOptionalColumn(column['definition'] ?? '')
-    );
-  }
-  return false;
+}
+
+function buildColumnName(table: string, column: string): string {
+  return `${normalizeTable(table)}.${normalizeTable(column)}`;
 }
 
 // an insert that leaves the column out still succeeds: no check, and a default for not null

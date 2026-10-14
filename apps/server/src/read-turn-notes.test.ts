@@ -34,6 +34,7 @@ test('it joins the memory note and the events block, both over one range', async
   const [last] = await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
   ]);
+  const shortIDs = await ctx.store.readShortIDs([item.itemID]);
   const note = await readTurnNotes({
     log: ctx.log,
     store: ctx.store,
@@ -47,7 +48,7 @@ test('it joins the memory note and the events block, both over one range', async
     text: [
       '<memory-changes>',
       'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
-      `- Remembered [${item.itemID}]: Lives on Elm Street`,
+      `- Remembered [${String(shortIDs.get(item.itemID))}]: Lives on Elm Street`,
       '</memory-changes>',
       '',
       '<events>',
