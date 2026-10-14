@@ -30,6 +30,7 @@ export async function startMemory(
       findAllowRule: findNoAllowRule,
       limits: parts.config.memory.limits,
       ownerName: parts.config.owner.name,
+      ownerPronouns: parts.config.owner.pronouns,
     },
   });
 

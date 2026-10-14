@@ -24,6 +24,7 @@ export { startMemoryConsolidator } from './start-memory-consolidator';
 export type { WriterStaging } from './create-writer-staging';
 export { createWriterStaging } from './create-writer-staging';
 export { defaultGateLimits } from './default-gate-limits';
+export { defaultOwnerPronouns } from './default-owner-pronouns';
 export { findNoAllowRule } from './find-no-allow-rule';
 export type { MemoryConfig } from './memory-config-schema';
 export { memoryConfigSchema } from './memory-config-schema';
@@ -67,6 +68,7 @@ export type {
   MessageSpan,
   NoticeEntry,
   OwnerMessage,
+  OwnerPronouns,
   ProposalAnswer,
   ReviewReason,
   WriteCaller,

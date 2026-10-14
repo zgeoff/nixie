@@ -1,8 +1,8 @@
 import type { OwnerConfig } from './owner-config-schema';
 
 // Resolves an owner's name of deployment:<name> to the entry <name> under the secrets' settings,
-// and keeps a plain name. It refuses a missing entry, so nixie stops at start rather than calling
-// the owner by the reference.
+// and keeps a plain name and the pronouns. It refuses a missing entry, so nixie stops at start
+// rather than calling the owner by the reference.
 export function resolveOwnerConfig(
   config: OwnerConfig,
   settings: Readonly<Record<string, string>>,
@@ -18,5 +18,5 @@ export function resolveOwnerConfig(
       `the owner's name is ${config.name}, and the secrets file has no settings entry ${key}`,
     );
   }
-  return { name };
+  return { ...config, name };
 }

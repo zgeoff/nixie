@@ -9,6 +9,7 @@ import type {
 } from '@heynixie/memory';
 import {
   defaultGateLimits,
+  defaultOwnerPronouns,
   findNoAllowRule,
   startMemoryStore,
   writerConfigSchema,
@@ -220,5 +221,6 @@ function buildClosedGate(clock: TestClock): GateContext {
     findAllowRule: findNoAllowRule,
     limits: defaultGateLimits,
     ownerName: null,
+    ownerPronouns: defaultOwnerPronouns,
   };
 }

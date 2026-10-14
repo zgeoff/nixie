@@ -42,7 +42,7 @@ test('it reads every section, with the default of each setting the file leaves o
       port: 8080,
       secretsFile: '/etc/nixie/secrets.yaml',
     },
-    owner: { name: null },
+    owner: { name: null, pronouns: { they: 'they', their: 'their' } },
     agent: { names: [] },
     imp: {
       url: 'http://127.0.0.1:7070',

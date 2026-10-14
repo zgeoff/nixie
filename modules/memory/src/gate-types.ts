@@ -2,19 +2,29 @@ import type { ContentSource, JSONObject } from '@heynixie/log';
 import type { RunCheck } from '@heynixie/models';
 import type { Clock } from '@heynixie/tasks';
 import type { Selectable } from 'kysely';
+import type { reviewReasons } from './review-reasons';
 import type { MemoryChange, MemoryOrigin, QuoteEvidence, VersionRef } from './types';
 import type { WriterGate } from './writer-types';
 
 // The types of the write gate, memory proposals and notices.
 
 // What the write gate reads beside the store: the checker, the clock that proposal lapses read,
-// the allow rule lookup, the tuning values, and your configured name or null for "the owner".
+// the allow rule lookup, the tuning values, and your configured name or null for "the owner", with
+// your pronouns.
 export interface GateContext {
   readonly check: RunCheck;
   readonly clock: Pick<Clock, 'now'>;
   readonly findAllowRule: FindAllowRule;
   readonly limits: GateLimits;
   readonly ownerName: string | null;
+  readonly ownerPronouns: OwnerPronouns;
+}
+
+// Your pronouns as the review sentences read them: the subject, as "they" in "they typed", and the
+// possessive, as "their" in "their review".
+export interface OwnerPronouns {
+  readonly they: string;
+  readonly their: string;
 }
 
 // The tuning values of the write gate, all configurable.
@@ -65,18 +75,7 @@ export interface MessageSpan {
 }
 
 // Why a write waits for your review instead of applying.
-export type ReviewReason =
-  | 'no_quote'
-  | 'quote_not_typed'
-  | 'quote_in_quoted_block'
-  | 'invisible_character'
-  | 'token_missing'
-  | 'checker_not_asserted'
-  | 'checker_unsure'
-  | 'checker_unreachable'
-  | 'forgotten_evidence'
-  | 'ambiguous_target'
-  | 'pinned';
+export type ReviewReason = (typeof reviewReasons)[number];
 
 // Who asked for a write: the conversation or a task in a run, or the memory writer in a batch,
 // with the model of the call that asked. nixie sets it from the run, never from the arguments.
@@ -126,10 +125,11 @@ export interface MemoryWrites {
   readonly batch: WriterGate;
 }
 
-// The model's own write paths, which its memory tools call. A writer batch's gate stays out of the
-// model's reach.
+// The model's own write paths, which its memory tools call, and the sentence each review reason
+// reads as in their results. A writer batch's gate stays out of the model's reach.
 export interface ModelWriteStore {
   readonly writes: Pick<MemoryWrites, 'remember' | 'retire'>;
+  readonly renderReviewReason: (reason: ReviewReason) => string;
 }
 
 // A memory proposal as the memory view reads it, with its sealed text opened.

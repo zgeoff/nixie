@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { defaultGateLimits } from '../default-gate-limits';
+import { defaultOwnerPronouns } from '../default-owner-pronouns';
 import { findNoAllowRule } from '../find-no-allow-rule';
 import { memoryProjections } from '../memory-projections';
 import { startMemoryStore } from '../start-memory-store';
@@ -41,6 +42,7 @@ export async function startTestStore(
       findAllowRule: options.gate?.findAllowRule ?? findNoAllowRule,
       limits: options.gate?.limits ?? defaultGateLimits,
       ownerName: options.gate?.ownerName ?? null,
+      ownerPronouns: options.gate?.ownerPronouns ?? defaultOwnerPronouns,
     },
   });
 
