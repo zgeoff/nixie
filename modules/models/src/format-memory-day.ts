@@ -20,12 +20,7 @@ interface DayParts {
 }
 
 function readDayParts(at: Date, zone: string): DayParts {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: zone,
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).formatToParts(at);
+  const parts = getDayFormat(zone).formatToParts(at);
   const getPart = (type: keyof DayParts): string => {
     const value = parts.find((part) => part.type === type)?.value;
 
@@ -35,4 +30,25 @@ function readDayParts(at: Date, zone: string): DayParts {
   };
 
   return { day: getPart('day'), month: getPart('month'), year: getPart('year') };
+}
+
+// One format per zone, because building an Intl format costs far more than using one, and the
+// pinned core's budget renders every pinned item on each write to it.
+const dayFormats = new Map<string, Intl.DateTimeFormat>();
+
+function getDayFormat(zone: string): Intl.DateTimeFormat {
+  const known = dayFormats.get(zone);
+
+  if (known !== undefined) {
+    return known;
+  }
+  const format = new Intl.DateTimeFormat('en-US', {
+    timeZone: zone,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  dayFormats.set(zone, format);
+  return format;
 }
