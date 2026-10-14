@@ -12,8 +12,8 @@ test("it renders each reason's full sentence with the owner's name and pronouns"
 
   expect(reviewReasons.map((reason) => renderReviewReason(reason, gate))).toMatchInlineSnapshot(`
     [
-      "no_quote: Saved as a proposal for Avery to review. The write gave no quote, or none of Avery's last 12 messages contains it.",
-      "quote_not_typed: Saved as a proposal for Avery to review. The quote is in text Avery pasted or dropped in, not words she typed.",
+      "no_quote: Saved as a proposal for Avery to review. The write gave no quote, or neither Avery's last 12 messages nor the message its eventID names contains it.",
+      "quote_not_typed: Saved as a proposal for Avery to review. The quote is in text Avery pasted or dropped in, or in a reply or tool result, not words she typed.",
       "quote_in_quoted_block: Saved as a proposal for Avery to review. The quote is inside a quoted block, so it may be someone else's words.",
       "invisible_character: Saved as a proposal for Avery to review. The new text or the quote contains a hidden character.",
       "token_missing: Saved as a proposal for Avery to review. The new text has a number, address, handle or link that isn't in the quote, or in what Avery typed in her last 12 messages when an allow rule skips the quote.",
@@ -60,6 +60,6 @@ test('it names a window of one message in the singular', () => {
   };
 
   expect(renderReviewReason('no_quote', gate)).toBe(
-    "no_quote: Saved as a proposal for Avery to review. The write gave no quote, or Avery's last message doesn't contain it.",
+    "no_quote: Saved as a proposal for Avery to review. The write gave no quote, or neither Avery's last message nor the message its eventID names contains it.",
   );
 });

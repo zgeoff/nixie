@@ -1,9 +1,30 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { buildTimeTool } from '@heynixie/connectors';
+import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry } from '@heynixie/tools';
 import { buildConversationTools } from './build-conversation-tools';
+import { startTestLog } from './test-utils/start-test-log';
+
+// the log reader over a fresh log, which no test here reads
+async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
+  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-conversation-tools-'));
+
+  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
+
+  const log = await startTestLog(dataDir);
+
+  stack.defer(() => log.writer.stop());
+  return { logRead: buildLogReadTool(log) };
+}
 
 // the web fetch tool's stand-in: a fetch tool the registry accepts
 function buildWebFetchStandIn(): ToolDefinition {
@@ -52,15 +73,20 @@ function buildWriteStandIn(): ToolDefinition {
   };
 }
 
-test('it lists the web fetch tool, the time tool and the 7 memory tools', () => {
-  const definitions = buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), {
-    readStore: () => null,
-    clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
-  });
+test('it lists the web fetch tool, the time tool, the log reader and the 7 memory tools', async () => {
+  const ctx = await setupTest();
+  const definitions = buildConversationTools(
+    { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+    {
+      readStore: () => null,
+      clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+    },
+  );
 
   expect(definitions.map((definition) => definition.name)).toStrictEqual([
     'web.fetch',
     'time.now',
+    'log.read',
     'memory.recall',
     'memory.pending',
     'memory.remember',
@@ -71,11 +97,15 @@ test('it lists the web fetch tool, the time tool and the 7 memory tools', () => 
   ]);
 });
 
-test('it fails a memory call that runs before the memory store starts', () => {
-  const definitions = buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), {
-    readStore: () => null,
-    clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
-  });
+test('it fails a memory call that runs before the memory store starts', async () => {
+  const ctx = await setupTest();
+  const definitions = buildConversationTools(
+    { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+    {
+      readStore: () => null,
+      clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+    },
+  );
   const recall = definitions.find((definition) => definition.name === 'memory.recall');
 
   expect(
@@ -93,12 +123,16 @@ test('it fails a memory call that runs before the memory store starts', () => {
   ).rejects.toThrowWithMessage(Error, 'a tool call ran before the memory store started');
 });
 
-test('it allows the time tool and each memory tool and denies a write tool under the read-only rule', () => {
+test('it allows the time tool, the log reader and each memory tool and denies a write tool under the read-only rule', async () => {
+  const ctx = await setupTest();
   const registry = buildToolRegistry([
-    ...buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), {
-      readStore: () => null,
-      clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
-    }),
+    ...buildConversationTools(
+      { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+      {
+        readStore: () => null,
+        clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+      },
+    ),
     buildWriteStandIn(),
   ]);
   const decide = makeDecisionPoint({
@@ -106,6 +140,7 @@ test('it allows the time tool and each memory tool and denies a write tool under
   });
   const readTools = [
     'time.now',
+    'log.read',
     'memory.recall',
     'memory.pending',
     'memory.remember',
@@ -132,11 +167,15 @@ test('it allows the time tool and each memory tool and denies a write tool under
   });
 });
 
-test('it offers no tool that approves, rejects or edits a consolidation change', () => {
-  const definitions = buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), {
-    readStore: () => null,
-    clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
-  });
+test('it offers no tool that approves, rejects or edits a consolidation change', async () => {
+  const ctx = await setupTest();
+  const definitions = buildConversationTools(
+    { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+    {
+      readStore: () => null,
+      clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+    },
+  );
   const inputs = definitions.map(
     (definition) => [definition.name, Object.keys(definition.input['properties'] ?? {})] as const,
   );

@@ -28,11 +28,9 @@ interface ReviewWords {
 // one sentence for each reason, which the type keeps complete
 const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => string>> = {
   no_quote: (words) =>
-    words.window === 1
-      ? `The write gave no quote, or ${words.owner}'s last message doesn't contain it.`
-      : `The write gave no quote, or none of ${words.owner}'s ${formatWindow(words.window)} contains it.`,
+    `The write gave no quote, or neither ${words.owner}'s ${formatWindow(words.window)} nor the message its eventID names contains it.`,
   quote_not_typed: (words) =>
-    `The quote is in text ${words.owner} pasted or dropped in, not words ${words.they} typed.`,
+    `The quote is in text ${words.owner} pasted or dropped in, or in a reply or tool result, not words ${words.they} typed.`,
   quote_in_quoted_block: () =>
     "The quote is inside a quoted block, so it may be someone else's words.",
   invisible_character: () => 'The new text or the quote contains a hidden character.',

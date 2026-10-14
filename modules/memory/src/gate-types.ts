@@ -1,10 +1,12 @@
-import type { ContentSource, JSONObject } from '@heynixie/log';
+import type { ContentSource } from '@heynixie/log';
 import type { RunCheck } from '@heynixie/models';
 import type { Clock } from '@heynixie/tasks';
 import type { Selectable } from 'kysely';
 import type { reviewReasons } from './review-reasons';
 import type { MemoryChange, MemoryOrigin, QuoteEvidence, VersionRef } from './types';
 import type { WriterGate } from './writer-types';
+
+export type { ContentGateRequest, ContentGateResult } from './content-gate-types';
 
 // The types of the write gate, memory proposals and notices.
 
@@ -94,6 +96,9 @@ export interface WriteCaller {
 export interface GatedRememberRequest {
   readonly text: string;
   readonly quote?: string;
+
+  // the sequence of the log record the quote comes from, which takes the place of the recent window
+  readonly eventID?: number;
   readonly target?: VersionRef;
   readonly isPinned?: boolean;
   readonly caller: WriteCaller;
@@ -270,31 +275,3 @@ export interface MemoryForgottenEvidenceTable {
 }
 
 export type MemoryProposalRow = Selectable<MemoryProposalTable>;
-
-// What the content gate checks: the memory's text, the quote that backs it and the thread it came
-// from.
-export interface ContentGateRequest {
-  readonly text: string;
-  readonly quote: string | null;
-  readonly isPinned: boolean;
-  readonly thread: string;
-}
-
-// A gate's outcome: the write applies with the source and checks it earned, or it waits for review
-// with its reason. Each carries the verdict of every check that ran.
-export type ContentGateResult =
-  | {
-      readonly status: 'pass';
-      readonly source: ContentSource;
-      readonly evidence: QuoteEvidence | null;
-      readonly checks: JSONObject;
-    }
-  | {
-      readonly status: 'review';
-      readonly reason: ReviewReason;
-      readonly evidence: QuoteEvidence | null;
-      readonly checks: JSONObject;
-
-      // the checker's one-sentence reason, which the proposal card shows
-      readonly checkerReason: string | null;
-    };
