@@ -65,7 +65,7 @@ test('it proposes an edit with no quote when your allow rule names only memory.r
   });
 });
 
-test('it applies an edit that quotes a message outside the window by its event ID', async () => {
+test('it applies an edit that quotes a message outside the window by its event ID as its stamp shows it', async () => {
   const memory = await startTestMemory({
     gate: {
       check: () => Promise.resolve(buildMockCheckerAnswer()),
@@ -95,7 +95,7 @@ test('it applies an edit that quotes a message outside the window by its event I
         version: 1,
         text: 'Lives on Oak Avenue',
         quote: 'I live on Oak Avenue now',
-        eventID: String(sequence),
+        eventID: `#${sequence}`,
       },
       toolUseID: null,
     },
