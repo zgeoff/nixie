@@ -15,3 +15,5 @@ runs on. [0001](../../../decisions/0001-durable-layer.md) and
   each slice must pass
 - [Model profiles](models.md) — the profile, model roles and their defaults, configuration, and how
   nixie computes model cost
+- [Session opening and compaction](session-opening.md) — the slots every new session opens with,
+  status, system messages, nixie's own compactor and the summary record

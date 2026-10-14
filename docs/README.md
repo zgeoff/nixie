@@ -126,7 +126,7 @@ rests on.
 
 ### Core
 
-- [Core design index](design/platform/core/README.md) — the 4 core docs
+- [Core design index](design/platform/core/README.md) — the 6 core docs
 - [The event log and records](design/platform/core/event-log.md) — what a record holds, append-only
   semantics, projections, the data behind the dashboard and the live view, export and retention
 - [Tasks](design/platform/core/tasks.md) — tasks as state machines with leases and an inbox, waits,
@@ -135,6 +135,8 @@ rests on.
   reconciliation per connector, and unknown outcomes
 - [Model profiles](design/platform/core/models.md) — the profile, model roles and their defaults,
   and how nixie computes model cost
+- [Session opening and compaction](design/platform/core/session-opening.md) — the slots every new
+  session opens with, status, system messages, nixie's own compactor and the summary record
 
 ### Policy
 
@@ -224,6 +226,8 @@ The runtime, the durable layer, and how the conversation and tasks share work.
   route, a profile per role, and model limits in dollars, tokens and turns
 - [0034: The code layout](decisions/0034-code-layout.md) — 5 workspace folders by trust zone and
   role, the `@heynixie/` scope, and package boundaries checked by tag
+- [0045: Session opening and compaction](decisions/0045-session-opening-and-compaction.md) — one
+  opening for every new session, and nixie's own compactor with the summary in the event log
 
 ### Policy
 
@@ -262,8 +266,8 @@ The memory store, its writes, how it reaches the model, and definition versionin
   is a proposal
 - [0013: Definition versioning](decisions/0013-definition-versioning.md) — a snapshot hash on every
   record, with rules applying at once and persona and jobs fixed per task
-- [0024: How memory reaches the model](decisions/0024-memory-in-context.md) — the SDK's session and
-  compaction, with retrieval by local embeddings and keyword search
+- [0024: How memory reaches the model](decisions/0024-memory-in-context.md) — the SDK's session with
+  nixie's own compaction, and retrieval by local embeddings and keyword search
 - [0031: Memory capture, context and removal](decisions/0031-memory-capture-context-and-removal.md)
   — batched capture, the transcript as a cache, reversible chat removal, grouped notices and the
   first build

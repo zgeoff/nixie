@@ -6,20 +6,22 @@
   [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
   [0037](../../../decisions/0037-moments.md), [0039](../../../decisions/0039-local-encoder.md)
 
-The conversation runs on the Agent SDK's session and compaction. Memory reaches it 3 ways: a small
-pinned core in the system prompt, a few items retrieved for each turn, and 2 recall tools the model
-calls when it needs more. Retrieval searches memory items and past messages with a local encoder and
-keyword lookup, from indexes held in memory. A compaction summary stays in the session and never
-becomes memory. The SDK's transcript is a cache, and the event log holds the history.
+The conversation runs on the Agent SDK's session, and nixie compacts the session itself. Memory
+reaches it 3 ways: a small pinned core in each session's opening, a few items retrieved for each
+turn, and 2 recall tools the model calls when it needs more. Retrieval searches memory items and
+past messages with a local encoder and keyword lookup, from indexes held in memory. A compaction
+summary never becomes memory. The SDK's transcript is a cache, and the event log holds the history.
 
 ## The prompt
 
 Each turn's prompt runs from the most stable part to the least, so the prompt cache holds:
 
 1. **The system prompt:** nixie's instructions, the persona fixed for the task's life under
-   [0013](../../../decisions/0013-definition-versioning.md), the
-   [skill catalog](../skills.md#the-catalog) and the pinned core.
-2. **The session:** every earlier turn, or the compaction summary and the turns after it.
+   [0013](../../../decisions/0013-definition-versioning.md) and the
+   [skill catalog](../skills.md#the-catalog).
+2. **The session:** its opening, which holds the pinned core, the status and the summary of the
+   session before it, then every turn since.
+   [Session opening and compaction](../core/session-opening.md) sets the opening's slots.
 3. **The newest turn:** the task's inbox records, the dashboard data for the conversation, and the
    retrieved items.
 
@@ -30,8 +32,11 @@ settings that switch the SDK's own memory off on every query.
 
 The pinned core is built for the conversation, and
 [memory in context](../../../architecture/memory/context.md#the-pinned-core) covers its rendering,
-its budget and the change note. The [pinned core spike](../spikes/sdk-pinned-core/README.md) is the
-evidence for rendering it with the SDK's snapshot off.
+its budget and the change note. The [pinned core spike](../spikes/sdk-pinned-core/README.md) found
+that a resumed session keeps its first system prompt unless the SDK's snapshot is off. The pinned
+core therefore lives in each session's opening, which
+[session opening and compaction](../core/session-opening.md) sets, and the change note carries an
+edit to a running session.
 
 ## Retrieval
 
@@ -93,16 +98,11 @@ memory is current; the state and version checks decide that.
 
 ## Compaction
 
-The SDK compacts a session when its context fills, and
-[conversation turns](../../../architecture/core/conversation-turns.md#compaction) covers the
-controls nixie sets and the record of each compaction's token counts. The design adds the summary
-record.
-
-nixie writes each summary as a `session_compacted` record from the `PostCompact` hook, encrypted
-under its own record key, and the live view shows it. The summary never becomes memory, and
-retrieval never searches summaries. **Why:** the model wrote the summary from an untrusted
-conversation, and retrieving it would launder that text. A forget deletes the key of every stored
-summary as part of its operation.
+nixie compacts the conversation's session itself, and stores each summary in the event log under a
+key of its own. [Session opening and compaction](../core/session-opening.md) covers the compactor,
+the summary record and the forget that erases every summary. A summary never becomes memory, and
+retrieval never searches summaries, because the model wrote the summary from an untrusted
+conversation and retrieving it would launder that text.
 
 ## The SDK transcript
 
