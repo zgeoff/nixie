@@ -15,6 +15,9 @@ export interface CallUsage {
 export interface CountProxy {
   readonly url: string;
   readonly calls: CallUsage[];
+
+  // resolves once every response the proxy has passed on has had its usage counted
+  readonly waitForCounts: () => Promise<void>;
   readonly stop: () => Promise<void>;
 }
 
@@ -22,6 +25,7 @@ const upstream = 'https://api.anthropic.com';
 
 export function startCountProxy(): CountProxy {
   const calls: CallUsage[] = [];
+  const counting = new Set<Promise<void>>();
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -52,7 +56,11 @@ export function startCountProxy(): CountProxy {
       if ((response.headers.get('content-type') ?? '').includes('text/event-stream')) {
         const [toClient, toCount] = (response.body as ReadableStream<Uint8Array>).tee();
 
-        void collectStreamUsage(toCount, tag, model, calls);
+        const counted = collectStreamUsage(toCount, tag, model, calls).finally(() => {
+          counting.delete(counted);
+        });
+
+        counting.add(counted);
         return new Response(toClient, { status: response.status, headers: outHeaders });
       }
       const text = await response.text();
@@ -69,6 +77,9 @@ export function startCountProxy(): CountProxy {
   return {
     url: `http://127.0.0.1:${server.port}`,
     calls,
+    waitForCounts: async () => {
+      await Promise.all(counting);
+    },
     stop: () => server.stop(true),
   };
 }

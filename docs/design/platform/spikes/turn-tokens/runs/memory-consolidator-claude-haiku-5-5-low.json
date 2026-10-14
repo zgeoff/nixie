@@ -2,16 +2,16 @@
   "role": "memory-consolidator",
   "model": "claude-haiku-5-5",
   "effort": "low",
-  "ranAt": "2026-10-14T19:47:47.010Z",
+  "ranAt": "2026-10-14T20:59:47.311Z",
   "sessions": [
     {
       "label": "consolidation-1",
       "guestUsage": {
         "inputTokens": 4,
-        "outputTokens": 2882,
-        "cacheReadTokens": 5678,
-        "cacheWriteTokens": 8593,
-        "contextSize": 8595
+        "outputTokens": 1514,
+        "cacheReadTokens": 5376,
+        "cacheWriteTokens": 6923,
+        "contextSize": 6925
       },
       "modelCalls": 2,
       "toolCalls": [
@@ -22,18 +22,18 @@
           "tag": "consolidation-1",
           "model": "claude-haiku-5-5",
           "input": 2,
-          "cacheWrite5m": 5678,
+          "cacheWrite5m": 5376,
           "cacheWrite1h": 0,
           "cacheRead": 0,
-          "output": 2879
+          "output": 1511
         },
         {
           "tag": "consolidation-1",
           "model": "claude-haiku-5-5",
           "input": 2,
-          "cacheWrite5m": 2915,
+          "cacheWrite5m": 1547,
           "cacheWrite1h": 0,
-          "cacheRead": 5678,
+          "cacheRead": 5376,
           "output": 3
         }
       ],

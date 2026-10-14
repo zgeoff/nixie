@@ -80,8 +80,8 @@ turns catch a loop whatever the price.
 
 | Limit          | Dollars | Tokens      | Turns  | Other  |
 | -------------- | ------- | ----------- | ------ | ------ |
-| Per worker run | $1      | 1,000,000   | 25     | 10 min |
-| Per job run    | $5      | 2,000,000   | 100    |        |
+| Per worker run | $2      | 2,000,000   | 25     | 10 min |
+| Per job run    | $5      | 4,000,000   | 100    |        |
 | Per day        | $40     | 40,000,000  | 1,000  |        |
 | Per month      | $600    | 600,000,000 | 20,000 |        |
 
@@ -91,12 +91,12 @@ turns catch a loop whatever the price.
   before each step and stops the job run with a report when a limit is reached.
 - **Per deployment,** a day and a month. These limits feed the hard spending stop.
 
-Each default is about twice the heaviest use the [token use spike](../spikes/turn-tokens/) measured
-or projected, because it exists to stop a fault, and the deployment configuration overrides every
-value. The conversation sets the deployment limits: each turn re-reads its whole session, so its
-tokens grow with the session up to the compaction window. **Why:** a narrow worker past its limit is
-looping, a job run past its limit needs your eyes, and the deployment limits stop a fault that every
-smaller limit misses, such as a job that runs too often.
+Each default is at least about twice the heaviest use the [token use spike](../spikes/turn-tokens/)
+measured or projected, because it exists to stop a fault, and the deployment configuration overrides
+every value. The conversation sets the deployment limits: each turn re-reads its whole session, so
+its tokens grow with the session up to the compaction window. **Why:** a narrow worker past its
+limit is looping, a job run past its limit needs your eyes, and the deployment limits stop a fault
+that every smaller limit misses, such as a job that runs too often.
 
 ## The hard spending stop
 

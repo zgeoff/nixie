@@ -140,7 +140,7 @@ async function runChecker(): Promise<readonly SessionResult[]> {
       { env: buildGuestEnv(home) },
     );
 
-    await Bun.sleep(200);
+    await proxy.waitForCounts();
     results.push({
       label,
       guestUsage: null,
@@ -264,7 +264,7 @@ async function runGuestSession(
   session: GuestSession,
 ): Promise<{ session: SessionResult; boundary: { sessionID: string; messageID: string } | null }> {
   const server = startToolServer(buildRoleTools(tools), (name, input) =>
-    (fixtures.answers[name] ?? (() => JSON.stringify({ ok: true })))(input),
+    fixtures.answerCall(tools, name, input),
   );
   const frames: GuestFrame[] = [];
   const input: InboxMessage[] = session.input.map((text) => ({ uuid: crypto.randomUUID(), text }));
@@ -300,7 +300,7 @@ async function runGuestSession(
     error = String(thrown);
   }
   await server.stop();
-  await Bun.sleep(200);
+  await proxy.waitForCounts();
 
   const ended = frames.filter((frame) => frame.type === 'ended');
   const failed = frames.find((frame) => frame.type === 'failed');

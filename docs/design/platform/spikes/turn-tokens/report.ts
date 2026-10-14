@@ -8,12 +8,14 @@ import { join } from 'node:path';
 import type { CallUsage } from './start-count-proxy';
 
 // list prices in dollars per million tokens: input, cache read and output; a 5-minute cache write
-// costs 1.25 times the input price and a 1-hour write 2 times
+// costs 1.25 times the input price and a 1-hour write 2 times. Haiku 5.5's prices hold for a
+// prompt up to 100,000 tokens, so a larger Haiku prompt fails the report.
 const prices: Record<string, { input: number; cacheRead: number; output: number }> = {
   'claude-opus-5-5': { input: 4, cacheRead: 0.2, output: 20 },
-  'claude-sonnet-5-5': { input: 2, cacheRead: 0.2, output: 10 },
+  'claude-sonnet-5-5': { input: 2, cacheRead: 0.1, output: 10 },
   'claude-haiku-5-5': { input: 0.1, cacheRead: 0.01, output: 0.5 },
 };
+const haikuPromptLimit = 100_000;
 
 interface Run {
   readonly role: string;
@@ -37,6 +39,23 @@ for (const file of files) {
   if (otherModels.length > 0) {
     throw new Error(`${file} holds calls on ${[...new Set(otherModels)].join(', ')}`);
   }
+
+  // a failed session counts only part of its use, so it would pull the means down
+  const failed = run.sessions.filter((session) => session.error !== null || session.calls.length === 0);
+
+  if (failed.length > 0) {
+    throw new Error(`${file} holds failed sessions: ${failed.map((session) => session.label).join(', ')}`);
+  }
+  const longPrompt = run.sessions.some((session) =>
+    session.calls.some(
+      (call) => call.input + call.cacheWrite5m + call.cacheWrite1h + call.cacheRead > haikuPromptLimit,
+    ),
+  );
+
+  if (run.model === 'claude-haiku-5-5' && longPrompt) {
+    throw new Error(`${file} holds a Haiku prompt past the price table's 100,000-token tier`);
+  }
+
   // a turn after the cache expired is reported on its own line, outside the warm means
   const sessions = run.sessions
     .filter((session) => !session.label.endsWith('-cold'))
@@ -45,12 +64,11 @@ for (const file of files) {
   const mean = (pick: (totals: SessionTotals) => number) =>
     Math.round(sessions.reduce((sum, totals) => sum + pick(totals), 0) / sessions.length);
   const max = (pick: (totals: SessionTotals) => number) => Math.max(...sessions.map(pick));
-  const failed = run.sessions.filter((session) => session.error !== null).length;
 
   rows.push([
     run.role,
     `${run.model.replace('claude-', '')} ${run.effort}`,
-    String(sessions.length) + (failed > 0 ? ` (${failed} failed)` : ''),
+    String(sessions.length),
     (sessions.reduce((sum, totals) => sum + totals.calls, 0) / sessions.length).toFixed(1),
     formatCount(mean((totals) => totals.input)),
     formatCount(mean((totals) => totals.cacheWrite)),

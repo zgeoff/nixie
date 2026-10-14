@@ -2,7 +2,7 @@
   "role": "checker",
   "model": "claude-haiku-5-5",
   "effort": "low",
-  "ranAt": "2026-10-14T19:46:11.219Z",
+  "ranAt": "2026-10-14T20:58:25.651Z",
   "sessions": [
     {
       "label": "check-1",
@@ -17,11 +17,11 @@
           "cacheWrite5m": 1944,
           "cacheWrite1h": 0,
           "cacheRead": 0,
-          "output": 285
+          "output": 139
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner states in their own voice that they are vegetarian now, as of last month, which is a current fact; the memory \\\"Sam is vegetarian\\\" keeps that fact without adding or changing any detail.\",\"verdict\":\"asserted\"}"
+        "{\"reason\":\"The owner states in their own voice that they are vegetarian now, as of last month, which is a current personal fact; the memory \\\"Sam is vegetarian\\\" keeps that fact without adding or changing a detail.\",\"verdict\":\"asserted\"}"
       ],
       "error": null
     },
@@ -38,11 +38,11 @@
           "cacheWrite5m": 472,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 111
+          "output": 156
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner states they are vegetarian, not vegan, so the memory changes the stated diet to a different one.\",\"verdict\":\"not_asserted\"}"
+        "{\"reason\":\"The owner states they are vegetarian now, but the memory says vegan, which changes the detail to a different diet.\",\"verdict\":\"not_asserted\"}"
       ],
       "error": null
     },
@@ -59,11 +59,11 @@
           "cacheWrite5m": 491,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 123
+          "output": 127
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner explicitly says they no longer use old@example.com, so the memory that Sam's email is old@example.com is denied rather than asserted.\",\"verdict\":\"not_asserted\"}"
+        "{\"reason\":\"The owner explicitly says they no longer use old@example.com, so the memory that Sam's email is old@example.com is denied rather than asserted as current fact.\",\"verdict\":\"not_asserted\"}"
       ],
       "error": null
     },
@@ -80,11 +80,11 @@
           "cacheWrite5m": 492,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 120
+          "output": 122
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner states in their own voice that they don't use old@example.com any more, which is a current negative fact about Sam's own address, matching the memory.\",\"verdict\":\"asserted\"}"
+        "{\"reason\":\"The owner states in their own voice that they no longer use old@example.com, which is a current negative fact matching the memory that Sam no longer uses that address.\",\"verdict\":\"asserted\"}"
       ],
       "error": null
     },
@@ -101,11 +101,11 @@
           "cacheWrite5m": 496,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 251
+          "output": 203
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner states in their own voice that they no longer use the old address and that people should write to sam.reyes@example.net instead, which asserts that this is their current email address, and the memory states exactly that without adding or changing any detail.\",\"verdict\":\"asserted\"}"
+        "{\"reason\":\"The owner states in their own voice that they no longer use the old address and want contact at sam.reyes@example.net, which asserts the memory's current email address as a fact without hedging or attribution.\",\"verdict\":\"asserted\"}"
       ],
       "error": null
     },
@@ -122,11 +122,11 @@
           "cacheWrite5m": 487,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 239
+          "output": 231
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner asks whether the dentist appointment is on the 14th or the 15th, which is a question offering two options rather than a statement that it is on the 14th.\",\"verdict\":\"not_asserted\"}"
+        "{\"reason\":\"Sam asks whether the dentist appointment is on the 14th or the 15th, which is a question that leaves the date open, so Sam does not state that it is on the 14th as a current fact.\",\"verdict\":\"not_asserted\"}"
       ],
       "error": null
     },
@@ -164,11 +164,11 @@
           "cacheWrite5m": 493,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 619
+          "output": 429
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner wrote \\\"My GP says my cholesterol is high,\\\" and the memory \\\"Sam's GP says Sam's cholesterol is high\\\" faithfully keeps that attribution and adds or changes nothing.\",\"verdict\":\"asserted\"}"
+        "{\"reason\":\"The owner states in their own voice that their GP says their cholesterol is high, and the candidate keeps that exact attribution (\\\"Sam's GP says Sam's cholesterol is high\\\"), so it faithfully restates what the owner asserted without adding or changing anything.\",\"verdict\":\"asserted\"}"
       ],
       "error": null
     },
@@ -185,11 +185,20 @@
           "cacheWrite5m": 496,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 204
+          "output": 162
+        },
+        {
+          "tag": "check-9",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 202,
+          "cacheWrite1h": 0,
+          "cacheRead": 1966,
+          "output": 136
         }
       ],
       "replies": [
-        "{\"reason\":\"Sam only reports what the boss said and adds that nothing is signed yet, so Sam does not accept the move as a settled fact; the memory drops that attribution and hedge and states it as Sam's own current fact.\",\"verdict\":\"not_asserted\"}"
+        "{\"reason\":\"The owner only repeats the boss's statement and adds that nothing is signed yet, so the move is unconfirmed; the memory states it as settled and drops the attribution and the hedge.\",\"verdict\":\"not_asserted\"}"
       ],
       "error": null
     },
@@ -206,20 +215,11 @@
           "cacheWrite5m": 508,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 631
-        },
-        {
-          "tag": "check-10",
-          "model": "claude-haiku-5-5",
-          "input": 4,
-          "cacheWrite5m": 671,
-          "cacheWrite1h": 0,
-          "cacheRead": 1978,
-          "output": 149
+          "output": 898
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner states their boss told them they are moving to the Leeds office in March and that nothing is signed yet, and the memory keeps that same hedge and attribution as a faithful paraphrase ('proposed', 'not yet signed').\",\"verdict\":\"asserted\"}"
+        "{\"reason\":\"The owner reports that their boss told them \\\"you're moving to the Leeds office in March\\\" and adds that nothing is signed, but the owner never describes it as a proposal. The memory recasts the boss's statement as a proposed move, which changes the detail from a stated move to a tentative proposal, so it is not a faithful paraphrase of what the owner said.\",\"verdict\":\"not_asserted\"}"
       ],
       "error": null
     },
@@ -236,11 +236,11 @@
           "cacheWrite5m": 499,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 261
+          "output": 219
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner is reporting that Priya says she is allergic to shellfish, so the allergy belongs to Priya, not Sam; the owner does not state it as their own fact.\",\"verdict\":\"not_asserted\"}"
+        "{\"reason\":\"The owner attributes the shellfish allergy to Priya, who keeps saying it, and says nothing that makes it Sam's own fact, so the memory that Sam is allergic is not asserted.\",\"verdict\":\"not_asserted\"}"
       ],
       "error": null
     },
@@ -257,11 +257,11 @@
           "cacheWrite5m": 490,
           "cacheWrite1h": 0,
           "cacheRead": 1470,
-          "output": 132
+          "output": 178
         }
       ],
       "replies": [
-        "{\"reason\":\"The owner only quotes the estate agent's claim and says they doubt it, so the parking-space fact is attributed and rejected, not asserted as the owner's own current fact.\",\"verdict\":\"not_asserted\"}"
+        "{\"reason\":\"The owner quotes the estate agent's claim about a parking space and says they doubt it, so they do not hold the fact as their own current truth, and the memory states it as Sam's fact.\",\"verdict\":\"not_asserted\"}"
       ],
       "error": null
     }
