@@ -52,7 +52,7 @@ async function runPoll(options: DefinitionsPollOptions, signal: AbortSignal): Pr
   // while the last probe and seed succeeded
   const state: { token: string | null; retryMs: number | null } = {
     token: null,
-    retryMs: options.isRefusedAtStart ? options.retryDelayMs : null,
+    retryMs: options.isRefusedAtStart ? planRetryDelay(options, null) : null,
   };
 
   while (!signal.aborted) {
@@ -99,8 +99,10 @@ async function runProbe(
   }
 }
 
-// the first failure waits the retry delay, and each failure after it doubles the wait up to the
-// interval
+// the first failure waits the retry delay, and each failure after it doubles the wait, and no wait
+// passes the interval
 function planRetryDelay(options: DefinitionsPollOptions, retryMs: number | null): number {
-  return retryMs === null ? options.retryDelayMs : Math.min(retryMs * 2, options.intervalMs);
+  const nextMs = retryMs === null ? options.retryDelayMs : retryMs * 2;
+
+  return Math.min(nextMs, options.intervalMs);
 }

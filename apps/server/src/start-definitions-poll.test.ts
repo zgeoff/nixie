@@ -332,6 +332,48 @@ test('it seeds the last good probe token again when the source returns to it aft
   await expect(waitForCondition(() => seed.mock.calls.length === 3)).toResolve();
 });
 
+test('it probes after an interval shorter than the retry delay when the seed at start was refused', async () => {
+  const ctx = setupTest();
+  const probe = mock(() => Promise.resolve('rev-1'));
+  const poll = startDefinitionsPoll({
+    probe,
+    seed: () => Promise.resolve(true),
+    clock: ctx.clock,
+    intervalMs: 100,
+    retryDelayMs: 1000,
+    isRefusedAtStart: true,
+    onProbed: () => {},
+    onError: () => {},
+  });
+
+  onTestFinished(() => poll.stop());
+  ctx.clock.advance(100);
+
+  await expect(waitForCondition(() => probe.mock.calls.length === 1)).toResolve();
+});
+
+test('it probes again after an interval shorter than the retry delay when a probe fails', async () => {
+  const ctx = setupTest();
+  const probe = mock(() => Promise.reject(new Error('the definitions directory is missing')));
+  const poll = startDefinitionsPoll({
+    probe,
+    seed: () => Promise.resolve(true),
+    clock: ctx.clock,
+    intervalMs: 100,
+    retryDelayMs: 1000,
+    isRefusedAtStart: false,
+    onProbed: () => {},
+    onError: () => {},
+  });
+
+  onTestFinished(() => poll.stop());
+  ctx.clock.advance(100);
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  ctx.clock.advance(100);
+
+  await expect(waitForCondition(() => probe.mock.calls.length === 2)).toResolve();
+});
+
 test('it waits the interval again once a retried seed applies', async () => {
   const ctx = setupTest();
   const probe = mock(() => Promise.resolve('rev-1'));
