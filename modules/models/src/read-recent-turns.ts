@@ -1,7 +1,7 @@
 import type { LogRecord } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { countTextTokens } from './count-text-tokens';
+import { readThreadNewestFirst } from './read-thread-newest-first';
 import { renderHistoryLine } from './render-history-line';
 import type { MessageTimeOptions } from './types';
 
@@ -47,6 +47,9 @@ export async function readRecentTurns(
   return kept.toReversed();
 }
 
+// the records a rebuilt session's history holds: your messages and nixie's replies
+const historyKinds = ['owner_message', 'model.reply'] as const;
+
 // The history's records, newest first, each reply with the newest message before it. A reply waits
 // for the next message read, and a pending message answers none, because a reply after it belongs
 // to an earlier turn.
@@ -56,7 +59,7 @@ async function* readTurnsNewestFirst(
 ): AsyncGenerator<HistoryTurn> {
   const unanswered: LogRecord[] = [];
 
-  for await (const record of readHistoryNewestFirst(context, query.taskID)) {
+  for await (const record of readThreadNewestFirst(context, query.taskID, historyKinds)) {
     if (record.kind === 'model.reply') {
       unanswered.push(record);
     } else if (record.sequence < query.beforeSequence) {
@@ -65,32 +68,4 @@ async function* readTurnsNewestFirst(
     }
   }
   yield* unanswered.map((reply) => ({ record: reply, answered: null }));
-}
-
-// the records a rebuilt session's history holds: your messages and nixie's replies
-const historyKinds = ['owner_message', 'model.reply'] as const;
-
-const pageSize = 200;
-
-async function* readHistoryNewestFirst(
-  context: Pick<TasksContext, 'log'>,
-  taskID: string,
-): AsyncGenerator<LogRecord> {
-  const page = { before: Number.MAX_SAFE_INTEGER, size: pageSize };
-
-  while (page.size === pageSize) {
-    // oxlint-disable-next-line no-await-in-loop -- each page reads on from the one before it
-    const entries = await readRecords(context.log, {
-      afterSequence: 0,
-      beforeSequence: page.before,
-      thread: taskID,
-      kinds: historyKinds,
-      order: 'newest',
-      limit: pageSize,
-    });
-
-    yield* entries.map((entry) => entry.record);
-    page.size = entries.length;
-    page.before = entries.at(-1)?.record.sequence ?? 0;
-  }
 }

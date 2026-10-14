@@ -33,6 +33,13 @@ time in the same format, in the zone of the message it answers, so both sides of
 read on one clock. A reply carries no zone, so it takes the zone of the newest message before it
 that is not still waiting in the inbox, or the default zone when none comes before it.
 
+A resumed session holds the model's earlier replies as its own output, which carries no time. Each
+turn on a resumed session therefore opens with the send time of each reply from the turn before it,
+in the same format and zone, beside the reply's opening words so the model can match each time to
+its reply. A reply's send time is when its record was written, at the end of its turn, so the
+replies of one turn share a time. Every reply gets its time on the next turn, and a rebuilt
+session's history gives the time of each reply it holds.
+
 The stamp ends with the label of the device session the message came from, such as
 `[Tue 14 Oct, 14:05, Sydney · phone]`, so the model can fit its reply to the screen the user reads
 it on. [The API](../channels/api.md#device-sessions) covers where the label comes from. A message
