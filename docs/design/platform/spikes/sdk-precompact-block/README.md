@@ -8,9 +8,9 @@ automatic compaction, so that nixie's own compactor stays the only way a session
 - SDK: `@anthropic-ai/claude-agent-sdk` 0.3.300
 - Model: `claude-haiku-4-5-20251001`
 - Options on every run: `tools: []`, `settingSources: []`, `maxTurns: 1`, a `CLAUDE_CONFIG_DIR` of
-  its own, an `env` that passes only `PATH`, `HOME`, the OAuth token and
-  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, and a `PostCompact` callback hook that records each
-  compaction that runs
+  its own, an `env` that passes only `PATH`, `HOME`, the OAuth token,
+  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` and, on the forks, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`,
+  and a `PostCompact` callback hook that records each compaction that runs
 
 ## Questions
 
@@ -19,7 +19,7 @@ automatic compaction, so that nixie's own compactor stays the only way a session
 
 ## Run it
 
-Run the command from this directory. The script runs 9 model calls, about $1.75 at API prices, and
+Run the command from this directory. The script runs 9 model calls, about $0.33 at API prices, and
 prints a block per turn.
 
 ```bash
@@ -54,15 +54,15 @@ model's 200,000-token window.
   `PostCompact`, so the hook's call alone does not block.
 - A blocked compaction still emits a `status: 'compacting'` message, then `status: null` with no
   `compact_result`. A compaction that ran ends with `compact_result: 'success'`.
-- Past the window, the turn fails. Fork D called the hook twice, once for the window and once to
-  recover from the API's refusal, and both returned block. The result message has
-  `subtype: 'success'`, `is_error: true` and the text `Prompt is too long`, and `query()` then threw
+- Past the window, the turn fails. Fork D called the hook twice, both with `trigger: 'auto'`, and
+  both returned block. The hooks reference describes the second call as the attempt to recover from
+  the API's refusal. The result message has `subtype: 'success'`, `is_error: true` and the text
+  `Prompt is too long`, and `query()` then threw
   `Claude Code returned an error result: Prompt is too long`. The transcript keeps the pasted prompt
   and no compaction.
-- A context that is one long message cannot compact at all. A first version of the run seeded one
-  104,000-token message. Every fork then reported `compact_result: 'failed'` with
-  `compact_error: 'too_few_groups'`, and the hook had nothing to block. The 5-turn seed fixed the
-  control.
+- A context of one 104,000-token message cannot compact: its compaction ends with
+  `compact_result: 'failed'` and `compact_error: 'too_few_groups'`. The seed therefore uses 5 turns,
+  so the control compacts.
 
 The [hooks reference](https://code.claude.com/docs/en/hooks#precompact) describes the same two
 cases: a blocked compaction before the limit leaves the conversation uncompacted, and a blocked
@@ -70,7 +70,8 @@ compaction meant to recover from a context-limit error lets that error fail the 
 
 The model's answers are not evidence here. It read the pasted notes as an injection attempt and
 refused to list the code words, so the input token count and the compaction records decide each
-fork.
+fork. Each `cost=` is the SDK's running total for the session since the seed began, so a fork's own
+cost is its value less the seed's, and fork D's failed call added nothing to fork C's.
 
 ```text
 seed 5: session=2cbb2d77 result=success is_error=false

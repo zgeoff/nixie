@@ -33,6 +33,9 @@ interface Fork {
 interface Resume {
   sessionID: string;
   fork: boolean;
+
+  // the session's running cost so far: a resumed result reports the total since the seed began
+  costUSD: number;
 }
 
 interface TurnResult {
@@ -51,15 +54,17 @@ const ask = 'List the code word from each part of the tide notes, in order, comm
 // A compaction needs several turns to summarise: one 104k-token message fails with too_few_groups.
 // The seed builds 5 turns of about 21k tokens each under the default window, so none compacts.
 const seedTurns = ['HERON', 'MAPLE', 'COBALT', 'FERN', 'QUARTZ'];
-let seedID: string | undefined;
+let seedID: string | undefined,
+  seedCostUSD = 0;
 for (const [index, word] of seedTurns.entries()) {
   const label = `seed ${index + 1}`;
   const turn = await runTurn(
     { label, prompt: buildFiller(760, `Part ${index + 1}. The code word is ${word}.`), preCompact: undefined, lowWindow: false },
-    seedID === undefined ? undefined : { sessionID: seedID, fork: false },
+    seedID === undefined ? undefined : { sessionID: seedID, fork: false, costUSD: seedCostUSD },
   );
   printTurn(label, turn);
   seedID = turn.sessionID;
+  seedCostUSD = turn.costUSD;
 }
 if (seedID === undefined) {
   throw new Error('the seed returned no session');
@@ -77,7 +82,7 @@ const forks: Fork[] = [
 ];
 let blocked: TurnResult | undefined;
 for (const fork of forks) {
-  const result = await runTurn(fork, { sessionID: seedID, fork: true });
+  const result = await runTurn(fork, { sessionID: seedID, fork: true, costUSD: seedCostUSD });
   printTurn(fork.label, result);
   printTranscript(fork.label, result.sessionID);
   if (fork.preCompact?.decision === 'block') {
@@ -93,7 +98,7 @@ if (blocked?.sessionID !== undefined) {
     preCompact: { decision: 'block', reason: 'nixie compacts the session itself' },
     lowWindow: true,
   };
-  const result = await runTurn(overflow, { sessionID: blocked.sessionID, fork: true });
+  const result = await runTurn(overflow, { sessionID: blocked.sessionID, fork: true, costUSD: blocked.costUSD });
   printTurn(overflow.label, result);
   printTranscript(overflow.label, result.sessionID);
 }
@@ -123,7 +128,7 @@ async function runTurn(fork: Fork, resume: Resume | undefined): Promise<TurnResu
   } catch (error) {
     turn.result += ` threw: ${String(error).slice(0, 200)}`;
   }
-  spentUSD += turn.costUSD;
+  spentUSD += turn.costUSD - (resume?.costUSD ?? 0);
   return turn;
 }
 
