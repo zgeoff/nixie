@@ -179,6 +179,12 @@ do, and a model that finds editing only in the description of a create tool can 
 
 Each write tool runs its gate, and returns either the version it applied or the proposal it became,
 with its review reason. A missing quote is no tool error, because the gate turns it into a proposal.
+The result gives the review reason as its code followed by a fixed sentence: the write waits for the
+user's review, and why. The store renders the sentence with the user's name and pronouns from the
+deployment config and with the gate's own evidence window, so the model reads the rule the gate
+applied instead of guessing at a bare code. Each code has one sentence that the model never writes,
+so the reasons stay a closed set.
+
 Each tool takes its provenance from the task run: the conversation's thread gives the conversation
 as origin, any other thread gives a task, and the run's model gives the model ID. A recall result
 takes outside content as its source, because the items it returns hold every source memory holds.

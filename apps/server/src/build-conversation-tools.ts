@@ -40,6 +40,7 @@ export function buildConversationTools(
           remember: (request) => requireStore().writes.remember(request),
           retire: (request) => requireStore().writes.retire(request),
         },
+        renderReviewReason: (reason) => requireStore().renderReviewReason(reason),
       },
       memory.clock,
     ),

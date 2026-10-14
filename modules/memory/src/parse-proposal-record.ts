@@ -1,21 +1,8 @@
 import type { ContentSource, EnvelopeRecord, JSONObject } from '@heynixie/log';
 import { z } from 'zod';
 import type { ReviewReason } from './gate-types';
+import { reviewReasons } from './review-reasons';
 import type { MemoryOrigin, QuoteEvidence } from './types';
-
-const reviewReasons = [
-  'no_quote',
-  'quote_not_typed',
-  'quote_in_quoted_block',
-  'invisible_character',
-  'token_missing',
-  'checker_not_asserted',
-  'checker_unsure',
-  'checker_unreachable',
-  'forgotten_evidence',
-  'ambiguous_target',
-  'pinned',
-] as const satisfies readonly ReviewReason[];
 
 const proposed = z.strictObject({
   proposalID: z.string(),

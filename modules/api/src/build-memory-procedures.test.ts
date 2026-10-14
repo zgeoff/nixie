@@ -1,5 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { defaultGateLimits, findNoAllowRule, startMemoryStore } from '@heynixie/memory';
+import {
+  defaultGateLimits,
+  defaultOwnerPronouns,
+  findNoAllowRule,
+  startMemoryStore,
+} from '@heynixie/memory';
 import { buildTestClient } from './test-utils/build-test-client';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { startTestAPI } from './test-utils/start-test-api';
@@ -28,6 +33,7 @@ test('#memory.readVersions reads the text of each named version, and a missing o
       findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
+      ownerPronouns: defaultOwnerPronouns,
     },
   });
 

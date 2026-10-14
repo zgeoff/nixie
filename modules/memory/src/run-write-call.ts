@@ -1,5 +1,5 @@
 import type { ToolOutcome } from '@heynixie/tools';
-import type { WriteOutcome } from './gate-types';
+import type { ModelWriteStore, WriteOutcome } from './gate-types';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { MemoryStateError } from './memory-state-error';
 import { ProposalCapError } from './proposal-cap-error';
@@ -8,9 +8,9 @@ import type { ItemIDStore } from './types';
 
 // Runs one memory write for a tool, on itemID when it targets an item. A stale version, a missing
 // item, a wrong state or a full proposal cap is the model's to read; any other failure propagates.
-// The result and the error name the item by the short ID the model reads.
+// The result and the error name the item by the short ID, and a proposal's reason adds its sentence.
 export async function runWriteCall(
-  memory: Pick<ItemIDStore, 'readShortIDs'>,
+  memory: Pick<ItemIDStore, 'readShortIDs'> & Pick<ModelWriteStore, 'renderReviewReason'>,
   call: () => Promise<WriteOutcome>,
   itemID: string | null = null,
 ): Promise<ToolOutcome> {
@@ -18,7 +18,10 @@ export async function runWriteCall(
     const outcome = await call();
 
     if (outcome.status === 'proposed') {
-      return { status: 'ok', result: { ...outcome } };
+      return {
+        status: 'ok',
+        result: { ...outcome, reason: memory.renderReviewReason(outcome.reason) },
+      };
     }
     const shortIDs = await memory.readShortIDs([outcome.itemID]);
 

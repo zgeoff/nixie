@@ -1,6 +1,11 @@
 import { onTestFinished } from 'bun:test';
 import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
-import { defaultGateLimits, findNoAllowRule, startMemoryStore } from '@heynixie/memory';
+import {
+  defaultGateLimits,
+  defaultOwnerPronouns,
+  findNoAllowRule,
+  startMemoryStore,
+} from '@heynixie/memory';
 import type { TasksContext } from '@heynixie/tasks';
 
 // Starts a memory store on a test server's context, whose forget runs the session cleanup given,
@@ -26,6 +31,7 @@ export async function startTestMemoryStore(
       findAllowRule: findNoAllowRule,
       limits: defaultGateLimits,
       ownerName: null,
+      ownerPronouns: defaultOwnerPronouns,
     },
   });
 

@@ -1,5 +1,6 @@
 import {
   defaultGateLimits,
+  defaultOwnerPronouns,
   findNoAllowRule,
   memoryWriterTaskID,
   startMemoryStore,
@@ -49,6 +50,7 @@ export async function startTestSessions(
       clock: context.clock,
       findAllowRule: findNoAllowRule,
       ownerName: null,
+      ownerPronouns: defaultOwnerPronouns,
       limits: defaultGateLimits,
     },
   });
