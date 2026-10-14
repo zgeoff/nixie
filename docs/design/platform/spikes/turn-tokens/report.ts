@@ -29,6 +29,14 @@ const rows: string[][] = [];
 for (const file of files) {
   // oxlint-disable-next-line no-await-in-loop -- a handful of small files
   const run = (await Bun.file(join(dir, file)).json()) as Run;
+  const otherModels = run.sessions.flatMap((session) =>
+    session.calls.flatMap((call) => (call.model === run.model ? [] : [call.model])),
+  );
+
+  // each row prices its calls at the run's model, so a call on another model fails the report
+  if (otherModels.length > 0) {
+    throw new Error(`${file} holds calls on ${[...new Set(otherModels)].join(', ')}`);
+  }
   // a turn after the cache expired is reported on its own line, outside the warm means
   const sessions = run.sessions
     .filter((session) => !session.label.endsWith('-cold'))
@@ -112,8 +120,9 @@ function buildSessionTotals(calls: readonly CallUsage[]): SessionTotals {
 function buildCost(model: string, totals: SessionTotals): number {
   const price = prices[model];
 
+  // a model with no price would read as free, so the report stops instead
   if (price === undefined) {
-    return 0;
+    throw new Error(`no price for ${model}; add it to the price table`);
   }
   const write5m = totals.cacheWrite - totals.cacheWrite1h;
 
