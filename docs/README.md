@@ -406,3 +406,6 @@ left untested. The [spikes index](design/platform/spikes/README.md) describes ho
 - [Mastra Connect as a reference](design/platform/spikes/mastra-connect/) — a reading spike with
   nothing to run, on its connector model, credentials, refresh, tools and errors, with the ideas
   worth adapting to the connector designs
+- [A turn past the context window](design/platform/spikes/sdk-overflow/) — the result the SDK ends
+  an overflow with when auto-compaction is off, and a compact-and-retry from the last committed
+  boundary
