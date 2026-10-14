@@ -7,7 +7,7 @@ async function setupTest() {
   return { tasks: await startTestTasks() };
 }
 
-test('it opens a resumed session with when each reply of the last turn was sent, and no recent records', async () => {
+test('it opens a resumed session with no blocks and no recent records', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.tasks.context.log, [
@@ -42,19 +42,10 @@ test('it opens a resumed session with when each reply of the last turn was sent,
     },
   );
 
-  expect(opening).toStrictEqual({
-    blocks: [
-      expect.toSatisfy((block: string) =>
-        /^<reply-times>\nYour replies in your last turn, each with the time it was sent:\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo\] It came at noon\.\n<\/reply-times>$/u.test(
-          block,
-        ),
-      ),
-    ],
-    recentRecords: 0,
-  });
+  expect(opening).toStrictEqual({ blocks: [], recentRecords: 0 });
 });
 
-test('it opens a new session with its marker and the recent turns, with no reply times', async () => {
+test('it opens a new session with its marker and the recent turns', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.tasks.context.log, [

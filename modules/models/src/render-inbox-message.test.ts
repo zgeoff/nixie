@@ -102,10 +102,11 @@ test('it renders a note after the send time in place of a message whose text was
   ).toBe('[Tue 13 Oct, 14:05, Sydney] [a message you sent, since forgotten]');
 });
 
-test('it renders a fired timer', () => {
+test('it renders a fired timer after the time it fired, in the default zone', () => {
   const record = buildMockLogRecord({
     kind: 'timer.fired',
-    payload: { timerID: 't-1' },
+    recordedAt: new Date('2026-10-13T03:05:00Z'),
+    payload: { timerID: 't-1', taskID: 'water-the-ferns' },
     erasable: { status: 'none' },
   });
 
@@ -114,13 +115,14 @@ test('it renders a fired timer', () => {
       defaultZone: 'Australia/Sydney',
       now: new Date('2026-10-13T05:00:00Z'),
     }),
-  ).toBe('A timer fired: {"timerID":"t-1"}');
+  ).toBe('[Tue 13 Oct, 14:05, Sydney] A timer fired: {"timerID":"t-1","taskID":"water-the-ferns"}');
 });
 
-test('it renders an action outcome', () => {
+test('it renders an action outcome after the time it settled, in the default zone', () => {
   const record = buildMockLogRecord({
     kind: 'action.outcome',
-    payload: { actionID: 'a-1' },
+    recordedAt: new Date('2026-10-13T03:40:00Z'),
+    payload: { actionID: 'a-1', status: 'succeeded' },
     erasable: { status: 'none' },
   });
 
@@ -129,7 +131,23 @@ test('it renders an action outcome', () => {
       defaultZone: 'Australia/Sydney',
       now: new Date('2026-10-13T05:00:00Z'),
     }),
-  ).toBe('An action settled: {"actionID":"a-1"}');
+  ).toBe('[Tue 13 Oct, 14:40, Sydney] An action settled: {"actionID":"a-1","status":"succeeded"}');
+});
+
+test('it renders a fired timer from an earlier year with the year in its stamp', () => {
+  const record = buildMockLogRecord({
+    kind: 'timer.fired',
+    recordedAt: new Date('2025-12-30T22:00:00Z'),
+    payload: { timerID: 't-2' },
+    erasable: { status: 'none' },
+  });
+
+  expect(
+    renderInboxMessage(record, {
+      defaultZone: 'Europe/London',
+      now: new Date('2026-01-02T09:00:00Z'),
+    }),
+  ).toBe('[Tue 30 Dec 2025, 22:00, London] A timer fired: {"timerID":"t-2"}');
 });
 
 test('it renders a span you dropped in your message inside a dropped block', () => {
