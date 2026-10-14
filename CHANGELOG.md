@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.17.0](https://github.com/zgeoff/nixie/compare/v0.16.0...v0.17.0) (2026-10-14)
+
+
+### Features
+
+* **geo-747:** let the conversation read its own event log ([#199](https://github.com/zgeoff/nixie/issues/199)) ([5eb7143](https://github.com/zgeoff/nixie/commit/5eb7143dac9d745e9671687d8275a3ea6bf52ba0))
+* **geo-793:** tell the model why a memory write became a proposal ([#196](https://github.com/zgeoff/nixie/issues/196)) ([9c8cca2](https://github.com/zgeoff/nixie/commit/9c8cca2dd39e8a27c9c9b23d81f2b2248d82fd76))
+* **geo-833:** let the conversation read and comment on the memory diff ([#195](https://github.com/zgeoff/nixie/issues/195)) ([28c9203](https://github.com/zgeoff/nixie/commit/28c9203170b9ce3043e591c217a4b717c0851528))
+
 ## [0.16.0](https://github.com/zgeoff/nixie/compare/v0.15.0...v0.16.0) (2026-10-14)
 
 
