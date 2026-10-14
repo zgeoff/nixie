@@ -51,7 +51,7 @@ test('it lists a change made outside the conversation and leaves out the convers
     [
       '<memory-changes>',
       'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
-      `- Remembered [${String(shortID)}]: Lives on Elm Street`,
+      `- Remembered [${shortID}]: Lives on Elm Street`,
       '</memory-changes>',
     ].join('\n'),
   );
@@ -136,7 +136,7 @@ test('it lists a writer version from after the catch-up ended', async () => {
   const shortID = await readItemShortID(ctx.memory.log, street.itemID);
   const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
-  expect(note.text).toInclude(`- Remembered [${String(shortID)}]: Lives on Elm Street`);
+  expect(note.text).toInclude(`- Remembered [${shortID}]: Lives on Elm Street`);
 });
 
 test('it starts after the last turn that ended', async () => {
@@ -166,7 +166,7 @@ test('it starts after the last turn that ended', async () => {
     [
       '<memory-changes>',
       'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
-      `- Remembered [${String(shortID)}]: Keeps bees on the roof`,
+      `- Remembered [${shortID}]: Keeps bees on the roof`,
       '</memory-changes>',
     ].join('\n'),
   );
@@ -191,7 +191,7 @@ test('it starts after the sequence the last turn noted through', async () => {
 
   const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
 
-  expect(note.text).toInclude(`- Remembered [${String(shortID)}]: Lives on Elm Street`);
+  expect(note.text).toInclude(`- Remembered [${shortID}]: Lives on Elm Street`);
 });
 
 test('it lists changes up to the cap and counts the rest', async () => {

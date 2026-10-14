@@ -22,7 +22,7 @@ test('it finds the item each short ID names', async () => {
     .where('item_id', '=', item.itemID)
     .executeTakeFirstOrThrow();
 
-  invariant(row.short_id);
+  invariant(row.short_id !== null);
 
   const found = await ctx.memory.store.findItemIDs([row.short_id]);
 

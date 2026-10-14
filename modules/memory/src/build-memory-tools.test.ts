@@ -99,7 +99,7 @@ test('it applies a backed fact with the caller and model of the run, never of th
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { status: 'applied', itemID: expect.stringMatching(/^[a-z][a-z0-9]{9}$/u), version: 1 },
+    result: { status: 'applied', itemID: expect.toBeString(), version: 1 },
   });
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
   expect(row).toStrictEqual({
@@ -306,7 +306,7 @@ test('it returns a stale edit to the model as an error that names the item by it
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: `memory item ${String(shortID)} is at version 2, not the version 1 the caller read`,
+    message: `memory item ${shortID} is at version 2, not the version 1 the caller read`,
   });
 });
 

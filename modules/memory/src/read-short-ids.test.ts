@@ -21,7 +21,7 @@ test('it reads the short ID of each item by its item ID', async () => {
     .where('item_id', '=', item.itemID)
     .executeTakeFirstOrThrow();
 
-  invariant(row.short_id);
+  invariant(row.short_id !== null);
 
   const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
 
