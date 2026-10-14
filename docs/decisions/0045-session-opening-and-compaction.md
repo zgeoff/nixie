@@ -60,9 +60,10 @@ outside the element.
    the session boundary in one transaction. The record holds the summary text in its erasable
    fields, under a key of its own, and the last sequence the session held in its payload.
 4. **The next session.** The next turn opens a new session from the opening above.
-5. **Failure.** A failed compaction is a failed step of the conversation task. The client shows a
-   notice from the first failure. Turns go on while the session stays inside the context window, and
-   each turn tries the compaction again first. A turn that overflows the window fails.
+5. **Failure.** A failed compaction commits a compaction-failed record in place of the summary, so
+   it never blocks the inbox, and the client shows a notice from the first failure. Turns go on, on
+   the old session, while the session stays inside the context window, and each turn tries the
+   compaction again first. A turn that overflows the window fails.
 6. **Overflow inside a turn.** A turn that grows past the window compacts the session from its last
    committed boundary and runs again on the new session, once.
 

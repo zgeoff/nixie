@@ -6,20 +6,22 @@
   [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
   [0037](../../../decisions/0037-moments.md), [0039](../../../decisions/0039-local-encoder.md)
 
-The conversation runs on the Agent SDK's session and compaction. Memory reaches it 3 ways: a small
-pinned core in the system prompt, a few items retrieved for each turn, and 2 recall tools the model
-calls when it needs more. Retrieval searches memory items and past messages with a local encoder and
-keyword lookup, from indexes held in memory. A compaction summary stays in the session and never
-becomes memory. The SDK's transcript is a cache, and the event log holds the history.
+The conversation runs on the Agent SDK's session, and nixie compacts the session itself. Memory
+reaches it 3 ways: a small pinned core in each session's opening, a few items retrieved for each
+turn, and 2 recall tools the model calls when it needs more. Retrieval searches memory items and
+past messages with a local encoder and keyword lookup, from indexes held in memory. A compaction
+summary never becomes memory. The SDK's transcript is a cache, and the event log holds the history.
 
 ## The prompt
 
 Each turn's prompt runs from the most stable part to the least, so the prompt cache holds:
 
 1. **The system prompt:** nixie's instructions, the persona fixed for the task's life under
-   [0013](../../../decisions/0013-definition-versioning.md), the
-   [skill catalog](../skills.md#the-catalog) and the pinned core.
-2. **The session:** every earlier turn, or the compaction summary and the turns after it.
+   [0013](../../../decisions/0013-definition-versioning.md) and the
+   [skill catalog](../skills.md#the-catalog).
+2. **The session:** its opening, which holds the pinned core, the status and the summary of the
+   session before it, then every turn since.
+   [Session opening and compaction](../core/session-opening.md) sets the opening's slots.
 3. **The newest turn:** the task's inbox records, the dashboard data for the conversation, and the
    retrieved items.
 

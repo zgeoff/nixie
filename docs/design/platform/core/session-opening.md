@@ -29,10 +29,11 @@ A new session opens with six slots, from what defines the model to the current t
 | 5. Recent turns  | first user message | none          | none               | the turns after the summary |
 | 6. Current turn  | first user message | yes           | yes                | yes                         |
 
-The system prompt holds only the persona, the line that says who the note-taker is, the rule for
-pasted and dropped text, and the rule for system messages. It changes only when nixie's definitions
-change, so it stays the stable head of the cached prefix. The guest keeps the SDK's snapshot off, so
-a changed persona reaches a resumed session.
+The system prompt holds the persona, the line that says who the note-taker is, the rule for pasted
+and dropped text, the rule for system messages, and any other part that only nixie's definitions
+set, such as the skill catalog. It holds nothing about memory, and it changes only when nixie's
+definitions change, so it stays the stable head of the cached prefix. The guest keeps the SDK's
+snapshot off, so a changed persona reaches a resumed session.
 
 Slots 2 to 5 go in the session's first user message, before the current turn's own input. Each turn
 resumes on a fork that copies the whole history, so the first message stays the same for the life of
@@ -139,11 +140,13 @@ The step writes nothing before its commit, so a rerun after a crash forks from t
 writes the summary again, and only one copy commits.
 
 The SDK's auto-compaction is off, so nixie's compactor is the only way a session shrinks. A failed
-compaction is a failed step, with the task's growing retry delay and the error in the step's record.
-The client shows a notice from the first failure, with the error and the next try. Turns go on while
-the session stays inside the window, and each turn's step tries the compaction first. A turn that
-overflows the window fails like any other step, so a broken compactor stops the conversation where
-you see it, never in silence.
+compaction never blocks the inbox. The step commits a compaction-failed record with the error and
+the count of failures in a row, in place of the summary, and the task goes back to waiting. The
+client shows a notice from that record at the first failure, and the notice goes once a summary
+commits. The next turn's step tries the compaction first, and when that attempt fails too, the step
+commits another compaction-failed record and runs the turn on the old session. Turns therefore go on
+while the session stays inside the window. A turn that overflows the window fails like any other
+step, so a broken compactor stops the conversation where you see it, never in silence.
 
 A turn can grow past the window on its own, such as from large tool results. Its step then compacts
 the session from the last committed boundary and runs the turn again on the new session, once. Only
