@@ -1,6 +1,6 @@
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
-import type { Lease } from '@heynixie/tasks';
+import type { Clock, Lease } from '@heynixie/tasks';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import { findReadableWrites } from './find-readable-writes';
@@ -28,7 +28,10 @@ export interface BatchOutcome {
 export interface BatchPublication {
   // the writer step's lease, which the transaction checks first
   readonly lease: Lease;
-  readonly now: number;
+
+  // the task clock, which the transaction reads before it checks the lease, so a lease that
+  // expired while the publish waited for the delivery lock or the transaction never publishes
+  readonly clock: Pick<Clock, 'now'>;
   readonly bounds: BatchBounds;
   readonly writes: readonly GatedWrite[];
 
@@ -85,7 +88,7 @@ async function writeBatchInTransaction(
   tx: Transaction<unknown>,
   publication: BatchPublication,
 ): Promise<WrittenBatch> {
-  await requireLease(tx, publication.lease, publication.now);
+  await requireLease(tx, publication.lease, publication.clock.now());
   if (!(await isPendingBatch(tx, publication.bounds))) {
     return { status: 'superseded' };
   }
