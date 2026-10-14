@@ -28,9 +28,9 @@ test('it reads every section, with the default of each setting the file leaves o
     ].join('\n'),
   );
 
-  // a model profile's fields, the memory writer's settings and memory's have tests of their own
-  const config = await loadDeploymentConfig(ctx.path);
-  const { models, memory_writer: memoryWriter, memory, ...rest } = config;
+  // a model profile's fields and each memory section's settings have tests of their own
+  const { models, ...sections } = await loadDeploymentConfig(ctx.path);
+  const { memory_writer: memoryWriter, memory, memory_consolidation: _, ...rest } = sections;
 
   expect(models.roles).toStrictEqual({ conversation: 'chat-direct' });
   expect(memoryWriter.batchMessages).toBe(4);
@@ -92,6 +92,34 @@ test("it reads the memory writer's defaults when the file leaves its section out
     proposalCap: 10,
     firstBackoffMs: 30_000,
     maxBackoffMs: 3_600_000,
+  });
+});
+
+test("it reads memory consolidation's weekly defaults when the file leaves its section out", async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct: { base_url: https://api.anthropic.com, credential: deployment:anthropic,',
+      '      auth_header: x-api-key, model: claude-test-1, effort: medium }',
+      '  roles: { conversation: chat-direct }',
+      'imp: { url: http://127.0.0.1:7070, host_addresses: [192.0.2.10/32] }',
+      'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.memory_consolidation).toStrictEqual({
+    periodMs: 604_800_000,
+    maxChanges: 30,
+    itemListTokens: 24_000,
+    topItems: 20,
+    lapseMs: 604_800_000,
+    retryMs: 3_600_000,
   });
 });
 

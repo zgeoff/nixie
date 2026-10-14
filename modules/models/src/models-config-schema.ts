@@ -41,6 +41,7 @@ const rolesSchema = z.strictObject({
   worker: profileIDSchema.optional(),
   checker: profileIDSchema.optional(),
   'memory-writer': profileIDSchema.optional(),
+  'memory-consolidator': profileIDSchema.optional(),
 });
 
 // The models section of the deployment configuration: each profile by its ID, and the profile

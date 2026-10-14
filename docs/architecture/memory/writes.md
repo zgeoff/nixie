@@ -10,8 +10,8 @@ nothing the model writes reaches memory on the model's word alone.
 
 [The memory store](./store.md) covers the items, versions and keys that a write changes. The gates
 follow [0011](../../decisions/0011-memory-writes.md). [The memory writer](./writer.md) covers the
-batched writer, and the [memory writes](../../design/platform/memory/writes.md) design covers the
-consolidation that is not built.
+batched writer, and [memory consolidation](./consolidation.md) covers the weekly diff of merges,
+rewrites and retirements.
 
 ## The content gate
 

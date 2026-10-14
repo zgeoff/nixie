@@ -5,7 +5,13 @@ import type { SessionGuard } from './make-session-guard';
 import type { GuestCommand } from './run-guest-turn';
 
 // The model roles, each of which names the profile it uses.
-export type ModelRole = 'conversation' | 'task' | 'worker' | 'checker' | 'memory-writer';
+export type ModelRole =
+  | 'conversation'
+  | 'task'
+  | 'worker'
+  | 'checker'
+  | 'memory-writer'
+  | 'memory-consolidator';
 
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 

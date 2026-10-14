@@ -1,5 +1,6 @@
 import { parseArgs } from 'node:util';
 import { toErrorFields } from '@heynixie/ops';
+import { buildConsolidationCommands } from './build-consolidation-commands';
 import { buildMemoryCommands } from './build-memory-commands';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { resolveSocketPath } from './resolve-socket-path';
@@ -49,6 +50,7 @@ const commands = new Map<string, Command>([
   ['session-label', (flags, io, args) => runSessionLabel(flags.config, io, args)],
   ['health', (flags) => runHealth(flags.config, flags.live)],
   ...buildMemoryCommands(),
+  ...buildConsolidationCommands(),
 ]);
 
 // Bun as PID 1 ignores SIGTERM unless the process handles it, so serve waits for the signal

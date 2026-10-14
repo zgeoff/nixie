@@ -20,7 +20,20 @@ export type MemoryRequest =
   | { readonly command: 'show'; readonly itemID: string }
   | { readonly command: 'edit'; readonly target: VersionRef; readonly text: string }
   | { readonly command: 'retire' | 'restore'; readonly target: VersionRef }
-  | { readonly command: 'pin'; readonly itemID: string; readonly isPinned: boolean };
+  | { readonly command: 'pin'; readonly itemID: string; readonly isPinned: boolean }
+  | ConsolidationRequest;
+
+// a request about the consolidator's diff: show it, approve some or all of its changes, or reject
+// one change
+type ConsolidationRequest =
+  | { readonly command: 'diff' }
+  | { readonly command: 'diff-approve'; readonly answers: readonly ChangeAnswer[] }
+  | ({ readonly command: 'diff-reject' } & ChangeAnswer);
+
+interface ChangeAnswer {
+  readonly changeID: string;
+  readonly actionHash: string;
+}
 
 // Sends a memory host command's request through the running server's control socket, and returns
 // the server's JSON answer for the command to print. Bun.fetch, because only Bun's own fetch takes
@@ -57,6 +70,17 @@ interface MemoryRoute {
 }
 
 function buildMemoryRoute(request: MemoryRequest): MemoryRoute {
+  if (request.command === 'diff' || request.command === 'diff-approve') {
+    return request.command === 'diff'
+      ? { path: '/memory/consolidation', body: null }
+      : { path: '/memory/consolidation/approve', body: { answers: request.answers } };
+  }
+  if (request.command === 'diff-reject') {
+    return {
+      path: '/memory/consolidation/reject',
+      body: { changeID: request.changeID, actionHash: request.actionHash },
+    };
+  }
   if (request.command === 'pending') {
     return { path: '/memory/proposals', body: null };
   }
@@ -75,7 +99,10 @@ function buildMemoryRoute(request: MemoryRequest): MemoryRoute {
   return buildItemRoute(request);
 }
 
-type ItemRequest = Exclude<MemoryRequest, { readonly command: 'pending' | 'approve' | 'reject' }>;
+type ItemRequest = Exclude<
+  MemoryRequest,
+  { readonly command: 'pending' | 'approve' | 'reject' } | ConsolidationRequest
+>;
 
 function buildItemRoute(request: ItemRequest): MemoryRoute {
   if (request.command === 'show') {

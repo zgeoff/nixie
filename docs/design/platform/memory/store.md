@@ -38,7 +38,6 @@ forgets are rare. Each extension below keeps the same contract and makes it chea
 - **Index generations,** so a rebuilt index swaps in while queries continue.
 - **Generation watermarks** on staged key copies, so key-backup publication and forget run without
   the shared lock.
-- **Consolidation,** which [memory writes](writes.md#consolidation) describes.
 
 ## Destroying memory beyond one item
 
@@ -88,15 +87,13 @@ with unmanaged versioning or immutable retention cannot hold keys.
 The store's interface holds recall, remember, retire, restore, undo, pin and forget, and the model's
 recall, remember and retire tools. These verbs remain:
 
-| Verb        | Model tool           | Client action | Does                                                  |
-| ----------- | -------------------- | ------------- | ----------------------------------------------------- |
-| Export      | `memory.export`      | Export        | Writes all readable memory to a file                  |
-| Review      |                      | Review        | Approves, edits or rejects a memory proposal          |
-| Consolidate | `memory.consolidate` |               | Proposes merges, rewrites and retirements as one diff |
+| Verb   | Model tool      | Client action | Does                                         |
+| ------ | --------------- | ------------- | -------------------------------------------- |
+| Export | `memory.export` | Export        | Writes all readable memory to a file         |
+| Review |                 | Review        | Approves, edits or rejects a memory proposal |
 
-`memory.consolidate` declares the `note` effect, and the gate in [memory writes](writes.md) decides
-whether a call applies at once. `memory.export` declares `export`, which the starter rules ask for.
-Every client action on an item is a checked action that calls the same interface.
+`memory.export` declares `export`, which the starter rules ask for. Every client action on an item
+is a checked action that calls the same interface.
 
 The persona instructs the model to answer questions about memory from recall results, and the
 [live view](../channels/live-view.md) renders a recall result as the items themselves. Recall
