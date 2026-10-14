@@ -112,6 +112,7 @@ test('it shows the session the persona, the rules and every active item, and no 
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
+  const shortIDs = await ctx.memory.store.readShortIDs([bees.itemID, choir.itemID]);
   const session = buildStubConsolidatorSession([]);
 
   await ctx.runStep(session);
@@ -120,7 +121,7 @@ test('it shows the session the persona, the rules and every active item, and no 
     systemPrompt: expect.toStartWith('You are Nix, a warm and brief assistant.\n\nYou tidy'),
     prompt: expect.toSatisfy((prompt: string) =>
       new RegExp(
-        `^Current memory items \\(the complete list\\):\\n- ${bees.itemID} \\(\\d{4}-\\d{2}-\\d{2}\\): Keeps bees on the roof\\n- ${choir.itemID} \\(\\d{4}-\\d{2}-\\d{2}\\): Sings in a choir$`,
+        `^Current memory items \\(the complete list\\):\\n- ${shortIDs.get(bees.itemID) ?? 'missing'} \\(\\d{4}-\\d{2}-\\d{2}\\): Keeps bees on the roof\\n- ${shortIDs.get(choir.itemID) ?? 'missing'} \\(\\d{4}-\\d{2}-\\d{2}\\): Sings in a choir$`,
         'u',
       ).test(prompt),
     ),

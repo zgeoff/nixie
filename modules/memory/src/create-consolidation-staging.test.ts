@@ -1,18 +1,29 @@
 import { expect, test } from 'bun:test';
 import { createConsolidationStaging } from './create-consolidation-staging';
 
-test('it binds each change to the version the session read and takes the least trusted source', () => {
+test('it binds a merge to the versions the session read and takes the least trusted source', () => {
   const staging = createConsolidationStaging();
   const run = staging.open(
     new Map([
-      ['item-1', { version: 2, text: 'Is allergic to peanuts', source: 'owner', isPinned: false }],
       [
-        'item-2',
-        { version: 5, text: 'Has a peanut allergy', source: 'untrusted', isPinned: false },
+        'item-1',
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 2,
+          text: 'Is allergic to peanuts',
+          source: 'owner',
+          isPinned: false,
+        },
       ],
       [
-        'item-3',
-        { version: 1, text: 'Is in Lisbon until May', source: 'owner_data', isPinned: false },
+        'item-2',
+        {
+          shortID: 'w8n4c6t1rb',
+          version: 5,
+          text: 'Has a peanut allergy',
+          source: 'untrusted',
+          isPinned: false,
+        },
       ],
     ]),
     30,
@@ -25,7 +36,6 @@ test('it binds each change to the version the session read and takes the least t
       text: ' Is allergic to peanuts ',
       reason: 'Both items state the same allergy.',
     },
-    { kind: 'retire', itemIDs: ['item-3'], reason: 'The trip has ended.' },
   ]);
 
   expect(run.close()).toStrictEqual([
@@ -39,6 +49,30 @@ test('it binds each change to the version the session read and takes the least t
       reason: 'Both items state the same allergy.',
       source: 'untrusted',
     },
+  ]);
+});
+
+test('it binds a retirement to the version the session read and keeps its item source', () => {
+  const staging = createConsolidationStaging();
+  const run = staging.open(
+    new Map([
+      [
+        'item-3',
+        {
+          shortID: 'p2v7h5j9ze',
+          version: 1,
+          text: 'Is in Lisbon until May',
+          source: 'owner_data',
+          isPinned: false,
+        },
+      ],
+    ]),
+    30,
+  );
+
+  staging.stage([{ kind: 'retire', itemIDs: ['item-3'], reason: 'The trip has ended.' }]);
+
+  expect(run.close()).toStrictEqual([
     {
       kind: 'retire',
       inputs: [{ itemID: 'item-3', version: 1 }],
@@ -52,8 +86,26 @@ test('it puts a pinned input first in a merge, so the merged item stays pinned',
   const staging = createConsolidationStaging();
   const run = staging.open(
     new Map([
-      ['item-1', { version: 1, text: 'Has a peanut allergy', source: 'owner', isPinned: false }],
-      ['item-2', { version: 3, text: 'Is allergic to peanuts', source: 'owner', isPinned: true }],
+      [
+        'item-1',
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Has a peanut allergy',
+          source: 'owner',
+          isPinned: false,
+        },
+      ],
+      [
+        'item-2',
+        {
+          shortID: 'w8n4c6t1rb',
+          version: 3,
+          text: 'Is allergic to peanuts',
+          source: 'owner',
+          isPinned: true,
+        },
+      ],
     ]),
     30,
   );
@@ -82,6 +134,7 @@ test('it binds a change to the version a recall showed the session', () => {
   const run = staging.open(new Map(), 30);
 
   staging.show('item-9', {
+    shortID: 'f6q1y8d3mu',
     version: 4,
     text: 'owner likes. tea green',
     source: 'owner',
@@ -162,8 +215,20 @@ test('it refuses a diff over the most changes a run allows', () => {
 
   staging.open(
     new Map([
-      ['item-1', { version: 1, text: 'Keeps bees', source: 'owner', isPinned: false }],
-      ['item-2', { version: 1, text: 'Sings in a choir', source: 'owner', isPinned: false }],
+      [
+        'item-1',
+        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+      ],
+      [
+        'item-2',
+        {
+          shortID: 'w8n4c6t1rb',
+          version: 1,
+          text: 'Sings in a choir',
+          source: 'owner',
+          isPinned: false,
+        },
+      ],
     ]),
     1,
   );
@@ -179,29 +244,56 @@ test('it refuses a diff over the most changes a run allows', () => {
   });
 });
 
-test('it refuses a diff that names one item in 2 changes', () => {
+test('it takes the short ID the session read, and binds the change to the item it names', () => {
+  const staging = createConsolidationStaging();
+  const run = staging.open(
+    new Map([
+      [
+        'item-1',
+        { shortID: 'k3x9m2p7qa', version: 2, text: 'Keeps bees', source: 'owner', isPinned: false },
+      ],
+    ]),
+    30,
+  );
+
+  staging.stage([{ kind: 'retire', itemIDs: ['k3x9m2p7qa'], reason: 'Stale.' }]);
+
+  expect(run.close()).toMatchObject([{ inputs: [{ itemID: 'item-1', version: 2 }] }]);
+});
+
+test('it refuses a diff that names one item in 2 changes, by its short ID and its item ID', () => {
   const staging = createConsolidationStaging();
 
   staging.open(
-    new Map([['item-1', { version: 1, text: 'Keeps bees', source: 'owner', isPinned: false }]]),
+    new Map([
+      [
+        'item-1',
+        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+      ],
+    ]),
     30,
   );
 
   expect(
     staging.stage([
-      { kind: 'rewrite', itemIDs: ['item-1'], text: 'Keeps honeybees', reason: 'Clearer.' },
+      { kind: 'rewrite', itemIDs: ['k3x9m2p7qa'], text: 'Keeps honeybees', reason: 'Clearer.' },
       { kind: 'retire', itemIDs: ['item-1'], reason: 'Stale.' },
     ]),
   ).toStrictEqual({
     status: 'refused',
-    reason: 'item item-1 is named more than once; name each item at most once',
+    reason: 'item k3x9m2p7qa is named more than once; name each item at most once',
   });
 });
 
 test('it refuses a change to an item the session was never shown, and stages nothing', () => {
   const staging = createConsolidationStaging();
   const run = staging.open(
-    new Map([['item-1', { version: 1, text: 'Keeps bees', source: 'owner', isPinned: false }]]),
+    new Map([
+      [
+        'item-1',
+        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+      ],
+    ]),
     30,
   );
 
@@ -253,8 +345,20 @@ test.each([
 
   staging.open(
     new Map([
-      ['item-1', { version: 1, text: 'Keeps bees', source: 'owner', isPinned: false }],
-      ['item-2', { version: 1, text: 'Keeps honeybees', source: 'owner', isPinned: false }],
+      [
+        'item-1',
+        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+      ],
+      [
+        'item-2',
+        {
+          shortID: 'w8n4c6t1rb',
+          version: 1,
+          text: 'Keeps honeybees',
+          source: 'owner',
+          isPinned: false,
+        },
+      ],
     ]),
     30,
   );
@@ -269,7 +373,12 @@ test('it refuses a change with no reason the owner can read', () => {
   const staging = createConsolidationStaging();
 
   staging.open(
-    new Map([['item-1', { version: 1, text: 'Keeps bees', source: 'owner', isPinned: false }]]),
+    new Map([
+      [
+        'item-1',
+        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+      ],
+    ]),
     30,
   );
 
@@ -283,7 +392,12 @@ test('it refuses new text that holds an invisible formatting character', () => {
   const staging = createConsolidationStaging();
 
   staging.open(
-    new Map([['item-1', { version: 1, text: 'Keeps bees', source: 'owner', isPinned: false }]]),
+    new Map([
+      [
+        'item-1',
+        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+      ],
+    ]),
     30,
   );
 
@@ -304,7 +418,13 @@ test('it refuses new text that brings in a destination none of its items holds',
     new Map([
       [
         'item-1',
-        { version: 1, text: 'Banks with the credit union', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Banks with the credit union',
+          source: 'owner',
+          isPinned: false,
+        },
       ],
     ]),
     30,
@@ -331,9 +451,24 @@ test('it keeps a destination that one of the merged items holds', () => {
     new Map([
       [
         'item-1',
-        { version: 1, text: 'Email is sam@example.test', source: 'owner', isPinned: false },
+        {
+          shortID: 'k3x9m2p7qa',
+          version: 1,
+          text: 'Email is sam@example.test',
+          source: 'owner',
+          isPinned: false,
+        },
       ],
-      ['item-2', { version: 1, text: 'Uses email for work', source: 'owner', isPinned: false }],
+      [
+        'item-2',
+        {
+          shortID: 'w8n4c6t1rb',
+          version: 1,
+          text: 'Uses email for work',
+          source: 'owner',
+          isPinned: false,
+        },
+      ],
     ]),
     30,
   );
@@ -356,7 +491,12 @@ test('it refuses a rewrite that keeps the current text', () => {
   const staging = createConsolidationStaging();
 
   staging.open(
-    new Map([['item-1', { version: 1, text: 'Keeps bees', source: 'owner', isPinned: false }]]),
+    new Map([
+      [
+        'item-1',
+        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+      ],
+    ]),
     30,
   );
 

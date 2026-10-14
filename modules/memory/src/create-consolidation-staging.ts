@@ -3,9 +3,10 @@ import type { ChangeKind, StagedChange } from './consolidation-types';
 import { findMissingToken } from './find-missing-token';
 import { pickLeastTrustedSource } from './pick-least-trusted-source';
 
-// An item the session was shown: the version it read, the text and source of that version, and
-// whether the item is pinned.
+// An item the session was shown: the short ID the model names it by, the version it read, the text
+// and source of that version, and whether the item is pinned.
 interface ShownItem {
+  readonly shortID: string;
   readonly version: number;
   readonly text: string;
   readonly source: ContentSource;
@@ -90,13 +91,32 @@ function updateStagedRun(run: OpenRun, requests: readonly ChangeRequest[]): Stag
   if (run.diff !== null) {
     return { status: 'refused', reason: 'this run already proposed its diff' };
   }
-  const planned = planDiff(run, requests);
+  const planned = planDiff(run, resolveItemIDs(run.shown, requests));
 
   if ('refusal' in planned) {
     return { status: 'refused', reason: planned.refusal };
   }
   run.diff = planned.changes;
   return { status: 'staged', changes: planned.changes.length };
+}
+
+// The requests with each item named by its item ID, whether the model passed the short ID it read
+// or the item ID. An ID that names no shown item stays as given, so its refusal names it that way.
+function resolveItemIDs(
+  shown: ReadonlyMap<string, ShownItem>,
+  requests: readonly ChangeRequest[],
+): readonly ChangeRequest[] {
+  const byID = new Map(
+    [...shown].flatMap(([itemID, item]) => [
+      [item.shortID, itemID],
+      [itemID, itemID],
+    ]),
+  );
+
+  return requests.map((request) => ({
+    ...request,
+    itemIDs: request.itemIDs.map((id) => byID.get(id) ?? id),
+  }));
 }
 
 // why a change or a diff is refused, which goes back to the model
@@ -118,7 +138,9 @@ function planDiff(run: RunView, requests: readonly ChangeRequest[]): PlannedDiff
   const repeated = findRepeatedItem(requests);
 
   if (repeated !== null) {
-    return { refusal: `item ${repeated} is named more than once; name each item at most once` };
+    const named = run.shown.get(repeated)?.shortID ?? repeated;
+
+    return { refusal: `item ${named} is named more than once; name each item at most once` };
   }
   return planChanges(run, requests);
 }

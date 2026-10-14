@@ -93,7 +93,13 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
     new Map(
       listed.items.map((item) => [
         item.itemID,
-        { version: item.version, text: item.text, source: item.source, isPinned: item.isPinned },
+        {
+          shortID: item.shortID,
+          version: item.version,
+          text: item.text,
+          source: item.source,
+          isPinned: item.isPinned,
+        },
       ]),
     ),
     parts.config.maxChanges,

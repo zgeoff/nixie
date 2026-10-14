@@ -7,7 +7,7 @@ export interface ConsolidatorPromptInput {
   readonly isComplete: boolean;
 }
 
-// Renders the items the consolidator reads: each active item with its ID, the date of its current
+// Renders the items the consolidator reads: each active item with its short ID, the date of its current
 // version and whether it is pinned, oldest first. Each text keeps to its one line, because outside
 // content can reach an item's text.
 export function renderConsolidatorPrompt(input: ConsolidatorPromptInput): string {
@@ -20,7 +20,7 @@ export function renderConsolidatorPrompt(input: ConsolidatorPromptInput): string
       : input.items
           .map(
             (item) =>
-              `- ${item.itemID} (${formatDate(item.recordedAt)}${item.isPinned ? ', pinned' : ''}): ${item.text.replaceAll(/\s+/gu, ' ')}`,
+              `- ${item.shortID} (${formatDate(item.recordedAt)}${item.isPinned ? ', pinned' : ''}): ${item.text.replaceAll(/\s+/gu, ' ')}`,
           )
           .join('\n');
 

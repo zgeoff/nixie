@@ -42,11 +42,11 @@ test('it shows the session each item a recall returns, so a change to it binds t
   invariant(recall && consolidate);
 
   const run = ctx.staging.open(new Map(), 30);
-  const recalled = await recall.definition.run(
+
+  await recall.definition.run(
     { callID: 'call-1', tool: 'memory.recall', input: { query: 'bees' }, toolUseID: null },
     buildMockToolContext({ thread: 'memory-consolidator' }),
   );
-
   await consolidate.definition.run(
     {
       callID: 'call-2',
@@ -57,13 +57,30 @@ test('it shows the session each item a recall returns, so a change to it binds t
     buildMockToolContext({ thread: 'memory-consolidator' }),
   );
 
-  expect(recalled).toStrictEqual({
-    status: 'ok',
-    result: { items: [{ itemID: item.itemID, text: 'Keeps bees on the roof' }] },
-  });
   expect(run.close()).toStrictEqual([
     { kind: 'retire', inputs: [item], reason: 'Stale.', source: 'owner_data' },
   ]);
+});
+
+test('it returns each recalled item by the short ID the model reads', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the roof' });
+  const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
+  const shortID = shortIDs.get(item.itemID);
+  const recall = ctx.registry.findTool('memory.recall');
+
+  invariant(recall && shortID);
+  ctx.staging.open(new Map(), 30);
+
+  const recalled = await recall.definition.run(
+    { callID: 'call-1', tool: 'memory.recall', input: { query: 'bees' }, toolUseID: null },
+    buildMockToolContext({ thread: 'memory-consolidator' }),
+  );
+
+  expect(recalled).toStrictEqual({
+    status: 'ok',
+    result: { items: [{ itemID: shortID, text: 'Keeps bees on the roof' }] },
+  });
 });
 
 test('it stages the diff and returns how many changes it holds', async () => {
@@ -73,8 +90,14 @@ test('it stages the diff and returns how many changes it holds', async () => {
   invariant(consolidate);
   ctx.staging.open(
     new Map([
-      ['item-1', { version: 1, text: 'Keeps bees', source: 'owner', isPinned: false }],
-      ['item-2', { version: 2, text: 'keeps bee', source: 'owner', isPinned: false }],
+      [
+        'item-1',
+        { shortID: 'k3x9m2p7qa', version: 1, text: 'Keeps bees', source: 'owner', isPinned: false },
+      ],
+      [
+        'item-2',
+        { shortID: 'w8n4c6t1rb', version: 2, text: 'keeps bee', source: 'owner', isPinned: false },
+      ],
     ]),
     30,
   );

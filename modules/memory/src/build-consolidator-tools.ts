@@ -66,6 +66,7 @@ function buildRecallTool(
 
       for (const item of result.items) {
         staging.show(item.itemID, {
+          shortID: item.shortID,
           version: item.version,
           text: item.text,
           source: item.source,
@@ -74,7 +75,7 @@ function buildRecallTool(
       }
       return {
         status: 'ok',
-        result: { items: result.items.map((item) => ({ itemID: item.itemID, text: item.text })) },
+        result: { items: result.items.map((item) => ({ itemID: item.shortID, text: item.text })) },
       };
     },
   };
@@ -82,8 +83,8 @@ function buildRecallTool(
 
 const recallArguments = z.object({ query: z.string() });
 
-// The diff in one call: each change names its items by itemID, and the host binds each to the
-// version the session read. A refusal stages nothing, so the model fixes the diff and calls again.
+// The diff in one call: each change names its items by the IDs the session read, and the host binds
+// each to the version the session read. A refusal stages nothing, so the model fixes the diff and calls again.
 function buildConsolidateTool(staging: ConsolidationStaging): ToolDefinition {
   return {
     name: 'memory.consolidate',
