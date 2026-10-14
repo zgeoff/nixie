@@ -1,0 +1,398 @@
+{
+  "role": "conversation",
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "ranAt": "2026-10-14T20:57:13.215Z",
+  "sessions": [
+    {
+      "label": "turn-1",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 237,
+        "cacheReadTokens": 5379,
+        "cacheWriteTokens": 5523,
+        "contextSize": 5525
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "time.now"
+      ],
+      "calls": [
+        {
+          "tag": "turn-1",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 5379,
+          "cacheWrite1h": 0,
+          "cacheRead": 0,
+          "output": 34
+        },
+        {
+          "tag": "turn-1",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 144,
+          "cacheWrite1h": 0,
+          "cacheRead": 5379,
+          "output": 203
+        }
+      ],
+      "replies": [
+        "It's 17:12 in Tokyo right now (Wednesday, 14 Oct), which is 8 hours ahead of Lisbon. Your supplier call later will be in the Tokyo evening, so check that the time you've agreed is the one you mean."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-2",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 252,
+        "cacheReadTokens": 5523,
+        "cacheWriteTokens": 523,
+        "contextSize": 6050
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-2",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 523,
+          "cacheWrite1h": 0,
+          "cacheRead": 5523,
+          "output": 252
+        }
+      ],
+      "replies": [
+        "You've mentioned a few bike things:\n\n- You're restoring your 1984 steel touring bike.\n- On 16 Aug you said, \"the bike needs a new rear derailleur.\" That's the part to order, though it's two months old, so check it still fits the bike.\n- On 13 Sep you said, \"I'm looking for a used road bike for faster rides.\""
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-3",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 265,
+        "cacheReadTokens": 12415,
+        "cacheWriteTokens": 2287,
+        "contextSize": 8335
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "web_fetch"
+      ],
+      "calls": [
+        {
+          "tag": "turn-3",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 323,
+          "cacheWrite1h": 0,
+          "cacheRead": 6046,
+          "output": 75
+        },
+        {
+          "tag": "turn-3",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 1964,
+          "cacheWrite1h": 0,
+          "cacheRead": 6369,
+          "output": 190
+        }
+      ],
+      "replies": [
+        "The guide lists these tools:\n\n- A 5 mm hex key for the mounting bolt\n- A cable cutter that cuts cleanly without fraying\n- A chain tool or quick-link pliers\n- A Phillips screwdriver for the limit screws\n- A small amount of grease for the bolt threads\n- A torque wrench, if you have one, for the 8 to 10 Nm tightening. The guide mentions the torque but not a wrench, so that's my suggestion.\n\nThe page repeats the same text four times, so it's likely a copy error. The steps themselves are the same in each copy."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-4",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 92,
+        "cacheReadTokens": 8333,
+        "cacheWriteTokens": 350,
+        "contextSize": 8687
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-4",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 350,
+          "cacheWrite1h": 0,
+          "cacheRead": 8333,
+          "output": 92
+        }
+      ],
+      "replies": [
+        "Good plan. Tomas's hiking poles are unrelated to the chain tool, so I'll leave that memory aside. Before you start, check the chain tool fits your bike's chain width (usually 9, 10 or 11 speed), since a mismatched tool can damage the chain."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-5",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 215,
+        "cacheReadTokens": 8683,
+        "cacheWriteTokens": 400,
+        "contextSize": 9087
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-5",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 400,
+          "cacheWrite1h": 0,
+          "cacheRead": 8683,
+          "output": 215
+        }
+      ],
+      "replies": [
+        "Red lentil dal with spinach, served with rice or flatbread. Use cooked onion, not raw, and keep the spice mild. Red lentils cook in about 20 minutes, so it fits your 30 minutes."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-6",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 265,
+        "cacheReadTokens": 18556,
+        "cacheWriteTokens": 671,
+        "contextSize": 9756
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "memory.remember"
+      ],
+      "calls": [
+        {
+          "tag": "turn-6",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 390,
+          "cacheWrite1h": 0,
+          "cacheRead": 9083,
+          "output": 215
+        },
+        {
+          "tag": "turn-6",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 281,
+          "cacheWrite1h": 0,
+          "cacheRead": 9473,
+          "output": 50
+        }
+      ],
+      "replies": [
+        "Enjoy the lentils. I've noted your running schedule, Tuesdays and Thursdays, but it's waiting for your review before it's saved."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-7",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 216,
+        "cacheReadTokens": 19594,
+        "cacheWriteTokens": 411,
+        "contextSize": 10167
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "memory.pending"
+      ],
+      "calls": [
+        {
+          "tag": "turn-7",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 86,
+          "cacheWrite1h": 0,
+          "cacheRead": 9754,
+          "output": 36
+        },
+        {
+          "tag": "turn-7",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 325,
+          "cacheWrite1h": 0,
+          "cacheRead": 9840,
+          "output": 180
+        }
+      ],
+      "replies": [
+        "Three changes are waiting for you:\n\n1. **Rye bread (p4k1):** \"Sam is learning to make rye bread.\" The note-taker wasn't sure you actually said it. Note that your pinned memory says you're learning sourdough.\n2. **Bike (p4k2):** an edit to your derailleur item, adding \"and a new chain.\" It changes something you already approved, so please check it.\n3. **Running (p4k3):** \"Sam has started running twice a week, on Tuesdays and Thursdays.\" This is the one I proposed a moment ago."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-8",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 160,
+        "cacheReadTokens": 10165,
+        "cacheWriteTokens": 423,
+        "contextSize": 10592
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-8",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 423,
+          "cacheWrite1h": 0,
+          "cacheRead": 10165,
+          "output": 160
+        }
+      ],
+      "replies": [
+        "From your memory, you said on 15 Aug: \"I'm planning to cycle along the Douro in late spring.\" That's all I have on file. I don't have dates, route or booking details for the trip."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-9",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 412,
+        "cacheReadTokens": 21403,
+        "cacheWriteTokens": 1765,
+        "contextSize": 12355
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "web_fetch"
+      ],
+      "calls": [
+        {
+          "tag": "turn-9",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 227,
+          "cacheWrite1h": 0,
+          "cacheRead": 10588,
+          "output": 70
+        },
+        {
+          "tag": "turn-9",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 1538,
+          "cacheWrite1h": 0,
+          "cacheRead": 10815,
+          "output": 342
+        }
+      ],
+      "replies": [
+        "The 07:25 from Porto Sao Bento is the one. It reaches Regua at 09:20 on weekdays. The next train, at 09:15, arrives at 11:12, just too late.\n\nOn weekends the 07:25 doesn't run. The 08:05 gets you to Regua at 10:02 instead. Bikes travel free when space allows, up to two per carriage, and seats aren't reserved. The timetable also warns to check for engineering works in summer, so confirm closer to the trip."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-10",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 79,
+        "cacheReadTokens": 12353,
+        "cacheWriteTokens": 582,
+        "contextSize": 12939
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-10",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 582,
+          "cacheWrite1h": 0,
+          "cacheRead": 12353,
+          "output": 79
+        }
+      ],
+      "replies": [
+        "Good news. Which trip is she joining, the Douro ride? I'll note it once I know the dates."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-11",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 139,
+        "cacheReadTokens": 26105,
+        "cacheWriteTokens": 537,
+        "contextSize": 13474
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "log.read"
+      ],
+      "calls": [
+        {
+          "tag": "turn-11",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 235,
+          "cacheWrite1h": 0,
+          "cacheRead": 12935,
+          "output": 82
+        },
+        {
+          "tag": "turn-11",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 302,
+          "cacheWrite1h": 0,
+          "cacheRead": 13170,
+          "output": 57
+        }
+      ],
+      "replies": [
+        "Yesterday you booked the ceramics class at the studio near Graça for Saturday 8 November, 10:00 to 13:00. I suggested bringing old clothes."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-12",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 20,
+        "cacheReadTokens": 13472,
+        "cacheWriteTokens": 95,
+        "contextSize": 13571
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-12",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 95,
+          "cacheWrite1h": 0,
+          "cacheRead": 13472,
+          "output": 20
+        }
+      ],
+      "replies": [
+        "You too, Sam. Enjoy the afternoon."
+      ],
+      "error": null
+    }
+  ]
+}

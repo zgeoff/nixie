@@ -1,0 +1,136 @@
+{
+  "role": "task",
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "ranAt": "2026-10-14T21:00:49.544Z",
+  "sessions": [
+    {
+      "label": "job-1",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 484,
+        "cacheReadTokens": 10349,
+        "cacheWriteTokens": 2381,
+        "contextSize": 7334
+      },
+      "modelCalls": 4,
+      "toolCalls": [
+        "time.now",
+        "web_fetch",
+        "memory.recall"
+      ],
+      "calls": [
+        {
+          "tag": "job-1",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 447,
+          "cacheWrite1h": 0,
+          "cacheRead": 4951,
+          "output": 157
+        },
+        {
+          "tag": "job-1",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 1934,
+          "cacheWrite1h": 0,
+          "cacheRead": 5398,
+          "output": 327
+        }
+      ],
+      "replies": [
+        "Good morning. It's Wednesday 14 October, 09:12.\nNext train: Porto São Bento to Régua at 09:15 (3 min, arrives 11:12; bikes go free if space allows). Next after that is 11:20.\nReminder: you asked to be reminded before the dentist, but I don't have the appointment date, so check it's still on your calendar."
+      ],
+      "error": null
+    },
+    {
+      "label": "job-2",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 598,
+        "cacheReadTokens": 10353,
+        "cacheWriteTokens": 2927,
+        "contextSize": 7880
+      },
+      "modelCalls": 3,
+      "toolCalls": [
+        "memory.recall",
+        "web_fetch"
+      ],
+      "calls": [
+        {
+          "tag": "job-2",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 451,
+          "cacheWrite1h": 0,
+          "cacheRead": 4951,
+          "output": 134
+        },
+        {
+          "tag": "job-2",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 2476,
+          "cacheWrite1h": 0,
+          "cacheRead": 5402,
+          "output": 464
+        }
+      ],
+      "replies": [
+        "**Bike check: rear derailleur swap**\n\nYour notes say the bike needs a new rear derailleur (noted 16 August). Here's what to order and bring.\n\n**Parts**\n- 1 rear derailleur, matched to your drivetrain's speed count and hanger type\n- Grease for the mounting bolt threads (only if you don't already have some)\n- Quick link or chain-break tool, if your chain needs opening\n\n**Tools**\n- 5 mm hex key (mounting bolt)\n- Phillips screwdriver (limit screws)\n- Cable cutter that cuts cleanly without fraying\n- Chain tool or quick-link pliers\n- Torque wrench that reads to 10 Nm (the guide says 8 to 10 Nm)\n\nBefore you buy, check the hanger is straight, since a bent hanger causes most poor shifting. The guide was fetched from example.com, so confirm the torque figure against your derailleur's printed spec."
+      ],
+      "error": null
+    },
+    {
+      "label": "job-3",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 553,
+        "cacheReadTokens": 16055,
+        "cacheWriteTokens": 1132,
+        "contextSize": 6085
+      },
+      "modelCalls": 4,
+      "toolCalls": [
+        "memory.pending",
+        "memory.diff",
+        "memory.recall"
+      ],
+      "calls": [
+        {
+          "tag": "job-3",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 424,
+          "cacheWrite1h": 0,
+          "cacheRead": 4951,
+          "output": 69
+        },
+        {
+          "tag": "job-3",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 354,
+          "cacheWrite1h": 0,
+          "cacheRead": 5375,
+          "output": 196
+        },
+        {
+          "tag": "job-3",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 354,
+          "cacheWrite1h": 0,
+          "cacheRead": 5729,
+          "output": 288
+        }
+      ],
+      "replies": [
+        "Two changes are waiting for review. The consolidation diff is empty.\n\n1. **New: \"Sam is learning to make rye bread.\"** (proposal p4k1, 1 day old)\n   Sam's pinned memory says they are learning to bake sourdough, and the note-taker's checker was unsure this message actually said rye bread.\n   **Recommendation: reject** unless Sam confirms they said it.\n\n2. **Edit to the bike item: \"Sam's bike needs a new rear derailleur and a new chain.\"** (proposal p4k2, 2 days old)\n   This replaces the saved item \"Sam's bike needs a new rear derailleur,\" which came from Sam's words \"the bike needs a new rear derailleur.\" The chain is new information, but nothing in the record shows Sam said it.\n   **Recommendation: approve only if Sam confirms the chain.** Otherwise reject."
+      ],
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,269 @@
+{
+  "role": "checker",
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "ranAt": "2026-10-14T20:58:25.651Z",
+  "sessions": [
+    {
+      "label": "check-1",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-1",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 1944,
+          "cacheWrite1h": 0,
+          "cacheRead": 0,
+          "output": 139
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner states in their own voice that they are vegetarian now, as of last month, which is a current personal fact; the memory \\\"Sam is vegetarian\\\" keeps that fact without adding or changing a detail.\",\"verdict\":\"asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-2",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-2",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 472,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 156
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner states they are vegetarian now, but the memory says vegan, which changes the detail to a different diet.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-3",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-3",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 491,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 127
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner explicitly says they no longer use old@example.com, so the memory that Sam's email is old@example.com is denied rather than asserted as current fact.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-4",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-4",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 492,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 122
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner states in their own voice that they no longer use old@example.com, which is a current negative fact matching the memory that Sam no longer uses that address.\",\"verdict\":\"asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-5",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-5",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 496,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 203
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner states in their own voice that they no longer use the old address and want contact at sam.reyes@example.net, which asserts the memory's current email address as a fact without hedging or attribution.\",\"verdict\":\"asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-6",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-6",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 487,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 231
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"Sam asks whether the dentist appointment is on the 14th or the 15th, which is a question that leaves the date open, so Sam does not state that it is on the 14th as a current fact.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-7",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-7",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 485,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 114
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner asks whether they should switch to oat milk, which is a question, and does not state that they drink oat milk now.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-8",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-8",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 493,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 429
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner states in their own voice that their GP says their cholesterol is high, and the candidate keeps that exact attribution (\\\"Sam's GP says Sam's cholesterol is high\\\"), so it faithfully restates what the owner asserted without adding or changing anything.\",\"verdict\":\"asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-9",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-9",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 496,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 162
+        },
+        {
+          "tag": "check-9",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 202,
+          "cacheWrite1h": 0,
+          "cacheRead": 1966,
+          "output": 136
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner only repeats the boss's statement and adds that nothing is signed yet, so the move is unconfirmed; the memory states it as settled and drops the attribution and the hedge.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-10",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-10",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 508,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 898
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner reports that their boss told them \\\"you're moving to the Leeds office in March\\\" and adds that nothing is signed, but the owner never describes it as a proposal. The memory recasts the boss's statement as a proposed move, which changes the detail from a stated move to a tentative proposal, so it is not a faithful paraphrase of what the owner said.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-11",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-11",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 499,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 219
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner attributes the shellfish allergy to Priya, who keeps saying it, and says nothing that makes it Sam's own fact, so the memory that Sam is allergic is not asserted.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-12",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-12",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 490,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 178
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner quotes the estate agent's claim about a parking space and says they doubt it, so they do not hold the fact as their own current truth, and the memory states it as Sam's fact.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    }
+  ]
+}

@@ -164,8 +164,8 @@ records whose parent is the tool call, and nixie destroys the imp when the tool 
 A minimal image per kind of work keeps a fresh worker's start short, as the
 [imp worker spike](../spikes/imp-worker-start/README.md) measured.
 
-A worker run stops at the first of its limits: 10 min of wall time, 25 model turns, 500,000 tokens
-or $1 of model cost by default, each settable per tool. **Why:** a worker answers one narrow
+A worker run stops at the first of its limits: 10 min of wall time, 25 model turns, 2,000,000 tokens
+or $2 of model cost by default, each settable per tool. **Why:** a worker answers one narrow
 question, so a worker run past these limits is looping, and the caller gets an error it can act on.
 These limits sit inside the [budgets](../policy/budgets.md).
 
