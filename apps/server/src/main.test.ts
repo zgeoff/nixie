@@ -605,7 +605,7 @@ test('it refuses a token revoked before a reset as a stranger', async () => {
   expect(run.records).toIncludeAllPartialMembers([
     {
       kind: 'identity.refused',
-      payload: { channel: 'client', externalID: 'unknown-token', refusedAt: expect.any(Number) },
+      payload: { channel: 'client', externalID: 'unknown-token', refusedAt: expect.toBeNumber() },
     },
   ]);
 }, 120_000);

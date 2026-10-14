@@ -164,8 +164,8 @@ test('it commits nothing of a turn still running at the end of the stop grace', 
   );
   const runners = startTaskRunners(ctx.context, {
     runStep: turn.call,
-    onStepErrored: mock(),
-    onError: mock(),
+    onStepErrored: mock<Parameters<typeof startTaskRunners>[1]['onStepErrored']>(),
+    onError: mock<Parameters<typeof startTaskRunners>[1]['onError']>(),
     size: 1,
   });
 

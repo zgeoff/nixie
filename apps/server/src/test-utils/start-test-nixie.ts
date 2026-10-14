@@ -87,6 +87,7 @@ interface TestNixieFiles {
   readonly stack: AsyncDisposableStack;
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a disposable stack has no readonly form
 function startNixieRun(start: TestNixieFiles): TestNixie {
   const child = Bun.spawn([...buildCommand(start.entry), ...buildServeArgs(start.files)], {
     stdin: 'ignore',
