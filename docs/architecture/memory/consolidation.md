@@ -25,7 +25,9 @@ flowchart LR
 The server starts the consolidator on every start of nixie, and its first run is due at once. Each
 later run is due a configurable period after the last one. A run waits while any change from an
 earlier diff still waits for an answer, until that change is answered or lapses, so the user never
-holds 2 diffs that touch the same item. A failed run waits a retry time and never fails the task.
+holds 2 diffs that touch the same item. The answer that leaves no change pending wakes the
+consolidator in the answer's own transaction, so the next run follows the period instead of the
+lapse the step waited for. A failed run waits a retry time and never fails the task.
 
 Each run opens one fresh model session in the consolidator's own worker sandbox on the conversation
 image. The prompt lists the active items, oldest first, until their text fills a token budget, and

@@ -4,6 +4,7 @@ import { planChangeVersions } from './plan-change-versions';
 import { requirePendingChange } from './require-pending-change';
 import type { StoreParts, VersionRef } from './types';
 import { updateVersionIndex } from './update-version-index';
+import { writeConsolidatorWakeInTransaction } from './write-consolidator-wake-in-transaction';
 import type { WrittenVersion } from './write-version-in-transaction';
 import { writeVersionInTransaction } from './write-version-in-transaction';
 
@@ -36,6 +37,7 @@ export async function writeChangeApproval(
 
         versions.push(version);
       }
+      await writeConsolidatorWakeInTransaction(tx, parts);
       return versions;
     });
 
