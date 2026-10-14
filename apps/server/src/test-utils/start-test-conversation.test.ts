@@ -13,7 +13,7 @@ test('it runs a turn on its own model with the note before your message', async 
   const ctx = await setupTest();
   const conversation = await startTestConversation(ctx.server, {
     context: ctx.server.context,
-    readTurnNote: () => Promise.resolve({ text: 'NOTE', throughSequence: 0 }),
+    readTurnNote: () => Promise.resolve({ text: 'NOTE', throughSequence: 0, eventCount: 0 }),
   });
 
   conversation.model.addReplies({ text: 'APPLE' });

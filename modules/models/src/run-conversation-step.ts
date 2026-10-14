@@ -6,14 +6,14 @@ import { parseSessionBoundary } from './parse-session-boundary';
 import type { SessionMarks } from './read-session-marks';
 import { readSessionMarks } from './read-session-marks';
 import { readTurnContext } from './read-turn-context';
+import { runOpenedTurn } from './run-opened-turn';
 import type { SessionTurn } from './run-planned-turn';
 import { runPlannedTurn } from './run-planned-turn';
-import { runRebuiltTurn } from './run-rebuilt-turn';
-import type { ConversationRun } from './types';
+import type { ConversationRun, SessionStart } from './types';
 
-// Runs one turn step of the conversation, with the pinned core in its system prompt and the
-// retrieved items before your message, resumed at the session boundary on a fork. A session that a
-// forget invalidated or the guest lost is rebuilt from the log, with its context read again.
+// Runs one turn step of the conversation, with the retrieved items before your message, resumed at
+// the session boundary on a fork. A first session, and one that a forget invalidated or the guest
+// lost, opens new from the log, with its context read again.
 export function runConversationStep(run: ConversationRun, input: StepInput): Promise<StepResult> {
   if (input.inbox.length === 0) {
     return Promise.resolve({
@@ -38,12 +38,15 @@ async function runSessionTurn(
   const boundary = parseSessionBoundary(input.sessionBoundary);
   const step = { run, input, signal, marks };
 
-  if (marks.isInvalidated || boundary === null) {
-    const rebuilt = await readSessionTurn(step, true);
-
-    return runRebuiltTurn(rebuilt, source, boundary && { reason: 'invalidated', lost: boundary });
+  if (!marks.isInvalidated && boundary !== null) {
+    return runResumedTurn(step, boundary);
   }
-  return runResumedTurn(step, boundary);
+  const opened = await readSessionTurn(step, true);
+  const start: SessionStart = marks.isInvalidated
+    ? { kind: 'rebuild', reason: 'forget', lostSessionID: boundary?.sessionID ?? null }
+    : { kind: 'first' };
+
+  return runOpenedTurn(opened, source, start);
 }
 
 // Runs the turn at the session boundary, or on a rebuilt session when the guest lost it, with the
@@ -58,9 +61,13 @@ async function runResumedTurn(step: SessionStep, boundary: SessionPoint): Promis
 
     return buildStepResult(source, { ...resumed.completed, memory }, []);
   }
-  const rebuilt = await readSessionTurn(step, true);
+  const opened = await readSessionTurn(step, true);
 
-  return runRebuiltTurn(rebuilt, source, { reason: 'missing', lost: boundary });
+  return runOpenedTurn(opened, source, {
+    kind: 'rebuild',
+    reason: 'lost',
+    lostSessionID: boundary.sessionID,
+  });
 }
 
 interface SessionStep {

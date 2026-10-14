@@ -1,5 +1,16 @@
 export { buildEventRegistry } from './build-event-registry';
 export { buildModelGrant } from './build-model-grant';
+export { buildModelStatus } from './build-model-status';
+export { buildStartStatus } from './build-start-status';
+export { buildStartTimeStatus } from './build-start-time-status';
+export type {
+  SessionFacts,
+  StatusEntry,
+  StatusLine,
+  StatusRegistry,
+} from './build-status-registry';
+export { buildStatusRegistry } from './build-status-registry';
+export { buildDefaultStatus } from './build-default-status';
 export type { RetriedTurn } from './build-retried-turn-kind';
 export { buildRetriedTurnKind } from './build-retried-turn-kind';
 export { countTextTokens } from './count-text-tokens';
@@ -12,6 +23,9 @@ export { makeChecker } from './make-checker';
 export { checkerOwner } from './start-checker-runner';
 export { agentConfigSchema } from './agent-config-schema';
 export { modelsConfigSchema } from './models-config-schema';
+export type { EventsBlock } from './read-events-block';
+export { readEventsBlock } from './read-events-block';
+export type { EventsBlockSettings } from './render-events-block';
 export { readEventsNote } from './read-events-note';
 export { readTurnNoteRange } from './read-turn-note-range';
 export { renderOwnerText } from './render-owner-text';

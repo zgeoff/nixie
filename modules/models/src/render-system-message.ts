@@ -2,6 +2,10 @@ import { createBlockID } from './create-block-id';
 
 // The kinds of block nixie writes into a user message.
 export type SystemMessageType =
+  | 'pinned-memory'
+  | 'status'
+  | 'summary'
+  | 'recent-turns'
   | 'events'
   | 'memory-changes'
   | 'retrieved-memory'

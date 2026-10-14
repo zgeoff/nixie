@@ -225,3 +225,44 @@ test('it pairs the oldest reply it keeps with the message it answers, though the
     turns.map((turn) => [turn.record.sequence, turn.answered?.sequence ?? null]),
   ).toStrictEqual([[2, 1]]);
 });
+
+test('it leaves out every record that a summary covers', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Where is the spare key?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'And the side gate?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'It has no lock.' },
+    },
+  ]);
+
+  const turns = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 5,
+    afterSequence: 2,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+  });
+
+  expect(turns.map((turn) => turn.record.sequence)).toStrictEqual([3, 4]);
+});

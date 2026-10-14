@@ -121,7 +121,7 @@ failure, and it would need a write route from every imp to the host.
 ### Rebuilding a session
 
 The conversation's rebuild is built, as
-[conversation turns](../../../architecture/core/conversation-turns.md#rebuilding-a-session) covers:
+[conversation turns](../../../architecture/core/conversation-turns.md#opening-a-new-session) covers:
 its first turn carries the recent turns word for word and the unread inbox. The design adds to that
 first turn:
 

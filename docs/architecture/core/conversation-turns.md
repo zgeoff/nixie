@@ -7,9 +7,10 @@ reached. The event log is the record of the conversation, and the SDK's session 
 cache that makes the next turn cheaper. [Tasks](./tasks.md) covers steps and their commits,
 [model profiles](./model-profiles.md) covers the profile a turn runs on, and
 [tool calls](../connectors/tool-calls.md) covers the endpoint that serves the loop its tools, and
-[memory in context](../memory/context.md) covers the pinned core and the items each turn places.
-`modules/models` holds the host side, `guests/conversation` holds the guest, and the turn frames
-between them live in `libs/wire`.
+[memory in context](../memory/context.md) covers the pinned core and the items each turn places, and
+[session opening](./session-opening.md) covers what a new session opens with. `modules/models` holds
+the host side, `guests/conversation` holds the guest, and the turn frames between them live in
+`libs/wire`.
 
 ## The guest and its sandbox
 
@@ -105,30 +106,22 @@ with those counts, the newest recall the compaction summarized and no text. The 
 writes stays in the session, because the model wrote it from the conversation, and nixie keeps model
 text out of its records unless a reply holds it.
 
-## Rebuilding a session
+## Opening a new session
 
-A turn rebuilds its session when it has none to resume: a replacement sandbox whose session copy
-failed holds no session, and a forget's session cleanup invalidates it
+A turn opens a new session when it has none to resume. The conversation's first turn has no session
+boundary, a replacement sandbox whose session copy failed holds no session, and a forget's session
+cleanup invalidates the session
 ([forgetting and the live session](../memory/context.md#forgetting-and-the-live-session)). Each
 turn-ended record keeps the newest session-invalidated record the turn saw before it ran. The step
 resumes no session when a newer invalidation exists, so a step that commits after an invalidation it
 never saw leaves the session invalid. When the guest instead reports the session lost, the step runs
-the turn again on a rebuilt session.
+the turn again on a new session.
 
-Every new session's first turn opens with a one-line marker, so the model knows at once that its
-context starts there. A rebuilt session's marker says the context was rebuilt, and a fresh session's
-marker says the session is new. Both say that earlier history is in the event log. A turn that
-resumes its session carries no marker.
-
-A rebuilt session's first turn opens with its marker, the thread's recent turns, then the turn's own
-messages. The recent turns are the user's messages and the replies, word for word and oldest first,
-newest back to a token budget that the deployment configuration sets. The history leaves out every
-message from the turn's first inbox record on, so a pending message reaches the model once, as a
-live message. It keeps every committed reply, because a turn that left messages for the next step
-commits its reply after them. Older turns reach the new session only through recall. The step writes
-a session-rebuilt record that names the lost session, the reason and the count of records the
-history holds. The SDK transcript is a cache, so a rebuild restores the conversation's recent
-context from the event log rather than an identical session.
+Every new session opens from one builder, with the pinned memory, the status, the newest summary and
+the recent turns before the turn's own blocks, and the step writes a session-opened record in the
+turn's commit ([session opening](./session-opening.md)). A turn that resumes its session carries no
+opening. The SDK transcript is a cache, so a rebuild restores the conversation's recent context from
+the event log rather than an identical session.
 
 ## Inbox records as messages
 
@@ -171,11 +164,11 @@ a system message comes from nixie only at the top level of a user message, and o
 result, a pasted or dropped block or a quote is text. The SDK sends a tool result as a block of its
 own, so the model can tell the two places apart.
 
-The events block, both memory change notes and the retrieved items each render as one system message
-before the user's message. A fired timer and an action's outcome render as one each, with the time
-their record was written, and each body leads with the record's event ID so the model can cite it.
-The user's own message stays outside any element, after its stamp, because it holds the user's own
-words.
+A new session's pinned memory, status, summary and recent turns, the events block, both memory
+change notes and the retrieved items each render as one system message before the user's message. A
+fired timer and an action's outcome render as one each, with the time their record was written, and
+each body leads with the record's event ID so the model can cite it. The user's own message stays
+outside any element, after its stamp, because it holds the user's own words.
 
 ## Records of a turn
 

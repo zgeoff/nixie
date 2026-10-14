@@ -2,6 +2,7 @@ import type { ContentSource } from '@heynixie/log';
 import type { Sandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
+import type { StatusRegistry } from './build-status-registry';
 import type { SessionGuard } from './make-session-guard';
 import type { GuestCommand } from './run-guest-turn';
 
@@ -112,7 +113,7 @@ interface MemoryRetrieval {
   readonly limit: number;
   readonly minScore: number;
 
-  // pinned items stay out, because the system prompt holds them
+  // pinned items stay out, because the session's opening holds them
   readonly excludePinned: true;
 
   // the item versions the session already holds, which stay out so a newer version still matches
@@ -177,8 +178,12 @@ export interface ConversationRun {
   readonly getSystemPrompt: () => string;
 
   // the note of what happened outside the conversation since its last turn, such as memory changes
-  // and events, which goes before the turn's first message, and the sequence it covers
-  readonly readTurnNote?: () => Promise<TurnNote>;
+  // and events, which goes before the turn's first message, and the sequence it covers; given a
+  // span, the note a new session's recent turns carry again over that span
+  readonly readTurnNote?: (span?: TurnNoteRange) => Promise<TurnNote>;
+
+  // the lines of a new session's status, each read when the session opens
+  readonly status: StatusRegistry;
 
   // the memory store, read at each turn, which starts after the runner
   readonly memory: () => ConversationMemory;
@@ -196,7 +201,20 @@ export interface ConversationRun {
 export interface TurnNote {
   readonly text: string | null;
   readonly throughSequence: number;
+
+  // how many events the note's range held, those past the events block's cap included
+  readonly eventCount: number;
 }
+
+// How a new session starts: the first session, or a rebuild in place of a session the guest lost
+// or a forget invalidated, with the ID of the session it replaced when the step knew one.
+export type SessionStart =
+  | { readonly kind: 'first' }
+  | {
+      readonly kind: 'rebuild';
+      readonly reason: 'lost' | 'forget';
+      readonly lostSessionID: string | null;
+    };
 
 // The records a turn's note covers: those after the sequence the last turn's note covered, through
 // the log's head when the note was read.

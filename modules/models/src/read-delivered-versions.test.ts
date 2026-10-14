@@ -92,7 +92,7 @@ test('it leaves out a recall from a step that never ended its turn', async () =>
   expect(delivered).toStrictEqual([{ itemID: 'item-2', version: 1 }]);
 });
 
-test('it lists nothing that a step delivered before a rebuild', async () => {
+test('it lists nothing that a step delivered before a session opened', async () => {
   const ctx = await setupTest();
   const definitions = { snapshotHash: 'sha256:test' };
 
@@ -123,10 +123,10 @@ test('it lists nothing that a step delivered before a rebuild', async () => {
       payload: { taskID: 'conversation', stepKey: 'conversation:2', generation: 1 },
     },
     {
-      kind: 'model.session_rebuilt',
+      kind: 'model.session_opened',
       definitions,
       thread: 'conversation',
-      payload: { reason: 'missing' },
+      payload: { kind: 'rebuild', reason: 'lost' },
     },
     { kind: 'model.turn_ended', definitions, thread: 'conversation', payload: { retrieved: [] } },
   ]);
@@ -136,7 +136,7 @@ test('it lists nothing that a step delivered before a rebuild', async () => {
   expect(delivered).toStrictEqual([]);
 });
 
-test('it keeps what a rebuilt turn retrieved and drops the recall for the session it lost', async () => {
+test('it keeps what a turn on a session opened in place of a lost one retrieved, and drops the recall for the lost session', async () => {
   const ctx = await setupTest();
   const definitions = { snapshotHash: 'sha256:test' };
 
@@ -150,6 +150,49 @@ test('it keeps what a rebuilt turn retrieved and drops the recall for the sessio
     },
 
     // the retrieval for the resume that found its session lost, then the one for the new session
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: { items: [{ itemID: 'item-2', version: 1 }] },
+    },
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: { items: [{ itemID: 'item-1', version: 1 }] },
+    },
+    {
+      kind: 'model.session_opened',
+      definitions,
+      thread: 'conversation',
+      payload: { kind: 'rebuild', reason: 'lost' },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions,
+      thread: 'conversation',
+      payload: { retrieved: [{ itemID: 'item-1', version: 1 }] },
+    },
+  ]);
+
+  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+
+  expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
+});
+
+test('it reads a rebuild record from before opening records as the opening of a lost session', async () => {
+  const ctx = await setupTest();
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await createConversationTask(ctx.tasks.context);
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.step_started',
+      definitions,
+      thread: 'conversation',
+      payload: { taskID: 'conversation', stepKey: 'conversation:1', generation: 1 },
+    },
     {
       kind: 'memory.recalled',
       definitions,
@@ -181,7 +224,10 @@ test('it keeps what a rebuilt turn retrieved and drops the recall for the sessio
   expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
 });
 
-test('it keeps every recall of a turn on a session rebuilt after an invalidation', async () => {
+test.each([
+  ['a first session', { kind: 'first', reason: null }],
+  ['a rebuild after a forget', { kind: 'rebuild', reason: 'forget' }],
+])('it keeps every recall of a turn on %s', async (_start, payload) => {
   const ctx = await setupTest();
   const definitions = { snapshotHash: 'sha256:test' };
 
@@ -199,12 +245,7 @@ test('it keeps every recall of a turn on a session rebuilt after an invalidation
       thread: 'conversation',
       payload: { items: [{ itemID: 'item-1', version: 1 }] },
     },
-    {
-      kind: 'model.session_rebuilt',
-      definitions,
-      thread: 'conversation',
-      payload: { reason: 'invalidated' },
-    },
+    { kind: 'model.session_opened', definitions, thread: 'conversation', payload },
     { kind: 'model.turn_ended', definitions, thread: 'conversation', payload: { retrieved: [] } },
   ]);
 

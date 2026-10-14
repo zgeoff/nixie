@@ -13,6 +13,9 @@ export interface RecentTurnsQuery {
   // come before
   readonly beforeSequence: number;
 
+  // the last sequence a summary covers; the history holds only records after it, or every record
+  readonly afterSequence?: number;
+
   // the history's budget, counted over its rendered lines
   readonly tokens: number;
 
@@ -29,7 +32,7 @@ export interface HistoryTurn {
 
 // Reads the thread's most recent messages and replies, word for word, oldest first, up to the
 // token budget, each reply with the message it answers. A message from the turn's first inbox
-// record on stays out. Older turns stay out, and reach a rebuilt session only through recall.
+// record on stays out, and so does every record a summary covers.
 export async function readRecentTurns(
   context: Pick<TasksContext, 'log'>,
   query: RecentTurnsQuery,
@@ -60,6 +63,9 @@ async function* readTurnsNewestFirst(
   const unanswered: LogRecord[] = [];
 
   for await (const record of readThreadNewestFirst(context, query.taskID, historyKinds)) {
+    if (record.sequence <= (query.afterSequence ?? 0)) {
+      break;
+    }
     if (record.kind === 'model.reply') {
       unanswered.push(record);
     } else if (record.sequence < query.beforeSequence) {

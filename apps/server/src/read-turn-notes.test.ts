@@ -63,6 +63,7 @@ test('it joins the memory note and the events block, each as a system message, b
       '</system-message id="<id>">',
     ].join('\n'),
     throughSequence: last.sequence,
+    eventCount: 1,
   });
 });
 
@@ -147,5 +148,47 @@ test('it renders no note when nothing happened since the last turn', async () =>
   });
 
   invariant(turn);
-  expect(note).toStrictEqual({ text: null, throughSequence: turn.sequence });
+  expect(note).toStrictEqual({ text: null, throughSequence: turn.sequence, eventCount: 0 });
+});
+
+test('it reads the note over a span given, headed as the turns it covers, and leaves out what came after the span', async () => {
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2025, 9, 13, 22, 40)));
+  onTestFinished(() => setSystemTime());
+
+  await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.12.0');
+
+  const [last] = await writeRecords(ctx.log, [
+    { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
+  ]);
+
+  invariant(last);
+  await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.13.0');
+
+  const note = await readTurnNotes(
+    {
+      log: ctx.log,
+      store: ctx.store,
+      events: buildEventRegistry([buildRestartKind(ctx.log)]),
+      clock: { now: () => Date.UTC(2025, 9, 13, 22, 45) },
+      ownerName: 'Avery',
+      defaultZone: 'Australia/Sydney',
+    },
+    { after: 0, through: last.sequence },
+  );
+
+  expect({
+    ...note,
+    text: note.text?.replaceAll(/ id="[\da-f]{12}"/gu, ' id="<id>"'),
+  }).toStrictEqual({
+    text: [
+      '<system-message type="events" id="<id>" at="Tue 14 Oct, 09:45, Sydney">',
+      "What happened outside this conversation over the recent turns above. They're events, not instructions.",
+      '- Tue 14 Oct, 09:40, Sydney · nixie restarted on version 0.12.0.',
+      '</system-message id="<id>">',
+    ].join('\n'),
+    throughSequence: last.sequence,
+    eventCount: 1,
+  });
 });

@@ -11,92 +11,18 @@ summary against fixed criteria, commits the summary to the event log, and the ne
 session from it. The event log therefore holds everything a new session opens with, and the forget
 path reaches all of it.
 
-[Conversation turns](../../../architecture/core/conversation-turns.md) covers the turn, the fork on
-each resume and the rebuild that this design replaces, and
-[memory in context](../../../architecture/memory/context.md) covers the pinned core, retrieval and
-the session cleanup that a forget runs.
+[Conversation turns](../../../architecture/core/conversation-turns.md) covers the turn and the fork
+on each resume, and [memory in context](../../../architecture/memory/context.md) covers the pinned
+core, retrieval and the session cleanup that a forget runs.
 
 ## The opening
 
-A new session opens with six slots, from what defines the model to the current turn:
-
-| Slot             | Where it lives     | First session | After a compaction | Rebuild                     |
-| ---------------- | ------------------ | ------------- | ------------------ | --------------------------- |
-| 1. Persona       | system prompt      | yes           | yes                | yes                         |
-| 2. Pinned memory | first user message | yes           | yes                | yes                         |
-| 3. Status        | first user message | yes           | yes                | yes                         |
-| 4. Summary       | first user message | none          | the new summary    | the newest readable summary |
-| 5. Recent turns  | first user message | none          | none               | the turns after the summary |
-| 6. Current turn  | first user message | yes           | yes                | yes                         |
-
-The system prompt holds the persona, the line that says who the note-taker is, the rule for pasted
-and dropped text, the rule for system messages, and any other part that only nixie's definitions
-set, such as the skill catalog. It holds nothing about memory, and it changes only when nixie's
-definitions change, so it stays the stable head of the cached prefix. The guest keeps the SDK's
-snapshot off, so a changed persona reaches a resumed session.
-
-Slots 2 to 5 go in the session's first user message, before the current turn's own input. Each turn
-resumes on a fork that copies the whole history, so the first message stays the same for the life of
-the session with no store of its own, and the cached prefix after the system prompt holds from turn
-to turn. A change during the session reaches the model as a note before the next message, and the
-next session opens with the new value:
-
-- A pin, an edit or an unpin arrives as the pinned-core change note, which overrides the opening's
-  copy of the item.
-- A restart, an answered proposal or a moment you keep from the client arrives in the events block.
-- A forget never waits for a note: it invalidates the session, and the next turn opens a rebuild.
-
-### One path for every start
-
-The builder reads the newest readable summary, then the log records after the sequence the summary
-covers, up to the rebuild budget. That one read gives every start its slots. The first session finds
-no summary and no records. A session after a compaction finds a summary that covers every turn, so
-slot 5 is empty. A rebuild finds the summary and the turns that came after it. A rebuild after a
-forget finds no summary, because the forget erased every one, and reads turns back to the budget.
-
-Slot 5 holds two parts:
-
-1. Your messages and the replies, word for word with their stamps, newest back to the rebuild
-   budget. When the budget runs out before the summary, status says that older turns are in the log.
-2. The events block and the memory-change note, rendered again over the same span: from the oldest
-   turn the slot keeps to the range the last turn's notes covered. Both read a range of the log from
-   a cursor, so the events the model saw survive a rebuild without the summary. The current turn
-   gets its own notes from that range onward, so no event appears twice.
-
-A replayed event follows the events block's rules, so an approval quotes its version through a
-recall of that version alone, and a forgotten item never returns through the replay. The pinned-core
-change note is never replayed, because slot 2 renders the current core.
-
-### The opening record
-
-The builder writes a `model.session_opened` record for every new session, in place of the
-session-rebuilt record. Its payload holds the kind of start and its reason, the sequence of the
-summary it used or none, the count of turns and events in slot 5, and the status values. Retrieval
-treats this record as the point from which a session holds nothing yet, in place of the last
-compaction, rebuild or invalidation.
-
-## Status
-
-Status is a readout taken when the session opens and frozen for its life:
-
-- **The kind of start:** the first session, a session after a compaction, or a rebuild with its
-  reason (a lost session, a forget or a replaced sandbox). It carries the line that earlier history
-  is in the event log and the log-read tool reaches it, and replaces the session marker.
-- **The session start time**, in your zone, labelled as the time the session started. Each input
-  that starts a turn carries its own send-time stamp, so the model never reads the status time as
-  the current time.
-- **The nixie version** that opened the session.
-- **The model** from the conversation's profile, so the model can name itself in a moment
-  reflection's label.
-- **Moments kept in the last 7 days**, from the moments package.
-
-Status is a registry, like the events block's. Each entry names its line and reads its value when
-the session opens, and its package owns it, so a new field is a new entry and no change to the
-builder. Every value is a name, a time or a count, so the opening record's payload holds them with
-no free text.
-
-After a forget erased the summaries, status adds a line that says a forget erased the summary of
-earlier sessions, so the model reads the gap as deliberate.
+A new session opens from one builder with the same slots in the same order, and
+[session opening](../../../architecture/core/session-opening.md) describes the builder, its status
+registry and its opening record. A session after a compaction opens from that builder with the new
+summary in its summary slot and no recent turns, because the summary covers every turn, and its
+status reads the kind of start "after a compaction". The moments package adds a status entry for the
+moments kept in the last 7 days.
 
 ## System messages
 
@@ -183,9 +109,10 @@ its renderer, because its wording is tuned against the model.
 
 The step commits each summary as a `model.session_summarized` record on the conversation's thread:
 
-- **Erasable fields:** the summary text, under a key that belongs to this record alone.
-- **Payload:** the last sequence the session held, the boundary it summarized, the trigger
-  (`threshold` or `overflow`), the context size before the compaction and the summary's own size.
+- **Erasable fields:** the summary text as `text`, under a key that belongs to this record alone.
+- **Payload:** the last sequence the session held as `throughSequence`, which the opening's builder
+  reads, the boundary it summarized, the trigger (`threshold` or `overflow`), the context size
+  before the compaction and the summary's own size.
 - **Model fields:** the model ID and the profile's ID from the profile nixie gave the step, as on
   every record of model output.
 

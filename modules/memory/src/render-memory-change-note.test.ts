@@ -23,6 +23,23 @@ test('it renders the changes, the catch-up count and how many more', () => {
   `);
 });
 
+test('it heads a replay with the turns it covers, not the time since the last turn', () => {
+  const note = renderMemoryChangeNote({
+    changes: [{ shortID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
+    moreCount: 0,
+    catchUpCount: 0,
+    merges: [],
+    isReplay: true,
+  });
+
+  expect(note).toBe(
+    [
+      'Memory changed over the recent turns above, outside this conversation. Where these differ from anything said earlier, these hold.',
+      '- Remembered [item-cello]: The owner plays the cello.',
+    ].join('\n'),
+  );
+});
+
 test('it renders the same note for the same changes', () => {
   const first = renderMemoryChangeNote({
     changes: [{ shortID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],

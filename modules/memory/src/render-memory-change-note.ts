@@ -25,6 +25,9 @@ export interface MemoryChangeNote {
   // how many more items changed past the cap
   readonly moreCount: number;
 
+  // whether a new session's recent turns carry the note again, which covers those turns
+  readonly isReplay?: boolean;
+
   // how many items the catch-up took in, which the note counts and never lists
   readonly catchUpCount: number;
 }
@@ -45,7 +48,9 @@ export function renderMemoryChangeNote(note: MemoryChangeNote): string | null {
   const more = note.moreCount;
 
   return [
-    'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
+    note.isReplay === true
+      ? 'Memory changed over the recent turns above, outside this conversation. Where these differ from anything said earlier, these hold.'
+      : 'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
     ...(note.catchUpCount === 0
       ? []
       : [

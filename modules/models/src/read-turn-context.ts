@@ -2,6 +2,7 @@ import type { LogRecord } from '@heynixie/log';
 import { formatMessageTime } from './format-message-time';
 import { readDeliveredVersions } from './read-delivered-versions';
 import { renderCoreChanges } from './render-core-changes';
+import { renderPinnedMemory } from './render-pinned-memory';
 import { renderRetrievedItems } from './render-retrieved-items';
 import type { SystemMessageType } from './render-system-message';
 import { renderSystemMessage } from './render-system-message';
@@ -19,10 +20,13 @@ export interface TurnContextQuery {
   readonly isNewSession: boolean;
 }
 
-// What memory adds to one turn: the system prompt with the pinned core, the blocks that go before
-// the turn's first message, and the references the turn's record lists.
+// What memory adds to one turn: the system prompt, the pinned core that a new session opens with,
+// the blocks that go before the turn's first message, and the references the turn's record lists.
 export interface TurnContext {
   readonly systemPrompt: string;
+
+  // the body of a new session's pinned-memory message, which a resumed session never reads
+  readonly pinnedMemory: string;
 
   // the pinned core's change note and the retrieved items, in that order, each as a system message
   readonly preamble: readonly string[];
@@ -51,18 +55,22 @@ export async function readTurnContext(
   const at = formatMessageTime(lines.now, null, lines);
   const pinned = new Set(core.map((item) => item.itemID));
 
+  // a new session opens with the current core, so only a resumed one gets the change note
+  const previousCore = query.isNewSession ? null : query.previousCore;
+
   // the items that left the core show by their short IDs too
   const unpinnedShortIDs = await memory.readShortIDs(
     (query.previousCore ?? []).filter((ref) => !pinned.has(ref.itemID)).map((ref) => ref.itemID),
   );
 
   return {
-    systemPrompt: renderSystemPrompt(run.getSystemPrompt(), core, lines),
+    systemPrompt: renderSystemPrompt(run.getSystemPrompt(), lines),
+    pinnedMemory: renderPinnedMemory(core, lines),
     preamble: [
       renderPreambleMessage(
         'pinned-memory-changes',
         at,
-        renderCoreChanges(query.previousCore, core, unpinnedShortIDs),
+        renderCoreChanges(previousCore, core, unpinnedShortIDs),
       ),
       renderPreambleMessage('retrieved-memory', at, renderRetrievedItems(retrieved, lines)),
     ].filter((block) => block !== null),

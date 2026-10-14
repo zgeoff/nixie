@@ -79,7 +79,7 @@ test('it notes each item pinned, edited and unpinned since the last turn by its 
   );
 
   expect(note).toMatchInlineSnapshot(`
-    "The pinned memory changed since your last turn, and the system prompt holds the current items. Where these differ from anything said earlier, these hold.
+    "The pinned memory changed since your last turn. Where these differ from the pinned memory this session opened with, or from anything said earlier, these hold.
     - Changed [h4ns8w1cpe]: Goes by Sasha
     - Pinned [b7kq2m9xza]: Uses they/them
     - Unpinned [r2vd6t0jmy]"

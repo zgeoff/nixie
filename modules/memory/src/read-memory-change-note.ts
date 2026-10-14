@@ -19,6 +19,9 @@ export interface MemoryNoteOptions {
   // how many changed items the note lists before it counts the rest
   readonly cap: number;
   readonly range?: TurnNoteRange;
+
+  // whether a new session's recent turns carry the note again over the range
+  readonly isReplay?: boolean;
 }
 
 // Reads the memory changes in the range that came from outside the conversation, such as a writer
@@ -43,6 +46,7 @@ export async function readMemoryChangeNote(
       merges,
       moreCount: Math.max(split.listed.length - cap, 0),
       catchUpCount: split.catchUpCount,
+      isReplay: options.isReplay ?? false,
     }),
     throughSequence: noted.through,
   };

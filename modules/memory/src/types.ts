@@ -127,7 +127,7 @@ export interface RecallRequest {
   // with a query, the lowest score a match keeps; 0 keeps every match
   readonly minScore?: number;
 
-  // leaves out pinned items, which the system prompt already holds
+  // leaves out pinned items, which the session's opening already holds
   readonly excludePinned?: boolean;
 
   // with a query, leaves out an item whose current version is listed, which the reader already
@@ -188,7 +188,7 @@ export interface MemoryStore {
   readonly undo: (request: UndoRequest) => Promise<VersionRef>;
   readonly pin: (request: PinRequest) => Promise<void>;
 
-  // every pinned active item, in pin order, for the system prompt
+  // every pinned active item, in pin order, for a new session's opening and the change note
   readonly readPinnedCore: () => Promise<readonly RecalledItem[]>;
 
   // completes once the key is gone, the index entries are removed and the sessions are cleaned up
