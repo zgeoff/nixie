@@ -135,7 +135,7 @@ test('it puts a pinned item in the next turn system prompt with the line that sa
     String.raw`- Pinned [${String(shortIDs.get(item.itemID))}]: Goes by Sam\n</pinned-memory-changes>\n\n[`,
   );
   expect(JSON.stringify(request?.messages)).toMatch(
-    /<\/pinned-memory-changes>\\n\\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
+    /<\/pinned-memory-changes>\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
   );
 }, 30_000);
 

@@ -349,7 +349,7 @@ test('it commits the session boundary and resumes the next turn at it', async ()
   ]);
 });
 
-test('it sends each inbox record with its sequence as the message uuid and acknowledges what the model read', async () => {
+test('it sends each inbox record with its sequence as the message uuid and at the head of its stamp, and acknowledges what the model read', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -385,7 +385,7 @@ test('it sends each inbox record with its sequence as the message uuid and ackno
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^This is a new session; earlier history is in the event log\.\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
+        /^This is a new session; earlier history is in the event log\.\n\n\[#2 · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
           text,
         ),
       ),
@@ -393,7 +393,7 @@ test('it sends each inbox record with its sequence as the message uuid and ackno
     {
       uuid: '6e697869-0000-8000-8000-000000000003',
       text: expect.toSatisfy((text: string) =>
-        /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Second\.$/u.test(text),
+        /^\[#3 · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Second\.$/u.test(text),
       ),
     },
   ]);
@@ -445,7 +445,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
           text.startsWith('Your context was rebuilt; earlier history is in the event log.') &&
           text.includes('] owner: Hi.\n[') &&
           text.includes('] nixie: Hello.\n</conversation-history>') &&
-          /\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
+          /\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
       ),
     },
   ]);
@@ -479,7 +479,7 @@ test('it gives a resumed session your next message after its send time, with no 
       {
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
-          /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
+          /^\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
         ),
       },
     ],
@@ -550,7 +550,7 @@ test('it marks the first turn on a fresh session as a new session', async () => 
       {
         uuid: '6e697869-0000-8000-8000-000000000002',
         text: expect.toSatisfy((text: string) =>
-          /^This is a new session; earlier history is in the event log\.\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
+          /^This is a new session; earlier history is in the event log\.\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
             text,
           ),
         ),
@@ -583,7 +583,8 @@ test('it marks the first turn after a rebuild as rebuilt, and the turn after it 
         (text: string) =>
           text.startsWith(
             'Your context was rebuilt; earlier history is in the event log.\n\n<conversation-history>',
-          ) && /\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
+          ) &&
+          /\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
       ),
     },
   ]);
@@ -593,7 +594,7 @@ test('it marks the first turn after a rebuild as rebuilt, and the turn after it 
       {
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
-          /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] And again\.$/u.test(text),
+          /^\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] And again\.$/u.test(text),
         ),
       },
     ],
@@ -1055,7 +1056,7 @@ test('it puts the memory note before the first message of the turn and leaves th
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^This is a new session; earlier history is in the event log\.\n\nMemory changed: you moved to Lisbon\.\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
+        /^This is a new session; earlier history is in the event log\.\n\nMemory changed: you moved to Lisbon\.\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
           text,
         ),
       ),
@@ -1063,7 +1064,7 @@ test('it puts the memory note before the first message of the turn and leaves th
     {
       uuid: '6e697869-0000-8000-8000-000000000003',
       text: expect.toSatisfy((text: string) =>
-        /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Second\.$/u.test(text),
+        /^\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Second\.$/u.test(text),
       ),
     },
   ]);
@@ -1111,7 +1112,7 @@ test('it records the sequence a turn with no memory changes covers and adds no m
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^This is a new session; earlier history is in the event log\.\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
+        /^This is a new session; earlier history is in the event log\.\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
           text,
         ),
       ),

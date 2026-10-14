@@ -34,9 +34,15 @@ read on one clock. A reply carries no zone, so it takes the zone of the newest m
 that is not still waiting in the inbox, or the default zone when none comes before it.
 
 The stamp ends with the label of the device session the message came from, such as
-`[Tue 14 Oct, 14:05, Sydney · phone]`, so the model can fit its reply to the screen the user reads
-it on. [The API](../channels/api.md#device-sessions) covers where the label comes from. A message
-whose label was forgotten with its text, or one that holds no label, shows the time alone.
+`[#48213 · Tue 14 Oct, 14:05, Sydney · phone]`, so the model can fit its reply to the screen the
+user reads it on. [The API](../channels/api.md#device-sessions) covers where the label comes from. A
+message whose label was forgotten with its text, or one that holds no label, shows the time alone.
+
+The stamp leads with the record's event ID, its sequence in the [event log](../core/event-log.md),
+so the model can cite any message it reads, such as in a memory write's quote, without a log read.
+Every stamp in the inbox and in a rebuilt session's history leads with the ID, a reply's line in
+that history included. A reply in the live session has no ID to show, because its record exists only
+after the model wrote it.
 
 A fired timer and an action's outcome start a conversation turn as well, so each opens with the time
 its record was written, in the same format. Neither carries a zone, so both read in the default

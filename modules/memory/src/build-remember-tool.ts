@@ -42,8 +42,8 @@ export function buildRememberTool(
 
 const rememberDescription =
   'Stores one fact as a new memory item. To change an item that exists, use memory.edit. Pass ' +
-  "quote: the exact words from one of the owner's own recent messages that state the fact. For " +
-  "words from an older message that log.read returned, also pass that entry's eventID. The " +
+  "quote: the exact words from one of the owner's own messages that state the fact, and that " +
+  "message's eventID: the number after # in its stamp, or a log.read entry's eventID. The " +
   'write applies at once only when those typed words back it; otherwise it waits for the ' +
   "owner's review as a proposal, and the result says why. When a pending proposal already " +
   'holds the same text, the result says merged: the owner reviews one proposal with both ' +
@@ -56,8 +56,9 @@ const rememberInput = {
     quote: { type: 'string', minLength: 1, maxLength: 2000 },
     eventID: {
       type: 'string',
-      pattern: '^[1-9][0-9]{0,14}$',
-      description: 'the eventID of the log.read entry the quote comes from',
+      pattern: '^#?[1-9][0-9]{0,14}$',
+      description:
+        'the eventID of the message the quote comes from, as its stamp or log.read shows it',
     },
     pin: { type: 'boolean' },
   },
@@ -72,7 +73,7 @@ function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememb
     text: input.text,
     caller: buildWriteCaller(context),
     ...(input.quote === undefined ? {} : { quote: input.quote }),
-    ...(input.eventID === undefined ? {} : { eventID: Number(input.eventID) }),
+    ...(input.eventID === undefined ? {} : { eventID: Number(input.eventID.replace(/^#/u, '')) }),
     ...(input.pin === undefined ? {} : { isPinned: input.pin }),
   };
 }

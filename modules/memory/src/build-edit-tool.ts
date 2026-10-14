@@ -48,7 +48,9 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
             target: { itemID, version: input.version },
             caller: buildWriteCaller(context),
             ...(input.quote === undefined ? {} : { quote: input.quote }),
-            ...(input.eventID === undefined ? {} : { eventID: Number(input.eventID) }),
+            ...(input.eventID === undefined
+              ? {}
+              : { eventID: Number(input.eventID.replace(/^#/u, '')) }),
           }),
         itemID,
       );
@@ -59,9 +61,9 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
 const editDescription =
   'Rewrites an existing memory item as a new version, by its itemID and the version you read ' +
   'with memory.recall. The new text replaces the whole item, and the old version stays in ' +
-  "the item's history. Pass quote: the exact words from one of the owner's own recent " +
-  'messages that state the new text. For words from an older message that log.read returned, ' +
-  "also pass that entry's eventID. The edit applies at once only when those typed words back " +
+  "the item's history. Pass quote: the exact words from one of the owner's own messages that " +
+  "state the new text, and that message's eventID: the number after # in its stamp, or a " +
+  "log.read entry's eventID. The edit applies at once only when those typed words back " +
   "it; otherwise it waits for the owner's review as a proposal, and the result says why.";
 
 const editInput = {
@@ -73,8 +75,9 @@ const editInput = {
     quote: { type: 'string', minLength: 1, maxLength: 2000 },
     eventID: {
       type: 'string',
-      pattern: '^[1-9][0-9]{0,14}$',
-      description: 'the eventID of the log.read entry the quote comes from',
+      pattern: '^#?[1-9][0-9]{0,14}$',
+      description:
+        'the eventID of the message the quote comes from, as its stamp or log.read shows it',
     },
   },
   required: ['itemID', 'version', 'text'],
