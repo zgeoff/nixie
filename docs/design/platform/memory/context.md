@@ -32,8 +32,11 @@ settings that switch the SDK's own memory off on every query.
 
 The pinned core is built for the conversation, and
 [memory in context](../../../architecture/memory/context.md#the-pinned-core) covers its rendering,
-its budget and the change note. The [pinned core spike](../spikes/sdk-pinned-core/README.md) is the
-evidence for rendering it with the SDK's snapshot off.
+its budget and the change note. The [pinned core spike](../spikes/sdk-pinned-core/README.md) found
+that a resumed session keeps its first system prompt unless the SDK's snapshot is off. The pinned
+core therefore lives in each session's opening, which
+[session opening and compaction](../core/session-opening.md) sets, and the change note carries an
+edit to a running session.
 
 ## Retrieval
 
