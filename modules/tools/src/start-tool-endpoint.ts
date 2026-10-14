@@ -68,13 +68,17 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
 
   const token = randomBytes(32).toString('base64url');
   const state = { isRevoked: false };
-  const handler = createMcpHandler(() => buildRunServer(spec.run, spec.options));
+
+  // each token's own MCP handler, the run's token and every step token, so a call's run carries
+  // the identity of the step whose token it arrived with
+  const handlers = new Map<string, McpHandler>([
+    [token, createMcpHandler(() => buildRunServer(spec.run, spec.options))],
+  ]);
   const server = Bun.serve({
     unix: spec.socketPath,
-    fetch: makeRunFetch({
-      isAuthorized: (authorization) => !state.isRevoked && isRunToken(authorization, token),
-      serve: (request) => handler.fetch(request),
-    }),
+    fetch: makeRunFetch((authorization) =>
+      state.isRevoked ? null : findTokenHandler(handlers, authorization),
+    ),
 
     // A listen stream stays open for the run, and a call can outlast any idle limit. Bun applies
     // its 10 s default to a Unix socket too, though bun-types leaves the option off.
@@ -86,32 +90,72 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
     token,
     socketPath: spec.socketPath,
     target: { path: spec.socketPath },
+    startStep: makeStepStarter(spec, handlers),
     stop: async () => {
       if (state.isRevoked) {
         return;
       }
       state.isRevoked = true;
       spec.onStop();
-      await handler.close();
+
+      const stopped = [...handlers.values()];
+
+      handlers.clear();
+      await Promise.all(stopped.map((handler) => handler.close()));
       await server.stop(true);
       await rm(spec.socketPath, { force: true });
     },
   };
 }
 
-interface RunGate {
-  readonly isAuthorized: (authorization: string | null) => boolean;
+type McpHandler = ReturnType<typeof createMcpHandler>;
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
-  readonly serve: (request: Request) => Promise<Response>;
+// Each step token gets a handler of its own over the run with the step's run ID, and stopping the
+// step revokes the token and closes the streams opened with it.
+function makeStepStarter(
+  spec: RunEndpointSpec,
+  handlers: Map<string, McpHandler>,
+): RunEndpoint['startStep'] {
+  return (stepRunID) => {
+    const token = randomBytes(32).toString('base64url');
+    const stepRun: ToolRun = { ...spec.run, stepRunID };
+    const handler = createMcpHandler(() => buildRunServer(stepRun, spec.options));
+
+    handlers.set(token, handler);
+    return {
+      token,
+      stop: async () => {
+        if (handlers.delete(token)) {
+          await handler.close();
+        }
+      },
+    };
+  };
+}
+
+// the handler of the token the request presents, or null when it presents none of the run's tokens
+function findTokenHandler(
+  handlers: ReadonlyMap<string, McpHandler>,
+  authorization: string | null,
+): McpHandler | null {
+  for (const [token, handler] of handlers) {
+    if (isRunToken(authorization, token)) {
+      return handler;
+    }
+  }
+  return null;
 }
 
 // The MCP handler's response goes back unread, so each chunk of a stream reaches the guest as the
 // server writes it: the CLI waits for the listen stream's acknowledgement before it lists tools.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
-function makeRunFetch(gate: RunGate): (request: Request) => Promise<Response> {
+function makeRunFetch(
+  findHandler: (authorization: string | null) => McpHandler | null,
+): (request: Request) => Promise<Response> {
   return (request) => {
-    if (!gate.isAuthorized(request.headers.get('authorization'))) {
+    const handler = findHandler(request.headers.get('authorization'));
+
+    if (handler === null) {
       return Promise.resolve(
         new Response('unauthorized', { status: 401, headers: { 'www-authenticate': 'Bearer' } }),
       );
@@ -119,7 +163,7 @@ function makeRunFetch(gate: RunGate): (request: Request) => Promise<Response> {
     if (new URL(request.url).pathname !== '/mcp') {
       return Promise.resolve(new Response('not found', { status: 404 }));
     }
-    return gate.serve(request);
+    return handler.fetch(request);
   };
 }
 

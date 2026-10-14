@@ -205,6 +205,115 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
   expect(response.status).toBe(401);
 });
 
+test('it hands each call the run identity of the step whose token the call carries', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
+  const endpoint = await ctx.endpoint.startRun({
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+  const step = endpoint.startStep('task-1:3@2');
+  const client = await startRunClient(endpoint, step.token);
+
+  await client.callTool({ name: 'notes_read', arguments: { query: 'milk' } });
+
+  expect(run).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+    run: {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+      stepRunID: 'task-1:3@2',
+    },
+  });
+});
+
+test('it hands a call under the run token no step run identity', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
+  const endpoint = await ctx.endpoint.startRun({
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  endpoint.startStep('task-1:3@2');
+  const client = await startRunClient(endpoint);
+
+  await client.callTool({ name: 'notes_read', arguments: { query: 'milk' } });
+
+  expect(run).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+    run: {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+  });
+});
+
+test('it refuses a step token once its step stops', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+  const endpoint = await ctx.endpoint.startRun({
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+  const step = endpoint.startStep('task-1:3@2');
+
+  await step.stop();
+
+  const response = await Bun.fetch('http://localhost/mcp', {
+    method: 'POST',
+    unix: endpoint.socketPath,
+    headers: { authorization: `Bearer ${step.token}`, 'content-type': 'application/json' },
+    body: '{}',
+  });
+
+  expect(response.status).toBe(401);
+});
+
+test('it keeps the run token when a step stops', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+  const endpoint = await ctx.endpoint.startRun({
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+  const step = endpoint.startStep('task-1:3@2');
+
+  await step.stop();
+
+  const client = await startRunClient(endpoint);
+  const listed = await client.listTools();
+
+  expect(listed).toMatchObject({ tools: [{ name: 'notes_read' }] });
+});
+
+test("it keeps another step's token when one step stops", async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+  const endpoint = await ctx.endpoint.startRun({
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+  const stopped = endpoint.startStep('task-1:3@2');
+  const running = endpoint.startStep('task-1:3@3');
+
+  await stopped.stop();
+
+  const client = await startRunClient(endpoint, running.token);
+  const listed = await client.listTools();
+
+  expect(listed).toMatchObject({ tools: [{ name: 'notes_read' }] });
+});
+
 test('it stops listening on the run socket when the run ends', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
   const run = await ctx.endpoint.startRun({

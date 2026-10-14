@@ -1,3 +1,4 @@
+export { buildStepRunID } from './build-step-run-id';
 export type { ClaimRequest } from './claim-lease';
 export { claimLease } from './claim-lease';
 export type { ClaimTaskOptions } from './claim-task';

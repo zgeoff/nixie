@@ -6,7 +6,7 @@ import type { ActionsTables } from '@heynixie/actions';
 import { actionsProjection, claimAction, runActionAttempt } from '@heynixie/actions';
 import { logProjections, startWriter } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
-import { tasksProjections } from '@heynixie/tasks';
+import { buildStepRunID, tasksProjections } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
 import { buildActionQueue } from './build-action-queue';
 import { createTestStep } from './test-utils/create-test-step';
@@ -55,6 +55,7 @@ test('it queues a call that a step makes under that step and returns its action 
         thread: ctx.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
+        stepRunID: buildStepRunID(ctx.step),
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
@@ -90,6 +91,7 @@ test('it returns the action a step queued when its rerun makes the same call', a
         thread: ctx.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
+        stepRunID: buildStepRunID(ctx.step),
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
@@ -122,6 +124,7 @@ test('it refuses a call on a thread where no step runs', async () => {
         thread: ctx.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
+        stepRunID: buildStepRunID(ctx.step),
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
@@ -146,11 +149,73 @@ test('it forgets the step once it ends, so a later call queues nothing', async (
         thread: ctx.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
+        stepRunID: buildStepRunID(ctx.step),
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
     }),
   ).rejects.toThrow(`no step of ${ctx.taskID} runs, so its call queues nothing`);
+});
+
+test('it refuses a call from a step whose claim a takeover replaced, and queues nothing', async () => {
+  const ctx = await setupTest();
+  const queue = buildActionQueue(ctx.context);
+  const takeover = {
+    ...ctx.step,
+    lease: { ...ctx.step.lease, generation: ctx.step.lease.generation + 1 },
+  };
+  const step = queue.trackSteps(async () => {
+    await queue.queue.enqueue({
+      call: { callID: 'call-1', tool: 'test.send', input: { to: 'team' }, toolUseID: null },
+      run: {
+        runID: ctx.taskID,
+        thread: ctx.taskID,
+        tools: ['test.send'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+        stepRunID: buildStepRunID(ctx.step),
+      },
+      decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
+      callSequence: 1,
+    });
+
+    return { next: 'wait', records: [], acknowledged: [] };
+  });
+
+  expect(step(takeover)).rejects.toThrow(
+    `the call comes from no step that holds ${ctx.taskID}'s claim, so it queues nothing`,
+  );
+
+  const actions = await ctx.db.selectFrom('actions').select('action_id').execute();
+
+  expect(actions).toStrictEqual([]);
+});
+
+test('it refuses a call that carries no step run ID, and queues nothing', async () => {
+  const ctx = await setupTest();
+  const queue = buildActionQueue(ctx.context);
+  const step = queue.trackSteps(async () => {
+    await queue.queue.enqueue({
+      call: { callID: 'call-1', tool: 'test.send', input: { to: 'team' }, toolUseID: null },
+      run: {
+        runID: ctx.taskID,
+        thread: ctx.taskID,
+        tools: ['test.send'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
+      callSequence: 1,
+    });
+
+    return { next: 'wait', records: [], acknowledged: [] };
+  });
+
+  expect(step(ctx.step)).rejects.toThrow(
+    `the call comes from no step that holds ${ctx.taskID}'s claim, so it queues nothing`,
+  );
+
+  const actions = await ctx.db.selectFrom('actions').select('action_id').execute();
+
+  expect(actions).toStrictEqual([]);
 });
 
 test('it gives no outcome for an action still pending when the wait ends', async () => {
@@ -164,6 +229,7 @@ test('it gives no outcome for an action still pending when the wait ends', async
         thread: ctx.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
+        stepRunID: buildStepRunID(ctx.step),
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
@@ -207,6 +273,7 @@ test.each([
           thread: ctx.taskID,
           tools: ['test.send'],
           model: { model: 'model-a', profile: 'chat-direct' },
+          stepRunID: buildStepRunID(ctx.step),
         },
         decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
         callSequence: 1,

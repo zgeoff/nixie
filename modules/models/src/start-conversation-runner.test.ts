@@ -42,6 +42,7 @@ async function setupTest() {
     ...tasks,
     sandboxes,
     runs: tools.runs,
+    steps: tools.steps,
     startRunner: (config: RunnerConfig) =>
       startConversationRunner({
         context: tasks.context,
@@ -179,6 +180,29 @@ test('it sends the guest the profile context tokens with every turn', async () =
   await ctx.sendMessage(runner, 'Hi.');
 
   expect(ctx.sandboxes.turns.map((turn) => turn.profile.contextTokens)).toStrictEqual([400_000]);
+});
+
+test("it gives each turn a step token of the step's run identity, and stops it once the turn ends", async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+  await ctx.sendMessage(runner, 'Are you there?');
+
+  expect(ctx.sandboxes.turns.map((turn) => turn.tools.token)).toStrictEqual([
+    'step-token-1',
+    'step-token-2',
+  ]);
+  expect(ctx.steps).toStrictEqual([
+    { stepRunID: 'conversation:1@1', token: 'step-token-1', isStopped: true },
+    { stepRunID: 'conversation:2@2', token: 'step-token-2', isStopped: true },
+  ]);
 });
 
 test('it records the model and the profile on the turn end and on every tool call', async () => {

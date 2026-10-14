@@ -1,4 +1,5 @@
 import type { StepInput } from '@heynixie/tasks';
+import { buildStepRunID } from '@heynixie/tasks';
 import type { InboxMessage, SessionPoint, TurnProfile } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
@@ -33,6 +34,22 @@ export async function runLiveTurn(
   input: StepInput,
   plan: LiveTurnPlan,
 ): Promise<CompletedTurn> {
+  const stepToken = run.endpoint.startStep(buildStepRunID(input));
+
+  try {
+    return await runTokenTurn(run, input, { ...plan, token: stepToken.token });
+  } finally {
+    await stepToken.stop();
+  }
+}
+
+// the guest reaches its tools with the turn's own step token, so each call carries the step's run
+// identity
+async function runTokenTurn(
+  run: ConversationRun,
+  input: StepInput,
+  plan: LiveTurnPlan & { readonly token: string },
+): Promise<CompletedTurn> {
   plan.signal.throwIfAborted();
 
   const [url, note] = await Promise.all([getToolURL(run, plan.signal), readTurnNote(run)]);
@@ -48,7 +65,7 @@ export async function runLiveTurn(
       turn: {
         type: 'turn',
         profile: toTurnProfile(run.profile.profile),
-        tools: { url, token: run.endpoint.token },
+        tools: { url, token: plan.token },
         resume: plan.resume,
         systemPrompt: plan.systemPrompt,
         input: buildTurnInput(

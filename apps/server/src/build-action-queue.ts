@@ -1,6 +1,7 @@
 import type { ModelView } from '@heynixie/actions';
 import { createAllowedAction, waitForActionOutcome } from '@heynixie/actions';
 import type { RunStep, TaskClaim, TasksContext } from '@heynixie/tasks';
+import { buildStepRunID } from '@heynixie/tasks';
 import type { ActionOutcome, ActionQueue } from '@heynixie/tools';
 import { buildActionHash } from './build-action-hash';
 
@@ -12,9 +13,9 @@ export interface ActionQueueBridge {
   readonly trackSteps: (runStep: RunStep) => RunStep;
 }
 
-// Builds the action queue that the tool endpoint hands each allowed queued call to. The call
-// queues under the claim of the step that runs on the call's thread, with an action hash built
-// from its tool and its arguments, so a rerun of a crashed step matches the action it queued.
+// Builds the action queue that the tool endpoint hands each allowed queued call to. A call from the
+// step that holds its thread's claim queues under that claim, with an action hash of its tool and
+// arguments, so a rerun of a crashed step matches the action it queued; any other call queues nothing.
 export function buildActionQueue(context: TasksContext): ActionQueueBridge {
   const steps = new Map<string, TaskClaim>();
 
@@ -25,6 +26,11 @@ export function buildActionQueue(context: TasksContext): ActionQueueBridge {
 
         if (step === undefined) {
           throw new Error(`no step of ${action.run.thread} runs, so its call queues nothing`);
+        }
+        if (action.run.stepRunID !== buildStepRunID(step)) {
+          throw new Error(
+            `the call comes from no step that holds ${action.run.thread}'s claim, so it queues nothing`,
+          );
         }
         const queued = await createAllowedAction(context, {
           step,

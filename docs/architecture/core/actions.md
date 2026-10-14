@@ -32,9 +32,12 @@ The queue takes only a call that the [decision point](../policy/decision-point.m
 the claim of the step that made it. The decision point's read-only rule denies every call with an
 outside effect in a release build, so the only allowed call that reaches the queue is the crash
 tests' send tool, in a test build. The queue's transaction checks that step's lease first, so a
-runner that lost its lease queues nothing. Each action gets a random ID, which is both its queue key
-and the idempotency key the connector sends to the provider. The call's arguments sit in the
-record's erasable fields, and the decision sits on its envelope.
+runner that lost its lease queues nothing. A guest can outlive its step's lease, so the queue also
+refuses a call whose step run identity is not the task's current claim. Without that check, a call
+from the guest of a step that lost its lease would queue under the claim of the runner that took the
+task over and pass its lease check. Each action gets a random ID, which is both its queue key and
+the idempotency key the connector sends to the provider. The call's arguments sit in the record's
+erasable fields, and the decision sits on its envelope.
 
 A step that crashed is run again from its start, and the rerun makes the same tool calls. Each call
 arrives with an action hash that its caller builds from the call, and the queue compares calls by
