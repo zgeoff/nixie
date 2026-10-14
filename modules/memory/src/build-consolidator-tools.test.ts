@@ -83,6 +83,39 @@ test('it returns each recalled item by the short ID the model reads', async () =
   });
 });
 
+test('it returns the quote each recalled item was saved from, and no quote for an item without one', async () => {
+  const ctx = await setupTest();
+  const hens = await createMemoryItem(ctx.memory.store, {
+    text: 'Owns three chickens that live in the garden',
+    quote: 'we have three hens and honestly they rule the garden',
+  });
+  const coop = await createMemoryItem(ctx.memory.store, { text: 'Built a coop in the garden' });
+  const shortIDs = await ctx.memory.store.readShortIDs([hens.itemID, coop.itemID]);
+  const recall = ctx.registry.findTool('memory.recall');
+
+  invariant(recall);
+  ctx.staging.open(new Map(), 30);
+
+  const recalled = await recall.definition.run(
+    { callID: 'call-1', tool: 'memory.recall', input: { query: 'garden' }, toolUseID: null },
+    buildMockToolContext({ thread: 'memory-consolidator' }),
+  );
+
+  expect(recalled).toStrictEqual({
+    status: 'ok',
+    result: {
+      items: expect.toIncludeSameMembers([
+        {
+          itemID: shortIDs.get(hens.itemID),
+          text: 'Owns three chickens that live in the garden',
+          quote: 'we have three hens and honestly they rule the garden',
+        },
+        { itemID: shortIDs.get(coop.itemID), text: 'Built a coop in the garden' },
+      ]),
+    },
+  });
+});
+
 test('it stages the diff and returns how many changes it holds', async () => {
   const ctx = await setupTest();
   const consolidate = ctx.registry.findTool('memory.consolidate');
@@ -145,4 +178,30 @@ test('it returns a refused diff to the model as an error', async () => {
     status: 'error',
     message: 'change 1: item item-7 is not one you were shown; find it with memory.recall first',
   });
+});
+
+test('it keeps the summary the session gives with its diff, for the owner', async () => {
+  const ctx = await setupTest();
+  const consolidate = ctx.registry.findTool('memory.consolidate');
+
+  invariant(consolidate);
+
+  const run = ctx.staging.open(new Map(), 30);
+
+  await consolidate.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.consolidate',
+      input: {
+        changes: [],
+        summary: 'Two items conflict on coffee: one says oat milk, the other black with no milk.',
+      },
+      toolUseID: null,
+    },
+    buildMockToolContext({ thread: 'memory-consolidator' }),
+  );
+
+  expect(run.readSummary()).toBe(
+    'Two items conflict on coffee: one says oat milk, the other black with no milk.',
+  );
 });

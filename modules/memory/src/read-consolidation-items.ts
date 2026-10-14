@@ -14,7 +14,7 @@ export interface ConsolidationItems {
 }
 
 // Reads the active items the consolidator sees, a page at a time in the order they were created,
-// until their text passes the list budget. Every read goes through recall, which records what it
+// until their text and quotes pass the list budget. Every read goes through recall, which records what it
 // delivered, and no read touches the conversation.
 export async function readConsolidationItems(
   store: Pick<MemoryStore, 'recall'>,
@@ -42,7 +42,7 @@ function buildPageRequest(thread: string, after: string | null): RecallRequest {
   return { limit: pageSize, thread, ...(after === null ? {} : { after }) };
 }
 
-// the leading items of a page whose text fits the tokens left, and the tokens they take
+// the leading items of a page whose text and quote fit the tokens left, and the tokens they take
 function collectFittingItems(
   items: readonly RecalledItem[],
   budget: number,
@@ -51,7 +51,8 @@ function collectFittingItems(
   let tokens = 0;
 
   for (const item of items) {
-    const itemTokens = countBatchTokens(item.text) + itemOverheadTokens;
+    const itemTokens =
+      countBatchTokens(item.text) + countBatchTokens(item.evidenceQuote ?? '') + itemOverheadTokens;
 
     if (tokens + itemTokens > budget) {
       break;
@@ -64,5 +65,5 @@ function collectFittingItems(
 
 const pageSize = 100;
 
-// the list line's ID, date, flags and punctuation around each item's text
+// the list line's ID, date, flags and punctuation around each item's text and quote
 const itemOverheadTokens = 24;

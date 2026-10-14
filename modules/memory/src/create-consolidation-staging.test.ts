@@ -509,3 +509,16 @@ test('it refuses a rewrite that keeps the current text', () => {
     reason: 'change 1: the new text is the same as the current text',
   });
 });
+
+test('it keeps no summary when the session gives none or only spaces', () => {
+  const staging = createConsolidationStaging();
+  const silent = staging.open(new Map(), 30);
+
+  staging.stage([]);
+
+  const blank = staging.open(new Map(), 30);
+
+  staging.stage([], '   ');
+
+  expect([silent.readSummary(), blank.readSummary()]).toStrictEqual([null, null]);
+});

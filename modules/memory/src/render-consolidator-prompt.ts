@@ -8,8 +8,8 @@ export interface ConsolidatorPromptInput {
 }
 
 // Renders the items the consolidator reads: each active item with its short ID, the date of its current
-// version and whether it is pinned, oldest first. Each text keeps to its one line, because outside
-// content can reach an item's text.
+// version and whether it is pinned, oldest first, and under it the quote the version was saved from,
+// when it has one. Each text and quote keeps to its one line, because outside content can reach them.
 export function renderConsolidatorPrompt(input: ConsolidatorPromptInput): string {
   const heading = input.isComplete
     ? 'Current memory items (the complete list):'
@@ -20,11 +20,19 @@ export function renderConsolidatorPrompt(input: ConsolidatorPromptInput): string
       : input.items
           .map(
             (item) =>
-              `- ${item.shortID} (${formatDate(item.recordedAt)}${item.isPinned ? ', pinned' : ''}): ${item.text.replaceAll(/\s+/gu, ' ')}`,
+              `- ${item.shortID} (${formatDate(item.recordedAt)}${item.isPinned ? ', pinned' : ''}): ${formatLine(item.text)}${formatQuote(item.evidenceQuote)}`,
           )
           .join('\n');
 
   return `${heading}\n${items}`;
+}
+
+function formatLine(text: string): string {
+  return text.replaceAll(/\s+/gu, ' ');
+}
+
+function formatQuote(quote: string | null): string {
+  return quote === null ? '' : `\n  quote: ${formatLine(quote)}`;
 }
 
 function formatDate(at: number): string {

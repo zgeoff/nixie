@@ -53,3 +53,29 @@ test('it stops at the item that passes the budget and says the list is not compl
   expect(listed.isComplete).toBe(false);
   expect(listed.items.map((item) => item.itemID)).toStrictEqual([bees.itemID]);
 });
+
+test('it counts each item quote against the budget', async () => {
+  const ctx = await setupTest();
+  const owner = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const bees = await ctx.memory.store.remember({ text: 'Keeps bees', provenance: owner });
+
+  await ctx.memory.store.remember({
+    text: 'Sings in a choir',
+    evidenceQuote: 'I sing tenor in the Tuesday night choir!!',
+    provenance: owner,
+  });
+
+  const listed = await readConsolidationItems(ctx.memory.store, {
+    listTokens: 60,
+    thread: 'memory-consolidator',
+  });
+
+  expect(listed.isComplete).toBe(false);
+  expect(listed.items.map((item) => item.itemID)).toStrictEqual([bees.itemID]);
+});

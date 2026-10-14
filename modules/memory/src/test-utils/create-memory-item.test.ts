@@ -34,3 +34,16 @@ test('it writes an item with the origin and source the request gives', async () 
 
   expect(recalled.items).toMatchObject([{ origin: 'task', source: 'untrusted' }]);
 });
+
+test('it writes an item with the quote the request gives', async () => {
+  const ctx = await setupTest();
+
+  const item = await createMemoryItem(ctx.memory.store, {
+    text: 'Keeps bees',
+    quote: 'the bees are back on the roof',
+  });
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toMatchObject([{ evidenceQuote: 'the bees are back on the roof' }]);
+});
