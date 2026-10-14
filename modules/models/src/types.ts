@@ -206,8 +206,7 @@ export interface TurnNote {
   readonly eventCount: number;
 }
 
-// How a new session starts: the first session, or a rebuild in place of a session the guest lost
-// or a forget invalidated, with the ID of the session it replaced when the step knew one.
+// How a new session starts: the first session, or a rebuild in place of a lost or invalidated one.
 export type SessionStart =
   | { readonly kind: 'first' }
   | {
