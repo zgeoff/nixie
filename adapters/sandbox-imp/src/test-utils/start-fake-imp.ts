@@ -26,6 +26,9 @@ interface FakeState {
   failCreate: boolean;
   failRemove: boolean;
   failExitOnStop: boolean;
+
+  // refuse every image add, as impd refuses a token limited to some imps that may add no image
+  refuseImageAdd: boolean;
 }
 
 interface FakeImp extends FakeState {
@@ -52,6 +55,7 @@ export async function startFakeImp(): Promise<FakeImp> {
     failCreate: false,
     failRemove: false,
     failExitOnStop: false,
+    refuseImageAdd: false,
   };
 
   return Object.assign(state, { port: buildFakePort(state, stack) });
@@ -244,6 +248,9 @@ function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): Fa
       ),
     addImage: async (image) => {
       await updateCallLog(`image ${image.name} ${image.ref}`);
+      if (state.refuseImageAdd) {
+        throw new Error('token nixie-test is limited to some imps; this call is host-wide');
+      }
       state.images.set(image.name, { digest: image.digest, ref: image.ref });
     },
   };

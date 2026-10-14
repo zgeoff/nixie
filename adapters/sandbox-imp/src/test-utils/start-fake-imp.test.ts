@@ -195,6 +195,24 @@ test('it kills each exec process group and closes each forward when the test fin
   expect(pid).toBeGreaterThan(0);
 });
 
+test('it logs an image add, then refuses it as impd does a scoped token, when told to', async () => {
+  const imp = await startFakeImp();
+
+  imp.refuseImageAdd = true;
+
+  expect(
+    imp.port.addImage({
+      name: 'nixie-fetch',
+      digest: `sha256:${'a'.repeat(64)}`,
+      ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+    }),
+  ).rejects.toThrowWithMessage(Error, /is limited to some imps; this call is host-wide$/u);
+  expect(imp.calls).toStrictEqual([
+    `image nixie-fetch ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+  ]);
+  expect(imp.images.size).toBe(0);
+});
+
 test('it lists each image it holds with its digest and reference', async () => {
   const imp = await startFakeImp();
 
