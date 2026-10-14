@@ -92,6 +92,62 @@ test.each([
   expect(buildActivity([started, end])).toMatchObject([{ kind: 'step', status }]);
 });
 
+test('it closes a step that started before the page at its end record, with its status', () => {
+  const called = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 41,
+    toolCall: { callID: 'call-1', tool: 'web_fetch' },
+  });
+  const result = buildMockLogRecord({
+    kind: 'tool_result',
+    sequence: 42,
+    toolCall: { callID: 'call-1', outcome: 'error' },
+  });
+  const errored = buildMockLogRecord({
+    kind: 'task.step_errored',
+    sequence: 43,
+    task: { error: 'the fetch timed out', stepKey: 'conversation:2', taskID: 'conversation' },
+  });
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 44 });
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 45 });
+
+  expect(buildActivity([called, result, errored, started, committed])).toStrictEqual([
+    {
+      calls: [{ callID: 'call-1', outcome: 'error', tool: 'web_fetch' }],
+      error: 'the fetch timed out',
+      key: 41,
+      kind: 'step',
+      records: [called, result, errored],
+      status: 'failed',
+      stepKey: 'conversation:2',
+      taskID: 'conversation',
+    },
+    {
+      calls: [],
+      durationMs: expect.toBeNumber(),
+      key: 44,
+      kind: 'step',
+      records: [started, committed],
+      status: 'done',
+    },
+  ]);
+});
+
+test.each([
+  ['task.step_committed', 'done'],
+  ['task.step_errored', 'failed'],
+  ['task.step_interrupted', 'interrupted'],
+])('it marks a step that started before the page and ends with %s as %s', (kind, status) => {
+  const called = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 1,
+    toolCall: { callID: 'call-1', tool: 'web_fetch' },
+  });
+  const end = buildMockLogRecord({ kind, sequence: 2 });
+
+  expect(buildActivity([called, end])).toMatchObject([{ records: [called, end], status }]);
+});
+
 test('it carries the error of a failed step', () => {
   const started = buildMockLogRecord({
     kind: 'task.step_started',

@@ -139,6 +139,12 @@ interface ActivityState {
   pending: LiveRecord[];
 }
 
+const stepEnds: Readonly<Record<string, StepStatus>> = {
+  'task.step_committed': 'done',
+  'task.step_errored': 'failed',
+  'task.step_interrupted': 'interrupted',
+};
+
 // Adds one record to the groups: a message stands alone, and any other record joins the open step.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fold updates its own state
 function applyRecord(state: ActivityState, record: LiveRecord): void {
@@ -149,7 +155,7 @@ function applyRecord(state: ActivityState, record: LiveRecord): void {
     state.pending = [];
     state.items.push(state.open);
   } else if (state.open === null) {
-    state.pending.push(record);
+    applyRecordOutsideStep(state, record);
   } else {
     const index = state.items.indexOf(state.open);
     const step = buildStep(
@@ -163,11 +169,19 @@ function applyRecord(state: ActivityState, record: LiveRecord): void {
   }
 }
 
-const stepEnds: Readonly<Record<string, StepStatus>> = {
-  'task.step_committed': 'done',
-  'task.step_errored': 'failed',
-  'task.step_interrupted': 'interrupted',
-};
+// With no step open, a record waits for the next step. A page can start partway through a step, so
+// a step's end closes the waiting records as that step, with the status the end records.
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fold updates its own state
+function applyRecordOutsideStep(state: ActivityState, record: LiveRecord): void {
+  const endStatus = stepEnds[record.kind];
+
+  if (endStatus === undefined) {
+    state.pending.push(record);
+  } else {
+    state.items.push(buildStep([...state.pending, record], endStatus, state.ratings));
+    state.pending = [];
+  }
+}
 
 function pickStatus(record: LiveRecord, step: StepActivity): StepStatus {
   return stepEnds[record.kind] ?? step.status;

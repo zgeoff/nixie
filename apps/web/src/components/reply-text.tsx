@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react';
+import { createContext, use } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { css } from '../styled-system/css';
@@ -20,6 +21,9 @@ export function ReplyText(props: ReplyTextProps): ReactNode {
   );
 }
 
+// whether an element renders inside a link's anchor, where another anchor would break the outer one
+const InsideLink = createContext(false);
+
 // The renderer blanks a URL whose protocol it does not allow, such as javascript:. A link inside
 // the reply, such as a footnote and its way back, keeps the page and the anchor IDs it jumps
 // between.
@@ -38,14 +42,14 @@ function ReplyLink(props: ComponentProps<'a'>): ReactNode {
         href={props.href}
         id={props.id}
       >
-        {props.children}
+        <InsideLink value>{props.children}</InsideLink>
       </a>
     );
   }
 
   return (
     <a href={props.href} id={props.id} rel="noopener noreferrer" target="_blank">
-      {props.children}
+      <InsideLink value>{props.children}</InsideLink>
     </a>
   );
 }
@@ -58,10 +62,15 @@ function readDataProp(props: object, name: string): unknown {
   return value;
 }
 
-// An image would load from wherever the reply points, so it shows as a link to the image.
+// An image would load from wherever the reply points, so it shows as a link to the image. Inside
+// a link it shows as the link's label alone, since an anchor in an anchor breaks the outer one.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the renderer passes the element's own props
 function ReplyImage(props: ComponentProps<'img'>): ReactNode {
   const label = `image: ${props.alt ?? 'untitled'}`;
+
+  if (use(InsideLink)) {
+    return label;
+  }
 
   return (
     <ReplyLink href={typeof props.src === 'string' ? props.src : undefined}>{label}</ReplyLink>

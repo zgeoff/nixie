@@ -109,12 +109,14 @@ beside the records.
 
 Each message stands on its own line, and every other record folds into the step it belongs to, from
 the step's start to its end. A record before a step, such as the task's creation, folds into the
-step that follows it. A step shows as one collapsed line of short facts: its task, how many memories
-its recalls delivered with how many of them the model rated as noise, each tool it called with its
-targets, such as the host of each page a web fetch read, how full the context stood at its last
-model call against the auto-compact window, and how long it ran. A fact shows only once its record
-exists. Each compaction in the step adds a marker under that line with the context's tokens before
-and after, so the user can compare the turns on each side of it. Opening the step shows one
+step that follows it. A page holds only the thread's newest records, so it can start partway through
+a step: a step's end with no start before it closes the records before it as one step, with the
+status its end records. A step shows as one collapsed line of short facts: its task, how many
+memories its recalls delivered with how many of them the model rated as noise, each tool it called
+with its targets, such as the host of each page a web fetch read, how full the context stood at its
+last model call against the auto-compact window, and how long it ran. A fact shows only once its
+record exists. Each compaction in the step adds a marker under that line with the context's tokens
+before and after, so the user can compare the turns on each side of it. Opening the step shows one
 collapsible section per source: the step with its records, the memories with each one's match score,
 the first line of its text and the model's rating with its note, the context with each compaction,
 each call with its input and its result, and a failed step's error. Each section opens on its own. A
@@ -129,8 +131,9 @@ find the control.
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol
 such as `javascript:` as plain text, and shows an image as a link to it, because a loaded image
-would tell the page's host that the user read the reply. Every link to another page opens in a new
-tab with no opener and no referrer, and a footnote link jumps within the reply.
+would tell the page's host that the user read the reply. An image inside a link shows as that link's
+label, because an anchor inside another anchor breaks the outer link. Every link to another page
+opens in a new tab with no opener and no referrer, and a footnote link jumps within the reply.
 
 The view fills the window, and the message box stays in view below the list. The list opens at its
 end. When a record or a message arrives, the view moves to the end if the user was at or near it
