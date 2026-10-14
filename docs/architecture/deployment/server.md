@@ -60,9 +60,7 @@ writes, recovery included. Recovery runs under the new writer epoch and before a
 it sees every lease the last process left and settles each one
 ([crash recovery](../core/leases-and-recovery.md#crash-recovery)). Its sandbox cleanup destroys
 every sandbox whose owner no longer runs, and keeps the conversation's sandbox, whose task never
-ends, and the memory checker's, which the deployment owns. Recovery ends with a record of the start,
-which holds nixie's version and the version of the start before it, so the conversation hears of the
-restart ([the events block](../core/conversation-turns.md#the-events-block)).
+ends, and the memory checker's, which the deployment owns.
 
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
 that creates a sandbox on an image impd lacks would fail. The server sends no add for an image that
@@ -98,17 +96,20 @@ reason, never an error's message, because a message can quote what the part was 
 Liveness holds when the process answers and the database answers a query. Readiness lists the parts
 this build holds:
 
-| Part             | Ready when                                                  |
-| ---------------- | ----------------------------------------------------------- |
-| database         | Migrations finished and the integrity check at start passed |
-| definitions      | The last seed applied, with no refused snapshot pending     |
-| imp host         | impd answers, and every image in the manifest is added      |
-| conversation imp | Its sandbox started, and its turns are not failing          |
-| disk             | The data volume is under the fill limit                     |
+| Part             | Ready when                                                              |
+| ---------------- | ----------------------------------------------------------------------- |
+| database         | Migrations finished and the integrity check at start passed             |
+| definitions      | The last seed applied, with no refused snapshot pending                 |
+| imp host         | impd answers, and every image in the manifest is added                  |
+| conversation imp | Its sandbox started, the runners started, and its turns are not failing |
+| disk             | The data volume is under the fill limit                                 |
 
 The imp host and disk checks run on each request, and the rest read state that the start sequence
-and the runners keep. Each check runs under a timeout, so a part that hangs reports unready instead
-of holding the endpoint. The image's health check calls the same endpoint from inside the container.
+and the runners keep. The conversation imp stays unready until the runners start, so a start step
+that keeps failing after the conversation imp starts, such as writing the start record, leaves nixie
+unready instead of ready with no runner claiming work. Each check runs under a timeout, so a part
+that hangs reports unready instead of holding the endpoint. The image's health check calls the same
+endpoint from inside the container.
 
 ## Logs
 

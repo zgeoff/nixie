@@ -25,6 +25,7 @@ export async function startWork(parts: ServerParts, runStep: RunStep): Promise<v
   await createConversationTask(parts.context);
   parts.cleanup.signal.throwIfAborted();
   await startRunners(parts, runStep);
+  parts.state.update({ areRunnersStarted: true });
   await startSeedPoll(parts);
   await printFirstEnrolmentCode(parts);
   parts.log('ready');

@@ -13,6 +13,9 @@ interface StartReports {
 
   // the conversation's sandbox stands, and its last turn did not fail
   readonly conversation: PartReport;
+
+  // the runners claim work, which every start step before them holds back
+  readonly areRunnersStarted: boolean;
 }
 
 export interface StartState {
@@ -28,6 +31,7 @@ export function buildStartState(database: PartReport): StartState {
       definitions: { isReady: false, reason: 'no seed has applied yet' },
       areImagesAdded: false,
       conversation: { isReady: false, reason: 'the conversation imp has not started' },
+      areRunnersStarted: false,
     },
   };
 
