@@ -130,3 +130,17 @@ test("it reads the calling run's own thread", async () => {
     record: { eventIDs: [], next: null },
   });
 });
+
+test('it refuses a date range with a month that does not exist', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: { from: '2026-13-01' }, toolUseID: null },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'from and to must be real UTC dates or times',
+  });
+});

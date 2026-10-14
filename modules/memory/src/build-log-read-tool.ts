@@ -84,11 +84,16 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
     recordInput: makeInputRecorder(['query']),
     run: async (call, context) => {
       const input = logReadArguments.parse(call.input);
+      const range = { from: parseTime(input.from), to: parseTime(input.to) };
+
+      // the pattern passes a month or an hour that does not exist, such as 2026-13-01
+      if (Number.isNaN(range.from) || Number.isNaN(range.to)) {
+        return { status: 'error', message: 'from and to must be real UTC dates or times' };
+      }
       const page = await readLogPage(log, {
         thread: context.run.thread,
         after: input.after === undefined ? 0 : Number(input.after),
-        from: input.from === undefined ? null : Date.parse(input.from),
-        to: input.to === undefined ? null : Date.parse(input.to),
+        ...range,
         words: input.query === undefined ? [] : input.query.split(/\s+/u),
         limit: input.limit ?? defaultLimit,
       });
@@ -112,6 +117,11 @@ const logReadArguments = z.object({
   after: z.string().optional(),
   limit: z.int().optional(),
 });
+
+// a UTC date or time in epoch milliseconds, NaN for a date that does not exist, or null for none
+function parseTime(value: string | undefined): number | null {
+  return value === undefined ? null : Date.parse(value);
+}
 
 function toEntryJSON(entry: LogEntry): JSONObject {
   return {
