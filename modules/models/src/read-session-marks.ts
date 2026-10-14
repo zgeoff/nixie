@@ -16,6 +16,9 @@ export interface SessionMarks {
 
   // whether the SDK compacted the session during the last turn, which can drop the opening's core
   readonly isCompacted: boolean;
+
+  // whether any session opened with an opening record; one from before them lacks the pinned core
+  readonly hasOpening: boolean;
 }
 
 // Reads the last turn's pinned core, and whether a forget invalidated the session after that turn
@@ -25,10 +28,11 @@ export async function readSessionMarks(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
 ): Promise<SessionMarks> {
-  const [invalidated, compacted, lastTurns] = await Promise.all([
+  const [invalidated, compacted, lastTurns, opened] = await Promise.all([
     readNewest(context, { thread: taskID, kinds: ['model.session_invalidated'], limit: 1 }),
     readNewest(context, { thread: taskID, kinds: ['model.compacted'], limit: 1 }),
     readNewest(context, { thread: taskID, kinds: ['model.turn_ended'], limit: 2 }),
+    readNewest(context, { thread: taskID, kinds: ['model.session_opened'], limit: 1 }),
   ]);
   const [turn, turnBefore] = lastTurns;
   const invalidatedThrough = invalidated.at(0)?.sequence ?? 0;
@@ -40,6 +44,7 @@ export async function readSessionMarks(
 
     // a step commits its compactions before its turn's end
     isCompacted: (compacted.at(0)?.sequence ?? 0) > (turnBefore?.sequence ?? 0),
+    hasOpening: opened.length > 0,
   };
 }
 

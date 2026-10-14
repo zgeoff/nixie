@@ -633,6 +633,46 @@ test('it opens the first turn after a forget with a status that says so, and res
   });
 });
 
+test('it opens a session from before opening records again as a rebuild, because only its old system prompt held the core', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.writeMessage('Hi.');
+
+  // a step from before opening records committed its session with no opening record
+  await runNextStep(ctx.context, () =>
+    Promise.resolve({
+      next: 'wait',
+      records: [],
+      acknowledged: [],
+      sessionBoundary: JSON.stringify({
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
+      }),
+    }),
+  );
+  await ctx.sendMessage(runner, 'Hi again.');
+
+  const opened = await ctx.readKinds('model.session_opened');
+
+  expect(ctx.sandboxes.turns.map((turn) => turn.resume)).toStrictEqual([null]);
+  expect(opened).toMatchObject([
+    {
+      payload: {
+        kind: 'rebuild',
+        reason: 'lost',
+        lostSessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+      },
+    },
+  ]);
+});
+
 test('it sends the pinned memory again on the turn after the SDK compacted the session', async () => {
   const ctx = await setupTest();
 

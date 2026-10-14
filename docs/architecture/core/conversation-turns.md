@@ -115,7 +115,8 @@ cleanup invalidates the session
 turn-ended record keeps the newest session-invalidated record the turn saw before it ran. The step
 resumes no session when a newer invalidation exists, so a step that commits after an invalidation it
 never saw leaves the session invalid. When the guest instead reports the session lost, the step runs
-the turn again on a new session.
+the turn again on a new session. A session from before opening records holds the pinned core only in
+its old system prompt, so the step opens a new session in its place too.
 
 Every new session opens from one builder, with the pinned memory, the status, the newest summary and
 the recent turns before the turn's own blocks, and the step writes a session-opened record in the

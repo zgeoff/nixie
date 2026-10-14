@@ -17,7 +17,24 @@ test('it reads no earlier core and no invalidation before the first turn', async
     isInvalidated: false,
     invalidatedThrough: 0,
     isCompacted: false,
+    hasOpening: false,
   });
+});
+
+test('it reads that a session opened with an opening record', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.hasOpening).toBe(true);
 });
 
 test('it reads the session as compacted when the SDK compacted it during the last turn', async () => {

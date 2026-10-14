@@ -36,7 +36,8 @@ the opening's copy of the item, and the next session opens with the new core.
 
 The SDK's own compaction runs inside a turn and can summarize the first message away with the rest
 of the history. The turn after a compaction therefore sends the whole pinned core again, as a
-pinned-memory system message before its other blocks, so the model never loses a pinned item.
+pinned-memory system message before its other blocks. The model calls later in the turn that
+compacted read the summary without that copy, until the next turn sends it.
 
 ## One path for every start
 

@@ -38,13 +38,11 @@ async function runSessionTurn(
   const boundary = parseSessionBoundary(input.sessionBoundary);
   const step = { run, input, signal, marks };
 
-  if (!marks.isInvalidated && boundary !== null) {
+  if (!marks.isInvalidated && boundary !== null && marks.hasOpening) {
     return runResumedTurn(step, boundary);
   }
   const opened = await readSessionTurn(step, true);
-  const start: SessionStart = marks.isInvalidated
-    ? { kind: 'rebuild', reason: 'forget', lostSessionID: boundary?.sessionID ?? null }
-    : { kind: 'first' };
+  const start: SessionStart = pickSessionStart(marks.isInvalidated, boundary);
 
   return runOpenedTurn(opened, source, start);
 }
@@ -68,6 +66,17 @@ async function runResumedTurn(step: SessionStep, boundary: SessionPoint): Promis
     reason: 'lost',
     lostSessionID: boundary.sessionID,
   });
+}
+
+// A session from before opening records holds the pinned core only in an old system prompt, so it
+// opens again as a rebuild in place of a lost one.
+function pickSessionStart(isInvalidated: boolean, boundary: SessionPoint | null): SessionStart {
+  const lostSessionID = boundary?.sessionID ?? null;
+
+  if (isInvalidated) {
+    return { kind: 'rebuild', reason: 'forget', lostSessionID };
+  }
+  return boundary === null ? { kind: 'first' } : { kind: 'rebuild', reason: 'lost', lostSessionID };
 }
 
 interface SessionStep {
