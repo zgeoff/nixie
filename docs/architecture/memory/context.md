@@ -54,9 +54,10 @@ them, so an approved item keeps outside content as its source and still reads as
 - Who noted it: the conversation reads as the model itself, the memory writer as the note-taker, and
   a task as a task. A version the user saved names no one here, because what backs it names them.
 - What backs it: the user's typed words read as the user by name, said this. Outside content always
-  says so. A remember proposal held because its quote matched only words the user pasted, dropped or
-  quoted in reads as from a pasted page. Any other outside content reads as unconfirmed, because the
-  store keeps nothing that tells the model's own note from a web page it read.
+  says so. A remember proposal held because its quote sat in a quoted block of the user's message,
+  such as a forwarded email, reads as from a pasted page. Any other outside content reads as
+  unconfirmed, because the store keeps nothing that tells the model's own note from a web page it
+  read.
 - Who confirmed it: a version from a proposal or a consolidation change the user approved reads as
   approved by the user by name. The approval belongs to the version, so a restore or an undo, which
   the user runs without a proposal, reads as unapproved even when it brings back approved text.

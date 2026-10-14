@@ -95,8 +95,8 @@ export interface MemoryItem extends MemoryRef {
 
 // The owner's approval of a memory proposal, as an item's line reads it.
 export interface MemoryApproval {
-  // whether the quote that sent the proposal to review matched only words the owner pasted,
-  // dropped or quoted in and never typed, which marks the proposal's text as outside content
+  // whether the quote that sent the proposal to review sat in a quoted block of the owner's
+  // message, such as a forwarded email, which marks the proposal's text as outside content
   readonly isQuotePasted: boolean;
 }
 

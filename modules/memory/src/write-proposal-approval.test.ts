@@ -46,16 +46,13 @@ test('it recalls an approved proposal with your approval and its stored source u
   ]);
 });
 
-test('it recalls an approved proposal whose quote you pasted in as approved from a pasted page', async () => {
+test('it recalls an approved proposal whose quote sat in a quoted block as approved from a pasted page', async () => {
   const memory = await startTestMemory();
 
   await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
-    text: 'have a look: Robin plays the oboe on Tuesdays',
-    spans: [
-      { start: 0, end: 13, source: 'typed' },
-      { start: 13, end: 45, source: 'pasted' },
-    ],
+    text: 'have a look:\n> Robin plays the oboe on Tuesdays',
+    spans: [{ start: 0, end: 47, source: 'typed' }],
   });
   const outcome = await memory.store.writes.remember({
     text: 'Plays the oboe on Tuesdays',
