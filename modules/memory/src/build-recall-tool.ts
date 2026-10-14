@@ -1,4 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
+import type { MemoryLineOptions, NextVersion } from '@heynixie/models';
+import { renderMemoryLine } from '@heynixie/models';
+import type { Clock } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { makeInputRecorder } from './make-input-recorder';
@@ -34,14 +37,17 @@ const recalledVersion = {
     version: { type: 'integer' },
     change: { type: 'string' },
     state: { type: 'string' },
-    origin: { type: 'string' },
-    source: { type: 'string' },
-    recordedAt: { type: 'string', description: 'when the version was recorded, in UTC' },
     text: { type: 'string' },
+    about: {
+      type: 'string',
+      description:
+        'where the version came from: its ID and version, its date, who noted it, what backs it ' +
+        'and who confirmed it, and for a past version the version that replaced it',
+    },
     quote: { type: 'string', description: 'the words the version came from' },
     model: { type: ['string', 'null'], description: 'the model that wrote the version' },
   },
-  required: ['version', 'change', 'state', 'origin', 'source', 'recordedAt', 'text', 'model'],
+  required: ['version', 'change', 'state', 'text', 'about', 'model'],
 };
 
 const recallOutput = {
@@ -66,17 +72,27 @@ const recallOutput = {
   additionalProperties: false,
 };
 
+// What each item's line reads beside the item: the owner's name, or null for "the owner", the zone
+// its date shows in, and the clock that says whether its year shows.
+export interface RecallLineOptions {
+  readonly ownerName: string | null;
+  readonly defaultZone: string;
+  readonly clock: Pick<Clock, 'now'>;
+}
+
 // Builds memory.recall, which declares read. The items hold every source that memory holds, so the
-// result takes the most cautious one. The model reads each item by its short ID and names items by
-// it, or by an item ID it read before short IDs; the record keeps the item IDs.
+// result takes the most cautious one. Each version comes with the line that says where it came
+// from. The model names items by short ID, or by an item ID it read before short IDs.
 export function buildRecallTool(
   memory: Pick<StartedMemoryStore, 'recall'> & Pick<ItemIDStore, 'findItemIDs'>,
+  options: RecallLineOptions,
 ): ToolDefinition {
   return {
     name: 'memory.recall',
     description:
-      'Returns stored memory items word for word, each with its ID, version, origin, source, ' +
-      'date, the quote it came from and the model that wrote it. Pass a query to search, itemIDs ' +
+      'Returns stored memory items word for word, each with a line that says its ID, version, ' +
+      'date, who noted it, what backs it and who confirmed it, the quote it came from and the ' +
+      'model that wrote it. Pass a query to search, itemIDs ' +
       'to read items by ID, or neither to list every active item a page at a time. Answer ' +
       'questions about memory from these items, never from a summary. Use it when you ' +
       'half-remember something said, or when a detail from before would change your answer.',
@@ -96,12 +112,17 @@ export function buildRecallTool(
     run: async (call, context) => {
       const request = await readRecallRequest(memory, call.input, context.run.thread);
       const result = await memory.recall(request);
+      const lines = {
+        ownerName: options.ownerName,
+        defaultZone: options.defaultZone,
+        now: new Date(options.clock.now()),
+      };
 
       // the record holds references, as the recall's own record does, so a forget leaves no
       // readable copy of what the model read
       return {
         status: 'ok',
-        result: { items: result.items.map((item) => toItemJSON(item)), next: result.next },
+        result: { items: result.items.map((item) => toItemJSON(item, lines)), next: result.next },
         record: {
           items: result.items.map((item) => ({ itemID: item.itemID, version: item.version })),
           next: result.next,
@@ -132,34 +153,47 @@ async function readRecallRequest(
   };
 }
 
-function toItemJSON(item: RecalledItem): JSONObject {
+function toItemJSON(item: RecalledItem, lines: MemoryLineOptions): JSONObject {
   return {
-    ...toVersionJSON(item),
+    ...toVersionJSON(item, lines, null),
     itemID: item.shortID,
     isPinned: item.isPinned,
-    ...(item.history === undefined ? {} : { history: item.history.map((v) => toVersionJSON(v)) }),
+    ...(item.history === undefined
+      ? {}
+      : { history: item.history.map((version) => toPastVersionJSON(item, version, lines)) }),
   };
 }
 
-function toVersionJSON(version: RecalledVersion): JSONObject {
+// a version from an item's history, which names the version after it, if any
+function toPastVersionJSON(
+  item: RecalledItem,
+  version: RecalledVersion,
+  lines: MemoryLineOptions,
+): JSONObject {
+  const after = item.history?.find((later) => later.version === version.version + 1);
+  const next =
+    after === undefined
+      ? null
+      : { ref: `${item.shortID} v${after.version}`, isRetirement: after.change === 'retired' };
+
+  return toVersionJSON({ ...version, shortID: item.shortID }, lines, next);
+}
+
+// a version with the line under it, which for a past version names the version after it
+function toVersionJSON(
+  version: RecalledVersion & { readonly shortID: string },
+  lines: MemoryLineOptions,
+  next: NextVersion | null,
+): JSONObject {
   return {
     version: version.version,
     change: version.change,
     state: version.state,
-    origin: version.origin,
-    source: version.source,
-    recordedAt: formatRecordedAt(version.recordedAt),
     text: version.text,
+    about: renderMemoryLine(version, lines, next),
     ...(version.evidenceQuote === null ? {} : { quote: version.evidenceQuote }),
     model: version.model,
   };
-}
-
-// a minute-precise UTC date, such as 2026-10-01 09:30 UTC
-function formatRecordedAt(time: number): string {
-  const iso = new Date(time).toISOString();
-
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
 const recallArguments = z.object({

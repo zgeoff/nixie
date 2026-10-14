@@ -3,13 +3,12 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely, Transaction } from 'kysely';
 import { encodeVersionText } from './encode-version-text';
 import { MemoryStateError } from './memory-state-error';
-import { readPinnedItems } from './read-pinned-items';
 import type { ReadableVersion } from './read-version';
 import { readVersion } from './read-version';
 import { readVersionKey } from './read-version-key';
 import type { ItemRequirement } from './require-item';
 import { requireItem } from './require-item';
-import { requirePinnedCoreRoom } from './require-pinned-core-room';
+import { requireVersionCoreRoom } from './require-version-core-room';
 import type {
   MemoryChange,
   MemoryTables,
@@ -131,13 +130,16 @@ async function encodePinnableVersion(
     throw new MemoryStateError(version.ref.itemID, 'pin', version.next.state);
   }
   if (version.next.state === 'active' && (isPinned || version.wasPinned)) {
-    const pinned = await readPinnedItems(parts, db);
+    const provenance = version.plan.provenance;
 
-    requirePinnedCoreRoom(parts.context, pinned, {
+    await requireVersionCoreRoom(parts, db, {
       itemID: version.ref.itemID,
       shortID: version.shortID,
+      version: version.ref.version,
       text: version.next.text.text,
-      origin: version.plan.provenance.origin,
+      origin: provenance.origin,
+      source: version.next.source ?? provenance.source,
+      proposalID: provenance.proposalID,
       evidenceQuote: version.next.text.evidenceQuote,
     });
   }

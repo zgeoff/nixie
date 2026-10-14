@@ -4,10 +4,13 @@ import type { Clock } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 
 // What the memory tools reach: the store through readStore, which returns null until it starts,
-// and the clock that memory.pending measures a proposal's age on.
+// the clock that memory.pending measures a proposal's age on, and the owner's name and the zone
+// that each line memory.recall shows under an item reads.
 export interface ConversationMemory {
   readonly readStore: () => MemoryToolStore | null;
   readonly clock: Pick<Clock, 'now'>;
+  readonly ownerName: string | null;
+  readonly defaultZone: string;
 }
 
 // The conversation's tools that reach no memory store: web fetch, the time tool and the log reader.
@@ -53,7 +56,7 @@ export function buildConversationTools(
         },
         renderReviewReason: (reason) => requireStore().renderReviewReason(reason),
       },
-      memory.clock,
+      { clock: memory.clock, ownerName: memory.ownerName, defaultZone: memory.defaultZone },
     ),
   ];
 }

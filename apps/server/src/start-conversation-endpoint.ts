@@ -36,6 +36,8 @@ export async function startConversationEndpoint(
     {
       readStore: tools.readStore,
       clock: options.context.clock,
+      ownerName: options.config.owner.name,
+      defaultZone: options.config.time.default_zone,
     },
   );
   const registry = buildToolRegistry(definitions);

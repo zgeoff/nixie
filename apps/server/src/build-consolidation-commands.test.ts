@@ -86,19 +86,15 @@ test('it prints the comment the conversation left through memory.comment beside 
   const joke = await createMemoryItem(ctx.memory.store, { text: 'Names plants after drummers' });
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
-      {
-        kind: 'rewrite',
-        inputs: [joke],
-        text: 'Owns houseplants',
-        reason: 'Long.',
-        source: 'owner',
-      },
+      { kind: 'rewrite', inputs: [joke], text: 'Owns plants', reason: 'Long.', source: 'owner' },
     ],
   });
   const [rewrite] = diff.changes;
-  const comment = buildMemoryTools(ctx.memory.store, { now: () => Date.now() }).find(
-    (definition) => definition.name === 'memory.comment',
-  );
+  const comment = buildMemoryTools(ctx.memory.store, {
+    clock: { now: () => Date.now() },
+    ownerName: null,
+    defaultZone: 'UTC',
+  }).find((definition) => definition.name === 'memory.comment');
 
   invariant(rewrite && comment);
   await comment.run(
@@ -124,7 +120,7 @@ test('it prints the comment the conversation left through memory.comment beside 
     changes: [
       {
         changeID: rewrite.changeID,
-        text: 'Owns houseplants',
+        text: 'Owns plants',
         reason: 'Long.',
         comment: { text: 'This loses the drummers, which is the point.', at: expect.toBeString() },
       },
