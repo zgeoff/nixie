@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the fake's own call log, sleep state and forwards have no readonly form
 import { setImmediate as waitForTurn } from 'node:timers/promises';
 import type { ImpForward } from '../types';
 
@@ -37,7 +38,6 @@ interface SleepState {
 
 // The fake impd's idle sleeps, which log to its call log: `idle-sleep`, `wait <call>`, `slept` and
 // `woken by <call>`, each with the imp's name.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own call log
 export function buildFakeSleeps(calls: string[]): FakeSleeps {
   const state: SleepState = { calls, sleeping: new Map(), asleep: new Set(), forwards: new Map() };
   const sleepsAfterWake = new Map<string, Promise<void>>();
@@ -102,9 +102,9 @@ async function waitForAwake(state: SleepState, name: string, call: string): Prom
 }
 
 // a sleep ends only the forwards that listen on the imp it stops, never one that waits for the wake
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own forward set
 async function updateOpenForwards(
   open: Set<SleepingForward>,
+
   forward: SleepingForward,
 ): Promise<void> {
   try {

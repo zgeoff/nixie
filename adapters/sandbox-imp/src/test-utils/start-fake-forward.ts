@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the fake's own listener, sockets and ending have no readonly form
 import { onTestFinished } from 'bun:test';
 import { once } from 'node:events';
 import type { Server, Socket } from 'node:net';
@@ -77,7 +78,6 @@ async function waitForSettled(promise: Promise<unknown>): Promise<void> {
   }
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own sockets
 function startGuestRelay(options: FakeForwardOptions, sockets: Set<Socket>, socket: Socket): void {
   sockets.add(socket);
 
@@ -110,7 +110,9 @@ function startGuestRelay(options: FakeForwardOptions, sockets: Set<Socket>, sock
 // listens once the imp is awake, unless the forward ended while it waited
 async function startListener(
   options: FakeForwardOptions,
+
   server: Server,
+
   ending: Ending,
 ): Promise<void> {
   await options.waitForAwake?.();
@@ -123,7 +125,6 @@ async function startListener(
 
 // Closes every open guest connection, then waits for the listener to close, so no connection
 // outlives the test. A forward the test stopped has closed its listener already.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own listener
 async function stopForward(server: Server, sockets: ReadonlySet<Socket>): Promise<void> {
   for (const socket of sockets) {
     socket.destroy();

@@ -136,7 +136,12 @@ test('it closes its listener and each guest connection and reports the forward l
   await Bun.connect({
     hostname: '127.0.0.1',
     port: ctx.port,
-    socket: { data: () => {}, close: () => void closed.resolve() },
+    socket: {
+      data: () => {},
+      close: () => {
+        closed.resolve();
+      },
+    },
   });
   forward.stopAsLost();
   await closed.promise;
