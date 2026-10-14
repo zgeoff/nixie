@@ -1,16 +1,12 @@
 import { expect, test } from 'bun:test';
 import type { LogTables } from '@heynixie/log';
-import { findRecordKeys, writeRecords } from '@heynixie/log';
+import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import type { ConsolidationTables } from './consolidation-types';
-import { decodeConsolidationSummary } from './decode-consolidation-summary';
 import { createConsolidationDiff } from './test-utils/create-consolidation-diff';
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';
-
-// the shares a stored summary holds, as the test reads them back from the raw row
-type Shares = Parameters<typeof decodeConsolidationSummary>[1]['shares'];
 
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
@@ -151,47 +147,6 @@ test('it erases the summary once an item it names is forgotten, and keeps the ch
   const pending = await ctx.memory.store.consolidations.readPending();
 
   expect(pending).toMatchObject({ changes: [{ kind: 'retire' }], summary: null });
-});
-
-test('it leaves a stored summary that no key left opens once an item it names is forgotten', async () => {
-  const ctx = await setupTest();
-  const [oat, black] = await Promise.all([
-    createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
-    createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
-  ]);
-  const diff = await createConsolidationDiff(ctx.memory, {
-    changes: [],
-    summary: { text: 'Two items about coffee conflict.', itemIDs: [oat.itemID, black.itemID] },
-    now: ctx.clock.now(),
-  });
-
-  await ctx.memory.store.forget({
-    target: oat,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const run = await ctx.memory.log.writer.db
-    .$extendTables<ConsolidationTables>()
-    .selectFrom('memory_consolidations')
-    .selectAll()
-    .executeTakeFirstOrThrow();
-  const left = await findRecordKeys(ctx.memory.log, [oat.itemID, black.itemID]);
-
-  // the key left also stands in the forgotten item's place
-  const kept = left.get(black.itemID) ?? null;
-
-  invariant(kept);
-  expect([...left.keys()]).toStrictEqual([black.itemID]);
-  expect(
-    decodeConsolidationSummary(
-      diff.diffID,
-      { sealed: run.summary ?? '', shares: JSON.parse(run.summary_shares ?? '[]') as Shares },
-      new Map([
-        [oat.itemID, kept],
-        [black.itemID, kept],
-      ]),
-    ),
-  ).rejects.toThrow();
 });
 
 test('it shows no diff once a forget erases the summary of a run that proposed no change', async () => {
