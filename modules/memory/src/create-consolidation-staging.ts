@@ -77,6 +77,12 @@ interface OpenRun {
   diff: readonly StagedChange[] | null;
 }
 
+// what planning a diff reads of the open run
+interface RunView {
+  readonly shown: ReadonlyMap<string, ShownItem>;
+  readonly maxChanges: number;
+}
+
 const noRun: StageResult = { status: 'refused', reason: 'no consolidation run is open' };
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the run this stages into
@@ -103,7 +109,7 @@ type PlannedDiff = { readonly changes: readonly StagedChange[] } | Refusal;
 // The diff the requests stage, or why the whole diff is refused: too many changes, an item in 2
 // changes, an item the session was never shown, a change of the wrong shape, or new text that
 // holds a destination none of its items holds.
-function planDiff(run: OpenRun, requests: readonly ChangeRequest[]): PlannedDiff {
+function planDiff(run: RunView, requests: readonly ChangeRequest[]): PlannedDiff {
   if (requests.length > run.maxChanges) {
     return {
       refusal: `a diff holds at most ${String(run.maxChanges)} changes; keep the most useful ones`,
@@ -117,7 +123,7 @@ function planDiff(run: OpenRun, requests: readonly ChangeRequest[]): PlannedDiff
   return planChanges(run, requests);
 }
 
-function planChanges(run: OpenRun, requests: readonly ChangeRequest[]): PlannedDiff {
+function planChanges(run: RunView, requests: readonly ChangeRequest[]): PlannedDiff {
   const changes: StagedChange[] = [];
 
   for (const [index, request] of requests.entries()) {
@@ -140,7 +146,7 @@ function findRepeatedItem(requests: readonly ChangeRequest[]): string | null {
 
 type PlannedChange = StagedChange | Refusal;
 
-function planChange(run: OpenRun, request: ChangeRequest): PlannedChange {
+function planChange(run: RunView, request: ChangeRequest): PlannedChange {
   const shape = findShapeError(request);
 
   if (shape !== null) {

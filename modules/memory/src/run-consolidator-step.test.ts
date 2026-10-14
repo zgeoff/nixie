@@ -22,6 +22,8 @@ async function setupTest() {
     memory,
     clock,
     errors,
+
+    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the stub session holds bun mocks
     runStep: async (session: StubConsolidatorSession) => {
       const consolidator = await startMemoryConsolidator({
         context,
@@ -115,14 +117,14 @@ test('it shows the session the persona, the rules and every active item, and no 
   await ctx.runStep(session);
 
   expect(session.model.runSession).toHaveBeenCalledExactlyOnceWith({
-    systemPrompt: expect.stringMatching(/^You are Nix, a warm and brief assistant\.\n\nYou tidy/u),
-    prompt: expect.stringMatching(
+    systemPrompt: expect.toStartWith('You are Nix, a warm and brief assistant.\n\nYou tidy'),
+    prompt: expect.toSatisfy((prompt: string) =>
       new RegExp(
         `^Current memory items \\(the complete list\\):\\n- ${bees.itemID} \\(\\d{4}-\\d{2}-\\d{2}\\): Keeps bees on the roof\\n- ${choir.itemID} \\(\\d{4}-\\d{2}-\\d{2}\\): Sings in a choir$`,
         'u',
-      ),
+      ).test(prompt),
     ),
-    signal: expect.any(AbortSignal),
+    signal: expect.toSatisfy((signal: unknown) => signal instanceof AbortSignal),
   });
 });
 

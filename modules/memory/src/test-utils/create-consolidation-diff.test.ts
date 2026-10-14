@@ -20,19 +20,19 @@ test('it writes the diff on the consolidator thread and returns its pending chan
   });
 
   expect(diff).toStrictEqual({
-    diffID: expect.any(String),
+    diffID: expect.toBeString(),
     model: 'claude-test-1',
-    createdAt: expect.any(Number),
+    createdAt: expect.toBeNumber(),
     changes: [
       {
-        changeID: expect.any(String),
+        changeID: expect.toBeString(),
         kind: 'retire',
         inputs: [{ ...item, text: 'Is in Lisbon until May', isCurrent: true }],
         text: null,
         reason: 'The trip ended.',
         source: 'owner',
-        actionHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
-        lapseAt: expect.any(Number),
+        actionHash: expect.toSatisfy((hash: string) => /^sha256:[0-9a-f]{64}$/u.test(hash)),
+        lapseAt: expect.toBeNumber(),
       },
     ],
   });

@@ -1,37 +1,43 @@
 import type { EnvelopeRecord } from '@heynixie/log';
 import { z } from 'zod';
 
-const versionRef = z.strictObject({ itemID: z.string(), version: z.int().min(1) });
+const versionRef = z.strictObject({ itemID: z.string(), version: z.int().min(1) }).readonly();
 
-const change = z.strictObject({
-  changeID: z.string(),
-  kind: z.enum(['merge', 'rewrite', 'retire']),
-  itemID: z.string(),
-  inputs: z.array(versionRef).min(1),
-  source: z.enum(['owner', 'owner_data', 'untrusted']),
-  actionHash: z.string(),
-  sealed: z.base64(),
-  lapseAt: z.int(),
-});
+const change = z
+  .strictObject({
+    changeID: z.string(),
+    kind: z.enum(['merge', 'rewrite', 'retire']),
+    itemID: z.string(),
+    inputs: z.array(versionRef).min(1).readonly(),
+    source: z.enum(['owner', 'owner_data', 'untrusted']),
+    actionHash: z.string(),
+    sealed: z.base64(),
+    lapseAt: z.int(),
+  })
+  .readonly();
 
-const proposed = z.strictObject({
-  diffID: z.string(),
-  at: z.int(),
-  model: z.string().nullable(),
-  shownItems: z.int().min(0),
-  changes: z.array(change),
-});
+const proposed = z
+  .strictObject({
+    diffID: z.string(),
+    at: z.int(),
+    model: z.string().nullable(),
+    shownItems: z.int().min(0),
+    changes: z.array(change).readonly(),
+  })
+  .readonly();
 
-const approved = z.strictObject({
-  changeID: z.string(),
-  approvalID: z.string(),
-  actionHash: z.string(),
-  identityID: z.string(),
-});
+const approved = z
+  .strictObject({
+    changeID: z.string(),
+    approvalID: z.string(),
+    actionHash: z.string(),
+    identityID: z.string(),
+  })
+  .readonly();
 
-const rejected = z.strictObject({ changeID: z.string(), identityID: z.string() });
+const rejected = z.strictObject({ changeID: z.string(), identityID: z.string() }).readonly();
 
-const lapsed = z.strictObject({ changeID: z.string() });
+const lapsed = z.strictObject({ changeID: z.string() }).readonly();
 
 // The records of memory consolidation: a run's diff, then your approval or rejection of each of
 // its changes, or a change's lapse.

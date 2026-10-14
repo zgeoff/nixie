@@ -30,7 +30,9 @@ export async function planDiffRecord(
     plan.changes.map((change) => {
       const key = keys.get(change.inputs[0].itemID);
 
-      return key === null || key === undefined ? null : encodeChange(key, change, plan);
+      return key === null || key === undefined
+        ? Promise.resolve(null)
+        : encodeChange(key, change, plan);
     }),
   );
 
