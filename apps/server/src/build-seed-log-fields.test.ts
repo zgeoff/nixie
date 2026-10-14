@@ -35,6 +35,7 @@ async function setupTest() {
   ]);
 
   return {
+    root,
     write: async (path: string, contents: string | Uint8Array) => {
       await mkdir(dirname(join(root, path)), { recursive: true });
       await writeFile(join(root, path), contents);
@@ -135,7 +136,29 @@ test('it logs the error and the last good seed for a refused seed', async () => 
 
   const fields = await ctx.seed();
 
-  expect(fields).toStrictEqual({ ...first, status: 'refused', error: 'DefinitionsParseError' });
+  expect(fields).toStrictEqual({
+    ...first,
+    status: 'refused',
+    error: 'DefinitionsParseError',
+    message: 'skills/notes/helper.pyc: the file is not UTF-8 text',
+  });
+});
+
+test('it logs the message of a refused seed whose definitions directory is not checked out yet', async () => {
+  const ctx = await setupTest();
+
+  await rm(ctx.root, { recursive: true });
+
+  const fields = await ctx.seed();
+
+  expect(fields).toStrictEqual({
+    status: 'refused',
+    inForceRevision: null,
+    inForceContentHash: null,
+    inForceSnapshotHash: null,
+    error: 'Error',
+    message: `ENOENT: no such file or directory, lstat '${ctx.root}'`,
+  });
 });
 
 test('it logs no definitions in force for a refused first seed', async () => {
@@ -151,5 +174,6 @@ test('it logs no definitions in force for a refused first seed', async () => {
     inForceContentHash: null,
     inForceSnapshotHash: null,
     error: 'DefinitionsParseError',
+    message: 'persona.md: the definitions have no persona',
   });
 });

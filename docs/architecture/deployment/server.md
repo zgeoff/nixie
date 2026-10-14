@@ -87,6 +87,14 @@ the sequence logs the error and ends the process, so the container runtime resta
 leaving it live with no runners. A stop during the sequence ends it at the next step, and waits for
 the step in flight before any part closes.
 
+A start whose database already holds a seed never waits on the definitions. When its seed is
+refused, the runners start on the definitions in force, the definitions part stays unready, and the
+definitions poll probes again after a short wait instead of a full interval. The wait doubles after
+each failed probe or refused seed, up to the interval. A refused seed clears the poll's probe token,
+so the next probe seeds whatever revision it finds, the last good one included, and a seed that
+applies clears the refusal. A definitions checkout that lands a moment after nixie starts, as a sync
+sidecar's first checkout can, therefore seeds within seconds.
+
 ## Health
 
 The health endpoint serves liveness and readiness, each as a report with one entry per part, and a
@@ -122,9 +130,11 @@ event's fields, so a field can never overwrite the event name or the time.
 Most events log only when nixie acts, such as a start, a seed or a check, so a conversation turn and
 an idle nixie write no line. The definitions poll logs each probe, whether or not the definitions
 changed, so the log shows the process and its timers alive between seeds. A seed logs only when the
-probe finds a new revision of the definitions. A seed logs its result with the revision, the content
-hash and the snapshot hash of the definitions in force afterwards, so a refused seed shows the last
-good seed, and the revision traces a behaviour to a commit of the definitions. A step error logs the
+probe finds a revision of the definitions that has not seeded yet. A seed logs its result with the
+revision, the content hash and the snapshot hash of the definitions in force afterwards, so a
+refused seed shows the last good seed, and the revision traces a behaviour to a commit of the
+definitions. A refused seed adds its error's name and message, such as a definitions directory that
+is not checked out yet, because the name alone leaves the cause to guesswork. A step error logs the
 task, the step, the errors in a row, the task's next state, its retry time and the error's name, so
 the log shows a failure that a retry hid. The error's message stays on the task's thread, because it
 may quote a provider's reply or the model's input.

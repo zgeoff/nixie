@@ -27,11 +27,11 @@ two releases can give two snapshot hashes.
 ## Sources
 
 A source has a probe and a snapshot. The probe returns a token that changes when the definitions
-change, so a poll takes a snapshot only on a new token. A snapshot holds the files by path relative
-to the definitions root, a revision, the content hash, and the paths the source skipped. The local
-path source is the one source built, and it lives in the module because it reaches nothing outside
-nixie. A directory has no commit, so the path source uses the content hash as both its revision and
-its probe token.
+change, so a poll takes a snapshot only on a token that has not seeded yet. A snapshot holds the
+files by path relative to the definitions root, a revision, the content hash, and the paths the
+source skipped. The local path source is the one source built, and it lives in the module because it
+reaches nothing outside nixie. A directory has no commit, so the path source uses the content hash
+as both its revision and its probe token.
 
 A source reads only the known definitions paths: the manifest and the persona at the root, and the
 jobs, rules and skills folders. It skips every other entry at the root by name, without reading or
