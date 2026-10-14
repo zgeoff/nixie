@@ -13,6 +13,7 @@ import {
 import { buildMockMessageFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import { runConversationGuest } from './run-conversation-guest';
 import { buildStubToolServer } from './test-utils/build-stub-tool-server';
+import { startStubHTTPToolServer } from './test-utils/start-stub-http-tool-server';
 import { startStubModel } from './test-utils/start-stub-model';
 
 async function setupTest() {
@@ -56,6 +57,32 @@ test('it runs the turn the first frame starts and writes its frames framed', asy
   expect(ctx.frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
 });
 
+test('it answers a turn whose tool server connection failed at start, after one reconnect', async () => {
+  const ctx = await setupTest();
+  const turn = buildMockTurnFrame({ profile: { baseURL: ctx.model.url } });
+  const tools = await startStubHTTPToolServer();
+
+  onTestFinished(() => tools.stop());
+  tools.dropConnections();
+  ctx.model.addReplies({ text: 'Hello.' });
+  await runConversationGuest({
+    input: [encodeFrame(encodeTurnFrame(turn))],
+    write: ctx.write,
+    env: ctx.env,
+    buildToolServer: () => tools.config,
+
+    // the guest pauses only once the CLI reports the server failed, and the route then takes the
+    // reconnect
+    waitBeforeReconnect: tools.acceptConnections,
+  });
+
+  expect(ctx.frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
+  expect(ctx.model.requests.filter((request) => request.path === '/v1/messages')).toMatchObject([
+    { body: { tools: [{ name: 'mcp__nixie__note_read' }] } },
+  ]);
+  expect(tools.resets()).toBeGreaterThanOrEqual(1);
+});
+
 test('it reaches the run tool endpoint over HTTP with the run bearer token', async () => {
   const ctx = await setupTest();
   const seen: (string | null)[] = [];
@@ -79,6 +106,7 @@ test('it reaches the run tool endpoint over HTTP with the run bearer token', asy
     input: [encodeFrame(encodeTurnFrame(turn))],
     write: ctx.write,
     env: ctx.env,
+    waitBeforeReconnect: () => Promise.resolve(),
   });
 
   expect(seen).toContain('Bearer run-token');

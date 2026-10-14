@@ -6,9 +6,12 @@ import { readTurnInput } from './read-turn-input';
 test('it yields the turn inbox, then each host message, and marks each one pending', async () => {
   const state = {
     pending: new Set<string>(),
+    toolsReady: Promise.withResolvers<boolean>(),
     inputFailed: Promise.withResolvers<Error>(),
     ended: Promise.withResolvers<void>(),
   };
+
+  state.toolsReady.resolve(true);
 
   const input = await Array.fromAsync(
     readTurnInput(
@@ -37,9 +40,12 @@ test('it yields the turn inbox, then each host message, and marks each one pendi
 test('it ends the stream when the turn ends while it waits for the host', async () => {
   const state = {
     pending: new Set<string>(),
+    toolsReady: Promise.withResolvers<boolean>(),
     inputFailed: Promise.withResolvers<Error>(),
     ended: Promise.withResolvers<void>(),
   };
+
+  state.toolsReady.resolve(true);
   const channel = new TransformStream<InboxMessage, InboxMessage>();
   const input = readTurnInput(buildMockTurnFrame(), channel.readable, state);
 
@@ -55,9 +61,12 @@ test('it ends the stream when the turn ends while it waits for the host', async 
 test('it ends the stream and fails the turn with the error the host stream throws', async () => {
   const state = {
     pending: new Set<string>(),
+    toolsReady: Promise.withResolvers<boolean>(),
     inputFailed: Promise.withResolvers<Error>(),
     ended: Promise.withResolvers<void>(),
   };
+
+  state.toolsReady.resolve(true);
   const channel = new TransformStream<InboxMessage, InboxMessage>();
 
   void channel.writable.getWriter().abort(new Error('a turn is already running'));
@@ -73,9 +82,12 @@ test('it ends the stream and fails the turn with the error the host stream throw
 test('it fails the turn with an error that names a host stream failure of another type', async () => {
   const state = {
     pending: new Set<string>(),
+    toolsReady: Promise.withResolvers<boolean>(),
     inputFailed: Promise.withResolvers<Error>(),
     ended: Promise.withResolvers<void>(),
   };
+
+  state.toolsReady.resolve(true);
   const channel = new TransformStream<InboxMessage, InboxMessage>();
 
   void channel.writable.getWriter().abort('the host went away');
@@ -84,4 +96,28 @@ test('it fails the turn with an error that names a host stream failure of anothe
   const failure = await state.inputFailed.promise;
 
   expect(failure.message).toBe('the host went away');
+});
+
+test('it yields nothing when the turn stops before nixie tool server connects', async () => {
+  const state = {
+    pending: new Set<string>(),
+    toolsReady: Promise.withResolvers<boolean>(),
+    inputFailed: Promise.withResolvers<Error>(),
+    ended: Promise.withResolvers<void>(),
+  };
+
+  state.toolsReady.resolve(false);
+
+  const input = await Array.fromAsync(
+    readTurnInput(
+      buildMockTurnFrame({
+        input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Hi.' }],
+      }),
+      [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' }],
+      state,
+    ),
+  );
+
+  expect(input).toStrictEqual([]);
+  expect([...state.pending]).toStrictEqual([]);
 });

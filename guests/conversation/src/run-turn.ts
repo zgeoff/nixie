@@ -1,28 +1,17 @@
 // oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's message and MCP types, an async iterable and the turn's own state have no readonly form
-import { mkdir } from 'node:fs/promises';
-import type { McpServerConfig, SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
+import type { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
+import type { GuestFrame, SessionPoint } from '@heynixie/wire';
 import type { TurnFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
+import { checkToolServer } from './check-tool-server';
 import { countContextTokens } from './count-context-tokens';
 import { getCompactWindow } from './get-compact-window';
 import type { TurnInputState } from './read-turn-input';
 import { readTurnInput } from './read-turn-input';
-import { removeStaleSessions } from './remove-stale-sessions';
+import { setupTurnDisk } from './setup-turn-disk';
 import { toolServerName } from './tool-server-name';
-
-export interface TurnDependencies {
-  readonly env: Readonly<Record<string, string | undefined>>;
-  readonly toolServer: McpServerConfig;
-
-  // the host's messages for the running turn, each delivered at the model's next tool boundary
-  readonly messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>;
-  readonly emit: (frame: GuestFrame) => Promise<void>;
-
-  // the SDK's query(), which a test passes through a recorder to see every call's options
-  readonly runQuery?: typeof query;
-}
+import type { TurnDependencies } from './types';
 
 // Runs one model turn over the turn's inbox and the host's later messages, each with its record's
 // uuid. The turn ends at a result once the SDK has read every message it took, and stops at once
@@ -30,14 +19,14 @@ export interface TurnDependencies {
 export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<void> {
   const options = buildQueryOptions(turn, { env: deps.env, toolServer: deps.toolServer });
 
-  await mkdir(options.cwd ?? '', { recursive: true });
-  await removeStaleSessions(options.env?.['CLAUDE_CONFIG_DIR'], turn.resume?.sessionID ?? null);
+  await setupTurnDisk(options, turn.resume?.sessionID ?? null);
 
   const state: TurnState = {
     pending: new Set(),
     boundary: null,
     contextSize: null,
     compactWindow: getCompactWindow(turn.profile),
+    toolsReady: Promise.withResolvers(),
     inputFailed: Promise.withResolvers(),
     ended: Promise.withResolvers(),
   };
@@ -47,7 +36,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
   });
 
   try {
-    await drainSession(session, deps, state);
+    await drainConnectedSession(session, deps, state);
   } finally {
     state.ended.resolve();
 
@@ -56,6 +45,18 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
     session.close();
     await session.return();
   }
+}
+
+// the turn's input waits for nixie's tool server, and a turn that never gets its tools sends none
+async function drainConnectedSession(
+  session: ReturnType<typeof query>,
+  deps: TurnDependencies,
+  state: TurnState,
+): Promise<void> {
+  const failed = await checkToolServer(session, deps.waitBeforeReconnect);
+
+  state.toolsReady.resolve(failed === null);
+  await (failed === null ? drainSession(session, deps, state) : deps.emit(failed));
 }
 
 async function drainSession(

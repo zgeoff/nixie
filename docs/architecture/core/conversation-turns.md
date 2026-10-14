@@ -59,9 +59,13 @@ credential, and the sandbox's grant swaps in the real one on the way to the prof
 and the run's bearer token, which the guest gives the SDK as an HTTP MCP server that must connect
 before the loop starts.
 
-The guest checks the session's opening message, which lists each MCP server's status, and ends the
-turn with a failure when nixie's server shows as anything but connected. A loop without its tools
-would answer from the model alone, and its replies could claim actions that never ran.
+The guest ends the turn with a failure when nixie's server is not connected, because a loop without
+its tools would answer from the model alone, and its replies could claim actions that never ran. The
+CLI builds its first model request from the servers connected when the turn's first message arrives.
+The guest therefore reads the server's status before it sends that message, and when the connection
+failed, it waits a moment and reconnects once, so a tool route that dropped one connection does not
+fail the turn. A failure that outlasts the reconnect carries the CLI's connection error. The guest
+checks the session's opening message as well, which lists each MCP server's status.
 
 ## Resume and fork
 
