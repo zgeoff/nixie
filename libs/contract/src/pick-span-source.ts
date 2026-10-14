@@ -1,3 +1,4 @@
+import { hasSeveralWords } from './has-several-words';
 import type { SpanSource } from './types';
 
 const pastedInputTypes = new Set(['insertFromPaste', 'insertFromPasteAsQuotation']);
@@ -20,17 +21,11 @@ export function pickSpanSource(inputType: string, data: string | null): SpanSour
   if (inputType === 'insertFromDrop') {
     return 'dropped';
   }
-  if (inputType === 'insertText' && hasSeveralWords(data)) {
+  if (inputType === 'insertText' && data !== null && hasSeveralWords(data)) {
     return 'unknown';
   }
   if (typedInputTypes.has(inputType)) {
     return 'typed';
   }
   return 'unknown';
-}
-
-// Gboard's clipboard chip and its undo each insert a whole span as one insertText, which typing,
-// a prediction, an autocorrection and a swipe never do: each of those inserts one word at most
-function hasSeveralWords(data: string | null): boolean {
-  return data !== null && /\S\s+\S/u.test(data);
 }

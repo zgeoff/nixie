@@ -16,7 +16,8 @@ const script = await built.outputs[0]?.text();
 // fixed point keeps landing in the text box.
 const html = `<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1">
 <body style="text-size-adjust:none;-webkit-text-size-adjust:none">
-<button id="copy" style="font-size:20px">copy</button>
+<div id="step" style="font-size:16px"></div>
+<button id="copy" style="font-size:20px">copy</button> <button id="next" style="font-size:20px">next</button>
 <textarea rows="4" style="width:95%;font-size:20px"></textarea>
 <pre id="log" style="font-size:10px;white-space:pre-wrap;user-select:none"></pre>
 <script>${script}</script></body>`;

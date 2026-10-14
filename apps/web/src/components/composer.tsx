@@ -24,8 +24,9 @@ export function Composer(props: ComposerProps): ReactNode {
       onSubmit={(event) => {
         event.preventDefault();
 
+        // the removed text only labels the next edit, so it stays in the box
         if (message.text.trim() !== '') {
-          props.onSend(message);
+          props.onSend({ spans: message.spans, text: message.text });
           setMessage(emptyMessage);
         }
       }}

@@ -13,14 +13,24 @@ export function buildSpanState(
   // comes from a plain diff instead, and its text counts as unknown.
   const fallback = pending === undefined || !isEditAtSelection(pinned, pending.selection);
   const edit = fallback ? planEdit(state.text, text) : pinned;
-  const source = fallback ? 'unknown' : pending.source;
+  const source = fallback
+    ? 'unknown'
+    : pickEditSource(state.removed, pending, {
+        at: edit.at,
+        removed: edit.removed,
+        text: text.slice(edit.at, edit.at + edit.inserted),
+      });
   const spans = state.spans.flatMap((span) => splitSpan(span, edit));
 
   if (edit.inserted > 0) {
     spans.push({ end: edit.at + edit.inserted, source, start: edit.at });
   }
 
-  return { spans: mergeSpans(spans), text };
+  const removed = fallback ? undefined : findTypedRemoval(state, edit);
+
+  return removed === undefined
+    ? { spans: mergeSpans(spans), text }
+    : { removed, spans: mergeSpans(spans), text };
 }
 
 interface Edit {
@@ -105,11 +115,42 @@ function buildEdit(before: string, after: string, shared: Shared): Edit {
   };
 }
 
+// what an edit put in the text box, where, and how many characters it replaced
+interface Insertion {
+  readonly at: number;
+  readonly removed: number;
+  readonly text: string;
+}
+
 // A deletion inserts nothing to label, so only an insertion must replace exactly the selection.
 function isEditAtSelection(edit: Edit, selection: PendingInput['selection']): boolean {
   return (
     edit.inserted === 0 || (edit.at === selection.start && edit.at + edit.removed === selection.end)
   );
+}
+
+// An insert of several words counts as typed only when it puts back, where the edit before it
+// removed typed text, the same characters with only whitespace changed: Gboard splits a
+// run-together word that way, and no character enters as typed unless it was typed before.
+function pickEditSource(
+  removed: SpanState['removed'],
+  pending: PendingInput,
+  insertion: Insertion,
+): SpanSource {
+  const respacing = pending.respacing;
+  const isRespaced =
+    respacing !== undefined &&
+    removed !== undefined &&
+    insertion.at === removed.at &&
+    insertion.removed === 0 &&
+    insertion.text === respacing &&
+    removeWhitespace(respacing) === removeWhitespace(removed.text);
+
+  return isRespaced ? 'typed' : pending.source;
+}
+
+function removeWhitespace(text: string): string {
+  return text.replaceAll(/\s/gu, '');
 }
 
 // Shifts a span past the edit, trims the part the edit removed, and splits a span the edit lands
@@ -132,6 +173,18 @@ function splitSpan(span: Readonly<Span>, edit: Edit): Span[] {
       : [];
 
   return [...head, ...tail];
+}
+
+// The text a pure delete removed, when every character of it was typed.
+function findTypedRemoval(state: SpanState, edit: Edit): SpanState['removed'] {
+  const end = edit.at + edit.removed;
+  const isTyped = state.spans.some(
+    (span) => span.source === 'typed' && span.start <= edit.at && end <= span.end,
+  );
+
+  return edit.inserted === 0 && edit.removed > 0 && isTyped
+    ? { at: edit.at, text: state.text.slice(edit.at, end) }
+    : undefined;
 }
 
 // Joins neighbouring spans from the same source and drops empty ones.

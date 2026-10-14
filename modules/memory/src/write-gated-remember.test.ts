@@ -1,11 +1,14 @@
 import { expect, mock, test } from 'bun:test';
+import {
+  buildSpanStateFromEvents,
+  gboardPastedEvents,
+  gboardTypedEvents,
+} from '@heynixie/contract/test-utils';
 import { makeChecker } from '@heynixie/models';
 import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
-import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
+import { buildMockCheckerAnswer, buildMockWriteCaller, startTestMemory } from './test-utils';
 import { makeToolAllowRule } from './test-utils/make-tool-allow-rule';
-import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
 
@@ -85,6 +88,48 @@ test('it proposes a write whose quote lies in a pasted span, before the checker 
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'quote_not_typed' });
   expect(check).not.toHaveBeenCalled();
+});
+
+test('it applies a write that quotes words typed on Gboard, a run-together word it split included', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+  const typed = buildSpanStateFromEvents(gboardTypedEvents['respaced-autocorrect']);
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: typed.text,
+    spans: typed.spans,
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'The garden gate sticks',
+    quote: 'The garden gate sticks',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome.status).toBe('applied');
+});
+
+test('it proposes a write that quotes words Gboard inserted from the clipboard chip', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+  const chip = buildSpanStateFromEvents(gboardPastedEvents.chip);
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: chip.text,
+    spans: chip.spans,
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'chip test words',
+    quote: 'chip test words',
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'quote_not_typed' });
 });
 
 test('it proposes a write whose quote lies in a blockquote', async () => {
