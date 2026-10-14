@@ -31,6 +31,7 @@
       "@orpc/tanstack-query": "1.15.4",
       "@orpc/zod": "1.15.4",
       "@pandacss/dev": "2.1.1",
+      "@paralleldrive/cuid2": "3.3.0",
       "@pandacss/preset-base": "2.1.1",
       "@pandacss/preset-panda": "2.1.1",
       "@rolldown/plugin-babel": "0.2.4",

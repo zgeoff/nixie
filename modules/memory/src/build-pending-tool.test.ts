@@ -165,7 +165,7 @@ test('it names both proposers of a conversation write that merged into the note-
   });
 });
 
-test('it names the item and version that a pending edit changes', async () => {
+test('it names the item that a pending edit changes by its short ID, and the version', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({
     text: 'Cycles to work',
@@ -175,6 +175,7 @@ test('it names the item and version that a pending edit changes', async () => {
     text: 'Takes the tram to work',
     target: { itemID: item.itemID, version: 1 },
   });
+  const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
 
   const result = await runToolCall(
     { tool: 'memory.pending', input: {}, toolUseID: null },
@@ -192,7 +193,7 @@ test('it names the item and version that a pending edit changes', async () => {
       {
         proposalID: proposal.proposalID,
         change: 'edit',
-        itemID: item.itemID,
+        itemID: shortIDs.get(item.itemID),
         version: 1,
         text: 'Takes the tram to work',
         notedBy: ['you noted it'],
@@ -214,6 +215,7 @@ test('it lists a pending retirement with the text of the item it retires', async
     target: { itemID: item.itemID, version: 1 },
     caller: buildMockWriteCaller(),
   });
+  const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
 
   const result = await runToolCall(
     { tool: 'memory.pending', input: {}, toolUseID: null },
@@ -230,7 +232,7 @@ test('it lists a pending retirement with the text of the item it retires', async
     proposals: [
       {
         change: 'retire',
-        itemID: item.itemID,
+        itemID: shortIDs.get(item.itemID),
         version: 1,
         text: 'Rents a flat on Quay Street',
         notedBy: ['you noted it'],

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { isCuid } from '@paralleldrive/cuid2';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
 
@@ -49,6 +50,51 @@ test('it creates an item at version 1 with its provenance', async () => {
       recorded_at: expect.toBeNumber(),
     },
   ]);
+});
+
+test('it gives a new item a 10-character cuid2 short ID', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Prefers window seats on trains',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const row = await ctx.db
+    .selectFrom('memory_items')
+    .select('short_id')
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row.short_id).toHaveLength(10);
+  expect(isCuid(row.short_id ?? '', { minLength: 10, maxLength: 10 })).toBeTrue();
+});
+
+test('it keeps the short ID of an item through its later versions', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const created = await ctx.db
+    .selectFrom('memory_items')
+    .select('short_id')
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  await ctx.memory.store.remember({
+    text: 'Lives on Oak Avenue',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const edited = await ctx.db
+    .selectFrom('memory_items')
+    .select('short_id')
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(edited.short_id).toBe(created.short_id);
 });
 
 test('it adds an edited version that keeps the state of the item', async () => {

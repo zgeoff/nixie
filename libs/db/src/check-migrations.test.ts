@@ -150,6 +150,98 @@ test('it refuses a column or a unique index on a released table that an old inse
   ]);
 });
 
+test('it allows a read, a backfill and a unique index of a column the release adds and leaves null', async () => {
+  const ctx = await setupTest();
+
+  const check = await checkMigrations(
+    {
+      migrations: [
+        {
+          name: 'create notes',
+          up: async (tx) => {
+            await sql`create table notes (id text primary key)`.execute(tx);
+            await sql`insert into notes (id) values ('note-1')`.execute(tx);
+          },
+        },
+        {
+          name: 'add a slug',
+          up: async (tx) => {
+            await sql`alter table notes add column slug text`.execute(tx);
+            await sql`create unique index notes_by_slug on notes (slug)`.execute(tx);
+            await sql`select id from notes where slug is null`.execute(tx);
+            await sql`update notes set slug = ${'first'} where id = ${'note-1'}`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+    {
+      migrations: ['create notes'],
+      oldestReader: 0,
+      objects: [
+        { type: 'index', name: 'sqlite_autoindex_notes_1', tableName: 'notes', sql: null },
+        {
+          type: 'table',
+          name: 'notes',
+          tableName: 'notes',
+          sql: 'CREATE TABLE notes (id text primary key)',
+        },
+      ],
+    },
+    ctx.dir,
+  );
+
+  expect(check.added).toStrictEqual([{ version: 2, name: 'add a slug', refused: [] }]);
+});
+
+test('it refuses an update and a unique index that reach a column the release before writes', async () => {
+  const ctx = await setupTest();
+
+  const check = await checkMigrations(
+    {
+      migrations: [
+        {
+          name: 'create notes',
+          up: async (tx) => {
+            await sql`create table tags (title text)`.execute(tx);
+          },
+        },
+        {
+          name: 'add a slug',
+          up: async (tx) => {
+            await sql`alter table tags add column slug text`.execute(tx);
+            await sql`alter table tags add column rank integer not null default 0`.execute(tx);
+            await sql`create unique index tags_by_title on tags (slug, title)`.execute(tx);
+            await sql`create unique index tags_by_rank on tags (rank)`.execute(tx);
+            await sql`update tags set slug = title, title = null`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+    {
+      migrations: ['create notes'],
+      oldestReader: 0,
+      objects: [
+        { type: 'table', name: 'tags', tableName: 'tags', sql: 'CREATE TABLE tags (title text)' },
+      ],
+    },
+    ctx.dir,
+  );
+
+  expect(check.added).toStrictEqual([
+    {
+      version: 2,
+      name: 'add a slug',
+      refused: [
+        'create unique index tags_by_title on tags (slug, title)',
+        'create unique index tags_by_rank on tags (rank)',
+        'update tags set slug = title, title = null',
+      ],
+    },
+  ]);
+});
+
 test('it allows any statement when the build raises oldestReader past the last release', async () => {
   const ctx = await setupTest();
 

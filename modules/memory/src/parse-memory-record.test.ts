@@ -37,7 +37,33 @@ test('it reads a version record into its typed shape', () => {
     checks: { quote: 'pass' },
     model: null,
     noticeKey: null,
+    shortID: null,
   });
+});
+
+test('it reads the short ID of a created version record', () => {
+  const record = buildMockLogRecord({
+    kind: 'memory.version_added',
+    payload: {
+      itemID: 'item-a',
+      version: 1,
+      change: 'created',
+      state: 'active',
+      sealed: 'c2VhbGVk',
+      evidence: null,
+      intentEvidence: null,
+      origin: 'owner',
+      source: 'owner',
+      taskID: null,
+      proposalID: null,
+      checks: null,
+      model: null,
+      noticeKey: null,
+      shortID: 'k3x9m2p7qa',
+    },
+  });
+
+  expect(parseMemoryRecord(record)).toMatchObject({ shortID: 'k3x9m2p7qa' });
 });
 
 test('it reads the model and the notice of a version record from the gate', () => {

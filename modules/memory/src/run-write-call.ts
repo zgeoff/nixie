@@ -4,14 +4,28 @@ import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { MemoryStateError } from './memory-state-error';
 import { ProposalCapError } from './proposal-cap-error';
 import { StaleVersionError } from './stale-version-error';
+import type { ItemIDStore } from './types';
 
-// Runs one memory write for a tool. A stale version, a missing item, a wrong state or a full
-// proposal cap is the model's to read and act on; any other failure propagates.
-export async function runWriteCall(call: () => Promise<WriteOutcome>): Promise<ToolOutcome> {
+// Runs one memory write for a tool, on itemID when it targets an item. A stale version, a missing
+// item, a wrong state or a full proposal cap is the model's to read; any other failure propagates.
+// The result and the error name the item by the short ID the model reads.
+export async function runWriteCall(
+  memory: Pick<ItemIDStore, 'readShortIDs'>,
+  call: () => Promise<WriteOutcome>,
+  itemID: string | null = null,
+): Promise<ToolOutcome> {
   try {
     const outcome = await call();
 
-    return { status: 'ok', result: { ...outcome } };
+    if (outcome.status === 'proposed') {
+      return { status: 'ok', result: { ...outcome } };
+    }
+    const shortIDs = await memory.readShortIDs([outcome.itemID]);
+
+    return {
+      status: 'ok',
+      result: { ...outcome, itemID: shortIDs.get(outcome.itemID) ?? outcome.itemID },
+    };
   } catch (error) {
     if (
       error instanceof StaleVersionError ||
@@ -19,8 +33,23 @@ export async function runWriteCall(call: () => Promise<WriteOutcome>): Promise<T
       error instanceof MemoryStateError ||
       error instanceof ProposalCapError
     ) {
-      return { status: 'error', message: error.message };
+      return { status: 'error', message: await renderMessage(memory, error.message, itemID) };
     }
     throw error;
   }
+}
+
+// the error's message with the item ID it names swapped for the item's short ID
+async function renderMessage(
+  memory: Pick<ItemIDStore, 'readShortIDs'>,
+  message: string,
+  itemID: string | null,
+): Promise<string> {
+  if (itemID === null) {
+    return message;
+  }
+  const shortIDs = await memory.readShortIDs([itemID]);
+  const shortID = shortIDs.get(itemID);
+
+  return shortID === undefined ? message : message.replaceAll(itemID, shortID);
 }

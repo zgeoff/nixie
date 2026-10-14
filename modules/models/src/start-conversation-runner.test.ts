@@ -22,7 +22,8 @@ interface RunnerConfig {
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
 
-// the stub sandboxes and tool endpoint over a fresh log
+// the stub sandboxes and tool endpoint over a fresh log; sendMessage writes your message, then runs
+// the step that takes it
 async function setupTest() {
   const tasks = await startTestTasks();
   const sandboxes = buildStubSandboxes();
@@ -59,13 +60,12 @@ async function setupTest() {
         memory: () => ({
           readPinnedCore: () => Promise.resolve([]),
           recall: () => Promise.resolve({ items: [], next: null }),
+          readShortIDs: () => Promise.resolve(new Map()),
         }),
         log: config.log ?? (() => {}),
       }),
     writeMessage,
     runNextStep: (runner: Runner) => runNextStep(tasks.context, runner.runStep),
-
-    // writes your message, then runs the step that takes it
     sendMessage: async (runner: Runner, text: string) => {
       await writeMessage(text);
       await runNextStep(tasks.context, runner.runStep);

@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { buildEditTool } from './build-edit-tool';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
 import { makeToolAllowRule } from './test-utils/make-tool-allow-rule';
+import { readItemShortID } from './test-utils/read-item-short-id';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 test('it applies an edit with no quote under your allow rule on memory.edit', async () => {
@@ -12,6 +13,7 @@ test('it applies an edit with no quote under your allow rule on memory.edit', as
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+  const shortID = await readItemShortID(memory.log, item.itemID);
 
   const outcome = await buildEditTool(memory.store).run(
     {
@@ -25,7 +27,7 @@ test('it applies an edit with no quote under your allow rule on memory.edit', as
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { status: 'applied', itemID: item.itemID, version: 2 },
+    result: { status: 'applied', itemID: shortID, version: 2 },
   });
 });
 

@@ -3,8 +3,9 @@ import { PinnedCoreFullError } from './pinned-core-full-error';
 import type { MemoryContext, MemoryOrigin, RecalledItem } from './types';
 
 export interface CorePin {
-  // the item to pin
+  // the item to pin, and the short ID the core shows it by
   readonly itemID: string;
+  readonly shortID: string;
 
   // the text the pin puts in the core, who saved it and the quote it came up in
   readonly text: string;

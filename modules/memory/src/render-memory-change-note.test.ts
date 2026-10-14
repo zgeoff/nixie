@@ -4,9 +4,9 @@ import { renderMemoryChangeNote } from './render-memory-change-note';
 test('it renders the changes, the catch-up count and how many more', () => {
   const note = renderMemoryChangeNote({
     changes: [
-      { itemID: 'item-home', change: 'changed', text: 'The owner lives in Marlow Vale.' },
-      { itemID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' },
-      { itemID: 'item-bike', change: 'retired', text: 'The owner rides a red bike.' },
+      { shortID: 'item-home', change: 'changed', text: 'The owner lives in Marlow Vale.' },
+      { shortID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' },
+      { shortID: 'item-bike', change: 'retired', text: 'The owner rides a red bike.' },
     ],
     moreCount: 4,
     catchUpCount: 3,
@@ -27,13 +27,13 @@ test('it renders the changes, the catch-up count and how many more', () => {
 
 test('it renders the same note for the same changes', () => {
   const first = renderMemoryChangeNote({
-    changes: [{ itemID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
+    changes: [{ shortID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
     moreCount: 1,
     catchUpCount: 2,
     merges: [],
   });
   const second = renderMemoryChangeNote({
-    changes: [{ itemID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
+    changes: [{ shortID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
     moreCount: 1,
     catchUpCount: 2,
     merges: [],
@@ -55,7 +55,7 @@ test('it counts one catch-up item in the singular', () => {
 
 test('it leaves out the catch-up and the more lines when neither has anything', () => {
   const note = renderMemoryChangeNote({
-    changes: [{ itemID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
+    changes: [{ shortID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
     moreCount: 0,
     catchUpCount: 0,
     merges: [],
@@ -88,7 +88,7 @@ test('it renders nothing when nothing changed', () => {
 
 test("it notes each merge into the conversation's own proposal after the changes", () => {
   const note = renderMemoryChangeNote({
-    changes: [{ itemID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
+    changes: [{ shortID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
     moreCount: 0,
     catchUpCount: 0,
     merges: [{ proposalID: 'proposal-bees', origin: 'memory_writer' }],

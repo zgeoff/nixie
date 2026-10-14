@@ -34,6 +34,8 @@ export function buildConversationTools(
       {
         recall: (request) => requireStore().recall(request),
         proposals: { listPending: () => requireStore().proposals.listPending() },
+        findItemIDs: (ids) => requireStore().findItemIDs(ids),
+        readShortIDs: (itemIDs) => requireStore().readShortIDs(itemIDs),
         writes: {
           remember: (request) => requireStore().writes.remember(request),
           retire: (request) => requireStore().writes.retire(request),

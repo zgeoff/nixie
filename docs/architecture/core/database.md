@@ -86,3 +86,21 @@ Every ID that keys the key store is random, and never a row number or any other 
 brings back an older `nixie.db`, while the live key store keeps the keys of records written after
 that backup. A reused row number in the restored database would then meet a stale key under the same
 ID.
+
+## Short IDs
+
+A memory item exposes a short ID, a 10-character cuid2 such as `k3x9m2p7qa`, and the conversation's
+model reads and names the item by it instead of by its UUID. A UUID costs 36 characters in every
+prompt, tool result and tool call that names the record, and the model gains nothing from the extra
+length. Every kind of record that the model can see follows the same rule when it is added. Two
+views from before the rule show UUIDs: memory proposals, and the memory writer's view of the items
+it reads.
+
+The UUID stays the record's own key, in the log, in every foreign key and in the key store, so a
+short ID is an alias that only the model's side of each tool reads and writes. A tool that takes an
+ID accepts the short ID, and the UUID too, because a session can hold IDs that the model read before
+its record had a short ID.
+
+The record that creates a row carries the row's short ID, so a rebuild from the log gives the same
+ID. A row from before short IDs takes one derived from its UUID, and the migration that adds the
+short ID backfills the same derived value, so the fold and the backfill agree.

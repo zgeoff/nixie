@@ -25,6 +25,7 @@ test('it returns the items that match a query word for word, with their provenan
     items: [
       {
         itemID: item.itemID,
+        shortID: expect.toBeString(),
         version: 1,
         change: 'created',
         state: 'active',

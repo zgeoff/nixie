@@ -1,4 +1,6 @@
+export { buildShortIDFromUUID } from './build-short-id-from-uuid';
 export { createDatabaseCopy } from './create-database-copy';
+export { createShortID } from './create-short-id';
 export { DatabaseError } from './database-error';
 export { nixieSchema } from './nixie-schema';
 export type { MigrationReport, RunMigrationsOptions } from './run-migrations';

@@ -13,11 +13,11 @@ built: semantic search, past messages in retrieval and the recall tools.
 ## The pinned core
 
 The pinned core is the set of active items the user pinned, such as their name. Each turn reads it
-again and renders it after the persona in the system prompt, each item with its ID, who saved it and
-how it came up, in pin order. An unchanged core renders the same bytes, so the prompt cache keeps
-the prefix. The guest builds the system prompt fresh on every query with the SDK's snapshot off,
-because the SDK otherwise keeps a session's first system prompt for the session's life, and a pinned
-item would never reach a resumed session.
+again and renders it after the persona in the system prompt, each item with its short ID, who saved
+it and how it came up, in pin order. An unchanged core renders the same bytes, so the prompt cache
+keeps the prefix. The guest builds the system prompt fresh on every query with the SDK's snapshot
+off, because the SDK otherwise keeps a session's first system prompt for the session's life, and a
+pinned item would never reach a resumed session.
 
 A resumed session also holds the model's own earlier turns, which can repeat a value the user since
 changed. The turn after the core changes therefore puts a change note before the user's message: one
@@ -58,12 +58,12 @@ that the index stems the same as one of those names, whatever its case. The `mem
 keeps names in its query, because there a name may be the point of the search. The number of items
 and the score floor are configurable.
 
-The turn places the items in a block before the first message, each with its ID, version, who saved
-it, source, date and how it came up. The recall appends its own record of each item and version it
-delivered, and the turn-ended record lists the same references. Neither record holds the text, so a
-later forget leaves no readable copy of what a turn saw. The block rides in the message the guest
-sends and never in the user's message record, so a rebuilt session's history leaves retrieved text
-out.
+The turn places the items in a block before the first message, each with its short ID, version, who
+saved it, source, date and how it came up. The recall appends its own record of each item and
+version it delivered, and the turn-ended record lists the same references. Neither record holds the
+text, so a later forget leaves no readable copy of what a turn saw. The block rides in the message
+the guest sends and never in the user's message record, so a rebuilt session's history leaves
+retrieved text out.
 
 Retrieval on a resumed session also leaves out each item version that the session already holds, so
 an item placed on one turn takes no slot on the next, and the next best match above the floor takes

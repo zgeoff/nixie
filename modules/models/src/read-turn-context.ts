@@ -38,11 +38,17 @@ export async function readTurnContext(
   const core = await memory.readPinnedCore();
   const retrieved = await readRetrievedItems(run, query);
   const ownerName = run.memorySettings.ownerName;
+  const pinned = new Set(core.map((item) => item.itemID));
+
+  // the items that left the core show by their short IDs too
+  const unpinnedShortIDs = await memory.readShortIDs(
+    (query.previousCore ?? []).filter((ref) => !pinned.has(ref.itemID)).map((ref) => ref.itemID),
+  );
 
   return {
     systemPrompt: renderSystemPrompt(run.getSystemPrompt(), core, ownerName),
     preamble: [
-      renderCoreChanges(query.previousCore, core),
+      renderCoreChanges(query.previousCore, core, unpinnedShortIDs),
       renderRetrievedItems(retrieved, ownerName),
     ].filter((block) => block !== null),
     pinnedCore: core.map((item) => toMemoryRef(item)),

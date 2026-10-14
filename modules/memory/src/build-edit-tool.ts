@@ -4,11 +4,14 @@ import { buildWriteCaller } from './build-write-caller';
 import type { ModelWriteStore } from './gate-types';
 import { makeInputRecorder } from './make-input-recorder';
 import { memoryWriteOutput } from './memory-write-output';
+import { readItemIDs } from './read-item-ids';
 import { runWriteCall } from './run-write-call';
+import type { ItemIDStore } from './types';
 
 // Builds memory.edit, which declares note and runs each edit through the content gate on the same
-// path as a remembered fact, with the item and version it read as the target.
-export function buildEditTool(memory: ModelWriteStore): ToolDefinition {
+// path as a remembered fact, with the item and version it read as the target. The model names the
+// item by its short ID, or by an item ID it read before short IDs.
+export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefinition {
   return {
     name: 'memory.edit',
     description: editDescription,
@@ -33,17 +36,22 @@ export function buildEditTool(memory: ModelWriteStore): ToolDefinition {
     // the text is the item's, which the version holds under the item's key, and the quote can
     // repeat it before the gate checks the quote
     recordInput: makeInputRecorder(['text', 'quote']),
-    run: (call: ToolCall, context: ToolContext) =>
-      runWriteCall(() => {
-        const input = editArguments.parse(call.input);
+    run: async (call: ToolCall, context: ToolContext) => {
+      const input = editArguments.parse(call.input);
+      const [itemID = input.itemID] = await readItemIDs(memory, [input.itemID]);
 
-        return memory.writes.remember({
-          text: input.text,
-          target: { itemID: input.itemID, version: input.version },
-          caller: buildWriteCaller(context),
-          ...(input.quote === undefined ? {} : { quote: input.quote }),
-        });
-      }),
+      return runWriteCall(
+        memory,
+        () =>
+          memory.writes.remember({
+            text: input.text,
+            target: { itemID, version: input.version },
+            caller: buildWriteCaller(context),
+            ...(input.quote === undefined ? {} : { quote: input.quote }),
+          }),
+        itemID,
+      );
+    },
   };
 }
 

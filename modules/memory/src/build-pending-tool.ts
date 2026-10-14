@@ -2,10 +2,10 @@ import type { JSONObject } from '@heynixie/log';
 import type { Clock } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 import type { MemoryProposal, MemoryProposals } from './gate-types';
-import type { MemoryOrigin } from './types';
+import type { ItemIDStore, MemoryOrigin } from './types';
 
 // What memory.pending reads: the proposals that wait for the owner's review.
-export interface PendingToolStore {
+export interface PendingToolStore extends Pick<ItemIDStore, 'readShortIDs'> {
   readonly proposals: Pick<MemoryProposals, 'listPending'>;
 }
 
@@ -68,25 +68,33 @@ export function buildPendingTool(
     execution: 'direct',
     run: async () => {
       const proposals = await memory.proposals.listPending();
+      const shortIDs = await memory.readShortIDs(
+        proposals.flatMap((proposal) => (proposal.targetVersion === null ? [] : [proposal.itemID])),
+      );
       const now = clock.now();
 
       // the record holds only the proposal IDs, so a forget leaves no readable copy of the text
       return {
         status: 'ok',
-        result: { proposals: proposals.map((proposal) => toPendingJSON(proposal, now)) },
+        result: {
+          proposals: proposals.map((proposal) =>
+            toPendingJSON(proposal, shortIDs.get(proposal.itemID) ?? proposal.itemID, now),
+          ),
+        },
         record: { proposals: proposals.map((proposal) => ({ proposalID: proposal.proposalID })) },
       };
     },
   };
 }
 
-function toPendingJSON(proposal: MemoryProposal, now: number): JSONObject {
+// the proposal as the model reads it, with the item an edit or a retirement names by its short ID
+function toPendingJSON(proposal: MemoryProposal, shortID: string, now: number): JSONObject {
   return {
     proposalID: proposal.proposalID,
     change: pickChange(proposal),
     ...(proposal.targetVersion === null
       ? {}
-      : { itemID: proposal.itemID, version: proposal.targetVersion }),
+      : { itemID: shortID, version: proposal.targetVersion }),
     text: proposal.text,
     notedBy: buildNotedBy(proposal),
     reason: proposal.reason,

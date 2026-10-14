@@ -3,10 +3,9 @@ import { readRecords } from '@heynixie/log';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildMemoryTools } from './build-memory-tools';
-import { buildMockCheckerAnswer } from './test-utils/build-mock-checker-answer';
+import type { TestMemoryOptions } from './test-utils';
+import { buildMockCheckerAnswer, readItemShortID, startTestMemory } from './test-utils';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
-import type { TestMemoryOptions } from './test-utils/start-test-memory';
-import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
 
@@ -93,8 +92,9 @@ test('it applies a backed fact with the caller and model of the run, never of th
   const row = await memory.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
+    .innerJoin('memory_items', 'memory_items.item_id', 'memory_versions.item_id')
     .select(['origin', 'source', 'task_id', 'model'])
-    .where('item_id', '=', outcome.result['itemID'])
+    .where('memory_items.short_id', '=', outcome.result['itemID'])
     .executeTakeFirstOrThrow();
 
   expect(outcome).toStrictEqual({
@@ -143,7 +143,7 @@ test('it returns a proposal, not an error, for a fact with no quote', async () =
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });
 
-test('it applies a backed edit as a new version and keeps the old version in history', async () => {
+test('it applies a backed edit of the item its short ID names as a new version and keeps the old version in history', async () => {
   const ctx = await setupTest({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
@@ -151,7 +151,9 @@ test('it applies a backed edit as a new version and keeps the old version in his
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
+  invariant(shortID);
   await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',
     text: 'I live on Oak Avenue now',
@@ -162,7 +164,7 @@ test('it applies a backed edit as a new version and keeps the old version in his
     {
       tool: 'memory.edit',
       input: {
-        itemID: item.itemID,
+        itemID: shortID,
         version: 1,
         text: 'Lives on Oak Avenue',
         quote: 'I live on Oak Avenue now',
@@ -181,7 +183,7 @@ test('it applies a backed edit as a new version and keeps the old version in his
 
   expect(result.structuredContent).toStrictEqual({
     status: 'applied',
-    itemID: item.itemID,
+    itemID: shortID,
     version: 2,
   });
   expect(history?.versions).toMatchObject([
@@ -270,13 +272,14 @@ test('it records an edit call with neither its text nor its quote, which the gat
   expect(JSON.stringify(entries)).not.toInclude('Udon');
 });
 
-test('it returns a stale edit to the model as an error', async () => {
+test('it returns a stale edit to the model as an error that names the item by its short ID', async () => {
   const ctx = await setupTest();
   const tool = ctx.registry.findTool('memory.edit');
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   invariant(tool);
   await ctx.memory.store.retire({
@@ -301,13 +304,42 @@ test('it returns a stale edit to the model as an error', async () => {
     },
   );
 
-  expect(outcome).toMatchObject({
+  expect(outcome).toStrictEqual({
     status: 'error',
-    message: expect.toInclude('is at version 2'),
+    message: `memory item ${shortID} is at version 2, not the version 1 the caller read`,
   });
 });
 
-test('it retires an item the model read and you asked to retire', async () => {
+test('it returns an edit of an ID that names no item to the model as an error with that ID', async () => {
+  const ctx = await setupTest();
+  const tool = ctx.registry.findTool('memory.edit');
+
+  invariant(tool);
+
+  const outcome = await tool.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.edit',
+      input: { itemID: 'z9z9z9z9z9', version: 1, text: 'Lives on Oak Avenue' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'no memory item z9z9z9z9z9 to change',
+  });
+});
+
+test('it retires the item its short ID names when the model read it and you asked to retire it', async () => {
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
@@ -318,20 +350,23 @@ test('it retires an item the model read and you asked to retire', async () => {
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+  const [shortID] = await Promise.all([
+    readItemShortID(memory.log, item.itemID),
+    writeOwnerMessageRecord(memory.log, {
+      thread: 'conversation',
+      text: 'I moved out of Elm Street',
+      spans: [{ start: 0, end: 25, source: 'typed' }],
+    }),
+  ]);
 
   invariant(tool);
-  await writeOwnerMessageRecord(memory.log, {
-    thread: 'conversation',
-    text: 'I moved out of Elm Street',
-    spans: [{ start: 0, end: 25, source: 'typed' }],
-  });
   await memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' });
 
   const outcome = await tool.definition.run(
     {
       callID: 'call-1',
       tool: 'memory.retire',
-      input: { itemID: item.itemID, version: 1, intentQuote: 'I moved out of Elm Street' },
+      input: { itemID: shortID, version: 1, intentQuote: 'I moved out of Elm Street' },
       toolUseID: null,
     },
     {
@@ -347,7 +382,7 @@ test('it retires an item the model read and you asked to retire', async () => {
 
   expect(outcome).toStrictEqual({
     status: 'ok',
-    result: { status: 'applied', itemID: item.itemID, version: 2 },
+    result: { status: 'applied', itemID: shortID, version: 2 },
   });
   expect(history?.versions.at(-1)).toMatchObject({ change: 'retired', origin: 'conversation' });
 });
@@ -435,9 +470,7 @@ test('it recalls a version with its quote, its model and a readable date', async
   const ctx = await setupTest();
 
   setSystemTime(new Date(Date.UTC(2026, 9, 1, 9, 30)));
-  onTestFinished(() => {
-    setSystemTime();
-  });
+  onTestFinished(() => setSystemTime());
   const item = await ctx.memory.store.remember({
     text: 'Keeps a sourdough starter called Gerald',
     evidenceQuote: 'Gerald the starter needs feeding again',
@@ -450,6 +483,7 @@ test('it recalls a version with its quote, its model and a readable date', async
       model: 'test-model-1',
     },
   });
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   const result = await runToolCall(
     { tool: 'memory.recall', input: {}, toolUseID: null },
@@ -465,7 +499,7 @@ test('it recalls a version with its quote, its model and a readable date', async
   expect(result.structuredContent).toStrictEqual({
     items: [
       {
-        itemID: item.itemID,
+        itemID: shortID,
         isPinned: false,
         version: 1,
         change: 'created',
@@ -493,6 +527,7 @@ test('it recalls a version with no quote or model without them', async () => {
     text: 'Plays the cello on Sundays',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   const result = await runToolCall(
     { tool: 'memory.recall', input: {}, toolUseID: null },
@@ -508,7 +543,7 @@ test('it recalls a version with no quote or model without them', async () => {
   expect(result.structuredContent).toStrictEqual({
     items: [
       {
-        itemID: item.itemID,
+        itemID: shortID,
         isPinned: false,
         version: 1,
         change: 'created',
@@ -524,12 +559,69 @@ test('it recalls a version with no quote or model without them', async () => {
   });
 });
 
+test('it recalls the item its short ID names', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps the bike lock code in the blue notebook',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Waters the ferns on Fridays',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  invariant(shortID);
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: { itemIDs: [shortID] }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toMatchObject({
+    items: [{ itemID: shortID, text: 'Keeps the bike lock code in the blue notebook' }],
+    next: null,
+  });
+});
+
+test('it recalls an item by the item ID the model read before short IDs, under its short ID', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps the bike lock code in the blue notebook',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: { itemIDs: [item.itemID] }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toMatchObject({
+    items: [{ itemID: shortID, text: 'Keeps the bike lock code in the blue notebook' }],
+  });
+});
+
 test('it gives the model a recalled item and leaves no readable copy once the item is forgotten', async () => {
   const ctx = await setupTest();
   const item = await ctx.memory.store.remember({
     text: 'Sister Ada lives in Leeds',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   const result = await runToolCall(
     { tool: 'memory.recall', input: { query: 'Ada lives in Leeds' }, toolUseID: null },
@@ -550,7 +642,7 @@ test('it gives the model a recalled item and leaves no readable copy once the it
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
   expect(result.structuredContent).toMatchObject({
-    items: [{ itemID: item.itemID, text: 'Sister Ada lives in Leeds' }],
+    items: [{ itemID: shortID, text: 'Sister Ada lives in Leeds' }],
   });
   expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
     erasable: {
@@ -586,26 +678,26 @@ test('it applies a remembered fact and leaves no readable copy of its text once 
     },
     ctx.toolCallOptions,
   );
-  const content = result.structuredContent;
+  const [item] = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['item_id', 'short_id'])
+    .execute();
 
-  invariant(
-    typeof content === 'object' &&
-      content !== null &&
-      'itemID' in content &&
-      typeof content.itemID === 'string',
-    'the remember applied no item',
-  );
-  const itemID = content.itemID;
-
+  invariant(item, 'the remember applied no item');
   await ctx.memory.store.forget({
-    target: { itemID, version: 1 },
+    target: { itemID: item.item_id, version: 1 },
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
   // the owner's own message keeps its words, and only the item's text is gone
-  expect(result.structuredContent).toStrictEqual({ status: 'applied', itemID, version: 1 });
+  expect(result.structuredContent).toStrictEqual({
+    status: 'applied',
+    itemID: item.short_id,
+    version: 1,
+  });
   expect(JSON.stringify(entries)).not.toInclude('Allergic to hazelnuts');
 });
 

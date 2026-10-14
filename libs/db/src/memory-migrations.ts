@@ -1,6 +1,7 @@
 import { memoryGateMigration } from './memory-gate-migration';
 import { memoryMigration } from './memory-migration';
 import { memoryProposalMergesMigration } from './memory-proposal-merges-migration';
+import { memoryShortIDsMigration } from './memory-short-ids-migration';
 import { memoryWriterMigration } from './memory-writer-migration';
 import type { Migration } from './types';
 
@@ -10,4 +11,5 @@ export const memoryMigrations: readonly Migration[] = [
   memoryWriterMigration,
   memoryGateMigration,
   memoryProposalMergesMigration,
+  memoryShortIDsMigration,
 ];

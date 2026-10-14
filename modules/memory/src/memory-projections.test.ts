@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { runProjectionRebuild } from '@heynixie/log';
+import { runProjectionRebuild, writeRecords } from '@heynixie/log';
 import { readMemoryRows } from './test-utils/read-memory-rows';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
@@ -9,6 +9,37 @@ async function setupTest() {
 
   return { memory, db: memory.writer.db.$extendTables<MemoryTables>() };
 }
+
+test('it gives an item whose record holds no short ID the one its UUID gives, as the backfill does', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'memory.version_added',
+      definitions: { snapshotHash: 'sha256:test' },
+      payload: {
+        itemID: '3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13',
+        version: 1,
+        change: 'created',
+        state: 'active',
+        sealed: 'c2VhbGVk',
+        evidence: null,
+        intentEvidence: null,
+        origin: 'owner',
+        source: 'owner',
+        taskID: null,
+        proposalID: null,
+        checks: null,
+      },
+    },
+  ]);
+
+  const rows = await readMemoryRows(ctx.db);
+
+  expect(rows.items).toMatchObject([
+    { item_id: '3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', short_id: 'as2nducz6x' },
+  ]);
+});
 
 test('it rebuilds an edited, retired and undone item equal to the live rows', async () => {
   const ctx = await setupTest();

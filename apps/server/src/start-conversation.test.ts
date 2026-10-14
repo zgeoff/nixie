@@ -103,7 +103,7 @@ test('it runs each turn in the conversation guest on the role profile and resume
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
 }, 30_000);
 
-test('it puts a pinned item in the next turn system prompt, with the change note before the message', async () => {
+test('it puts a pinned item in the next turn system prompt by its short ID, with the change note before the message', async () => {
   const ctx = await setupTest();
   const [runner] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
@@ -119,15 +119,17 @@ test('it puts a pinned item in the next turn system prompt, with the change note
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await sendTestMessage(ctx.context, runner.runStep, 'What do I go by?');
-
+  const [shortIDs] = await Promise.all([
+    ctx.memory.readShortIDs([item.itemID]),
+    sendTestMessage(ctx.context, runner.runStep, 'What do I go by?'),
+  ]);
   const request = ctx.readLastRequest();
 
   expect(JSON.stringify(request?.system)).toInclude(
-    `- [${item.itemID}, the owner saved] Goes by Sam`,
+    `- [${String(shortIDs.get(item.itemID))}, the owner saved] Goes by Sam`,
   );
   expect(JSON.stringify(request?.messages)).toInclude(
-    String.raw`- Pinned [${item.itemID}]: Goes by Sam\n</pinned-memory-changes>\n\n[`,
+    String.raw`- Pinned [${String(shortIDs.get(item.itemID))}]: Goes by Sam\n</pinned-memory-changes>\n\n[`,
   );
   expect(JSON.stringify(request?.messages)).toMatch(
     /<\/pinned-memory-changes>\\n\\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,

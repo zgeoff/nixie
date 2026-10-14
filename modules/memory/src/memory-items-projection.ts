@@ -1,3 +1,4 @@
+import { buildShortIDFromUUID } from '@heynixie/db';
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import type { MemoryRecord } from './parse-memory-record';
@@ -37,6 +38,9 @@ async function applyMemoryRecord(
         created_sequence: record.sequence,
         updated_sequence: record.sequence,
         forgotten_sequence: null,
+
+        // an item from before short IDs takes the one its UUID gives, as the backfill gave it
+        short_id: parsed.shortID ?? buildShortIDFromUUID(parsed.itemID),
       })
       .execute();
     return;
