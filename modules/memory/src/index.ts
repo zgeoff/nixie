@@ -1,6 +1,6 @@
 export type { CheckerRule } from './build-checker-rules';
 export { buildCheckerRules } from './build-checker-rules';
-export type { MemoryToolStore } from './build-memory-tools';
+export type { MemoryToolStore } from './memory-tool-store';
 export { buildMemoryTools } from './build-memory-tools';
 export { buildWriterTools } from './build-writer-tools';
 export { buildConsolidatorTools } from './build-consolidator-tools';

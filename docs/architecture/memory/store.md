@@ -164,7 +164,7 @@ one the server passes in from the conversation, and
 
 ## The model's tools
 
-The model reaches memory through 5 tools over the same interface:
+The model reaches memory through 7 tools over the same interface:
 
 | Tool              | Effect | Does                                                       |
 | ----------------- | ------ | ---------------------------------------------------------- |
@@ -173,6 +173,8 @@ The model reaches memory through 5 tools over the same interface:
 | `memory.remember` | `note` | Creates an item, with a quote                              |
 | `memory.edit`     | `note` | Edits an item at a version it read, with a quote           |
 | `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote |
+| `memory.diff`     | `read` | Shows the pending consolidation diff                       |
+| `memory.comment`  | `note` | Leaves a comment on one change of that diff                |
 
 Creating and editing are separate tools because the tool list is where the model learns what it can
 do, and a model that finds editing only in the description of a create tool can miss it.
@@ -191,7 +193,7 @@ takes outside content as its source, because the items it returns hold every sou
 The `memory.recall` result gives each date in readable UTC, and its description tells the model to
 reach for it when a half-remembered detail would change an answer. A stale version, a missing item
 or a wrong state returns to the model as the tool's refusal, so the model reads the item again. The
-model can retire an item and can never restore, undo or forget one. The server registers the 5 tools
+model can retire an item and can never restore, undo or forget one. The server registers the 7 tools
 beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
 because they declare `read` and `note` and run direct.
 

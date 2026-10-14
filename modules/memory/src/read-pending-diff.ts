@@ -1,19 +1,24 @@
+import { buildShortIDFromUUID } from '@heynixie/db';
+import type { LogTables } from '@heynixie/log';
 import { findRecordKeys } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import type {
+  ChangeComment,
   ChangeInput,
   ConsolidationChange,
   ConsolidationChangeRow,
   ConsolidationDiff,
   ConsolidationTables,
 } from './consolidation-types';
+import { decodeChangeComment } from './decode-change-comment';
 import { decodeChangeText } from './decode-change-text';
 import { parseChangeInputs } from './parse-change-inputs';
 import { readVersionTexts } from './read-version-texts';
 import type { MemoryTables, StoreParts, VersionRef } from './types';
 
-// Reads the diff whose changes wait for your answer, in the order the run proposed them, with each
-// change's text opened and each input's text at the version the change read. A change whose first
-// input was forgotten has no key left, so it reads as nothing and drops out.
+// Reads the diff whose changes wait for your answer, in proposal order: each change's text and the
+// conversation's comment opened, each input's text at the version read. A change whose first input
+// was forgotten has no key left, so it reads as nothing and drops out.
 export async function readPendingDiff(parts: StoreParts): Promise<ConsolidationDiff | null> {
   const db = parts.context.log.writer.db.$extendTables<ConsolidationTables & MemoryTables>();
   const first = await db
@@ -54,6 +59,7 @@ async function readChanges(
     log,
     rows.map((row) => row.item_id),
   );
+  const commentTimes = await readCommentTimes(parts, rows);
   const changes = await Promise.all(
     rows.map(async (row) => {
       const key = keys.get(row.item_id);
@@ -65,6 +71,7 @@ async function readChanges(
 
       return {
         changeID: row.change_id,
+        shortID: row.short_id ?? buildShortIDFromUUID(row.change_id),
         kind: row.kind,
         inputs: await readInputs(parts, parseChangeInputs(row.inputs)),
         text: text.text,
@@ -72,11 +79,34 @@ async function readChanges(
         source: row.source,
         actionHash: row.action_hash,
         lapseAt: row.lapse_at,
+        comment: await readComment(key, row, commentTimes),
       } satisfies ConsolidationChange;
     }),
   );
 
   return changes.filter((change) => change !== null);
+}
+
+// when each comment was left: the wall-clock time of the record that left it
+async function readCommentTimes(
+  parts: StoreParts,
+  rows: readonly ConsolidationChangeRow[],
+): Promise<ReadonlyMap<number, number>> {
+  const sequences = rows.flatMap((row) =>
+    row.comment_sequence === null ? [] : [row.comment_sequence],
+  );
+
+  if (sequences.length === 0) {
+    return new Map();
+  }
+  const records = await parts.context.log.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select(['sequence', 'recorded_at'])
+    .where('sequence', 'in', sequences)
+    .execute();
+
+  return new Map(records.map((record) => [record.sequence, record.recorded_at]));
 }
 
 // each input's text at the version read, and whether the item still stands active at it
@@ -107,4 +137,18 @@ async function readInputs(
       isCurrent: item?.version === text.version && item.state === 'active',
     };
   });
+}
+
+async function readComment(
+  key: CryptoKey,
+  row: ConsolidationChangeRow,
+  times: ReadonlyMap<number, number>,
+): Promise<ChangeComment | null> {
+  if (row.comment === null || row.comment_sequence === null) {
+    return null;
+  }
+  const at = times.get(row.comment_sequence);
+
+  invariant(at !== undefined, 'a comment names a record that the log does not hold');
+  return { text: await decodeChangeComment(key, row.change_id, row.comment), at };
 }

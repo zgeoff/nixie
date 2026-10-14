@@ -52,7 +52,7 @@ function buildWriteStandIn(): ToolDefinition {
   };
 }
 
-test('it lists the web fetch tool, the time tool and the 5 memory tools', () => {
+test('it lists the web fetch tool, the time tool and the 7 memory tools', () => {
   const definitions = buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), {
     readStore: () => null,
     clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
@@ -66,6 +66,8 @@ test('it lists the web fetch tool, the time tool and the 5 memory tools', () => 
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.diff',
+    'memory.comment',
   ]);
 });
 
@@ -109,6 +111,8 @@ test('it allows the time tool and each memory tool and denies a write tool under
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.diff',
+    'memory.comment',
   ];
   const toolList = ['web.fetch', ...readTools, 'files.write'];
   const allowed = {
@@ -126,4 +130,22 @@ test('it allows the time tool and each memory tool and denies a write tool under
   expect(decide({ tool: 'files.write', toolList })).toMatchObject({
     decision: { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only' } },
   });
+});
+
+test('it offers no tool that approves, rejects or edits a consolidation change', () => {
+  const definitions = buildConversationTools(buildWebFetchStandIn(), buildTimeStandIn(), {
+    readStore: () => null,
+    clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+  });
+  const inputs = definitions.map(
+    (definition) => [definition.name, Object.keys(definition.input['properties'] ?? {})] as const,
+  );
+
+  // an answer to a change binds to its action hash, so a tool that takes none cannot answer one
+  expect(inputs).toSatisfyAll(
+    ([, keys]: readonly [string, readonly string[]]) => !keys.includes('actionHash'),
+  );
+  expect(inputs.filter(([, keys]) => keys.includes('changeID'))).toStrictEqual([
+    ['memory.comment', ['changeID', 'comment']],
+  ]);
 });

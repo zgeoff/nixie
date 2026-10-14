@@ -1,3 +1,4 @@
+import { memoryConsolidationCommentsMigration } from './memory-consolidation-comments-migration';
 import { memoryConsolidationMigration } from './memory-consolidation-migration';
 import { memoryGateMigration } from './memory-gate-migration';
 import { memoryMigration } from './memory-migration';
@@ -14,4 +15,5 @@ export const memoryMigrations: readonly Migration[] = [
   memoryProposalMergesMigration,
   memoryShortIDsMigration,
   memoryConsolidationMigration,
+  memoryConsolidationCommentsMigration,
 ];

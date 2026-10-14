@@ -85,5 +85,27 @@ apply must not hold the next run.
 
 The control socket serves the pending diff and takes approvals and rejections, with `host` as the
 identity that answers. A host command reads the diff with each input at the version its change read,
-and the user approves the whole diff, approves single changes, or rejects one change. The web view
-for a diff is not built.
+and the user approves the whole diff, approves single changes, or rejects one change. Each change
+shows the conversation's comment beside it. The web view for a diff is not built.
+
+## The conversation's comments
+
+The consolidator's session reads the items without the conversation's context, so it can flatten a
+rewrite that the conversation would catch, such as one that drops a joke. Before the user reviews,
+the conversation's model reads the pending diff through `memory.diff`, which shows each change by
+its short ID with its reason and its inputs, and leaves at most one comment per change through
+`memory.comment`. A second comment on a change replaces the first.
+
+The model reads the diff under the delivery lock that recall takes, so a forget either begins after
+the read or the read finds the item forgetting. A change with any input that is forgetting or
+forgotten drops out of what the model reads, because a merged or rewritten text can hold that
+input's words. The host command reads the diff without that filter.
+
+A comment answers nothing. It writes one `memory.consolidation_commented` record, and the change
+stays pending under the same action hash. The model never sees an action hash, and no conversation
+tool takes one, so the model has no path to approve, reject or edit a change. A change that is
+answered, lapsed or forgotten refuses a comment, and the model reads the refusal.
+
+The comment is sealed under the key of the change's first input, as the change's text is, so a
+forget of that item leaves the comment unreadable too. The tool call's record leaves out the comment
+text, because the model can copy an item's text into it.

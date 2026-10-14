@@ -103,4 +103,7 @@ its record had a short ID.
 
 The record that creates a row carries the row's short ID, so a rebuild from the log gives the same
 ID. A row from before short IDs takes one derived from its UUID, and the migration that adds the
-short ID backfills the same derived value, so the fold and the backfill agree.
+short ID backfills the same derived value, so the fold and the backfill agree. A memory
+consolidation change always takes the ID its UUID gives, because its proposal record keeps the shape
+that the release before reads. That release rejects an unknown key in the record, so a rollback
+could not rebuild its tables from a record that carried the short ID.

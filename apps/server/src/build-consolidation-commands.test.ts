@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildMemoryTools } from '@heynixie/memory';
 import {
   createConsolidationDiff,
   createMemoryItem,
@@ -78,6 +79,57 @@ test('it prints the pending diff, approves one change alone and rejects another'
     { changeID: second.changeID },
     null,
   ]);
+}, 60_000);
+
+test('it prints the comment the conversation left through memory.comment beside its change', async () => {
+  const ctx = await setupTest();
+  const joke = await createMemoryItem(ctx.memory.store, { text: 'Names plants after drummers' });
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [
+      {
+        kind: 'rewrite',
+        inputs: [joke],
+        text: 'Owns houseplants',
+        reason: 'Long.',
+        source: 'owner',
+      },
+    ],
+  });
+  const [rewrite] = diff.changes;
+  const comment = buildMemoryTools(ctx.memory.store, { now: () => Date.now() }).find(
+    (definition) => definition.name === 'memory.comment',
+  );
+
+  invariant(rewrite && comment);
+  await comment.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.comment',
+      input: { changeID: rewrite.shortID, comment: 'This loses the drummers, which is the point.' },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: ['memory.comment'],
+        model: { model: 'claude-test-1', profile: 'chat-direct' },
+      },
+    },
+  );
+
+  const run = await runHostCommand(ctx.configPath, ['memory-diff']);
+
+  expect(JSON.parse(run.stdout)).toMatchObject({
+    changes: [
+      {
+        changeID: rewrite.changeID,
+        text: 'Owns houseplants',
+        reason: 'Long.',
+        comment: { text: 'This loses the drummers, which is the point.', at: expect.toBeString() },
+      },
+    ],
+  });
 }, 60_000);
 
 test('it approves the whole diff when it names every change', async () => {
