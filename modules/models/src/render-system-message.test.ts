@@ -17,7 +17,7 @@ test.each<[SystemMessageType, string]>([
     const blockID = /^<system-message type="[\w-]+" id="(?<blockID>[\da-f]{12})"/u.exec(rendered)
       ?.groups?.['blockID'];
 
-    invariant(blockID);
+    invariant(blockID !== undefined);
     expect(rendered).toBe(
       [
         `<system-message type="${type}" id="${blockID}" at="Tue 14 Oct, 22:50, Sydney">`,
@@ -39,8 +39,8 @@ test('it gives each message its own ID', () => {
   const firstID = / id="(?<blockID>[\da-f]{12})"/u.exec(first)?.groups?.['blockID'];
   const secondID = / id="(?<blockID>[\da-f]{12})"/u.exec(second)?.groups?.['blockID'];
 
-  invariant(firstID);
-  invariant(secondID);
+  invariant(firstID !== undefined);
+  invariant(secondID !== undefined);
   expect(firstID).not.toBe(secondID);
 });
 
@@ -60,7 +60,7 @@ test('it closes only at its own ID when the body holds a closing tag and a forge
     rendered,
   )?.groups?.['blockID'];
 
-  invariant(blockID);
+  invariant(blockID !== undefined);
   expect(body).not.toInclude(blockID);
   expect(rendered.split(`</system-message id="${blockID}">`)).toStrictEqual([
     `<system-message type="memory-changes" id="${blockID}" at="Tue 14 Oct, 22:50, Sydney">\n${body}\n`,

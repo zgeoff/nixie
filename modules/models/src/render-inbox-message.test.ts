@@ -126,7 +126,7 @@ test('it renders a fired timer as a timer system message at the time it fired, i
   const blockID = /^<system-message type="timer" id="(?<blockID>[\da-f]{12})"/u.exec(rendered)
     ?.groups?.['blockID'];
 
-  invariant(blockID);
+  invariant(blockID !== undefined);
   expect(rendered).toBe(
     [
       `<system-message type="timer" id="${blockID}" at="Tue 13 Oct, 14:05, Sydney">`,
@@ -152,7 +152,7 @@ test('it renders an action outcome as an outcome system message at the time it s
   const blockID = /^<system-message type="outcome" id="(?<blockID>[\da-f]{12})"/u.exec(rendered)
     ?.groups?.['blockID'];
 
-  invariant(blockID);
+  invariant(blockID !== undefined);
   expect(rendered).toBe(
     [
       `<system-message type="outcome" id="${blockID}" at="Tue 13 Oct, 14:40, Sydney">`,
