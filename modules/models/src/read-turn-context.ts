@@ -7,7 +7,13 @@ import { renderRetrievedItems } from './render-retrieved-items';
 import type { SystemMessageType } from './render-system-message';
 import { renderSystemMessage } from './render-system-message';
 import { renderSystemPrompt } from './render-system-prompt';
-import type { ConversationMemory, ConversationRun, MemoryItem, MemoryRef } from './types';
+import type {
+  ConversationMemory,
+  ConversationRun,
+  MemoryItem,
+  MemoryLineOptions,
+  MemoryRef,
+} from './types';
 
 export interface TurnContextQuery {
   readonly taskID: string;
@@ -57,7 +63,7 @@ export async function readTurnContext(
   };
   const at = formatMessageTime(lines.now, null, lines);
   const pinnedMemory = renderPinnedMemory(core, lines);
-  const changes = await readCoreChanges(memory, query, core);
+  const changes = await readCoreChanges(memory, query, { core, lines });
   const recap = query.isCompacted ? pinnedMemory : null;
 
   return {
@@ -73,20 +79,26 @@ export async function readTurnContext(
   };
 }
 
+// the pinned core this turn runs with, and the options its lines render with
+interface PinnedCore {
+  readonly core: readonly MemoryItem[];
+  readonly lines: MemoryLineOptions;
+}
+
 // The change note's body. A new session opens with the current core, so only a resumed one gets a
 // note, and the items that left the core show by their short IDs too.
 async function readCoreChanges(
   memory: ConversationMemory,
   query: TurnContextQuery,
-  core: readonly MemoryItem[],
+  pinned: PinnedCore,
 ): Promise<string | null> {
-  const pinned = new Set(core.map((item) => item.itemID));
+  const pinnedIDs = new Set(pinned.core.map((item) => item.itemID));
   const previousCore = query.isNewSession ? null : query.previousCore;
   const unpinnedShortIDs = await memory.readShortIDs(
-    (previousCore ?? []).filter((ref) => !pinned.has(ref.itemID)).map((ref) => ref.itemID),
+    (previousCore ?? []).filter((ref) => !pinnedIDs.has(ref.itemID)).map((ref) => ref.itemID),
   );
 
-  return renderCoreChanges(previousCore, core, unpinnedShortIDs);
+  return renderCoreChanges(previousCore, pinned.core, { ...pinned.lines, unpinnedShortIDs });
 }
 
 function renderPreambleMessage(

@@ -19,8 +19,10 @@ system prompt or the cached prefix of the history after it.
 
 A resumed session holds the core as it stood when the session opened, and the model's own earlier
 turns, which can repeat a value the user since changed. Each turn reads the core again, and the turn
-after it changes puts a change note before the user's message: one line per item pinned, changed or
-unpinned, with the rule that the note wins over the opening's copy and anything said earlier. A new
+after it changes puts a change note before the user's message. The note renders each pinned or
+changed item as the opening renders it, with the line that says where the item came from, so a label
+such as unconfirmed reaches the model with the edit. It names each unpinned item by its short ID,
+and states the rule that the note wins over the opening's copy and anything said earlier. A new
 session's first turn gets no note, because it opens with the current core. The turn-ended record
 lists the core's item and version references, and the next turn compares the current core against
 them, so the note survives a restart and needs no state outside the log.

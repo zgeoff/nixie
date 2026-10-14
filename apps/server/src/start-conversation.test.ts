@@ -167,7 +167,7 @@ test('it keeps the system prompt the same bytes when a pinned item is edited dur
 
   expect(JSON.stringify(ctx.readLastRequest()?.system)).toBe(before);
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toMatch(
-    /<system-message type=\\"pinned-memory-changes\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- Changed \[[\da-z]+\]: Goes by Sasha\\n<\/system-message id=\\"\k<blockID>\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
+    /<system-message type=\\"pinned-memory-changes\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- Changed \[(?<shortID>[\da-z]+)\]:\\n  - Goes by Sasha\\n    \k<shortID> v2 · [^\\]+ · the owner said this\\n<\/system-message id=\\"\k<blockID>\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
   );
 }, 30_000);
 
