@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import type { RateToolOptions } from './build-rate-tool';
 import { buildRateTool } from './build-rate-tool';
+import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { readItemShortID } from './test-utils/read-item-short-id';
@@ -152,8 +153,65 @@ test('it refuses an item rated twice in one call', async () => {
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: `${tram.itemID} is rated twice; rate each item once.`,
+    message: `${await readItemShortID(ctx.memory.log, tram.itemID)} is rated twice; rate each item once.`,
   });
+});
+
+test('it refuses an item that is not the ID of a memory without repeating it', async () => {
+  const ctx = await setupTest({ ownerName: null, agentName: null });
+  const tram = await createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' });
+
+  await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.rate',
+      input: { ratings: [{ item: 'the tram stopped in May', verdict: 'noise' }] },
+      toolUseID: null,
+    },
+    buildMockToolContext({ thread: 'conversation' }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'An item you rated is not the ID of a memory, so nothing was rated. Rate the memories by the IDs you were given.',
+  });
+});
+
+test('it leaves no readable copy of text planted in a rating call once the item is forgotten', async () => {
+  const ctx = await setupTest({ ownerName: null, agentName: null });
+  const tram = await createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' });
+
+  await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
+  const inputs = [
+    { ratings: [{ item: tram.itemID, verdict: 'misleading', note: 'planted orchard words' }] },
+    { ratings: [{ item: 'planted orchard words', verdict: 'noise' }] },
+    { ratings: [{ item: tram.itemID, verdict: 'noise' }, { item: 'planted orchard words' }] },
+    { ratings: [{ item: tram.itemID, verdict: { note: 'planted orchard words' } }] },
+    { ratings: [{ item: tram.itemID, verdict: 'noise' }], 'planted orchard words': true },
+  ];
+
+  await Promise.all(
+    inputs.map((input) =>
+      runToolCall(
+        { tool: 'memory.rate', input, toolUseID: null },
+        {
+          runID: 'run-1',
+          thread: 'conversation',
+          tools: ['memory.rate'],
+          model: { model: 'test-model', profile: 'standard' },
+        },
+        ctx.toolCallOptions,
+      ),
+    ),
+  );
+  await ctx.memory.store.forget({ target: tram, provenance: buildMockProvenance() });
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  expect(records.filter((entry) => entry.record.kind === 'tool_result')).toHaveLength(5);
+  expect(JSON.stringify(records)).not.toInclude('planted orchard');
 });
 
 test('it refuses a note longer than one line', async () => {

@@ -33,7 +33,7 @@ test('it refuses an item rated once by its short ID and once by its item ID', as
 
   expect(rate).rejects.toThrowWithMessage(
     MemoryRatingError,
-    `${tram.itemID} is rated twice; rate each item once.`,
+    `${shortID} is rated twice; rate each item once.`,
   );
 });
 
@@ -68,6 +68,7 @@ test('it refuses a note on an item forgotten since the recall', async () => {
 
   await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
   await ctx.memory.store.forget({ target: tram, provenance: buildMockProvenance() });
+  const shortID = await readItemShortID(ctx.memory.log, tram.itemID);
 
   const rate = ctx.memory.store.rate({
     thread: 'conversation',
@@ -80,6 +81,6 @@ test('it refuses a note on an item forgotten since the recall', async () => {
 
   expect(rate).rejects.toThrowWithMessage(
     MemoryRatingError,
-    `${tram.itemID} was forgotten, so a note on it can't be kept.`,
+    `${shortID} was forgotten, so a note on it can't be kept.`,
   );
 });

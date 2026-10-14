@@ -189,7 +189,8 @@ given on that turn. One rating record holds the call's ratings, each by item and
 the recall delivered, and names the recall it rates, so the user sees the rating beside that turn's
 memories. The note is free text the model can copy an item's words into, so the record seals it
 under the rated item's key, as a consolidation comment is sealed, and a forget leaves the note
-unreadable. The call's own record leaves the notes out.
+unreadable. The call's own record keeps only item IDs and known verdicts, and a refusal names an
+item only by its stored short ID, so no copy of the model's words outlives a forget.
 
 Each write tool runs its gate, and returns either the version it applied or the proposal it became,
 with its review reason. A missing quote is no tool error, because the gate turns it into a proposal.
