@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.20.0](https://github.com/zgeoff/nixie/compare/v0.19.0...v0.20.0) (2026-10-14)
+
+
+### Features
+
+* **geo-784:** say what changed for the conversation on a restart ([#208](https://github.com/zgeoff/nixie/issues/208)) ([4bd3775](https://github.com/zgeoff/nixie/commit/4bd3775754716ac74160459056cd09c856cdecf3))
+* **geo-802:** let the model rate the memories it was given ([#212](https://github.com/zgeoff/nixie/issues/212)) ([428b1bb](https://github.com/zgeoff/nixie/commit/428b1bbd03a3cd6359396d06c91461bd69ef2183))
+* **geo-850:** seal the consolidation summary and show it in the diff ([#209](https://github.com/zgeoff/nixie/issues/209)) ([799b7a7](https://github.com/zgeoff/nixie/commit/799b7a7763bd13ea2d9a4663fa5de33394c3d343))
+* **geo-856:** add the reset command that keeps the device sessions ([#213](https://github.com/zgeoff/nixie/issues/213)) ([78e67a5](https://github.com/zgeoff/nixie/commit/78e67a522628d2d0cb005d603defe05c4d66de0a))
+
 ## [0.19.0](https://github.com/zgeoff/nixie/compare/v0.18.0...v0.19.0) (2026-10-14)
 
 
