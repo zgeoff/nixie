@@ -29,6 +29,33 @@ test('it lapses each pending change past its lapse time, and counts them', async
   expect(schedule.pending).toBe(0);
 });
 
+test('it lapses a change whose first input was forgotten before its lapse time', async () => {
+  const ctx = await setupTest();
+  const [forgotten, trip] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Keeps bees' }),
+    createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon' }),
+  ]);
+
+  await createConsolidationDiff(ctx.memory, {
+    changes: [
+      { kind: 'retire', inputs: [forgotten], reason: 'Stale.', source: 'owner' },
+      { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
+    ],
+    now: ctx.clock.now(),
+    lapseMs: 60_000,
+  });
+  await ctx.memory.store.forget({
+    target: forgotten,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const lapsed = await ctx.memory.store.consolidations.lapse();
+  const schedule = await ctx.memory.store.consolidations.readSchedule();
+
+  expect(lapsed).toBe(1);
+  expect(schedule.pending).toBe(1);
+});
+
 test('it never lapses a change before its lapse time', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees' });

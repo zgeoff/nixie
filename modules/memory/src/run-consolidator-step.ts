@@ -101,7 +101,7 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
 
   try {
     await parts.model.runSession({
-      systemPrompt: renderConsolidatorSystemPrompt(parts.getPersona()),
+      systemPrompt: renderConsolidatorSystemPrompt(parts.getPersona(), parts.config.maxChanges),
       prompt: renderConsolidatorPrompt(listed),
       signal,
     });

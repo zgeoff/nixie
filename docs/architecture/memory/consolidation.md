@@ -75,7 +75,9 @@ An approval applies nothing for its change, and reports why, when the change is 
 lapsed, when the action hash differs, when an input moved past the version the change read, or when
 an input left the active state. The other changes in the same approval go on, so one stale change
 never blocks the rest of the diff. A rejection and a lapse each write their own record and leave the
-items as they are. The memory sweep lapses the changes whose time has passed.
+items as they are. The memory sweep lapses the changes whose time has passed, and every change whose
+first input was forgotten, because its text went with that item's key and a change that nothing can
+apply must not hold the next run.
 
 ## Review from the host
 
