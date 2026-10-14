@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.16.0](https://github.com/zgeoff/nixie/compare/v0.15.0...v0.16.0) (2026-10-14)
+
+
+### Features
+
+* **geo-763:** name the owner in the memory writer and checker prompts ([#192](https://github.com/zgeoff/nixie/issues/192)) ([57ceb07](https://github.com/zgeoff/nixie/commit/57ceb07f6640737a1e301d0945d4bc544a554a78))
+* **geo-834:** tell a resumed session when its last replies were sent ([#194](https://github.com/zgeoff/nixie/issues/194)) ([0ebf2ed](https://github.com/zgeoff/nixie/commit/0ebf2ed9bb262973defc193b08a5be7baba32bf5))
+
+
+### Bug Fixes
+
+* **geo-766:** count a keyboard's split of a run-together word as typed ([#190](https://github.com/zgeoff/nixie/issues/190)) ([4b0cfb7](https://github.com/zgeoff/nixie/commit/4b0cfb7b9e712ea08a9558e1d2a685ac1266b92b))
+* **geo-835:** name the image impd refuses and test start on held images ([#193](https://github.com/zgeoff/nixie/issues/193)) ([4696bcb](https://github.com/zgeoff/nixie/commit/4696bcba9eeeee9668b2437d10e164f25cae8d4b))
+
 ## [0.15.0](https://github.com/zgeoff/nixie/compare/v0.14.1...v0.15.0) (2026-10-14)
 
 
