@@ -1,0 +1,123 @@
+{
+  "role": "worker",
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "ranAt": "2026-10-14T19:49:42.405Z",
+  "sessions": [
+    {
+      "label": "worker-1",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 1095,
+        "cacheReadTokens": 945,
+        "cacheWriteTokens": 4269,
+        "contextSize": 4271
+      },
+      "modelCalls": 3,
+      "toolCalls": [
+        "web_fetch",
+        "web_fetch"
+      ],
+      "calls": [
+        {
+          "tag": "worker-1",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 945,
+          "cacheWrite1h": 0,
+          "cacheRead": 0,
+          "output": 142
+        },
+        {
+          "tag": "worker-1",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 3324,
+          "cacheWrite1h": 0,
+          "cacheRead": 945,
+          "output": 953
+        }
+      ],
+      "replies": [
+        "- **Tools:** a 5 mm hex key for the mounting bolt, a clean-cutting cable cutter, a chain tool or quick-link plier, a Phillips screwdriver for the limit screws, and grease for the bolt threads.\n- **06:20 from Porto Sao Bento:** the timetable gives no arrival time for this train. At the stated journey time of about 1 h 55 min, it would reach Regua around 08:15 (my estimate).\n- **07:25 from Porto Sao Bento:** arrives in Regua at 09:20.\n- **Not included:** the 09:15 arrives at 11:12, which is after 11:00.\n- **Day check:** today (14 October 2026) is a Wednesday, so the weekday timetable applies. The weekend-only 08:05 departure does not run."
+      ],
+      "error": null
+    },
+    {
+      "label": "worker-2",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 404,
+        "cacheReadTokens": 924,
+        "cacheWriteTokens": 2789,
+        "contextSize": 2791
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "web_fetch"
+      ],
+      "calls": [
+        {
+          "tag": "worker-2",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 924,
+          "cacheWrite1h": 0,
+          "cacheRead": 0,
+          "output": 75
+        },
+        {
+          "tag": "worker-2",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 1865,
+          "cacheWrite1h": 0,
+          "cacheRead": 924,
+          "output": 329
+        }
+      ],
+      "replies": [
+        "1. Shift the chain to the smallest rear cog and smallest chainring, then hang the bike or turn it upside down.\n2. Undo the cable pinch bolt and pull the cable free.\n3. Break the chain or open its quick link, then unscrew the derailleur from the hanger. Check the hanger is straight.\n4. Thread the new derailleur on by hand, then tighten to the torque printed on the body: usually 8 to 10 Nm. Route the chain, close it, and set the limit screws.\n5. Clamp the cable, set the barrel adjuster, and shift through every gear, adjusting a quarter turn at a time."
+      ],
+      "error": null
+    },
+    {
+      "label": "worker-3",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 445,
+        "cacheReadTokens": 910,
+        "cacheWriteTokens": 2330,
+        "contextSize": 2332
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "web_fetch"
+      ],
+      "calls": [
+        {
+          "tag": "worker-3",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 910,
+          "cacheWrite1h": 0,
+          "cacheRead": 0,
+          "output": 70
+        },
+        {
+          "tag": "worker-3",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 1420,
+          "cacheWrite1h": 0,
+          "cacheRead": 910,
+          "output": 375
+        }
+      ],
+      "replies": [
+        "The page lists eight weekday departures from Porto Sao Bento, but it gives arrival times for only two of them.\n\n| Departure (Porto Sao Bento) | Arrival (Regua) |\n|---|---|\n| 06:20 | Not stated |\n| 07:25 | 09:20 |\n| 09:15 | 11:12 |\n| 11:20 | Not stated |\n| 13:15 | Not stated |\n| 15:15 | Not stated |\n| 17:15 | Not stated |\n| 19:10 | Not stated |\n\nThe page says the journey to Regua takes about 1 h 55 min, but it doesn't give arrival times for the other departures."
+      ],
+      "error": null
+    }
+  ]
+}

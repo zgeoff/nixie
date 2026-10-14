@@ -1,0 +1,399 @@
+{
+  "role": "conversation",
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "ranAt": "2026-10-14T19:53:44.336Z",
+  "sessions": [
+    {
+      "label": "turn-1",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 186,
+        "cacheReadTokens": 10197,
+        "cacheWriteTokens": 540,
+        "contextSize": 5426
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "time.now"
+      ],
+      "calls": [
+        {
+          "tag": "turn-1",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 429,
+          "cacheWrite1h": 0,
+          "cacheRead": 4884,
+          "output": 34
+        },
+        {
+          "tag": "turn-1",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 111,
+          "cacheWrite1h": 0,
+          "cacheRead": 5313,
+          "output": 152
+        }
+      ],
+      "replies": [
+        "It's 17:12 in Tokyo right now on Wednesday 14 October (Lisbon is 09:12). Tokyo doesn't observe daylight saving, so that's 8 hours ahead of Lisbon."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-2",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 320,
+        "cacheReadTokens": 5424,
+        "cacheWriteTokens": 490,
+        "contextSize": 5918
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-2",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 490,
+          "cacheWrite1h": 0,
+          "cacheRead": 5424,
+          "output": 320
+        }
+      ],
+      "replies": [
+        "From your notes, you have a 1984 steel touring bike that you're restoring. You've said:\n\n- The bike needs a new rear derailleur (noted 16 Aug).\n- You keep spare inner tubes in the hallway cupboard, so check there before buying any (noted 8 Sep).\n\nSeparately, you mentioned looking for a used road bike for faster rides (noted 13 Sep)."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-3",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 282,
+        "cacheReadTokens": 12219,
+        "cacheWriteTokens": 2258,
+        "contextSize": 8174
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "web_fetch"
+      ],
+      "calls": [
+        {
+          "tag": "turn-3",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 391,
+          "cacheWrite1h": 0,
+          "cacheRead": 5914,
+          "output": 75
+        },
+        {
+          "tag": "turn-3",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 1867,
+          "cacheWrite1h": 0,
+          "cacheRead": 6305,
+          "output": 207
+        }
+      ],
+      "replies": [
+        "The guide says you'll need:\n\n- A 5 mm hex key for the mounting bolt\n- A clean-cutting cable cutter (so the cable doesn't fray)\n- A chain tool or quick-link pliers\n- A Phillips screwdriver for the limit screws\n- A little grease for the bolt threads\n\nIt also suggests a bike stand, or turning the bike upside down on a soft mat. Tighten the new derailleur to the torque printed on its body, usually 8 to 10 Nm, and check the hanger is straight first.\n\nThe page repeats the same steps four times, so it's probably a glitch in the page rather than four different guides."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-4",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 73,
+        "cacheReadTokens": 8172,
+        "cacheWriteTokens": 375,
+        "contextSize": 8551
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-4",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 375,
+          "cacheWrite1h": 0,
+          "cacheRead": 8172,
+          "output": 73
+        }
+      ],
+      "replies": [
+        "Good plan. A chain tool is the one tool you can't skip for this job, so it's worth borrowing. Ask Tomas whether he also has a 5 mm hex key and a cable cutter, since you'll need those too."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-5",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 270,
+        "cacheReadTokens": 8547,
+        "cacheWriteTokens": 404,
+        "contextSize": 8955
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-5",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 404,
+          "cacheWrite1h": 0,
+          "cacheRead": 8547,
+          "output": 270
+        }
+      ],
+      "replies": [
+        "Tonight, try a quick chickpea and spinach pasta: cook the pasta, then sauté garlic, a can of drained chickpeas and a handful of spinach in olive oil with a squeeze of lemon. Finish with the pasta water, a little grated hard cheese, and black pepper. It's mild, uses no cashews, and takes about 25 minutes. Cook the garlic gently and skip raw onion."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-6",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 343,
+        "cacheReadTokens": 18353,
+        "cacheWriteTokens": 794,
+        "contextSize": 9747
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "memory.remember"
+      ],
+      "calls": [
+        {
+          "tag": "turn-6",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 451,
+          "cacheWrite1h": 0,
+          "cacheRead": 8951,
+          "output": 282
+        },
+        {
+          "tag": "turn-6",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 343,
+          "cacheWrite1h": 0,
+          "cacheRead": 9402,
+          "output": 61
+        }
+      ],
+      "replies": [
+        "Nice, running twice a week sounds like a good routine alongside your Saturday hikes. I've saved it as a proposal for you to review. Enjoy the lentil dish tonight."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-7",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 225,
+        "cacheReadTokens": 19587,
+        "cacheWriteTokens": 415,
+        "contextSize": 10162
+      },
+      "modelCalls": 3,
+      "toolCalls": [
+        "memory.pending",
+        "memory.diff"
+      ],
+      "calls": [
+        {
+          "tag": "turn-7",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 97,
+          "cacheWrite1h": 0,
+          "cacheRead": 9745,
+          "output": 69
+        },
+        {
+          "tag": "turn-7",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 318,
+          "cacheWrite1h": 0,
+          "cacheRead": 9842,
+          "output": 156
+        }
+      ],
+      "replies": [
+        "Two proposals are waiting for your review:\n\n1. **Add:** \"Sam runs on Tuesdays and Thursdays.\" (2 minutes old; the checker wasn't sure about it.) This is close to the running proposal I just saved, p3f3, so you may want to approve one and reject the other.\n2. **Edit:** \"Sam's bike needs a new rear derailleur and chain.\" (1 day old; it changes an approved item.)\n\nThere's no consolidation diff waiting."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-8",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 202,
+        "cacheReadTokens": 10160,
+        "cacheWriteTokens": 406,
+        "contextSize": 10570
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-8",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 406,
+          "cacheWrite1h": 0,
+          "cacheRead": 10160,
+          "output": 202
+        }
+      ],
+      "replies": [
+        "I can't approve proposals. Only you can, so please approve the running one in your review. I've left it as it is.\n\nAbout the Douro, I have one note: you're planning a cycling trip along the Douro in late spring (saved 15 Aug). I don't have dates, route or companions saved."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-9",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 261,
+        "cacheReadTokens": 21401,
+        "cacheWriteTokens": 1691,
+        "contextSize": 12259
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "web_fetch"
+      ],
+      "calls": [
+        {
+          "tag": "turn-9",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 269,
+          "cacheWrite1h": 0,
+          "cacheRead": 10566,
+          "output": 70
+        },
+        {
+          "tag": "turn-9",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 1422,
+          "cacheWrite1h": 0,
+          "cacheRead": 10835,
+          "output": 191
+        }
+      ],
+      "replies": [
+        "The 09:15 from Porto São Bento is the one. It reaches Régua at 11:12, which is just after 11:00, so it doesn't meet your deadline. The 07:25 arrives at 09:20 but doesn't run on weekends. The 08:05 weekend departure arrives at 10:02, so that's the one to take if you travel on a weekend.\n\nOn weekdays, the 07:25 is your only option before 11:00. Those times are from the timetable page and may change, so check for engineering works before you travel. Bikes go free on regional trains when there's space, up to two per carriage."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-10",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 161,
+        "cacheReadTokens": 12257,
+        "cacheWriteTokens": 449,
+        "contextSize": 12710
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-10",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 449,
+          "cacheWrite1h": 0,
+          "cacheRead": 12257,
+          "output": 161
+        }
+      ],
+      "replies": [
+        "Good news. Which trip is she joining, the Douro ride? I want to note it correctly, since I don't have the trip dates saved yet."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-11",
+      "guestUsage": {
+        "inputTokens": 6,
+        "outputTokens": 211,
+        "cacheReadTokens": 25734,
+        "cacheWriteTokens": 606,
+        "contextSize": 13314
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "log.read"
+      ],
+      "calls": [
+        {
+          "tag": "turn-11",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 322,
+          "cacheWrite1h": 0,
+          "cacheRead": 12706,
+          "output": 85
+        },
+        {
+          "tag": "turn-11",
+          "model": "claude-haiku-5-5",
+          "input": 2,
+          "cacheWrite5m": 284,
+          "cacheWrite1h": 0,
+          "cacheRead": 13028,
+          "output": 126
+        }
+      ],
+      "replies": [
+        "Yesterday (13 October, 18:40) you told me you'd booked the ceramics class at the studio near Graça for Saturday 8 November, 10:00 to 13:00. I replied with the date and time and suggested bringing old clothes. Your notes say you booked it in August, so the two may be separate bookings, or one note may be out of date. Check your booking confirmation to be sure."
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-12",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 32,
+        "cacheReadTokens": 13312,
+        "cacheWriteTokens": 164,
+        "contextSize": 13480
+      },
+      "modelCalls": 1,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "turn-12",
+          "model": "claude-haiku-5-5",
+          "input": 4,
+          "cacheWrite5m": 164,
+          "cacheWrite1h": 0,
+          "cacheRead": 13312,
+          "output": 32
+        }
+      ],
+      "replies": [
+        "Thanks, Sam. Have a good afternoon, and good luck with the supplier call later."
+      ],
+      "error": null
+    }
+  ]
+}

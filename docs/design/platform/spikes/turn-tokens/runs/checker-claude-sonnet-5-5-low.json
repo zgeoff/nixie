@@ -1,0 +1,260 @@
+{
+  "role": "checker",
+  "model": "claude-sonnet-5-5",
+  "effort": "low",
+  "ranAt": "2026-10-14T19:45:31.506Z",
+  "sessions": [
+    {
+      "label": "check-1",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-1",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 1980,
+          "cacheWrite1h": 0,
+          "cacheRead": 0,
+          "output": 113
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"Sam states in their own voice that they are vegetarian now, as of last month, which is a current fact and matches the memory.\",\"verdict\":\"asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-2",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-2",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 508,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 116
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner said they are vegetarian, but the memory says vegan, which changes the detail and is a different, stricter claim.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-3",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-3",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 527,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 110
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"Sam says they no longer use old@example.com, so the memory states a fact that was once true and is now false.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-4",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-4",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 528,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 107
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"Sam directly states they no longer use old@example.com, which the memory faithfully paraphrases.\",\"verdict\":\"asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-5",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-5",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 532,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 113
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"Sam says to write to sam.reyes@example.net instead of the old address, which faithfully means that is their current email address.\",\"verdict\":\"asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-6",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-6",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 523,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 123
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner asks whether the appointment is on the 14th or the 15th, so they don't say which date it is, and the memory picks one date as fact.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-7",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-7",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 521,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 126
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"Sam only asks whether to switch to oat milk, which doesn't state that they drink it now; the cholesterol remark is unrelated to the memory.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-8",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-8",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 529,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 113
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"Sam directly states that his GP says his cholesterol is high, and the memory keeps that attribution without adding anything.\",\"verdict\":\"asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-9",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-9",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 532,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 117
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner only reports what their boss said and adds that nothing is signed, so the move is not settled and the memory states it as settled.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-10",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-10",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 544,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 437
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The owner stated that the boss said they're moving to Leeds in March and that nothing is signed; the memory keeps the attribution and the unsigned status, and \\\"proposed\\\" is a close paraphrase.\",\"verdict\":\"asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-11",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-11",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 535,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 115
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"The shellfish allergy belongs to Priya, not Sam, so the message does not assert that Sam is allergic.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    },
+    {
+      "label": "check-12",
+      "guestUsage": null,
+      "modelCalls": null,
+      "toolCalls": [],
+      "calls": [
+        {
+          "tag": "check-12",
+          "model": "claude-sonnet-5-5",
+          "input": 2,
+          "cacheWrite5m": 526,
+          "cacheWrite1h": 0,
+          "cacheRead": 1470,
+          "output": 125
+        }
+      ],
+      "replies": [
+        "{\"reason\":\"Sam only reports the estate agent's claim and says they doubt it, so the memory drops the attribution and the doubt, which Sam did not assert.\",\"verdict\":\"not_asserted\"}"
+      ],
+      "error": null
+    }
+  ]
+}

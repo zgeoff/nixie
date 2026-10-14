@@ -1,0 +1,46 @@
+{
+  "role": "memory-consolidator",
+  "model": "claude-opus-5-5",
+  "effort": "medium",
+  "ranAt": "2026-10-14T19:47:30.308Z",
+  "sessions": [
+    {
+      "label": "consolidation-1",
+      "guestUsage": {
+        "inputTokens": 4,
+        "outputTokens": 1323,
+        "cacheReadTokens": 5711,
+        "cacheWriteTokens": 6848,
+        "contextSize": 6850
+      },
+      "modelCalls": 2,
+      "toolCalls": [
+        "memory.consolidate"
+      ],
+      "calls": [
+        {
+          "tag": "consolidation-1",
+          "model": "claude-opus-5-5",
+          "input": 2,
+          "cacheWrite5m": 5711,
+          "cacheWrite1h": 0,
+          "cacheRead": 0,
+          "output": 1101
+        },
+        {
+          "tag": "consolidation-1",
+          "model": "claude-opus-5-5",
+          "input": 2,
+          "cacheWrite5m": 1137,
+          "cacheWrite1h": 0,
+          "cacheRead": 5711,
+          "output": 222
+        }
+      ],
+      "replies": [
+        "I sent an empty diff for your review, so nothing in your memory changes. Your memory looks tidy: no two items repeat each other, none conflict, and no plan's date has passed yet.\n\nThree pinned items say more than the quote they were saved from. I left them alone because the extra details may come from other conversations, so check them if they look wrong:\n- **Dentist:** says you go \"every six months\", but the quote only says \"my dentist at Clinica Sorriso\".\n- **Job:** says \"at a small firm\", but the quote only says \"I am a structural engineer\".\n- **Vegetarian:** says you cook \"most evenings\", but the quote only says \"I have been vegetarian for ten years now\".\n\ndone"
+      ],
+      "error": null
+    }
+  ]
+}
