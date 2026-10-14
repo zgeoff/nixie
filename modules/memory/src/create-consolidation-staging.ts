@@ -76,7 +76,7 @@ export function createConsolidationStaging(): ConsolidationStaging {
       state.run?.shown.set(itemID, item);
     },
     stage: (requests, summary) =>
-      state.run === null ? noRun : updateStagedRun(state.run, requests, summary),
+      state.run === null ? noRun : updateStagedRun(state.run, { requests, summary }),
   };
 }
 
@@ -95,23 +95,25 @@ interface RunView {
 
 const noRun: StageResult = { status: 'refused', reason: 'no consolidation run is open' };
 
+// what one memory.consolidate call stages: its changes, and its summary when it gave one
+interface StagedInput {
+  readonly requests: readonly ChangeRequest[];
+  readonly summary: string | undefined;
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the run this stages into
-function updateStagedRun(
-  run: OpenRun,
-  requests: readonly ChangeRequest[],
-  summary: string | undefined,
-): StageResult {
+function updateStagedRun(run: OpenRun, staged: StagedInput): StageResult {
   if (run.diff !== null) {
     return { status: 'refused', reason: 'this run already proposed its diff' };
   }
-  const planned = planDiff(run, resolveItemIDs(run.shown, requests));
+  const planned = planDiff(run, resolveItemIDs(run.shown, staged.requests));
 
   if ('refusal' in planned) {
     return { status: 'refused', reason: planned.refusal };
   }
-  run.diff = planned.changes;
-  const trimmed = summary?.trim() ?? '';
+  const trimmed = staged.summary?.trim() ?? '';
 
+  run.diff = planned.changes;
   run.summary = trimmed === '' ? null : trimmed;
   return { status: 'staged', changes: planned.changes.length };
 }
