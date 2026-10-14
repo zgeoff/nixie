@@ -53,3 +53,17 @@ test('it closes only once the requests in flight have answered', async () => {
   expect(statusBefore).toBe('pending');
   expect(Bun.peek.status(closed)).toBe('fulfilled');
 });
+
+test('it closes while a health check is still in flight', async () => {
+  const gate = buildAPIGate();
+  const check = makeGatedCall(() => new Response('ready'));
+  const inFlight = gate.run(new Request('http://127.0.0.1/health/ready'), check.call);
+
+  await check.started;
+  await gate.close();
+  check.release();
+
+  const response = await inFlight;
+
+  expect(response.status).toBe(200);
+});
