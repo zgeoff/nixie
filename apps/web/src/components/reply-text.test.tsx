@@ -93,3 +93,15 @@ test('it shows an image as a link to it, so the image never loads', () => {
   expect(link).toHaveAttribute('href', 'https://tracker.test/chart.png');
   expect(rendered.container.querySelector('img')).toBeNull();
 });
+
+test('it shows a linked image as one link to the outer link', () => {
+  const rendered = render(
+    <ReplyText text="[![a chart](https://example.com/chart.png)](https://example.com/report)" />,
+  );
+  const links = rendered.getAllByRole('link');
+
+  expect(links).toHaveLength(1);
+  expect(links[0]).toHaveAccessibleName('image: a chart');
+  expect(links[0]).toHaveAttribute('href', 'https://example.com/report');
+  expect(rendered.container.querySelector('img')).toBeNull();
+});
