@@ -56,8 +56,9 @@ The turn frame holds the profile's base URL, model, effort, auth header and cont
 guest sets them in the query's environment. The guest holds a placeholder in place of the
 credential, and the sandbox's grant swaps in the real one on the way to the profile's host
 ([model profiles](./model-profiles.md#credentials)). The frame also holds the URL of the tool route
-and the run's bearer token, which the guest gives the SDK as an HTTP MCP server that must connect
-before the loop starts.
+and the turn's own step token, which the guest gives the SDK as an HTTP MCP server that must connect
+before the loop starts. The step token ties each tool call to the step that runs the turn
+([tool calls](../connectors/tool-calls.md#one-endpoint-per-run)).
 
 The guest ends the turn with a failure when nixie's server is not connected, because a loop without
 its tools would answer from the model alone, and its replies could claim actions that never ran. The

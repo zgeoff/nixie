@@ -167,7 +167,9 @@ export interface ConversationRun {
   readonly context: TasksContext;
   readonly profile: ResolvedProfile;
   readonly sandbox: Sandbox;
-  readonly endpoint: Pick<RunEndpoint, 'token'>;
+
+  // the conversation's run endpoint, which issues each turn a step token of its own
+  readonly endpoint: Pick<RunEndpoint, 'startStep'>;
   readonly model: ToolRunModel;
   readonly command: GuestCommand;
 

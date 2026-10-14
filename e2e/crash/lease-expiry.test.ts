@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { waitForCondition } from '../../libs/testing/src/index';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
@@ -108,6 +109,89 @@ test('it lets runner B claim only once the renewed lease expires, never before',
       .filter((record) => record.kind === 'task.step_started')
       .map((record) => record.payload['generation']),
   ).toStrictEqual([1, 2]);
+  expect(
+    records
+      .filter((record) => record.kind === 'task.step_committed')
+      .map((record) => record.stepKey),
+  ).toStrictEqual(['conversation:1']);
+  expect(oracle).toStrictEqual({
+    repeatedStepKeys: [],
+    repeatedActions: [],
+    strayCalls: [],
+    heldLeases: [],
+    unreadyTasks: [],
+    changedEndStates: [],
+    projectionDrift: [],
+  });
+}, 120_000);
+
+test("it refuses a call from runner A's guest once runner B holds the claim, and queues no action", async () => {
+  const ctx = await setupTest();
+  const nixie = ctx.nixie.harness.start([{ point: 'renew.after', kind: 'task' }]);
+  const sendReply = Promise.withResolvers<void>();
+  const takeoverReply = Promise.withResolvers<void>();
+
+  await nixie.ready;
+
+  // runner A's turn asks for test.send once its lease has expired, while runner B's turn still runs
+  ctx.nixie.model.addReplies(
+    {
+      toolUse: { name: 'mcp__nixie__test_send', input: { to: 'team', body: 'The summary.' } },
+      gate: sendReply.promise,
+    },
+    { text: 'Hi.', gate: takeoverReply.promise },
+    { text: 'Late.' },
+  );
+  void nixie.request('sendMessage', { thread: 'conversation', text: 'Send the summary.' });
+  await waitForCondition(() =>
+    ctx.nixie.model.requests.some((request) => request.path === '/v1/messages'),
+  );
+  await ctx.nixie.harness.advance(20_000);
+
+  // A's renewals stop here, so A never learns that its lease expired
+  const renewal = await nixie.waitForArrival('renew.after', 'conversation');
+
+  await ctx.nixie.harness.advance(61_000);
+  await ctx.nixie.waitForRecord(
+    (record) => record.kind === 'task.step_started' && record.payload['generation'] === 2,
+  );
+  await waitForCondition(
+    () =>
+      ctx.nixie.model.requests.filter((request) => request.path === '/v1/messages').length === 2,
+  );
+  sendReply.resolve();
+  await ctx.nixie.waitForRecord((record) => record.kind === 'tool_result');
+  await waitForCondition(
+    () =>
+      ctx.nixie.model.requests.filter((request) => request.path === '/v1/messages').length === 3,
+  );
+  nixie.release(renewal);
+  takeoverReply.resolve();
+  await ctx.nixie.waitForRecord((record) => record.kind === 'task.step_committed');
+  nixie.signal('SIGTERM');
+
+  const exit = await nixie.exited;
+  const records = await ctx.nixie.readRecords();
+  const actions = await ctx.nixie.readRows('actions');
+  const followUp = ctx.nixie.model.requests
+    .filter((request) => request.path === '/v1/messages')
+    .at(2);
+  invariant(followUp?.body);
+
+  const oracle = await runOracle(ctx.nixie);
+
+  expect(exit).toStrictEqual({ code: 0, signal: null });
+  expect(
+    records
+      .filter((record) => record.kind === 'tool_result')
+      .map((record) => record.payload['outcome']),
+  ).toStrictEqual(['error']);
+  expect(records.filter((record) => record.kind === 'action.queued')).toStrictEqual([]);
+  expect(actions).toStrictEqual([]);
+  expect(ctx.nixie.provider.calls).toStrictEqual([]);
+  expect(JSON.stringify(followUp.body.messages)).toInclude(
+    "the call comes from no step that holds conversation's claim, so it queues nothing",
+  );
   expect(
     records
       .filter((record) => record.kind === 'task.step_committed')

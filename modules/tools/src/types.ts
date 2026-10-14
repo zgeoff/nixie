@@ -87,6 +87,10 @@ export interface ToolRun {
 
   // the model profile in force for the run's model loop, which every call's record carries
   readonly model: ToolRunModel;
+
+  // the run identity of the step whose step token the call arrived with, which the action queue
+  // checks against the task's current claim; absent for a call under the run's own token
+  readonly stepRunID?: string;
 }
 
 // The model ID and the profile name of a run, set from the profile nixie started the run with and
@@ -129,11 +133,23 @@ export interface RunEndpoint {
   readonly runID: string;
   readonly token: string;
 
+  // issues a token of the step's own, so each call that arrives with it carries the step's run
+  // identity; the run's stop revokes it too
+  readonly startStep: (stepRunID: string) => StepToken;
+
   // the Unix socket the run's endpoint listens on, which target names
   readonly socketPath: string;
   readonly target: ToolTarget;
 
   // revokes the token, closes every open stream and stops listening
+  readonly stop: () => Promise<void>;
+}
+
+// One step's bearer token on its run's endpoint.
+interface StepToken {
+  readonly token: string;
+
+  // revokes the token and closes every stream opened with it
   readonly stop: () => Promise<void>;
 }
 

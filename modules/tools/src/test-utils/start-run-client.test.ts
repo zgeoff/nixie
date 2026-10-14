@@ -31,9 +31,40 @@ test('it sends the run token over the run socket', async () => {
     token: 'secret-token',
     socketPath,
     target: { path: socketPath },
+    startStep: () => ({ token: 'step-token', stop: () => Promise.resolve() }),
     stop: () => Promise.resolve(),
   }).catch((error: unknown) => error);
 
   expect(refusal).toBeInstanceOf(Error);
   expect(authorizations).toStrictEqual(['Bearer secret-token']);
+});
+
+test('it sends the token given in place of the run token', async () => {
+  const ctx = await setupTest();
+  const socketPath = join(ctx.dir, 'run.sock');
+  const authorizations: (string | null)[] = [];
+  const server = Bun.serve({
+    unix: socketPath,
+    fetch: (request) => {
+      authorizations.push(request.headers.get('authorization'));
+      return new Response('refused', { status: 401 });
+    },
+  });
+
+  onTestFinished(() => server.stop(true));
+
+  const refusal: unknown = await startRunClient(
+    {
+      runID: 'run-1',
+      token: 'secret-token',
+      socketPath,
+      target: { path: socketPath },
+      startStep: () => ({ token: 'step-token', stop: () => Promise.resolve() }),
+      stop: () => Promise.resolve(),
+    },
+    'step-token',
+  ).catch((error: unknown) => error);
+
+  expect(refusal).toBeInstanceOf(Error);
+  expect(authorizations).toStrictEqual(['Bearer step-token']);
 });
