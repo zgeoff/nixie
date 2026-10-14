@@ -451,6 +451,43 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
   ]);
 });
 
+test('it tells a resumed session when its last reply was sent, in the zone of your message, before your next message', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { timeZone: 'Australia/Sydney' },
+      erasable: { text: 'Hi.' },
+    },
+  ]);
+  await ctx.runNextStep(runner);
+  await ctx.sendMessage(runner, 'Hi again.');
+
+  expect(ctx.sandboxes.turns.at(-1)).toMatchObject({
+    resume: expect.toBeObject(),
+    input: [
+      {
+        uuid: expect.toBeString(),
+        text: expect.toSatisfy((text: string) =>
+          /^<reply-times>\nYour replies in your last turn, each with the time it was sent:\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney\] Hello\.\n<\/reply-times>\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(
+            text,
+          ),
+        ),
+      },
+    ],
+  });
+});
+
 test('it records the rebuild and the session it replaced when the guest has lost the session', async () => {
   const ctx = await setupTest();
 
@@ -558,7 +595,9 @@ test('it marks the first turn after a rebuild as rebuilt, and the turn after it 
       {
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
-          /^\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] And again\.$/u.test(text),
+          /^<reply-times>\nYour replies in your last turn, each with the time it was sent:\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hello\.\n<\/reply-times>\n\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] And again\.$/u.test(
+            text,
+          ),
         ),
       },
     ],
