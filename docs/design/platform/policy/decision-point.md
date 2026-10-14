@@ -38,8 +38,9 @@ Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order neve
 
 The caller's tool list at stage 2 is the job's list for a job run, and the subset its caller passed
 for a worker, so delegation only narrows. A connector tool on the list names the connections it may
-use, and stage 2 denies a call whose connection is not among them. The tools endpoint resolves every
-connector call to one connection before stage 1, as the
+use, and stage 2 denies a call whose connection is not among them. Stage 2 also denies a call that
+creates a job whose tool list pins a connection the caller may not use for that tool. The tools
+endpoint resolves every connector call to one connection before stage 1, as the
 [connection argument](../connectors/connector.md#the-connection-argument) defines, so a rule can
 check `connection` on any call. A denied call returns the rule's ID and sentence to the model as the
 tool result, so the model can take another path, and no prompt reaches you. A queued action runs

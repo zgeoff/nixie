@@ -90,12 +90,16 @@ An action on an item that a connection returned, such as replying to a message, 
 from the item and has no connection argument. **Why:** the reply then leaves from the account that
 received the message, and the model has no way to pick the wrong one.
 
-A job's tool list pins each connector tool to the connections it may use, by short ID. A job created
-while the connector has one connection pins that connection, and a job created from a call that
-names no connection pins every connection that exists at that moment. A connection you add later
-never joins an existing job, because the job's approval covered the accounts it named, and adding
-one is a widening that you approve as a job edit. A job pinned to one connection lists its tools
-without the argument. A worker's subset narrows the connections in the same way as the tools.
+A job's tool list pins each connector tool to the connections it may use, by short ID. The pins come
+from the caller that creates the job, and never exceed the connections that caller may use for that
+tool. A creating call that names connections pins only those, and the decision point denies it when
+it names one the caller may not use. A creating call that names no connection pins every connection
+the caller may use for that tool at that moment. **Why:** a task or worker never holds wider
+permissions than the thread that started it, so a job it creates never reaches an account it could
+not. A connection you add later never joins an existing job, because the job's approval covered the
+accounts it named, and adding one is a widening that you approve as a job edit. A job pinned to one
+connection lists its tools without the argument. A worker's subset narrows the connections in the
+same way as the tools.
 
 The connector maps each provider response to one of the 4 responses, and the
 [action queue](../core/actions.md) turns them into outcomes. Each queued action declares how the
