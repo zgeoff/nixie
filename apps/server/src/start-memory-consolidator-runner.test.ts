@@ -142,8 +142,8 @@ test("it shows the session the owner's name and each item's quote under its text
 
   await Promise.all([
     createMemoryItem(ctx.store, {
-      text: 'The owner says mondays are the wet sock of the week',
-      quote: 'mondays are the wet sock of the week, every single time',
+      text: 'The owner calls Mondays the wet sock of the week',
+      quote: 'honestly mondays are the wet sock of the week',
     }),
     createMemoryItem(ctx.store, { text: 'Sings in a choir' }),
   ]);
@@ -157,22 +157,24 @@ test("it shows the session the owner's name and each item's quote under its text
 
   expect(JSON.stringify(first?.body?.system)).toInclude("You read Marisol's current memory items");
   expect(JSON.stringify(first?.body?.messages)).toInclude(
-    String.raw`: The owner says mondays are the wet sock of the week\n  quote: mondays are the wet sock of the week, every single time\n- `,
+    String.raw`: The owner calls Mondays the wet sock of the week\n  quote: honestly mondays are the wet sock of the week\n- `,
   );
 }, 60_000);
 
 test('it carries an idiom word for word, a pronoun through a merge, and a summary of 2 conflicting items it left alone', async () => {
   const ctx = await setupTest();
-  const [mondays, sister, piano, oat, black] = await Promise.all([
-    createMemoryItem(ctx.store, { text: 'The owner says mondays are the wet sock of the week' }),
+  const [mondays, sister, galway, oat, black] = await Promise.all([
+    createMemoryItem(ctx.store, { text: 'The owner calls Mondays the wet sock of the week' }),
     createMemoryItem(ctx.store, { text: 'Her sister Wren lives in Galway' }),
-    createMemoryItem(ctx.store, { text: 'Wren teaches piano, she started last spring' }),
+    createMemoryItem(ctx.store, {
+      text: 'Wren moved to Galway this spring, she loves it there',
+    }),
     createMemoryItem(ctx.store, { text: 'Takes oat milk in coffee' }),
-    createMemoryItem(ctx.store, { text: 'Takes coffee black, no milk' }),
+    createMemoryItem(ctx.store, { text: 'Takes coffee black with no milk' }),
   ]);
 
   ctx.model.addReplies(
-    buildInventedDiff({ rewrite: mondays.itemID, merge: [sister.itemID, piano.itemID] }),
+    buildInventedDiff({ rewrite: mondays.itemID, merge: [sister.itemID, galway.itemID] }),
     { text: 'done' },
   );
   await ctx.run();
@@ -186,15 +188,15 @@ test('it carries an idiom word for word, a pronoun through a merge, and a summar
     {
       kind: 'rewrite',
       inputs: [{ ...mondays, isCurrent: true }],
-      text: 'Marisol says mondays are the wet sock of the week',
+      text: 'Marisol calls Mondays the wet sock of the week',
     },
     {
       kind: 'merge',
       inputs: [
         { ...sister, isCurrent: true },
-        { ...piano, isCurrent: true },
+        { ...galway, isCurrent: true },
       ],
-      text: 'Her sister Wren lives in Galway, and she teaches piano, which she started last spring',
+      text: 'Her sister Wren moved to Galway this spring, she loves it there',
     },
   ]);
   expect(
@@ -219,17 +221,18 @@ function buildInventedDiff(itemIDs: InventedDiffItems): ScriptedReply {
           {
             kind: 'rewrite',
             itemIDs: [itemIDs.rewrite],
-            text: 'Marisol says mondays are the wet sock of the week',
+            text: 'Marisol calls Mondays the wet sock of the week',
             reason: 'Names Marisol instead of "the owner".',
           },
           {
             kind: 'merge',
             itemIDs: itemIDs.merge,
-            text: 'Her sister Wren lives in Galway, and she teaches piano, which she started last spring',
-            reason: 'Both items are about Wren.',
+            text: 'Her sister Wren moved to Galway this spring, she loves it there',
+            reason: 'Both items say Wren lives in Galway.',
           },
         ],
-        summary: 'Two items conflict on coffee: one says oat milk, the other black with no milk.',
+        summary:
+          'Two items conflict and stay unchanged: one says Marisol takes oat milk in her coffee, and the other says she only drinks it black.',
       },
     },
   };
