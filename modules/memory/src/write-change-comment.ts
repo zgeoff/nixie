@@ -57,11 +57,7 @@ async function requireOpenChange(
   changeID: string,
   now: number,
 ): Promise<ConsolidationChangeRow> {
-  const row = await db
-    .selectFrom('memory_consolidation_changes')
-    .selectAll()
-    .where((eb) => eb.or([eb('short_id', '=', changeID), eb('change_id', '=', changeID)]))
-    .executeTakeFirst();
+  const row = await findChange(db, changeID);
 
   if (row === undefined) {
     throw new ConsolidationChangeNotFoundError(changeID);
@@ -73,4 +69,29 @@ async function requireOpenChange(
     throw new ConsolidationChangeClosedError(changeID, 'lapsed');
   }
   return row;
+}
+
+// the change by its stored alias or its UUID, or else the one whose derived short ID matches: an
+// older build leaves short_id null, and the read path shows the derived ID for such a change
+async function findChange(
+  db: Kysely<ConsolidationTables>,
+  changeID: string,
+): Promise<ConsolidationChangeRow | undefined> {
+  const row = await db
+    .selectFrom('memory_consolidation_changes')
+    .selectAll()
+    .where((eb) => eb.or([eb('short_id', '=', changeID), eb('change_id', '=', changeID)]))
+    .executeTakeFirst();
+
+  if (row !== undefined) {
+    return row;
+  }
+  const unaliased = await db
+    .selectFrom('memory_consolidation_changes')
+    .selectAll()
+    .where('short_id', 'is', null)
+    .where('status', '=', 'pending')
+    .execute();
+
+  return unaliased.find((change) => buildShortIDFromUUID(change.change_id) === changeID);
 }

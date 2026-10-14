@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildCommentTool } from './build-comment-tool';
+import type { ConsolidationTables } from './consolidation-types';
 import { createConsolidationDiff } from './test-utils/create-consolidation-diff';
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';
@@ -160,6 +161,46 @@ test('it takes the change by its UUID as well as its short ID, and answers with 
     status: 'commented',
   });
   expect(pending?.changes[0]?.comment?.text).toBe('Fine to drop.');
+});
+
+test('it takes the short ID a change shows when an older build left its alias empty', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
+  const diff = await createConsolidationDiff(ctx.memory, {
+    changes: [{ kind: 'retire', inputs: [item], reason: 'It has passed.', source: 'owner' }],
+    now: ctx.clock.now(),
+  });
+
+  // the row as an older build folds it after the migration: the short ID column stays empty
+  await withWriteTransaction(ctx.memory.log.writer, (tx) =>
+    tx
+      .$extendTables<ConsolidationTables>()
+      .updateTable('memory_consolidation_changes')
+      .set({ short_id: null })
+      .where('change_id', '=', diff.changes[0]?.changeID ?? '')
+      .execute(),
+  );
+  const shown = await ctx.memory.store.consolidations.readPending();
+  const [change] = shown?.changes ?? [];
+
+  invariant(change);
+
+  const result = await runToolCall(
+    {
+      tool: 'memory.comment',
+      input: { changeID: change.shortID, comment: 'Fine to drop.' },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.comment'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({ changeID: change.shortID, status: 'commented' });
 });
 
 test('it answers the model that no change has the ID it names', async () => {
