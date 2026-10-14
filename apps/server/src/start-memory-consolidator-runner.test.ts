@@ -225,6 +225,7 @@ test('it leaves the summary of a run that proposed no change for your review and
   const conversation = await buildMemoryTools(ctx.store, {
     clock: { now: () => Date.now() },
     ownerName: 'Marisol',
+    agentName: null,
     defaultZone: 'UTC',
   })
     .find((definition) => definition.name === 'memory.diff')
