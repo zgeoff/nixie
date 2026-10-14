@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
-import { useConversationPage } from '../use-conversation-page';
-import type { LiveRecord } from '../use-live-records';
-import { useLiveRecords } from '../use-live-records';
+import { useConversationRecords } from '../use-conversation-records';
 import { useOutbox } from '../use-outbox';
 import { Composer } from './composer';
 import { ConversationFailureNotice } from './conversation-failure-notice';
@@ -19,27 +17,26 @@ export interface ConversationProps {
 // the messages this device sent that the conversation does not show yet. Messages stand alone,
 // and every other record folds into the step it belongs to.
 export function Conversation(props: ConversationProps): ReactNode {
-  const page = useConversationPage(props.thread);
-  const live = useLiveRecords(props.thread, page.data?.readAtSequence);
+  const conversation = useConversationRecords(props.thread);
   const outbox = useOutbox();
   const [sends, setSends] = useState(0);
 
-  if (page.isPending) {
+  if (conversation.status === 'pending') {
     return <p>Loading the conversation…</p>;
   }
-  if (page.isError) {
+  if (conversation.status === 'failed') {
     return <p role="alert">The conversation did not load. Reload the page to try again.</p>;
   }
 
-  const records = mergeRecords(page.data.records, live.records);
+  const records = conversation.records;
 
   return (
     <main className={layout}>
       <header className={header}>
         <ThemePicker />
       </header>
-      {live.unavailable ? <LiveUpdatesNotice /> : null}
-      <ConversationFailureNotice lastStepEnd={page.data.lastStepEnd} records={records} />
+      {conversation.unavailable ? <LiveUpdatesNotice /> : null}
+      <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
         <ConversationList entries={outbox.entries} onRetry={outbox.retry} records={records} />
       </ConversationScroller>
@@ -89,15 +86,3 @@ const notice = css({
   paddingInline: '4',
   width: 'full',
 });
-
-// The page and the live stream can both hold a record, so each sequence shows once, in order.
-function mergeRecords(
-  page: readonly LiveRecord[],
-  live: readonly LiveRecord[],
-): readonly LiveRecord[] {
-  const bySequence = new Map(
-    [...page, ...live].map((record) => [record.sequence, record] as const),
-  );
-
-  return [...bySequence.values()].toSorted((left, right) => left.sequence - right.sequence);
-}

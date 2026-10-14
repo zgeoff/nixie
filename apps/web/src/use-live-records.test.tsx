@@ -45,6 +45,26 @@ test('it delivers a tool call and its result within a second of the API recordin
   );
 });
 
+test('it drops the records it delivered before a reset once the reset arrives', async () => {
+  await setupTest();
+
+  const hook = renderHook(() => useLiveRecords('conversation', 0));
+
+  await store.records.create({ kind: 'tool_called' });
+  await waitFor(() => {
+    expect(hook.result.current.records).toHaveLength(1);
+  });
+  await store.records.create({ kind: 'log_reset' });
+  await store.records.create({ kind: 'tool_result' });
+
+  await waitFor(() => {
+    expect(hook.result.current.records.map((record) => record.kind)).toStrictEqual([
+      'log_reset',
+      'tool_result',
+    ]);
+  });
+});
+
 test('it catches up after the stream drops, with no gap and no repeat', async () => {
   const ctx = await setupTest();
   const hook = renderHook(() => useLiveRecords('conversation', 0));

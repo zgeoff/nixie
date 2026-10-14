@@ -28,7 +28,10 @@ change state; and the live stream of log records.
   without it, because a cross-site form cannot send a custom header.
 - **The live stream.** A conversation read returns a page of records with the log sequence it read
   at. The client follows the log from that sequence, and each streamed event's ID is its record's
-  sequence, so a reconnect resumes with no gap and no repeat.
+  sequence, so a reconnect resumes with no gap and no repeat. A `log_reset` record on the stream
+  means the [reset](../core/event-log.md#the-reset) removed every record before it, so the client
+  drops what it read before that record and reads its queries again. The server restarts after a
+  reset, so the client reads them once more when the stream next connects.
 
 A client renders a record by its kind, and shows a kind it does not know by its name. Beside its
 kind, a record carries what a client shows of it: a message's text, the task and step of a task
