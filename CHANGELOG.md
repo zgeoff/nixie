@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.21.0](https://github.com/zgeoff/nixie/compare/v0.20.0...v0.21.0) (2026-10-14)
+
+
+### Features
+
+* **geo-870:** lead each message stamp with its event id ([#214](https://github.com/zgeoff/nixie/issues/214)) ([02215cb](https://github.com/zgeoff/nixie/commit/02215cbc9384d0287e5b43661f6c4779f0536dd8))
+* **geo-871:** render every nixie block as a system-message element ([#222](https://github.com/zgeoff/nixie/issues/222)) ([ea53270](https://github.com/zgeoff/nixie/commit/ea53270718ca171b78cad1d0ac1f51d3ac29ed0c))
+* **geo-872:** open every session from one builder ([#225](https://github.com/zgeoff/nixie/issues/225)) ([1fd7956](https://github.com/zgeoff/nixie/commit/1fd79563778519772cc3e55874139837c25c740c))
+
+
+### Bug Fixes
+
+* **geo-492:** refuse a queued call from a step that lost its claim ([#223](https://github.com/zgeoff/nixie/issues/223)) ([366730f](https://github.com/zgeoff/nixie/commit/366730f9476b45dd31873f5fcc6ba468da1b1b70))
+* **geo-501:** retry a refused definitions seed within seconds ([#221](https://github.com/zgeoff/nixie/issues/221)) ([881a5db](https://github.com/zgeoff/nixie/commit/881a5db8ba6c6b61b4a2f240b733b7508a260837))
+* **geo-515:** close a page's partial step and unnest a linked image ([#220](https://github.com/zgeoff/nixie/issues/220)) ([7981782](https://github.com/zgeoff/nixie/commit/7981782ab6d5d1cdb9f035c1c1483381be46cc6e))
+* **geo-566:** check the writer lease at the time the publish runs ([#224](https://github.com/zgeoff/nixie/issues/224)) ([9319a43](https://github.com/zgeoff/nixie/commit/9319a4342abc19873e1027b68ed8e79039cbf7d5))
+
 ## [0.20.0](https://github.com/zgeoff/nixie/compare/v0.19.0...v0.20.0) (2026-10-14)
 
 
