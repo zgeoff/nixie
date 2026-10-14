@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/zgeoff/nixie/compare/v0.14.0...v0.14.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **geo-824:** stamp each history reply in the local time of its message ([#183](https://github.com/zgeoff/nixie/issues/183)) ([ec833f3](https://github.com/zgeoff/nixie/commit/ec833f3cf51090b2deda1b7217310f1427ec5efa))
+
 ## [0.14.0](https://github.com/zgeoff/nixie/compare/v0.13.0...v0.14.0) (2026-10-13)
 
 
