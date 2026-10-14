@@ -688,7 +688,7 @@ test('it recalls a version with its quote, its model and the line that says wher
         change: 'created',
         state: 'active',
         text: 'Keeps a sourdough starter called Gerald',
-        about: `${String(shortID)} v1 · 1 Oct · you noted it · the owner said this`,
+        about: `${shortID} v1 · 1 Oct · you noted it · the owner said this`,
         quote: 'Gerald the starter needs feeding again',
         model: 'test-model-1',
       },
@@ -730,7 +730,7 @@ test('it recalls a version with no quote or model without them', async () => {
         change: 'created',
         state: 'active',
         text: 'Plays the cello on Sundays',
-        about: `${String(shortID)} v1 · 14 Sep · the owner said this`,
+        about: `${shortID} v1 · 14 Sep · the owner said this`,
         model: null,
       },
     ],
@@ -773,7 +773,7 @@ test('it recalls an approved proposal as approved by the owner, with its stored 
     items: [
       {
         text: 'Keeps a fern on the desk',
-        about: `${String(shortID)} v1 · 13 Oct · you noted it · unconfirmed · the owner approved`,
+        about: `${shortID} v1 · 13 Oct · you noted it · unconfirmed · the owner approved`,
       },
     ],
   });
@@ -812,15 +812,15 @@ test('it recalls each past version with the version that replaced it', async () 
     items: [
       {
         text: 'Lives on Larch Road',
-        about: `${String(shortID)} v2 · 2 Mar · the owner said this`,
+        about: `${shortID} v2 · 2 Mar · the owner said this`,
         history: [
           {
             text: 'Lives on Juniper Lane',
-            about: `${String(shortID)} v1 · 2 Mar · the owner said this · replaced by ${String(shortID)} v2`,
+            about: `${shortID} v1 · 2 Mar · the owner said this · replaced by ${shortID} v2`,
           },
           {
             text: 'Lives on Larch Road',
-            about: `${String(shortID)} v2 · 2 Mar · the owner said this`,
+            about: `${shortID} v2 · 2 Mar · the owner said this`,
           },
         ],
       },

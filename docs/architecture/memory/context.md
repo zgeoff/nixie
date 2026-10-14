@@ -31,10 +31,10 @@ cached prefix of every turn and every change to it costs a cache write. The stor
 an edit or undo of a pinned item, that would take the core past the budget, with the
 `PINNED_CORE_FULL` error code, so the user unpins something first. The store counts each item as the
 system prompt renders it, quote included, because a long quote takes as much of the prefix as a long
-text. Only the user's name and the item's date differ in that count: the name stays at its default,
-and every date counts at its widest, with a two-digit day and a year, so the count never depends on
-the day an item was saved. The store counts tokens as a fixed share of characters, which needs no
-tokenizer and errs toward the larger count for English text.
+text. Only the item's date differs in that count: every date counts at its widest, with a two-digit
+day and a year, so the count never depends on the day an item was saved. The store counts tokens as
+a fixed share of characters, which needs no tokenizer and errs toward the larger count for English
+text.
 
 ## How an item reads
 
@@ -54,11 +54,12 @@ them, so an approved item keeps outside content as its source and still reads as
 - Who noted it: the conversation reads as the model itself, the memory writer as the note-taker, and
   a task as a task. A version the user saved names no one here, because what backs it names them.
 - What backs it: the user's typed words read as the user by name, said this. Outside content always
-  says so. A proposal held because its quote matched only words the user pasted, dropped or quoted
-  in reads as from a pasted page. Any other outside content reads as unconfirmed, because the store
-  keeps nothing that tells the model's own note from a web page it read.
+  says so. A remember proposal held because its quote matched only words the user pasted, dropped or
+  quoted in reads as from a pasted page. Any other outside content reads as unconfirmed, because the
+  store keeps nothing that tells the model's own note from a web page it read.
 - Who confirmed it: a version from a proposal or a consolidation change the user approved reads as
-  approved by the user by name.
+  approved by the user by name. The approval belongs to the version, so a restore or an undo, which
+  the user runs without a proposal, reads as unapproved even when it brings back approved text.
 
 The system prompt says once, after the persona and outside the pinned core, that the note-taker is a
 background process that saves memories from the user's conversations, that it is not the model, and

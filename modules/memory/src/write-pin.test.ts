@@ -128,6 +128,33 @@ test('it rejects a new pinned item that takes the pinned core past 2,000 tokens'
   expect(remember).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
 });
 
+test('it counts the owner name each pinned line shows against the pinned core budget', async () => {
+  const memory = await startTestMemory({ gate: { ownerName: 'Bartholomew '.repeat(100).trim() } });
+
+  // about 1,800 tokens of text, which fits beside a short name and not beside this one
+  const remember = memory.store.remember({
+    text: 'Keeps a long reading list for winter. '.repeat(190),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await remember.catch(() => {});
+
+  expect(remember).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
+});
+
+test('it pins an item that fits the pinned core budget beside a short owner name', async () => {
+  const memory = await startTestMemory({ gate: { ownerName: 'Robin' } });
+
+  const ref = await memory.store.remember({
+    text: 'Keeps a long reading list for winter. '.repeat(190),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  expect(ref.version).toBe(1);
+});
+
 test('it rejects a pin whose quotes take the pinned core past 2,000 tokens', async () => {
   const ctx = await setupTest();
 

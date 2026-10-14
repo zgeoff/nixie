@@ -20,26 +20,24 @@ export interface CorePin {
 
 // a day that renders as wide as any can, 30 Sep 2000, because the count's time now is in 1970
 const widestDay = Date.UTC(2000, 8, 30);
-const budgetLineOptions = { ownerName: null, defaultZone: 'UTC', now: new Date(0) };
 
 // The pinned core's budget, in tokens, when the context sets none.
 const defaultPinnedCoreTokens = 2000;
 
 // Fails when a pinned item would take the pinned core past its token budget, because the core
 // rides in the cached start of every turn. Each item counts as the system prompt renders it, with
-// the owner's name at its default and the date at its widest. The item's earlier version leaves.
+// the owner's name, and with the date at its widest. The item's earlier version leaves the count.
 export function requirePinnedCoreRoom(
-  context: Pick<MemoryContext, 'pinnedCoreTokens'>,
+  context: Pick<MemoryContext, 'pinnedCoreTokens' | 'gate'>,
   pinned: readonly RecalledItem[],
   pin: CorePin,
 ): void {
   const core = [...pinned.filter((item) => item.itemID !== pin.itemID), pin];
+  const lines = { ownerName: context.gate.ownerName, defaultZone: 'UTC', now: new Date(0) };
   const tokens = core.reduce(
     (total, item) =>
       total +
-      countTextTokens(
-        renderMemoryItem({ ...item, recordedAt: widestDay }, budgetLineOptions).join('\n'),
-      ),
+      countTextTokens(renderMemoryItem({ ...item, recordedAt: widestDay }, lines).join('\n')),
     0,
   );
   const budget = context.pinnedCoreTokens ?? defaultPinnedCoreTokens;

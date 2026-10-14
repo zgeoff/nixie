@@ -1,5 +1,6 @@
 import { findRecordKeys } from '@heynixie/log';
 import type { Kysely } from 'kysely';
+import type { ApprovedProposal } from './build-version-approval';
 import { buildVersionApproval } from './build-version-approval';
 import { decodeVersionText } from './decode-version-text';
 import type { ReviewReason } from './gate-types';
@@ -74,7 +75,7 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
     .selectFrom('memory_versions')
     .leftJoin('memory_proposals', 'memory_proposals.proposal_id', 'memory_versions.proposal_id')
     .selectAll('memory_versions')
-    .select('memory_proposals.review_reason')
+    .select(['memory_proposals.operation as proposal_operation', 'memory_proposals.review_reason'])
     .where('memory_versions.item_id', '=', item.row.item_id)
     .$if(!item.includeHistory, (query) =>
       query.where('memory_versions.version', '=', item.row.version),
@@ -101,9 +102,10 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
   }
 }
 
-// a version row with the review reason of the memory proposal it came from, which is null for a
-// version that applied at once and for one from an approved consolidation change
+// a version row with the operation and review reason of the memory proposal it came from, which
+// are null for a version that applied at once and for one from an approved consolidation change
 interface ApprovableVersionRow extends MemoryVersionRow {
+  readonly proposal_operation: 'remember' | 'retire' | null;
   readonly review_reason: ReviewReason | null;
 }
 
@@ -124,6 +126,12 @@ async function readVersion(key: CryptoKey, row: ApprovableVersionRow): Promise<R
     text: text.text,
     evidenceQuote: text.evidenceQuote,
     model: row.model,
-    approval: buildVersionApproval(row.proposal_id, row.review_reason),
+    approval: buildVersionApproval(row.proposal_id, toApprovedProposal(row)),
   };
+}
+
+function toApprovedProposal(row: ApprovableVersionRow): ApprovedProposal | null {
+  return row.proposal_operation === null || row.review_reason === null
+    ? null
+    : { operation: row.proposal_operation, reason: row.review_reason };
 }

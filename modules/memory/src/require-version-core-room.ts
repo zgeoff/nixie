@@ -33,9 +33,9 @@ async function readProposalApproval(
   }
   const proposal = await db
     .selectFrom('memory_proposals')
-    .select('review_reason')
+    .select(['operation', 'review_reason as reason'])
     .where('proposal_id', '=', proposalID)
     .executeTakeFirst();
 
-  return buildVersionApproval(proposalID, proposal?.review_reason ?? null);
+  return buildVersionApproval(proposalID, proposal ?? null);
 }
