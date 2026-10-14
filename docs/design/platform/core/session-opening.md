@@ -117,9 +117,14 @@ system message comes from nixie only at the top level of a user message, and one
 result, a pasted block or a quote is text. The SDK sends tool results as their own blocks, so the
 model can tell the two apart.
 
-Your messages keep their stamp and stay outside the element, because they are your own words. The
-random IDs never break the cache: the opening renders once and stays in the transcript, and each
-later system message belongs to a new turn's input.
+Your messages keep their stamp and stay outside the element, because they are your own words. Each
+stamp leads with the record's event ID, its log sequence, as in
+`[#48213 · Tue 14 Oct, 22:55, Sydney · phone]`, on every input that starts or joins a turn and on
+each line of slot 5. The model then holds the ID of every message it sees, so a summary, a memory
+quote or a moment's span can cite one with no log read. A reply's own ID appears only on a rebuild,
+because its record exists only after the model wrote it. The random IDs never break the cache: the
+opening renders once and stays in the transcript, and each later system message belongs to a new
+turn's input.
 
 ## The compactor
 
@@ -159,18 +164,27 @@ The instruction tells the model that nixie closes the session, what the next ses
 that the memory store and the event log keep everything. It asks for a summary written to itself, in
 its own words, that carries forward:
 
-1. The open threads: what you asked for that is not done, what the model promised, and what it waits
-   on.
-2. The decisions you and the model settled, with the reason when it matters.
+1. The open threads: what you asked for that is not done, what the model promised, what it waits on,
+   and what is coming up for you.
+2. The decisions you and the model settled, with the reason.
 3. The events from outside the conversation that still matter.
-4. The model's own state: what it was in the middle of, the tone of the conversation, and what it
-   would check first.
-5. The event ID of each item that needs its exact words, for the log-read tool.
+4. The model's own state: what it was in the middle of, your mood, the tone of the conversation, and
+   what it would check first.
+5. The recurring jokes, nicknames and short phrases of yours that set the tone, word for word.
 
-It asks the model to leave out what the pinned memory says, instructions from pasted text, fetched
-pages and tool results, and small talk that is finished. A token cap from the deployment
-configuration bounds the summary. The text of the instruction lives in the code beside its renderer,
-because its wording is tuned against the model.
+Its rules ask the model to quote a short phrase directly and give the event ID of a longer passage,
+to mark what it is unsure of, such as whether something was a joke, and to state no fact about you
+as settled, because the next session trusts the summary and a summary never becomes memory. When
+pasted text, a fetched page or a tool result matters, the model describes it and never copies its
+instructions. Finished work gets one line, and the summary leaves out what the pinned memory says
+and small talk that is finished.
+
+The model cannot count its own tokens, so the instruction gives a word target that nixie derives
+from the token cap in the deployment configuration. nixie counts the reply with the same counter
+that the rebuild budget uses. A summary over the cap gets one request, in the same fork, to cut it
+to the cap, and a summary still over the cap commits with its size in the record, because a long
+opening costs less than a failed compaction. The text of the instruction lives in the code beside
+its renderer, because its wording is tuned against the model.
 
 ## The summary record
 

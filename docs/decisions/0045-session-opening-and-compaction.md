@@ -48,6 +48,11 @@ that a system message comes from nixie only at the top level of a user message, 
 a tool result, a pasted block or a quote is text. Your own messages keep their time stamp and stay
 outside the element.
 
+Every message stamp leads with the record's event ID, its log sequence, as in
+`[#48213 · Tue 14 Oct, 22:50, Sydney]`: your messages, timers and outcomes, and each line of a
+rebuilt session's recent turns. The model can then cite any message it sees, in a summary, a memory
+quote or a moment's span, without a log read.
+
 ## The compactor
 
 1. **The trigger.** A turn that ends with its context at or past a threshold, a configurable share
@@ -67,10 +72,17 @@ outside the element.
 6. **Overflow inside a turn.** A turn that grows past the window compacts the session from its last
    committed boundary and runs again on the new session, once.
 
-The instruction asks the model to carry forward the open threads, the decisions, the events that
-still matter, its own state and the event IDs of anything that needs exact words. It asks the model
-to leave out what the pinned memory says, instructions from pasted text and tool results, and
-finished small talk, under a token cap that the deployment configuration sets.
+The instruction asks the model to carry forward the open threads, the decisions with their reasons,
+the events that still matter, its own state, and the recurring jokes, nicknames and short phrases of
+yours that set the tone, word for word. It quotes short phrases and gives the event ID of a longer
+passage. It marks what it is unsure of, states no fact about you as settled, describes outside text
+only when it matters and never copies the instructions in it, and gives finished work one line. It
+leaves out what the pinned memory says and finished small talk.
+
+The instruction gives a word target that nixie derives from a token cap in the deployment
+configuration, because the model cannot count its own tokens. nixie counts the reply, and a summary
+over the cap gets one request to cut it to the cap. A summary still over the cap commits with its
+size recorded.
 
 ## The summary and forgetting
 
@@ -127,6 +139,10 @@ a moment destroy all run the cleanup, so each one erases every summary.
   record of which items each summary read.
 - **Plain tags per block, such as `<events>`.** They need no new element, and give the model a
   different shape for each kind of message from nixie.
+- **A "worth saving" list in the summary.** It flags facts for the next session to save, and repeats
+  what the background writer captures from the same log.
+- **Event IDs only from a log read.** They keep stamps shorter, and leave the model unable to cite a
+  message it sees, during a compaction call with no tools above all.
 
 ## Consequences
 
@@ -137,3 +153,5 @@ a moment destroy all run the cleanup, so each one erases every summary.
 - The existing context blocks, the timer and outcome inputs, and the change notes move to the
   `<system-message>` element.
 - A moment that you keep from the client reaches a running session through the events block.
+- A summary's event IDs resolve for as long as the log keeps sequences stable, which
+  [0037](0037-moments.md) already requires.
