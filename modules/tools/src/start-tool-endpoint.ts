@@ -114,6 +114,8 @@ type McpHandler = ReturnType<typeof createMcpHandler>;
 // step revokes the token and closes the streams opened with it.
 function makeStepStarter(
   spec: RunEndpointSpec,
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- each step adds and removes its own token
   handlers: Map<string, McpHandler>,
 ): RunEndpoint['startStep'] {
   return (stepRunID) => {
@@ -146,12 +148,12 @@ function findTokenHandler(
   return null;
 }
 
+type FindHandler = (authorization: string | null) => McpHandler | null;
+
 // The MCP handler's response goes back unread, so each chunk of a stream reaches the guest as the
 // server writes it: the CLI waits for the listen stream's acknowledgement before it lists tools.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
-function makeRunFetch(
-  findHandler: (authorization: string | null) => McpHandler | null,
-): (request: Request) => Promise<Response> {
+function makeRunFetch(findHandler: FindHandler): (request: Request) => Promise<Response> {
   return (request) => {
     const handler = findHandler(request.headers.get('authorization'));
 
