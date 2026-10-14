@@ -29,6 +29,7 @@ export async function startMemory(
       clock: parts.context.clock,
       findAllowRule: findNoAllowRule,
       limits: parts.config.memory.limits,
+      ownerName: parts.config.owner.name,
     },
   });
 

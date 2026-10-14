@@ -40,6 +40,7 @@ export async function startTestStore(
       clock: options.gate?.clock ?? { now: () => Date.now() },
       findAllowRule: options.gate?.findAllowRule ?? findNoAllowRule,
       limits: options.gate?.limits ?? defaultGateLimits,
+      ownerName: options.gate?.ownerName ?? null,
     },
   });
 

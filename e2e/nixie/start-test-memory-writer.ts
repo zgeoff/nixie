@@ -51,6 +51,7 @@ export function startTestMemoryWriter(
     gate: buildStubGate(),
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
+    ownerName: null,
     onError: (error) => {
       throw error;
     },

@@ -23,6 +23,7 @@ async function setupTest() {
     gate: memory.store.writes.batch,
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
+    ownerName: null,
   };
 
   return { memory, parts };
@@ -72,6 +73,33 @@ test('it shows the writer the pending proposals beside the current items, with t
       prompt: expect.toStartWith(listed),
       systemPrompt: expect.toInclude(
         'When a pending proposal already holds a fact, stage nothing for it, even when the batch states it in other words.',
+      ),
+    }),
+  );
+});
+
+test('it tells the writer to name the owner by the configured name', async () => {
+  const ctx = await setupTest();
+  const planned = await writePlannedBatch(ctx.memory.log, ['I play the cello on Sundays.']);
+  const session = buildStubWriterSession({
+    op: 'remember',
+    text: 'Avery plays the cello on Sundays.',
+    quote: 'I play the cello on Sundays.',
+    sourceSequence: planned.bounds.end,
+    itemID: null,
+  });
+  const batch = await readWriterBatch(ctx.memory.log, planned.bounds);
+
+  await runWriterExtraction(
+    { ...ctx.parts, ...session, ownerName: 'Avery' },
+    batch,
+    new AbortController().signal,
+  );
+
+  expect(session.model.runSession).toHaveBeenCalledWith(
+    expect.objectContaining({
+      systemPrompt: expect.toInclude(
+        '- Write the memory text as one plain sentence that names the owner "Avery".',
       ),
     }),
   );

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { collectLabelledCalls } from './collect-labelled-calls';
 
-test('it joins each call to the pair it checked', () => {
+test('it joins each call to the pair it checked, on the memory named as the report ran it', () => {
   const pair = {
     asserted: false,
     bucket: 'question',
@@ -11,7 +11,7 @@ test('it joins each call to the pair it checked', () => {
   const input = new Bun.CryptoHasher('sha256')
     .update(
       '<owner_message>\n«evidence»do I take my coffee black?«/evidence»\n</owner_message>\n\n' +
-        '<candidate_memory>\nThe owner takes their coffee black.\n</candidate_memory>',
+        '<candidate_memory>\nSam takes their coffee black.\n</candidate_memory>',
     )
     .digest('hex');
   const call = {
@@ -44,6 +44,7 @@ test('it joins each call to the pair it checked', () => {
         model: 'claude-sonnet-5-5',
         effort: 'low',
         prompt: 'sha256:0f1e',
+        ownerName: 'Sam',
         repeats: 1,
         calls: [call],
       },
@@ -59,6 +60,7 @@ test('it refuses a call for a pair the corpus does not hold', () => {
         model: 'claude-sonnet-5-5',
         effort: 'low',
         prompt: 'sha256:0f1e',
+        ownerName: null,
         repeats: 1,
         calls: [
           {
@@ -104,6 +106,7 @@ test('it refuses a report run before the corpus changed the message of a pair', 
         model: 'claude-sonnet-5-5',
         effort: 'low',
         prompt: 'sha256:0f1e',
+        ownerName: null,
         repeats: 1,
         calls: [
           {

@@ -18,6 +18,7 @@ test('it loads the run settings and each call with its verdict', async () => {
     model: 'claude-sonnet-5-5',
     effort: 'low',
     prompt: 'sha256:0f1e',
+    ownerName: 'Sam',
     repeats: 1,
     calls: [
       {
@@ -50,6 +51,7 @@ test('it refuses a call with a verdict the checker never gives', async () => {
       model: 'claude-sonnet-5-5',
       effort: 'low',
       prompt: 'sha256:0f1e',
+      ownerName: null,
       repeats: 1,
       calls: [
         {

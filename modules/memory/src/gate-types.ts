@@ -8,12 +8,13 @@ import type { WriterGate } from './writer-types';
 // The types of the write gate, memory proposals and notices.
 
 // What the write gate reads beside the store: the checker, the clock that proposal lapses read,
-// the allow rule lookup, and the tuning values.
+// the allow rule lookup, the tuning values, and your configured name or null for "the owner".
 export interface GateContext {
   readonly check: RunCheck;
   readonly clock: Pick<Clock, 'now'>;
   readonly findAllowRule: FindAllowRule;
   readonly limits: GateLimits;
+  readonly ownerName: string | null;
 }
 
 // The tuning values of the write gate, all configurable.

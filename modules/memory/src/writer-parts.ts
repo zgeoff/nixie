@@ -22,6 +22,9 @@ export interface WriterParts {
 
   // the persona in force, read at each batch so a new seed reaches the next batch
   readonly getPersona: () => string;
+
+  // your configured name, which the memories the writer stages use, or null for "the owner"
+  readonly ownerName: string | null;
 }
 
 // One writer step as its parts see it: the step's input, the writer's row as the step began, and

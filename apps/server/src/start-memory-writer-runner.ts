@@ -33,6 +33,9 @@ export interface MemoryWriterRunnerOptions {
 
   // the persona in force, read at each batch
   readonly getPersona: () => string;
+
+  // your configured name, which the writer's memories use, or null for "the owner"
+  readonly ownerName: string | null;
   readonly onError: (error: unknown) => void;
 }
 
@@ -100,6 +103,7 @@ async function startWriterParts(
     gate: options.gate,
     config: options.config,
     getPersona: options.getPersona,
+    ownerName: options.ownerName,
     onError: options.onError,
   });
 

@@ -39,6 +39,7 @@ export async function createWriterProposal(
       gate: memory.store.writes.batch,
       config: writerConfigSchema.parse({}),
       getPersona: () => '',
+      ownerName: null,
       ...buildStubWriterSession({
         op: 'remember',
         text: request.text,

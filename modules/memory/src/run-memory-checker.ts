@@ -3,9 +3,9 @@ import type { CheckerAnswer } from '@heynixie/models';
 import { buildGateReview } from './build-gate-review';
 import type { QuoteEvidenceResult } from './find-quote-evidence';
 import type { ContentGateRequest, ContentGateResult } from './gate-types';
-import { memoryCheckerPrompt } from './memory-checker-prompt';
 import { pickCheckerReviewReason } from './pick-checker-review-reason';
 import { renderCheckerInput } from './render-checker-input';
+import { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';
 import type { MemoryContext } from './types';
 
 export type FoundEvidence = Extract<QuoteEvidenceResult, { readonly status: 'found' }>;
@@ -18,7 +18,7 @@ export async function runMemoryChecker(
   found: FoundEvidence,
 ): Promise<ContentGateResult> {
   const answer = await context.gate.check({
-    prompt: memoryCheckerPrompt,
+    prompt: renderMemoryCheckerPrompt(context.gate.ownerName),
     input: renderCheckerInput(found.message, found.evidence, {
       kind: 'candidate_memory',
       text: request.text,

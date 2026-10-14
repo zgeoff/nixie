@@ -25,7 +25,10 @@ export function buildSeedInputs(
       ...policy,
       rules: [
         ...policy.rules,
-        ...buildCheckerRules().map((rule) => ({ id: rule.id, prompt: rule.prompt })),
+        ...buildCheckerRules(config.owner.name).map((rule) => ({
+          id: rule.id,
+          prompt: rule.prompt,
+        })),
       ],
     },
   };

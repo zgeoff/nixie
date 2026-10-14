@@ -22,6 +22,7 @@ export async function startWriterTask(
     gate: store.writes.batch,
     config: parts.config.memory_writer,
     getPersona: () => parts.inForce.read()?.persona ?? '',
+    ownerName: parts.config.owner.name,
     onError: (error) => {
       parts.onFailure(error);
     },
