@@ -69,7 +69,7 @@ test('it returns each recalled item by the short ID the model reads', async () =
   const shortID = shortIDs.get(item.itemID);
   const recall = ctx.registry.findTool('memory.recall');
 
-  invariant(recall && shortID);
+  invariant(recall && shortID !== undefined);
   ctx.staging.open(new Map(), 30);
 
   const recalled = await recall.definition.run(
