@@ -26,7 +26,7 @@ test('it writes the diff on the consolidator thread and returns its pending chan
     changes: [
       {
         changeID: expect.toBeString(),
-        shortID: expect.stringMatching(/^[a-z][0-9a-z]{9}$/u),
+        shortID: expect.toSatisfy((id: string) => /^[a-z][0-9a-z]{9}$/u.test(id)),
         kind: 'retire',
         inputs: [{ ...item, text: 'Is in Lisbon until May', isCurrent: true }],
         text: null,

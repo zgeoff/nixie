@@ -142,7 +142,9 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
   );
 
   // an answer to a change binds to its action hash, so a tool that takes none cannot answer one
-  expect(inputs).toSatisfyAll(([, keys]) => !keys.includes('actionHash'));
+  expect(inputs).toSatisfyAll(
+    ([, keys]: readonly [string, readonly string[]]) => !keys.includes('actionHash'),
+  );
   expect(inputs.filter(([, keys]) => keys.includes('changeID'))).toStrictEqual([
     ['memory.comment', ['changeID', 'comment']],
   ]);

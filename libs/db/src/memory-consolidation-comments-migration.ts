@@ -1,4 +1,4 @@
-import type { RawBuilder, Transaction } from 'kysely';
+import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import { buildShortIDFromUUID } from './build-short-id-from-uuid';
 import type { Migration } from './types';
@@ -9,9 +9,9 @@ import type { Migration } from './types';
 export const memoryConsolidationCommentsMigration: Migration = {
   name: 'add a short ID and a comment to each consolidation change',
   up: async (tx) => {
-    await createColumn(tx, 'short_id', sql`text`);
-    await createColumn(tx, 'comment', sql`text`);
-    await createColumn(tx, 'comment_sequence', sql`integer references records (sequence)`);
+    await createColumn(tx, 'short_id', 'text');
+    await createColumn(tx, 'comment', 'text');
+    await createColumn(tx, 'comment_sequence', 'integer references records (sequence)');
     await sql`create unique index if not exists memory_consolidation_changes_by_short_id
       on memory_consolidation_changes (short_id)`.execute(tx);
     await writeShortIDs(tx);
@@ -21,7 +21,7 @@ export const memoryConsolidationCommentsMigration: Migration = {
 async function createColumn(
   tx: Transaction<unknown>,
   name: string,
-  definition: RawBuilder<unknown>,
+  definition: 'text' | 'integer references records (sequence)',
 ): Promise<void> {
   const columns = await sql<{ name: string }>`
     select name from pragma_table_info('memory_consolidation_changes')
@@ -29,7 +29,7 @@ async function createColumn(
 
   if (columns.rows.length === 0) {
     await sql`alter table memory_consolidation_changes
-      add column ${sql.id(name)} ${definition}`.execute(tx);
+      add column ${sql.id(name)} ${sql.raw(definition)}`.execute(tx);
   }
 }
 
