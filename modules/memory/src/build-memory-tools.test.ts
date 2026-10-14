@@ -7,12 +7,12 @@ import { defaultGateLimits } from './default-gate-limits';
 import type { TestMemoryOptions } from './test-utils';
 import {
   buildMockCheckerAnswer,
+  createProposal,
   makeToolAllowRule,
   readItemShortID,
   startTestMemory,
 } from './test-utils';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
-import { createProposal } from './test-utils/create-proposal';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
 

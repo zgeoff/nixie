@@ -180,6 +180,8 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
     {
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+      ownerName: null,
+      defaultZone: 'Australia/Sydney',
     },
   );
   const inputs = definitions.map(
