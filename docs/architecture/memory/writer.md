@@ -57,7 +57,11 @@ image, never the conversation's sandbox, because the replies it reads can carry 
 fresh session keeps one batch's reading from steering the next. The system prompt holds the persona
 in force before the writer's rules, so the writer frames what it stores the way the assistant speaks
 of the user. The [batch model spike](../../design/platform/spikes/memory-batch-model/README.md)
-found the persona costs no capture.
+found the persona costs no capture. The writer's rules ask for each memory as one plain factual
+sentence that names the user by the name in the owner section of the deployment configuration, or
+calls the user "the owner" when the section sets none, so the writer's items read like the ones the
+conversation saves. The rules keep the user's own distinctive words where those words carry the
+meaning, because a generic paraphrase loses what made the fact worth saving.
 
 The prompt holds the batch's records with their sequences, the user's pasted spans marked, the
 active items, and the pending proposals with the item each one changes. It lists every active item

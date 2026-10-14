@@ -68,7 +68,8 @@ image, on the checker role's [model profile](../core/model-profiles.md). Its inp
 message, with the quote marked as evidence and every pasted span marked, then the memory text. The
 evidence mark avoids a quotation word, because the checker read words marked as a quote as someone
 else's speech. The checker sees no other message, no reply and no tool result, so outside content
-reaches it only as a marked span of the user's own message.
+reaches it only as a marked span of the user's own message. The checker's prompt names the user the
+way the writer does, so its examples read like the memories it judges.
 
 It answers asserted, not asserted or unsure, with a reason, and only asserted lets a write apply. A
 timeout, an error or an unreadable answer reads as unsure, so the checker fails closed. The answer's
@@ -76,7 +77,7 @@ verdict, the checker's model ID and any failure join the version's checks. The r
 that may repeat the memory, so it reaches only the sealed proposal.
 
 Each checker prompt joins the policy snapshot as the SHA-256 of its text, so a release that changes
-a prompt changes the snapshot hash that every record carries. The
+a prompt, or a change to the user's name, changes the snapshot hash that every record carries. The
 [memory checker eval](../../../evals/memory-checker/README.md) replays a labelled corpus through the
 production prompt and the input the gate renders. The checker writes its reason before its verdict,
 so the verdict follows from the reasoning. On cases written after the tuning, it confirmed a fact

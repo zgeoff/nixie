@@ -130,7 +130,12 @@ function makeLoggedInQuery(signal: AbortSignal): typeof query {
       ...params,
       options: {
         ...params.options,
-        env: { ...env, CLAUDE_CONFIG_DIR: join(homedir(), '.claude'), PATH: process.env['PATH'] },
+        env: {
+          ...env,
+          ...readProxyEnv(),
+          CLAUDE_CONFIG_DIR: process.env['CLAUDE_CONFIG_DIR'] ?? join(homedir(), '.claude'),
+          PATH: process.env['PATH'],
+        },
       },
     });
 
@@ -149,6 +154,27 @@ function makeLoggedInQuery(signal: AbortSignal): typeof query {
     }
     return session;
   };
+}
+
+// a host that reaches the API through an HTTPS proxy needs the proxy and its CA in the query too
+function readProxyEnv(): Record<string, string> {
+  const names = [
+    'HTTPS_PROXY',
+    'https_proxy',
+    'NO_PROXY',
+    'no_proxy',
+    'NODE_USE_ENV_PROXY',
+    'NODE_EXTRA_CA_CERTS',
+    'SSL_CERT_FILE',
+  ];
+
+  return Object.fromEntries(
+    names.flatMap((key) => {
+      const value = process.env[key];
+
+      return value === undefined ? [] : [[key, value]];
+    }),
+  );
 }
 
 function buildSHA256(text: string): string {

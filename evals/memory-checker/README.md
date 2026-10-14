@@ -15,10 +15,12 @@ written before any model saw a case.
 The run calls the production checker with the production prompt, on the input the content gate
 renders for each pair, 3 times each, through the check guest's query and your local Claude Code
 login. It takes a set's name and rewrites that set's report, such as
-[corpus-report.json](corpus-report.json), which `bun test` then checks.
+[corpus-report.json](corpus-report.json), which `bun test` then checks. An invented owner name after
+the set's name renders the prompt with that name and swaps it into each memory for "the owner", as a
+deployment with that name would see them.
 
 ```bash
-env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts held-out-3
+env -u ANTHROPIC_API_KEY bun evals/memory-checker/run-memory-checker-eval.ts held-out-3 Sam
 bun test evals
 ```
 
@@ -28,19 +30,29 @@ assert, and when an answered call misses one that a tuning set's message asserts
 
 ## Results
 
-Sonnet 5.5 at low effort, with the 10 s timeout and the reason asked before the verdict:
+Sonnet 5.5 at low effort, with the 10 s timeout and the reason asked before the verdict, once with
+memories about "the owner" and once with the owner named Sam. The committed reports are the named
+run:
 
-| Set        | Wrong confirmations | Misses  | Failed calls | Cost  |
-| ---------- | ------------------- | ------- | ------------ | ----- |
-| corpus     | 0 of 117            | 0 of 93 | 1 of 210     | $0.63 |
-| held-out-1 | 0 of 42             | 0 of 36 | 0 of 78      | $0.23 |
-| held-out-2 | 0 of 42             | 0 of 36 | 1 of 78      | $0.26 |
-| held-out-3 | 0 of 42             | 0 of 30 | 0 of 72      | $0.23 |
-| held-out-4 | 0 of 42             | 0 of 33 | 1 of 75      | $0.23 |
+| Set        | Owner     | Wrong confirmations | Misses  | Failed calls | Cost  |
+| ---------- | --------- | ------------------- | ------- | ------------ | ----- |
+| corpus     | the owner | 0 of 117            | 0 of 93 | 0 of 210     | $0.55 |
+| corpus     | Sam       | 0 of 117            | 0 of 93 | 0 of 210     | $0.60 |
+| held-out-1 | the owner | 0 of 42             | 0 of 36 | 0 of 78      | $0.21 |
+| held-out-1 | Sam       | 0 of 42             | 0 of 36 | 0 of 78      | $0.21 |
+| held-out-2 | the owner | 0 of 42             | 0 of 36 | 0 of 78      | $0.22 |
+| held-out-2 | Sam       | 0 of 42             | 0 of 36 | 0 of 78      | $0.22 |
+| held-out-3 | the owner | 0 of 42             | 0 of 30 | 0 of 72      | $0.19 |
+| held-out-3 | Sam       | 0 of 42             | 0 of 30 | 0 of 72      | $0.20 |
+| held-out-4 | the owner | 0 of 42             | 0 of 33 | 0 of 75      | $0.19 |
+| held-out-4 | Sam       | 0 of 42             | 0 of 33 | 0 of 75      | $0.20 |
+| held-out-5 | the owner | 0 of 39             | 0 of 36 | 0 of 75      | $0.23 |
+| held-out-5 | Sam       | 0 of 39             | 0 of 36 | 0 of 75      | $0.21 |
 
-Each failed call timed out and answered unsure, which sends the write to review. The p95 latency ran
-from 3.1 s to 8.4 s across the sets. The prompt was tuned on the corpus. Each held-out set was
-written and committed, with its labels, before any run, and its pass rule was no wrong confirmation:
+A failed call times out or gives no readable answer, and it answers unsure, which sends the write to
+review. The p95 latency ran from 3.2 s to 5.7 s across the sets. The prompt was tuned on the corpus.
+Each held-out set was written and committed, with its labels, before any run, and its pass rule was
+no wrong confirmation:
 
 - [held-out-1.json](held-out-1.json) failed on agreed advice and on a fact a question presupposes,
   so the prompt gained a rule for each, and the set became a tuning set.
@@ -52,6 +64,8 @@ written and committed, with its labels, before any run, and its pass rule was no
 - [held-out-3.json](held-out-3.json) scored the reason-first schema before and after that example,
   and passed both times.
 - [held-out-4.json](held-out-4.json) scored the final prompt, which no change followed, and passed.
+- [held-out-5.json](held-out-5.json) holds memories that keep the owner's distinctive words, beside
+  jokes and similes stated as facts, and passed with and without the owner's name.
 
 The first measurement, before the prompt took the evidence mark and the rule that a memory may keep
 the message's own condition or attribution, ran Haiku 5.5, Sonnet 5.5 and Opus 5.5 over the same
