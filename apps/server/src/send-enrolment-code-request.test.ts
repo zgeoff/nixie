@@ -21,6 +21,7 @@ test('it returns the code the running server issues', async () => {
       Promise.resolve({ code: 'ABCD-EFGH', expiresAt: new Date('2026-10-11T12:15:00.000Z') }),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -41,6 +42,7 @@ test('it rejects with the status and the reason when the server fails to issue a
     createEnrolmentCode: () => Promise.reject(new Error('the database is locked')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 

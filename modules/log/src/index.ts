@@ -11,6 +11,8 @@ export { readRecords } from './read-records';
 export { removeRecordKey } from './remove-record-key';
 export { writeKeyStoreCheckpoint } from './write-key-store-checkpoint';
 export { requireWriterEpoch } from './require-writer-epoch';
+export type { LogReset, LogResetOptions } from './run-log-reset';
+export { runLogReset } from './run-log-reset';
 export { runProjectionRebuild } from './run-projection-rebuild';
 export { StaleWriterError } from './stale-writer-error';
 export type { StartWriterOptions } from './start-writer';

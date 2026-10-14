@@ -154,6 +154,13 @@ The session host commands list the live device sessions and set the label of one
 label record [the API](../channels/api.md#device-sessions) describes. A label is one line of text,
 because each message renders it beside the send time.
 
+The reset command, `reset --keep-sessions --yes`, asks the server to
+[reset the event log](../core/event-log.md#the-reset) and keep the live device sessions. It refuses
+to run without both flags, because only a restore from a backup undoes a reset, and it prints that
+backups from before the reset still hold the old data. The server answers once the reset finishes,
+then stops and exits 0, so the container runtime starts it again through the normal start. A reset
+that fails exits the server 1 instead, and the command exits non-zero.
+
 The memory host commands list the pending memory proposals and approve or reject one. The server
 answers each through the memory gate's own answer path, so an approval applies the bound operation
 with its approval record and keeps the proposal's provenance ([memory writes](../memory/writes.md)).

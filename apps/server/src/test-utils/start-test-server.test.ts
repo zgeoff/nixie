@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
+import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { startTestServer } from './start-test-server';
 
 test('it starts a log with the tasks, sandboxes and memory projections, an endpoint and the process double', async () => {
@@ -54,4 +55,18 @@ test('it removes the data directory when the test finishes', async () => {
   });
 
   expect(server.dataDir).toBeString();
+});
+
+test('it reads the ID of each sandbox the process double holds', async () => {
+  const server = await startTestServer();
+
+  const sandbox = await server.sandboxes.create(
+    buildMockSandboxSpec({ kind: 'worker', image: 'worker', owner: 'task-1' }),
+  );
+
+  server.defer(() => sandbox.destroy());
+
+  const ids = await server.readSandboxIDs();
+
+  expect(ids).toStrictEqual([sandbox.id]);
 });

@@ -36,6 +36,15 @@ export interface MemorySlot {
   readonly set: (store: StartedMemoryStore) => void;
 }
 
+// What the server holds once the health endpoint listens.
+export interface ServerBase {
+  readonly apiContext: APIContext;
+  readonly inForce: InForce;
+  readonly state: StartState;
+  readonly tools: Tools;
+  readonly port: number;
+}
+
 // Everything the start steps behind the health endpoint use.
 export interface ServerParts {
   readonly config: DeploymentConfig;
@@ -83,6 +92,10 @@ export interface CLIFlags {
 
   // an edit's new text, or an approval's text in place of the proposal's
   readonly text?: string;
+
+  // a reset keeps the live device sessions, and runs only once the user confirms it
+  readonly 'keep-sessions': boolean;
+  readonly yes: boolean;
 }
 
 export type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;

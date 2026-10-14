@@ -30,6 +30,7 @@ test('it issues an enrolment code to a request on the socket', async () => {
       Promise.resolve({ code: 'ABCD-EFGH', expiresAt: new Date('2026-10-11T12:15:00.000Z') }),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -54,6 +55,7 @@ test('it keeps the socket in a directory only nixie’s user may enter', async (
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -71,6 +73,7 @@ test('it answers any other request with 404', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -88,6 +91,7 @@ test('it answers 500 with the reason when the code cannot be issued', async () =
     createEnrolmentCode: () => Promise.reject(new Error('the database is locked')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -118,6 +122,7 @@ test('it lists the live device sessions', async () => {
           lastUsedAt: new Date('2026-10-13T08:30:00.000Z'),
         },
       ]),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -150,6 +155,7 @@ test('it sets the label of a session and answers with the label it kept', async 
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel,
   });
 
@@ -179,6 +185,7 @@ test('it answers 404 to a label for a session that is not signed in', async () =
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.resolve({ status: 'not_found' as const }),
   });
 
@@ -202,6 +209,7 @@ test('it answers 400 to a label the session cannot take', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.resolve({ status: 'invalid_label' as const }),
   });
 
@@ -226,6 +234,7 @@ test('it answers 400 to a label request with no session ID', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel,
   });
 
@@ -250,6 +259,7 @@ test('it lists each pending memory proposal with its text and the hash an answer
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -293,6 +303,7 @@ test('it answers an approval that an active item closely matches with that item,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -328,6 +339,7 @@ test('it writes the same records for an approval as the memory gate’s own appr
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -374,6 +386,7 @@ test('it rejects a memory proposal, which leaves the pending list', async () => 
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -406,6 +419,7 @@ test('it answers 409 to an answer under another action hash, and applies nothing
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -435,6 +449,7 @@ test('it answers 404 to an answer for a memory proposal that does not exist', as
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -456,6 +471,7 @@ test('it answers 400 to an answer with no action hash', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -481,6 +497,7 @@ test('it answers 503 to a memory request before the memory store starts', async 
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => null,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -500,6 +517,7 @@ test('it shows a memory item with its state and every version, oldest first', as
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -543,6 +561,7 @@ test('it answers 404 to a memory item that does not exist', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -565,6 +584,7 @@ test('it edits a memory item as a new version of yours, and keeps the old one in
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -604,6 +624,7 @@ test('it answers 409 to an edit of a version the item has moved past, and adds n
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -638,6 +659,7 @@ test('it answers 400 to an edit with blank text', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -667,6 +689,7 @@ test('it retires a memory item as your own change', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -704,6 +727,7 @@ test('it restores a retired memory item as your own change', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -746,6 +770,7 @@ test('it answers 409 to a restore of an item that is not retired', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -772,6 +797,7 @@ test('it pins a memory item into the pinned core', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -800,6 +826,7 @@ test('it unpins a memory item, which leaves the pinned core', async () => {
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -834,6 +861,7 @@ test('it answers 404 to a pin of a memory item that does not exist', async () =>
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -855,6 +883,7 @@ test('it approves a memory proposal with your edited text, as your own version',
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 
@@ -889,6 +918,7 @@ test('it answers 400 to a rejection that carries edited text, and rejects nothin
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => ctx.memory.store,
     readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
     updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
 

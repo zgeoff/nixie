@@ -33,6 +33,9 @@ export interface Server {
   // resolves with the error that ended the runners, such as another process taking the writer
   readonly failed: Promise<unknown>;
 
+  // resolves once a reset finished, after which the server stops and exits 0
+  readonly reset: Promise<void>;
+
   // stops claiming steps, gives steps in flight their grace to commit, then releases every part
   readonly stop: () => Promise<void>;
 }

@@ -4,7 +4,8 @@ Everything nixie does becomes a record in one append-only table, and nothing cha
 it is written. The tables the rest of nixie reads, such as the tasks table or the actions table, are
 projections: each one folds the log a record at a time, inside the transaction that appends the
 record. The log is therefore the source of truth, and dropping every projection and folding the log
-again from the first record gives the same rows. `modules/log` owns the log, under
+again from the first record gives the same rows. One operation removes records: the
+[reset](#the-reset), which empties the whole log at once. `modules/log` owns the log, under
 [0001](../../decisions/0001-durable-layer.md). [Erasable fields](./erasable-fields.md) covers how a
 record's free text is encrypted and forgotten, and [the database](./database.md) covers the writer
 every append goes through.
@@ -26,8 +27,9 @@ the kind's free text, encrypted under a key of the record's own.
 - **Definitions.** Every record carries the snapshot hash of the definitions in force, and the log
   refuses a batch with a record that lacks one before it writes any key or row. A replay of a
   decision needs the definitions it was made under ([the definitions](./definitions.md)).
-- **Corrections.** Triggers refuse every update and delete on the table. A correction is a new
-  record whose parent is the record it corrects.
+- **Corrections.** Triggers refuse every update and delete on the table, and only the reset drops
+  them, inside its own transaction. A correction is a new record whose parent is the record it
+  corrects.
 
 ## Appending
 
@@ -81,3 +83,41 @@ A subscription yields the same entries, then waits for one of three wakes:
 
 The subscription marks every earlier wake as seen before each read, never after, so a commit that
 lands while a read runs wakes the next read at once.
+
+## The reset
+
+A reset removes every record, every projection row and every record key, and keeps the identities of
+the device sessions that are still live, under
+[0046](../../decisions/0046-resetting-the-event-log.md). The host command sends a control request,
+because the server holds the writer lock and no other process can take it, and the server runs the
+reset in 7 stages:
+
+1. The server ends its start sequence and stops the parts it started: the runner pools stop claiming
+   and give the work in flight the normal stop grace.
+2. It destroys every sandbox in the sandboxes projection through its adapter, by the path recovery
+   uses. A failed destroy stops the reset before it removes anything, and the server exits 1.
+3. It deletes every key from the key store and checkpoints it, so neither the file nor its WAL holds
+   a key.
+4. One write transaction, behind the writer epoch check, defers its foreign key checks to the
+   commit, drops the triggers, and deletes every row of every table but the writer epoch, the schema
+   version and the identity record. It deletes the revoked and lapsed identities.
+5. The same transaction writes the first records of the new log: a definitions seed record that
+   repeats the seed in force, a `log_reset` record on the conversation thread, and a `session_kept`
+   record for each kept session, which that session's identity row then points at. The transaction
+   then creates the triggers again.
+6. It deletes the database copies taken before a migration and vacuums both databases, so no old
+   page stays in either file.
+7. The control request answers, the server stops, and the process exits 0. The container runtime
+   starts it again, and the normal start finds the definitions unchanged and creates the
+   conversation task and its sandbox again, with no session to resume.
+
+The keys go first, so a crash after stage 3 leaves every record in place with its text shredded, and
+a second reset finishes the work. A turn still running at the end of the grace loses its lease row,
+so its commit fails the lease check and writes nothing.
+
+The new log continues the old sequence: SQLite gives a new row the highest sequence plus 1, so the
+reset keeps the old last record until the first new record has taken the number after it. A device
+that resumes its live stream after the last sequence it saw therefore reads the `log_reset` record
+next. The `log_reset` record holds the reset time, the old last sequence, the mode and the number of
+kept sessions, and no free text, so it gets no key. Because the conversation's thread ID never
+changes, the record folds on that thread before the start creates the conversation task again.

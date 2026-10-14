@@ -51,6 +51,14 @@ on every device and a session's label is no message.
 Each checked action checks inside its own write transaction that the caller's session is still live,
 so a revoke that commits after the call resolved its session still stops the action.
 
+A [reset](../core/event-log.md#the-reset) keeps every live session, so each device stays signed in
+with the token it holds. The reset deletes every revoked or lapsed identity and every enrolment
+code, so a revoked token afterwards resolves to nobody and is refused as a stranger, and an unused
+code stops working. Each kept session gets a `session_kept` record, which holds its ID, channel and
+first paired time and encrypts its label, and the identity row points at that record in place of its
+enrolment record, which the reset deleted. The session's enrol, label and revoke history goes with
+the old log.
+
 ## Checked actions
 
 Enrolment, code issue, revoke and message send share one table of client action IDs, which holds the

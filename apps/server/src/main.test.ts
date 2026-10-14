@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { buildCheckedRememberReplies } from './test-utils/build-checked-remember-replies';
 import { createTestClient } from './test-utils/create-test-client';
 import { runHostCommand } from './test-utils/run-host-command';
+import { runTestReset } from './test-utils/run-test-reset';
 import { sendClientMessage } from './test-utils/send-client-message';
 import { startTestNixie } from './test-utils/start-test-nixie';
 
@@ -557,3 +558,169 @@ test('it refuses to start when a pronoun names a settings entry the secrets file
     ),
   });
 }, 60_000);
+
+test('it resets the running server through the reset command, which exits 0 with the server', async () => {
+  const ctx = await setupTest();
+
+  const reset = await runTestReset(ctx);
+
+  expect(reset.command.exitCode).toBe(0);
+  expect(reset.command.stdout).toInclude(
+    'Backups from before the reset still hold the old data until they age out.',
+  );
+  expect(reset.serverExit).toBe(0);
+}, 120_000);
+
+test('it keeps a live device signed in across a reset', async () => {
+  const ctx = await setupTest();
+
+  const reset = await runTestReset(ctx);
+  const listed = await reset.connect(ctx.token).sessions.list();
+
+  expect(listed.sessions.map((session) => session.deviceName)).toStrictEqual(['laptop']);
+}, 120_000);
+
+test('it refuses a token revoked before a reset as a stranger', async () => {
+  const ctx = await setupTest();
+  const issued = await runHostCommand(ctx.configPath, ['enrol-code']);
+  const phone = await ctx.signedOut.sessions.enrol({
+    clientActionID: crypto.randomUUID(),
+    code: issued.stdout.split('\n')[0] ?? '',
+    deviceName: 'phone',
+    tokenDelivery: 'bearer',
+  });
+
+  await ctx.client.sessions.revoke({
+    clientActionID: crypto.randomUUID(),
+    sessionID: phone.sessionID,
+  });
+
+  const reset = await runTestReset(ctx);
+  const call = reset.connect(phone.token).sessions.list();
+
+  await Promise.allSettled([call]);
+  const run = await reset.stop();
+
+  expect(call).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(run.records).toIncludeAllPartialMembers([
+    {
+      kind: 'identity.refused',
+      payload: { channel: 'client', externalID: 'unknown-token', refusedAt: expect.any(Number) },
+    },
+  ]);
+}, 120_000);
+
+test('it refuses an enrolment code issued before a reset', async () => {
+  const ctx = await setupTest();
+  const issued = await runHostCommand(ctx.configPath, ['enrol-code']);
+
+  const reset = await runTestReset(ctx);
+  const enrol = reset.connect().sessions.enrol({
+    clientActionID: crypto.randomUUID(),
+    code: issued.stdout.split('\n')[0] ?? '',
+    deviceName: 'tablet',
+    tokenDelivery: 'bearer',
+  });
+
+  await Promise.allSettled([enrol]);
+
+  expect(enrol).rejects.toMatchObject({ code: 'ENROLMENT_CODE_INVALID' });
+}, 120_000);
+
+test('it destroys every sandbox in a reset', async () => {
+  const ctx = await setupTest();
+  const before = await ctx.readSandboxIDs();
+
+  await runTestReset(ctx);
+  const after = await ctx.readSandboxIDs();
+
+  expect(before.length).toBeGreaterThan(0);
+  expect(after).not.toIncludeAnyMembers(before);
+}, 120_000);
+
+test('it leaves no old key and no old text in the data files after a reset', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Fennel-reply-8WD' });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Kettle-message-3VQ',
+    thread: 'conversation',
+  });
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Fennel-reply-8WD');
+  });
+
+  // every key ID is a UUID, so the key store's files name each key they hold
+  const before = await ctx.readDataFiles();
+  const keyIDs = before
+    .filter((file) => file.name.startsWith('keys.db'))
+    .flatMap(
+      (file) => file.text.match(/[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[\da-f]{4}-[\da-f]{12}/gu) ?? [],
+    );
+
+  await runTestReset(ctx);
+  const after = await ctx.readDataFiles();
+
+  expect(keyIDs.length).toBeGreaterThan(0);
+  expect(
+    after.filter(
+      (file) =>
+        /Kettle-message-3VQ|Fennel-reply-8WD/u.test(file.text) ||
+        keyIDs.some((keyID) => file.text.includes(keyID)),
+    ),
+  ).toStrictEqual([]);
+}, 120_000);
+
+test('it gives a live stream that resumes from the old last sequence the reset as its next record', async () => {
+  const ctx = await setupTest();
+
+  const reset = await runTestReset(ctx);
+  const connection = await reset
+    .connect(ctx.token)
+    .records.follow({ afterSequence: reset.lastSequence, thread: 'conversation' });
+  const next = await connection.next();
+
+  await connection.return(undefined);
+  invariant(next.done !== true);
+
+  expect(next.value.record).toMatchObject({
+    kind: 'log_reset',
+    sequence: reset.lastSequence + 2,
+    thread: 'conversation',
+  });
+}, 120_000);
+
+test('it starts the next turn after a reset with no history', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Fennel-reply-8WD' }, { text: 'Hello again.' });
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Kettle-message-3VQ',
+    thread: 'conversation',
+  });
+  await waitForCondition(() =>
+    ctx.model.requests.some((request) => request.path === '/v1/messages'),
+  );
+
+  const reset = await runTestReset(ctx);
+
+  await reset.connect(ctx.token).conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Lantern-message-6HN',
+    thread: 'conversation',
+  });
+  await waitForCondition(() =>
+    JSON.stringify(ctx.model.requests.at(-1)?.body).includes('Lantern-message-6HN'),
+  );
+
+  expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).not.toMatch(
+    /Kettle-message-3VQ|Fennel-reply-8WD/u,
+  );
+}, 120_000);

@@ -62,3 +62,34 @@ test('it removes its directory once the test finishes', async () => {
 
   expect(listening['port']).toBeNumber();
 }, 60_000);
+
+test('it starts nixie again on the same data directory once it exits', async () => {
+  const nixie = await startTestNixie();
+
+  await nixie.waitForLogEvent('ready');
+  nixie.sendSignal('SIGTERM');
+  await nixie.waitForExit();
+
+  const again = nixie.startAgain();
+  const started = await again.waitForLogEvent('writer.started');
+
+  expect(started['schemaFrom']).toBeGreaterThan(0);
+  expect(again.dataDir).toBe(nixie.dataDir);
+}, 60_000);
+
+test('it reads the ID of each sandbox the process double holds', async () => {
+  const nixie = await startTestNixie();
+
+  await nixie.waitForLogEvent('ready');
+  const ids = await nixie.readSandboxIDs();
+
+  nixie.sendSignal('SIGTERM');
+  const run = await nixie.waitForExit();
+
+  expect(ids.length).toBeGreaterThan(0);
+  expect(
+    run.records
+      .filter((record) => record.kind === 'sandbox.created')
+      .map((record) => record.payload['sandboxID']),
+  ).toIncludeAllMembers([...ids]);
+}, 60_000);
