@@ -34,6 +34,10 @@ pin therefore leaves the system prompt and the cached prefix of the whole histor
 pin, an edit or an unpin during the session arrives as the pinned-core change note, which overrides
 the opening's copy of the item, and the next session opens with the new core.
 
+The SDK's own compaction runs inside a turn and can summarize the first message away with the rest
+of the history. The turn after a compaction therefore sends the whole pinned core again, as a
+pinned-memory system message before its other blocks, so the model never loses a pinned item.
+
 ## One path for every start
 
 The builder reads the newest summary that is still readable, then the thread's messages and replies
@@ -78,7 +82,7 @@ order the status shows:
 | Entry             | Owner              | What it reads                                                  |
 | ----------------- | ------------------ | -------------------------------------------------------------- |
 | The kind of start | the models package | the first session, or a rebuild and its reason                 |
-| The start time    | the models package | when the session opened, in the user's zone                    |
+| The start time    | the models package | when the session opened, in the zone of the newest message     |
 | The nixie version | the server         | the release that opened the session                            |
 | The model         | the models package | the model of the conversation's profile, so it can name itself |
 
@@ -98,6 +102,8 @@ under its entry's name.
 Retrieval counts what a session holds from this record, as
 [per-turn retrieval](../memory/context.md#per-turn-retrieval) explains. The record commits after
 every recall of its step. When the guest lost the session, the step's first recall served the lost
-session, so the opening drops the step's recalls and counts only what its turn retrieved. Every
-other opening keeps them, because they reached the new session. A rebuild record that a log holds
-from before opening records counts as the opening of a lost session.
+session, so the opening keeps the sequence of the newest recall before it began. Retrieval drops the
+recalls through that mark and keeps the ones the replay made after it, and the turn-ended record
+lists what the turn retrieved. Every other opening keeps all of its step's recalls, because they
+reached the new session. A rebuild record that a log holds from before opening records counts as the
+opening of a lost session.

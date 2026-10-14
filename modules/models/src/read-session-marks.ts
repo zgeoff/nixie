@@ -1,4 +1,4 @@
-import type { LogRecord } from '@heynixie/log';
+import type { LogRecord, ReadRecordsOptions } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { z } from 'zod';
@@ -13,6 +13,9 @@ export interface SessionMarks {
 
   // the newest session_invalidated record's sequence, or 0, which the turn_ended record keeps
   readonly invalidatedThrough: number;
+
+  // whether the SDK compacted the session during the last turn, which can drop the opening's core
+  readonly isCompacted: boolean;
 }
 
 // Reads the last turn's pinned core, and whether a forget invalidated the session after that turn
@@ -22,30 +25,31 @@ export async function readSessionMarks(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
 ): Promise<SessionMarks> {
-  const [invalidated, lastTurn] = await Promise.all([
-    readRecords(context.log, {
-      afterSequence: 0,
-      thread: taskID,
-      kinds: ['model.session_invalidated'],
-      order: 'newest',
-      limit: 1,
-    }),
-    readRecords(context.log, {
-      afterSequence: 0,
-      thread: taskID,
-      kinds: ['model.turn_ended'],
-      order: 'newest',
-      limit: 1,
-    }),
+  const [invalidated, compacted, lastTurns] = await Promise.all([
+    readNewest(context, { thread: taskID, kinds: ['model.session_invalidated'], limit: 1 }),
+    readNewest(context, { thread: taskID, kinds: ['model.compacted'], limit: 1 }),
+    readNewest(context, { thread: taskID, kinds: ['model.turn_ended'], limit: 2 }),
   ]);
-  const turn = lastTurn.at(0)?.record;
-  const invalidatedThrough = invalidated.at(0)?.record.sequence ?? 0;
+  const [turn, turnBefore] = lastTurns;
+  const invalidatedThrough = invalidated.at(0)?.sequence ?? 0;
 
   return {
     previousCore: turn === undefined ? null : parseCore(turn.payload['pinnedCore']),
     isInvalidated: invalidatedThrough > (turn === undefined ? 0 : parseTurnThrough(turn)),
     invalidatedThrough,
+
+    // a step commits its compactions before its turn's end
+    isCompacted: (compacted.at(0)?.sequence ?? 0) > (turnBefore?.sequence ?? 0),
   };
+}
+
+async function readNewest(
+  context: Pick<TasksContext, 'log'>,
+  query: Pick<ReadRecordsOptions, 'thread' | 'kinds' | 'limit'>,
+): Promise<readonly LogRecord[]> {
+  const entries = await readRecords(context.log, { ...query, afterSequence: 0, order: 'newest' });
+
+  return entries.map((entry) => entry.record);
 }
 
 // a turn recorded before turns kept the marks they read saw every invalidation before it

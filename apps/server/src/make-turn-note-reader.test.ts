@@ -42,7 +42,7 @@ async function setupTest() {
         () => memory,
       ),
       memory: () => memory,
-      log: mock(),
+      log: mock<Parameters<typeof startConversation>[0]['log']>(),
     });
     return runners.last;
   };

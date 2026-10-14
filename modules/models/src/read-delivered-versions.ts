@@ -55,7 +55,9 @@ function buildSessionState(state: SessionState, record: LogRecord): SessionState
       return {
         ...state,
         delivered: new Map(),
-        pending: isLostSession(record) ? [] : state.pending,
+        pending: isLostSession(record)
+          ? state.pending.filter((recall) => recall.sequence > parseLostRecallsThrough(record))
+          : state.pending,
       };
     }
     case 'model.compacted': {
@@ -101,6 +103,14 @@ function isLostSession(record: LogRecord): boolean {
   const reason = record.payload['reason'];
 
   return reason === 'lost' || reason === 'missing';
+}
+
+// the recalls that served the lost session: through the opening's mark, or every one before a
+// rebuild recorded without it
+function parseLostRecallsThrough(record: LogRecord): number {
+  const parsed = z.int().nonnegative().safeParse(record.payload['recalledThrough']);
+
+  return parsed.success ? parsed.data : Number.MAX_SAFE_INTEGER;
 }
 
 // the records that end what a session holds; session_rebuilt is the opening record that logs from

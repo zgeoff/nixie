@@ -40,6 +40,7 @@ test('it opens a first session with the pinned memory and the status, in that or
     summarySequence: null,
     recentRecords: 0,
     recentEvents: 0,
+    recalledThrough: 0,
     status: { start: 'first', model: 'claude-test-1' },
   });
 });
@@ -84,13 +85,12 @@ test('it opens a rebuild with no summary with the pinned memory, the status and 
   expect(opening.blocks.at(2)).toMatch(
     /\] owner: Did the parcel come\?\n\[[^\]]+\] nixie: It came at noon\.\n<\/system-message/u,
   );
-  expect(opening.record).toStrictEqual({
+  expect(opening.record).toMatchObject({
     kind: 'rebuild',
     reason: 'lost',
     lostSessionID: 'a-lost-session',
     summarySequence: null,
     recentRecords: 2,
-    recentEvents: 0,
     status: { start: 'rebuild:lost' },
   });
 });

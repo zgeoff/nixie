@@ -100,10 +100,10 @@ delivered before it, its own step's earlier recalls included, so those items mat
 later in the same step reaches the compacted session whole, so the compaction's record also keeps
 the newest recall it saw, and only the recalls through that mark match again. A first session, and a
 session rebuilt after an invalidation, holds what its step delivered. A turn that finds its session
-lost reads its context again without the exclusion, and the new session counts only what that turn
-retrieved, because the step's first recall served the lost session. An edit makes a new version,
-which the session has not seen, so an edited item matches again. A recall that the model calls
-itself excludes nothing.
+lost reads its context again without the exclusion, and the new session counts what that turn
+retrieved and what its opening recalled, because the step's first recall served the lost session. An
+edit makes a new version, which the session has not seen, so an edited item matches again. A recall
+that the model calls itself excludes nothing.
 
 The blocks before the first message keep one order: a new session's opening, the pinned-core change
 note, the retrieved items, [the writer's change note](./writer.md#the-change-note), then

@@ -7,7 +7,7 @@ import { renderRetrievedItems } from './render-retrieved-items';
 import type { SystemMessageType } from './render-system-message';
 import { renderSystemMessage } from './render-system-message';
 import { renderSystemPrompt } from './render-system-prompt';
-import type { ConversationRun, MemoryItem, MemoryRef } from './types';
+import type { ConversationMemory, ConversationRun, MemoryItem, MemoryRef } from './types';
 
 export interface TurnContextQuery {
   readonly taskID: string;
@@ -18,6 +18,9 @@ export interface TurnContextQuery {
 
   // whether the turn runs on a new session, which holds no item yet
   readonly isNewSession: boolean;
+
+  // whether the SDK compacted the resumed session, so the turn sends the whole core again
+  readonly isCompacted: boolean;
 }
 
 // What memory adds to one turn: the system prompt, the pinned core that a new session opens with,
@@ -28,7 +31,7 @@ export interface TurnContext {
   // the body of a new session's pinned-memory message, which a resumed session never reads
   readonly pinnedMemory: string;
 
-  // the pinned core's change note and the retrieved items, in that order, each as a system message
+  // the core after a compaction, its change note and the retrieved items, each as a system message
   readonly preamble: readonly string[];
   readonly pinnedCore: readonly MemoryRef[];
   readonly retrieved: readonly MemoryRef[];
@@ -53,30 +56,37 @@ export async function readTurnContext(
     now: new Date(run.context.clock.now()),
   };
   const at = formatMessageTime(lines.now, null, lines);
-  const pinned = new Set(core.map((item) => item.itemID));
-
-  // a new session opens with the current core, so only a resumed one gets the change note
-  const previousCore = query.isNewSession ? null : query.previousCore;
-
-  // the items that left the core show by their short IDs too
-  const unpinnedShortIDs = await memory.readShortIDs(
-    (query.previousCore ?? []).filter((ref) => !pinned.has(ref.itemID)).map((ref) => ref.itemID),
-  );
+  const pinnedMemory = renderPinnedMemory(core, lines);
+  const changes = await readCoreChanges(memory, query, core);
+  const recap = query.isCompacted ? pinnedMemory : null;
 
   return {
     systemPrompt: renderSystemPrompt(run.getSystemPrompt(), lines),
-    pinnedMemory: renderPinnedMemory(core, lines),
+    pinnedMemory,
     preamble: [
-      renderPreambleMessage(
-        'pinned-memory-changes',
-        at,
-        renderCoreChanges(previousCore, core, unpinnedShortIDs),
-      ),
+      renderPreambleMessage('pinned-memory', at, recap),
+      renderPreambleMessage('pinned-memory-changes', at, changes),
       renderPreambleMessage('retrieved-memory', at, renderRetrievedItems(retrieved, lines)),
     ].filter((block) => block !== null),
     pinnedCore: core.map((item) => toMemoryRef(item)),
     retrieved: retrieved.map((item) => toMemoryRef(item)),
   };
+}
+
+// The change note's body. A new session opens with the current core, so only a resumed one gets a
+// note, and the items that left the core show by their short IDs too.
+async function readCoreChanges(
+  memory: ConversationMemory,
+  query: TurnContextQuery,
+  core: readonly MemoryItem[],
+): Promise<string | null> {
+  const pinned = new Set(core.map((item) => item.itemID));
+  const previousCore = query.isNewSession ? null : query.previousCore;
+  const unpinnedShortIDs = await memory.readShortIDs(
+    (previousCore ?? []).filter((ref) => !pinned.has(ref.itemID)).map((ref) => ref.itemID),
+  );
+
+  return renderCoreChanges(previousCore, core, unpinnedShortIDs);
 }
 
 function renderPreambleMessage(

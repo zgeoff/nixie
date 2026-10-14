@@ -633,6 +633,47 @@ test('it opens the first turn after a forget with a status that says so, and res
   });
 });
 
+test('it sends the pinned memory again on the turn after the SDK compacted the session', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    { type: 'compacted', trigger: 'auto', preTokens: 150_000, postTokens: 400 },
+    { type: 'assistant', messageID: crypto.randomUUID(), text: 'Hello.', toolUses: [] },
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 2,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+  await ctx.sendMessage(runner, 'Hi.');
+  await ctx.sendMessage(runner, 'Hi again.');
+
+  expect(ctx.sandboxes.turns.at(-1)).toMatchObject({
+    resume: expect.toBeObject(),
+    input: [
+      {
+        uuid: expect.toBeString(),
+        text: expect.toSatisfy((text: string) =>
+          /^<system-message type="pinned-memory" id="[\da-f]{12}" at="[^"]+">\nNothing is pinned in your memory\.\n<\/system-message id="[\da-f]{12}">\n\n\[#\d+ · [^\]]+\] Hi again\.$/u.test(
+            text,
+          ),
+        ),
+      },
+    ],
+  });
+});
+
 test('it records each compaction with its token counts, its recall mark and no summary text', async () => {
   const ctx = await setupTest();
 

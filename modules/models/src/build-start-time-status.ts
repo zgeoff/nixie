@@ -9,7 +9,7 @@ export function buildStartTimeStatus(): StatusEntry {
     read: (facts) =>
       Promise.resolve({
         value: facts.openedAt.toISOString(),
-        text: `Session started: ${formatMessageTime(facts.openedAt, null, facts.times)}. Each message carries its own time.`,
+        text: `Session started: ${formatMessageTime(facts.openedAt, facts.zone, facts.times)}. Each message carries its own time.`,
       }),
   };
 }

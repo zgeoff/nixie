@@ -181,6 +181,49 @@ test('it keeps what a turn on a session opened in place of a lost one retrieved,
   expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
 });
 
+test('it keeps the recalls a lost session opening made after its mark, such as a replayed approval', async () => {
+  const ctx = await setupTest();
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await createConversationTask(ctx.tasks.context);
+
+  // the recall for the resume that found its session lost, which the opening's mark names
+  const [, lostRecall] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.step_started',
+      definitions,
+      thread: 'conversation',
+      payload: { taskID: 'conversation', stepKey: 'conversation:1', generation: 1 },
+    },
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: { items: [{ itemID: 'item-2', version: 1 }] },
+    },
+  ]);
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'memory.recalled',
+      definitions,
+      thread: 'conversation',
+      payload: { items: [{ itemID: 'item-3', version: 1 }] },
+    },
+    {
+      kind: 'model.session_opened',
+      definitions,
+      thread: 'conversation',
+      payload: { kind: 'rebuild', reason: 'lost', recalledThrough: lostRecall?.sequence ?? 0 },
+    },
+    { kind: 'model.turn_ended', definitions, thread: 'conversation', payload: { retrieved: [] } },
+  ]);
+
+  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+
+  expect(delivered).toStrictEqual([{ itemID: 'item-3', version: 1 }]);
+});
+
 test('it reads a rebuild record from before opening records as the opening of a lost session', async () => {
   const ctx = await setupTest();
   const definitions = { snapshotHash: 'sha256:test' };

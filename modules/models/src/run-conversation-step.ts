@@ -84,6 +84,7 @@ async function readSessionTurn(step: SessionStep, isNewSession: boolean): Promis
     batch: step.input.inbox.slice(0, inboxBatchLimit),
     previousCore: step.marks.previousCore,
     isNewSession,
+    isCompacted: !isNewSession && step.marks.isCompacted,
   });
 
   return {

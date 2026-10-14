@@ -5,6 +5,9 @@ import type { MessageTimeOptions, SessionStart } from './types';
 export interface SessionFacts {
   readonly start: SessionStart;
   readonly openedAt: Date;
+
+  // the zone of your newest message, which a time shows in, or none for the default zone
+  readonly zone?: string | null;
   readonly times: MessageTimeOptions;
   readonly model: string;
 }

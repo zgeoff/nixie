@@ -66,9 +66,17 @@ function readOpening(
     ),
     rebuildTokens: turn.run.memorySettings.rebuildTokens,
     times,
+    zone: findNewestZone(turn.input.inbox),
     pinnedMemory: turn.context.pinnedMemory,
     model: turn.run.profile.profile.model,
     status: turn.run.status,
     ...(turn.run.readTurnNote === undefined ? {} : { readTurnNote: turn.run.readTurnNote }),
   });
+}
+
+// the zone your newest message in the inbox carries, as its send time shows
+function findNewestZone(inbox: StepInput['inbox']): string | null {
+  const zone = inbox.findLast((record) => record.kind === 'owner_message')?.payload['timeZone'];
+
+  return typeof zone === 'string' ? zone : null;
 }

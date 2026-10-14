@@ -2,6 +2,7 @@ import type { TasksContext } from '@heynixie/tasks';
 import type { StatusRegistry } from './build-status-registry';
 import { findSessionSummary } from './find-session-summary';
 import { formatMessageTime } from './format-message-time';
+import { readRecalledThrough } from './read-recalled-through';
 import type { HistoryTurn } from './read-recent-turns';
 import { readRecentTurns } from './read-recent-turns';
 import { readTurnNoteRange } from './read-turn-note-range';
@@ -20,6 +21,9 @@ export interface SessionOpeningQuery {
   // the budget, in tokens, of the recent turns
   readonly rebuildTokens: number;
   readonly times: MessageTimeOptions;
+
+  // the zone of your newest message, or none for the default zone
+  readonly zone?: string | null;
 
   // the body of the pinned-memory message, from the turn's context
   readonly pinnedMemory: string;
@@ -46,6 +50,9 @@ export interface OpeningRecord {
   readonly summarySequence: number | null;
   readonly recentRecords: number;
   readonly recentEvents: number;
+
+  // the newest recall before the opening's own, which served the session a lost-session start lost
+  readonly recalledThrough: number;
   readonly status: Readonly<Record<string, string | number>>;
 }
 
@@ -56,8 +63,9 @@ export async function readSessionOpening(
   context: Pick<TasksContext, 'log' | 'clock'>,
   query: SessionOpeningQuery,
 ): Promise<SessionOpening> {
+  const recalledThrough = await readRecalledThrough(context, query.taskID);
   const openedAt = new Date(context.clock.now());
-  const at = formatMessageTime(openedAt, null, query.times);
+  const at = formatMessageTime(openedAt, query.zone, query.times);
   const summary = await findSessionSummary(context, query.taskID);
   const recent = await readRecentTurns(context, {
     taskID: query.taskID,
@@ -66,7 +74,7 @@ export async function readSessionOpening(
     tokens: query.rebuildTokens,
     times: query.times,
   });
-  const facts = { start: query.start, openedAt, times: query.times, model: query.model };
+  const facts = { ...query, openedAt };
   const status = await Promise.all(
     query.status.map(async (entry) => ({ name: entry.name, line: await entry.read(facts) })),
   );
@@ -88,6 +96,7 @@ export async function readSessionOpening(
       summarySequence: summary?.sequence ?? null,
       recentRecords: recent.length,
       recentEvents: replayed?.eventCount ?? 0,
+      recalledThrough,
       status: Object.fromEntries(status.map((read) => [read.name, read.line.value])),
     },
   };
