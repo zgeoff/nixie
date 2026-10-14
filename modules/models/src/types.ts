@@ -1,3 +1,4 @@
+import type { ContentSource } from '@heynixie/log';
 import type { Sandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
@@ -80,13 +81,29 @@ export interface MemoryItem extends MemoryRef {
   readonly shortID: string;
   readonly text: string;
   readonly origin: MemoryOrigin;
-  readonly source: string;
+  readonly source: ContentSource;
 
   // when the version was recorded, in milliseconds since the epoch
   readonly recordedAt: number;
 
   // the quote the text was saved from, which a retirement carries over, or null for none
   readonly evidenceQuote: string | null;
+
+  // the owner's approval of the proposal the version came from, or null when it applied at once
+  readonly approval: MemoryApproval | null;
+}
+
+// The owner's approval of a memory proposal, as an item's line reads it.
+export interface MemoryApproval {
+  // whether the quote that sent the proposal to review matched only words the owner pasted,
+  // dropped or quoted in and never typed, which marks the proposal's text as outside content
+  readonly isQuotePasted: boolean;
+}
+
+// What an item's line reads beside the item: the owner's name, or null for "the owner", and the
+// zone and the time now that its date shows in.
+export interface MemoryLineOptions extends MessageTimeOptions {
+  readonly ownerName: string | null;
 }
 
 // One turn's retrieval: the text of the user's new messages, with the item limit and score floor.
@@ -129,7 +146,8 @@ export interface ConversationMemorySettings {
   // the budget, in tokens, of the recent turns a rebuilt session starts with
   readonly rebuildTokens: number;
 
-  // the owner's name, which says who saved an item the owner saved, or null for "the owner"
+  // the owner's name, which each memory item's line and the note-taker line read, or null for
+  // "the owner"
   readonly ownerName: string | null;
 
   // the names the owner calls the agent by, which retrieval leaves out of the query with the

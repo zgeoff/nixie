@@ -190,12 +190,14 @@ so the reasons stay a closed set.
 Each tool takes its provenance from the task run: the conversation's thread gives the conversation
 as origin, any other thread gives a task, and the run's model gives the model ID. A recall result
 takes outside content as its source, because the items it returns hold every source memory holds.
-The `memory.recall` result gives each date in readable UTC, and its description tells the model to
-reach for it when a half-remembered detail would change an answer. A stale version, a missing item
-or a wrong state returns to the model as the tool's refusal, so the model reads the item again. The
-model can retire an item and can never restore, undo or forget one. The server registers the 7 tools
-beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
-because they declare `read` and `note` and run direct.
+The `memory.recall` result gives each version its text and the line that says where it came from, in
+the words the conversation reads ([how an item reads](./context.md#how-an-item-reads)), and its
+description tells the model to reach for it when a half-remembered detail would change an answer. A
+past version's line names the version that replaced it. A stale version, a missing item or a wrong
+state returns to the model as the tool's refusal, so the model reads the item again. The model can
+retire an item and can never restore, undo or forget one. The server registers the 7 tools beside
+web fetch, and the conversation's tool list names them. The read-only rule allows them, because they
+declare `read` and `note` and run direct.
 
 `memory.pending` lists every pending proposal, the model's own and the note-taker's, so the model
 knows what it proposed after a compaction drops the turn it proposed in, and never proposes a change

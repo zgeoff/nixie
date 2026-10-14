@@ -1,4 +1,5 @@
 import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
+import type { MemoryApproval } from '@heynixie/models';
 import type { Selectable } from 'kysely';
 import type {
   GateContext,
@@ -6,6 +7,7 @@ import type {
   MemoryNoticeEntryTable,
   MemoryProposalTable,
 } from './gate-types';
+import type { ItemHistory } from './history-types';
 import type { DeliveryLock } from './make-delivery-lock';
 import type { MemoryIndex } from './start-memory-index';
 
@@ -153,6 +155,9 @@ export interface RecalledVersion {
 
   // the model ID of the call that wrote the version, or null for your own action
   readonly model: string | null;
+
+  // your approval of the proposal or change the version came from, or null when it applied at once
+  readonly approval: MemoryApproval | null;
 }
 
 export interface RecalledItem extends RecalledVersion {
@@ -171,20 +176,6 @@ export interface RecallResult {
 
   // the cursor for the next page of a listing, or null on the last page and for a query
   readonly next: string | null;
-}
-
-// One version as the memory view reads it. A version whose key is gone reads as shredded, and one
-// whose key or ciphertext fails reads as unreadable, so a forgotten item shows as a gap.
-export type HistoryVersion = Omit<RecalledVersion, 'text' | 'evidenceQuote' | 'model'> &
-  (
-    | { readonly status: 'readable'; readonly text: string }
-    | { readonly status: 'shredded' | 'unreadable' }
-  );
-
-export interface ItemHistory {
-  readonly itemID: string;
-  readonly state: MemoryState;
-  readonly versions: readonly HistoryVersion[];
 }
 
 // The one interface the model's tools and the client reach memory through.

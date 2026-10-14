@@ -14,7 +14,8 @@ export { modelsConfigSchema } from './models-config-schema';
 export { readEventsNote } from './read-events-note';
 export { readTurnNoteRange } from './read-turn-note-range';
 export { renderOwnerText } from './render-owner-text';
-export { renderPinnedItem } from './render-pinned-item';
+export { renderMemoryItem } from './render-memory-item';
+export { renderMemoryLine } from './render-memory-line';
 export { resolveModelCredentials } from './resolve-model-credentials';
 export { resolveRoleProfile } from './resolve-role-profile';
 export type { GuestCommand } from './run-guest-turn';
@@ -38,6 +39,8 @@ export type {
   EventSettings,
   ConversationMemory,
   ConversationMemorySettings,
+  MemoryApproval,
+  MemoryLineOptions,
   ModelPrices,
   ModelProfile,
   ModelRole,

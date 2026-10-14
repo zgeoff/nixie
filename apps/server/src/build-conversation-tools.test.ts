@@ -80,6 +80,8 @@ test('it lists the web fetch tool, the time tool, the log reader and the 7 memor
     {
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+      ownerName: null,
+      defaultZone: 'Australia/Sydney',
     },
   );
 
@@ -104,6 +106,8 @@ test('it fails a memory call that runs before the memory store starts', async ()
     {
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+      ownerName: null,
+      defaultZone: 'Australia/Sydney',
     },
   );
   const recall = definitions.find((definition) => definition.name === 'memory.recall');
@@ -131,6 +135,8 @@ test('it allows the time tool, the log reader and each memory tool and denies a 
       {
         readStore: () => null,
         clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+        ownerName: null,
+        defaultZone: 'Australia/Sydney',
       },
     ),
     buildWriteStandIn(),

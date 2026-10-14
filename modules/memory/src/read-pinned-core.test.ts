@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
 import { startTestMemory } from './test-utils/start-test-memory';
 
@@ -8,13 +9,7 @@ async function setupTest() {
 
 test('it reads every pinned active item in the order you pinned them', async () => {
   const ctx = await setupTest();
-  const provenance = {
-    origin: 'owner',
-    source: 'owner',
-    taskID: null,
-    proposalID: null,
-    checks: null,
-  } as const;
+  const provenance = buildMockProvenance({ origin: 'owner', source: 'owner', proposalID: null });
   const name = await ctx.memory.store.remember({ text: 'Goes by Sam', provenance });
   const pronouns = await ctx.memory.store.remember({ text: 'Uses they/them', provenance });
 
@@ -38,6 +33,7 @@ test('it reads every pinned active item in the order you pinned them', async () 
       text: 'Uses they/them',
       evidenceQuote: null,
       model: null,
+      approval: null,
     },
     {
       itemID: name.itemID,
@@ -52,6 +48,7 @@ test('it reads every pinned active item in the order you pinned them', async () 
       text: 'Goes by Sam',
       evidenceQuote: null,
       model: null,
+      approval: null,
     },
   ]);
 });

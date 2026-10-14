@@ -75,11 +75,10 @@ export type {
   WriteCaller,
   WriteOutcome,
 } from './gate-types';
+export type { HistoryVersion, ItemHistory } from './history-types';
 export type {
   CleanupSessions,
   ForgetRequest,
-  HistoryVersion,
-  ItemHistory,
   MemoryChange,
   MemoryContext,
   MemoryOrigin,

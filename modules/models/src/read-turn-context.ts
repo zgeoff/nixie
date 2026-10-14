@@ -31,13 +31,20 @@ export interface TurnContext {
 // Retrieval searches your messages' text less your name and the agent's, which most items hold,
 // leaves out pinned items and versions the session holds, and records what it placed through recall.
 export async function readTurnContext(
-  run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings' | 'getSystemPrompt'>,
+  run: Pick<
+    ConversationRun,
+    'context' | 'memory' | 'memorySettings' | 'getSystemPrompt' | 'defaultZone'
+  >,
   query: TurnContextQuery,
 ): Promise<TurnContext> {
   const memory = run.memory();
   const core = await memory.readPinnedCore();
   const retrieved = await readRetrievedItems(run, query);
-  const ownerName = run.memorySettings.ownerName;
+  const lines = {
+    ownerName: run.memorySettings.ownerName,
+    defaultZone: run.defaultZone,
+    now: new Date(run.context.clock.now()),
+  };
   const pinned = new Set(core.map((item) => item.itemID));
 
   // the items that left the core show by their short IDs too
@@ -46,10 +53,10 @@ export async function readTurnContext(
   );
 
   return {
-    systemPrompt: renderSystemPrompt(run.getSystemPrompt(), core, ownerName),
+    systemPrompt: renderSystemPrompt(run.getSystemPrompt(), core, lines),
     preamble: [
       renderCoreChanges(query.previousCore, core, unpinnedShortIDs),
-      renderRetrievedItems(retrieved, ownerName),
+      renderRetrievedItems(retrieved, lines),
     ].filter((block) => block !== null),
     pinnedCore: core.map((item) => toMemoryRef(item)),
     retrieved: retrieved.map((item) => toMemoryRef(item)),

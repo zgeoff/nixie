@@ -12,6 +12,7 @@ import {
   startTestMemory,
 } from './test-utils';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
+import { createProposal } from './test-utils/create-proposal';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
 
@@ -19,7 +20,15 @@ import type { MemoryTables } from './types';
 // call runs under, which record each call and its result in the memory's log
 async function setupTest(config: TestMemoryOptions = {}) {
   const memory = await startTestMemory(config);
-  const registry = buildToolRegistry(buildMemoryTools(memory.store, { now: () => Date.now() }));
+
+  // each recalled item's line needs a name and a zone, and these keep its words the defaults
+  const registry = buildToolRegistry(
+    buildMemoryTools(memory.store, {
+      clock: { now: () => Date.now() },
+      ownerName: null,
+      defaultZone: 'UTC',
+    }),
+  );
 
   return {
     memory,
@@ -70,15 +79,13 @@ test('it declares read for recall, pending and diff and note for remember, edit,
 });
 
 test('it applies a backed fact with the caller and model of the run, never of the arguments', async () => {
-  const memory = await startTestMemory({
+  const ctx = await setupTest({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
-  const tool = buildToolRegistry(
-    buildMemoryTools(memory.store, { now: () => Date.now() }),
-  ).findTool('memory.remember');
+  const tool = ctx.registry.findTool('memory.remember');
 
   invariant(tool);
-  await writeOwnerMessageRecord(memory.log, {
+  await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'task-9',
     text: "I'm allergic to hazelnuts",
     spans: [{ start: 0, end: 25, source: 'typed' }],
@@ -99,7 +106,7 @@ test('it applies a backed fact with the caller and model of the run, never of th
 
   invariant(outcome.status === 'ok' && typeof outcome.result['itemID'] === 'string');
 
-  const row = await memory.writer.db
+  const row = await ctx.memory.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
     .innerJoin('memory_items', 'memory_items.item_id', 'memory_versions.item_id')
@@ -514,19 +521,17 @@ test('it returns an edit of an ID that names no item to the model as an error wi
 });
 
 test('it retires the item its short ID names when the model read it and you asked to retire it', async () => {
-  const memory = await startTestMemory({
+  const ctx = await setupTest({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
-  const tool = buildToolRegistry(
-    buildMemoryTools(memory.store, { now: () => Date.now() }),
-  ).findTool('memory.retire');
-  const item = await memory.store.remember({
+  const tool = ctx.registry.findTool('memory.retire');
+  const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
   const [shortID] = await Promise.all([
-    readItemShortID(memory.log, item.itemID),
-    writeOwnerMessageRecord(memory.log, {
+    readItemShortID(ctx.memory.log, item.itemID),
+    writeOwnerMessageRecord(ctx.memory.log, {
       thread: 'conversation',
       text: 'I moved out of Elm Street',
       spans: [{ start: 0, end: 25, source: 'typed' }],
@@ -534,7 +539,7 @@ test('it retires the item its short ID names when the model read it and you aske
   ]);
 
   invariant(tool);
-  await memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' });
+  await ctx.memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' });
 
   const outcome = await tool.definition.run(
     {
@@ -552,7 +557,7 @@ test('it retires the item its short ID names when the model read it and you aske
       },
     },
   );
-  const history = await memory.store.readHistory(item.itemID);
+  const history = await ctx.memory.store.readHistory(item.itemID);
 
   expect(outcome).toStrictEqual({
     status: 'ok',
@@ -568,7 +573,11 @@ test('it returns a full proposal cap to the model as an error', async () => {
     },
   });
   const tool = buildToolRegistry(
-    buildMemoryTools(memory.store, { now: () => Date.now() }),
+    buildMemoryTools(memory.store, {
+      clock: { now: () => Date.now() },
+      ownerName: null,
+      defaultZone: 'UTC',
+    }),
   ).findTool('memory.remember');
   const call = {
     callID: 'call-1',
@@ -640,7 +649,7 @@ test('it tells the model when to reach for recall', async () => {
   );
 });
 
-test('it recalls a version with its quote, its model and a readable date', async () => {
+test('it recalls a version with its quote, its model and the line that says where it came from', async () => {
   const ctx = await setupTest();
 
   setSystemTime(new Date(Date.UTC(2026, 9, 1, 9, 30)));
@@ -678,10 +687,8 @@ test('it recalls a version with its quote, its model and a readable date', async
         version: 1,
         change: 'created',
         state: 'active',
-        origin: 'conversation',
-        source: 'owner',
-        recordedAt: '2026-10-01 09:30 UTC',
         text: 'Keeps a sourdough starter called Gerald',
+        about: `${String(shortID)} v1 · 1 Oct · you noted it · the owner said this`,
         quote: 'Gerald the starter needs feeding again',
         model: 'test-model-1',
       },
@@ -722,14 +729,102 @@ test('it recalls a version with no quote or model without them', async () => {
         version: 1,
         change: 'created',
         state: 'active',
-        origin: 'owner',
-        source: 'owner',
-        recordedAt: '2026-09-14 18:05 UTC',
         text: 'Plays the cello on Sundays',
+        about: `${String(shortID)} v1 · 14 Sep · the owner said this`,
         model: null,
       },
     ],
     next: null,
+  });
+});
+
+test('it recalls an approved proposal as approved by the owner, with its stored source still outside content', async () => {
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2026, 9, 13, 9, 30)));
+  onTestFinished(() => setSystemTime());
+  const pending = await createProposal(ctx.memory.store, { text: 'Keeps a fern on the desk' });
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+  const shortID = await readItemShortID(ctx.memory.log, pending.itemID);
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+  const row = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select('source')
+    .where('item_id', '=', pending.itemID)
+    .executeTakeFirst();
+
+  expect(result.structuredContent).toMatchObject({
+    items: [
+      {
+        text: 'Keeps a fern on the desk',
+        about: `${String(shortID)} v1 · 13 Oct · you noted it · unconfirmed · the owner approved`,
+      },
+    ],
+  });
+  expect(row?.source).toBe('untrusted');
+});
+
+test('it recalls each past version with the version that replaced it', async () => {
+  const ctx = await setupTest();
+
+  setSystemTime(new Date(Date.UTC(2026, 2, 2, 9, 30)));
+  onTestFinished(() => setSystemTime());
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Juniper Lane',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Lives on Larch Road',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: { includeHistory: true }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toMatchObject({
+    items: [
+      {
+        text: 'Lives on Larch Road',
+        about: `${String(shortID)} v2 · 2 Mar · the owner said this`,
+        history: [
+          {
+            text: 'Lives on Juniper Lane',
+            about: `${String(shortID)} v1 · 2 Mar · the owner said this · replaced by ${String(shortID)} v2`,
+          },
+          {
+            text: 'Lives on Larch Road',
+            about: `${String(shortID)} v2 · 2 Mar · the owner said this`,
+          },
+        ],
+      },
+    ],
   });
 });
 

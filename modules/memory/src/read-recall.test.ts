@@ -36,6 +36,7 @@ test('it returns the items that match a query word for word, with their provenan
         text: 'The spare key sits under the blue flowerpot',
         evidenceQuote: null,
         model: null,
+        approval: null,
       },
     ],
     next: null,

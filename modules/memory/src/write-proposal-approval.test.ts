@@ -3,8 +3,10 @@ import { readRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { findItemKey } from './find-item-key';
+import { buildMockWriteCaller } from './test-utils/build-mock-write-caller';
 import { createProposal } from './test-utils/create-proposal';
 import { startTestMemory } from './test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
 
 test('it applies an approved proposal as proposed, keeping its outside source', async () => {
@@ -26,6 +28,66 @@ test('it applies an approved proposal as proposed, keeping its outside source', 
     { text: 'Likes jazz', origin: 'conversation', source: 'untrusted' },
   ]);
   expect(remaining).toStrictEqual([]);
+});
+
+test('it recalls an approved proposal with your approval and its stored source unchanged', async () => {
+  const memory = await startTestMemory();
+  const pending = await createProposal(memory.store, { text: 'Likes jazz' });
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+  const result = await memory.store.recall({ itemIDs: [pending.itemID] });
+
+  expect(result.items).toMatchObject([
+    { text: 'Likes jazz', source: 'untrusted', approval: { isQuotePasted: false } },
+  ]);
+});
+
+test('it recalls an approved proposal whose quote you pasted in as approved from a pasted page', async () => {
+  const memory = await startTestMemory();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'have a look: Robin plays the oboe on Tuesdays',
+    spans: [
+      { start: 0, end: 13, source: 'typed' },
+      { start: 13, end: 45, source: 'pasted' },
+    ],
+  });
+  const outcome = await memory.store.writes.remember({
+    text: 'Plays the oboe on Tuesdays',
+    quote: 'plays the oboe on Tuesdays',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(outcome.status === 'proposed');
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+  const result = await memory.store.recall({ itemIDs: [pending.itemID] });
+
+  expect(result.items).toMatchObject([{ source: 'untrusted', approval: { isQuotePasted: true } }]);
+});
+
+test('it recalls a version that applied at once with no approval', async () => {
+  const memory = await startTestMemory();
+  const item = await memory.store.remember({
+    text: 'Likes jazz',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(result.items).toMatchObject([{ source: 'owner', approval: null }]);
 });
 
 test("it fails as stale when the proposal's item moved on", async () => {
