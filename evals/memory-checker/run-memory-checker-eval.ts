@@ -29,7 +29,7 @@ interface PlannedCall {
 
 const dir = import.meta.dir;
 const name = process.argv[2] ?? 'corpus';
-const ownerName = process.argv[3] ?? null;
+const ownerName = process.argv[3] === undefined || process.argv[3] === '' ? null : process.argv[3];
 const prompt = renderMemoryCheckerPrompt(ownerName);
 const corpus = await loadCheckerCorpus(join(dir, `${name}.json`));
 const home = await mkdtemp(join(tmpdir(), 'nixie-checker-eval-'));
