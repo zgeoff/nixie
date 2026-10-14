@@ -10,10 +10,11 @@ import { writeStartRecord } from './write-start-record';
 
 // The seed after the conversation imp, then the record of this start, then the runners: from here
 // runners claim work. The record follows the seed, so it holds the persona this start gives the
-// conversation.
+// conversation. A refused seed leaves the last good one in force, and the poll retries it soon.
 export async function startWork(parts: ServerParts, runStep: RunStep): Promise<void> {
   parts.cleanup.signal.throwIfAborted();
-  await runDefinitionsSeed(parts);
+  const seeded = await runDefinitionsSeed(parts);
+
   await runWithRetry(
     () =>
       writeStartRecord(parts.context, {
@@ -26,7 +27,7 @@ export async function startWork(parts: ServerParts, runStep: RunStep): Promise<v
   parts.cleanup.signal.throwIfAborted();
   await startRunners(parts, runStep);
   parts.state.update({ areRunnersStarted: true });
-  await startSeedPoll(parts);
+  await startSeedPoll(parts, { isRefusedAtStart: seeded.status === 'refused' });
   await printFirstEnrolmentCode(parts);
   parts.log('ready');
 }
