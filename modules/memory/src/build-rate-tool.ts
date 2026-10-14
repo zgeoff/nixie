@@ -1,4 +1,4 @@
-import type { JSONObject } from '@heynixie/log';
+import type { JSONObject, JSONValue } from '@heynixie/log';
 import type { ToolCall, ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import { MemoryRatingError } from './memory-rating-error';
@@ -74,11 +74,24 @@ const rateInput = {
   additionalProperties: false,
 };
 
-// each rating without its note
+// Each rating with its item and verdict only. The runner records a call before the input schema
+// checks it, so a malformed input keeps no free text either: no other key, and no rating that is
+// not an object.
 function buildRecordedInput(input: JSONObject): JSONObject {
-  const ratings = rateArguments.parse(input).ratings;
+  const ratings = input['ratings'];
 
-  return { ratings: ratings.map((rating) => ({ item: rating.item, verdict: rating.verdict })) };
+  return Array.isArray(ratings)
+    ? { ratings: ratings.flatMap((rating) => toRecordedRating(rating)) }
+    : {};
+}
+
+function toRecordedRating(rating: JSONValue): readonly JSONObject[] {
+  if (typeof rating !== 'object' || rating === null || Array.isArray(rating)) {
+    return [];
+  }
+  const kept = Object.entries(rating).filter(([key]) => key === 'item' || key === 'verdict');
+
+  return [Object.fromEntries(kept)];
 }
 
 interface RateCall {

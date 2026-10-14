@@ -15,13 +15,12 @@ import type { StoreParts } from './types';
 export async function writeMemoryRatings(parts: StoreParts, request: RateRequest): Promise<void> {
   const log = parts.context.log;
   const recall = await readLatestRecall(parts, request.thread);
-
-  requireRatedOnce(request.ratings);
-
   const found = await findItemIDs(
     parts,
     request.ratings.map((rating) => rating.item),
   );
+
+  requireRatedOnce(request.ratings, found);
 
   requireRecalled(request.ratings, { found, versions: recall.versions });
 
@@ -83,15 +82,21 @@ const recalledItem = z.object({ itemID: z.string(), version: z.int() });
 
 const recalledPayload = z.object({ items: z.array(recalledItem) });
 
-// an item rated twice in one call has no one verdict to keep
-function requireRatedOnce(ratings: readonly MemoryRating[]): void {
+// An item rated twice in one call has no one verdict to keep, whether the model named it the same
+// way twice or once by its short ID and once by its item ID.
+function requireRatedOnce(
+  ratings: readonly MemoryRating[],
+  found: ReadonlyMap<string, string>,
+): void {
   const seen = new Set<string>();
 
   for (const rating of ratings) {
-    if (seen.has(rating.item)) {
+    const itemID = found.get(rating.item) ?? rating.item;
+
+    if (seen.has(itemID)) {
       throw new MemoryRatingError(`${rating.item} is rated twice; rate each item once.`);
     }
-    seen.add(rating.item);
+    seen.add(itemID);
   }
 }
 

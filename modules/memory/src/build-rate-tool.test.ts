@@ -208,6 +208,35 @@ test("it keeps the note out of the call's record", async () => {
   });
 });
 
+test('it answers a malformed call as invalid, and records it with no note and no other key', async () => {
+  const ctx = await setupTest({ ownerName: null, agentName: null });
+
+  const result = await runToolCall(
+    {
+      tool: 'memory.rate',
+      input: {
+        ratings: [{ item: 'item-a', verdict: 'great', note: 'a stray note' }, 'a stray line'],
+        aside: 'a stray key',
+      },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.rate'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+  const [called] = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['tool_called'] });
+
+  expect(result).toMatchObject({ isError: true });
+  expect(called?.record.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { input: { ratings: [{ item: 'item-a', verdict: 'great' }] } },
+  });
+});
+
 test('it names the owner in its description, and the owner when the config names no one', () => {
   const named = buildRateTool(
     { rate: () => Promise.resolve() },

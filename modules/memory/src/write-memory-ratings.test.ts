@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { MemoryRatingError } from './memory-rating-error';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { createMemoryItem } from './test-utils/create-memory-item';
+import { readItemShortID } from './test-utils/read-item-short-id';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -10,6 +11,31 @@ async function setupTest() {
 
   return { memory };
 }
+
+test('it refuses an item rated once by its short ID and once by its item ID', async () => {
+  const ctx = await setupTest();
+  const tram = await createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' });
+
+  await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
+  const shortID = await readItemShortID(ctx.memory.log, tram.itemID);
+
+  const rate = ctx.memory.store.rate({
+    thread: 'conversation',
+    runID: 'run-1',
+    ratedBy: null,
+    ratings: [
+      { item: shortID, verdict: 'helpful' },
+      { item: tram.itemID, verdict: 'noise' },
+    ],
+  });
+
+  await rate.catch(() => {});
+
+  expect(rate).rejects.toThrowWithMessage(
+    MemoryRatingError,
+    `${tram.itemID} is rated twice; rate each item once.`,
+  );
+});
 
 test('it rates the newest version a recall with history delivered', async () => {
   const ctx = await setupTest();
