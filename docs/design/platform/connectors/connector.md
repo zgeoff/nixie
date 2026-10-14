@@ -55,12 +55,16 @@ with the connection's label and the account it reaches as that value's descripti
 
 ```json
 {
-  "connection": {
-    "oneOf": [
-      { "const": "k3x9m2p7qa", "description": "Work: sam@example.com" },
-      { "const": "p8d2v6n4rc", "description": "Personal: sam.lee@example.org" }
-    ]
-  }
+  "type": "object",
+  "properties": {
+    "connection": {
+      "oneOf": [
+        { "const": "k3x9m2p7qa", "description": "Work: sam@example.com" },
+        { "const": "p8d2v6n4rc", "description": "Personal: sam.lee@example.org" }
+      ]
+    }
+  },
+  "required": ["connection"]
 }
 ```
 
