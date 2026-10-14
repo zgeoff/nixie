@@ -91,11 +91,11 @@ async function readSequenceBounds(
 }
 
 interface PageScan {
-  readonly entries: LogEntry[];
+  readonly entries: readonly LogEntry[];
 
   // the last sequence the scan read, and how many records it read
-  after: number;
-  scanned: number;
+  readonly after: number;
+  readonly scanned: number;
 }
 
 async function collectPageEntries(
@@ -104,7 +104,7 @@ async function collectPageEntries(
   bounds: SequenceBounds,
 ): Promise<PageScan> {
   const words = query.words.map((word) => normalizeSearchText(word)).filter((word) => word !== '');
-  const scan: PageScan = { entries: [], after: bounds.after, scanned: 0 };
+  let scan: PageScan = { entries: [], after: bounds.after, scanned: 0 };
 
   while (
     scan.entries.length < query.limit &&
@@ -120,10 +120,10 @@ async function collectPageEntries(
       limit: batchSize,
     });
 
-    if (batch.length === 0) {
-      scan.after = bounds.through;
-    }
-    updatePageScan(scan, batch, { query, words });
+    scan =
+      batch.length === 0
+        ? { ...scan, after: bounds.through }
+        : buildNextScan(scan, batch, { query, words });
   }
   return scan;
 }
@@ -133,25 +133,28 @@ interface EntryFilter {
   readonly words: readonly string[];
 }
 
-// adds each record of the batch that passes the filter, until the page is full
-function updatePageScan(
+// the scan after one batch: each record that passes the filter joins the page until it is full
+function buildNextScan(
   scan: PageScan,
   batch: readonly RecordWithChanges[],
   filter: EntryFilter,
-): void {
+): PageScan {
+  const next = { entries: [...scan.entries], after: scan.after, scanned: scan.scanned };
+
   for (const read of batch) {
-    if (scan.entries.length === filter.query.limit) {
-      return;
+    if (next.entries.length === filter.query.limit) {
+      break;
     }
-    scan.after = read.record.sequence;
-    scan.scanned += 1;
+    next.after = read.record.sequence;
+    next.scanned += 1;
 
-    const scanned = buildScannedEntry(read.record);
+    const item = buildScannedEntry(read.record);
 
-    if (isInRange(scanned.entry, filter.query) && hasEveryWord(scanned.plain, filter.words)) {
-      scan.entries.push(toShownEntry(scanned.entry));
+    if (isInRange(item.entry, filter.query) && hasEveryWord(item.plain, filter.words)) {
+      next.entries.push(toShownEntry(item.entry));
     }
   }
+  return next;
 }
 
 // An entry as the model reads it, with the plain text a search matches, so a search never matches

@@ -307,18 +307,15 @@ test('it puts each pasted span of your message in a block', async () => {
     words: [],
     limit: 20,
   });
+  const [entry] = page.entries;
 
+  invariant(entry?.text);
   expect(page.entries).toStrictEqual([
-    {
-      sequence,
-      role: 'owner',
-      recordedAt: expect.toBeNumber(),
-      text: expect.stringMatching(
-        /^See this: <pasted id="(?<id>[0-9a-f]{12})">buses run hourly<\/pasted id="\k<id>">$/u,
-      ),
-      isCut: false,
-    },
+    { sequence, role: 'owner', recordedAt: expect.toBeNumber(), text: entry.text, isCut: false },
   ]);
+  expect(entry.text).toMatch(
+    /^See this: <pasted id="(?<id>[0-9a-f]{12})">buses run hourly<\/pasted id="\k<id>">$/u,
+  );
 });
 
 test('it shows a tool result as its fields', async () => {
