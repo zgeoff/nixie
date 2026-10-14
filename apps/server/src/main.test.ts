@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import type { LogRecord } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -83,7 +82,8 @@ test('it puts the snapshot hash of the definitions in force on every record', as
   ]);
   expect(seeded['inForceSnapshotHash']).toMatch(/^[0-9a-f]{64}$/u);
   expect(run.records).toSatisfyAll(
-    (record: LogRecord) => record.definitions.snapshotHash === seeded['inForceSnapshotHash'],
+    (record: (typeof run.records)[number]) =>
+      record.definitions.snapshotHash === seeded['inForceSnapshotHash'],
   );
 }, 60_000);
 
