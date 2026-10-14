@@ -80,9 +80,13 @@ const rateInput = {
 function buildRecordedInput(input: JSONObject): JSONObject {
   const ratings = input['ratings'];
 
-  return Array.isArray(ratings)
+  return isJSONArray(ratings)
     ? { ratings: ratings.flatMap((rating) => toRecordedRating(rating)) }
     : {};
+}
+
+function isJSONArray(value: JSONValue | undefined): value is readonly JSONValue[] {
+  return Array.isArray(value);
 }
 
 function toRecordedRating(rating: JSONValue): readonly JSONObject[] {

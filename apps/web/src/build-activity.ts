@@ -92,7 +92,7 @@ export function buildActivity(records: readonly LiveRecord[]): readonly Activity
 }
 
 // a rating by the recall record it rates and the version it rates
-type Ratings = ReadonlyMap<string, MemoryRating>;
+type Ratings = Readonly<Record<string, MemoryRating>>;
 
 function buildRatingKey(
   recallSequence: number,
@@ -104,7 +104,7 @@ function buildRatingKey(
 // Gathers every rating in the records by what it rates, so a rating in a later step reaches the
 // step whose recall it rates. A later rating of the same version replaces an earlier one.
 function collectRatings(records: readonly LiveRecord[]): Ratings {
-  return new Map(
+  return Object.fromEntries(
     records.flatMap((record) => {
       const rating = record.rating;
 
@@ -209,7 +209,7 @@ function buildStep(
 // a recall's versions, each with the rating that names it
 function collectMemories(record: LiveRecord, ratings: Ratings): readonly RecalledMemory[] {
   return (record.recall?.items ?? []).map((item) => {
-    const rating = ratings.get(buildRatingKey(record.sequence, item));
+    const rating = ratings[buildRatingKey(record.sequence, item)];
 
     return rating === undefined
       ? item
