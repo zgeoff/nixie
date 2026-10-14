@@ -42,10 +42,60 @@ type ActionResponse<Output> =
   | { kind: 'ambiguous'; reason: string }; // the action may have happened
 ```
 
-Each action becomes one of nixie's [tools](tools.md), with an argument that names the connection
-when more than one exists. A tool's effects never depend on its arguments, so a capability with
-different effects splits into actions, such as trashing an email and sending one. The
-[policy design](../policy/decision-point.md) owns each tool's declaration.
+Each action becomes one of nixie's [tools](tools.md), with a connection argument when the caller can
+reach more than one connection of the connector. A tool's effects never depend on its arguments, so
+a capability with different effects splits into actions, such as trashing an email and sending one.
+The [policy design](../policy/decision-point.md) owns each tool's declaration.
+
+### The connection argument
+
+The connection argument holds the connection's short ID, from `createShortID`, and never its UUID or
+its label. The tool's input schema lists each connection the caller can reach as one allowed value,
+with the connection's label and the account it reaches as that value's description:
+
+```json
+{
+  "connection": {
+    "oneOf": [
+      { "const": "k3x9m2p7qa", "description": "Work: sam@example.com" },
+      { "const": "p8d2v6n4rc", "description": "Personal: sam.lee@example.org" }
+    ]
+  }
+}
+```
+
+The model picks an account by the label you use in a message, and passes the short ID listed beside
+it. **Why:** rules and job definitions keep the value the model passed, so the value must outlive a
+rename. If the argument held labels, a rule that allows sending from `Work` would follow the label
+to whichever connection holds it next, which widens the rule without your approval.
+
+Each connection has a label, which defaults to the account name that the connector's `check` reports
+in its health report, such as the email address. The client refuses a label that another connection
+of the same connector already holds, compared after trimming, in Unicode NFC and ignoring case, so 2
+descriptions in one schema never show the same label. The client also refuses a second connection to
+an account that a connection already reaches, because the model would get 2 choices with one
+meaning.
+
+The argument appears only when the caller can reach 2 or more connections of the connector, and it
+is then required. With one connection the schema leaves it out, and the call binds to that
+connection. With none, the connector's tools are not listed. Whenever the tools are listed, the
+endpoint resolves the call to one connection before the
+[decision point](../policy/decision-point.md), and adds that connection's short ID as `connection`,
+so a rule check on `connection` reads the same whether the model passed it or not. The endpoint
+checks each call against the caller's connections at the time of the call. A call without the
+argument after you connect a second account fails the input check, and its error lists the choices,
+so the model asks you or picks again.
+
+An action on an item that a connection returned, such as replying to a message, takes its connection
+from the item and has no connection argument. **Why:** the reply then leaves from the account that
+received the message, and the model has no way to pick the wrong one.
+
+A job's tool list pins each connector tool to the connections it may use, by short ID. A job created
+while the connector has one connection pins that connection, and a job created from a call that
+names no connection pins every connection that exists at that moment. A connection you add later
+never joins an existing job, because the job's approval covered the accounts it named, and adding
+one is a widening that you approve as a job edit. A job pinned to one connection lists its tools
+without the argument. A worker's subset narrows the connections in the same way as the tools.
 
 The connector maps each provider response to one of the 4 responses, and the
 [action queue](../core/actions.md) turns them into outcomes. Each queued action declares how the

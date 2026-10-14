@@ -24,7 +24,7 @@ last stage always decides, so every call gets exactly one decision.
 | Stage              | Decides                                                          | Outcome | Prompt cause       |
 | ------------------ | ---------------------------------------------------------------- | ------- | ------------------ |
 | 1. Registry        | The tool is unknown or has no effect declaration                 | Deny    | None               |
-| 2. Scope           | The tool is not on the caller's tool list                        | Deny    | None               |
+| 2. Scope           | The tool or its connection is not on the caller's tool list      | Deny    | None               |
 | 3. Deny rules      | A deny rule matches                                              | Deny    | None               |
 | 4. Always-ask set  | An effect is in the always-ask set and no lifting rule covers it | Ask     | The always-ask set |
 | 5. Destinations    | A destination has no standing permission and no consent          | Ask     | Outside steering   |
@@ -37,10 +37,14 @@ Within stages 3, 6 and 7 the strictest matching outcome wins, so rule order neve
 [rules](rules.md#evaluation-order) covers.
 
 The caller's tool list at stage 2 is the job's list for a job run, and the subset its caller passed
-for a worker, so delegation only narrows. A denied call returns the rule's ID and sentence to the
-model as the tool result, so the model can take another path, and no prompt reaches you. A queued
-action runs through the pipeline again before each attempt, so a rule that narrowed after its
-approval still applies; [actions](../core/actions.md) covers how an approval answers each outcome.
+for a worker, so delegation only narrows. A connector tool on the list names the connections it may
+use, and stage 2 denies a call whose connection is not among them. The tools endpoint resolves every
+connector call to one connection before stage 1, as the
+[connection argument](../connectors/connector.md#the-connection-argument) defines, so a rule can
+check `connection` on any call. A denied call returns the rule's ID and sentence to the model as the
+tool result, so the model can take another path, and no prompt reaches you. A queued action runs
+through the pipeline again before each attempt, so a rule that narrowed after its approval still
+applies; [actions](../core/actions.md) covers how an approval answers each outcome.
 
 ## The slice 1 rule
 
