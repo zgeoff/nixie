@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.15.0](https://github.com/zgeoff/nixie/compare/v0.14.1...v0.15.0) (2026-10-14)
+
+
+### Features
+
+* **geo-777:** give memory items short ids the model reads ([#186](https://github.com/zgeoff/nixie/issues/186)) ([beda44c](https://github.com/zgeoff/nixie/commit/beda44c167343ab3f90307f784ae9fbe7d0a554e))
+* **geo-791:** propose a weekly memory consolidation diff for review ([#184](https://github.com/zgeoff/nixie/issues/184)) ([0bd5f41](https://github.com/zgeoff/nixie/commit/0bd5f41aeb7b25f3a350acc6e8a3e69b0a9deff3))
+
+
+### Bug Fixes
+
+* **geo-823:** reconnect once to the tool server before a turn starts ([#189](https://github.com/zgeoff/nixie/issues/189)) ([aa192ae](https://github.com/zgeoff/nixie/commit/aa192aedb3c438aa3c13a46bd810213f8ae4fd78))
+
 ## [0.14.1](https://github.com/zgeoff/nixie/compare/v0.14.0...v0.14.1) (2026-10-13)
 
 
