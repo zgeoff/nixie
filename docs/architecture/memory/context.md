@@ -100,10 +100,10 @@ over a long thread can return a short page with a cursor to go on from. The tool
 calling run's thread, and the read-only rule allows it because it declares only a read.
 
 The log holds outside text, such as fetched pages and pastes, so every entry counts as outside
-content to the decision point. The user's messages mark each span the user did not type, as the
-writer's batches do. The call's record holds only the event IDs it returned, so a forget leaves no
-readable copy of what the model read, and a forgotten message reads with no text and never matches a
-search.
+content to the decision point. A message of the user's reads as a rebuilt session's history shows
+it, with each pasted or dropped span in its own block, and a search matches only the words, never
+those blocks. The call's record holds only the event IDs it returned, so a forget leaves no readable
+copy of what the model read, and a forgotten message reads with no text and never matches a search.
 
 A memory write that quotes an older message passes that entry's event ID with its quote. The content
 gate then checks the quote against that one record in place of the recent window, under the same

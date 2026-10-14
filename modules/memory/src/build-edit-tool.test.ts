@@ -59,7 +59,7 @@ test('it proposes an edit with no quote when your allow rule names only memory.r
       status: 'proposed',
       proposalID: expect.toBeString(),
       reason:
-        "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or none of the owner's last 20 messages contains it.",
+        "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or neither the owner's last 20 messages nor the message its eventID names contains it.",
       merged: false,
     },
   });

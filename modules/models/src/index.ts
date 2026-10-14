@@ -13,6 +13,7 @@ export { agentConfigSchema } from './agent-config-schema';
 export { modelsConfigSchema } from './models-config-schema';
 export { readEventsNote } from './read-events-note';
 export { readTurnNoteRange } from './read-turn-note-range';
+export { renderOwnerText } from './render-owner-text';
 export { renderPinnedItem } from './render-pinned-item';
 export { resolveModelCredentials } from './resolve-model-credentials';
 export { resolveRoleProfile } from './resolve-role-profile';

@@ -1,7 +1,7 @@
-import type { Log, LogRecord, LogTables, RecordWithChanges } from '@heynixie/log';
+import type { JSONObject, Log, LogRecord, LogTables, RecordWithChanges } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { renderOwnerText } from '@heynixie/models';
 import { z } from 'zod';
-import { renderShownText } from './render-shown-text';
 
 export interface LogPageQuery {
   readonly thread: string;
@@ -146,33 +146,51 @@ function updatePageScan(
     scan.after = read.record.sequence;
     scan.scanned += 1;
 
-    const entry = buildLogEntry(read.record);
+    const scanned = buildScannedEntry(read.record);
 
-    if (isInRange(entry, filter.query) && hasEveryWord(entry, filter.words)) {
-      scan.entries.push(toShownEntry(entry));
+    if (isInRange(scanned.entry, filter.query) && hasEveryWord(scanned.plain, filter.words)) {
+      scan.entries.push(toShownEntry(scanned.entry));
     }
   }
 }
 
-function buildLogEntry(record: LogRecord): LogEntry {
+// An entry as the model reads it, with the plain text a search matches, so a search never matches
+// the markup around a paste.
+interface ScannedEntry {
+  readonly entry: LogEntry;
+  readonly plain: string | null;
+}
+
+// your message renders as the conversation shows it, with each paste in its own block
+function buildScannedEntry(record: LogRecord): ScannedEntry {
   const base = { sequence: record.sequence, recordedAt: record.recordedAt.getTime(), isCut: false };
   const fields = record.erasable.status === 'readable' ? record.erasable.fields : null;
 
   if (record.kind === 'owner_message') {
     const parsed = ownerFields.safeParse(fields);
+    const plain = parsed.success ? parsed.data.text : null;
 
     return {
-      ...base,
-      role: 'owner',
-      text: parsed.success ? renderShownText(parsed.data.text, parsed.data.spans ?? []) : null,
+      entry: { ...base, role: 'owner', text: plain === null ? null : renderOwnerText(record) },
+      plain,
     };
   }
-  if (record.kind === 'model.reply') {
-    const parsed = replyFields.safeParse(fields);
+  const text = record.kind === 'model.reply' ? readReplyText(fields) : readToolText(fields);
 
-    return { ...base, role: 'assistant', text: parsed.success ? parsed.data.text : null };
-  }
-  return { ...base, role: 'tool', text: fields === null ? null : JSON.stringify(fields) };
+  return {
+    entry: { ...base, role: record.kind === 'model.reply' ? 'assistant' : 'tool', text },
+    plain: text,
+  };
+}
+
+function readReplyText(fields: JSONObject | null): string | null {
+  const parsed = replyFields.safeParse(fields);
+
+  return parsed.success ? parsed.data.text : null;
+}
+
+function readToolText(fields: JSONObject | null): string | null {
+  return fields === null ? null : JSON.stringify(fields);
 }
 
 const spanFields = z.object({ start: z.int(), end: z.int(), source: z.string() });
@@ -190,14 +208,14 @@ function isInRange(entry: LogEntry, query: LogPageQuery): boolean {
 }
 
 // a forgotten entry holds no words, so a search never returns it
-function hasEveryWord(entry: LogEntry, words: readonly string[]): boolean {
+function hasEveryWord(plain: string | null, words: readonly string[]): boolean {
   if (words.length === 0) {
     return true;
   }
-  if (entry.text === null) {
+  if (plain === null) {
     return false;
   }
-  const text = normalizeSearchText(entry.text);
+  const text = normalizeSearchText(plain);
 
   return words.every((word) => text.includes(word));
 }

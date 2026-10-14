@@ -264,7 +264,31 @@ test('it shows a forgotten message with no text, and a search never returns it',
   expect(searched.entries).toStrictEqual([]);
 });
 
-test('it marks the pasted spans of your message and shows a tool result as its fields', async () => {
+test('it matches a search against the words of your message, never the block around a paste', async () => {
+  const ctx = await setupTest();
+
+  await writeOwnerMessageRecord(ctx.log, {
+    thread: 'conversation',
+    text: 'See this: buses run hourly',
+    spans: [
+      { start: 0, end: 10, source: 'typed' },
+      { start: 10, end: 26, source: 'pasted' },
+    ],
+  });
+
+  const page = await readLogPage(ctx.log, {
+    thread: 'conversation',
+    after: 0,
+    from: null,
+    to: null,
+    words: ['pasted'],
+    limit: 20,
+  });
+
+  expect(page).toStrictEqual({ entries: [], next: null });
+});
+
+test('it puts each pasted span of your message in a block', async () => {
   const ctx = await setupTest();
   const sequence = await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
@@ -274,6 +298,31 @@ test('it marks the pasted spans of your message and shows a tool result as its f
       { start: 10, end: 26, source: 'pasted' },
     ],
   });
+
+  const page = await readLogPage(ctx.log, {
+    thread: 'conversation',
+    after: 0,
+    from: null,
+    to: null,
+    words: [],
+    limit: 20,
+  });
+
+  expect(page.entries).toStrictEqual([
+    {
+      sequence,
+      role: 'owner',
+      recordedAt: expect.toBeNumber(),
+      text: expect.stringMatching(
+        /^See this: <pasted id="(?<id>[0-9a-f]{12})">buses run hourly<\/pasted id="\k<id>">$/u,
+      ),
+      isCut: false,
+    },
+  ]);
+});
+
+test('it shows a tool result as its fields', async () => {
+  const ctx = await setupTest();
   const [result] = await writeRecords(ctx.log, [
     {
       kind: 'tool_result',
@@ -297,13 +346,6 @@ test('it marks the pasted spans of your message and shows a tool result as its f
   });
 
   expect(page.entries).toStrictEqual([
-    {
-      sequence,
-      role: 'owner',
-      recordedAt: expect.toBeNumber(),
-      text: 'See this: ⟦buses run hourly⟧',
-      isCut: false,
-    },
     {
       sequence: result.sequence,
       role: 'tool',

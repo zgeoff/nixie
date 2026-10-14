@@ -193,7 +193,7 @@ test('it returns a proposal with the sentence for its reason, not an error, for 
     status: 'proposed',
     proposalID: expect.toBeString(),
     reason:
-      "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or none of the owner's last 20 messages contains it.",
+      "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or neither the owner's last 20 messages nor the message its eventID names contains it.",
     merged: false,
   });
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
@@ -311,7 +311,7 @@ test("it names the gate's configured window in the sentence for a quote older th
     status: 'proposed',
     proposalID: expect.toBeString(),
     reason:
-      "no_quote: Saved as a proposal for Avery to review. The write gave no quote, or none of Avery's last 2 messages contains it.",
+      "no_quote: Saved as a proposal for Avery to review. The write gave no quote, or neither Avery's last 2 messages nor the message its eventID names contains it.",
     merged: false,
   });
 });
@@ -393,7 +393,7 @@ test('it turns an edit with no backing words into a proposal with the sentence f
     status: 'proposed',
     proposalID: expect.toBeString(),
     reason:
-      "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or none of the owner's last 20 messages contains it.",
+      "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or neither the owner's last 20 messages nor the message its eventID names contains it.",
     merged: false,
   });
   expect(pending).toMatchObject([
