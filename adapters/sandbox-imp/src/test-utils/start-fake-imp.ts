@@ -1,6 +1,8 @@
 import { onTestFinished } from 'bun:test';
 import { createServer } from 'node:net';
 import type { ImpCreateInput, ImpExec, ImpExecOptions, ImpFeatures, ImpPort } from '../types';
+import type { FakeSleeps } from './build-fake-sleeps';
+import { buildFakeSleeps } from './build-fake-sleeps';
 import { startFakeForward } from './start-fake-forward';
 
 interface FakeExec {
@@ -31,7 +33,8 @@ interface FakeState {
   refuseImageAdd: boolean;
 }
 
-interface FakeImp extends FakeState {
+// A wake, an exec or a listen that arrives during an idle sleep waits for it, then wakes the imp.
+interface FakeImp extends FakeState, Pick<FakeSleeps, 'startIdleSleep' | 'sleepsAfterWake'> {
   readonly port: ImpPort;
 }
 
@@ -57,12 +60,17 @@ export async function startFakeImp(): Promise<FakeImp> {
     failExitOnStop: false,
     refuseImageAdd: false,
   };
+  const sleeps = buildFakeSleeps(state.calls);
 
-  return Object.assign(state, { port: buildFakePort(state, stack) });
+  return Object.assign(state, {
+    port: buildFakePort(state, sleeps, stack),
+    startIdleSleep: sleeps.startIdleSleep,
+    sleepsAfterWake: sleeps.sleepsAfterWake,
+  });
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own log and cleanup
-function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
+function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposableStack): ImpPort {
   const updateCallLog = (call: string): Promise<void> => {
     state.calls.push(call);
     return Promise.resolve();
@@ -92,19 +100,23 @@ function buildFakePort(state: FakeState, stack: AsyncDisposableStack): ImpPort {
       }
     },
     sleepImp: (name) => updateCallLog(`sleep ${name}`),
-    wakeImp: (name) => updateCallLog(`wake ${name}`),
+    wakeImp: async (name) => {
+      await sleeps.waitForAwake(name, 'wake');
+      await updateCallLog(`wake ${name}`);
+      sleeps.startSleepAfterWake(name);
+    },
     ...buildFakeSecretCalls(state, updateCallLog),
-    openExec: async (_name, argv, options) => {
+    openExec: async (name, argv, options) => {
       const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
 
       state.execs.push(exec);
-      await Promise.resolve();
+      await sleeps.waitForAwake(name, 'exec');
       if (options.requireBroker) {
         requireBrokerEnv(options.env);
       }
       return startFakeExec(exec, stack);
     },
-    ...buildFakeForwardCall(state),
+    ...buildFakeForwardCall(state, sleeps),
   };
 }
 
@@ -200,17 +212,22 @@ async function waitForExit<T>(exited: Promise<number>, readExit: () => T): Promi
 type ForwardPort = Pick<ImpPort, 'openReverseForward'>;
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own log
-function buildFakeForwardCall(state: FakeState): ForwardPort {
+function buildFakeForwardCall(state: FakeState, sleeps: FakeSleeps): ForwardPort {
   return {
     openReverseForward: (name, guestPort, onConnection) => {
       state.calls.push(`forward ${name} ${guestPort}`);
-      return startFakeForward({
+
+      const forward = startFakeForward({
         port: state.guestToolPort,
         onConnection,
         onStop: () => {
           state.calls.push(`forward-stopped ${name}`);
         },
+        waitForAwake: () => sleeps.waitForAwake(name, 'listen'),
       });
+
+      sleeps.registerForward(name, forward);
+      return forward;
     },
   };
 }

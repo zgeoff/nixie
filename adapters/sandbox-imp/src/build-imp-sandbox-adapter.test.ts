@@ -93,6 +93,7 @@ test('it closes the forward for a sleep and opens it again after the wake', asyn
   expect(ctx.imp.calls).toStrictEqual([
     `create ${sandbox.id}`,
     `grant ${sandbox.id} ${grant.secret}`,
+    `wake ${sandbox.id}`,
     `forward ${sandbox.id} ${ctx.imp.guestToolPort}`,
     `forward-stopped ${sandbox.id}`,
     `sleep ${sandbox.id}`,

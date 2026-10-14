@@ -127,6 +127,64 @@ test('it calls onStop and reports the forward stopped on a stop', async () => {
   expect(onStop).toHaveBeenCalledOnce();
 });
 
+test('it closes its listener and each guest connection and reports the forward lost on a lost stop', async () => {
+  const ctx = await setupTest();
+  const closed = Promise.withResolvers<void>();
+  const forward = startFakeForward({ port: ctx.port, onConnection: () => {}, onStop: () => {} });
+
+  await forward.listening;
+  await Bun.connect({
+    hostname: '127.0.0.1',
+    port: ctx.port,
+    socket: { data: () => {}, close: () => void closed.resolve() },
+  });
+  forward.stopAsLost();
+  await closed.promise;
+
+  expect(forward.ended).resolves.toStrictEqual({ kind: 'lost' });
+  expect(
+    Bun.connect({ hostname: '127.0.0.1', port: ctx.port, socket: { data: () => {} } }),
+  ).rejects.toThrow();
+});
+
+test('it listens only once the imp is awake', async () => {
+  const ctx = await setupTest();
+  const awake = Promise.withResolvers<void>();
+  const forward = startFakeForward({
+    port: ctx.port,
+    onConnection: () => {},
+    onStop: () => {},
+    waitForAwake: () => awake.promise,
+  });
+
+  const before = await Promise.race([forward.listening, Promise.resolve('waiting')]);
+
+  awake.resolve();
+  const port = await forward.listening;
+
+  expect(before).toBe('waiting');
+  expect(port).toBe(ctx.port);
+});
+
+test('it never listens when it ends before the imp is awake', async () => {
+  const ctx = await setupTest();
+  const awake = Promise.withResolvers<void>();
+  const forward = startFakeForward({
+    port: ctx.port,
+    onConnection: () => {},
+    onStop: () => {},
+    waitForAwake: () => awake.promise,
+  });
+
+  forward.stop();
+  awake.resolve();
+
+  expect(forward.listening).rejects.toThrow('the forward ended as stopped before it listened');
+  expect(
+    Bun.connect({ hostname: '127.0.0.1', port: ctx.port, socket: { data: () => {} } }),
+  ).rejects.toThrow();
+});
+
 test('it closes its listener when the test finishes', async () => {
   const ctx = await setupTest();
   const forward = startFakeForward({ port: ctx.port, onConnection: () => {}, onStop: () => {} });

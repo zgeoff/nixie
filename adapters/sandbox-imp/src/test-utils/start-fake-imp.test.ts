@@ -169,6 +169,73 @@ test('it listens for a reverse forward on its guest tool port and logs its stop'
   expect(imp.calls).toStrictEqual(['forward nixie-a 8901', 'forward-stopped nixie-a']);
 });
 
+test('it holds a wake, an exec and a listen until an idle sleep ends, then wakes the imp once', async () => {
+  const imp = await startFakeImp();
+  const snapshot = Promise.withResolvers<void>();
+
+  void imp.startIdleSleep('nixie-a', snapshot.promise);
+
+  const wake = imp.port.wakeImp('nixie-a');
+  const exec = imp.port.openExec('nixie-a', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
+
+  snapshot.resolve();
+  await Promise.all([wake, exec, forward.listening]);
+
+  expect(imp.calls).toStrictEqual([
+    'idle-sleep nixie-a',
+    'wait wake nixie-a',
+    'wait exec nixie-a',
+    'forward nixie-a 8901',
+    'wait listen nixie-a',
+    'slept nixie-a',
+    'woken by wake nixie-a',
+    'wake nixie-a',
+  ]);
+});
+
+test('it ends each forward of the imp as lost when an idle sleep ends', async () => {
+  const imp = await startFakeImp();
+  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
+
+  await forward.listening;
+
+  await imp.startIdleSleep('nixie-a', Promise.resolve());
+  const ended = await forward.ended;
+
+  expect(ended).toStrictEqual({ kind: 'lost' });
+});
+
+test('it starts the idle sleep set for the next wake of the imp once that wake ends', async () => {
+  const imp = await startFakeImp();
+  const snapshot = Promise.withResolvers<void>();
+
+  imp.sleepsAfterWake.set('nixie-a', snapshot.promise);
+
+  await imp.port.wakeImp('nixie-a');
+  const exec = imp.port.openExec('nixie-a', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  snapshot.resolve();
+  await exec;
+
+  expect(imp.sleepsAfterWake.size).toBe(0);
+  expect(imp.calls).toStrictEqual([
+    'wake nixie-a',
+    'idle-sleep nixie-a',
+    'wait exec nixie-a',
+    'slept nixie-a',
+    'woken by exec nixie-a',
+  ]);
+});
+
 test('it kills each exec process group and closes each forward when the test finishes', async () => {
   const imp = await startFakeImp();
 
