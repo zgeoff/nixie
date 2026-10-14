@@ -128,8 +128,9 @@ A day of 50 conversation turns in 15 bursts, at the mean context of a compaction
 10,000,000 tokens and costs about $10 on Opus 5.5. A heavy day of 100 turns in 25 bursts late in a
 cycle, at about 180,000 tokens of context, counts about 36,000,000 tokens and costs about $30. The
 memory writer at 25 batches, a consolidation and 50 checks add under 300,000 tokens and under $1 on
-any model. On Haiku 5.5 or Sonnet 5.5, a conversation turn makes fewer calls, and its tokens fall by
-15 to 25%.
+any model. A profile with a larger context cap scales the conversation's share with the cap, so a
+400,000-token cap doubles it. On Haiku 5.5 or Sonnet 5.5, a conversation turn makes fewer calls, and
+its tokens fall by 15 to 25%.
 
 A worker run that reads a 3,000-token page on each of its 25 allowed model calls reaches about
 80,000 tokens of context and counts about 985,000 tokens over the run, at about $0.76 on Opus. The
@@ -159,5 +160,5 @@ against a limit of 1,000.
   measured growth to the window.
 - The 1-hour cache. The CLI wrote only 5-minute entries, and the spike tried no setting that asks
   for longer ones. A profile's single cache write price fits the 5-minute rate; a 1-hour entry costs
-  twice the input price.
+  twice the input price. [GEO-890](https://linear.app/zgeoff/issue/GEO-890) tracks the question.
 - Models other than Anthropic's, whose reasoning effort and caching differ.
