@@ -1,16 +1,18 @@
 # 0024: How memory reaches the model
 
 - Date: 2026-10-08
+- Updated: 2026-10-14
 - Status: decided
 - Design: [memory context](../design/platform/memory/context.md)
 - Research: [retrieval spike](../design/platform/spikes/memory-retrieval/),
   [memory notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/memory-models.md)
 
-The conversation runs on the Agent SDK's session and compaction, with the stable part of the prompt
-first so the prompt cache holds. nixie adds retrieval over memory and over the event log, which
-holds past conversation word for word: the recall tool from [0010](0010-memory-store.md), and a few
-retrieved items placed in the newest turn with their provenance. A compaction summary stays in the
-session and never becomes memory.
+The conversation runs on the Agent SDK's session, with the stable part of the prompt first so the
+prompt cache holds, and nixie compacts the session itself under
+[0045](0045-session-opening-and-compaction.md). nixie adds retrieval over memory and over the event
+log, which holds past conversation word for word: the recall tool from [0010](0010-memory-store.md),
+and a few retrieved items placed in the newest turn with their provenance. A compaction summary
+never becomes memory.
 
 Retrieval uses local embeddings and keyword search together. One retrieval service serves per-turn
 retrieval and the recall tool. It searches active memory items and the past messages and replies
@@ -39,3 +41,8 @@ to keyword search and records the fallback.
 - **Store short-term conversation as memories.** It fills memory with noise that needs cleanup, when
   the event log already holds the conversation.
 - **Keyword search alone.** It needs no encoder or index, and misses paraphrases.
+
+## Changes
+
+- 2026-10-14: nixie compacts the session itself and stores the summary in the event log, under
+  [0045](0045-session-opening-and-compaction.md); a summary still never becomes memory.

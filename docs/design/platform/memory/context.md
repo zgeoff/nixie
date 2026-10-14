@@ -93,16 +93,11 @@ memory is current; the state and version checks decide that.
 
 ## Compaction
 
-The SDK compacts a session when its context fills, and
-[conversation turns](../../../architecture/core/conversation-turns.md#compaction) covers the
-controls nixie sets and the record of each compaction's token counts. The design adds the summary
-record.
-
-nixie writes each summary as a `session_compacted` record from the `PostCompact` hook, encrypted
-under its own record key, and the live view shows it. The summary never becomes memory, and
-retrieval never searches summaries. **Why:** the model wrote the summary from an untrusted
-conversation, and retrieving it would launder that text. A forget deletes the key of every stored
-summary as part of its operation.
+nixie compacts the conversation's session itself, and stores each summary in the event log under a
+key of its own. [Session opening and compaction](../core/session-opening.md) covers the compactor,
+the summary record and the forget that erases every summary. A summary never becomes memory, and
+retrieval never searches summaries, because the model wrote the summary from an untrusted
+conversation and retrieving it would launder that text.
 
 ## The SDK transcript
 

@@ -1,6 +1,7 @@
 # 0031: Memory capture, context and removal
 
 - Date: 2026-10-09
+- Updated: 2026-10-14
 - Status: decided
 - Design: [memory store](../design/platform/memory/store.md),
   [memory writes](../design/platform/memory/writes.md),
@@ -19,8 +20,8 @@ message count, idle time or a maximum age. Both paths use the checks from
 
 The writer reads the original messages in order, and a summary is never evidence. The writer stages
 its writes, and the host commits the writes or proposals, their notices and the batch cursor in one
-transaction, so a retry can repeat extraction but never the committed effects. SDK compaction stays,
-with no custom session rollover.
+transaction, so a retry can repeat extraction but never the committed effects. nixie compacts the
+conversation's session itself, under [0045](0045-session-opening-and-compaction.md).
 
 ## The SDK transcript as a cache
 
@@ -65,10 +66,14 @@ index generations and concurrent key publication extend it later with no change 
 ## Alternatives
 
 - **A writer on every turn.** It captures facts sooner and makes more calls.
-- **Custom session rollover.** It gives more control over summaries, and adds continuity and crash
-  recovery work.
 - **Transcript backups.** They keep more exact context after disk loss, and add a second forget
   path.
 - **Destruction from chat.** It saves a checked action, and makes a wrong target irreversible.
 - **Notices in the approval digest only.** They keep the conversation clear, and delay finding a
   wrong write.
+
+## Changes
+
+- 2026-10-14: nixie's own compaction replaces SDK compaction, under
+  [0045](0045-session-opening-and-compaction.md), and custom session rollover leaves the
+  alternatives.
