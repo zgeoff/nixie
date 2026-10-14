@@ -2,16 +2,22 @@ import type { ContentSource } from '@heynixie/log';
 import { formatMemoryDay } from './format-memory-day';
 import type { MemoryApproval, MemoryItem, MemoryLineOptions, MemoryOrigin } from './types';
 
+// The version that came after a past one: its short ID and version, and whether it retired the item.
+export interface NextVersion {
+  readonly ref: string;
+  readonly isRetirement: boolean;
+}
+
 // Renders the line under a memory that says where it came from in plain words, as in
 // b7kq2m9xza v3 · 13 Oct · the note-taker noted it · from a pasted page · Sam approved. A past
-// version's line ends with the version that replaced it.
+// version's line ends with the version that replaced or retired it.
 export function renderMemoryLine(
   version: Pick<
     MemoryItem,
     'shortID' | 'version' | 'recordedAt' | 'origin' | 'source' | 'approval'
   >,
   options: MemoryLineOptions,
-  replacedBy: string | null = null,
+  next: NextVersion | null = null,
 ): string {
   const owner = options.ownerName ?? 'the owner';
   const parts = [
@@ -20,7 +26,7 @@ export function renderMemoryLine(
     notedWords[version.origin],
     formatBacking(version.source, version.approval, owner),
     version.approval === null ? null : `${owner} approved`,
-    replacedBy === null ? null : `replaced by ${replacedBy}`,
+    next === null ? null : formatNext(next),
   ];
 
   return parts.filter((part) => part !== null).join(' · ');
@@ -50,4 +56,8 @@ function formatBacking(
     return `from ${owner}'s data`;
   }
   return approval?.isQuotePasted === true ? 'from a pasted page' : 'unconfirmed';
+}
+
+function formatNext(next: NextVersion): string {
+  return next.isRetirement ? `retired in ${next.ref}` : `replaced by ${next.ref}`;
 }

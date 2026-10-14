@@ -1,5 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
-import type { MemoryLineOptions } from '@heynixie/models';
+import type { MemoryLineOptions, NextVersion } from '@heynixie/models';
 import { renderMemoryLine } from '@heynixie/models';
 import type { Clock } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
@@ -164,30 +164,33 @@ function toItemJSON(item: RecalledItem, lines: MemoryLineOptions): JSONObject {
   };
 }
 
-// a version from an item's history, which names the next version when a later one replaced it
+// a version from an item's history, which names the version after it, if any
 function toPastVersionJSON(
   item: RecalledItem,
   version: RecalledVersion,
   lines: MemoryLineOptions,
 ): JSONObject {
-  const replacedBy =
-    version.version < item.version ? `${item.shortID} v${version.version + 1}` : null;
+  const after = item.history?.find((later) => later.version === version.version + 1);
+  const next =
+    after === undefined
+      ? null
+      : { ref: `${item.shortID} v${after.version}`, isRetirement: after.change === 'retired' };
 
-  return toVersionJSON({ ...version, shortID: item.shortID }, lines, replacedBy);
+  return toVersionJSON({ ...version, shortID: item.shortID }, lines, next);
 }
 
-// a version with the line under it, which for a past version names the version that replaced it
+// a version with the line under it, which for a past version names the version after it
 function toVersionJSON(
   version: RecalledVersion & { readonly shortID: string },
   lines: MemoryLineOptions,
-  replacedBy: string | null,
+  next: NextVersion | null,
 ): JSONObject {
   return {
     version: version.version,
     change: version.change,
     state: version.state,
     text: version.text,
-    about: renderMemoryLine(version, lines, replacedBy),
+    about: renderMemoryLine(version, lines, next),
     ...(version.evidenceQuote === null ? {} : { quote: version.evidenceQuote }),
     model: version.model,
   };

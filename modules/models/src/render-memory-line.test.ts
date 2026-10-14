@@ -107,7 +107,24 @@ test('it names the version that replaced a past version last', () => {
         approval: null,
       },
       { ownerName: 'Robin', defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
-      'h4ns8w1cpe v5',
+      { ref: 'h4ns8w1cpe v5', isRetirement: false },
     ),
   ).toBe('h4ns8w1cpe v4 · 2 Mar · you noted it · Robin said this · replaced by h4ns8w1cpe v5');
+});
+
+test('it names the version that retired a past version last as a retirement', () => {
+  expect(
+    renderMemoryLine(
+      {
+        shortID: 'h4ns8w1cpe',
+        version: 4,
+        recordedAt: Date.parse('2026-03-02T09:30:00Z'),
+        origin: 'conversation',
+        source: 'owner',
+        approval: null,
+      },
+      { ownerName: 'Robin', defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
+      { ref: 'h4ns8w1cpe v5', isRetirement: true },
+    ),
+  ).toBe('h4ns8w1cpe v4 · 2 Mar · you noted it · Robin said this · retired in h4ns8w1cpe v5');
 });

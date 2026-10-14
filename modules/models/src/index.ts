@@ -15,6 +15,7 @@ export { readEventsNote } from './read-events-note';
 export { readTurnNoteRange } from './read-turn-note-range';
 export { renderOwnerText } from './render-owner-text';
 export { renderMemoryItem } from './render-memory-item';
+export type { NextVersion } from './render-memory-line';
 export { renderMemoryLine } from './render-memory-line';
 export { resolveModelCredentials } from './resolve-model-credentials';
 export { resolveRoleProfile } from './resolve-role-profile';
