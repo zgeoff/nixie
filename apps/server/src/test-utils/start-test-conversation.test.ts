@@ -34,6 +34,6 @@ test('it runs a turn on its own model with the note before your message', async 
   const sent = conversation.model.requests.filter((request) => request.path === '/v1/messages');
 
   expect(JSON.stringify(sent.at(-1)?.body?.messages)).toMatch(
-    /NOTE\\n\\n\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Say a fruit\./u,
+    /NOTE\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Say a fruit\./u,
   );
 }, 30_000);

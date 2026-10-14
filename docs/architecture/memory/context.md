@@ -129,12 +129,13 @@ it, with each pasted or dropped span in its own block, and a search matches only
 those blocks. The call's record holds only the event IDs it returned, so a forget leaves no readable
 copy of what the model read, and a forgotten message reads with no text and never matches a search.
 
-A memory write that quotes an older message passes that entry's event ID with its quote. The content
-gate then checks the quote against that one record in place of the recent window, under the same
-quote rules: the record must be a message the user sent in the calling thread, and the quote must
-lie in text the user typed. A reply or a tool result never backs a write, because nobody typed it,
-so a quote that only a fetched page holds becomes a proposal. The token check and the checker run as
-for any other write ([the content gate](./writes.md#the-content-gate)).
+A memory write that quotes a message passes that message's event ID with its quote, from the
+message's stamp in the session or from a log read entry. The content gate then checks the quote
+against that one record in place of the recent window, under the same quote rules: the record must
+be a message the user sent in the calling thread, and the quote must lie in text the user typed. A
+reply or a tool result never backs a write, because nobody typed it, so a quote that only a fetched
+page holds becomes a proposal. The token check and the checker run as for any other write
+([the content gate](./writes.md#the-content-gate)).
 
 ## Forgetting and the live session
 

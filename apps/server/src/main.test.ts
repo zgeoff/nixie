@@ -218,9 +218,11 @@ test('it shows the model when each message was sent, in its own zone or the defa
     ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
   );
 
-  expect(sent).toMatch(/\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney · laptop\] Hi\./u);
   expect(sent).toMatch(
-    /\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo · laptop\] Just landed\./u,
+    /\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney · laptop\] Hi\./u,
+  );
+  expect(sent).toMatch(
+    /\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo · laptop\] Just landed\./u,
   );
 }, 60_000);
 
@@ -257,7 +259,9 @@ test('it shows the model the label you set on a session through the session comm
     sessionID: session.sessionID,
     label: 'work PC',
   });
-  expect(sent).toMatch(/\[\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney · work PC\] Hi\./u);
+  expect(sent).toMatch(
+    /\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney · work PC\] Hi\./u,
+  );
 }, 60_000);
 
 test('it applies a remembered fact that the owner typed, with their words as its evidence', async () => {
@@ -304,6 +308,56 @@ test('it applies a remembered fact that the owner typed, with their words as its
     },
   ]);
   expect(run.records.filter((record) => record.kind === 'memory.proposed')).toStrictEqual([]);
+}, 60_000);
+
+test('it applies a remembered fact cited by the event ID its stamp showed, with no log read, against that message alone', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Got it.' });
+  await sendClientMessage(
+    ctx.client,
+    { text: 'My bike lock code is 3906.', spans: [{ start: 0, end: 26, source: 'typed' }] },
+    'Got it.',
+  );
+
+  // the model reads the event ID at the head of the stamp of the message it was sent
+  const sent = JSON.stringify(
+    ctx.model.requests.findLast((request) => request.path === '/v1/messages'),
+  );
+  const eventID = Number(
+    /\[#(?<eventID>\d+) · [^\]]+\] My bike lock/u.exec(sent)?.groups?.['eventID'],
+  );
+
+  // no log.read call: the newer message holds the same words, so only the event ID picks the older
+  ctx.model.addReplies(
+    {
+      toolUse: {
+        name: 'mcp__nixie__memory_remember',
+        input: {
+          text: 'Bike lock code 3906',
+          quote: 'bike lock code is 3906',
+          eventID: `#${eventID}`,
+        },
+      },
+    },
+    { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },
+    { text: 'Saved.' },
+  );
+  await sendClientMessage(
+    ctx.client,
+    {
+      text: 'Remember my bike lock code is 3906.',
+      spans: [{ start: 0, end: 35, source: 'typed' }],
+    },
+    'Saved.',
+  );
+  ctx.sendSignal('SIGTERM');
+  const run = await ctx.waitForExit();
+
+  // the quote's span in the older message: characters 3 to 25
+  expect(run.records.filter((record) => record.kind === 'memory.version_added')).toMatchObject([
+    { payload: { source: 'owner', evidence: { recordSequence: eventID, start: 3, end: 25 } } },
+  ]);
 }, 60_000);
 
 test('it keeps the ratings the model gives two retrieved items against the turn that retrieved them', async () => {
