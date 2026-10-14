@@ -234,11 +234,11 @@ when that listing fails. The change goes to
   party's cloud, and nixie ships no OAuth client on purpose.
 - **A raw credential call.** `credential()` hands app code a live token outside the audit. nixie's
   fetcher exists so that a connector never reads a token.
-- **Generated connectors from vendored templates.** Connect pays for 900 tools with code under a
-  licence that bars a hosted service and with a review on every template bump. nixie writes a few
-  connectors as reviewed code, with effects and reconciliation that templates lack.
-- **Tool filter globs that fail closed.** Connect needs them because its default is every tool. A
-  nixie tool list names each tool, so a typo narrows the list and never widens it.
+- **Generated connectors from vendored templates.** Connect pays for 900 tools with a review on
+  every template bump, and with code whose licence bars a hosted service that offers a substantial
+  set of its features. nixie writes a few connectors as reviewed code, with effects and
+  reconciliation that templates lack.
+- **Tool filter globs that fail closed.** A nixie tool list names each tool, so a typo narrows it.
 - **Stripping secret fields from results.** A nixie tool's output schema picks its fields, so a
   provider's secret field reaches the model only when an action names it.
 - **A live smoke test of every tool.** It needs a real account and real writes, and a rule for live

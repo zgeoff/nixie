@@ -395,6 +395,6 @@ left untested. The [spikes index](design/platform/spikes/README.md) describes ho
   gateway, process outages and a restore without the original database
 - [Paired data and key recovery](design/platform/spikes/paired-recovery/) — continuous encrypted
   data plus Restic keys, stale-key control and a post-forget restore
-- [Mastra Connect as a reference](design/platform/spikes/mastra-connect/) — a reading of its
-  connector model, credentials, refresh, tools and errors, with the ideas worth adapting to the
-  connector designs
+- [Mastra Connect as a reference](design/platform/spikes/mastra-connect/) — a reading spike with
+  nothing to run, on its connector model, credentials, refresh, tools and errors, with the ideas
+  worth adapting to the connector designs
