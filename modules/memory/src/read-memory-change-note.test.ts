@@ -49,10 +49,8 @@ test('it lists a change made outside the conversation and leaves out the convers
 
   expect(note.text).toBe(
     [
-      '<memory-changes>',
       'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
       `- Remembered [${shortID}]: Lives on Elm Street`,
-      '</memory-changes>',
     ].join('\n'),
   );
 });
@@ -85,10 +83,8 @@ test('it counts the catch-up versions without listing them', async () => {
 
   expect(note.text).toBe(
     [
-      '<memory-changes>',
       'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
       '- Took in 2 things from earlier conversation',
-      '</memory-changes>',
     ].join('\n'),
   );
 });
@@ -164,10 +160,8 @@ test('it starts after the last turn that ended', async () => {
 
   expect(note.text).toBe(
     [
-      '<memory-changes>',
       'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
       `- Remembered [${shortID}]: Keeps bees on the roof`,
-      '</memory-changes>',
     ].join('\n'),
   );
 });
@@ -212,9 +206,7 @@ test('it lists changes up to the cap and counts the rest', async () => {
 
   const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 1 });
 
-  expect(note.text).toMatch(
-    /^<memory-changes>\n[^\n]+\n- Remembered \[[^\]]+\]: Lives on Elm Street\nand 2 more\n<\/memory-changes>$/u,
-  );
+  expect(note.text).toMatch(/^[^\n]+\n- Remembered \[[^\]]+\]: Lives on Elm Street\nand 2 more$/u);
 });
 
 test("it names each of the conversation's proposals that a write from outside merged into, and no merge of the conversation's own", async () => {
@@ -239,10 +231,8 @@ test("it names each of the conversation's proposals that a write from outside me
   invariant(first.status === 'proposed');
   expect(note.text).toBe(
     [
-      '<memory-changes>',
       'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
       `- A task proposed the same memory again; it merged into your pending proposal [${first.proposalID}], which still waits for the owner's review`,
-      '</memory-changes>',
     ].join('\n'),
   );
 });

@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { readMemoryChangeNote } from '@heynixie/memory';
 import { writeInboxRecords } from '@heynixie/tasks';
+import { readTurnNotes } from './read-turn-notes';
 import { buildRememberReply } from './test-utils/build-remember-reply';
 import { removeMessageKeyAfter } from './test-utils/remove-message-key-after';
 import { startTestConversation } from './test-utils/start-test-conversation';
@@ -22,7 +22,15 @@ test('it carries the note of a live batch, cut to its cap, on the next conversat
   const ctx = await setupTest();
   const conversation = await startTestConversation(ctx.server, {
     context: ctx.memory.context,
-    readTurnNote: () => readMemoryChangeNote(ctx.memory.context.log, ctx.memory.store, { cap: 5 }),
+    readTurnNote: () =>
+      readTurnNotes({
+        log: ctx.memory.context.log,
+        store: ctx.memory.store,
+        events: [],
+        clock: ctx.memory.context.clock,
+        ownerName: null,
+        defaultZone: 'UTC',
+      }),
   });
 
   await ctx.memory.start();
@@ -55,7 +63,7 @@ test('it carries the note of a live batch, cut to its cap, on the next conversat
   await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
 
   expect(JSON.stringify(conversation.model.requests.at(-1)?.body?.messages)).toMatch(
-    /(?<listed>- Remembered \[[^\]]+\]: You have a pet called \w+\.\\n){5}and 1 more\\n<\/memory-changes>\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\./u,
+    /(?<listed>- Remembered \[[^\]]+\]: You have a pet called \w+\.\\n){5}and 1 more\\n<\/system-message id=\\"[\da-f]{12}\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\./u,
   );
 }, 60_000);
 

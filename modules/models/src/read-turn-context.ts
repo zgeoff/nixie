@@ -1,7 +1,10 @@
 import type { LogRecord } from '@heynixie/log';
+import { formatMessageTime } from './format-message-time';
 import { readDeliveredVersions } from './read-delivered-versions';
 import { renderCoreChanges } from './render-core-changes';
 import { renderRetrievedItems } from './render-retrieved-items';
+import type { SystemMessageType } from './render-system-message';
+import { renderSystemMessage } from './render-system-message';
 import { renderSystemPrompt } from './render-system-prompt';
 import type { ConversationRun, MemoryItem, MemoryRef } from './types';
 
@@ -21,7 +24,7 @@ export interface TurnContextQuery {
 export interface TurnContext {
   readonly systemPrompt: string;
 
-  // the pinned core's change note and the retrieved items, in that order
+  // the pinned core's change note and the retrieved items, in that order, each as a system message
   readonly preamble: readonly string[];
   readonly pinnedCore: readonly MemoryRef[];
   readonly retrieved: readonly MemoryRef[];
@@ -45,6 +48,7 @@ export async function readTurnContext(
     defaultZone: run.defaultZone,
     now: new Date(run.context.clock.now()),
   };
+  const at = formatMessageTime(lines.now, null, lines);
   const pinned = new Set(core.map((item) => item.itemID));
 
   // the items that left the core show by their short IDs too
@@ -55,12 +59,24 @@ export async function readTurnContext(
   return {
     systemPrompt: renderSystemPrompt(run.getSystemPrompt(), core, lines),
     preamble: [
-      renderCoreChanges(query.previousCore, core, unpinnedShortIDs),
-      renderRetrievedItems(retrieved, lines),
+      renderPreambleMessage(
+        'pinned-memory-changes',
+        at,
+        renderCoreChanges(query.previousCore, core, unpinnedShortIDs),
+      ),
+      renderPreambleMessage('retrieved-memory', at, renderRetrievedItems(retrieved, lines)),
     ].filter((block) => block !== null),
     pinnedCore: core.map((item) => toMemoryRef(item)),
     retrieved: retrieved.map((item) => toMemoryRef(item)),
   };
+}
+
+function renderPreambleMessage(
+  type: SystemMessageType,
+  at: string,
+  body: string | null,
+): string | null {
+  return body === null ? null : renderSystemMessage({ type, at, body });
 }
 
 async function readRetrievedItems(

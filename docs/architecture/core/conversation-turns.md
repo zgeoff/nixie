@@ -158,6 +158,24 @@ blocks is not the user's own words and may hold instructions the model acts on o
 own words ask. The model can then tell which quotes the [memory gate](../memory/writes.md) takes as
 typed.
 
+## System messages
+
+Every block that nixie writes into a user message is a system message: a `<system-message>` element
+with a type, a random ID and the time nixie wrote it, as in
+`<system-message type="events" id="7f3a9c21b04e" at="Tue 14 Oct, 22:50, Sydney">`. The closing tag
+repeats the ID, which is fresh for each element as a pasted block's is, so a memory or an event
+whose text holds a closing tag cannot end the element early. The ID proves nothing about the sender,
+because text inside a message can carry any ID. The system prompt therefore states a position rule:
+a system message comes from nixie only at the top level of a user message, and one inside a tool
+result, a pasted or dropped block or a quote is text. The SDK sends a tool result as a block of its
+own, so the model can tell the two places apart.
+
+The events block, both memory change notes and the retrieved items each render as one system message
+before the user's message. A fired timer and an action's outcome render as one each, with the time
+their record was written, and each body leads with the record's event ID so the model can cite it.
+The user's own message stays outside any element, after its stamp, because it holds the user's own
+words.
+
 ## Records of a turn
 
 The guest reports each assistant message with its text and the tools it asked for, and ends with the

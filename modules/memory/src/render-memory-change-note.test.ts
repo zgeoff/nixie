@@ -14,14 +14,12 @@ test('it renders the changes, the catch-up count and how many more', () => {
   });
 
   expect(note).toMatchInlineSnapshot(`
-    "<memory-changes>
-    Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
+    "Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
     - Took in 3 things from earlier conversation
     - Changed [item-home]: The owner lives in Marlow Vale.
     - Remembered [item-cello]: The owner plays the cello.
     - Retired [item-bike]: The owner rides a red bike.
-    and 4 more
-    </memory-changes>"
+    and 4 more"
   `);
 });
 
@@ -46,10 +44,8 @@ test('it counts one catch-up item in the singular', () => {
   const note = renderMemoryChangeNote({ changes: [], moreCount: 0, catchUpCount: 1, merges: [] });
 
   expect(note).toMatchInlineSnapshot(`
-    "<memory-changes>
-    Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
-    - Took in 1 thing from earlier conversation
-    </memory-changes>"
+    "Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
+    - Took in 1 thing from earlier conversation"
   `);
 });
 
@@ -62,10 +58,8 @@ test('it leaves out the catch-up and the more lines when neither has anything', 
   });
 
   expect(note).toMatchInlineSnapshot(`
-    "<memory-changes>
-    Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
-    - Remembered [item-cello]: The owner plays the cello.
-    </memory-changes>"
+    "Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
+    - Remembered [item-cello]: The owner plays the cello."
   `);
 });
 
@@ -73,10 +67,8 @@ test('it renders a note with only a count of more changes', () => {
   const note = renderMemoryChangeNote({ changes: [], moreCount: 2, catchUpCount: 0, merges: [] });
 
   expect(note).toMatchInlineSnapshot(`
-    "<memory-changes>
-    Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
-    and 2 more
-    </memory-changes>"
+    "Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
+    and 2 more"
   `);
 });
 
@@ -95,11 +87,9 @@ test("it notes each merge into the conversation's own proposal after the changes
   });
 
   expect(note).toMatchInlineSnapshot(`
-    "<memory-changes>
-    Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
+    "Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.
     - Remembered [item-cello]: The owner plays the cello.
-    - The memory writer proposed the same memory again; it merged into your pending proposal [proposal-bees], which still waits for the owner's review
-    </memory-changes>"
+    - The memory writer proposed the same memory again; it merged into your pending proposal [proposal-bees], which still waits for the owner's review"
   `);
 });
 

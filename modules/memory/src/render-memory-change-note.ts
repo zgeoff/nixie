@@ -29,9 +29,9 @@ export interface MemoryChangeNote {
   readonly catchUpCount: number;
 }
 
-// Renders the note before your message on the conversation's next turn: outside changes up to the
-// cap, then how many more, then each of its proposals that another source proposed again. The
-// catch-up's items appear as a count only. It renders nothing when nothing changed.
+// Renders the body of the note before your message on the conversation's next turn: outside changes
+// up to the cap, then how many more, then each of its proposals that another source proposed again.
+// The catch-up's items appear as a count only. It renders nothing when nothing changed.
 export function renderMemoryChangeNote(note: MemoryChangeNote): string | null {
   if (
     note.changes.length === 0 &&
@@ -45,7 +45,6 @@ export function renderMemoryChangeNote(note: MemoryChangeNote): string | null {
   const more = note.moreCount;
 
   return [
-    '<memory-changes>',
     'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
     ...(note.catchUpCount === 0
       ? []
@@ -55,7 +54,6 @@ export function renderMemoryChangeNote(note: MemoryChangeNote): string | null {
     ...listed,
     ...(more > 0 ? [`and ${String(more)} more`] : []),
     ...note.merges.map((merge) => renderMerge(merge)),
-    '</memory-changes>',
   ].join('\n');
 }
 

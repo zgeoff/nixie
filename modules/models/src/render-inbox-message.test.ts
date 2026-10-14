@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
+import invariant from 'tiny-invariant';
 import { renderInboxMessage } from './render-inbox-message';
 
 test('it renders your message after its event ID and the time you sent it, in the zone the message carries', () => {
@@ -109,7 +110,7 @@ test('it renders a note after the send time in place of a message whose text was
   ).toBe('[#48213 · Tue 13 Oct, 14:05, Sydney] [a message you sent, since forgotten]');
 });
 
-test('it renders a fired timer after its event ID and the time it fired, in the default zone', () => {
+test('it renders a fired timer as a timer system message at the time it fired, in the default zone, its body led by its event ID', () => {
   const record = buildMockLogRecord({
     sequence: 48_213,
     kind: 'timer.fired',
@@ -118,17 +119,24 @@ test('it renders a fired timer after its event ID and the time it fired, in the 
     erasable: { status: 'none' },
   });
 
-  expect(
-    renderInboxMessage(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
-  ).toBe(
-    '[#48213 · Tue 13 Oct, 14:05, Sydney] A timer fired: {"timerID":"t-1","taskID":"water-the-ferns"}',
+  const rendered = renderInboxMessage(record, {
+    defaultZone: 'Australia/Sydney',
+    now: new Date('2026-10-13T05:00:00Z'),
+  });
+  const blockID = /^<system-message type="timer" id="(?<blockID>[\da-f]{12})"/u.exec(rendered)
+    ?.groups?.['blockID'];
+
+  invariant(blockID !== undefined);
+  expect(rendered).toBe(
+    [
+      `<system-message type="timer" id="${blockID}" at="Tue 13 Oct, 14:05, Sydney">`,
+      '[#48213] A timer fired: {"timerID":"t-1","taskID":"water-the-ferns"}',
+      `</system-message id="${blockID}">`,
+    ].join('\n'),
   );
 });
 
-test('it renders an action outcome after its event ID and the time it settled, in the default zone', () => {
+test('it renders an action outcome as an outcome system message at the time it settled, in the default zone, its body led by its event ID', () => {
   const record = buildMockLogRecord({
     sequence: 48_213,
     kind: 'action.outcome',
@@ -137,17 +145,24 @@ test('it renders an action outcome after its event ID and the time it settled, i
     erasable: { status: 'none' },
   });
 
-  expect(
-    renderInboxMessage(record, {
-      defaultZone: 'Australia/Sydney',
-      now: new Date('2026-10-13T05:00:00Z'),
-    }),
-  ).toBe(
-    '[#48213 · Tue 13 Oct, 14:40, Sydney] An action settled: {"actionID":"a-1","status":"succeeded"}',
+  const rendered = renderInboxMessage(record, {
+    defaultZone: 'Australia/Sydney',
+    now: new Date('2026-10-13T05:00:00Z'),
+  });
+  const blockID = /^<system-message type="outcome" id="(?<blockID>[\da-f]{12})"/u.exec(rendered)
+    ?.groups?.['blockID'];
+
+  invariant(blockID !== undefined);
+  expect(rendered).toBe(
+    [
+      `<system-message type="outcome" id="${blockID}" at="Tue 13 Oct, 14:40, Sydney">`,
+      '[#48213] An action settled: {"actionID":"a-1","status":"succeeded"}',
+      `</system-message id="${blockID}">`,
+    ].join('\n'),
   );
 });
 
-test('it renders a fired timer from an earlier year with the year in its stamp', () => {
+test('it renders a fired timer from an earlier year with the year in its time', () => {
   const record = buildMockLogRecord({
     sequence: 48_213,
     kind: 'timer.fired',
@@ -161,7 +176,7 @@ test('it renders a fired timer from an earlier year with the year in its stamp',
       defaultZone: 'Europe/London',
       now: new Date('2026-01-02T09:00:00Z'),
     }),
-  ).toBe('[#48213 · Tue 30 Dec 2025, 22:00, London] A timer fired: {"timerID":"t-2"}');
+  ).toInclude(' at="Tue 30 Dec 2025, 22:00, London">');
 });
 
 test('it renders a span you dropped in your message inside a dropped block', () => {
