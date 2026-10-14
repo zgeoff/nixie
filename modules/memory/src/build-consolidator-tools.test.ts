@@ -83,6 +83,39 @@ test('it returns each recalled item by the short ID the model reads', async () =
   });
 });
 
+test('it returns the quote each recalled item was saved from, and no quote for an item without one', async () => {
+  const ctx = await setupTest();
+  const hens = await createMemoryItem(ctx.memory.store, {
+    text: 'Owns three chickens that live in the garden',
+    quote: 'we have three hens and honestly they rule the garden',
+  });
+  const coop = await createMemoryItem(ctx.memory.store, { text: 'Built a coop in the garden' });
+  const shortIDs = await ctx.memory.store.readShortIDs([hens.itemID, coop.itemID]);
+  const recall = ctx.registry.findTool('memory.recall');
+
+  invariant(recall);
+  ctx.staging.open(new Map(), 30);
+
+  const recalled = await recall.definition.run(
+    { callID: 'call-1', tool: 'memory.recall', input: { query: 'garden' }, toolUseID: null },
+    buildMockToolContext({ thread: 'memory-consolidator' }),
+  );
+
+  expect(recalled).toStrictEqual({
+    status: 'ok',
+    result: {
+      items: expect.toIncludeSameMembers([
+        {
+          itemID: shortIDs.get(hens.itemID),
+          text: 'Owns three chickens that live in the garden',
+          quote: 'we have three hens and honestly they rule the garden',
+        },
+        { itemID: shortIDs.get(coop.itemID), text: 'Built a coop in the garden' },
+      ]),
+    },
+  });
+});
+
 test('it stages the diff and returns how many changes it holds', async () => {
   const ctx = await setupTest();
   const consolidate = ctx.registry.findTool('memory.consolidate');

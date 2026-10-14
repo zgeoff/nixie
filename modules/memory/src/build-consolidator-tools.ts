@@ -1,7 +1,8 @@
+import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import type { ConsolidationStaging } from './create-consolidation-staging';
-import type { MemoryStore } from './types';
+import type { MemoryStore, RecalledItem } from './types';
 
 // Builds the consolidator's 2 tools: recall, which declares read, and consolidate, which stages the
 // run's one diff instead of applying it, so a session that dies leaves nothing behind and every
@@ -21,7 +22,11 @@ const recallOutput = {
       type: 'array',
       items: {
         type: 'object',
-        properties: { itemID: { type: 'string' }, text: { type: 'string' } },
+        properties: {
+          itemID: { type: 'string' },
+          text: { type: 'string' },
+          quote: { type: 'string', description: 'the words the item was saved from' },
+        },
         required: ['itemID', 'text'],
       },
     },
@@ -30,7 +35,9 @@ const recallOutput = {
   additionalProperties: false,
 };
 
-// A recall shows the session each item it returns, so a later change to one binds to that version.
+// A recall shows the session each item it returns, so a later change to one binds to that version,
+// and returns each item's quote, so the session checks an item it found against the words it was
+// saved from, as it does for each item in its list.
 function buildRecallTool(
   store: Pick<MemoryStore, 'recall'>,
   staging: ConsolidationStaging,
@@ -40,7 +47,7 @@ function buildRecallTool(
     name: 'memory.recall',
     description:
       'Finds current memory items that match any of the words in query, best match first, each ' +
-      'with its itemID and text.',
+      'with its itemID, its text and, when it has one, the quote it was saved from.',
     input: {
       type: 'object',
       properties: { query: { type: 'string', minLength: 1, maxLength: 500 } },
@@ -75,10 +82,17 @@ function buildRecallTool(
       }
       return {
         status: 'ok',
-        result: { items: result.items.map((item) => ({ itemID: item.shortID, text: item.text })) },
+        result: { items: result.items.map((item) => toRecalledItemJSON(item)) },
       };
     },
   };
+}
+
+// an item as the session reads it: its short ID, its text, and its quote when it has one
+function toRecalledItemJSON(item: RecalledItem): JSONObject {
+  return item.evidenceQuote === null
+    ? { itemID: item.shortID, text: item.text }
+    : { itemID: item.shortID, text: item.text, quote: item.evidenceQuote };
 }
 
 const recallArguments = z.object({ query: z.string() });
