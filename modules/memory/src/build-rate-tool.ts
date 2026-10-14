@@ -74,9 +74,9 @@ const rateInput = {
   additionalProperties: false,
 };
 
-// Each rating with its item and verdict only. The runner records a call before the input schema
-// checks it, so a malformed input keeps no free text either: no other key, and no rating that is
-// not an object.
+// Each rating with an item that is an ID and a known verdict, and nothing else. The runner records
+// a call before the input schema checks it, so a malformed value, such as text in a verdict or an
+// item, is dropped rather than kept in the call's record, which a forget never reaches.
 function buildRecordedInput(input: JSONObject): JSONObject {
   const ratings = input['ratings'];
 
@@ -89,14 +89,30 @@ function isJSONArray(value: JSONValue | undefined): value is readonly JSONValue[
   return Array.isArray(value);
 }
 
+function isJSONObject(value: JSONValue): value is JSONObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function toRecordedRating(rating: JSONValue): readonly JSONObject[] {
-  if (typeof rating !== 'object' || rating === null || Array.isArray(rating)) {
+  if (!isJSONObject(rating)) {
     return [];
   }
-  const kept = Object.entries(rating).filter(([key]) => key === 'item' || key === 'verdict');
+  const item = rating['item'];
+  const verdict = rating['verdict'];
 
-  return [Object.fromEntries(kept)];
+  return [
+    {
+      ...(typeof item === 'string' && itemIDPattern.test(item) ? { item } : {}),
+      ...(typeof verdict === 'string' && verdicts.has(verdict) ? { verdict } : {}),
+    },
+  ];
 }
+
+// a short ID, a lowercase letter then 9 lowercase letters or digits, or an item's UUID
+const itemIDPattern =
+  /^(?:[a-z][a-z0-9]{9}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/u;
+
+const verdicts: ReadonlySet<string> = new Set(['helpful', 'noise', 'misleading']);
 
 interface RateCall {
   readonly call: ToolCall;

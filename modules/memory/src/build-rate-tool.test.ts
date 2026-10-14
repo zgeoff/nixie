@@ -208,14 +208,18 @@ test("it keeps the note out of the call's record", async () => {
   });
 });
 
-test('it answers a malformed call as invalid, and records it with no note and no other key', async () => {
+test('it answers a malformed call as invalid, and records only the IDs and verdicts it holds', async () => {
   const ctx = await setupTest({ ownerName: null, agentName: null });
 
   const result = await runToolCall(
     {
       tool: 'memory.rate',
       input: {
-        ratings: [{ item: 'item-a', verdict: 'great', note: 'a stray note' }, 'a stray line'],
+        ratings: [
+          { item: 'k3x9m2p7qa', verdict: { note: 'a hidden note' }, note: 'a stray note' },
+          { item: 'the tram stopped in May', verdict: 'noise' },
+          'a stray line',
+        ],
         aside: 'a stray key',
       },
       toolUseID: null,
@@ -233,7 +237,7 @@ test('it answers a malformed call as invalid, and records it with no note and no
   expect(result).toMatchObject({ isError: true });
   expect(called?.record.erasable).toStrictEqual({
     status: 'readable',
-    fields: { input: { ratings: [{ item: 'item-a', verdict: 'great' }] } },
+    fields: { input: { ratings: [{ item: 'k3x9m2p7qa' }, { verdict: 'noise' }] } },
   });
 });
 
