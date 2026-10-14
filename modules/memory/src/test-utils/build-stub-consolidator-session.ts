@@ -11,14 +11,15 @@ export interface StubConsolidatorSession {
 }
 
 // A stand-in for the consolidator's model session and the staging its tools write to. Each session
-// stages the one diff into the run the step opened, as a model that calls memory.consolidate once
-// does, and ends with fixed token counts.
+// stages the one diff, with the summary when one is given, into the run the step opened, as a
+// model that calls memory.consolidate once does, and ends with fixed token counts.
 export function buildStubConsolidatorSession(
   requests: readonly ChangeRequest[],
+  summary?: string,
 ): StubConsolidatorSession {
   const staging = createConsolidationStaging();
   const runSession = mock(() => {
-    staging.stage(requests);
+    staging.stage(requests, summary);
     return Promise.resolve({
       inputTokens: 400,
       outputTokens: 60,

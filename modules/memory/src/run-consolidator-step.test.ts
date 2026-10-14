@@ -130,6 +130,74 @@ test('it shows the session the persona, the rules and every active item, and no 
   });
 });
 
+test('it keeps the summary of a conflict it left alone, sealed under the key of every item the session was shown', async () => {
+  const ctx = await setupTest();
+  const [oat, black, bees] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
+    createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
+    createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the roof' }),
+  ]);
+
+  const result = await ctx.runStep(
+    buildStubConsolidatorSession(
+      [],
+      'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+    ),
+  );
+
+  const diff = await ctx.memory.store.consolidations.readPending();
+
+  expect(result.records.map((record) => record.kind)).toStrictEqual([
+    'memory.consolidation_proposed',
+    'memory.consolidation_summarized',
+  ]);
+  expect(JSON.stringify(result.records)).not.toInclude('oat milk');
+  expect(diff).toMatchObject({
+    changes: [],
+    summary: {
+      text: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
+      itemIDs: expect.toIncludeSameMembers([oat.itemID, black.itemID, bees.itemID]),
+    },
+  });
+});
+
+test('it shows no diff once a forget erases the summary of a run that proposed no change', async () => {
+  const ctx = await setupTest();
+  const [oat] = await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
+    createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
+  ]);
+
+  await ctx.runStep(
+    buildStubConsolidatorSession([], 'Two items about coffee conflict and stay unchanged.'),
+  );
+  await ctx.memory.store.forget({
+    target: oat,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const diff = await ctx.memory.store.consolidations.readPending();
+
+  expect(diff).toBeNull();
+});
+
+test('it lets the summary of a run that proposed no change lapse at the lapse time', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
+    createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
+  ]);
+  await ctx.runStep(
+    buildStubConsolidatorSession([], 'Two items about coffee conflict and stay unchanged.'),
+  );
+  ctx.clock.advance(7 * 24 * 60 * 60 * 1000);
+
+  const diff = await ctx.memory.store.consolidations.readPending();
+
+  expect(diff).toBeNull();
+});
+
 test('it records a run with no session when fewer than 2 items are active', async () => {
   const ctx = await setupTest();
 

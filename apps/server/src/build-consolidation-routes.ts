@@ -52,9 +52,9 @@ export function buildConsolidationRoutes(readMemory: ReadMemory) {
 // reaches, so its approval record names the host as the identity that answered.
 const hostIdentityID = 'host';
 
-// What a host command shows of the diff: each change with every input's text at the version read
-// and whether it still stands there, its new text, its reason, the hash an answer binds to, and
-// beside it the conversation's comment and the short ID the conversation names it by.
+// What a host command shows of the diff: each change with its inputs at the versions read, its
+// new text, reason, answer hash, comment and short ID, and the summary the consolidator left for
+// you, which a run with no change shows on its own.
 function buildDiffEntry(diff: ConsolidationDiff) {
   return {
     diffID: diff.diffID,
@@ -75,6 +75,7 @@ function buildDiffEntry(diff: ConsolidationDiff) {
           ? null
           : { text: change.comment.text, at: new Date(change.comment.at).toISOString() },
     })),
+    summary: diff.summary?.text ?? null,
   };
 }
 

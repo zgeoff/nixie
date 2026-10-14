@@ -4,14 +4,15 @@ import { LeaseLostError } from '@heynixie/tasks';
 import type { StagedChange } from './consolidation-types';
 import type { ConsolidatorParts } from './consolidator-parts';
 import { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
+import type { PlannedSummary } from './plan-diff-record';
 import { planDiffRecord } from './plan-diff-record';
 import { readConsolidationItems } from './read-consolidation-items';
 import { renderConsolidatorPrompt } from './render-consolidator-prompt';
 import { renderConsolidatorSystemPrompt } from './render-consolidator-system-prompt';
 
 // Runs one step of the memory consolidator: once a period has passed and no change still waits,
-// it runs one session over the active items and commits the diff as one record with the step. A
-// failed run waits the retry time and never throws, so the task never fails.
+// it runs one session and commits the diff and its summary with the step. A failed run waits the
+// retry time and never throws, so the task never fails.
 export async function runConsolidatorStep(
   parts: ConsolidatorParts,
   input: StepInput,
@@ -49,14 +50,14 @@ async function runConsolidation(
     return { next: 'wait', records: [], timers: [{ dueAt: wait }] };
   }
   const diff = await runSession(parts, signal);
-  const record = await planDiffRecord(parts.context.log, {
+  const records = await planDiffRecord(parts.context.log, {
     ...diff,
     now,
     lapseMs: parts.config.lapseMs,
     definitions: parts.context.definitions(),
   });
 
-  return { next: 'wait', records: [record], timers: [{ dueAt: now + parts.config.periodMs }] };
+  return { next: 'wait', records, timers: [{ dueAt: now + parts.config.periodMs }] };
 }
 
 // when the next run is due, or null when it is due now; a pending change holds it until it lapses
@@ -76,6 +77,7 @@ interface SessionDiff {
   readonly changes: readonly StagedChange[];
   readonly model: string | null;
   readonly shownItems: number;
+  readonly summary: PlannedSummary | null;
 }
 
 // Fewer than 2 active items leave nothing to merge and little to tidy, so that run needs no
@@ -87,7 +89,7 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
   });
 
   if (listed.items.length < 2) {
-    return { changes: [], model: null, shownItems: listed.items.length };
+    return { changes: [], model: null, shownItems: listed.items.length, summary: null };
   }
   const staged = parts.staging.open(
     new Map(
@@ -116,11 +118,26 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
       signal,
     });
 
-    const shownItems = staged.countShown();
-
-    return { changes: staged.close() ?? [], model: parts.model.model, shownItems };
+    return readSessionDiff(staged, parts.model.model);
   } catch (error) {
     staged.close();
     throw error;
   }
+}
+
+// what the session staged: its diff, how many items it was shown, and its summary with every item
+// it was shown, whose keys seal it
+function readSessionDiff(
+  staged: ReturnType<ConsolidatorParts['staging']['open']>,
+  model: string,
+): SessionDiff {
+  const shown = staged.readShownItemIDs();
+  const text = staged.readSummary();
+
+  return {
+    changes: staged.close() ?? [],
+    model,
+    shownItems: shown.length,
+    summary: text === null ? null : { text, itemIDs: shown },
+  };
 }

@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { consolidationConfigSchema } from '@heynixie/memory';
+import { buildMemoryTools, consolidationConfigSchema } from '@heynixie/memory';
 import { createMemoryItem } from '@heynixie/memory/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import type { ScriptedReply } from '@heynixie/testing';
@@ -202,6 +202,46 @@ test('it carries an idiom word for word, a pronoun through a merge, and a summar
   expect(
     diff?.changes.flatMap((change) => change.inputs.map((input) => input.itemID)),
   ).not.toIncludeAnyMembers([oat.itemID, black.itemID]);
+  expect(diff?.summary?.text).toBe(
+    'Two items conflict and stay unchanged: one says Marisol takes oat milk in her coffee, and the other says she only drinks it black.',
+  );
+}, 60_000);
+
+test('it leaves the summary of a run that proposed no change for your review and for memory.diff', async () => {
+  const ctx = await setupTest();
+  const summary = 'Two items about coffee conflict, so I left both: oat milk, or black?';
+
+  await Promise.all([
+    createMemoryItem(ctx.store, { text: 'Takes oat milk in coffee' }),
+    createMemoryItem(ctx.store, { text: 'Takes coffee black with no milk' }),
+  ]);
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__memory_consolidate', input: { changes: [], summary } } },
+    { text: 'done' },
+  );
+  await ctx.run();
+
+  const pending = await ctx.store.consolidations.readPending();
+  const conversation = await buildMemoryTools(ctx.store, {
+    clock: { now: () => Date.now() },
+    ownerName: 'Marisol',
+    defaultZone: 'UTC',
+  })
+    .find((definition) => definition.name === 'memory.diff')
+    ?.run(
+      { callID: 'call-1', tool: 'memory.diff', input: {}, toolUseID: null },
+      {
+        run: {
+          runID: 'run-1',
+          thread: 'conversation',
+          tools: ['memory.diff'],
+          model: { model: 'claude-test-1', profile: 'tidy-direct' },
+        },
+      },
+    );
+
+  expect(pending).toMatchObject({ changes: [], summary: { text: summary } });
+  expect(conversation).toMatchObject({ status: 'ok', result: { changes: [], summary } });
 }, 60_000);
 
 // the item the invented diff rewrites, and the items it merges

@@ -41,22 +41,29 @@ const diffOutput = {
         required: ['changeID', 'kind', 'inputs', 'reason'],
       },
     },
+    summary: {
+      type: 'string',
+      description:
+        'what the consolidator told the owner about the diff, such as items it left alone ' +
+        'because they conflict',
+    },
   },
   required: ['changes'],
   additionalProperties: false,
 };
 
-// Builds memory.diff, which declares read and shows each pending consolidation change with its
-// reason, its inputs and the conversation's comment, and never answers one. The inputs hold every
-// source memory holds, so the changes take the most cautious one.
+// Builds memory.diff, which declares read and shows each pending change with its reason, inputs
+// and comment, and the consolidator's summary, and never answers one. The inputs hold every source
+// memory holds, so the changes and the summary written from them take the most cautious one.
 export function buildDiffTool(memory: DiffToolStore): ToolDefinition {
   return {
     name: 'memory.diff',
     description:
       "Shows the weekly memory consolidation's pending diff before the owner reviews it: each " +
       'change, a merge, a rewrite or a retirement, with its ID, the items it reads at their ' +
-      'versions, the text it would write, its reason and the comment you left on it. An empty ' +
-      'list means no diff waits. Read it when the owner asks about the consolidation, and check ' +
+      'versions, the text it would write, its reason and the comment you left on it, and the ' +
+      "consolidator's summary for the owner, such as items it left alone because they " +
+      'conflict. An empty list with no summary means no diff waits. Read it when the owner asks about the consolidation, and check ' +
       'each rewrite and merge against what you know of the owner: leave a comment with ' +
       'memory.comment where a change loses a detail, a tone or a joke. Only the owner approves ' +
       'or rejects a change.',
@@ -67,7 +74,7 @@ export function buildDiffTool(memory: DiffToolStore): ToolDefinition {
       destinations: [],
       amount: null,
       content: [],
-      results: { proposedAt: 'owner_data', changes: 'untrusted' },
+      results: { proposedAt: 'owner_data', changes: 'untrusted', summary: 'untrusted' },
     },
     execution: 'direct',
     run: async () => {
@@ -86,6 +93,7 @@ export function buildDiffTool(memory: DiffToolStore): ToolDefinition {
         result: {
           proposedAt: formatProposedAt(diff.createdAt),
           changes: diff.changes.map((change) => toChangeJSON(change, shortIDs)),
+          ...(diff.summary === null ? {} : { summary: diff.summary.text }),
         },
         record: { changes: diff.changes.map((change) => ({ changeID: change.changeID })) },
       };

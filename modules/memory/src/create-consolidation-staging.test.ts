@@ -158,7 +158,7 @@ test('it binds a change to the version a recall showed the session', () => {
       source: 'owner',
     },
   ]);
-  expect(run.countShown()).toBe(1);
+  expect(run.readShownItemIDs()).toHaveLength(1);
 });
 
 test('it stages an empty diff when nothing needs tidying', () => {

@@ -13,24 +13,26 @@ import type {
 import { decodeChangeComment } from './decode-change-comment';
 import { decodeChangeText } from './decode-change-text';
 import { parseChangeInputs } from './parse-change-inputs';
+import { readConsolidationSummary } from './read-consolidation-summary';
 import { readVersionTexts } from './read-version-texts';
 import type { MemoryTables, StoreParts, VersionRef } from './types';
 
-// Reads the diff whose changes wait for your answer, in proposal order: each change's text and the
-// conversation's comment opened, each input's text at the version read. A change whose first input
-// was forgotten has no key left, so it reads as nothing and drops out.
+// Reads the diff whose changes wait for your answer, opened, with each input at the version read
+// and the session's summary. A change whose first input was forgotten drops out. With no change
+// waiting, it reads the last run's summary alone until it lapses.
 export async function readPendingDiff(parts: StoreParts): Promise<ConsolidationDiff | null> {
   const db = parts.context.log.writer.db.$extendTables<ConsolidationTables & MemoryTables>();
+  const now = parts.context.gate.clock.now();
   const first = await db
     .selectFrom('memory_consolidation_changes')
     .select('diff_id')
     .where('status', '=', 'pending')
-    .where('lapse_at', '>', parts.context.gate.clock.now())
+    .where('lapse_at', '>', now)
     .orderBy('created_sequence')
     .executeTakeFirst();
 
   if (first === undefined) {
-    return null;
+    return readSummaryOnlyDiff(parts, now);
   }
   const diff = await db
     .selectFrom('memory_consolidations')
@@ -42,12 +44,37 @@ export async function readPendingDiff(parts: StoreParts): Promise<ConsolidationD
     .selectAll()
     .where('diff_id', '=', first.diff_id)
     .where('status', '=', 'pending')
-    .where('lapse_at', '>', parts.context.gate.clock.now())
+    .where('lapse_at', '>', now)
     .orderBy('position')
     .execute();
   const changes = await readChanges(parts, rows);
 
-  return { diffID: diff.diff_id, model: diff.model, createdAt: diff.created_at, changes };
+  return {
+    diffID: diff.diff_id,
+    model: diff.model,
+    createdAt: diff.created_at,
+    changes,
+    summary: await readConsolidationSummary(parts, diff, now),
+  };
+}
+
+// the last run as a diff with no changes, while its summary is readable and has not lapsed
+async function readSummaryOnlyDiff(
+  parts: StoreParts,
+  now: number,
+): Promise<ConsolidationDiff | null> {
+  const last = await parts.context.log.writer.db
+    .$extendTables<ConsolidationTables>()
+    .selectFrom('memory_consolidations')
+    .selectAll()
+    .orderBy('sequence', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+  const summary = last === undefined ? null : await readConsolidationSummary(parts, last, now);
+
+  return last === undefined || summary === null
+    ? null
+    : { diffID: last.diff_id, model: last.model, createdAt: last.created_at, changes: [], summary };
 }
 
 async function readChanges(

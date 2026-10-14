@@ -26,6 +26,17 @@ const proposed = z
   })
   .readonly();
 
+const share = z.strictObject({ itemID: z.string(), sealed: z.base64() }).readonly();
+
+const summarized = z
+  .strictObject({
+    diffID: z.string(),
+    sealed: z.base64(),
+    shares: z.array(share).min(1).readonly(),
+    lapseAt: z.int(),
+  })
+  .readonly();
+
 const approved = z
   .strictObject({
     changeID: z.string(),
@@ -43,10 +54,12 @@ const commented = z
   .strictObject({ changeID: z.string(), runID: z.string(), sealed: z.base64() })
   .readonly();
 
-// The records of memory consolidation: a run's diff, then your approval or rejection of each of
-// its changes, a change's lapse, or the conversation's comment on a change.
+// The records of memory consolidation: a run's diff and the summary its session left for you, then
+// your approval or rejection of each of its changes, a change's lapse, or the conversation's comment
+// on a change.
 export type ConsolidationRecord =
   | ({ readonly kind: 'memory.consolidation_proposed' } & z.infer<typeof proposed>)
+  | ({ readonly kind: 'memory.consolidation_summarized' } & z.infer<typeof summarized>)
   | ({ readonly kind: 'memory.consolidation_approved' } & z.infer<typeof approved>)
   | ({ readonly kind: 'memory.consolidation_rejected' } & z.infer<typeof rejected>)
   | ({ readonly kind: 'memory.consolidation_lapsed' } & z.infer<typeof lapsed>)
@@ -58,6 +71,9 @@ export type ConsolidationRecord =
 export function parseConsolidationRecord(record: EnvelopeRecord): ConsolidationRecord | null {
   if (record.kind === 'memory.consolidation_proposed') {
     return { kind: record.kind, ...proposed.parse(record.payload) };
+  }
+  if (record.kind === 'memory.consolidation_summarized') {
+    return { kind: record.kind, ...summarized.parse(record.payload) };
   }
   if (record.kind === 'memory.consolidation_commented') {
     return { kind: record.kind, ...commented.parse(record.payload) };

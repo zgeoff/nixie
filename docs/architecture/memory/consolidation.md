@@ -43,8 +43,7 @@ so the rules allow a rewrite only where a reader with no context could not tell 
 The one rewrite for consistency alone swaps "the owner" for the user's name. A rewrite or a merge
 keeps the item's own words, names and pronouns, and the model checks each item against its quote and
 restores the quote's wording where the item drifted. The model never merges items that conflict: it
-leaves both and names the conflict in the diff's summary. The staging area keeps that summary beside
-the diff, and the diff's record does not hold it.
+leaves both and names the conflict in the diff's summary, which [the summary](#the-summary) covers.
 
 `memory.consolidate` stages the run's one diff. The staging area refuses the whole call, with the
 reason going back to the model, in these cases:
@@ -76,6 +75,27 @@ covers the kind, the inputs at their versions and the text, and every answer mus
 salt sealed beside the text goes into the hash, so the hash reveals nothing about the text once a
 forget makes the text unreadable.
 
+## The summary
+
+The session's summary tells the user what the diff left alone and why, such as 2 items that
+conflict. The step commits it as a `memory.consolidation_summarized` record right after the diff's
+record, and the run's row keeps it. It is a record of its own because the release before reads the
+diff's record as a strict shape and fails a rebuild on one more key, and it skips a record of a kind
+it does not know.
+
+The summary can hold the words of any item the session read, and it may name an item by its text
+instead of its short ID. It is therefore sealed so that a forget of any item the session was shown
+erases it. The step seals the text under a fresh key and splits that key into one share per shown
+item, so the exclusive or of every share gives the key. It seals each share under its item's key. A
+forget destroys one share, the other shares reveal nothing of the key, and no copy of the summary
+opens again. A summary whose shown items include one that lost its key between the read and the
+commit drops out, as a change does.
+
+The summary lapses with the diff's changes. While a change waits, the pending diff shows the summary
+beside it. A run that proposed no change still shows its summary as a diff with no changes, until
+the summary lapses or a later run replaces it, so a conflict the session named always reaches the
+user.
+
 ## Answers
 
 The user answers a change by approving it, rejecting it, or letting it lapse. An approval applies
@@ -97,20 +117,22 @@ apply must not hold the next run.
 The control socket serves the pending diff and takes approvals and rejections, with `host` as the
 identity that answers. A host command reads the diff with each input at the version its change read,
 and the user approves the whole diff, approves single changes, or rejects one change. Each change
-shows the conversation's comment beside it. The web view for a diff is not built.
+shows the conversation's comment beside it, and the diff shows the session's summary. The web view
+for a diff is not built.
 
 ## The conversation's comments
 
 The consolidator's session reads the items without the conversation's context, so it can flatten a
 rewrite that the conversation would catch, such as one that drops a joke. Before the user reviews,
 the conversation's model reads the pending diff through `memory.diff`, which shows each change by
-its short ID with its reason and its inputs, and leaves at most one comment per change through
-`memory.comment`. A second comment on a change replaces the first.
+its short ID with its reason and its inputs, and the session's summary, and leaves at most one
+comment per change through `memory.comment`. A second comment on a change replaces the first.
 
 The model reads the diff under the delivery lock that recall takes, so a forget either begins after
 the read or the read finds the item forgetting. A change with any input that is forgetting or
 forgotten drops out of what the model reads, because a merged or rewritten text can hold that
-input's words. The host command reads the diff without that filter.
+input's words. The summary drops out of what the model reads in the same way once any item it is
+sealed under is forgetting or forgotten. The host command reads the diff without that filter.
 
 A comment answers nothing. It writes one `memory.consolidation_commented` record, and the change
 stays pending under the same action hash. The model never sees an action hash, and no conversation

@@ -44,8 +44,8 @@ interface ConsolidationHandle {
   // staged none
   readonly close: () => readonly StagedChange[] | null;
 
-  // how many items the session was shown, in its prompt or through a recall
-  readonly countShown: () => number;
+  // the item IDs of every item the session was shown, in its prompt or through a recall
+  readonly readShownItemIDs: () => readonly string[];
 
   // the summary staged with the diff, or null when the session gave none
   readonly readSummary: () => string | null;
@@ -68,7 +68,7 @@ export function createConsolidationStaging(): ConsolidationStaging {
           }
           return opened.diff;
         },
-        countShown: () => opened.shown.size,
+        readShownItemIDs: () => [...opened.shown.keys()],
         readSummary: () => opened.summary,
       };
     },

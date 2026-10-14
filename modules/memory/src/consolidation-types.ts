@@ -71,12 +71,23 @@ export interface ChangeComment {
   readonly at: number;
 }
 
-// The pending changes of one consolidator run, in the order the run proposed them.
+// The pending changes of one consolidator run, in the order the run proposed them, and the summary
+// its session left for you.
 export interface ConsolidationDiff {
   readonly diffID: string;
   readonly model: string | null;
   readonly createdAt: number;
   readonly changes: readonly ConsolidationChange[];
+
+  // null when the session left none, or once a forget made it unreadable
+  readonly summary: ConsolidationSummary | null;
+}
+
+// What a run's session told you about its diff, such as the 2 items it left alone because they
+// conflict, and the items whose keys it is sealed under: every item the session was shown.
+export interface ConsolidationSummary {
+  readonly text: string;
+  readonly itemIDs: readonly string[];
 }
 
 // Your answer to one change, bound to the action hash your review showed.
@@ -148,6 +159,11 @@ interface ConsolidationTable {
   readonly shown_items: number;
   readonly sequence: number;
   readonly created_at: number;
+
+  // the summary sealed under a fresh key, and JSON of each shown item's sealed share of that key
+  readonly summary: string | null;
+  readonly summary_shares: string | null;
+  readonly summary_lapse_at: number | null;
 }
 
 interface ConsolidationChangeTable {
