@@ -1,11 +1,14 @@
-import type { AnswerQuoteSource, StartedMemoryStore } from '@heynixie/memory';
-import { buildProposalAnswerKind } from '@heynixie/memory';
-import type { TurnNote } from '@heynixie/models';
-import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/models';
+import type { StartedMemoryStore } from '@heynixie/memory';
+import {
+  buildModelStatus,
+  buildStartStatus,
+  buildStartTimeStatus,
+  buildStatusRegistry,
+} from '@heynixie/models';
 import type { RunStep } from '@heynixie/tasks';
-import { buildRestartKind } from './build-restart-kind';
+import { buildVersionStatus } from './build-version-status';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';
-import { readTurnNotes } from './read-turn-notes';
+import { makeTurnNoteReader } from './make-turn-note-reader';
 import { startConversation } from './start-conversation';
 import type { ServerParts } from './types';
 
@@ -33,7 +36,21 @@ export async function startConversationImp(
     toolNames: parts.tools.definitions.map((definition) => definition.name),
     image: parts.images.conversation.name,
     getSystemPrompt: () => parts.inForce.read()?.persona ?? '',
-    readTurnNote: makeTurnNoteReader(parts, memory),
+    readTurnNote: makeTurnNoteReader(
+      {
+        log: parts.context.log,
+        clock: parts.context.clock,
+        ownerName: parts.config.owner.name,
+        defaultZone: parts.config.time.default_zone,
+      },
+      memory,
+    ),
+    status: buildStatusRegistry([
+      buildStartStatus(),
+      buildStartTimeStatus(),
+      buildVersionStatus(),
+      buildModelStatus(),
+    ]),
     memory,
     memorySettings: {
       ...parts.config.memory,
@@ -50,34 +67,4 @@ export async function startConversationImp(
     runStep: makeConversationReadinessStep(parts.state, conversation.runStep),
     cleanupSessions: conversation.cleanupSessions,
   };
-}
-
-// The note before each turn: the memory changes and the events, whose kinds read memory through the
-// getter.
-function makeTurnNoteReader(
-  parts: ServerParts,
-  memory: () => StartedMemoryStore,
-): () => Promise<TurnNote> {
-  const log = parts.context.log;
-  const store: AnswerQuoteSource = {
-    recall: (request) => memory().recall(request),
-    proposals: {
-      readRejectedEdits: (proposalIDs) => memory().proposals.readRejectedEdits(proposalIDs),
-    },
-  };
-  const events = buildEventRegistry([
-    buildProposalAnswerKind(log, store),
-    buildRestartKind(log),
-    buildRetriedTurnKind(log),
-  ]);
-
-  return () =>
-    readTurnNotes({
-      log,
-      store,
-      events,
-      clock: parts.context.clock,
-      ownerName: parts.config.owner.name,
-      defaultZone: parts.config.time.default_zone,
-    });
 }

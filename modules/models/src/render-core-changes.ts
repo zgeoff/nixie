@@ -1,12 +1,18 @@
-import type { MemoryItem, MemoryRef } from './types';
+import { renderMemoryItem } from './render-memory-item';
+import type { MemoryItem, MemoryLineOptions, MemoryRef } from './types';
+
+// How the change note renders: each item's line options, and the short ID of each unpinned item.
+export interface CoreChangeOptions extends MemoryLineOptions {
+  readonly unpinnedShortIDs: ReadonlyMap<string, string>;
+}
 
 // Renders the body of the note on the turn after the pinned core changed, so the model stops
-// repeating an old value. Each item shows by its short ID, an unpinned one by its entry in shortIDs.
-// It renders nothing before the first turn, or when the core is unchanged.
+// repeating an old value. A pinned or changed item shows whole, with the line that says where it came
+// from; an unpinned one shows by its short ID. It renders nothing with no last turn, or no change.
 export function renderCoreChanges(
   previous: readonly MemoryRef[] | null,
   current: readonly MemoryItem[],
-  shortIDs: ReadonlyMap<string, string>,
+  options: CoreChangeOptions,
 ): string | null {
   if (previous === null) {
     return null;
@@ -18,20 +24,32 @@ export function renderCoreChanges(
       const version = before.get(item.itemID);
 
       if (version === undefined) {
-        return [`- Pinned [${item.shortID}]: ${item.text}`];
+        return renderChangedItem('Pinned', item, options);
       }
-      return version === item.version ? [] : [`- Changed [${item.shortID}]: ${item.text}`];
+      return version === item.version ? [] : renderChangedItem('Changed', item, options);
     }),
     ...previous
       .filter((ref) => !now.has(ref.itemID))
-      .map((ref) => `- Unpinned [${shortIDs.get(ref.itemID) ?? ref.itemID}]`),
+      .map((ref) => `- Unpinned [${options.unpinnedShortIDs.get(ref.itemID) ?? ref.itemID}]`),
   ];
 
   if (lines.length === 0) {
     return null;
   }
   return [
-    'The pinned memory changed since your last turn, and the system prompt holds the current items. Where these differ from anything said earlier, these hold.',
+    'The pinned memory changed since your last turn. Where these differ from the pinned memory this session opened with, or from anything said earlier, these hold.',
     ...lines,
   ].join('\n');
+}
+
+// the item as the pinned memory renders it, under a line that names its change
+function renderChangedItem(
+  label: 'Pinned' | 'Changed',
+  item: MemoryItem,
+  options: MemoryLineOptions,
+): readonly string[] {
+  return [
+    `- ${label} [${item.shortID}]:`,
+    ...renderMemoryItem(item, options).map((line) => `  ${line}`),
+  ];
 }

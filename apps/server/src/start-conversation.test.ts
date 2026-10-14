@@ -103,21 +103,25 @@ test('it runs each turn in the conversation guest on the role profile and resume
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
 }, 30_000);
 
-test('it puts a pinned item in the next turn system prompt with the line that says where it came from, with the change note before the message', async () => {
+test('it opens a new session with a pinned item and the line that says where it came from in the first message, and leaves it out of the system prompt', async () => {
   const ctx = await setupTest();
-  const [runner] = await Promise.all([
+  const [item, runner] = await Promise.all([
+    ctx.memory.remember({
+      text: 'Goes by Sam',
+      isPinned: true,
+      provenance: {
+        origin: 'owner',
+        source: 'owner',
+        taskID: null,
+        proposalID: null,
+        checks: null,
+      },
+    }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  ctx.model.addReplies({ text: 'Hello.' }, { text: 'You go by Sam.' });
-  await sendTestMessage(ctx.context, runner.runStep, 'Hi.');
-
-  const item = await ctx.memory.remember({
-    text: 'Goes by Sam',
-    isPinned: true,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
+  ctx.model.addReplies({ text: 'You go by Sam.' });
 
   const [shortIDs] = await Promise.all([
     ctx.memory.readShortIDs([item.itemID]),
@@ -126,15 +130,44 @@ test('it puts a pinned item in the next turn system prompt with the line that sa
   const request = ctx.readLastRequest();
   const shortID = String(shortIDs.get(item.itemID));
 
+  expect(JSON.stringify(request?.system)).not.toInclude('Goes by Sam');
+
   // the item's day is the day the test runs, so the line's day reads as a placeholder
   expect(
-    JSON.stringify(request?.system).replace(/ v1 · \d{1,2} \w{3} · /u, ' v1 · <day> · '),
-  ).toInclude(`- Goes by Sam\\n  ${shortID} v1 · <day> · the owner said this\\n</pinned-memory>`);
-  expect(JSON.stringify(request?.messages)).toMatch(
+    JSON.stringify(request?.messages).replace(/ v1 · \d{1,2} \w{3} · /u, ' v1 · <day> · '),
+  ).toMatch(
     new RegExp(
-      String.raw`<system-message type=\\"pinned-memory-changes\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- Pinned \[${shortID}\]: Goes by Sam\\n<\/system-message id=\\"\k<blockID>\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?`,
+      String.raw`^\[\{"role":"user","content":"<system-message type=\\"pinned-memory\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- Goes by Sam\\n  ${shortID} v1 · <day> · the owner said this\\n<\/system-message id=\\"\k<blockID>\\">\\n\\n<system-message type=\\"status\\"`,
       'u',
     ),
+  );
+}, 30_000);
+
+test('it keeps the system prompt the same bytes when a pinned item is edited during a session, and sends the change note before the next message', async () => {
+  const ctx = await setupTest();
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+  const [item, runner] = await Promise.all([
+    ctx.memory.remember({ text: 'Goes by Sam', isPinned: true, provenance }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  ctx.model.addReplies({ text: 'Hello, Sam.' }, { text: 'You go by Sasha now.' });
+  await sendTestMessage(ctx.context, runner.runStep, 'Hi.');
+
+  const before = JSON.stringify(ctx.readLastRequest()?.system);
+  await ctx.memory.remember({ text: 'Goes by Sasha', target: item, provenance });
+  await sendTestMessage(ctx.context, runner.runStep, 'What do I go by?');
+
+  expect(JSON.stringify(ctx.readLastRequest()?.system)).toBe(before);
+  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toMatch(
+    /<system-message type=\\"pinned-memory-changes\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- Changed \[(?<shortID>[\da-z]+)\]:\\n  - Goes by Sasha\\n    \k<shortID> v2 · [^\\]+ · the owner said this\\n<\/system-message id=\\"\k<blockID>\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
   );
 }, 30_000);
 
@@ -159,13 +192,14 @@ test('it rebuilds the session with the recent turns once a replaced sandbox has 
 
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toSatisfy(
     (messages: string) =>
-      messages.includes('<conversation-history>') &&
+      messages.includes(String.raw`<system-message type=\"recent-turns\"`) &&
       messages.includes(String.raw`] owner: Say a fruit.\n[`) &&
-      messages.includes(String.raw`] nixie: APPLE\n</conversation-history>\n\n[`) &&
+      messages.includes(String.raw`] nixie: APPLE\n</system-message id=\"`) &&
       messages.includes(String.raw`, UTC] Another.`),
   );
-  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toMatchObject([
-    { payload: { reason: 'missing', recentRecords: 2 } },
+  expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
+    { payload: { kind: 'first' } },
+    { payload: { kind: 'rebuild', reason: 'lost', recentRecords: 2 } },
   ]);
 }, 30_000);
 
@@ -232,8 +266,9 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
   expect(JSON.stringify(ctx.readLastRequest())).toSatisfy(
     (request: string) => request.includes('Thanks.') && !request.includes('blue flowerpot'),
   );
-  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toMatchObject([
-    { payload: { reason: 'invalidated' } },
+  expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
+    { payload: { kind: 'first' } },
+    { payload: { kind: 'rebuild', reason: 'forget' } },
   ]);
 }, 30_000);
 
@@ -290,7 +325,9 @@ test('it resumes the session on a sandbox that a new image replaced between two 
   const records = await ctx.readRecords();
 
   expect(records.filter((record) => record.kind === 'sandbox.destroyed')).toHaveLength(1);
-  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toStrictEqual([]);
+  expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
+    { payload: { kind: 'first' } },
+  ]);
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
 }, 30_000);
 
@@ -316,7 +353,9 @@ test('it resumes the session on a sandbox that replaced a retired one between tw
       .filter((record) => record.kind === 'sandbox.destroyed')
       .map((record) => record.payload['sandboxID']),
   ).toStrictEqual([...retired]);
-  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toStrictEqual([]);
+  expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
+    { payload: { kind: 'first' } },
+  ]);
 }, 30_000);
 
 test('it takes the session into a replacement that a stopped start left beside the old sandbox', async () => {
@@ -343,7 +382,9 @@ test('it takes the session into a replacement that a stopped start left beside t
 
   const records = await ctx.readRecords();
 
-  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toStrictEqual([]);
+  expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
+    { payload: { kind: 'first' } },
+  ]);
 }, 30_000);
 
 test('it wakes a sleeping sandbox to take its session before it replaces it', async () => {
@@ -395,7 +436,11 @@ test.skipIf(isRoot)(
       toSandboxID: expect.toBeString(),
       reason: expect.toInclude('EACCES'),
     });
-    expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toHaveLength(1);
+    expect(
+      records.filter(
+        (record) => record.kind === 'model.session_opened' && record.payload['kind'] === 'rebuild',
+      ),
+    ).toHaveLength(1);
   },
   30_000,
 );
@@ -423,7 +468,11 @@ test('it starts a fresh session on the new sandbox when the old sandbox no longe
     toSandboxID: expect.toBeString(),
     reason: expect.toInclude('holds no transcript'),
   });
-  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toHaveLength(1);
+  expect(
+    records.filter(
+      (record) => record.kind === 'model.session_opened' && record.payload['kind'] === 'rebuild',
+    ),
+  ).toHaveLength(1);
 }, 30_000);
 
 test('it gives the next best match the slot of an item the session already holds', async () => {
@@ -537,8 +586,9 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
 
   const records = await ctx.readRecords();
 
-  expect(records.filter((record) => record.kind === 'model.session_rebuilt')).toMatchObject([
-    { payload: { reason: 'missing' } },
+  expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
+    { payload: { kind: 'first' } },
+    { payload: { kind: 'rebuild', reason: 'lost' } },
   ]);
   expect(
     records

@@ -409,7 +409,7 @@ test('it sends each inbox record with its sequence as the message uuid and at th
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^This is a new session; earlier history is in the event log\.\n\n\[#2 · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
+        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n\[#2 · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
           text,
         ),
       ),
@@ -466,9 +466,9 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
       uuid: expect.toBeString(),
       text: expect.toSatisfy(
         (text: string) =>
-          text.startsWith('Your context was rebuilt; earlier history is in the event log.') &&
+          text.includes('- Start: a rebuild, because the earlier session was lost.') &&
           text.includes('] owner: Hi.\n[') &&
-          text.includes('] nixie: Hello.\n</conversation-history>') &&
+          text.includes('] nixie: Hello.\n</system-message') &&
           /\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
       ),
     },
@@ -510,7 +510,7 @@ test('it gives a resumed session your next message after its send time, with no 
   });
 });
 
-test('it records the rebuild and the session it replaced when the guest has lost the session', async () => {
+test('it records the opening and the session it replaced when the guest has lost the session', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -542,22 +542,25 @@ test('it records the rebuild and the session it replaced when the guest has lost
   await ctx.sendMessage(runner, 'Hi.');
   await ctx.sendMessage(runner, 'Hi again.');
 
-  const records = await ctx.readKinds('model.session_rebuilt');
+  const records = await ctx.readKinds('model.session_opened');
 
   expect(records).toMatchObject([
+    { payload: { kind: 'first' } },
     {
       payload: {
         model: 'claude-test-1',
         profile: 'chat-direct',
-        reason: 'missing',
+        kind: 'rebuild',
+        reason: 'lost',
         lostSessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
         recentRecords: 2,
+        status: { start: 'rebuild:lost', model: 'claude-test-1' },
       },
     },
   ]);
 });
 
-test('it marks the first turn on a fresh session as a new session', async () => {
+test('it opens the first turn on a fresh session with the pinned memory and the status, and records the opening', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -569,21 +572,26 @@ test('it marks the first turn on a fresh session as a new session', async () => 
 
   await ctx.sendMessage(runner, 'Hi.');
 
+  const opened = await ctx.readKinds('model.session_opened');
+
   expect(ctx.sandboxes.turns.map((turn) => turn.input)).toStrictEqual([
     [
       {
         uuid: '6e697869-0000-8000-8000-000000000002',
         text: expect.toSatisfy((text: string) =>
-          /^This is a new session; earlier history is in the event log\.\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
+          /^<system-message type="pinned-memory" id="(?<pinnedID>[\da-f]{12})" at="[^"]+">\nNothing is pinned in your memory\.\n<\/system-message id="\k<pinnedID>">\n\n<system-message type="status" id="(?<statusID>[\da-f]{12})" at="[^"]+">\n- Start: a new session\. Earlier history is in the event log\.\n- Session started: [^\n]+\n- Model: [^\n]+\n<\/system-message id="\k<statusID>">\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
             text,
           ),
         ),
       },
     ],
   ]);
+  expect(opened).toMatchObject([
+    { payload: { kind: 'first', reason: null, summarySequence: null, recentRecords: 0 } },
+  ]);
 });
 
-test('it marks the first turn after a rebuild as rebuilt, and the turn after it not at all', async () => {
+test('it opens the first turn after a forget with a status that says so, and resumes the turn after it with no opening', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -605,9 +613,9 @@ test('it marks the first turn after a rebuild as rebuilt, and the turn after it 
       uuid: expect.toBeString(),
       text: expect.toSatisfy(
         (text: string) =>
-          text.startsWith(
-            'Your context was rebuilt; earlier history is in the event log.\n\n<conversation-history>',
-          ) &&
+          text.startsWith('<system-message type="pinned-memory"') &&
+          text.includes('- Start: a rebuild after a forget.') &&
+          text.includes('<system-message type="recent-turns"') &&
           /\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi again\.$/u.test(text),
       ),
     },
@@ -619,6 +627,87 @@ test('it marks the first turn after a rebuild as rebuilt, and the turn after it 
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
           /^\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] And again\.$/u.test(text),
+        ),
+      },
+    ],
+  });
+});
+
+test('it opens a session from before opening records again as a rebuild, because only its old system prompt held the core', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.writeMessage('Hi.');
+
+  // a step from before opening records committed its session with no opening record
+  await runNextStep(ctx.context, () =>
+    Promise.resolve({
+      next: 'wait',
+      records: [],
+      acknowledged: [],
+      sessionBoundary: JSON.stringify({
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
+      }),
+    }),
+  );
+  await ctx.sendMessage(runner, 'Hi again.');
+
+  const opened = await ctx.readKinds('model.session_opened');
+
+  expect(ctx.sandboxes.turns.map((turn) => turn.resume)).toStrictEqual([null]);
+  expect(opened).toMatchObject([
+    {
+      payload: {
+        kind: 'rebuild',
+        reason: 'lost',
+        lostSessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+      },
+    },
+  ]);
+});
+
+test('it sends the pinned memory again on the turn after the SDK compacted the session', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    { type: 'compacted', trigger: 'auto', preTokens: 150_000, postTokens: 400 },
+    { type: 'assistant', messageID: crypto.randomUUID(), text: 'Hello.', toolUses: [] },
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 2,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+  await ctx.sendMessage(runner, 'Hi.');
+  await ctx.sendMessage(runner, 'Hi again.');
+
+  expect(ctx.sandboxes.turns.at(-1)).toMatchObject({
+    resume: expect.toBeObject(),
+    input: [
+      {
+        uuid: expect.toBeString(),
+        text: expect.toSatisfy((text: string) =>
+          /^<system-message type="pinned-memory" id="[\da-f]{12}" at="[^"]+">\nNothing is pinned in your memory\.\n<\/system-message id="[\da-f]{12}">\n\n\[#\d+ · [^\]]+\] Hi again\.$/u.test(
+            text,
+          ),
         ),
       },
     ],
@@ -707,11 +796,19 @@ test('it rebuilds the session on the turn after a forget invalidated it, and rec
   await runner.cleanupSessions('0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01');
   await ctx.sendMessage(runner, 'Hi again.');
 
-  const rebuilt = await ctx.readKinds('model.session_rebuilt');
+  const opened = await ctx.readKinds('model.session_opened');
 
   expect(ctx.sandboxes.turns.map((turn) => turn.resume)).toStrictEqual([null, null]);
-  expect(rebuilt).toMatchObject([
-    { payload: { reason: 'invalidated', lostSessionID: expect.toBeString(), recentRecords: 2 } },
+  expect(opened).toMatchObject([
+    { payload: { kind: 'first' } },
+    {
+      payload: {
+        kind: 'rebuild',
+        reason: 'forget',
+        lostSessionID: expect.toBeString(),
+        recentRecords: 2,
+      },
+    },
   ]);
 });
 
@@ -1068,7 +1165,11 @@ test('it puts the memory note before the first message of the turn and leaves th
     toolNames: ['notes_read'],
     memory: {
       readTurnNote: () =>
-        Promise.resolve({ text: 'Memory changed: you moved to Lisbon.', throughSequence: 7 }),
+        Promise.resolve({
+          text: 'Memory changed: you moved to Lisbon.',
+          throughSequence: 7,
+          eventCount: 0,
+        }),
     },
   });
 
@@ -1080,7 +1181,7 @@ test('it puts the memory note before the first message of the turn and leaves th
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^This is a new session; earlier history is in the event log\.\n\nMemory changed: you moved to Lisbon\.\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
+        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\nMemory changed: you moved to Lisbon\.\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] First\.$/u.test(
           text,
         ),
       ),
@@ -1104,7 +1205,11 @@ test('it records the sequence the memory note covers on the turn end', async () 
     toolNames: ['notes_read'],
     memory: {
       readTurnNote: () =>
-        Promise.resolve({ text: 'Memory changed: you moved to Lisbon.', throughSequence: 7 }),
+        Promise.resolve({
+          text: 'Memory changed: you moved to Lisbon.',
+          throughSequence: 7,
+          eventCount: 0,
+        }),
     },
   });
 
@@ -1124,7 +1229,9 @@ test('it records the sequence a turn with no memory changes covers and adds no m
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
-    memory: { readTurnNote: () => Promise.resolve({ text: null, throughSequence: 4 }) },
+    memory: {
+      readTurnNote: () => Promise.resolve({ text: null, throughSequence: 4, eventCount: 0 }),
+    },
   });
 
   await ctx.writeMessage('Hi.');
@@ -1136,7 +1243,7 @@ test('it records the sequence a turn with no memory changes covers and adds no m
     {
       uuid: '6e697869-0000-8000-8000-000000000002',
       text: expect.toSatisfy((text: string) =>
-        /^This is a new session; earlier history is in the event log\.\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
+        /^<system-message type="pinned-memory"[\s\S]+<\/system-message id="[\da-f]{12}">\n\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\.$/u.test(
           text,
         ),
       ),

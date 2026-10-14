@@ -4,14 +4,18 @@ import { z } from 'zod';
 import type { TurnNoteRange } from './types';
 
 // Reads the range the conversation's next turn note covers: after the sequence the last turn's note
-// covered, through the log's head now. A turn from before the note covered up to its own record.
-export async function readTurnNoteRange(log: Pick<Log, 'writer'>): Promise<TurnNoteRange> {
+// covered, through the log's head now. Given a sequence, the last turn is the newest before it.
+export async function readTurnNoteRange(
+  log: Pick<Log, 'writer'>,
+  beforeSequence = Number.MAX_SAFE_INTEGER,
+): Promise<TurnNoteRange> {
   const db = log.writer.db.$extendTables<RecordTables>();
   const last = await db
     .selectFrom('records')
     .select(['sequence', 'payload'])
     .where('thread', '=', conversationTaskID)
     .where('kind', '=', 'model.turn_ended')
+    .where('sequence', '<', beforeSequence)
     .orderBy('sequence', 'desc')
     .limit(1)
     .executeTakeFirst();

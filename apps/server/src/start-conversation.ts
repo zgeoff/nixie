@@ -35,6 +35,9 @@ export interface ConversationOptions {
   // the note of memory changes made outside the conversation, read before each turn
   readonly readTurnNote?: ConversationRunnerOptions['readTurnNote'];
 
+  // the lines of a new session's status, in order
+  readonly status?: ConversationRunnerOptions['status'];
+
   // the memory store, read at each turn, which starts after the conversation
   readonly memory: () => ConversationMemory;
   readonly memorySettings?: Partial<ConversationMemorySettings>;
@@ -66,6 +69,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     command: buildGuestCommand(),
     getSystemPrompt: options.getSystemPrompt,
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
+    ...(options.status === undefined ? {} : { status: options.status }),
     memory: options.memory,
     ...(options.memorySettings === undefined ? {} : { memorySettings: options.memorySettings }),
     ...(options.defaultZone === undefined ? {} : { defaultZone: options.defaultZone }),

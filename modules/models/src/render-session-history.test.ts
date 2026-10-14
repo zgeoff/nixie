@@ -11,7 +11,7 @@ test('it renders nothing for a thread with no earlier turn', () => {
   ).toBeNull();
 });
 
-test('it renders the recent turns in order inside a labelled block, each line with its event ID and each message a night apart with its own time', () => {
+test('it renders the recent turns in order after a heading, each line with its event ID and each message a night apart with its own time', () => {
   const goodnight = buildMockLogRecord({
     sequence: 48_213,
     kind: 'owner_message',
@@ -46,11 +46,9 @@ test('it renders the recent turns in order inside a labelled block, each line wi
       },
     ),
   ).toMatchInlineSnapshot(`
-    "<conversation-history>
-    This session was rebuilt from nixie records after the earlier one was lost. These are the most recent turns before the new message, oldest first, word for word; older turns are left out.
+    "The most recent turns before this session, oldest first, word for word. Older turns are in the event log.
     [#48213 · Mon 12 Oct, 22:40, Sydney] owner: Goodnight.
     [#48214 · Mon 12 Oct, 22:40, Sydney] nixie: Sleep well.
-    [#48215 · Tue 13 Oct, 07:15, Sydney] owner: Good morning.
-    </conversation-history>"
+    [#48215 · Tue 13 Oct, 07:15, Sydney] owner: Good morning."
   `);
 });

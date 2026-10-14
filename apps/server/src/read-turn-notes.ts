@@ -2,10 +2,10 @@ import { findMessageTimeZone } from '@heynixie/connectors';
 import type { Log } from '@heynixie/log';
 import type { MemoryStore } from '@heynixie/memory';
 import { readMemoryChangeNote } from '@heynixie/memory';
-import type { EventRegistry, SystemMessageType, TurnNote } from '@heynixie/models';
+import type { EventRegistry, SystemMessageType, TurnNote, TurnNoteRange } from '@heynixie/models';
 import {
   formatMessageTime,
-  readEventsNote,
+  readEventsBlock,
   readTurnNoteRange,
   renderSystemMessage,
 } from '@heynixie/models';
@@ -26,25 +26,40 @@ export interface TurnNotesOptions {
   readonly defaultZone: string;
 }
 
-// Reads the note before the next turn: the memory changes, then the events, each as a system
-// message over one range, so the next note starts where this one ends. Times show in the zone of
-// the owner's newest message, as the time tool answers.
-export async function readTurnNotes(options: TurnNotesOptions): Promise<TurnNote> {
-  const range = await readTurnNoteRange(options.log);
+// Reads the note before the next turn, or over a span a new session's recent turns cover: the
+// memory changes, then the events, each as a system message over one range. Times show in the zone
+// of the owner's newest message, as the time tool answers.
+export async function readTurnNotes(
+  options: TurnNotesOptions,
+  span?: TurnNoteRange,
+): Promise<TurnNote> {
+  const range = await readNoteRange(options.log, span);
+  const isReplay = span !== undefined;
   const messageZone = await findMessageTimeZone(options.log);
   const timeZone = messageZone ?? options.defaultZone;
   const [memory, events] = await Promise.all([
-    readMemoryChangeNote(options.log, options.store, { cap: memoryNoteCap, range }),
-    readEventsNote(options.events, range, { ownerName: options.ownerName, timeZone }),
+    readMemoryChangeNote(options.log, options.store, { cap: memoryNoteCap, range, isReplay }),
+    readEventsBlock(options.events, range, { ownerName: options.ownerName, timeZone, isReplay }),
   ]);
   const now = new Date(options.clock.now());
   const at = formatMessageTime(now, timeZone, { defaultZone: options.defaultZone, now });
   const blocks = [
     renderNoteMessage('memory-changes', at, memory.text),
-    renderNoteMessage('events', at, events),
+    renderNoteMessage('events', at, events.text),
   ].filter((block) => block !== null);
 
-  return { text: blocks.length === 0 ? null : blocks.join('\n\n'), throughSequence: range.through };
+  return {
+    text: blocks.length === 0 ? null : blocks.join('\n\n'),
+    throughSequence: range.through,
+    eventCount: events.count,
+  };
+}
+
+function readNoteRange(
+  log: Pick<Log, 'writer'>,
+  span: TurnNoteRange | undefined,
+): Promise<TurnNoteRange> {
+  return span === undefined ? readTurnNoteRange(log) : Promise.resolve(span);
 }
 
 function renderNoteMessage(

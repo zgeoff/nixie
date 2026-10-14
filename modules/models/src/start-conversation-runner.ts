@@ -1,6 +1,7 @@
 import type { RunStep, TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
+import { buildDefaultStatus } from './build-default-status';
 import { deriveModelSecret } from './derive-model-secret';
 import { makeSessionGuard } from './make-session-guard';
 import { runConversationStep } from './run-conversation-step';
@@ -33,6 +34,10 @@ export interface ConversationRunnerOptions {
   // the persona in force, read at each turn so a new seed reaches the next turn
   readonly getSystemPrompt: () => string;
   readonly readTurnNote?: NonNullable<ConversationRun['readTurnNote']>;
+
+  // the lines of a new session's status, in order; the kind of start, the start time and the model
+  // when the server passes none
+  readonly status?: ConversationRun['status'];
 
   // the memory store, which starts after the runner, so each turn reads it again
   readonly memory: () => ConversationMemory;
@@ -92,6 +97,7 @@ export async function startConversationRunner(
     endpoint,
     model,
     memorySettings: { ...defaultMemorySettings, ...options.memorySettings },
+    status: options.status ?? buildDefaultStatus(),
 
     // a runner given no zone renders a message that carries none in UTC
     defaultZone: options.defaultZone ?? 'UTC',

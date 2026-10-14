@@ -12,7 +12,81 @@ test('it reads no earlier core and no invalidation before the first turn', async
 
   const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
 
-  expect(marks).toStrictEqual({ previousCore: null, isInvalidated: false, invalidatedThrough: 0 });
+  expect(marks).toStrictEqual({
+    previousCore: null,
+    isInvalidated: false,
+    invalidatedThrough: 0,
+    isCompacted: false,
+    hasOpening: false,
+  });
+});
+
+test('it reads that a session opened with an opening record', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.hasOpening).toBe(true);
+});
+
+test('it reads the session as compacted when the SDK compacted it during the last turn', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    {
+      kind: 'model.compacted',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.isCompacted).toBe(true);
+});
+
+test('it reads the session as not compacted once a turn after the compaction ended', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.compacted',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.isCompacted).toBe(false);
 });
 
 test('it reads the pinned core the last turn ran with', async () => {

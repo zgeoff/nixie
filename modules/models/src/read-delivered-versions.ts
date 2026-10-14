@@ -5,8 +5,8 @@ import { z } from 'zod';
 import type { MemoryRef } from './types';
 
 // Reads the item versions the thread's session still holds: those delivered in a step that ended
-// its turn, since the last compaction, rebuild or invalidation. The memory context doc gives the
-// rules for each record.
+// its turn, since the session's opening record, the last compaction or an invalidation. The memory
+// context doc gives the rules for each record.
 export async function readDeliveredVersions(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
@@ -35,7 +35,7 @@ interface PendingRecall {
 const emptyState: SessionState = { delivered: new Map(), pending: [], isCompacted: false };
 
 // A reset commits after its step's recalls and drops them: a compaction summarized those through
-// its mark, and a lost session's rebuild lists what its turn retrieved. A turn drops a recall after
+// its mark, and a lost session's opening lists what its turn retrieved. A turn drops a recall after
 // its last result, which reached a session that no turn resumes.
 function buildSessionState(state: SessionState, record: LogRecord): SessionState {
   switch (record.kind) {
@@ -50,11 +50,14 @@ function buildSessionState(state: SessionState, record: LogRecord): SessionState
     case 'task.step_started': {
       return { ...state, pending: [], isCompacted: false };
     }
+    case 'model.session_opened':
     case 'model.session_rebuilt': {
       return {
         ...state,
         delivered: new Map(),
-        pending: record.payload['reason'] === 'invalidated' ? state.pending : [],
+        pending: isLostSession(record)
+          ? state.pending.filter((recall) => recall.sequence > parseLostRecallsThrough(record))
+          : state.pending,
       };
     }
     case 'model.compacted': {
@@ -95,8 +98,29 @@ function mergeRefs(
   return new Map([...refs, ...added.map((ref) => [`${ref.itemID}@${ref.version}`, ref] as const)]);
 }
 
-// the records that end what a session holds
-const resetKinds = ['model.compacted', 'model.session_rebuilt', 'model.session_invalidated'];
+// an opening in place of a session the guest lost, or a rebuild recorded before openings for one
+function isLostSession(record: LogRecord): boolean {
+  const reason = record.payload['reason'];
+
+  return reason === 'lost' || reason === 'missing';
+}
+
+// the recalls that served the lost session: through the opening's mark, or every one before a
+// rebuild recorded without it
+function parseLostRecallsThrough(record: LogRecord): number {
+  const parsed = z.int().nonnegative().safeParse(record.payload['recalledThrough']);
+
+  return parsed.success ? parsed.data : Number.MAX_SAFE_INTEGER;
+}
+
+// the records that end what a session holds; session_rebuilt is the opening record that logs from
+// before session_opened still hold
+const resetKinds = [
+  'model.compacted',
+  'model.session_opened',
+  'model.session_rebuilt',
+  'model.session_invalidated',
+];
 
 const replayKinds = ['memory.recalled', 'model.turn_ended', 'task.step_started', ...resetKinds];
 

@@ -2,11 +2,18 @@ import type { LogRecord } from '@heynixie/log';
 import { formatMessageTime } from './format-message-time';
 import { readDeliveredVersions } from './read-delivered-versions';
 import { renderCoreChanges } from './render-core-changes';
+import { renderPinnedMemory } from './render-pinned-memory';
 import { renderRetrievedItems } from './render-retrieved-items';
 import type { SystemMessageType } from './render-system-message';
 import { renderSystemMessage } from './render-system-message';
 import { renderSystemPrompt } from './render-system-prompt';
-import type { ConversationRun, MemoryItem, MemoryRef } from './types';
+import type {
+  ConversationMemory,
+  ConversationRun,
+  MemoryItem,
+  MemoryLineOptions,
+  MemoryRef,
+} from './types';
 
 export interface TurnContextQuery {
   readonly taskID: string;
@@ -17,14 +24,20 @@ export interface TurnContextQuery {
 
   // whether the turn runs on a new session, which holds no item yet
   readonly isNewSession: boolean;
+
+  // whether the SDK compacted the resumed session, so the turn sends the whole core again
+  readonly isCompacted: boolean;
 }
 
-// What memory adds to one turn: the system prompt with the pinned core, the blocks that go before
-// the turn's first message, and the references the turn's record lists.
+// What memory adds to one turn: the system prompt, the pinned core that a new session opens with,
+// the blocks that go before the turn's first message, and the references the turn's record lists.
 export interface TurnContext {
   readonly systemPrompt: string;
 
-  // the pinned core's change note and the retrieved items, in that order, each as a system message
+  // the body of a new session's pinned-memory message, which a resumed session never reads
+  readonly pinnedMemory: string;
+
+  // the core after a compaction, its change note and the retrieved items, each as a system message
   readonly preamble: readonly string[];
   readonly pinnedCore: readonly MemoryRef[];
   readonly retrieved: readonly MemoryRef[];
@@ -49,26 +62,43 @@ export async function readTurnContext(
     now: new Date(run.context.clock.now()),
   };
   const at = formatMessageTime(lines.now, null, lines);
-  const pinned = new Set(core.map((item) => item.itemID));
-
-  // the items that left the core show by their short IDs too
-  const unpinnedShortIDs = await memory.readShortIDs(
-    (query.previousCore ?? []).filter((ref) => !pinned.has(ref.itemID)).map((ref) => ref.itemID),
-  );
+  const pinnedMemory = renderPinnedMemory(core, lines);
+  const changes = await readCoreChanges(memory, query, { core, lines });
+  const recap = query.isCompacted ? pinnedMemory : null;
 
   return {
-    systemPrompt: renderSystemPrompt(run.getSystemPrompt(), core, lines),
+    systemPrompt: renderSystemPrompt(run.getSystemPrompt(), lines),
+    pinnedMemory,
     preamble: [
-      renderPreambleMessage(
-        'pinned-memory-changes',
-        at,
-        renderCoreChanges(query.previousCore, core, unpinnedShortIDs),
-      ),
+      renderPreambleMessage('pinned-memory', at, recap),
+      renderPreambleMessage('pinned-memory-changes', at, changes),
       renderPreambleMessage('retrieved-memory', at, renderRetrievedItems(retrieved, lines)),
     ].filter((block) => block !== null),
     pinnedCore: core.map((item) => toMemoryRef(item)),
     retrieved: retrieved.map((item) => toMemoryRef(item)),
   };
+}
+
+// the pinned core this turn runs with, and the options its lines render with
+interface PinnedCore {
+  readonly core: readonly MemoryItem[];
+  readonly lines: MemoryLineOptions;
+}
+
+// The change note's body. A new session opens with the current core, so only a resumed one gets a
+// note, and the items that left the core show by their short IDs too.
+async function readCoreChanges(
+  memory: ConversationMemory,
+  query: TurnContextQuery,
+  pinned: PinnedCore,
+): Promise<string | null> {
+  const pinnedIDs = new Set(pinned.core.map((item) => item.itemID));
+  const previousCore = query.isNewSession ? null : query.previousCore;
+  const unpinnedShortIDs = await memory.readShortIDs(
+    (previousCore ?? []).filter((ref) => !pinnedIDs.has(ref.itemID)).map((ref) => ref.itemID),
+  );
+
+  return renderCoreChanges(previousCore, pinned.core, { ...pinned.lines, unpinnedShortIDs });
 }
 
 function renderPreambleMessage(
