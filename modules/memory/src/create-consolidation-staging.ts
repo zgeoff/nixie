@@ -33,7 +33,10 @@ export interface ConsolidationStaging {
 
   // records an item a recall showed the session, at the version it showed
   readonly show: (itemID: string, item: ShownItem) => void;
-  readonly stage: (requests: readonly ChangeRequest[]) => StageResult;
+
+  // stages the run's diff: its changes, and the session's summary for you, such as the items it
+  // left alone because they conflict
+  readonly stage: (requests: readonly ChangeRequest[], summary?: string) => StageResult;
 }
 
 interface ConsolidationHandle {
@@ -43,6 +46,9 @@ interface ConsolidationHandle {
 
   // how many items the session was shown, in its prompt or through a recall
   readonly countShown: () => number;
+
+  // the summary staged with the diff, or null when the session gave none
+  readonly readSummary: () => string | null;
 }
 
 // Creates the staging area. A diff names only items the session was shown, each at most once, and
@@ -52,7 +58,7 @@ export function createConsolidationStaging(): ConsolidationStaging {
 
   return {
     open: (shown, maxChanges) => {
-      const opened: OpenRun = { shown: new Map(shown), maxChanges, diff: null };
+      const opened: OpenRun = { shown: new Map(shown), maxChanges, diff: null, summary: null };
 
       state.run = opened;
       return {
@@ -63,12 +69,14 @@ export function createConsolidationStaging(): ConsolidationStaging {
           return opened.diff;
         },
         countShown: () => opened.shown.size,
+        readSummary: () => opened.summary,
       };
     },
     show: (itemID, item) => {
       state.run?.shown.set(itemID, item);
     },
-    stage: (requests) => (state.run === null ? noRun : updateStagedRun(state.run, requests)),
+    stage: (requests, summary) =>
+      state.run === null ? noRun : updateStagedRun(state.run, requests, summary),
   };
 }
 
@@ -76,6 +84,7 @@ interface OpenRun {
   readonly shown: Map<string, ShownItem>;
   readonly maxChanges: number;
   diff: readonly StagedChange[] | null;
+  summary: string | null;
 }
 
 // what planning a diff reads of the open run
@@ -87,7 +96,11 @@ interface RunView {
 const noRun: StageResult = { status: 'refused', reason: 'no consolidation run is open' };
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the run this stages into
-function updateStagedRun(run: OpenRun, requests: readonly ChangeRequest[]): StageResult {
+function updateStagedRun(
+  run: OpenRun,
+  requests: readonly ChangeRequest[],
+  summary: string | undefined,
+): StageResult {
   if (run.diff !== null) {
     return { status: 'refused', reason: 'this run already proposed its diff' };
   }
@@ -97,6 +110,9 @@ function updateStagedRun(run: OpenRun, requests: readonly ChangeRequest[]): Stag
     return { status: 'refused', reason: planned.refusal };
   }
   run.diff = planned.changes;
+  const trimmed = summary?.trim() ?? '';
+
+  run.summary = trimmed === '' ? null : trimmed;
   return { status: 'staged', changes: planned.changes.length };
 }
 

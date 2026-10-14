@@ -93,7 +93,9 @@ function buildConsolidateTool(staging: ConsolidationStaging): ToolDefinition {
       'is a merge of 2 or more items that state one fact, with the merged text; a rewrite of one ' +
       'item into clearer words that keep its meaning, with the new text; or a retirement of one ' +
       'item that is stale or no longer useful, with no text. Name each item at most once, and ' +
-      'give a short reason for each change. An empty list says nothing needs tidying.',
+      'give a short reason for each change. An empty list says nothing needs tidying. The ' +
+      'optional summary tells the owner what the diff left alone and why, such as 2 items that ' +
+      'conflict.',
     input: consolidateInput,
     output: {
       type: 'object',
@@ -127,14 +129,17 @@ const changeInput = {
 
 const consolidateInput = {
   type: 'object',
-  properties: { changes: { type: 'array', maxItems: 30, items: changeInput } },
+  properties: {
+    changes: { type: 'array', maxItems: 30, items: changeInput },
+    summary: { type: 'string', minLength: 1, maxLength: 2000 },
+  },
   required: ['changes'],
   additionalProperties: false,
 };
 
 function runConsolidate(staging: ConsolidationStaging, input: unknown): ToolOutcome {
   const parsed = consolidateArguments.parse(input);
-  const result = staging.stage(parsed.changes);
+  const result = staging.stage(parsed.changes, parsed.summary);
 
   return result.status === 'staged'
     ? { status: 'ok', result: { staged: result.changes } }
@@ -148,4 +153,7 @@ const changeArguments = z.object({
   reason: z.string(),
 });
 
-const consolidateArguments = z.object({ changes: z.array(changeArguments) });
+const consolidateArguments = z.object({
+  changes: z.array(changeArguments),
+  summary: z.string().optional(),
+});

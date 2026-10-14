@@ -49,3 +49,46 @@ test('it says when the list is not complete, and points at recall', () => {
     (none)"
   `);
 });
+
+test('it shows an item quote on one line under its text, and no quote line for an item without one', () => {
+  expect(
+    renderConsolidatorPrompt({
+      items: [
+        {
+          itemID: 'item-1',
+          shortID: 'p5d2r8v1ke',
+          version: 1,
+          change: 'created',
+          state: 'active',
+          origin: 'memory_writer',
+          source: 'owner',
+          evidenceQuote: 'my sourdough starter is called\nBarnaby and he is a menace',
+          model: 'claude-test-1',
+          isPinned: false,
+          recordedAt: Date.parse('2026-05-11T08:00:00Z'),
+          text: 'Has a sourdough starter called Barnaby',
+        },
+        {
+          itemID: 'item-2',
+          shortID: 'h7q3z9m4ta',
+          version: 1,
+          change: 'created',
+          state: 'active',
+          origin: 'owner',
+          source: 'owner',
+          evidenceQuote: null,
+          model: null,
+          isPinned: false,
+          recordedAt: Date.parse('2026-06-20T08:00:00Z'),
+          text: 'Cycles to work',
+        },
+      ],
+      isComplete: true,
+    }),
+  ).toMatchInlineSnapshot(`
+    "Current memory items (the complete list):
+    - p5d2r8v1ke (2026-05-11): Has a sourdough starter called Barnaby
+      quote: my sourdough starter is called Barnaby and he is a menace
+    - h7q3z9m4ta (2026-06-20): Cycles to work"
+  `);
+});

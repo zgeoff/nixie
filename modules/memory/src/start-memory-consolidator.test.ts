@@ -22,6 +22,7 @@ async function setupTest() {
     },
     config: consolidationConfigSchema.parse({}),
     getPersona: () => '',
+    ownerName: null,
     onError: () => {},
   };
 

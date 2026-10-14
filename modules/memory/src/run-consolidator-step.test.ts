@@ -32,6 +32,7 @@ async function setupTest() {
         model: session.model,
         config: consolidationConfigSchema.parse({}),
         getPersona: () => 'You are Nix, a warm and brief assistant.',
+        ownerName: null,
         onError: (error) => {
           errors.push(error);
         },

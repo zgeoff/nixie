@@ -30,10 +30,21 @@ consolidator in the answer's own transaction, so the next run follows the period
 lapse the step waited for. A failed run waits a retry time and never fails the task.
 
 Each run opens one fresh model session in the consolidator's own worker sandbox on the conversation
-image. The prompt lists the active items, oldest first, until their text fills a token budget, and
-it tells the model when the list is cut short. The session's only tools are `memory.recall` and
-`memory.consolidate`. Every item reaches the session through recall, which records what it
-delivered, so the consolidator reads the same items a conversation can and nothing else.
+image. The prompt lists the active items, oldest first, each with the quote its version was saved
+from, until their text and quotes fill a token budget, and it tells the model when the list is cut
+short. The session's only tools are `memory.recall` and `memory.consolidate`. Every item reaches the
+session through recall, which records what it delivered, so the consolidator reads the same items a
+conversation can and nothing else.
+
+The system prompt puts the persona in force before the consolidator's rules, and the rules call the
+user by the name the deployment configures, so a change reads the way the assistant speaks of the
+user. A weekly pass that rewrote for style would wear each item's wording down a little every week,
+so the rules allow a rewrite only where a reader with no context could not tell what the item means.
+The one rewrite for consistency alone swaps "the owner" for the user's name. A rewrite or a merge
+keeps the item's own words, names and pronouns, and the model checks each item against its quote and
+restores the quote's wording where the item drifted. The model never merges items that conflict: it
+leaves both and names the conflict in the diff's summary. The staging area keeps that summary beside
+the diff, and the diff's record does not hold it.
 
 `memory.consolidate` stages the run's one diff. The staging area refuses the whole call, with the
 reason going back to the model, in these cases:

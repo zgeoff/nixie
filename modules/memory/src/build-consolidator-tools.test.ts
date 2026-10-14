@@ -146,3 +146,29 @@ test('it returns a refused diff to the model as an error', async () => {
     message: 'change 1: item item-7 is not one you were shown; find it with memory.recall first',
   });
 });
+
+test('it keeps the summary the session gives with its diff, for the owner', async () => {
+  const ctx = await setupTest();
+  const consolidate = ctx.registry.findTool('memory.consolidate');
+
+  invariant(consolidate);
+
+  const run = ctx.staging.open(new Map(), 30);
+
+  await consolidate.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'memory.consolidate',
+      input: {
+        changes: [],
+        summary: 'Two items conflict on coffee: one says oat milk, the other black with no milk.',
+      },
+      toolUseID: null,
+    },
+    buildMockToolContext({ thread: 'memory-consolidator' }),
+  );
+
+  expect(run.readSummary()).toBe(
+    'Two items conflict on coffee: one says oat milk, the other black with no milk.',
+  );
+});

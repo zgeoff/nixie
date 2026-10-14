@@ -7,6 +7,9 @@ export interface MemoryItemRequest {
   // who wrote it and where its text came from, you and your own words by default
   readonly origin?: MemoryOrigin;
   readonly source?: ContentSource;
+
+  // the words the item was saved from, none by default
+  readonly quote?: string;
 }
 
 // Writes a memory item's first version straight to the store, as your own action in the client
@@ -19,6 +22,7 @@ export function createMemoryItem(
 
   return store.remember({
     text: request.text,
+    ...(request.quote === undefined ? {} : { evidenceQuote: request.quote }),
     provenance: {
       origin,
       source: request.source ?? 'owner',

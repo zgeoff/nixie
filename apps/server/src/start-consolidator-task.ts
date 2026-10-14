@@ -21,6 +21,7 @@ export async function startConsolidatorTask(
     store,
     config: parts.config.memory_consolidation,
     getPersona: () => parts.inForce.read()?.persona ?? '',
+    ownerName: parts.config.owner.name,
 
     // a failed run tries again after the retry wait, so it is logged and never stops nixie
     onError: (error) => {

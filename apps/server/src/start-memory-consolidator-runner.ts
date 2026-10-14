@@ -32,6 +32,9 @@ export interface MemoryConsolidatorRunnerOptions {
 
   // the persona in force, read at each run
   readonly getPersona: () => string;
+
+  // your name, which the consolidator's rules call you by, or null to call you "the owner"
+  readonly ownerName: string | null;
   readonly onError: (error: unknown) => void;
 }
 
@@ -97,6 +100,7 @@ async function startConsolidatorParts(
     },
     config: options.config,
     getPersona: options.getPersona,
+    ownerName: options.ownerName,
     onError: options.onError,
   });
 }
