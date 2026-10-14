@@ -21,6 +21,7 @@ export async function startServerWork(
     context: base.apiContext,
     adapter: base.tools.adapter,
     work,
+    closeAPI: base.closeAPI,
     readStart: () => start.ready,
     log: options.log,
     onFailure: failed.resolve,

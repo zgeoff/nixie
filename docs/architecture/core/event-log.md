@@ -92,8 +92,10 @@ the device sessions that are still live, under
 because the server holds the writer lock and no other process can take it, and the server runs the
 reset in 7 stages:
 
-1. The server ends its start sequence and stops the parts it started: the runner pools stop claiming
-   and give the work in flight the normal stop grace.
+1. The server ends its start sequence and answers every new API call with 503 once the calls in
+   flight answer, so no call commits a write that the reset then deletes. It then stops the parts
+   the start sequence started: the runner pools stop claiming and give the work in flight the normal
+   stop grace.
 2. It destroys every sandbox in the sandboxes projection through its adapter, by the path recovery
    uses. A failed destroy stops the reset before it removes anything, and the server exits 1.
 3. It deletes every key from the key store and checkpoints it, so neither the file nor its WAL holds

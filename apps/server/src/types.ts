@@ -43,6 +43,9 @@ export interface ServerBase {
   readonly state: StartState;
   readonly tools: Tools;
   readonly port: number;
+
+  // refuses every later API call and waits for those in flight, which a reset does first
+  readonly closeAPI: () => Promise<void>;
 }
 
 // Everything the start steps behind the health endpoint use.

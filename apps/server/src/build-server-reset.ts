@@ -19,6 +19,9 @@ export interface ServerResetControlOptions extends Omit<ServerResetOptions, 'sto
   // the parts the start sequence started, which the reset stops before it destroys anything
   readonly work: Cleanup;
 
+  // refuses the API calls that arrive during the reset, so none commits a write it then deletes
+  readonly closeAPI: () => Promise<void>;
+
   // the start sequence, which the reset ends at its next step before it stops those parts
   readonly readStart: () => Promise<void>;
   readonly log: Logger;
@@ -70,7 +73,13 @@ async function runLoggedReset(
 async function runStoppedReset(options: ServerResetControlOptions): Promise<ServerReset> {
   options.work.abort();
   await waitForSettled(options.readStart());
-  return runServerReset({ ...options, stopWork: () => options.work.stop() });
+  return runServerReset({
+    ...options,
+    stopWork: async () => {
+      await options.closeAPI();
+      await options.work.stop();
+    },
+  });
 }
 
 async function waitForSettled(pending: Promise<unknown> | null): Promise<void> {

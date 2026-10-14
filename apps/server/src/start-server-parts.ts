@@ -1,4 +1,5 @@
 import { checkDatabaseIntegrity } from '@heynixie/ops';
+import { buildAPIGate } from './build-api-gate';
 import { buildServerContext } from './build-server-context';
 import { buildStartState } from './build-start-state';
 import { startHTTPServer } from './start-http-server';
@@ -17,8 +18,15 @@ export async function startServerParts(options: ServerPartsOptions): Promise<Ser
     context: base.apiContext,
     impdToken: options.secrets.impdToken,
   });
-  const port = await startHTTPServer({ ...options, state, tools, apiContext: base.apiContext });
+  const gate = buildAPIGate();
+  const port = await startHTTPServer({
+    ...options,
+    state,
+    tools,
+    apiContext: base.apiContext,
+    gate,
+  });
 
   options.log('http.listening', { port });
-  return startServerWork(options, { ...base, state, tools, port });
+  return startServerWork(options, { ...base, state, tools, port, closeAPI: gate.close });
 }

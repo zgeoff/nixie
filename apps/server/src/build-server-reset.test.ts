@@ -28,6 +28,7 @@ test('it ends the start and stops its work before it resets', async () => {
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock(),
     onFailure: mock(),
@@ -49,6 +50,7 @@ test('it logs the reset and resolves done once the reset finishes', async () => 
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log,
     onFailure: mock(),
@@ -69,6 +71,7 @@ test('it answers a request that arrives while a reset runs with that reset', asy
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock(),
     onFailure: mock(),
@@ -92,6 +95,7 @@ test('it reports a failed reset as the server failing, and never resolves done',
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock(),
     onFailure,
@@ -115,6 +119,7 @@ test('it logs a failed reset with the error', async () => {
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log,
     onFailure: mock(),
@@ -137,6 +142,7 @@ test('it waits for a reset in flight to settle, and never rejects with its failu
     context: ctx.context,
     adapter: ctx.sandboxes,
     work: ctx.work,
+    closeAPI: () => Promise.resolve(),
     readStart: () => Promise.resolve(),
     log: mock(),
     onFailure: mock(),
@@ -146,4 +152,23 @@ test('it waits for a reset in flight to settle, and never rejects with its failu
   await reset.waitForSettled();
 
   expect(Bun.peek.status(run)).toBe('rejected');
+});
+
+test('it closes the API before it stops the work', async () => {
+  const ctx = await setupTest();
+  const closeAPI = mock(() => Promise.resolve());
+  const stopRunners = mock(() => Promise.resolve());
+
+  await ctx.work.defer(stopRunners);
+  await buildServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    work: ctx.work,
+    closeAPI,
+    readStart: () => Promise.resolve(),
+    log: mock(),
+    onFailure: mock(),
+  }).run();
+
+  expect(closeAPI).toHaveBeenCalledBefore(stopRunners);
 });
