@@ -1,3 +1,5 @@
+export type { CallUsage } from './build-call-cost';
+export { buildCallCost } from './build-call-cost';
 export { buildEventRegistry } from './build-event-registry';
 export { buildModelGrant } from './build-model-grant';
 export { buildModelStatus } from './build-model-status';

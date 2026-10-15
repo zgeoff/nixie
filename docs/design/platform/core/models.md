@@ -43,13 +43,21 @@ flat subscription. The [counting proxy](../policy/budgets.md#the-hard-spending-s
 counts from each response and prices them with the profile's table:
 
 ```text
-cost = uncached input × input price + cache write × cache write price
+cost = uncached input × input price
+     + 5-minute cache write × cache write price
+     + 1-hour cache write × 1-hour cache write price
      + cached input × cached price + output × output price
 ```
 
-Prices are in your currency. Reasoning tokens count as output. Every profile sets all 4 prices, and
-a profile for an endpoint that charges no cache write premium sets its cache write price to its
-input price. A response that reports no cached count is priced as all uncached input, so a missing
-count never lowers a charge. A change to a profile's prices applies to charges after nixie reads it,
-and never reprices a recorded turn. [Budgets](../policy/budgets.md#model-cost) set the limits that
-these counts feed.
+Prices are in your currency. Reasoning tokens count as output. Every profile sets all 5 prices, and
+a profile for an endpoint that charges no cache write premium sets both cache write prices to its
+input price. A profile that never asks for 1-hour cache entries sets its 1-hour cache write price to
+its cache write price. A 1-hour entry costs more to write than a 5-minute one, 2 times the input
+price against 1.25 times at Anthropic's rates, so one price for both would undercharge every 1-hour
+write. The response's usage splits its cache writes by lifetime, and the proxy prices the 1-hour
+share at the 1-hour price and the rest at the cache write price. Only the writes a response reports
+as 5-minute take the cache write price, so a response that leaves out the split, or part of it, has
+its unreported writes priced at the 1-hour price. A response that reports no cached count is priced
+as all uncached input. Both rules exist so that a missing count never lowers a charge. A change to a
+profile's prices applies to charges after nixie reads it, and never reprices a recorded turn.
+[Budgets](../policy/budgets.md#model-cost) set the limits that these counts feed.
