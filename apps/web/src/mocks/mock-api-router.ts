@@ -7,6 +7,7 @@ import { readMemoryVersion } from './read-memory-version';
 import { readRatingNote } from './read-rating-note';
 import { store } from './store';
 import { toLogRecord } from './to-log-record';
+import { writeMockForget } from './write-mock-forget';
 
 interface MockAPIContext extends ResponseHeadersPluginContext {
   // The device session's token, from the bearer header or the cookie.
@@ -77,6 +78,22 @@ export const mockAPIRouter = os.router({
       }
 
       return { duplicate: true, sequence: earlier.sequence };
+    }),
+
+    // forgets your message or a reply as the API's forget leaves the log
+    forget: os.conversation.forget.handler(async (options) => {
+      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const result = await writeMockForget(options.input);
+
+      if (result.status !== 'forgotten') {
+        throw {
+          not_found: options.errors.RECORD_NOT_FOUND,
+          reused: options.errors.CLIENT_ACTION_ID_REUSED,
+        }[result.status]();
+      }
+
+      return { forgottenAt: result.forgottenAt };
     }),
   },
   log: { follow: followProcedure },

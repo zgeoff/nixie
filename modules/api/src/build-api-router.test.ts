@@ -358,6 +358,105 @@ test('#conversation.send from a revoked session writes only a refusal record', a
   expect(after.slice(before.length)).toStrictEqual([{ kind: 'identity.refused' }]);
 });
 
+test('#conversation.forget forgets a message, which the thread then shows with no text', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const sent = await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The locker code is 2291.',
+    spans: [],
+  });
+
+  const result = await laptopClient.conversation.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    sequence: sent.sequence,
+    thread: 'conversation',
+  });
+
+  const page = await laptopClient.conversation.read({ thread: 'conversation' });
+
+  expect(result).toStrictEqual({ forgottenAt: expect.toBeValidDate() });
+
+  expect(page.records.filter((record) => record.sequence >= sent.sequence)).toMatchObject([
+    { kind: 'owner_message', sequence: sent.sequence },
+    { kind: 'record.forget_started', forget: { sequence: sent.sequence } },
+  ]);
+
+  expect(page.records.find((record) => record.sequence === sent.sequence)?.message).toBeUndefined();
+});
+
+test('#conversation.forget refuses a sequence that names no message on the thread', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const result = await safe(
+    laptopClient.conversation.forget({
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      sequence: 9999,
+      thread: 'conversation',
+    }),
+  );
+
+  expect(result.error).toMatchObject({ code: 'RECORD_NOT_FOUND', status: 404 });
+});
+
+test('#conversation.forget refuses a client action ID that came before for another record', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const first = await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The locker code is 2291.',
+    spans: [],
+  });
+
+  const second = await laptopClient.conversation.send({
+    clientMessageId: '3c8f1a52-7d2e-4b9c-8e6f-0a4d2b7c9e15',
+    thread: 'conversation',
+    text: 'And the bike lock is 7734.',
+    spans: [],
+  });
+
+  await laptopClient.conversation.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    sequence: first.sequence,
+    thread: 'conversation',
+  });
+
+  const result = await safe(
+    laptopClient.conversation.forget({
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      sequence: second.sequence,
+      thread: 'conversation',
+    }),
+  );
+
+  expect(result.error).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED', status: 409 });
+});
+
+test('#conversation.forget refuses a caller with no session', async () => {
+  const ctx = await setupTest();
+
+  const result = await safe(
+    buildTestClient(ctx.url).conversation.forget({
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      sequence: 1,
+      thread: 'conversation',
+    }),
+  );
+
+  expect(result.error).toMatchObject({ code: 'UNAUTHORIZED', status: 401 });
+});
+
 test('#conversation.read returns a page of the thread and the sequence it read at', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');

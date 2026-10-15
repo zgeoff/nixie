@@ -6,6 +6,7 @@ export { defaultAPISettings } from './default-api-settings';
 export type { KeptSession } from './read-kept-sessions';
 export { readKeptSessions } from './read-kept-sessions';
 export { readSessions } from './read-sessions';
+export { runPendingRecordForgets } from './run-pending-record-forgets';
 export { updateSessionLabel } from './update-session-label';
 export { writeKeptSessions } from './write-kept-sessions';
-export type { APIContext, APISettings, Identity } from './types';
+export type { APIContext, APISettings, CleanupRecordSessions, Identity } from './types';

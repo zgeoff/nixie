@@ -71,6 +71,27 @@ test('it declares a missing device session, a reused action ID and an unknown th
   ]);
 });
 
+test('it declares a missing device session, a reused action ID and an unknown record for a forget', () => {
+  expect(contract.conversation.forget['~orpc'].errorMap).toContainAllKeys([
+    'UNAUTHORIZED',
+    'CLIENT_ACTION_ID_REUSED',
+    'RECORD_NOT_FOUND',
+  ]);
+});
+
+test('it answers an unknown record with 404 on a forget', () => {
+  expect(contract.conversation.forget['~orpc'].errorMap.RECORD_NOT_FOUND?.status).toBe(404);
+});
+
+test('it refuses a forget without its client action ID', () => {
+  expect(
+    contract.conversation.forget['~orpc'].inputSchema?.safeParse({
+      sequence: 42,
+      thread: 'conversation',
+    }).error?.issues,
+  ).toPartiallyContain({ path: ['clientActionID'] });
+});
+
 test('it declares a missing device session and an unknown thread for a read', () => {
   expect(contract.conversation.read['~orpc'].errorMap).toContainAllKeys([
     'UNAUTHORIZED',
@@ -171,6 +192,7 @@ test('it streams each record of the live stream as one event', () => {
 test('it generates an OpenAPI document with one operation for each procedure', () => {
   expect(buildOpenAPIDocument()).resolves.toMatchObject({
     paths: {
+      '/conversation/forget': { post: { operationId: 'conversation.forget' } },
       '/conversation/read': { post: { operationId: 'conversation.read' } },
       '/conversation/send': { post: { operationId: 'conversation.send' } },
       '/log/follow': { post: { deprecated: true, operationId: 'log.follow' } },

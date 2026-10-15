@@ -16,10 +16,23 @@ export interface APISettings {
   readonly lastSeenIntervalMs: number;
 }
 
+// the sequence of the record a forget removed, which the session cleanup's records name
+interface ForgottenRecord {
+  readonly recordSequence: number;
+}
+
+// The conversation's session cleanup. It must be safe to run again, because the start sequence runs
+// it again for a forget a crash cut short.
+export type CleanupRecordSessions = (cause: ForgottenRecord) => Promise<void>;
+
 // What every API entry point needs: the tasks context, whose log holds the API's projections and
 // whose clock times codes, sessions and refusals, and the tuning values.
 export interface APIContext extends TasksContext {
   readonly settings: APISettings;
+
+  // the session cleanup a record forget runs, or null before the conversation starts, when the
+  // start sequence finishes the forget before any runner claims work
+  readonly readSessionCleanup: () => CleanupRecordSessions | null;
 }
 
 // What one call carries into the router: the device session's token, from the bearer header or
@@ -83,6 +96,9 @@ interface RecordRow {
   readonly sequence: number;
   readonly thread: string | null;
   readonly kind: string;
+  readonly recorded_at: number;
+  readonly payload: string;
+  readonly key_id: string | null;
 }
 
 interface ThreadRow {

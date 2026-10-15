@@ -1,8 +1,8 @@
 import type { StepInput, StepResult } from '@heynixie/tasks';
-import type { SessionPoint } from '@heynixie/wire';
 import { buildStepResult } from './build-step-result';
 import { inboxBatchLimit } from './inbox-batch-limit';
 import { parseSessionBoundary } from './parse-session-boundary';
+import { readCurrentInbox } from './read-current-inbox';
 import type { SessionMarks } from './read-session-marks';
 import { readSessionMarks } from './read-session-marks';
 import { readTurnContext } from './read-turn-context';
@@ -24,9 +24,11 @@ export function runConversationStep(run: ConversationRun, input: StepInput): Pro
     });
   }
 
-  return run.session.withTurn((invalidated) =>
-    runSessionTurn(run, input, AbortSignal.any([input.signal, invalidated])),
-  );
+  return run.session.withTurn(async (invalidated) => {
+    const inbox = await readCurrentInbox(run.context, input.inbox);
+
+    return runSessionTurn(run, { ...input, inbox }, AbortSignal.any([input.signal, invalidated]));
+  });
 }
 
 async function runSessionTurn(
@@ -51,6 +53,9 @@ async function runSessionTurn(
 
   return runOpenedTurn(opened, source, start);
 }
+
+// the point in a session where a turn resumes
+type SessionPoint = NonNullable<ReturnType<typeof parseSessionBoundary>>;
 
 // Runs the turn at the session boundary, or on a rebuilt session when the guest lost it, with the
 // context read again for the new session.

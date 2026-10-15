@@ -166,6 +166,33 @@ test('it refuses a client message ID reused for a different message', async () =
   ).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
 });
 
+test('it refuses a forget whose client action ID forgot another record', async () => {
+  const ctx = setupTest();
+
+  const session = await store.sessions.create({});
+  const first = await store.records.create({ kind: 'owner_message' });
+  const second = await store.records.create({ kind: 'model.reply' });
+
+  const client = ctx.buildClient({
+    authorization: `Bearer ${session.token}`,
+    'x-nixie-client': 'web',
+  });
+
+  await client.conversation.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    sequence: first.sequence,
+    thread: 'conversation',
+  });
+
+  expect(
+    client.conversation.forget({
+      clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+      sequence: second.sequence,
+      thread: 'conversation',
+    }),
+  ).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+});
+
 test('it streams the records written after the sequence a client follows from', async () => {
   const ctx = setupTest();
 

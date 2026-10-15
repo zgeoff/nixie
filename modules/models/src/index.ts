@@ -73,6 +73,7 @@ export type {
   ReasoningEffort,
   ResolvedProfile,
   RunCheck,
+  SessionCleanupCause,
   TurnNote,
   TurnNoteRange,
 } from './types';

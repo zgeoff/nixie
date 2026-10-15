@@ -145,10 +145,14 @@ const stepEnds: Readonly<Record<string, StepStatus>> = {
   'task.step_interrupted': 'interrupted',
 };
 
-// Adds one record to the groups: a message stands alone, and any other record joins the open step.
+// your message and the conversation's reply, which stand alone with or without their text
+const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
+
+// Adds one record to the groups: a message stands alone, a forgotten one too, and any other record
+// joins the open step.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fold updates its own state
 function applyRecord(state: ActivityState, record: LiveRecord): void {
-  if (record.message !== undefined) {
+  if (record.message !== undefined || messageKinds.has(record.kind)) {
     state.items.push({ kind: 'message', record });
   } else if (record.kind === 'task.step_started') {
     state.open = buildStep([...state.pending, record], 'running', state.ratings);

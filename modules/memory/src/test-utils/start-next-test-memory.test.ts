@@ -16,8 +16,8 @@ test('it passes the session cleanup to the next store', async () => {
   const cleaned: string[] = [];
 
   const next = await startNextTestMemory(first, {
-    cleanupSessions: (itemID) => {
-      cleaned.push(itemID);
+    cleanupSessions: (cause) => {
+      cleaned.push(cause.itemID);
 
       return Promise.resolve();
     },

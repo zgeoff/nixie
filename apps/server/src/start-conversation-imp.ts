@@ -5,6 +5,7 @@ import {
   buildStartTimeStatus,
   buildStatusRegistry,
 } from '@heynixie/models';
+import type { SessionCleanupCause } from '@heynixie/models';
 import type { RunStep } from '@heynixie/tasks';
 import { buildVersionStatus } from './build-version-status';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';
@@ -16,8 +17,8 @@ export interface ConversationImp {
   // marks the conversation imp ready again after each turn that succeeds
   readonly runStep: RunStep;
 
-  // the session cleanup a forget runs, which the memory store takes
-  readonly cleanupSessions: (itemID: string) => Promise<void>;
+  // the session cleanup a forget runs, which the memory store and the record forget take
+  readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
 }
 
 // Starts the conversation on its image from the manifest, which replaces its sandbox when the image

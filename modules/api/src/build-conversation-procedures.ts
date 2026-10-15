@@ -4,8 +4,10 @@ import { readThreadPage } from './read-thread-page';
 import { requireCaller } from './require-caller';
 import type { APIContext } from './types';
 import { writeOwnerMessage } from './write-owner-message';
+import { writeRecordForget } from './write-record-forget';
 
-// Builds the conversation's procedures: a page of a thread, and your message into a task's inbox.
+// Builds the conversation's procedures: a page of a thread, your message into a task's inbox, and
+// the forget of a message or a reply.
 export function buildConversationProcedures(context: APIContext) {
   return {
     read: apiImplementer.conversation.read.handler(async (options) => {
@@ -42,6 +44,26 @@ export function buildConversationProcedures(context: APIContext) {
       }
 
       return { duplicate: result.duplicate, sequence: result.sequence };
+    }),
+
+    forget: apiImplementer.conversation.forget.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      const result = await writeRecordForget(context, caller, options.input);
+
+      if (result.status !== 'forgotten') {
+        throw {
+          not_found: options.errors.RECORD_NOT_FOUND,
+          reused: options.errors.CLIENT_ACTION_ID_REUSED,
+          unauthorized: options.errors.UNAUTHORIZED,
+        }[result.status]();
+      }
+
+      return { forgottenAt: new Date(result.forgottenAt) };
     }),
   };
 }

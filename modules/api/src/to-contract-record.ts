@@ -20,6 +20,7 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
   return {
     ...(compaction === undefined ? {} : { compaction }),
     ...(context === undefined ? {} : { context }),
+    ...(forgetKinds.has(record.kind) ? toForget(record) : {}),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
     ...(rating === undefined ? {} : { rating }),
@@ -227,6 +228,15 @@ function toCompaction(record: LogRecord): Compaction | undefined {
   }
 
   return { ...(typeof postTokens === 'number' ? { postTokens } : {}), preTokens, trigger };
+}
+
+// the start and the end of a forget of your message or a reply
+const forgetKinds: ReadonlySet<string> = new Set(['record.forget_started', 'record.forgotten']);
+
+function toForget(record: LogRecord): Pick<ContractRecord, 'forget'> {
+  const sequence = record.payload['recordSequence'];
+
+  return typeof sequence === 'number' ? { forget: { sequence } } : {};
 }
 
 function isJSONArray(value: JSONValue | undefined): value is readonly JSONValue[] {

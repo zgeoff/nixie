@@ -212,9 +212,14 @@ export interface ItemIDStore {
   readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
 }
 
+// the item a forget removed, which the session cleanup's records name
+interface ForgottenItem {
+  readonly itemID: string;
+}
+
 // The session cleanup a forget runs for every live session, which memory in context supplies. It
 // must be safe to run again, because a forget that a crash cut short runs it again on resume.
-export type CleanupSessions = (itemID: string) => Promise<void>;
+export type CleanupSessions = (cause: ForgottenItem) => Promise<void>;
 
 export interface MemoryContext {
   readonly log: Log;

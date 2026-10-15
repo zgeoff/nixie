@@ -61,9 +61,9 @@ the old log.
 
 ## Checked actions
 
-Enrolment, code issue, revoke and message send share one table of client action IDs, which holds the
-first result of each action and a hash of its input. A retry with the same ID and input gets the
-first result, and the same ID with another procedure, input or caller gets
+Enrolment, code issue, revoke, message send and record forget share one table of client action IDs,
+which holds the first result of each action and a hash of its input. A retry with the same ID and
+input gets the first result, and the same ID with another procedure, input or caller gets
 `CLIENT_ACTION_ID_REUSED`. Two results hold secrets that nixie keeps only as hashes, so their
 retries answer with fresh values that replace the first:
 
@@ -107,6 +107,27 @@ confirm a guess at it. A retry is therefore compared with the first record itsel
 thread or text is refused, and once the first record's text is forgotten, only its thread is
 compared.
 
+## Forgetting a message
+
+A forget removes one of the user's messages or one of nixie's replies for good, so its text is gone
+from every copy nixie keeps. It is a checked action bound to the record's thread and sequence, and
+the API answers `RECORD_NOT_FOUND` for a sequence that names any other kind of record. It runs as a
+durable operation in 2 parts, as a [memory forget](../memory/store.md#forgetting) does:
+
+1. In the transaction that keeps the action's result, the API commits a `record.forget_started`
+   record on the record's thread, which names the record by its sequence. A second forget of the
+   same record answers with the first forget's time and commits no second start.
+2. The cleanup deletes the record's key and checkpoints the key store, runs the conversation's
+   [session cleanup](../memory/context.md#forgetting-and-the-live-session), and commits
+   `record.forgotten`.
+
+The key goes before the session cleanup, so the session the next turn rebuilds reads the record as a
+gap. Every step of the cleanup is safe to run twice. The API listens before the conversation starts,
+so a forget that arrives first stops after the key deletion, as does one that a crash cuts short.
+The server's start hands the API the session cleanup and then finishes every such forget, before any
+runner claims work, so no turn resumes a session that holds the text. A retry of the action runs the
+cleanup again too, so a cleanup that failed finishes on the retry.
+
 ## Reading and the live stream
 
 A conversation read returns the newest page of a thread before a sequence, and the log sequence it
@@ -118,7 +139,8 @@ its record's sequence. A client that reconnects sends the last event ID it recei
 resumes after that record, whatever start the input holds. The stream shows only records that belong
 to a thread, because session and refusal records belong to none and no client view shows them. A
 message record carries its text and spans while its key exists, and keeps its place with no text
-once the message is forgotten.
+once the message is forgotten. Each forget record carries the sequence it forgets, so a client drops
+that message's text as the record arrives.
 
 The API checks the caller's session before it opens the live stream and refuses a missing or revoked
 session with a plain 401, so a stream that opens is one the API accepted. A session revoked while

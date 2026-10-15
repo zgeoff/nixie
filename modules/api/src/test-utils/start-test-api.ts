@@ -24,8 +24,8 @@ interface TestAPI {
   readonly url: string;
 }
 
-// Starts the API as the server would on a fresh data directory, with memory's projections, the
-// conversation's task, a test clock at 1,000,000 ms and the default settings, on a loopback port.
+// Starts the API on a fresh data directory and a loopback port, with memory's projections, the
+// conversation's task, a test clock at 1,000,000 ms, the default settings and no session cleanup.
 // When the test finishes it stops the server and the writer, then removes the directory.
 export async function startTestAPI(): Promise<TestAPI> {
   const stack = new AsyncDisposableStack();
@@ -79,6 +79,9 @@ async function buildTestContext(
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     settings: defaultAPISettings,
+
+    // no conversation runs beside the API, so a record forget leaves its session cleanup to a test
+    readSessionCleanup: () => null,
   };
 
   await createConversationTask(context);

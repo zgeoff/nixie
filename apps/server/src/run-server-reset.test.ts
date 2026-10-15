@@ -13,7 +13,11 @@ import { startTestServer } from './test-utils/start-test-server';
 async function setupTest() {
   const server = await startTestServer();
 
-  const context = { ...server.context, settings: defaultAPISettings };
+  const context = {
+    ...server.context,
+    settings: defaultAPISettings,
+    readSessionCleanup: () => null,
+  };
 
   const seeded = await runTestSeed(context.log, server.dataDir);
 
@@ -134,7 +138,7 @@ test('it refuses a reset before any definitions are in force, and stops no work'
   const stopWork = mock(() => Promise.resolve());
 
   const reset = runServerReset({
-    context: { ...server.context, settings: defaultAPISettings },
+    context: { ...server.context, settings: defaultAPISettings, readSessionCleanup: () => null },
     adapter: server.sandboxes,
     stopWork,
   });

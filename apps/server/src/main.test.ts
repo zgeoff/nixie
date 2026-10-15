@@ -568,6 +568,89 @@ test('it lists the proposal the model made when the model calls the pending tool
   });
 }, 60_000);
 
+test('it runs the turn after you forget a message the live session holds on a rebuilt session without its text', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Noted-reply-2KC' }, { text: 'Welcome-reply-9TB' });
+
+  const before = await sendClientMessage(
+    ctx.client,
+    { text: 'Lilac-message-5JX is the shed code.' },
+    'Noted-reply-2KC',
+  );
+
+  const message = before.find(
+    (record) => record.message?.text.startsWith('Lilac-message-5JX') === true,
+  );
+
+  invariant(message);
+
+  await ctx.client.conversation.forget({
+    clientActionID: crypto.randomUUID(),
+    sequence: message.sequence,
+    thread: 'conversation',
+  });
+
+  const after = await sendClientMessage(ctx.client, { text: 'Thanks.' }, 'Welcome-reply-9TB');
+
+  const sent = JSON.stringify(
+    ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body,
+  );
+
+  expect(sent).toSatisfy(
+    (request: string) =>
+      request.includes('Thanks.') &&
+      request.includes('Noted-reply-2KC') &&
+      !request.includes('Lilac-message-5JX'),
+  );
+
+  expect(
+    after
+      .filter((record) => record.sequence > message.sequence)
+      .map((record) => record.kind)
+      .filter((kind) => kind.startsWith('model.session_') || kind.startsWith('record.')),
+  ).toStrictEqual([
+    'model.session_opened',
+    'record.forget_started',
+    'model.session_invalidated',
+    'model.session_cleanup_completed',
+    'record.forgotten',
+    'model.session_opened',
+  ]);
+}, 60_000);
+
+test('it keeps the text of a forgotten message in no data file', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Noted-reply-2KC' });
+
+  const records = await sendClientMessage(
+    ctx.client,
+    { text: 'Lilac-message-5JX is the shed code.' },
+    'Noted-reply-2KC',
+  );
+
+  const message = records.find(
+    (record) => record.message?.text.startsWith('Lilac-message-5JX') === true,
+  );
+
+  invariant(message);
+
+  await ctx.client.conversation.forget({
+    clientActionID: crypto.randomUUID(),
+    sequence: message.sequence,
+    thread: 'conversation',
+  });
+
+  ctx.sendSignal('SIGTERM');
+
+  await ctx.waitForExit();
+
+  const files = await ctx.readDataFiles();
+
+  expect(files.filter((file) => file.text.includes('Lilac-message-5JX'))).toStrictEqual([]);
+}, 60_000);
+
 test('it starts the memory writer with the batch gate, its catch-up from the first record', async () => {
   const ctx = await setupTest();
   const started = await ctx.waitForLogEvent('memory_writer.started');

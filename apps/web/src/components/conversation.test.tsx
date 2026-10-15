@@ -26,7 +26,7 @@ test('it shows the conversation the API holds', async () => {
 
   const list = await rendered.findByRole('list', { name: 'Conversation' });
 
-  expect(list).toHaveTextContent('You Is it raining?nixie Not yet.');
+  expect(list).toHaveTextContent('You Is it raining?Forgetnixie Not yet.');
 });
 
 test('it folds the records of a step into one line between the messages', async () => {
@@ -61,7 +61,11 @@ test('it folds the records of a step into one line between the messages', async 
     [...list.children].map(
       (item) => item.querySelector('summary')?.textContent ?? item.textContent,
     ),
-  ).toStrictEqual(['You Rain?', 'conversation · web fetch: weather.test · 4.2s', 'nixie Not yet.']);
+  ).toStrictEqual([
+    'You Rain?Forget',
+    'conversation · web fetch: weather.test · 4.2s',
+    'nixie Not yet.Forget',
+  ]);
 });
 
 test('it sends a message with a span for each way its text arrived', async () => {
@@ -163,6 +167,72 @@ test('it clears the failure notice once a turn succeeds', async () => {
 
   await waitFor(() => {
     expect(rendered.queryByRole('alert')).toBeNull();
+  });
+});
+
+test('it keeps a failed forget and its retry once the forget start drops the text', async () => {
+  const ctx = await setupTest();
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'The shed code is 4417.' },
+  });
+
+  // the API commits the forget's start, so the stream drops the text, and then its cleanup fails
+  server.use(
+    http.post('*/rpc/conversation/forget', async () => {
+      await store.records.create({
+        forget: { sequence: message.sequence },
+        kind: 'record.forget_started',
+      });
+
+      return HttpResponse.error();
+    }),
+  );
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const forget = await rendered.findByRole('button', { name: 'Forget' });
+
+  await ctx.user.click(forget);
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+
+  await waitFor(() => {
+    expect(rendered.getByText('Forgotten')).toBeVisible();
+    expect(rendered.getByText('The forget did not finish. Try again.')).toBeVisible();
+  });
+
+  expect(rendered.getByRole('button', { name: 'Forget for good' })).toBeEnabled();
+});
+
+test('it finishes a failed forget when you confirm it again', async () => {
+  const ctx = await setupTest();
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'The shed code is 4417.' },
+  });
+
+  // the first confirm fails, and the next one reaches the mock API
+  server.use(http.post('*/rpc/conversation/forget', () => HttpResponse.error(), { once: true }));
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const forget = await rendered.findByRole('button', { name: 'Forget' });
+
+  await ctx.user.click(forget);
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+  await rendered.findByText('The forget did not finish. Try again.');
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+
+  await waitFor(() => {
+    expect(rendered.queryByRole('group', { name: 'Forget this message' })).toBeNull();
+
+    expect(
+      store.records.findFirst((query) => query.where({ sequence: message.sequence })),
+    ).toSatisfy(
+      (record: unknown) => typeof record === 'object' && record !== null && !('message' in record),
+    );
   });
 });
 

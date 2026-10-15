@@ -86,10 +86,15 @@ const compactionSchema = z.object({
   trigger: z.enum(['manual', 'auto']).default('auto'),
 });
 
+// the sequence a record.forgotten record forgets
+const forgetSchema = z.object({ sequence: z.int() });
+
 const records = new Collection({
   schema: z.object({
     compaction: compactionSchema.optional(),
     context: contextSchema.optional(),
+
+    forget: forgetSchema.optional(),
     kind: z.string().default('owner_message'),
     message: messageSchema.optional(),
     rating: ratingSchema.optional(),
@@ -128,9 +133,21 @@ const ratingNotes = new Collection({
   }),
 });
 
+// Each forget a client action ID applied, with the record it named and its answer, as nixie's API
+// keeps the first result of each checked action.
+const forgetActions = new Collection({
+  schema: z.object({
+    clientActionID: z.uuid(),
+    forgottenAt: z.date(),
+    sequence: z.int(),
+    thread: z.string(),
+  }),
+});
+
 // The mock API's state: what nixie's API would hold in its database.
 export const store = {
   enrolmentCodes,
+  forgetActions,
   memoryVersions,
   ratingNotes,
   records,
@@ -138,6 +155,7 @@ export const store = {
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
     records.clear();
+    forgetActions.clear();
     memoryVersions.clear();
     ratingNotes.clear();
     enrolmentCodes.clear();
