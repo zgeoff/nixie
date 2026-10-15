@@ -146,16 +146,14 @@ test.skipIf(!isContractRun)(
       },
     });
 
-    const results = run.messages.filter((message) => message.type === 'result');
+    const results = run.messages.flatMap((message) =>
+      message.type === 'result' ? [message.subtype] : [],
+    );
 
     const receipt = await host.interrupt;
 
     expect(receipt).toMatchObject({ still_queued: [ownerUUID] });
-
-    expect(results).toStrictEqual([
-      expect.objectContaining({ type: 'result', subtype: 'error_during_execution' }),
-    ]);
-
+    expect(results).toStrictEqual(['error_during_execution']);
     expect(run.messages.at(-1)).toMatchObject({ type: 'assistant' });
   },
   300_000,

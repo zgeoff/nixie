@@ -76,7 +76,7 @@ test.skipIf(!isContractRun)(
         input: expect.objectContaining({ command: 'echo blocked MARK_DENY' }),
         result: {
           isError: true,
-          text: expect.stringContaining('nixie-policy denied this command.'),
+          text: expect.toInclude('nixie-policy denied this command.'),
         },
       },
       {
@@ -92,14 +92,14 @@ test.skipIf(!isContractRun)(
       {
         name: 'Bash',
         input: expect.objectContaining({ command: 'echo original MARK_ANSWER_TEXT' }),
-        result: { isError: true, text: expect.stringContaining('does not match its output shape') },
+        result: { isError: true, text: expect.toInclude('does not match its output shape') },
       },
       {
         name: 'Bash',
         input: expect.objectContaining({ command: 'echo checked MARK_CHECK' }),
         result: {
           isError: true,
-          text: expect.stringContaining('nixie-policy tool.check denied this command.'),
+          text: expect.toInclude('nixie-policy tool.check denied this command.'),
         },
       },
     ]);
@@ -169,7 +169,7 @@ test.skipIf(!isContractRun)(
         input: expect.objectContaining({ command: 'echo first MARK_NONE' }),
         result: {
           isError: true,
-          text: expect.stringContaining(
+          text: expect.toInclude(
             'nixie policy failed (throw: nixie-throw-hook-catch: hook failed)',
           ),
         },
@@ -199,17 +199,15 @@ test.skipIf(!isContractRun)(
       (message) => message.type === 'system' && message.subtype === 'init',
     );
 
-    const changed = run.messages.filter(
+    const changed = run.messages.findLast(
       (message) => message.type === 'system' && message.subtype === 'commands_changed',
     );
 
     invariant(init?.type === 'system' && init.subtype === 'init');
+    invariant(changed?.type === 'system' && changed.subtype === 'commands_changed');
 
     expect(init.slash_commands).toContain('nixie-alive');
-
-    expect(changed.at(-1)).toMatchObject({
-      commands: expect.not.arrayContaining([expect.objectContaining({ name: 'nixie-alive' })]),
-    });
+    expect(changed.commands.map((command) => command.name)).not.toContain('nixie-alive');
 
     expect(collectToolCalls(run.messages)).toStrictEqual([
       {

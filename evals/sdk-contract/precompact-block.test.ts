@@ -74,7 +74,7 @@ test.skipIf(!isContractRun)(
     expect(run.messages).toPartiallyContain({
       type: 'system',
       subtype: 'compact_boundary',
-      compact_metadata: expect.objectContaining({ trigger: 'auto' }),
+      compact_metadata: expect.toContainEntry(['trigger', 'auto']),
     });
 
     expect(postCompact).toHaveBeenCalledOnce();

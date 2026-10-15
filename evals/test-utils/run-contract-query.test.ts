@@ -68,7 +68,9 @@ test('it ends the run when the message callback says so, with the input still op
 
   const input = startInputStream();
 
-  onTestFinished(() => input.stop());
+  onTestFinished(() => {
+    input.stop();
+  });
 
   input.send('Say the reply.');
 
