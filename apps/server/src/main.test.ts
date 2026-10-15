@@ -205,6 +205,66 @@ test('it answers the time tool in the zone of the newest message', async () => {
   });
 }, 60_000);
 
+test('it answers a message with a reply that used a tool, with each step in the event log', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__time_now', input: {} } },
+    { text: 'It is a quarter past four in Lisbon.' },
+  );
+
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'What time is it in Lisbon?',
+    thread: 'conversation',
+    timeZone: 'Europe/Lisbon',
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    // a step that errors ends the turn too, so the assertions below report how it went
+    return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
+  });
+
+  const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+  expect(page.records.map((record) => record.kind)).toStrictEqual([
+    'task.created',
+    'owner_message',
+    'task.step_started',
+    'memory.recalled',
+    'tool_called',
+    'tool_result',
+    'model.session_opened',
+    'model.reply',
+    'model.turn_ended',
+    'task.step_committed',
+  ]);
+
+  expect(
+    page.records
+      .filter((record) => record.kind.startsWith('tool_'))
+      .map((record) => record.toolCall),
+  ).toMatchObject([
+    { tool: 'time.now', input: {} },
+    {
+      outcome: 'result',
+      content: { result: { timeZone: 'Europe/Lisbon', timeZoneFrom: 'message' } },
+    },
+  ]);
+
+  expect(page.records.find((record) => record.kind === 'model.reply')?.message?.text).toBe(
+    'It is a quarter past four in Lisbon.',
+  );
+
+  // the model writes its reply after it reads the tool's result
+  expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toMatch(
+    /"type":"tool_result".*Europe\/Lisbon/u,
+  );
+}, 60_000);
+
 test('it shows the model when each message was sent, in its own zone or the default one', async () => {
   const ctx = await setupTest();
 
