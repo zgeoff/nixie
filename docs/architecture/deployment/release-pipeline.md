@@ -5,9 +5,12 @@ GitHub Container Registry (GHCR). release-please opens a release pull request fr
 Commits since the last release, and merging it creates the `v<version>` tag and the GitHub release.
 The release workflow then builds the conversation and fetch images, the nixie image with their
 digests inside it, and the web image, in that order. Each image gets a build provenance attestation
-as it is pushed, and the version tag reaches every image only after all of them exist. Pull-request
-CI checks the 2 compatibility rules that a one-release rollback depends on: the oRPC contract only
-grows, and each migration keeps the schema readable by the release before.
+as it is pushed, and the version tag reaches every image only after all of them exist. The release
+then publishes `release.json` and `config.schema.json`, the contract a deployment reads in place of
+nixie's tree. Pull-request CI checks the 2 compatibility rules that a one-release rollback depends
+on: the oRPC contract only grows, and each migration keeps the schema readable by the release
+before. A third check fails a config schema change that can refuse a released `config.yaml`, unless
+the pull request title marks it breaking.
 
 [The server](server.md) covers how nixie reads the sandbox manifest that the pipeline writes into
 the nixie image, and [the database](../core/database.md#migrations) covers migrations and the oldest
@@ -48,6 +51,7 @@ flowchart LR
   web --> notes[release notes]
   notes --> pulls[check pulls]
   pulls --> tag[tag]
+  tag --> assets[assets]
 ```
 
 1. **Sandbox images.** The conversation and fetch images build in parallel, and each pushes by
@@ -55,11 +59,14 @@ flowchart LR
 2. **The nixie image.** The workflow builds the sandbox manifest from the stage 1 digests, writes it
    into the build context, then builds and pushes the nixie image by digest.
 3. **The web image.** The web image builds and pushes by digest.
-4. **Notes.** The workflow adds the migration list and every image digest to the GitHub release.
+4. **Notes.** The workflow adds the migration list, the config schema result and every image digest
+   to the GitHub release.
 5. **Check pulls.** The workflow pulls each sandbox image with no credentials, as impd does, and
    fails while a sandbox package is private.
 6. **Tag.** The workflow gives the version tag to each image's digest: the sandbox images first,
    then web, then nixie.
+7. **Assets.** The workflow builds `release.json` and uploads it to the GitHub release with the
+   committed `config.schema.json`, replacing the assets of an earlier attempt.
 
 The nixie image needs the sandbox digests, so the sandbox images go first. A failed nixie build
 stops the release before a web image exists that calls an API no image serves. The tag stage comes
@@ -78,6 +85,27 @@ release from that commit and refuses a version that any image already carries.
 The sandbox manifest maps each sandbox kind to its image by digest, and no commit holds it. A
 committed manifest would need a second commit after the images exist, so the nixie image would come
 from a different commit than its sandbox images.
+
+## The release contract
+
+A deployment reads two assets of the GitHub release and nothing else of nixie's: no copy of a file
+from the repo, and no parse of the release notes. Each release publishes both, and their shape is a
+contract that changes only in step with the readers.
+
+- **`release.json`** holds the version, its tag and its commit; the server and web images and the
+  sandbox images, each by version tag and digest; the migrations the release adds since the release
+  before, and whether that release reads the schema they leave; and the config schema result. Its
+  `format` rises only on a change that a reader of the format before would misread, so an added
+  field leaves it as it is.
+- **`config.schema.json`** is the JSON Schema of `config.yaml`, which a deployment checks its
+  configuration against before it rolls out. The server's configuration schema generates it, and a
+  test fails when the committed file differs, so every release tag holds the schema of its own
+  build. It covers the shape of each key and leaves out the rules that span keys, such as a role
+  that points at a missing profile, which nixie refuses at start.
+
+The assets stage runs last because a deployment that finds `release.json` pins the images it lists,
+so every image must carry its version tag first. The release notes keep the same facts for a person,
+and a reader that parses them is outside the contract.
 
 ## Build settings and publishing
 
@@ -140,3 +168,12 @@ The release notes stage runs the same check against the release before, and adds
 GitHub release: each added migration with its schema version, and whether the release before reads
 the schema it leaves. The list comes from the code, so it holds every migration whatever the commit
 messages say.
+
+The config schema check compares the committed `config.schema.json` with the copy the last release
+tag holds, and lists each change that can refuse a `config.yaml` that release accepts: a removed or
+newly required key, a narrower type, bound or value list, or a new pattern. A change it cannot prove
+harmless counts as breaking, so the list can hold a false alarm but never misses a break. A pull
+request with a breaking change fails until its title marks a breaking change with `!`, because the
+squash merge makes the title the commit header, and release-please then lists the commit under the
+changelog's breaking changes. A title edit runs the check again. The release notes stage runs the
+same comparison, adds its list to the GitHub release, and carries it in `release.json`.

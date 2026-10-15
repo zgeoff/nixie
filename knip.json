@@ -10,10 +10,17 @@
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
     "libs/testing": { "entry": ["src/test-utils/run-stub-*.ts"] },
-    // the nixie image runs the bundle of main.ts, the image build runs the release build, and a test
-    // spawns the sops stand-in, so no import reaches them
+    // the nixie image runs the bundle of main.ts, the image build runs the release build, a test
+    // spawns the sops stand-in, and the workflows run the config schema check and the release.json
+    // script, so no import reaches them
     "apps/server": {
-      "entry": ["src/main.ts", "src/run-release-build.ts", "src/test-utils/run-stub-sops.ts"]
+      "entry": [
+        "src/main.ts",
+        "src/run-release-build.ts",
+        "src/test-utils/run-stub-sops.ts",
+        "src/run-config-schema-check.ts",
+        "src/run-release-manifest.ts"
+      ]
     },
     // the release workflows run the migration check and the schema report by their paths, so no
     // import reaches them

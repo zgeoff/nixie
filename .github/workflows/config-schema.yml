@@ -1,0 +1,53 @@
+# Checks a pull request's config schema against the last release's, the newest v* tag reachable
+# from its base. A change that can refuse a config.yaml the release accepts passes only when the
+# pull request title marks a breaking change with "!", because the squash merge makes the title the
+# commit header and release-please lists such a commit under the changelog's breaking changes. A
+# title edit re-runs the check, so fixing the title clears it. Before a release commits the schema,
+# the check passes with nothing to compare.
+name: Config schema
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: config-schema-${{ github.ref }}
+  cancel-in-progress: true
+
+# an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  config-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      # the check imports nothing outside the repo, so it needs no install
+      - name: Check the config schema against the last release
+        env:
+          BASE: origin/${{ github.base_ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          released="$RUNNER_TEMP/released-config.schema.json"
+          last=$(git describe --tags --abbrev=0 --match 'v*' "$BASE" 2> /dev/null || true)
+          if [[ -n $last ]] && git show "$last:apps/server/config.schema.json" > "$released" 2> /dev/null; then
+            bun apps/server/src/run-config-schema-check.ts --released "$released" --last-tag "$last" \
+              --title "$TITLE" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            bun apps/server/src/run-config-schema-check.ts --title "$TITLE" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi

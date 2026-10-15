@@ -1,11 +1,12 @@
-// `bun libs/db/src/run-migration-check.ts [--released <schema.json> --last-tag <tag>]
-// [--release-body <body.md>]` checks the migrations since the last release, prints the release
-// notes section, and with --release-body replaces that section in the file.
+// `bun libs/db/src/run-migration-check.ts [--released <schema.json> --last-tag <tag>] [--release-body
+// <body.md>] [--summary <out.json>]` checks the migrations since the last release, prints the notes
+// section, replaces it in the release body, and writes the summary that release.json carries.
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
+import { buildMigrationSummary } from './build-migration-summary';
 import { checkMigrations } from './check-migrations';
 import { nixieSchema } from './nixie-schema';
 import { renderMigrationNotes } from './render-migration-notes';
@@ -31,6 +32,7 @@ const args = parseArgs({
     released: { type: 'string' },
     'last-tag': { type: 'string' },
     'release-body': { type: 'string' },
+    summary: { type: 'string' },
   },
 });
 
@@ -61,6 +63,12 @@ if (args.values['release-body'] !== undefined) {
     : `${body.trimEnd()}\n\n`;
 
   await writeFile(args.values['release-body'], `${kept}${notes}`);
+}
+
+if (args.values.summary !== undefined) {
+  const summary = buildMigrationSummary(check, args.values['last-tag'] ?? null);
+
+  await writeFile(args.values.summary, `${JSON.stringify(summary)}\n`);
 }
 
 const refused = check.added.flatMap((migration) =>
