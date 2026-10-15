@@ -93,6 +93,10 @@ export interface RecordInput {
   readonly approval?: Approval;
   readonly payload?: JSONObject;
   readonly erasable?: JSONObject;
+
+  // bytes the record carries beside its erasable fields, such as the images of your message, each
+  // sealed under the record's key in its own row, so a forget leaves them unreadable with the text
+  readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
 }
 
 // A record as the log holds it, without its erasable fields. A projection folds this shape, so a
@@ -193,11 +197,26 @@ interface ProjectionChangeRow {
   readonly row: string | null;
 }
 
+interface RecordAttachmentRow {
+  readonly sequence: number;
+  readonly position: number;
+  readonly sealed: Uint8Array<ArrayBuffer>;
+}
+
+// none: the record has no attachments. shredded: its key is gone. unreadable: the key or a
+// ciphertext failed to decrypt. readable: the key decrypted each one, in the order written.
+export type RecordAttachments =
+  | { readonly status: 'none' }
+  | { readonly status: 'shredded' }
+  | { readonly status: 'unreadable' }
+  | { readonly status: 'readable'; readonly attachments: readonly Uint8Array<ArrayBuffer>[] };
+
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 export type LogTables = Readonly<{
   records: RecordTable;
   threads: ThreadRow;
   projection_changes: ProjectionChangeRow;
+  record_attachments: RecordAttachmentRow;
 }>;
 
 export type KeyStoreTables = Readonly<{

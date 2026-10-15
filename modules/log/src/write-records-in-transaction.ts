@@ -2,13 +2,14 @@ import type { Transaction } from 'kysely';
 import { applyProjections } from './apply-projections';
 import { buildEnvelopeRecord } from './build-envelope-record';
 import { createRecordKey } from './create-record-key';
+import { encodeAttachment } from './encode-attachment';
 import { encodeErasable } from './encode-erasable';
 import { MissingDefinitionsError } from './missing-definitions-error';
 import type { JSONObject, Log, LogRecord, LogTables, RecordInput } from './types';
 
 // Appends records inside a write transaction that the caller opened with withWriteTransaction, so a
 // module's own rows and the records that describe them commit together. Each record's erasable
-// fields are encrypted under a new key, which commits to the key store before the record.
+// fields and attachments are encrypted under a new key, committed to the key store first.
 export async function writeRecordsInTransaction(
   tx: Transaction<unknown>,
   log: Log,
@@ -45,18 +46,30 @@ function requireDefinitions(input: RecordInput): void {
 interface SealedFields {
   readonly keyID: string;
   readonly sealed: Uint8Array<ArrayBuffer>;
+  readonly attachments: readonly Uint8Array<ArrayBuffer>[];
 }
 
-// a record with no erasable fields gets no key
+// a record with no erasable fields and no attachments gets no key
 async function encodeErasableFields(log: Log, input: RecordInput): Promise<SealedFields | null> {
-  if (input.erasable === undefined || Object.keys(input.erasable).length === 0) {
+  const attachments = input.attachments ?? [];
+
+  if (
+    attachments.length === 0 &&
+    (input.erasable === undefined || Object.keys(input.erasable).length === 0)
+  ) {
     return null;
   }
 
   const recordKey = await createRecordKey(log);
-  const sealed = await encodeErasable(recordKey.key, recordKey.keyID, input.erasable);
+  const sealed = await encodeErasable(recordKey.key, recordKey.keyID, input.erasable ?? {});
 
-  return { keyID: recordKey.keyID, sealed };
+  const sealedAttachments = await Promise.all(
+    attachments.map((bytes, position) =>
+      encodeAttachment(recordKey.key, recordKey.keyID, { position, bytes }),
+    ),
+  );
+
+  return { keyID: recordKey.keyID, sealed, attachments: sealedAttachments };
 }
 
 interface PendingRecord {
@@ -78,9 +91,26 @@ async function writeRecord(
 
   const record = buildEnvelopeRecord(row);
 
+  await writeAttachments(tx, record.sequence, pending.sealed?.attachments ?? []);
   await applyProjections(tx, log.projections, record);
 
   return { ...record, erasable: buildWrittenErasable(pending.input.erasable, pending.sealed) };
+}
+
+async function writeAttachments(
+  tx: Transaction<unknown>,
+  sequence: number,
+  attachments: readonly Uint8Array<ArrayBuffer>[],
+): Promise<void> {
+  if (attachments.length === 0) {
+    return;
+  }
+
+  await tx
+    .$extendTables<LogTables>()
+    .insertInto('record_attachments')
+    .values(attachments.map((sealed, position) => ({ sequence, position, sealed })))
+    .execute();
 }
 
 function buildRecordValues(pending: PendingRecord) {
@@ -112,7 +142,5 @@ function buildWrittenErasable(
   erasable: JSONObject | undefined,
   sealed: SealedFields | null,
 ): LogRecord['erasable'] {
-  return erasable === undefined || sealed === null
-    ? { status: 'none' }
-    : { status: 'readable', fields: erasable };
+  return sealed === null ? { status: 'none' } : { status: 'readable', fields: erasable ?? {} };
 }
