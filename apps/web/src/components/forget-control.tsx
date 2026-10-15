@@ -7,20 +7,34 @@ import { useNixieClient } from '../use-nixie-client';
 
 export interface ForgetControlProps {
   readonly record: LiveRecord;
+
+  // whether the message still shows its text; a forget the stream reports as started drops it
+  readonly hasText: boolean;
   readonly onForgotten: () => void;
 }
 
 // The checked forget of one message or reply: the first press asks, and only the confirm forgets.
 // Each confirmation keeps one client action ID, so a confirm that fails and goes again forgets once.
+// A forget in flight or failed keeps its control after the text goes, so a failed cleanup can retry.
 export function ForgetControl(props: ForgetControlProps): ReactNode {
   const nixie = useNixieClient();
   const [actionID, setActionID] = useState<string | null>(null);
 
   const forget = useMutation(
-    nixie.queryUtils.conversation.forget.mutationOptions({ onSuccess: props.onForgotten }),
+    nixie.queryUtils.conversation.forget.mutationOptions({
+      onSuccess: () => {
+        setActionID(null);
+
+        props.onForgotten();
+      },
+    }),
   );
 
   const noun = props.record.kind === 'owner_message' ? 'message' : 'reply';
+
+  if (actionID === null && !props.hasText) {
+    return null;
+  }
 
   if (actionID === null) {
     return (
@@ -37,33 +51,51 @@ export function ForgetControl(props: ForgetControlProps): ReactNode {
   }
 
   return (
-    <div aria-label={`Forget this ${noun}`} className={confirmation} role="group">
-      <span>Forget this {noun} for good? Its text goes from everywhere nixie keeps it.</span>
-      <button
-        disabled={forget.isPending}
-        onClick={() => {
-          forget.mutate({
-            clientActionID: actionID,
-            sequence: props.record.sequence,
-            thread: props.record.thread,
-          });
-        }}
-        type="button"
-      >
+    <ForgetConfirmation
+      canKeep={props.hasText}
+      isError={forget.isError}
+      isPending={forget.isPending}
+      noun={noun}
+      onConfirm={() => {
+        forget.mutate({
+          clientActionID: actionID,
+          sequence: props.record.sequence,
+          thread: props.record.thread,
+        });
+      }}
+      onKeep={() => {
+        setActionID(null);
+
+        forget.reset();
+      }}
+    />
+  );
+}
+
+interface ForgetConfirmationProps {
+  readonly noun: string;
+
+  // a forget whose start already dropped the text cannot be kept, only retried
+  readonly canKeep: boolean;
+  readonly isPending: boolean;
+  readonly isError: boolean;
+  readonly onConfirm: () => void;
+  readonly onKeep: () => void;
+}
+
+function ForgetConfirmation(props: ForgetConfirmationProps): ReactNode {
+  return (
+    <div aria-label={`Forget this ${props.noun}`} className={confirmation} role="group">
+      <span>Forget this {props.noun} for good? Its text goes from everywhere nixie keeps it.</span>
+      <button disabled={props.isPending} onClick={props.onConfirm} type="button">
         Forget for good
       </button>
-      <button
-        disabled={forget.isPending}
-        onClick={() => {
-          setActionID(null);
-
-          forget.reset();
-        }}
-        type="button"
-      >
-        Keep
-      </button>
-      {forget.isError ? <p role="alert">Not forgotten. Try again.</p> : null}
+      {props.canKeep ? (
+        <button disabled={props.isPending} onClick={props.onKeep} type="button">
+          Keep
+        </button>
+      ) : null}
+      {props.isError ? <p role="alert">The forget did not finish. Try again.</p> : null}
     </div>
   );
 }

@@ -25,7 +25,9 @@ test('it forgets the message only once you confirm', async () => {
     message: { text: 'The shed code is 4417.' },
   });
 
-  const rendered = render(<ForgetControl onForgotten={onForgotten} record={toLogRecord(stored)} />);
+  const rendered = render(
+    <ForgetControl hasText onForgotten={onForgotten} record={toLogRecord(stored)} />,
+  );
 
   await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
 
@@ -49,6 +51,7 @@ test('it asks to forget a reply by its name', async () => {
 
   const rendered = render(
     <ForgetControl
+      hasText
       onForgotten={() => {}}
       record={buildMockLogRecord({ kind: 'model.reply', message: { text: 'Noted.' } })}
     />,
@@ -69,7 +72,9 @@ test('it keeps the message when you choose to keep it', async () => {
     message: { text: 'The shed code is 4417.' },
   });
 
-  const rendered = render(<ForgetControl onForgotten={onForgotten} record={toLogRecord(stored)} />);
+  const rendered = render(
+    <ForgetControl hasText onForgotten={onForgotten} record={toLogRecord(stored)} />,
+  );
 
   await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
   await ctx.user.click(rendered.getByRole('button', { name: 'Keep' }));
@@ -81,6 +86,18 @@ test('it keeps the message when you choose to keep it', async () => {
   expect(onForgotten).not.toHaveBeenCalled();
 });
 
+test('it shows no control for a message with no text and no forget of its own', () => {
+  const rendered = render(
+    <ForgetControl
+      hasText={false}
+      onForgotten={() => {}}
+      record={buildMockLogRecord({ kind: 'owner_message' })}
+    />,
+  );
+
+  expect(rendered.container).toBeEmptyDOMElement();
+});
+
 test('it says so when the forget fails', async () => {
   const ctx = await setupTest();
 
@@ -89,6 +106,7 @@ test('it says so when the forget fails', async () => {
   // the API holds no record at this sequence, so it refuses the forget
   const rendered = render(
     <ForgetControl
+      hasText
       onForgotten={onForgotten}
       record={buildMockLogRecord({
         kind: 'owner_message',
@@ -104,6 +122,6 @@ test('it says so when the forget fails', async () => {
 
   const alert = await rendered.findByRole('alert');
 
-  expect(alert).toHaveTextContent('Not forgotten. Try again.');
+  expect(alert).toHaveTextContent('The forget did not finish. Try again.');
   expect(onForgotten).not.toHaveBeenCalled();
 });

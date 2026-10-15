@@ -130,8 +130,10 @@ find the control.
 
 Each message carries a forget control, which first asks and forgets only on the confirm. A
 confirmation keeps one client action ID, so a confirm that fails and goes again forgets once. A
-forgotten message keeps its place as a gap with no text, and the view drops a message's text when a
-forget record that names it arrives, so every device shows the gap.
+forget that fails after its start record dropped the text keeps its control and its error, so the
+user can confirm again and finish the cleanup. A forgotten message keeps its place as a gap with no
+text, and the view drops a message's text when a forget record that names it arrives, so every
+device shows the gap.
 
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol

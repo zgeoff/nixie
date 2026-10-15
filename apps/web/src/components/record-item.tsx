@@ -22,8 +22,9 @@ export function RecordItem(props: RecordItemProps): ReactNode {
       {text === undefined ? <span className={gap}>Forgotten</span> : null}
       {text !== undefined && isYours ? <span className={message}>{text}</span> : null}
       {text !== undefined && !isYours ? <ReplyText text={text} /> : null}
-      {text !== undefined && forgettableKinds.has(props.record.kind) ? (
+      {forgettableKinds.has(props.record.kind) ? (
         <ForgetControl
+          hasText={text !== undefined}
           onForgotten={() => {
             setForgotten(true);
           }}
