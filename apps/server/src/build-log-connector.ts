@@ -9,7 +9,14 @@ export interface LogConnector {
 }
 
 const logConnectorTool = 'actions.log';
-const actionsLogInput = { type: 'object', properties: {}, additionalProperties: false };
+
+// the sequence of the wake that started the check, which gives each start's action its own hash
+const actionsLogInput = {
+  type: 'object',
+  properties: { wake: { type: 'integer', minimum: 1 } },
+  required: ['wake'],
+  additionalProperties: false,
+};
 
 const actionsLogOutput = {
   type: 'object',
@@ -18,17 +25,17 @@ const actionsLogOutput = {
   additionalProperties: false,
 };
 
-// Builds the log-only connector, which proves the action queue on every deploy. Its tool takes no
-// input, and each attempt logs the action ID and the attempt alone. It declares write, the effect
-// of the line it adds to the server log, because the registry queues only an outside effect.
+// Builds the log-only connector, which proves the action queue on every deploy. Its tool takes the
+// sequence of the check's wake, and each attempt logs the action ID and the attempt alone. It
+// declares write, the effect of its log line, because the registry queues only an outside effect.
 export function buildLogConnector(log: Logger): LogConnector {
   return {
     tool: {
       name: logConnectorTool,
       description:
         "Writes one line to nixie's server log through the action queue, which shows the queue " +
-        'runs an action end to end. It takes no input and returns logged: true once the line is ' +
-        'written.',
+        'runs an action end to end. It takes the sequence of the wake that started the check and ' +
+        'returns logged: true once the line is written.',
       input: actionsLogInput,
       output: actionsLogOutput,
       declaration: {

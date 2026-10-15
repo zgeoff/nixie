@@ -99,7 +99,10 @@ while every task runner is busy with a long turn.
 Each start of nixie runs one action end to end against a real connector, so a deploy proves the
 queue before any feature depends on it. The queue check is a system task that each start wakes. Its
 step calls the log-only connector's tool through the decision point and the queue, as a model's call
-would go, and reads the outcome when it lands in the inbox. The log-only connector takes no input
-and writes one line to the server log with the action ID and the attempt, so no text the model or
-the user chose reaches the log. Only the queue check's tool list holds that tool, so the scope stage
-denies it to every other run.
+would go, and reads the outcome when it lands in the inbox. The call takes the sequence of the
+newest wake in the inbox as its one argument, so each start's call hashes to an action of its own.
+An action that a crash left unknown therefore never stands in for a later start's check, and a rerun
+of the step on the same inbox matches the action it queued. The log-only connector writes one line
+to the server log with the action ID and the attempt, so no text the model or the user chose reaches
+the log. Only the queue check's tool list holds that tool, so the scope stage denies it to every
+other run.
