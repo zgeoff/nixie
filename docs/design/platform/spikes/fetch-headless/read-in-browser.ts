@@ -139,8 +139,11 @@ async function waitForPage(navigationError: string | null): Promise<PageResult> 
       state.challenge = seen.challenge ?? state.challenge;
 
       if (seen.challenge === null && last !== undefined && last.status < 300 && seen.text > 200) {
+        // the deadline closes the browser under a page that stalls here, which rejects the read
         // oxlint-disable-next-line no-await-in-loop -- one read, once the page has passed
-        return { ...(await readSizes()), passed: true, passMs: elapsed(), challenge: state.challenge, error: null };
+        const sizes = await readSizes().catch(() => ({ htmlKiB: null, textChars: null, title: null }));
+
+        return { ...sizes, passed: true, passMs: elapsed(), challenge: state.challenge, error: null };
       }
     }
 
