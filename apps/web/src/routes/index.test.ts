@@ -1,6 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import { store } from '../mocks/store';
+import { setBrowserFiles } from '../test-utils/set-browser-files';
+import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
@@ -124,6 +126,61 @@ test('it checks again in the browser when the server render gets no cookie that 
       path: '/rpc/conversation/read',
     },
   ]);
+}, 120_000);
+
+test('it sends a photo picked in the browser with the message, then shows it in the thread', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  // a 1 by 1 PNG, which the browser decodes and encodes again before the send
+  await setBrowserFiles(ctx.view, {
+    selector: 'input[type=file][multiple]',
+    files: [
+      {
+        name: 'swatch.png',
+        bytes: Uint8Array.fromBase64(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
+        ),
+      },
+    ],
+  });
+
+  await waitFor(
+    async () => {
+      const attached: unknown = await ctx.view.evaluate(
+        'document.querySelector(\'img[alt="Attached image 1"]\') !== null',
+      );
+
+      expect(attached).toBeTrue();
+    },
+    { timeout: 10_000 },
+  );
+
+  await ctx.view.click('textarea');
+  await ctx.view.cdp('Input.insertText', { text: 'Is this the right shade?' });
+  await ctx.view.click('button[type=submit]');
+
+  // the outbox shows its own copy, with how the send stands, until the record arrives; the thread's
+  // copy then comes from conversation.readImage, and a decoded image has a width
+  await waitFor(
+    async () => {
+      const width: unknown = await ctx.view.evaluate(
+        "document.querySelector('[role=status]') === null ? (document.querySelector('img[alt=\"Image 1\"]')?.naturalWidth ?? 0) : 0",
+      );
+
+      expect(width).toBe(1);
+    },
+    { timeout: 10_000 },
+  );
+
+  expect(
+    store.records.findFirst((query) => query.where({ kind: 'owner_message' }))?.message,
+  ).toMatchObject({
+    images: [{ data: expect.toBeString(), mediaType: 'image/png' }],
+    text: 'Is this the right shade?',
+  });
 }, 120_000);
 
 test('it shows the enrolment form once the browser finds that it holds no session', async () => {
