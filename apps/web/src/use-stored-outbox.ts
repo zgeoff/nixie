@@ -35,7 +35,7 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
 
     setEntries(stored.map((message) => ({ message, status: 'sending' })));
     setLoaded(true);
-    void sendStoredMessages(stored, { sendEntry, setEntries, written: writtenImages.current });
+    sendStoredMessages(stored, { sendEntry, setEntries, written: writtenImages.current });
   }, [sendEntry, setEntries]);
 
   useEffect(() => {
@@ -63,31 +63,36 @@ interface StoredSend {
   readonly written: Set<string>;
 }
 
-// Each stored message goes again in the order it was written, once its images are read back, and
-// its entry takes the images, so the page shows them while it sends. A message whose images do not
-// read back fails, and keeps its place in storage for a retry.
-async function sendStoredMessages(
+// Each stored message takes its place in the send queue at once, in the order it was written, so a
+// message you send while the images load goes after it; the send reads the images back in its turn.
+// A message whose images do not read back fails, and keeps its place in storage for a retry.
+function sendStoredMessages(
   stored: readonly OutboxMessage[],
 
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- it records each sent message in the written set
   send: StoredSend,
-): Promise<void> {
+): void {
   for (const message of stored) {
-    // oxlint-disable-next-line no-await-in-loop -- the sends keep the order the messages were written in
-    const loaded = await loadOutboxImages(message);
-
     send.written.add(message.clientMessageId);
-
-    send.setEntries((current) =>
-      current.map((entry) =>
-        entry.message.clientMessageId === message.clientMessageId
-          ? { ...entry, message: loaded }
-          : entry,
-      ),
-    );
-
-    void send.sendEntry(loaded);
+    void send.sendEntry(message);
+    void loadStoredImages(message, send.setEntries);
   }
+}
+
+// the entry takes the images once they read back, so the page shows them while the message waits
+async function loadStoredImages(
+  message: OutboxMessage,
+  setEntries: StoredOutboxOptions['setEntries'],
+): Promise<void> {
+  const loaded = await loadOutboxImages(message);
+
+  setEntries((current) =>
+    current.map((entry) =>
+      entry.message.clientMessageId === message.clientMessageId
+        ? { ...entry, message: loaded }
+        : entry,
+    ),
+  );
 }
 
 // IndexedDB keeps a copy of each unconfirmed message's images until the message leaves storage
