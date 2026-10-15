@@ -214,13 +214,13 @@ const conversationAnswers: Record<string, (input: Record<string, unknown>) => un
   'log.read': (input) => ({
     entries: String(input['query'] ?? '').toLowerCase().includes('ceramic')
       ? [
-          { eventID: 'e7k2', role: 'owner', recordedAt: '2026-10-13T17:40:00Z', text: 'I booked the ceramics class at the studio near Graca for 8 November, 10:00 to 13:00.', isCut: false },
-          { eventID: 'e7k3', role: 'assistant', recordedAt: '2026-10-13T17:40:20Z', text: 'Noted: ceramics on Saturday 8 November, 10:00 to 13:00, near Graca. Bring old clothes.', isCut: false },
+          { eventID: '84', role: 'owner', recordedAt: '2026-10-13T17:40:00Z', text: 'I booked the ceramics class at the studio near Graca for 8 November, 10:00 to 13:00.', isCut: false },
+          { eventID: '85', role: 'assistant', recordedAt: '2026-10-13T17:40:20Z', text: 'Noted: ceramics on Saturday 8 November, 10:00 to 13:00, near Graca. Bring old clothes.', isCut: false },
         ]
       : [
-          { eventID: 'e7k2', role: 'owner', recordedAt: '2026-10-13T17:40:00Z', text: 'I booked the ceramics class at the studio near Graca for 8 November, 10:00 to 13:00.', isCut: false },
-          { eventID: 'e7k3', role: 'assistant', recordedAt: '2026-10-13T17:40:20Z', text: 'Noted: ceramics on Saturday 8 November, 10:00 to 13:00, near Graca. Bring old clothes.', isCut: false },
-          { eventID: 'e7k4', role: 'owner', recordedAt: '2026-10-13T17:42:00Z', text: 'And remind me the bike still needs its derailleur.', isCut: false },
+          { eventID: '84', role: 'owner', recordedAt: '2026-10-13T17:40:00Z', text: 'I booked the ceramics class at the studio near Graca for 8 November, 10:00 to 13:00.', isCut: false },
+          { eventID: '85', role: 'assistant', recordedAt: '2026-10-13T17:40:20Z', text: 'Noted: ceramics on Saturday 8 November, 10:00 to 13:00, near Graca. Bring old clothes.', isCut: false },
+          { eventID: '86', role: 'owner', recordedAt: '2026-10-13T17:42:00Z', text: 'And remind me the bike still needs its derailleur.', isCut: false },
         ],
     next: null,
   }),

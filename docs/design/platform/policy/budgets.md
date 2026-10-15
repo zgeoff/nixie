@@ -82,7 +82,7 @@ turns catch a loop whatever the price.
 | -------------- | ------- | ----------- | ------ | ------ |
 | Per worker run | $2      | 2,000,000   | 25     | 10 min |
 | Per job run    | $5      | 4,000,000   | 100    |        |
-| Per day        | $40     | 40,000,000  | 1,000  |        |
+| Per day        | $60     | 80,000,000  | 1,000  |        |
 | Per month      | $600    | 600,000,000 | 20,000 |        |
 
 - **Per worker run.** The runner passes the turn limit to the SDK as `maxTurns`, and stops the

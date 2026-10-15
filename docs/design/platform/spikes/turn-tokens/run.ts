@@ -8,6 +8,7 @@
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { LogRecord } from '../../../../../modules/log/src/index';
 import type { GuestFrame, InboxMessage } from '../../../../../libs/wire/src/index';
 import { runCheckQuery } from '../../../../../guests/conversation/src/run-check-query';
 import { runTurn } from '../../../../../guests/conversation/src/run-turn';
@@ -16,6 +17,16 @@ import { renderConsolidatorSystemPrompt } from '../../../../../modules/memory/sr
 import { renderMemoryCheckerPrompt } from '../../../../../modules/memory/src/render-memory-checker-prompt';
 import { renderWriterPrompt } from '../../../../../modules/memory/src/render-writer-prompt';
 import { renderWriterSystemPrompt } from '../../../../../modules/memory/src/render-writer-system-prompt';
+import { encodeInboxUUID } from '../../../../../modules/models/src/encode-inbox-uuid';
+import { renderInboxMessage } from '../../../../../modules/models/src/render-inbox-message';
+import { buildModelStatus } from '../../../../../modules/models/src/build-model-status';
+import { buildStartStatus } from '../../../../../modules/models/src/build-start-status';
+import { buildStartTimeStatus } from '../../../../../modules/models/src/build-start-time-status';
+import { buildStatusRegistry } from '../../../../../modules/models/src/build-status-registry';
+import { formatMessageTime } from '../../../../../modules/models/src/format-message-time';
+import { renderPinnedMemory } from '../../../../../modules/models/src/render-pinned-memory';
+import { renderSystemMessage } from '../../../../../modules/models/src/render-system-message';
+import { buildVersionStatus } from '../../../../../apps/server/src/build-version-status';
 import { renderRetrievedItems } from '../../../../../modules/models/src/render-retrieved-items';
 import { renderSystemPrompt } from '../../../../../modules/models/src/render-system-prompt';
 import { buildCheckerEvalInput } from '../../../../../evals/test-utils/build-checker-eval-input';
@@ -70,21 +81,29 @@ console.log(`${role} ${model} ${effort}: ${sessions.length} sessions, ${proxy.ca
 // 12 turns on one session, each resuming at the last turn's boundary, as the conversation does
 async function runConversation(): Promise<readonly SessionResult[]> {
   const home = await mkdtemp(join(tmpdir(), 'turn-tokens-'));
-  const systemPrompt = renderSystemPrompt(fixtures.persona, fixtures.coreItems, lines);
+  const systemPrompt = renderSystemPrompt(fixtures.persona, lines);
   const results: SessionResult[] = [];
   let resume: { sessionID: string; messageID: string } | null = null;
 
   for (const [index, message] of fixtures.conversation.entries()) {
+    const record = buildOwnerRecord(ownerSequence(index), fixtures.day + index * 600_000, message.text);
+    const times = { ...lines, now: record.recordedAt };
+    const at = formatMessageTime(times.now, null, times);
     const retrieved = renderRetrievedItems(
-      message.retrieved.map((at) => fixtures.otherItems[at]!),
-      lines,
+      message.retrieved.map((item) => fixtures.otherItems[item]!),
+      times,
     );
-    // the preamble goes before the message in the same message, as the live turn joins them
+    // a new session opens with the pinned memory and the status, and every turn's retrieved items
+    // follow, all before the message in the same message, as the live turn joins them
+    const preamble = [
+      ...(resume === null ? await renderSessionOpening(times) : []),
+      ...(retrieved === null ? [] : [renderSystemMessage({ type: 'retrieved-memory', at, body: retrieved })]),
+    ];
     const input = [
-      [
-        ...(retrieved === null ? [] : [retrieved]),
-        `[Wed 14 Oct, ${String(9 + Math.floor(index / 2)).padStart(2, '0')}:${String((index * 7) % 60).padStart(2, '0')}] ${message.text}`,
-      ].join('\n\n'),
+      {
+        uuid: encodeInboxUUID(record.sequence),
+        text: [...preamble, renderInboxMessage(record, times)].join('\n\n'),
+      },
     ];
     // oxlint-disable-next-line no-await-in-loop -- each turn resumes where the one before ended
     const result = await runGuestSession(`turn-${index + 1}`, 'conversation', {
@@ -106,10 +125,20 @@ async function runConversation(): Promise<readonly SessionResult[]> {
 
   if (coldWait > 0) {
     await Bun.sleep(coldWait * 1000);
+    const record = buildOwnerRecord(
+      ownerSequence(fixtures.conversation.length),
+      Date.UTC(2026, 9, 14, 15, 40),
+      'Back again. Which train did we pick for the Douro trip?',
+    );
     const result = await runGuestSession('turn-13-cold', 'conversation', {
       home,
       systemPrompt,
-      input: ['[Wed 14 Oct, 16:40] Back again. Which train did we pick for the Douro trip?'],
+      input: [
+        {
+          uuid: encodeInboxUUID(record.sequence),
+          text: renderInboxMessage(record, { ...lines, now: record.recordedAt }),
+        },
+      ],
       resume,
     });
 
@@ -161,9 +190,9 @@ async function runWriter(): Promise<readonly SessionResult[]> {
     join(dir, 'runs', 'conversation-claude-opus-5-5-medium.json'),
   ).json()) as { sessions: SessionResult[] };
   const messages = fixtures.conversation.flatMap((message, index) => [
-    { sequence: 100 + index * 2, role: 'owner' as const, shown: message.text, recordedAt: fixtures.day + index * 600_000 },
+    { sequence: ownerSequence(index), role: 'owner' as const, shown: message.text, recordedAt: fixtures.day + index * 600_000 },
     {
-      sequence: 101 + index * 2,
+      sequence: ownerSequence(index) + 1,
       role: 'assistant' as const,
       shown: conversationRun.sessions[index]?.replies.join('\n\n') ?? '',
       recordedAt: fixtures.day + index * 600_000 + 20_000,
@@ -188,7 +217,7 @@ async function runWriter(): Promise<readonly SessionResult[]> {
     const result = await runGuestSession(`batch-${start / 4 + 1}`, 'memory-writer', {
       home: await mkdtemp(join(tmpdir(), 'turn-tokens-')),
       systemPrompt,
-      input: [prompt],
+      input: [buildPlainMessage(prompt)],
       resume: null,
     });
 
@@ -206,16 +235,17 @@ async function runConsolidator(): Promise<readonly SessionResult[]> {
   const result = await runGuestSession('consolidation-1', 'memory-consolidator', {
     home: await mkdtemp(join(tmpdir(), 'turn-tokens-')),
     systemPrompt: renderConsolidatorSystemPrompt(fixtures.persona, 30, fixtures.ownerName),
-    input: [renderConsolidatorPrompt({ items, isComplete: true })],
+    input: [buildPlainMessage(renderConsolidatorPrompt({ items, isComplete: true }))],
     resume: null,
   });
 
   return [result.session];
 }
 
-// simulated: a job run as one fresh session on the conversation's prompt and tools
+// simulated: a job run as one fresh session on the conversation's prompt, opening and tools
 async function runTasks(): Promise<readonly SessionResult[]> {
-  const systemPrompt = renderSystemPrompt(fixtures.persona, fixtures.coreItems, lines);
+  const systemPrompt = renderSystemPrompt(fixtures.persona, lines);
+  const opening = await renderSessionOpening(lines);
   const results: SessionResult[] = [];
 
   for (const [index, job] of fixtures.jobs.entries()) {
@@ -223,7 +253,7 @@ async function runTasks(): Promise<readonly SessionResult[]> {
     const result = await runGuestSession(`job-${index + 1}`, 'conversation', {
       home: await mkdtemp(join(tmpdir(), 'turn-tokens-')),
       systemPrompt,
-      input: [job],
+      input: [buildPlainMessage([...opening, job].join('\n\n'))],
       resume: null,
     });
 
@@ -241,7 +271,7 @@ async function runWorkers(): Promise<readonly SessionResult[]> {
     const result = await runGuestSession(`worker-${index + 1}`, 'worker', {
       home: await mkdtemp(join(tmpdir(), 'turn-tokens-')),
       systemPrompt: fixtures.workerPrompt,
-      input: [brief],
+      input: [buildPlainMessage(brief)],
       resume: null,
     });
 
@@ -253,7 +283,7 @@ async function runWorkers(): Promise<readonly SessionResult[]> {
 interface GuestSession {
   readonly home: string;
   readonly systemPrompt: string;
-  readonly input: readonly string[];
+  readonly input: readonly InboxMessage[];
   readonly resume: { sessionID: string; messageID: string } | null;
 }
 
@@ -267,7 +297,6 @@ async function runGuestSession(
     fixtures.answerCall(tools, name, input),
   );
   const frames: GuestFrame[] = [];
-  const input: InboxMessage[] = session.input.map((text) => ({ uuid: crypto.randomUUID(), text }));
   let error: string | null = null;
 
   try {
@@ -284,7 +313,7 @@ async function runGuestSession(
         tools: { url: server.config.url, token: 'unused' },
         resume: session.resume,
         systemPrompt: session.systemPrompt,
-        input,
+        input: session.input,
       },
       {
         env: buildGuestEnv(session.home),
@@ -332,6 +361,53 @@ async function runGuestSession(
     `${label}: ${result.calls.length} calls, tools ${server.calls.join(' ') || '-'}${result.error === null ? '' : `, error ${result.error}`}`,
   );
   return { session: result, boundary: last?.boundary ?? null };
+}
+
+// the event ID of the owner's message at an index, with the reply's ID after it, as the log numbers
+// a conversation's records
+function ownerSequence(index: number): number {
+  return 100 + index * 2;
+}
+
+// the blocks a first session opens with, as the production opening renders them: the pinned memory
+// and the status the server's registry reads; a first session has no summary and no recent turns
+async function renderSessionOpening(times: typeof lines): Promise<readonly string[]> {
+  const at = formatMessageTime(times.now, null, times);
+  const facts = { start: { kind: 'first' as const }, openedAt: times.now, times, model };
+  const status = await Promise.all(
+    buildStatusRegistry([buildStartStatus(), buildStartTimeStatus(), buildVersionStatus(), buildModelStatus()]).map(
+      (entry) => entry.read(facts),
+    ),
+  );
+
+  return [
+    renderSystemMessage({ type: 'pinned-memory', at, body: renderPinnedMemory(fixtures.coreItems, times) }),
+    renderSystemMessage({ type: 'status', at, body: status.map((line) => `- ${line.text}`).join('\n') }),
+  ];
+}
+
+// an owner's message as the log returns it, sent from Lisbon, which the production inbox renders
+function buildOwnerRecord(sequence: number, recordedAt: number, text: string): LogRecord {
+  return {
+    sequence,
+    recordedAt: new Date(recordedAt),
+    kind: 'owner_message',
+    definitions: { snapshotHash: 'sha256:spike' },
+    thread: null,
+    stepKey: null,
+    parent: null,
+    contentSource: null,
+    decision: null,
+    promptCause: null,
+    approval: null,
+    payload: { timeZone: 'Europe/Lisbon' },
+    erasable: { status: 'readable', fields: { text } },
+  };
+}
+
+// a role's prompt as one input message with no record behind it
+function buildPlainMessage(text: string): InboxMessage {
+  return { uuid: crypto.randomUUID(), text };
 }
 
 // the guest's own environment: its home, the placeholder the grant would swap, and the host's proxy
