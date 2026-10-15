@@ -184,6 +184,15 @@ export interface ProposalAnswer {
   readonly ignoreCloseMatch?: boolean;
 }
 
+// Your rejection of a proposal, with your optional reason, which the conversation reads in its
+// next turn.
+export interface ProposalRejection {
+  readonly proposalID: string;
+  readonly actionHash: string;
+  readonly identityID: string;
+  readonly reason?: string;
+}
+
 // An approval applied, or held for the active item that closely matches the proposal.
 export type ApprovalResult =
   | { readonly status: 'applied'; readonly itemID: string; readonly version: number }
@@ -200,7 +209,7 @@ export interface CloseMatch {
 export interface MemoryProposals {
   readonly listPending: () => Promise<readonly MemoryProposal[]>;
   readonly approve: (answer: ProposalAnswer) => Promise<ApprovalResult>;
-  readonly reject: (answer: Omit<ProposalAnswer, 'editedText'>) => Promise<void>;
+  readonly reject: (rejection: ProposalRejection) => Promise<void>;
 
   // lapses every pending proposal past its lapse time, and returns how many
   readonly lapse: () => Promise<number>;

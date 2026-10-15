@@ -1,13 +1,14 @@
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { ProposalAnswer } from './gate-types';
+import type { ProposalRejection } from './gate-types';
 import { requirePendingProposal } from './require-pending-proposal';
 import type { MemoryTables, StoreParts } from './types';
 
 // Rejects a proposal while it is still pending under the hash you saw. A proposal for a new item
-// held that item's only key, so the rejection removes the key and the proposed text with it.
+// held that item's only key, so the rejection removes the key and the proposed text with it. Your
+// reason sits in the record's own erasable fields, whose key outlives the item's.
 export async function writeProposalRejection(
   parts: StoreParts,
-  answer: Omit<ProposalAnswer, 'editedText'>,
+  answer: ProposalRejection,
 ): Promise<void> {
   const log = parts.context.log;
 
@@ -24,6 +25,7 @@ export async function writeProposalRejection(
         definitions: parts.context.definitions(),
         ...(pending.thread === null ? {} : { thread: pending.thread }),
         payload: { proposalID: pending.proposal_id },
+        ...(answer.reason === undefined ? {} : { erasable: { reason: answer.reason } }),
       },
     ]);
 

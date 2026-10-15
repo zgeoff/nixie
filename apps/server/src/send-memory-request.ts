@@ -16,6 +16,9 @@ export type MemoryRequest =
 
       // an approval's text in place of the proposal's
       readonly editedText?: string;
+
+      // a rejection's reason, which the conversation reads in its next turn
+      readonly reason?: string;
     }
   | { readonly command: 'show'; readonly itemID: string }
   | { readonly command: 'edit'; readonly target: VersionRef; readonly text: string }
@@ -98,6 +101,7 @@ function buildMemoryRoute(request: MemoryRequest): MemoryRoute {
         ...(request.revisionOf === undefined ? {} : { revisionOf: request.revisionOf }),
         ...(request.ignoreCloseMatch === true ? { ignoreCloseMatch: true } : {}),
         ...(request.editedText === undefined ? {} : { editedText: request.editedText }),
+        ...(request.reason === undefined ? {} : { reason: request.reason }),
       },
     };
   }

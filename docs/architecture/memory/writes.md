@@ -129,7 +129,10 @@ hash that no longer matches refuses the answer. An approval applies the bound op
 the approval with the version. An edit approves the user's own text instead, so that version takes
 the user as its origin and source and cites no evidence. A retirement takes no edit. An approval of
 a proposal whose item moved on fails as stale and applies nothing, and the proposal stays pending so
-the client can offer it against the current version.
+the client can offer it against the current version. A rejection takes the user's reason when they
+give one. The reason is free text, so it sits in the rejection record's erasable fields under that
+record's own key, and a rejected new item keeps its reason after the rejection deletes the item's
+key.
 
 A write that proposes the same change as a pending proposal merges into it instead of adding a
 second proposal. The same change means the same operation on the same target, or on a new item for

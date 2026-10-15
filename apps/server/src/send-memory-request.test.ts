@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { readRecords } from '@heynixie/log';
 import { createProposal, startTestMemory } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
 import { sendMemoryRequest } from './send-memory-request';
@@ -96,6 +97,27 @@ test('it returns the proposal a rejection answered', async () => {
   });
 
   expect(answered).toStrictEqual({ proposalID: proposal.proposalID });
+});
+
+test('it sends the reason a rejection gives, which its record keeps', async () => {
+  const ctx = await setupTest();
+  const proposal = await createProposal(ctx.memory.store, { text: 'Prefers tabs.' });
+
+  await sendMemoryRequest(ctx.path, {
+    command: 'reject',
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    reason: "wrong, it's spaces",
+  });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.proposal_rejected'],
+  });
+
+  expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
+    { status: 'readable', fields: { reason: "wrong, it's spaces" } },
+  ]);
 });
 
 test('it rejects with the status and the reason when the server refuses the answer', async () => {

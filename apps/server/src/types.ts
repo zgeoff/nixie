@@ -104,6 +104,9 @@ export interface CLIFlags {
   // an edit's new text, or an approval's text in place of the proposal's
   readonly text?: string;
 
+  // a rejection's reason, which the conversation reads in its next turn
+  readonly reason?: string;
+
   // a reset keeps the live device sessions, and runs only once the user confirms it
   readonly 'keep-sessions': boolean;
   readonly yes: boolean;

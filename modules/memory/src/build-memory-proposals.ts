@@ -12,7 +12,7 @@ export function buildMemoryProposals(parts: StoreParts): MemoryProposals {
   return {
     listPending: () => readPendingProposals(parts),
     approve: (answer) => writeProposalApproval(parts, answer),
-    reject: (answer) => writeProposalRejection(parts, answer),
+    reject: (rejection) => writeProposalRejection(parts, rejection),
     lapse: () => runProposalLapses(parts),
     readRejectedEdits: (proposalIDs) => readRejectedEdits(parts, proposalIDs),
   };
