@@ -46,6 +46,10 @@ export type { AnswerQuoteSource, ProposalAnswerEvent } from './build-proposal-an
 export { buildProposalAnswerKind } from './build-proposal-answer-kind';
 export { buildCatchUpKind } from './build-catch-up-kind';
 export { buildMemoryChangeKind } from './build-memory-change-kind';
+export type { HostMemory, HostMemoryStore } from './build-host-memory';
+export { buildHostMemory } from './build-host-memory';
+export type { LapseSweep } from './start-lapse-sweep';
+export { startLapseSweep } from './start-lapse-sweep';
 export { buildProposalMergeKind } from './build-proposal-merge-kind';
 export type { VersionTextResult } from './read-version-texts';
 export { readVersionTexts } from './read-version-texts';
