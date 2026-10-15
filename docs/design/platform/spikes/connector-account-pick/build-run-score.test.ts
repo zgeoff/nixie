@@ -115,3 +115,24 @@ test('it passes an implied run that asks instead of calling', () => {
     wrongAccountCalls: 0,
   });
 });
+
+test('it counts a call whose connection is an array of the right ID as invalid', () => {
+  expect(
+    buildRunScore(
+      { expect: 'Work', kind: 'label' },
+      [
+        { account: 'jordan.reyes@harbourline.example', id: 'p81vxxxbo8', label: 'Work' },
+        { account: 'jordan@fernway.example', id: 'wbzmh8v96q', label: 'Personal' },
+      ],
+      'id-label',
+      [{ args: { connection: ['p81vxxxbo8'] }, error: false }],
+    ),
+  ).toStrictEqual({
+    final: 'wrong',
+    first: 'invalid',
+    invalidCalls: 1,
+    kind: 'label',
+    pass: false,
+    wrongAccountCalls: 0,
+  });
+});

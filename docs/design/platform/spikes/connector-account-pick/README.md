@@ -36,7 +36,9 @@ bun test
 reply cut to its start and each call cut to its `connection` value. `report.ts` counts a run whose
 CLI call failed apart and leaves it out of every score, and that run holds no failed run.
 [build-run-score.ts](build-run-score.ts) scores each run over every call it made, and `bun test`
-runs its tests.
+runs its tests. A `connection` value that is not a string counts as not allowed, even an array that
+holds the right ID, and the mock's input check refuses it. Under that rule, the recorded run scores
+the same as every number in the answer below, and none changed.
 
 ### Cases and arms
 
