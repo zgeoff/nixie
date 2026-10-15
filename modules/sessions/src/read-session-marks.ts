@@ -1,3 +1,4 @@
+import type { ContextSize } from '@heynixie/compaction';
 import type { LogRecord, ReadRecordsOptions } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
@@ -22,7 +23,7 @@ export interface SessionMarks {
   readonly hasOpening: boolean;
 
   // the context the last turn ended with and its window, or null when it reported none
-  readonly lastContext: TurnContextSize | null;
+  readonly lastContext: ContextSize | null;
 
   // whether a summary committed after the last session opened, so the next one opens from it
   readonly isSummarized: boolean;
@@ -32,11 +33,6 @@ export interface SessionMarks {
 
   // the images the session held after the last turn, or none before any turn
   readonly images: ImageTally;
-}
-
-export interface TurnContextSize {
-  readonly size: number;
-  readonly window: number;
 }
 
 // Reads the last turn's pinned core, and whether a forget invalidated the session after that turn
@@ -107,7 +103,7 @@ const contextSchema = z.object({
 
 // a turn whose model calls reported no usage, or one recorded before turns kept their context,
 // gives none
-function parseContext(turn: LogRecord): TurnContextSize | null {
+function parseContext(turn: LogRecord): ContextSize | null {
   const parsed = contextSchema.safeParse(turn.payload);
 
   return parsed.success

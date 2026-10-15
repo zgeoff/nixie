@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
-import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { runGuestPurge } from './run-guest-purge';
-import { buildStubSandboxes } from './test-utils/build-stub-sandboxes';
 
 function setupTest() {
   return { sandboxes: buildStubSandboxes() };

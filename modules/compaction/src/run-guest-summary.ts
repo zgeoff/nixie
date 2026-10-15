@@ -1,5 +1,5 @@
 // oxlint-disable typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
-import type { ExecStream, Sandbox } from '@heynixie/sandbox';
+import type { ExecStream, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { GuestFrame, HostFrame } from '@heynixie/wire';
 import {
   decodeTurnFrame,
@@ -7,7 +7,6 @@ import {
   guestFrameSchema,
   turnFrameLimitBytes,
 } from '@heynixie/wire';
-import type { GuestCommand } from './run-guest-turn';
 
 type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
 

@@ -1,16 +1,16 @@
 import { expect, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
 import { readThreadNewestFirst } from './read-thread-newest-first';
-import { startTestTasks } from './test-utils/start-test-tasks';
+import { startTestLog } from './test-utils/start-test-log';
+import { writeRecords } from './write-records';
 
 async function setupTest() {
-  return { tasks: await startTestTasks() };
+  return { log: await startTestLog() };
 }
 
 test('it reads the thread records of the kinds given, newest first, leaving out other threads and kinds', async () => {
   const ctx = await setupTest();
 
-  await writeRecords(ctx.tasks.context.log, [
+  await writeRecords(ctx.log.log, [
     {
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -37,7 +37,7 @@ test('it reads the thread records of the kinds given, newest first, leaving out 
   ]);
 
   const records = await Array.fromAsync(
-    readThreadNewestFirst(ctx.tasks.context, 'conversation', ['owner_message', 'model.reply']),
+    readThreadNewestFirst(ctx.log, 'conversation', ['owner_message', 'model.reply']),
   );
 
   expect(records.map((record) => record.sequence)).toStrictEqual([2, 1]);
@@ -47,7 +47,7 @@ test('it reads on past a full page to the oldest record', async () => {
   const ctx = await setupTest();
 
   await writeRecords(
-    ctx.tasks.context.log,
+    ctx.log.log,
     Array.from({ length: 201 }, (_, index) => ({
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -57,7 +57,7 @@ test('it reads on past a full page to the oldest record', async () => {
   );
 
   const records = await Array.fromAsync(
-    readThreadNewestFirst(ctx.tasks.context, 'conversation', ['owner_message']),
+    readThreadNewestFirst(ctx.log, 'conversation', ['owner_message']),
   );
 
   expect(records.map((record) => record.sequence)).toStrictEqual(

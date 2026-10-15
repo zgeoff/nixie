@@ -8,6 +8,7 @@ export { findRecordKeys } from './find-record-keys';
 export { MissingDefinitionsError } from './missing-definitions-error';
 export type { ReadRecordsOptions } from './read-records';
 export { readRecords } from './read-records';
+export { readThreadNewestFirst } from './read-thread-newest-first';
 export { readRecordAttachments } from './read-record-attachments';
 export { removeRecordKey } from './remove-record-key';
 export { writeKeyStoreCheckpoint } from './write-key-store-checkpoint';

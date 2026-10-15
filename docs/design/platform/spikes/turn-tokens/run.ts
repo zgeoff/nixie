@@ -25,7 +25,7 @@ import { buildStartTimeStatus } from '../../../../../modules/sessions/src/build-
 import { buildStatusRegistry } from '../../../../../modules/sessions/src/build-status-registry';
 import { formatMessageTime } from '../../../../../modules/sessions/src/format-message-time';
 import { renderPinnedMemory } from '../../../../../modules/sessions/src/render-pinned-memory';
-import { renderSystemMessage } from '../../../../../modules/sessions/src/render-system-message';
+import { renderSystemMessage } from '../../../../../libs/wire/src/index';
 import { buildVersionStatus } from '../../../../../apps/server/src/build-version-status';
 import { renderRetrievedItems } from '../../../../../modules/sessions/src/render-retrieved-items';
 import { renderSystemPrompt } from '../../../../../modules/sessions/src/render-system-prompt';

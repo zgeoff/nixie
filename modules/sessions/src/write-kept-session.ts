@@ -1,6 +1,5 @@
 import { join, relative } from 'node:path';
-import type { FileSpec, Sandbox } from '@heynixie/sandbox';
-import type { GuestCommand } from './run-guest-turn';
+import type { FileSpec, GuestCommand, Sandbox } from '@heynixie/sandbox';
 
 export interface KeptSessionSpec {
   // the sandbox the conversation leaves, which still holds the session

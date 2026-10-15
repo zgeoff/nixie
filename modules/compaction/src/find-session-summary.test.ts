@@ -1,18 +1,18 @@
 import { expect, test } from 'bun:test';
 import { removeRecordKey, writeRecords } from '@heynixie/log';
+import { startTestLog } from '@heynixie/log/test-utils';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { findSessionSummary } from './find-session-summary';
-import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
-  return { tasks: await startTestTasks() };
+  return { log: await startTestLog() };
 }
 
 test('it finds the newest summary with its sequence, the sequence it covers and its text', async () => {
   const ctx = await setupTest();
 
-  await writeRecords(ctx.tasks.context.log, [
+  await writeRecords(ctx.log.log, [
     {
       kind: 'model.session_summarized',
       definitions: { snapshotHash: 'sha256:test' },
@@ -29,7 +29,7 @@ test('it finds the newest summary with its sequence, the sequence it covers and 
     },
   ]);
 
-  const summary = await findSessionSummary(ctx.tasks.context, 'conversation');
+  const summary = await findSessionSummary(ctx.log, 'conversation');
 
   expect(summary).toStrictEqual({
     sequence: 2,
@@ -41,7 +41,7 @@ test('it finds the newest summary with its sequence, the sequence it covers and 
 test('it passes over a summary whose key is gone to the newest one still readable', async () => {
   const ctx = await setupTest();
 
-  await writeRecords(ctx.tasks.context.log, [
+  await writeRecords(ctx.log.log, [
     {
       kind: 'model.session_summarized',
       definitions: { snapshotHash: 'sha256:test' },
@@ -59,15 +59,15 @@ test('it passes over a summary whose key is gone to the newest one still readabl
   ]);
 
   const keys = await sql<{ key_id: string }>`select key_id from records
-    where sequence = 2`.execute(ctx.tasks.writer.db);
+    where sequence = 2`.execute(ctx.log.writer.db);
 
   const [key] = keys.rows;
 
   invariant(key);
 
-  await removeRecordKey(ctx.tasks.context.log, key.key_id);
+  await removeRecordKey(ctx.log.log, key.key_id);
 
-  const summary = await findSessionSummary(ctx.tasks.context, 'conversation');
+  const summary = await findSessionSummary(ctx.log, 'conversation');
 
   expect(summary).toStrictEqual({
     sequence: 1,
@@ -78,7 +78,7 @@ test('it passes over a summary whose key is gone to the newest one still readabl
 
 test('it finds none on a thread with no summary', async () => {
   const ctx = await setupTest();
-  const summary = await findSessionSummary(ctx.tasks.context, 'conversation');
+  const summary = await findSessionSummary(ctx.log, 'conversation');
 
   expect(summary).toBeNull();
 });

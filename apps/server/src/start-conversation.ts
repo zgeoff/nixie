@@ -1,9 +1,9 @@
+import type { CompactionSettings } from '@heynixie/compaction';
 import type { ModelSecrets, ModelsConfig } from '@heynixie/models';
 import { resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type {
-  CompactionSettings,
   ConversationMemory,
   ConversationMemorySettings,
   ConversationRunner,

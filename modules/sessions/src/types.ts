@@ -1,13 +1,13 @@
+import type { CompactionSettings } from '@heynixie/compaction';
 import type { ContentSource, RecordInput } from '@heynixie/log';
 import type { ResolvedProfile } from '@heynixie/models';
-import type { Sandbox } from '@heynixie/sandbox';
+import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { StepInput, TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
 import type { TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
 import type { SessionGuard } from './make-session-guard';
 import type { SessionMarks } from './read-session-marks';
-import type { GuestCommand } from './run-guest-turn';
 
 // One version of a memory item, as a turn's record lists it.
 export interface MemoryRef {
@@ -97,16 +97,6 @@ export interface ConversationMemorySettings {
   // the names the owner calls the agent by, which retrieval leaves out of the query with the
   // owner's name
   readonly agentNames: readonly string[];
-}
-
-// When nixie compacts the conversation's session, each setting tunable from the deployment
-// configuration.
-export interface CompactionSettings {
-  // the share of the profile's window at or past which a turn's end compacts the session
-  readonly threshold: number;
-
-  // the token cap of the summary the model writes, which its word target derives from
-  readonly summaryTokens: number;
 }
 
 // How your message's send time renders: the zone for a message that carries none, and the time

@@ -1,3 +1,5 @@
+import type { GuestFrame, HostFrame, InboxMessage } from '@heynixie/wire';
+import { decodeTurnFrame, encodeTurnFrame, hostFrameSchema } from '@heynixie/wire';
 import type {
   ExecStream,
   Sandbox,
@@ -5,9 +7,7 @@ import type {
   SandboxSpec,
   SecretSpec,
   StreamExit,
-} from '@heynixie/sandbox';
-import type { GuestFrame, HostFrame, InboxMessage } from '@heynixie/wire';
-import { decodeTurnFrame, encodeTurnFrame, hostFrameSchema } from '@heynixie/wire';
+} from '../types';
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 

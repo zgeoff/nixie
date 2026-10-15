@@ -25,6 +25,7 @@ export type {
   ExecExit,
   ExecResult,
   ExecSpec,
+  GuestCommand,
   ExecStream,
   FileSpec,
   GrantSpec,

@@ -1,11 +1,11 @@
 import type { LogRecord } from '@heynixie/log';
+import type { SystemMessageType } from '@heynixie/wire';
+import { renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from './format-message-time';
 import { readDeliveredVersions } from './read-delivered-versions';
 import { renderCoreChanges } from './render-core-changes';
 import { renderPinnedMemory } from './render-pinned-memory';
 import { renderRetrievedItems } from './render-retrieved-items';
-import type { SystemMessageType } from './render-system-message';
-import { renderSystemMessage } from './render-system-message';
 import { renderSystemPrompt } from './render-system-prompt';
 import type {
   ConversationMemory,

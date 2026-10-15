@@ -1,4 +1,4 @@
-import type { ExecStream, Sandbox, StreamExit } from '@heynixie/sandbox';
+import type { ExecStream, GuestCommand, Sandbox, StreamExit } from '@heynixie/sandbox';
 import type { GuestFrame, HostFrame, InboxMessage } from '@heynixie/wire';
 import {
   decodeTurnFrame,
@@ -6,12 +6,6 @@ import {
   guestFrameSchema,
   turnFrameLimitBytes,
 } from '@heynixie/wire';
-
-// How the sandbox starts the conversation guest: its argv, and the variables it passes by name.
-export interface GuestCommand {
-  readonly argv: readonly string[];
-  readonly env: Readonly<Record<string, string>>;
-}
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 

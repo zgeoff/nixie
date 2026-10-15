@@ -1,7 +1,7 @@
+import { removeSummaryKeys } from '@heynixie/compaction';
 import { writeRecords } from '@heynixie/log';
 import type { RecordInput } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
-import { removeSummaryKeys } from './remove-summary-keys';
 import { runGuestPurge } from './run-guest-purge';
 import type { ConversationRun, SessionCleanupCause } from './types';
 

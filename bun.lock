@@ -53,6 +53,7 @@
       "dependencies": {
         "@heynixie/actions": "workspace:*",
         "@heynixie/api": "workspace:*",
+        "@heynixie/compaction": "workspace:*",
         "@heynixie/connectors": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
@@ -68,6 +69,7 @@
         "@heynixie/sessions": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "elysia": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",
@@ -190,6 +192,7 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+        "tiny-invariant": "catalog:",
       },
     },
     "modules/actions": {
@@ -225,6 +228,21 @@
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
         "@orpc/client": "catalog:",
+      },
+    },
+    "modules/compaction": {
+      "name": "@heynixie/compaction",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/log": "workspace:*",
+        "@heynixie/models": "workspace:*",
+        "@heynixie/sandbox": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
       },
     },
     "modules/connectors": {
@@ -272,6 +290,7 @@
       "name": "@heynixie/memory",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/compaction": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/retry": "workspace:*",
@@ -341,6 +360,7 @@
       "name": "@heynixie/sessions",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/compaction": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/models": "workspace:*",
@@ -568,6 +588,8 @@
     "@heynixie/actions": ["@heynixie/actions@workspace:modules/actions"],
 
     "@heynixie/api": ["@heynixie/api@workspace:modules/api"],
+
+    "@heynixie/compaction": ["@heynixie/compaction@workspace:modules/compaction"],
 
     "@heynixie/connectors": ["@heynixie/connectors@workspace:modules/connectors"],
 

@@ -1,6 +1,6 @@
-import type { TasksContext } from '@heynixie/tasks';
+import { readThreadNewestFirst } from '@heynixie/log';
 import { z } from 'zod';
-import { readThreadNewestFirst } from './read-thread-newest-first';
+import type { LogContext } from './types';
 
 // The record kind of a summary that the model wrote at the end of a session.
 const sessionSummarizedKind = 'model.session_summarized';
@@ -28,7 +28,7 @@ const summarySchema = z.object({
 // Finds the thread's newest summary that is still readable, or null when every summary is erased,
 // as a forget leaves them, or none exists.
 export async function findSessionSummary(
-  context: Pick<TasksContext, 'log'>,
+  context: LogContext,
   taskID: string,
 ): Promise<SessionSummary | null> {
   for await (const record of readThreadNewestFirst(context, taskID, [sessionSummarizedKind])) {

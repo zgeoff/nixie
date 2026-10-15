@@ -1,13 +1,17 @@
-import type { LogRecord } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
-import type { TasksContext } from '@heynixie/tasks';
+import { readRecords } from './read-records';
+import type { Log, LogRecord } from './types';
 
 const pageSize = 200;
+
+// any context that holds the log, such as a task's
+interface LogContext {
+  readonly log: Log;
+}
 
 // Reads the thread's records of the kinds given, newest first, a page at a time, so a reader that
 // stops early reads no further back than the page it stopped in.
 export async function* readThreadNewestFirst(
-  context: Pick<TasksContext, 'log'>,
+  context: LogContext,
   taskID: string,
   kinds: readonly string[],
 ): AsyncGenerator<LogRecord> {

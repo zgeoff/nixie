@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockModelProfile } from '@heynixie/models/test-utils';
+import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import { startConversationRunner } from './start-conversation-runner';
-import { buildStubSandboxes } from './test-utils/build-stub-sandboxes';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { buildStubTurnScript } from './test-utils/build-stub-turn-script';
 import { runNextStep } from './test-utils/run-next-step';

@@ -11,6 +11,11 @@ reaches the rest. [Session opening](./session-opening.md) covers the builder tha
 that a forget runs. [0045](../../decisions/0045-session-opening-and-compaction.md) records the
 choice.
 
+The compactor is its own package, apart from the conversation's sessions. It reads only the log, the
+sandbox that runs the summary call and the profile, and its caller passes the system prompt, the
+time and the user's name, so a task's model loop compacts its session through the same code as the
+conversation.
+
 The guest turns the CLI's auto-compaction off on every query, so nixie's compactor is the only way a
 session shrinks, and every summary the model sees is one the event log holds.
 

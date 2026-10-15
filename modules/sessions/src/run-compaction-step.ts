@@ -1,8 +1,8 @@
+import { runSessionCompaction } from '@heynixie/compaction';
 import type { StepResult } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
 import { buildCompactionRequest } from './build-compaction-request';
 import { runInboxStep } from './run-inbox-step';
-import { runSessionCompaction } from './run-session-compaction';
 import type { SessionStep } from './types';
 
 // Compacts the session before the step takes the inbox. A summary commits with the boundary

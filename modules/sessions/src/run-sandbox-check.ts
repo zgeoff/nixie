@@ -1,8 +1,7 @@
 import type { Logger } from '@heynixie/ops';
-import type { ExecStream, Sandbox } from '@heynixie/sandbox';
+import type { ExecStream, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { CheckReply, CheckRequest } from '@heynixie/wire';
 import { checkReplySchema, decodeTurnFrame, turnFrameLimitBytes } from '@heynixie/wire';
-import type { GuestCommand } from './run-guest-turn';
 
 export interface SandboxCheck {
   readonly sandbox: Pick<Sandbox, 'spawn'>;

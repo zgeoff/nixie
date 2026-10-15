@@ -1,5 +1,5 @@
+import { renderSystemMessage } from '@heynixie/wire';
 import { countSummaryWords } from './count-summary-words';
-import { renderSystemMessage } from './render-system-message';
 
 export interface CompactionInstruction {
   // when nixie wrote the instruction, as a message stamp shows a time
