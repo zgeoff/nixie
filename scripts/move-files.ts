@@ -31,7 +31,7 @@ async function collectMoves(pairs: readonly string[]): Promise<Map<string, strin
   const moves = new Map<string, string>();
 
   for (const pair of pairs) {
-    const [from = '', to = ''] = pair.split('=');
+    const [from, to] = parseMovePair(pair);
     const fromTest = from.replace(/\.ts$/u, '.test.ts');
 
     moves.set(from, to);
@@ -45,6 +45,17 @@ async function collectMoves(pairs: readonly string[]): Promise<Map<string, strin
   }
 
   return moves;
+}
+
+// a malformed pair fails before any file moves
+function parseMovePair(pair: string): readonly [string, string] {
+  const [from = '', to = ''] = pair.split('=');
+
+  if (from === '' || to === '') {
+    throw new Error(`each move is from=to, and "${pair}" is not`);
+  }
+
+  return [from, to];
 }
 
 // the new file of each name a moved file exports
