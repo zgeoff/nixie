@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getCLIContextWindow } from './get-cli-context-window';
 import type { ModelProfile, ModelsConfig } from './types';
 
 const profileIDSchema = z
@@ -24,16 +25,31 @@ const credentialSchema = z
 // nixie refuses one at start instead.
 const contextTokensSchema = z.int().min(100_000).max(1_000_000);
 
-const profileSchema = z.strictObject({
-  base_url: z.url({ protocol: /^https?$/u }),
-  credential: credentialSchema,
-  auth_header: z.enum(['bearer', 'x-api-key']),
-  model: z.string().min(1),
-  effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
-  provider_pin: z.string().min(1).optional(),
-  context_tokens: contextTokensSchema.optional(),
-  prices: pricesSchema.optional(),
-});
+const profileSchema = z
+  .strictObject({
+    base_url: z.url({ protocol: /^https?$/u }),
+    credential: credentialSchema,
+    auth_header: z.enum(['bearer', 'x-api-key']),
+    model: z.string().min(1),
+    effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
+    provider_pin: z.string().min(1).optional(),
+    context_tokens: contextTokensSchema.optional(),
+    prices: pricesSchema.optional(),
+  })
+
+  // With auto-compaction off the CLI ignores the cap and refuses a call only against the window it
+  // assumes for the model, so nixie refuses at start a cap past that window.
+  .superRefine((profile, issues) => {
+    const window = getCLIContextWindow(profile.model);
+
+    if (profile.context_tokens !== undefined && profile.context_tokens > window) {
+      issues.addIssue({
+        code: 'custom',
+        path: ['context_tokens'],
+        message: `the context cap of ${String(profile.context_tokens)} tokens is larger than the ${String(window)}-token window the Claude CLI assumes for ${profile.model}`,
+      });
+    }
+  });
 
 const rolesSchema = z.strictObject({
   conversation: profileIDSchema.optional(),

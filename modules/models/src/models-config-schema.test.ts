@@ -8,7 +8,7 @@ test('it reads a direct profile with its context tokens and prices into its type
         base_url: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         auth_header: 'x-api-key',
-        model: 'claude-test-1',
+        model: 'claude-sonnet-5-5',
         effort: 'medium',
         context_tokens: 400_000,
         prices: { input: 3, cache_write: 3.75, cached_input: 0.3, output: 15 },
@@ -24,7 +24,7 @@ test('it reads a direct profile with its context tokens and prices into its type
         baseURL: 'https://api.anthropic.com',
         credential: 'deployment:anthropic',
         authHeader: 'x-api-key',
-        model: 'claude-test-1',
+        model: 'claude-sonnet-5-5',
         effort: 'medium',
         providerPin: null,
         contextTokens: 400_000,
@@ -92,6 +92,52 @@ test.each([
 
   expect(result.error?.issues).toPartiallyContain({
     path: ['profiles', 'chat-direct', 'context_tokens'],
+  });
+});
+
+test.each([
+  ['claude-haiku-5-5', 200_000],
+  ['claude-sonnet-5-5', 1_000_000],
+  ['claude-haiku-5-5[1m]', 1_000_000],
+  ['anthropic/claude-sonnet-5-5', 400_000],
+  ['claude-mythos-preview', 1_000_000],
+])('it reads %s with a context cap of %d, within the window the CLI assumes', (model, cap) => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model,
+        effort: 'medium',
+        context_tokens: cap,
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+  });
+
+  expect(result.data?.profiles['chat-direct']).toMatchObject({ model, contextTokens: cap });
+});
+
+test('it refuses a context cap larger than the window the CLI assumes for the model', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-haiku-5-5',
+        effort: 'medium',
+        context_tokens: 200_001,
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['profiles', 'chat-direct', 'context_tokens'],
+    message:
+      'the context cap of 200001 tokens is larger than the 200000-token window the Claude CLI assumes for claude-haiku-5-5',
   });
 });
 
