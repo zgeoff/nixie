@@ -13,6 +13,7 @@ async function setupTest() {
   const projectDir = join(configDir, 'projects', '-home-nixie-conversation');
 
   await mkdir(projectDir, { recursive: true });
+
   return { configDir, projectDir };
 }
 
@@ -23,7 +24,6 @@ test('it removes every session but the one the turn resumes, with its side files
   await writeFile(join(ctx.projectDir, 'bbbb.jsonl'), '{}\n');
   await mkdir(join(ctx.projectDir, 'aaaa'));
   await mkdir(join(ctx.projectDir, 'bbbb'));
-
   await removeStaleSessions(ctx.configDir, 'bbbb');
 
   const left = await readdir(ctx.projectDir);
@@ -35,7 +35,6 @@ test('it removes every session when the turn starts a fresh one', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.projectDir, 'aaaa.jsonl'), '{}\n');
-
   await removeStaleSessions(ctx.configDir, null);
 
   const left = await readdir(ctx.projectDir);
@@ -47,7 +46,6 @@ test('it removes nothing outside the config folder when no config folder is set'
   const ctx = await setupTest();
 
   await writeFile(join(ctx.projectDir, 'aaaa.jsonl'), '{}\n');
-
   await removeStaleSessions(undefined, null);
 
   const left = await readdir(ctx.projectDir);

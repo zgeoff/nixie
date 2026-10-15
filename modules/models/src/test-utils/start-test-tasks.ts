@@ -39,6 +39,7 @@ export async function startTestTasks(): Promise<TestTasks> {
     'wrapKey',
     'unwrapKey',
   ]);
+
   const log: Log = { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] };
   const clock = buildTestClock(1_000_000);
 

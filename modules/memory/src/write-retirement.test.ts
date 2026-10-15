@@ -10,6 +10,7 @@ async function setupTest() {
 
 test('it retires an item, takes it out of search and keeps its text', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -32,6 +33,7 @@ test('it retires an item, takes it out of search and keeps its text', async () =
   const history = await ctx.memory.store.readHistory(item.itemID);
 
   expect(searched.items).toStrictEqual([]);
+
   expect(history).toMatchObject({
     state: 'retired',
     versions: [
@@ -43,6 +45,7 @@ test('it retires an item, takes it out of search and keeps its text', async () =
 
 test('it keeps the source of the text it retires', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: {
@@ -69,6 +72,7 @@ test('it keeps the source of the text it retires', async () => {
 
 test('it takes a retired item out of the pinned core', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Goes by Sam',
     isPinned: true,
@@ -91,10 +95,12 @@ test('it takes a retired item out of the pinned core', async () => {
 
 test('it rejects a retirement of a retired item', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const retired = await ctx.memory.store.retire({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

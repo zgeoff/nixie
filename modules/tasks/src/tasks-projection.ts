@@ -18,12 +18,15 @@ export const tasksProjection: Projection = {
     if (isInboxRecord(record) && record.thread !== null) {
       return updateInbox(db, record.thread, record.sequence);
     }
+
     const parsed = parseTaskRecord(record);
 
     if (parsed === null || parsed.kind === 'timer.fired') {
       return [];
     }
+
     await applyTaskRecord(db, parsed, record);
+
     return [parsed.taskID];
   },
 };
@@ -46,12 +49,14 @@ async function updateInbox(
     .where('task_id', '=', taskID)
     .where('state', '=', 'waiting')
     .execute();
+
   await db
     .updateTable('tasks')
     .set({ claimable_at: 0 })
     .where('task_id', '=', taskID)
     .where('is_conversation', '=', 1)
     .execute();
+
   return row === undefined ? [] : [taskID];
 }
 
@@ -80,8 +85,10 @@ async function applyTaskRecord(
         updated_sequence: record.sequence,
       })
       .execute();
+
     return;
   }
+
   await db
     .updateTable('tasks')
     .set({ updated_sequence: record.sequence, ...buildTaskUpdate(parsed) })
@@ -97,6 +104,7 @@ function buildTaskUpdate(
   if (parsed.kind === 'task.step_started') {
     return { state: 'running', started_step_key: parsed.stepKey };
   }
+
   if (parsed.kind === 'task.step_committed') {
     return {
       state: parsed.nextState,
@@ -107,9 +115,11 @@ function buildTaskUpdate(
       session_boundary: parsed.sessionBoundary,
     };
   }
+
   if (parsed.kind === 'task.step_interrupted') {
     return { started_step_key: null };
   }
+
   if (parsed.kind === 'task.step_errored') {
     return {
       state: parsed.nextState,

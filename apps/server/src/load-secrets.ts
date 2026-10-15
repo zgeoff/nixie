@@ -28,6 +28,7 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
     stdout: 'pipe',
     stderr: 'pipe',
   });
+
   const [stdout, stderr, code] = await Promise.all([
     new Response(child.stdout).text(),
     new Response(child.stderr).text(),
@@ -37,6 +38,7 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
   if (code !== 0) {
     throw new Error(`sops could not decrypt ${options.path}: ${stderr.trim()}`);
   }
+
   const result = secretsSchema.safeParse(parseJSON(stdout));
 
   if (!result.success) {
@@ -44,6 +46,7 @@ export async function loadSecrets(options: SecretsOptions): Promise<Secrets> {
 
     throw new Error(`nixie refuses the secrets in ${options.path}:\n${paths.join('\n')}`);
   }
+
   return {
     deploymentKey: await crypto.subtle.importKey(
       'raw',

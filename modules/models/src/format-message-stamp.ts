@@ -7,6 +7,7 @@ import type { MessageTimeOptions } from './types';
 // screen. A message with no label, or one forgotten with its text, shows only the ID and the time.
 export function formatMessageStamp(record: LogRecord, times: MessageTimeOptions): string {
   const time = `#${record.sequence} · ${formatMessageTime(record.recordedAt, record.payload['timeZone'], times)}`;
+
   const label =
     record.erasable.status === 'readable' ? record.erasable.fields['sessionLabel'] : null;
 

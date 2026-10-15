@@ -16,6 +16,7 @@ export interface ProcessState {
 
 export function buildProcessState(): ProcessState {
   const groups = new Set<ProcessGroup>();
+
   const state = { isAsleep: false, relay: null as Promise<ToolRelay> | null };
 
   return {
@@ -26,12 +27,14 @@ export function buildProcessState(): ProcessState {
     isAsleep: () => state.isAsleep,
     sleep: () => {
       state.isAsleep = true;
+
       for (const group of groups) {
         group.pause();
       }
     },
     wake: () => {
       state.isAsleep = false;
+
       for (const group of groups) {
         group.resume();
       }
@@ -55,6 +58,7 @@ export function buildProcessState(): ProcessState {
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the state's own set
 async function removeOnExit(groups: Set<ProcessGroup>, group: ProcessGroup): Promise<void> {
   await group.exit;
+
   groups.delete(group);
 }
 
@@ -67,6 +71,8 @@ async function stopProcesses(
     group.resume();
     group.stop();
   }
+
   await Promise.all(groups.map((group) => group.exit));
+
   await stopRelay();
 }

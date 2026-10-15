@@ -9,6 +9,7 @@ export async function runNextStep(context: TasksContext, runStep: RunStep): Prom
   if (claim === null) {
     throw new Error('no task had work to claim');
   }
+
   await runTaskStep(context, claim, {
     runStep,
     leaseMs: 60_000,

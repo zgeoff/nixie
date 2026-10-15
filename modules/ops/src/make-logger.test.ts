@@ -3,6 +3,7 @@ import { makeLogger } from './make-logger';
 
 test('it writes one JSON line with the time and the event first', () => {
   const lines: string[] = [];
+
   const log = makeLogger(
     (line) => {
       lines.push(line);
@@ -17,6 +18,7 @@ test('it writes one JSON line with the time and the event first', () => {
       line.startsWith('{"time":"2026-10-11T12:00:00.000Z","event":"step.committed",') &&
       line.endsWith('}\n'),
   );
+
   expect(lines.map((line) => JSON.parse(line) as unknown)).toMatchObject([
     {
       time: '2026-10-11T12:00:00.000Z',
@@ -30,6 +32,7 @@ test('it writes one JSON line with the time and the event first', () => {
 
 test('it never lets a field replace the time or the event', () => {
   const lines: string[] = [];
+
   const log = makeLogger(
     (line) => {
       lines.push(line);

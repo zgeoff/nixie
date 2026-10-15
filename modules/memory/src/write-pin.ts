@@ -16,6 +16,7 @@ export function writePin(parts: StoreParts, request: PinRequest): Promise<void> 
     if (request.isPinned) {
       await requireItemCoreRoom(parts, request.itemID);
     }
+
     await withWriteTransaction(log.writer, async (tx) => {
       const item = await tx
         .$extendTables<MemoryTables>()
@@ -27,9 +28,11 @@ export function writePin(parts: StoreParts, request: PinRequest): Promise<void> 
       if (item === undefined || item.state === 'forgetting' || item.state === 'forgotten') {
         throw new MemoryItemNotFoundError(request.itemID);
       }
+
       if (request.isPinned && item.state !== 'active') {
         throw new MemoryStateError(request.itemID, 'pin', item.state);
       }
+
       await writeRecordsInTransaction(tx, log, [
         {
           kind: 'memory.pinned',
@@ -45,6 +48,7 @@ export function writePin(parts: StoreParts, request: PinRequest): Promise<void> 
 // an item a pin cannot read, gone or not active, takes no room, and the transaction refuses it
 async function requireItemCoreRoom(parts: StoreParts, itemID: string): Promise<void> {
   const pinned = await readPinnedItems(parts);
+
   const [item] = await readDeliverableItems(parts, {
     itemIDs: [itemID],
     states: ['active'],

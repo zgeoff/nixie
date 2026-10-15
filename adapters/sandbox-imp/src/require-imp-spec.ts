@@ -18,9 +18,11 @@ export async function requireImpSpec(
   if (!features.hasBackupOptOut) {
     throw new SandboxSpecRefusedError('a sandbox on an impd that would back it up');
   }
+
   if (spec.egress.kind === 'public') {
     requirePublicEgress(features, publicEgress);
   }
+
   await Promise.all(spec.grants.map((grant) => requireGrantHost(port, grant.secret, grant.host)));
 }
 
@@ -30,6 +32,7 @@ function requirePublicEgress(features: ImpFeatures, publicEgress: PublicEgressCo
       'public egress without the host addresses in imp.host_addresses',
     );
   }
+
   if (!features.publicEgress || !features.isEgressEnforced) {
     throw new SandboxSpecRefusedError('public egress on an impd that does not enforce it');
   }

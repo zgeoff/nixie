@@ -68,6 +68,7 @@ test('it gives a zone at UTC itself an offset of +00:00', async () => {
   const outcome = await tool.run(call, context);
 
   invariant(outcome.status === 'ok');
+
   expect(outcome.result['local']).toBe('2026-01-05T08:00:00+00:00');
 });
 
@@ -77,12 +78,15 @@ test('it passes the registry rules, with a result the output schema accepts', as
     findTimeZone: () => Promise.resolve(null),
     defaultZone: 'Australia/Sydney',
   });
+
   const registered = buildToolRegistry([tool]).findTool('time.now');
 
   invariant(registered);
+
   const outcome = await tool.run(call, context);
 
   invariant(outcome.status === 'ok');
+
   expect(registered.parseInput({})).toStrictEqual({ isValid: true });
   expect(registered.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });

@@ -57,7 +57,9 @@ export function buildTimeTool(options: TimeToolOptions): ToolDefinition {
     execution: 'direct',
     run: async () => {
       const found = await options.findTimeZone();
+
       const timeZone = found ?? options.defaultZone;
+
       const now = new Date(options.clock.now());
 
       return {
@@ -87,6 +89,7 @@ function formatLocalTime(at: Date, timeZone: string): string {
     hourCycle: 'h23',
     timeZoneName: 'longOffset',
   }).formatToParts(at);
+
   const getPart = (type: Intl.DateTimeFormatPartTypes): string =>
     parts.find((candidate) => candidate.type === type)?.value ?? '';
 

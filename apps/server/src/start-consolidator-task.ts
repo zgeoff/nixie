@@ -30,8 +30,10 @@ export async function startConsolidatorTask(
   });
 
   await parts.cleanup.defer(() => consolidator.stop());
+
   parts.log('memory_consolidator.started', {
     periodMs: parts.config.memory_consolidation.periodMs,
   });
+
   return consolidator.runStep;
 }

@@ -269,12 +269,15 @@ test('it gives each match its score, the better match scoring higher', async () 
   ]);
 
   const found = await ctx.index.findMatches('Sundays library', { limit: 10 });
+
   const [best, next] = found;
 
   invariant(best && next);
+
   expect(found).toStrictEqual([
     { itemID: 'item-b', score: expect.toBePositive() },
     { itemID: 'item-a', score: expect.toBePositive() },
   ]);
+
   expect(best.score).toBeGreaterThan(next.score);
 });

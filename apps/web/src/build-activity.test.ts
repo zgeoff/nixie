@@ -8,21 +8,25 @@ test('it keeps each message on its own and folds a step into one group', () => {
     message: { text: '?' },
     sequence: 1,
   });
+
   const started = buildMockLogRecord({
     kind: 'task.step_started',
     sequence: 2,
     task: { stepKey: 'step-1', taskID: 'conversation' },
   });
+
   const called = buildMockLogRecord({
     kind: 'tool_called',
     sequence: 3,
     toolCall: { callID: 'call-1', input: { url: 'https://theverge.com/' }, tool: 'web_fetch' },
   });
+
   const result = buildMockLogRecord({
     kind: 'tool_result',
     sequence: 4,
     toolCall: { callID: 'call-1', content: { result: { status: 200 } }, outcome: 'result' },
   });
+
   const reply = buildMockLogRecord({ kind: 'model.reply', message: { text: '!' }, sequence: 5 });
   const ended = buildMockLogRecord({ kind: 'model.turn_ended', sequence: 6 });
   const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 7 });
@@ -59,6 +63,7 @@ test('it folds a record before a step into the step that follows it', () => {
     sequence: 1,
     task: { taskID: 'conversation' },
   });
+
   const started = buildMockLogRecord({
     kind: 'task.step_started',
     sequence: 2,
@@ -87,6 +92,7 @@ test.each([
     sequence: 1,
     task: { taskID: 'conversation' },
   });
+
   const end = buildMockLogRecord({ kind, sequence: 2, task: { taskID: 'conversation' } });
 
   expect(buildActivity([started, end])).toMatchObject([{ kind: 'step', status }]);
@@ -98,16 +104,19 @@ test('it closes a step that started before the page at its end record, with its 
     sequence: 41,
     toolCall: { callID: 'call-1', tool: 'web_fetch' },
   });
+
   const result = buildMockLogRecord({
     kind: 'tool_result',
     sequence: 42,
     toolCall: { callID: 'call-1', outcome: 'error' },
   });
+
   const errored = buildMockLogRecord({
     kind: 'task.step_errored',
     sequence: 43,
     task: { error: 'the fetch timed out', stepKey: 'conversation:2', taskID: 'conversation' },
   });
+
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 44 });
   const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 45 });
 
@@ -143,6 +152,7 @@ test.each([
     sequence: 1,
     toolCall: { callID: 'call-1', tool: 'web_fetch' },
   });
+
   const end = buildMockLogRecord({ kind, sequence: 2 });
 
   expect(buildActivity([called, end])).toMatchObject([{ records: [called, end], status }]);
@@ -154,6 +164,7 @@ test('it carries the error of a failed step', () => {
     sequence: 1,
     task: { stepKey: 'conversation:4', taskID: 'conversation' },
   });
+
   const errored = buildMockLogRecord({
     kind: 'task.step_errored',
     sequence: 2,
@@ -181,16 +192,19 @@ test('it carries the error of a failed step', () => {
 
 test('it joins each result to its call by the call ID', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
   const first = buildMockLogRecord({
     kind: 'tool_called',
     sequence: 2,
     toolCall: { callID: 'call-a', input: { url: 'https://a.test/' }, tool: 'web_fetch' },
   });
+
   const second = buildMockLogRecord({
     kind: 'tool_called',
     sequence: 3,
     toolCall: { callID: 'call-b', input: { url: 'https://b.test/' }, tool: 'web_fetch' },
   });
+
   const secondResult = buildMockLogRecord({
     kind: 'tool_result',
     sequence: 4,
@@ -230,6 +244,7 @@ test('it times a step from its start to its end', () => {
     recordedAt: new Date('2026-10-10T12:00:00.000Z'),
     sequence: 1,
   });
+
   const committed = buildMockLogRecord({
     kind: 'task.step_committed',
     recordedAt: new Date('2026-10-10T12:00:12.300Z'),
@@ -249,11 +264,13 @@ test('it leaves a running step untimed', () => {
 
 test('it collects what each recall of a step delivered, in order', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
   const first = buildMockLogRecord({
     kind: 'memory.recalled',
     recall: { items: [{ itemID: 'item-a', score: 0.61, version: 2 }] },
     sequence: 2,
   });
+
   const second = buildMockLogRecord({
     kind: 'memory.recalled',
     recall: { items: [{ itemID: 'item-b', version: 1 }] },
@@ -272,16 +289,19 @@ test('it collects what each recall of a step delivered, in order', () => {
 
 test('it takes the context of the last turn end in a step that recorded one', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
   const first = buildMockLogRecord({
     context: { size: 34_200, window: 400_000 },
     kind: 'model.turn_ended',
     sequence: 2,
   });
+
   const second = buildMockLogRecord({
     context: { size: 41_000, window: 400_000 },
     kind: 'model.turn_ended',
     sequence: 3,
   });
+
   const unreported = buildMockLogRecord({ kind: 'model.turn_ended', sequence: 4 });
 
   expect(buildActivity([started, first, second, unreported])).toMatchObject([
@@ -291,11 +311,13 @@ test('it takes the context of the last turn end in a step that recorded one', ()
 
 test('it collects each compaction of a step with the sequence of its record, in order', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
   const first = buildMockLogRecord({
     compaction: { postTokens: 42_000, preTokens: 384_000, trigger: 'auto' },
     kind: 'model.compacted',
     sequence: 2,
   });
+
   const second = buildMockLogRecord({
     compaction: { preTokens: 391_000, trigger: 'manual' },
     kind: 'model.compacted',
@@ -314,6 +336,7 @@ test('it collects each compaction of a step with the sequence of its record, in 
 
 test('it counts a recall that delivered nothing as a recall', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
   const recalled = buildMockLogRecord({
     kind: 'memory.recalled',
     recall: { items: [] },
@@ -325,6 +348,7 @@ test('it counts a recall that delivered nothing as a recall', () => {
 
 test('it puts a rating from a later step beside the memory it rates in the step that recalled it', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
   const recalled = buildMockLogRecord({
     kind: 'memory.recalled',
     recall: {
@@ -335,8 +359,10 @@ test('it puts a rating from a later step beside the memory it rates in the step 
     },
     sequence: 2,
   });
+
   const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 3 });
   const next = buildMockLogRecord({ kind: 'task.step_started', sequence: 4 });
+
   const rated = buildMockLogRecord({
     kind: 'memory.rated',
     rating: {
@@ -360,21 +386,25 @@ test('it puts a rating from a later step beside the memory it rates in the step 
       { itemID: 'item-b', version: 1 },
     ],
   });
+
   expect(rating).not.toContainKey('memories');
 });
 
 test('it keeps the latest rating of a memory, and none for another recall of the same version', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
   const first = buildMockLogRecord({
     kind: 'memory.recalled',
     recall: { items: [{ itemID: 'item-a', version: 1 }] },
     sequence: 2,
   });
+
   const second = buildMockLogRecord({
     kind: 'memory.recalled',
     recall: { items: [{ itemID: 'item-a', version: 1 }] },
     sequence: 3,
   });
+
   const helpful = buildMockLogRecord({
     kind: 'memory.rated',
     rating: {
@@ -383,6 +413,7 @@ test('it keeps the latest rating of a memory, and none for another recall of the
     },
     sequence: 4,
   });
+
   const misleading = buildMockLogRecord({
     kind: 'memory.rated',
     rating: {

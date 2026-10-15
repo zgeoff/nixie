@@ -7,23 +7,27 @@ import type { MemoryTables } from './types';
 
 test("it lapses a proposal past its lapse time and drops its new item's key", async () => {
   const clock = buildTestClock(1_000_000);
+
   const memory = await startTestMemory({
     gate: {
       clock,
       limits: { evidenceWindow: 20, proposalLapseMs: 5000, proposalCap: 10, closeMatchScore: 0.6 },
     },
   });
+
   const proposed = await createProposal(memory.store, { text: 'Likes jazz' });
 
   clock.advance(5000);
 
   const lapsed = await memory.store.proposals.lapse();
+
   const row = await memory.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .select(['status', 'item_id'])
     .where('proposal_id', '=', proposed.proposalID)
     .executeTakeFirstOrThrow();
+
   const keys = await findRecordKeys(memory.log, [row.item_id]);
 
   expect(lapsed).toBe(1);
@@ -33,6 +37,7 @@ test("it lapses a proposal past its lapse time and drops its new item's key", as
 
 test('it never lapses a proposal before its lapse time', async () => {
   const clock = buildTestClock(1_000_000);
+
   const memory = await startTestMemory({
     gate: {
       clock,
@@ -50,6 +55,7 @@ test('it never lapses a proposal before its lapse time', async () => {
       model: 'claude-opus-5-5',
     },
   });
+
   clock.advance(4999);
 
   const lapsed = await memory.store.proposals.lapse();

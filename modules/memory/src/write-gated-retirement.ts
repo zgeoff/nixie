@@ -18,18 +18,22 @@ export async function writeGatedRetirement(
   request: GatedRetireRequest,
 ): Promise<WriteOutcome> {
   const itemText = await readItemText(parts, request.target);
+
   const gate = await runIntentGate(parts.context, {
     target: request.target,
     intentQuote: request.intentQuote ?? null,
     thread: request.caller.thread,
     itemText,
   });
+
   const newest = await findNewestMessage(parts.context.log, request.caller.thread);
+
   const group = buildWriteGroup(request.caller, newest);
 
   if (gate.status === 'pass') {
     return applyPassedRetirement(parts, request, { gate, group, itemText });
   }
+
   return writeRetirementProposal(parts, request, { review: gate, group, itemText });
 }
 
@@ -45,6 +49,7 @@ async function writeRetirementProposal(
   reviewed: ReviewedRetirement,
 ): Promise<WriteOutcome> {
   const review = reviewed.review;
+
   const written = await writeMemoryProposal(parts, {
     operation: 'retire',
     target: request.target,
@@ -74,6 +79,7 @@ async function applyPassedRetirement(
     if (!(error instanceof ForgottenEvidenceError)) {
       throw error;
     }
+
     const review = {
       status: 'review' as const,
       reason: 'forgotten_evidence' as const,
@@ -99,6 +105,7 @@ async function applyRetirement(
 ): Promise<WriteOutcome> {
   const caller = request.caller;
   const evidence = passed.gate.evidence;
+
   const ref = await writeRetirement(
     parts,
     {

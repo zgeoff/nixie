@@ -6,6 +6,7 @@ test('it marks the conversation imp unready once its errors in a row reach the l
   const state = buildStartState({ isReady: true, reason: null });
 
   state.update({ conversation: { isReady: true, reason: null } });
+
   makeConversationFailureMarker(state)({
     taskID: 'conversation',
     stepKey: 'conversation:4',
@@ -26,6 +27,7 @@ test('it leaves the conversation imp ready while its errors in a row stay under 
   const state = buildStartState({ isReady: true, reason: null });
 
   state.update({ conversation: { isReady: true, reason: null } });
+
   makeConversationFailureMarker(state)({
     taskID: 'conversation',
     stepKey: 'conversation:3',
@@ -43,6 +45,7 @@ test("it leaves the conversation imp ready when another task's errors reach the 
   const state = buildStartState({ isReady: true, reason: null });
 
   state.update({ conversation: { isReady: true, reason: null } });
+
   makeConversationFailureMarker(state)({
     taskID: 'memory-writer',
     stepKey: 'memory-writer:9',

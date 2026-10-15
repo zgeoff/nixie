@@ -5,8 +5,10 @@ import type { ImpExec } from '../types';
 // before impd sends its started message. A rejected start rejects started and exit, and errors both output streams.
 export function buildPendingExec(wait: Promise<void>, start: () => ImpExec): ImpExec {
   const starting = startAfter(wait, start);
+
   const stdout = new TransformStream<Uint8Array, Uint8Array>();
   const stderr = new TransformStream<Uint8Array, Uint8Array>();
+
   const started = waitForStarted(starting);
   const exit = waitForExit(starting);
 
@@ -14,6 +16,7 @@ export function buildPendingExec(wait: Promise<void>, start: () => ImpExec): Imp
   void waitForSettled(exit);
   void startOutput(starting, 'stdout', stdout.writable);
   void startOutput(starting, 'stderr', stderr.writable);
+
   return {
     started,
     stdout: stdout.readable,
@@ -36,6 +39,7 @@ export function buildPendingExec(wait: Promise<void>, start: () => ImpExec): Imp
 
 async function startAfter(wait: Promise<void>, start: () => ImpExec): Promise<ImpExec> {
   await wait;
+
   return start();
 }
 

@@ -15,6 +15,7 @@ export function findConversationFailure(
   const last = records.findLast(
     (record) => record.task?.taskID === 'conversation' && stepEnds.has(record.kind),
   );
+
   const task = last?.kind === 'task.step_errored' ? last.task : undefined;
 
   if (
@@ -25,6 +26,7 @@ export function findConversationFailure(
   ) {
     return null;
   }
+
   return { errors: task.errors, retryAt: task.retryAt };
 }
 

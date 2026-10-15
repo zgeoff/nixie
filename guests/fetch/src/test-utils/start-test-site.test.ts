@@ -9,6 +9,7 @@ test('it answers HTTPS for its names and records each request', async () => {
     names: ['site.test'],
     fetch: () => new Response('hello'),
   });
+
   const response = Promise.withResolvers<IncomingMessage>();
 
   request(
@@ -25,6 +26,7 @@ test('it answers HTTPS for its names and records each request', async () => {
   )
     .on('error', response.reject)
     .end();
+
   const answer = await response.promise;
   const chunks = await answer.toArray();
 
@@ -42,10 +44,12 @@ test('it stops the site when the test finishes', async () => {
     socket.on('error', () => {
       failed.resolve(true);
     });
+
     socket.on('secureConnect', () => {
       socket.destroy();
       failed.resolve(false);
     });
+
     expect(failed.promise).resolves.toBeTrue();
   });
 });

@@ -15,6 +15,7 @@ export function collectDescendants(pid: number): readonly number[] {
     found.push(...children);
     queue.push(...children);
   }
+
   return found;
 }
 
@@ -28,6 +29,7 @@ function readParentPIDs(): ReadonlyMap<number, number> {
       parents.set(Number(entry), parent);
     }
   }
+
   return parents;
 }
 

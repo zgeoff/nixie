@@ -5,14 +5,19 @@ test('it runs a second turn while the first still runs', async () => {
   const guard = makeSessionGuard();
   const order: string[] = [];
   const held = Promise.withResolvers<void>();
+
   const first = guard.withTurn(async () => {
     order.push('first started');
+
     await held.promise;
+
     order.push('first ended');
   });
+
   const second = guard.withTurn(() => {
     order.push('second ran');
     held.resolve();
+
     return Promise.resolve();
   });
 
@@ -25,6 +30,7 @@ test('it aborts every running turn and runs the cleanup once they ended, before 
   const guard = makeSessionGuard();
   const order: string[] = [];
   const started = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+
   const turns = started.map((gate, index) =>
     guard.withTurn(async (signal) => {
       const aborted = Promise.withResolvers<void>();
@@ -32,8 +38,11 @@ test('it aborts every running turn and runs the cleanup once they ended, before 
       signal.addEventListener('abort', () => {
         aborted.resolve();
       });
+
       gate.resolve();
+
       await aborted.promise;
+
       order.push(`turn ${index} aborted`);
     }),
   );
@@ -42,10 +51,13 @@ test('it aborts every running turn and runs the cleanup once they ended, before 
 
   const cleanup = guard.withInvalidation(() => {
     order.push('cleanup');
+
     return Promise.resolve();
   });
+
   const later = guard.withTurn((signal) => {
     order.push(`later turn, aborted: ${signal.aborted}`);
+
     return Promise.resolve();
   });
 
@@ -62,14 +74,18 @@ test('it aborts every running turn and runs the cleanup once they ended, before 
 test('it aborts a turn that was still starting when the cleanup was asked for', async () => {
   const guard = makeSessionGuard();
   const order: string[] = [];
+
   const turn = guard.withTurn(async (signal) => {
     const aborted = Promise.withResolvers<void>();
 
     signal.addEventListener('abort', () => {
       aborted.resolve();
     });
+
     order.push('turn started');
+
     await aborted.promise;
+
     order.push('turn aborted');
   });
 
@@ -77,6 +93,7 @@ test('it aborts a turn that was still starting when the cleanup was asked for', 
 
   const cleanup = guard.withInvalidation(() => {
     order.push('cleanup');
+
     return Promise.resolve();
   });
 
@@ -89,20 +106,27 @@ test('it holds a turn until a cleanup asked for during an earlier cleanup is don
   const guard = makeSessionGuard();
   const order: string[] = [];
   const held = Promise.withResolvers<void>();
+
   const first = guard.withInvalidation(async () => {
     await held.promise;
+
     order.push('first cleanup');
   });
+
   const turn = guard.withTurn(() => {
     order.push('turn');
+
     return Promise.resolve();
   });
+
   const second = guard.withInvalidation(() => {
     order.push('second cleanup');
+
     return Promise.resolve();
   });
 
   held.resolve();
+
   await Promise.all([first, turn, second]);
 
   expect(order).toStrictEqual(['first cleanup', 'second cleanup', 'turn']);
@@ -114,6 +138,7 @@ test('it runs a cleanup at once when no turn runs', async () => {
 
   await guard.withInvalidation(() => {
     ran.push('cleanup');
+
     return Promise.resolve();
   });
 

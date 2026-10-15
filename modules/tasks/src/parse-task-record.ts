@@ -44,12 +44,14 @@ export function parseTaskRecord(record: EnvelopeRecord): TaskRecord | null {
   if (parse === undefined) {
     return null;
   }
+
   return parse((key) => {
     const value = record.payload[key];
 
     if (value === undefined) {
       throw new Error(`record ${record.sequence} of kind ${record.kind} lacks ${key}`);
     }
+
     return value;
   });
 }
@@ -127,6 +129,7 @@ function toString(value: JSONValue): string {
   if (typeof value !== 'string') {
     throw new TypeError(`expected a string, got ${JSON.stringify(value)}`);
   }
+
   return value;
 }
 
@@ -134,6 +137,7 @@ function toNumber(value: JSONValue): number {
   if (typeof value !== 'number') {
     throw new TypeError(`expected a number, got ${JSON.stringify(value)}`);
   }
+
   return value;
 }
 
@@ -147,6 +151,7 @@ function toTaskState(value: JSONValue): TaskState {
   if (!isTaskState(state)) {
     throw new TypeError(`expected a task state, got ${state}`);
   }
+
   return state;
 }
 
@@ -162,10 +167,12 @@ function toTimers(
   if (!Array.isArray(value)) {
     throw new TypeError(`expected a list of timers, got ${JSON.stringify(value)}`);
   }
+
   return value.map((timer: JSONValue) => {
     if (!isJSONObject(timer)) {
       throw new TypeError(`expected a timer, got ${JSON.stringify(timer)}`);
     }
+
     return { timerID: toString(timer['timerID'] ?? null), dueAt: toNumber(timer['dueAt'] ?? null) };
   });
 }

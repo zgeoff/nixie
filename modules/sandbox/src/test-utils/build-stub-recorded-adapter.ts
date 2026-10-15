@@ -26,6 +26,7 @@ export function buildStubRecordedAdapter(
         id: row.sandboxID,
         destroy: () => {
           destroyed.push(row.sandboxID);
+
           return Promise.resolve();
         },
       }));

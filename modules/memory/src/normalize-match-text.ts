@@ -45,6 +45,7 @@ function collectPieces(text: string): readonly Piece[] {
     if (isSpace && previous !== undefined && isWhitespace(previous.segment)) {
       return [];
     }
+
     return [
       {
         text: isSpace ? ' ' : part.segment.normalize('NFC'),
@@ -66,6 +67,7 @@ function collectBoundaries(pieces: readonly Piece[]): readonly number[] {
     const at = offset;
 
     offset += piece.text.length;
+
     return at;
   });
 }

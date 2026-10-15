@@ -14,6 +14,7 @@ export async function checkDisk(
   readDiskStats: ReadDiskStats = statfs,
 ): Promise<PartReport> {
   const stats = await readDiskStats(dataDir);
+
   const percent = Math.floor(((stats.blocks - stats.bavail) / stats.blocks) * 100);
 
   return percent < fullPercent

@@ -14,6 +14,7 @@ const summaryShares = z.array(z.strictObject({ itemID: z.string(), sealed: z.str
 
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
+
   const memory = await startTestMemory({ gate: { clock } });
 
   return {
@@ -38,10 +39,12 @@ async function setupTest() {
 
 test('it leaves a stored summary that no key left opens once an item it names is forgotten', async () => {
   const ctx = await setupTest();
+
   const [oat, black] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [],
     summary: { text: 'Two items about coffee conflict.', itemIDs: [oat.itemID, black.itemID] },
@@ -60,7 +63,9 @@ test('it leaves a stored summary that no key left opens once an item it names is
   const kept = left.get(black.itemID) ?? null;
 
   invariant(kept);
+
   expect([...left.keys()]).toStrictEqual([black.itemID]);
+
   expect(
     decodeConsolidationSummary(
       diff.diffID,

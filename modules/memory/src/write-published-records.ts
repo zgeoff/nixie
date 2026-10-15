@@ -26,6 +26,7 @@ export async function writePublishedRecords(
     // oxlint-disable-next-line no-await-in-loop -- each proposal matches against those before it
     await writeProposalRecords(parts, tx, gated);
   }
+
   await writeRecordsInTransaction(tx, parts.context.log, published.records);
 }
 
@@ -39,11 +40,14 @@ async function writeProposalRecords(
   if (verdict.outcome !== 'propose') {
     return;
   }
+
   const plan = verdict.plan;
+
   const match =
     plan === null
       ? null
       : await findMatchingProposal(tx.$extendTables<MemoryTables>(), parts, plan);
+
   const records =
     match === null || plan === null
       ? verdict.records

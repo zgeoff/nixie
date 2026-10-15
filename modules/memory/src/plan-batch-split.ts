@@ -19,6 +19,7 @@ export function planBatchSplit(
   if (owners.length < 2 || middle === undefined) {
     return null;
   }
+
   const before = records.findLast((record) => record.sequence < middle.sequence);
 
   return { start: bounds.start, end: before?.sequence ?? bounds.start };

@@ -31,6 +31,7 @@ export function writeApprovedRemember(
   const isEdited = answer.editedText !== undefined;
   const evidence = isEdited ? null : parseEvidence(row.evidence);
   const approvalExtras = buildApprovalExtras(parts, row, answer);
+
   const extras = {
     ...approvalExtras,
     requireInTransaction: async (db: Kysely<MemoryTables>) => {

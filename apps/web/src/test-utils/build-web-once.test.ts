@@ -9,6 +9,7 @@ test('it builds the web server entry once and shares it', async () => {
     join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
     join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
   ]);
+
   const built = await Bun.file(
     join(import.meta.dir, '..', '..', 'dist', 'server', 'server.js'),
   ).exists();

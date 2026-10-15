@@ -29,15 +29,18 @@ async function setupTest() {
     toolTarget: () => ({ path: join(dir, 'tools.sock') }),
     guestToolPort: imp.guestToolPort,
   });
+
   const sandbox = await adapter.create(buildMockSandboxSpec({ toolRoute: true }));
   const route = await sandbox.toolRoute();
 
   invariant(route);
+
   return { imp, sandbox, toolURL: route.url };
 }
 
 test('it lets a turn that starts during an idle sleep reach the tool endpoint on the woken imp', async () => {
   const ctx = await setupTest();
+
   const snapshot = Promise.withResolvers<void>();
 
   void ctx.imp.startIdleSleep(ctx.sandbox.id, snapshot.promise);
@@ -54,11 +57,13 @@ test('it lets a turn that starts during an idle sleep reach the tool endpoint on
 
   // the turn's first call to impd waits for the sleep
   await waitForCondition(() => ctx.imp.calls.some((call) => call.startsWith('wait ')));
+
   snapshot.resolve();
 
   const result = await turn;
 
   expect(new TextDecoder().decode(result.stderr.bytes)).toBe('');
+
   expect(JSON.parse(new TextDecoder().decode(result.stdout.bytes))).toStrictEqual({
     path: '/mcp',
     authorization: 'Bearer run-token',
@@ -75,6 +80,7 @@ test('it lets a turn that starts during an idle sleep reach the tool endpoint on
 
 test('it lets a turn reach the tool endpoint when an idle sleep starts between its wake and its exec', async () => {
   const ctx = await setupTest();
+
   const snapshot = Promise.withResolvers<void>();
 
   ctx.imp.sleepsAfterWake.set(ctx.sandbox.id, snapshot.promise);
@@ -90,11 +96,13 @@ test('it lets a turn reach the tool endpoint when an idle sleep starts between i
   });
 
   await waitForCondition(() => ctx.imp.calls.includes(`wait exec ${ctx.sandbox.id}`));
+
   snapshot.resolve();
 
   const result = await turn;
 
   expect(new TextDecoder().decode(result.stderr.bytes)).toBe('');
+
   expect(JSON.parse(new TextDecoder().decode(result.stdout.bytes))).toStrictEqual({
     path: '/mcp',
     authorization: 'Bearer run-token',

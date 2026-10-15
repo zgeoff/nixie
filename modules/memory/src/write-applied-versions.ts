@@ -29,11 +29,13 @@ export async function writeAppliedVersions(
       );
 
       written.push(version);
+
       if (NIXIE_TEST_BUILD && written.length === 1) {
         // oxlint-disable-next-line no-await-in-loop -- the harness holds the first write only
         await waitAtFaultPoint('writer.publish.inside', { kind: 'task', id: memoryWriterTaskID });
       }
     }
   }
+
   return written;
 }

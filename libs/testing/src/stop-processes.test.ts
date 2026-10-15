@@ -13,13 +13,14 @@ test('it kills a process and every member of the group it leads', async () => {
   onTestFinished(() => {
     stopProcesses([leader.pid]);
   });
+
   await waitForCondition(() => collectDescendants(leader.pid).length > 0);
 
   const [memberPID] = collectDescendants(leader.pid);
 
   stopProcesses([leader.pid]);
-  await leader.exited;
 
+  await leader.exited;
   await waitForCondition(() => isProcessGone(Number(memberPID))).catch(() => null);
 
   expect(leader.signalCode).toBe('SIGKILL');

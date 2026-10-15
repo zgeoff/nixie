@@ -36,7 +36,9 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
     limits: options.limits,
     modelGrant: buildModelGrant(secret),
   });
+
   const sandbox = await createCheckerSandbox(options.sandboxes, spec);
+
   const profile = options.profile.profile;
 
   return makeChecker({
@@ -68,14 +70,17 @@ async function createCheckerSandbox(
   spec: SandboxSpec,
 ): Promise<Sandbox> {
   const existing = await sandboxes.list(checkerOwner);
+
   const kept = findKeptSandbox(existing, spec);
 
   await Promise.all(
     existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),
   );
+
   if (kept !== undefined) {
     return kept;
   }
+
   return sandboxes.create(spec);
 }
 

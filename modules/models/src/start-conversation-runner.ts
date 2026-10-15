@@ -80,10 +80,12 @@ export async function startConversationRunner(
   await options.sandboxes.addSecret(secret);
 
   const sandbox = await setupConversationSandbox(options, secret);
+
   const model: ToolRunModel = {
     model: options.profile.profile.model,
     profile: options.profile.profile.id,
   };
+
   const endpoint = await options.tools.startRun({
     runID: conversationTaskID,
     thread: conversationTaskID,
@@ -111,6 +113,7 @@ export async function startConversationRunner(
           new Error(`the conversation runner runs the conversation only, not ${input.taskID}`),
         );
       }
+
       return runConversationStep(run, input);
     },
     cleanupSessions: (itemID) => runSessionCleanup(run, itemID),

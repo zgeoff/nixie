@@ -19,6 +19,7 @@ async function runEnrolCode(configPath: string, io: CLIIO): Promise<number> {
   const issued = await sendEnrolmentCodeRequest(socketPath);
 
   io.print(`${issued.code}\nThe code works once, until ${issued.expiresAt.toISOString()}.`);
+
   return 0;
 }
 
@@ -27,6 +28,7 @@ async function runSessions(configPath: string, io: CLIIO): Promise<number> {
   const sessions = await sendSessionRequest(socketPath, { command: 'list' });
 
   io.print(JSON.stringify(sessions));
+
   return 0;
 }
 
@@ -40,9 +42,12 @@ async function runSessionLabel(
 
   if (sessionID === undefined || words.length === 0) {
     io.print('nixie session-label takes a session ID and a label');
+
     return 2;
   }
+
   const socketPath = await resolveSocketPath(configPath);
+
   const labelled = await sendSessionRequest(socketPath, {
     command: 'label',
     sessionID,
@@ -50,5 +55,6 @@ async function runSessionLabel(
   });
 
   io.print(JSON.stringify(labelled));
+
   return 0;
 }

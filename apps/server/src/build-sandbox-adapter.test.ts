@@ -40,7 +40,9 @@ test('it bundles the imp adapter and no part of the process double in a release 
     target: 'bun',
     define: { NIXIE_TEST_BUILD: 'false' },
   });
+
   const texts = await Promise.all(build.outputs.map((output) => output.text()));
+
   const bundle = texts.join('\n');
 
   // a string only the imp adapter holds, and one only the process double holds
@@ -54,6 +56,7 @@ test('it bundles the process double in a test build', async () => {
     target: 'bun',
     define: { NIXIE_TEST_BUILD: 'true' },
   });
+
   const texts = await Promise.all(build.outputs.map((output) => output.text()));
 
   // a string only the process double holds
@@ -62,8 +65,11 @@ test('it bundles the process double in a test build', async () => {
 
 test("it routes a guest to its run's endpoint in a test build, passing each chunk as it arrives", async () => {
   const ctx = await setupTest();
+
   const model = { model: 'model-a', profile: 'chat-direct' };
+
   const run = await ctx.endpoint.startRun({ runID: 'run-1', thread: 'task-1', tools: [], model });
+
   const sandbox = await ctx.sandboxes.create(
     buildMockSandboxSpec({
       kind: 'conversation',
@@ -103,6 +109,7 @@ test("it routes a guest to its run's endpoint in a test build, passing each chun
       },
     }),
   });
+
   const first = await response.body?.pipeThrough(new TextDecoderStream()).getReader().read();
 
   expect(first?.done).toBeFalse();

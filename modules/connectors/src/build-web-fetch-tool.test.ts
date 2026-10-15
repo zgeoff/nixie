@@ -26,7 +26,9 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
+
   const tool = buildWebFetchTool(fetchSandbox.readPage);
 
   const outcome = await tool.run(
@@ -74,10 +76,13 @@ test('it returns the reason the bot protection blocked a page in a result the sc
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
+
   const registered = buildToolRegistry([buildWebFetchTool(fetchSandbox.readPage)]).findTool(
     'web_fetch',
   );
+
   invariant(registered);
 
   const outcome = await registered.definition.run(
@@ -93,6 +98,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
   );
 
   invariant(outcome.status === 'ok');
+
   expect(outcome.result).toStrictEqual({
     url: 'https://site.test/',
     status: 403,
@@ -101,6 +107,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
     isTruncated: false,
     blocked: "blocked by the site's bot protection (Cloudflare challenge)",
   });
+
   expect(registered.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });
 
@@ -124,10 +131,13 @@ test('it returns a page result that the registry checks against the output schem
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
+
   const registered = buildToolRegistry([buildWebFetchTool(fetchSandbox.readPage)]).findTool(
     'web_fetch',
   );
+
   invariant(registered);
 
   const outcome = await registered.definition.run(
@@ -143,6 +153,7 @@ test('it returns a page result that the registry checks against the output schem
   );
 
   invariant(outcome.status === 'ok');
+
   expect(registered.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });
 
@@ -166,7 +177,9 @@ test('it returns a binary page with no text', async () => {
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
+
   const tool = buildWebFetchTool(fetchSandbox.readPage);
 
   const outcome = await tool.run(
@@ -202,7 +215,9 @@ test.each([
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
+
   const tool = buildWebFetchTool(fetchSandbox.readPage);
 
   const outcome = await tool.run(
@@ -224,6 +239,7 @@ test('it declares only the fetch effect and no destination, so it runs direct', 
   const tool = buildWebFetchTool(mock());
 
   expect(tool.execution).toBe('direct');
+
   expect(tool.declaration).toMatchObject({
     effects: ['fetch'],
     destinations: [],

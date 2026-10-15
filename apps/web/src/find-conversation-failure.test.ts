@@ -47,6 +47,7 @@ test('it finds no failure once a step commits after the errors', () => {
       taskID: 'conversation',
     },
   });
+
   const committed = buildMockLogRecord({
     kind: 'task.step_committed',
     sequence: 12,
@@ -68,6 +69,7 @@ test('it reads past the records that end no step, such as your next message', ()
       taskID: 'conversation',
     },
   });
+
   const message = buildMockLogRecord({
     kind: 'owner_message',
     message: { text: 'Are you there?' },

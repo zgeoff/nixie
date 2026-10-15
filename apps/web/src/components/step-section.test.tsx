@@ -17,6 +17,7 @@ test('it shows its title and keeps its body closed until opened', () => {
 test('it says each time it opens and closes', async () => {
   const user = userEvent.setup();
   const onToggle = mock();
+
   const rendered = render(
     <StepSection
       onToggle={(isOpen) => {

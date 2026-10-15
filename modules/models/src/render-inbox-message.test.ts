@@ -44,6 +44,7 @@ test('it renders two messages a night apart each with its own event ID and time'
     payload: { timeZone: 'Australia/Sydney' },
     erasable: { status: 'readable', fields: { text: 'Goodnight.' } },
   });
+
   const goodMorning = buildMockLogRecord({
     sequence: 48_214,
     kind: 'owner_message',
@@ -73,6 +74,7 @@ test('it renders messages from two device sessions each with its session’s lab
     payload: { timeZone: 'Australia/Sydney' },
     erasable: { status: 'readable', fields: { text: 'On the train.', sessionLabel: 'phone' } },
   });
+
   const fromPC = buildMockLogRecord({
     sequence: 48_214,
     kind: 'owner_message',
@@ -123,10 +125,12 @@ test('it renders a fired timer as a timer system message at the time it fired, i
     defaultZone: 'Australia/Sydney',
     now: new Date('2026-10-13T05:00:00Z'),
   });
+
   const blockID = /^<system-message type="timer" id="(?<blockID>[\da-f]{12})"/u.exec(rendered)
     ?.groups?.['blockID'];
 
   invariant(blockID !== undefined);
+
   expect(rendered).toBe(
     [
       `<system-message type="timer" id="${blockID}" at="Tue 13 Oct, 14:05, Sydney">`,
@@ -149,10 +153,12 @@ test('it renders an action outcome as an outcome system message at the time it s
     defaultZone: 'Australia/Sydney',
     now: new Date('2026-10-13T05:00:00Z'),
   });
+
   const blockID = /^<system-message type="outcome" id="(?<blockID>[\da-f]{12})"/u.exec(rendered)
     ?.groups?.['blockID'];
 
   invariant(blockID !== undefined);
+
   expect(rendered).toBe(
     [
       `<system-message type="outcome" id="${blockID}" at="Tue 13 Oct, 14:40, Sydney">`,
@@ -196,10 +202,12 @@ test('it renders a span you dropped in your message inside a dropped block', () 
       },
     },
   });
+
   const message = renderInboxMessage(record, {
     defaultZone: 'Australia/Sydney',
     now: new Date('2026-10-13T15:00:00Z'),
   });
+
   const blockID = /<dropped id="(?<blockID>\w+)">/u.exec(message)?.groups?.['blockID'];
 
   expect(message).toBe(

@@ -8,6 +8,7 @@ import { verifySessionToken } from './verify-session-token';
 
 async function setupTest() {
   const api = await startTestAPI();
+
   const db = api.writer.db.$extendTables<APITables>();
 
   return { ...api, db };
@@ -15,8 +16,8 @@ async function setupTest() {
 
 test('it starts a device session from a code', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const enrolled = await claimEnrolmentCode(ctx.context, {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     code: issued.code,
@@ -33,7 +34,6 @@ test('it starts a device session from a code', async () => {
 
 test('it refuses a code that a different enrolment already used', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
 
   await claimEnrolmentCode(ctx.context, {
@@ -55,7 +55,6 @@ test('it refuses a code that a different enrolment already used', async () => {
 
 test('it refuses a code once 15 minutes have passed', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
 
   ctx.clock.advance(15 * 60 * 1000);
@@ -72,7 +71,6 @@ test('it refuses a code once 15 minutes have passed', async () => {
 
 test('it accepts a code just before 15 minutes pass', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
 
   ctx.clock.advance(15 * 60 * 1000 - 1);
@@ -89,8 +87,8 @@ test('it accepts a code just before 15 minutes pass', async () => {
 
 test('it accepts a code typed in lower case without its dash', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const enrolled = await claimEnrolmentCode(ctx.context, {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     code: issued.code.toLowerCase().replace('-', ''),
@@ -116,8 +114,8 @@ test('it refuses a code nixie never issued', async () => {
 
 test('it stores only the hash of the session token and of the code', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const enrolled = await claimEnrolmentCode(ctx.context, {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     code: issued.code,
@@ -128,10 +126,12 @@ test('it stores only the hash of the session token and of the code', async () =>
   if (enrolled.status !== 'enrolled') {
     throw new Error('the enrolment failed');
   }
+
   const stored = await Promise.all([
     Bun.file(`${ctx.dataDir}/nixie.db`).text(),
     Bun.file(`${ctx.dataDir}/nixie.db-wal`).text(),
   ]);
+
   const identity = await ctx.db
     .selectFrom('identities')
     .select('token_hash')
@@ -144,14 +144,15 @@ test('it stores only the hash of the session token and of the code', async () =>
 
 test('it answers a retry with the same session', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const input = {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     code: issued.code,
     deviceName: 'laptop',
     tokenDelivery: 'bearer' as const,
   };
+
   const first = await claimEnrolmentCode(ctx.context, input);
   const retry = await claimEnrolmentCode(ctx.context, input);
   const sessions = await ctx.db.selectFrom('identities').select('identity_id').execute();
@@ -163,20 +164,22 @@ test('it answers a retry with the same session', async () => {
 
 test('it replaces the first token with the token a retry answers', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const input = {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     code: issued.code,
     deviceName: 'laptop',
     tokenDelivery: 'bearer' as const,
   };
+
   const first = await claimEnrolmentCode(ctx.context, input);
   const retry = await claimEnrolmentCode(ctx.context, input);
 
   if (first.status !== 'enrolled' || retry.status !== 'enrolled') {
     throw new Error('an enrolment failed');
   }
+
   const callers = await Promise.all([
     verifySessionToken(ctx.context, first.token),
     verifySessionToken(ctx.context, retry.token),
@@ -190,8 +193,8 @@ test('it replaces the first token with the token a retry answers', async () => {
 
 test('it refuses a retry once the code it used has lapsed', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const input = {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     code: issued.code,
@@ -200,6 +203,7 @@ test('it refuses a retry once the code it used has lapsed', async () => {
   };
 
   await claimEnrolmentCode(ctx.context, input);
+
   ctx.clock.advance(15 * 60 * 1000);
 
   const result = await claimEnrolmentCode(ctx.context, input);
@@ -209,7 +213,6 @@ test('it refuses a retry once the code it used has lapsed', async () => {
 
 test('it refuses a client action ID that came with a different device name', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
 
   await claimEnrolmentCode(ctx.context, {
@@ -231,8 +234,8 @@ test('it refuses a client action ID that came with a different device name', asy
 
 test('it records the enrolment with the device name encrypted', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const enrolled = await claimEnrolmentCode(ctx.context, {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     code: issued.code,
@@ -243,6 +246,7 @@ test('it records the enrolment with the device name encrypted', async () => {
   if (enrolled.status !== 'enrolled') {
     throw new Error('the enrolment failed');
   }
+
   const record = await ctx.db
     .$extendTables<{ records: { kind: string; payload: string; key_id: string | null } }>()
     .selectFrom('records')
@@ -255,5 +259,6 @@ test('it records the enrolment with the device name encrypted', async () => {
     channel: 'client',
     issuedBy: null,
   });
+
   expect(record.key_id).toBeString();
 });

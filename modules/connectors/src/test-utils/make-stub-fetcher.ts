@@ -20,18 +20,22 @@ export type StubFetcherAnswer =
 export function makeStubFetcher(answer: (request: FetchRequest) => StubFetcherAnswer): StubGuest {
   return async (stdin, stdout) => {
     const request = await readRequest(stdin);
+
     const picked = answer(request);
 
     if (picked.kind === 'crash') {
       return 1;
     }
+
     if (picked.kind === 'hang') {
       return Promise.withResolvers<number>().promise;
     }
+
     const message =
       picked.kind === 'garbage' ? new TextEncoder().encode('not json') : encodeFetchMessage(picked);
 
     await stdout.write(encodeFrame(message));
+
     return 0;
   };
 }
@@ -46,5 +50,6 @@ async function readRequest(stdin: ReadableStream<Uint8Array>): Promise<FetchRequ
       return decodeFetchRequest(message);
     }
   }
+
   throw new Error('stdin closed before a request');
 }

@@ -20,6 +20,7 @@ async function setupTest() {
 
 test('it serves its tools as the nixie server and records each call', async () => {
   const ctx = await setupTest();
+
   const tools = buildStubToolServer();
 
   ctx.model.addReplies(
@@ -48,9 +49,11 @@ test('it serves its tools as the nixie server and records each call', async () =
       },
     }),
   );
+
   const callsWhileHeld = await tools.waitForHeldCall().then(() => [...tools.calls]);
 
   tools.release();
+
   await finished;
 
   expect(callsWhileHeld).toStrictEqual(['note_wait']);

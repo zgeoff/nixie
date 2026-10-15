@@ -34,18 +34,23 @@ export async function readDeliverableItems(
   if (query.itemIDs.length === 0) {
     return [];
   }
+
   const db = query.db ?? parts.context.log.writer.db.$extendTables<MemoryTables>();
+
   const rows = await db
     .selectFrom('memory_items')
     .selectAll()
     .where('item_id', 'in', query.itemIDs)
     .where('state', 'in', query.states)
     .execute();
+
   const keys = await findRecordKeys(
     parts.context.log,
     rows.map((row) => row.item_id),
   );
+
   const byID = new Map(rows.map((row) => [row.item_id, row]));
+
   const items = await Promise.all(
     query.itemIDs.map((itemID) => {
       const row = byID.get(itemID);
@@ -85,11 +90,13 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
 
   try {
     const readable = await Promise.all(versions.map((version) => readVersion(item.key, version)));
+
     const current = readable.find((version) => version.version === item.row.version);
 
     if (current === undefined) {
       return null;
     }
+
     return {
       itemID: item.row.item_id,
       shortID: getItemShortID(item.row),

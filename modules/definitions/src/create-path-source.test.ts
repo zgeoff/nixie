@@ -13,6 +13,7 @@ async function setupTest() {
   const root = join(dir, 'definitions');
 
   await mkdir(root);
+
   return { dir, root };
 }
 
@@ -27,6 +28,7 @@ test('it reads each definitions file under the root with its path relative to th
 
   const job = new TextEncoder().encode('id: morning\n');
   const persona = new TextEncoder().encode('# Persona\n');
+
   const files = new Map([
     ['jobs/morning.yaml', job],
     ['persona.md', persona],
@@ -112,6 +114,7 @@ test('it gives definitions with docs and a broken file beside them the same cont
     Bun.write(join(ctx.root, 'docs', 'readme.md'), '# Docs\n'),
     Bun.write(join(ctx.root, 'notes', 'bad.json'), '{ not json'),
   ]);
+
   await symlink(plain, join(ctx.root, 'docs', 'outside'));
 
   const snapshot = await createPathSource({ dir: ctx.root }).snapshot();
@@ -148,6 +151,7 @@ test('it reads every file under skills, whatever its extension', async () => {
     'skills/pdf-forms/SKILL.md',
     'skills/pdf-forms/scripts/fill.py',
   ]);
+
   expect(snapshot.skipped).toStrictEqual(['fill.py']);
 });
 
@@ -193,7 +197,6 @@ test('it fails the snapshot with every file past the per-file limit', async () =
   const ctx = await setupTest();
 
   await mkdir(join(ctx.root, 'rules'));
-
   await writeFile(join(ctx.root, 'rules', 'a.md'), '12345678901');
   await writeFile(join(ctx.root, 'rules', 'b.md'), '1234567890');
   await writeFile(join(ctx.root, 'rules', 'c.md'), '123456789012');
@@ -214,7 +217,6 @@ test('it fails the snapshot with the files past the total limit', async () => {
   const ctx = await setupTest();
 
   await mkdir(join(ctx.root, 'rules'));
-
   await writeFile(join(ctx.root, 'rules', 'a.md'), '1234567890');
   await writeFile(join(ctx.root, 'rules', 'b.md'), '1234567890');
   await writeFile(join(ctx.root, 'rules', 'c.md'), '1234567890');
@@ -253,6 +255,7 @@ test('it probes with the content hash, which changes after an edit', async () =>
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const source = createPathSource({ dir: ctx.root });
+
   const before = await source.probe();
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona, edited\n');

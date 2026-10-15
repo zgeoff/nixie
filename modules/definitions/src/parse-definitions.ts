@@ -12,16 +12,19 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
   const texts = decodeFiles(snapshot.files);
   const formatVersion = parseManifest(texts.get(manifestPath));
   const persona = parsePersona(texts.get(personaPath));
+
   const unapplied = [...texts.keys()]
     .filter((path) => path !== manifestPath && path !== personaPath)
     .toSorted();
 
   requireParsable(unapplied.map((path) => [path, texts.get(path) ?? '']));
+
   return { formatVersion, persona, unapplied };
 }
 
 function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
   const decoder = new TextDecoder('utf-8', { fatal: true });
+
   const decoded = [...files].map(([path, bytes]) => {
     try {
       return { path, text: decoder.decode(bytes) };
@@ -29,6 +32,7 @@ function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
       return { path, text: null };
     }
   });
+
   const problems = decoded
     .filter((file) => file.text === null)
     .map((file) => ({ path: file.path, reason: 'the file is not UTF-8 text' }));
@@ -36,6 +40,7 @@ function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
   if (problems.length > 0) {
     throw new DefinitionsParseError(problems);
   }
+
   return new Map(decoded.map((file) => [file.path, file.text ?? '']));
 }
 
@@ -50,6 +55,7 @@ function parseManifest(text: string | undefined): number {
       { path: manifestPath, reason: 'the definitions have no manifest' },
     ]);
   }
+
   const format = getFormat(parseYAML(manifestPath, text));
 
   if (typeof format !== 'number' || !Number.isInteger(format)) {
@@ -57,12 +63,14 @@ function parseManifest(text: string | undefined): number {
       { path: manifestPath, reason: 'format must be a whole number' },
     ]);
   }
+
   if (!readableFormats.includes(format)) {
     const readable = readableFormats.join(' or ');
     const reason = `format ${format} is not one this release reads, which is ${readable}`;
 
     throw new DefinitionsParseError([{ path: manifestPath, reason }]);
   }
+
   return format;
 }
 
@@ -78,9 +86,11 @@ function parsePersona(text: string | undefined): string {
       { path: personaPath, reason: 'the definitions have no persona' },
     ]);
   }
+
   if (text.trim().length === 0) {
     throw new DefinitionsParseError([{ path: personaPath, reason: 'the persona is empty' }]);
   }
+
   return text;
 }
 
@@ -94,6 +104,7 @@ function requireParsable(files: readonly TextFile[]): void {
       } else if (path.endsWith('.yaml') || path.endsWith('.yml')) {
         Bun.YAML.parse(text);
       }
+
       return [];
     } catch (error) {
       return [{ path, reason: formatError(error) }];

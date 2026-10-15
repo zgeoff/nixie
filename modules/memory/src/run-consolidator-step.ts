@@ -25,7 +25,9 @@ export async function runConsolidatorStep(
     if (error instanceof LeaseLostError || error instanceof StaleWriterError) {
       throw error;
     }
+
     parts.onError(error);
+
     return {
       next: 'wait',
       records: [],
@@ -44,12 +46,15 @@ async function runConsolidation(
   signal: AbortSignal,
 ): Promise<ConsolidationStep> {
   const now = parts.context.clock.now();
+
   const wait = await findWaitTime(parts, now);
 
   if (wait !== null) {
     return { next: 'wait', records: [], timers: [{ dueAt: wait }] };
   }
+
   const diff = await runSession(parts, signal);
+
   const records = await planDiffRecord(parts.context.log, {
     ...diff,
     now,
@@ -65,11 +70,13 @@ async function findWaitTime(parts: ConsolidatorParts, now: number): Promise<numb
   await parts.store.consolidations.lapse();
 
   const schedule = await parts.store.consolidations.readSchedule();
+
   const due = schedule.lastRunAt === null ? now : schedule.lastRunAt + parts.config.periodMs;
 
   if (schedule.nextLapseAt !== null) {
     return Math.max(due, schedule.nextLapseAt);
   }
+
   return now < due ? due : null;
 }
 
@@ -91,6 +98,7 @@ async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promis
   if (listed.items.length < 2) {
     return { changes: [], model: null, shownItems: listed.items.length, summary: null };
   }
+
   const staged = parts.staging.open(
     new Map(
       listed.items.map((item) => [

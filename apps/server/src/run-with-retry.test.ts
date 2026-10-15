@@ -23,6 +23,7 @@ test('it runs the step again after each failure until it succeeds, logging each 
   );
 
   expect(result).toBe('added');
+
   expect(lines).toStrictEqual([
     {
       event: 'start.retry',
@@ -47,6 +48,7 @@ test('it stops retrying once the signal aborts', () => {
   const result = runWithRetry(
     () => {
       stopping.abort(new Error('nixie is stopping'));
+
       return Promise.reject(new Error('impd does not answer'));
     },
     { step: 'add_images', signal: stopping.signal, log: () => {}, firstDelayMs: 60_000 },

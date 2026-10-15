@@ -17,6 +17,7 @@ export interface StubResolver {
 // and records each host it was asked for.
 export function buildStubResolver(options: StubResolverOptions): StubResolver {
   const hosts: string[] = [];
+
   const remaining = new Map(
     Object.entries(options.answers).map(([host, answers]) => [host, [...answers]]),
   );
@@ -24,7 +25,9 @@ export function buildStubResolver(options: StubResolverOptions): StubResolver {
   return {
     resolveHost: async (host) => {
       hosts.push(host);
+
       await Bun.sleep(options.delayMs ?? 0);
+
       return remaining.get(host)?.shift() ?? [];
     },
     hosts,

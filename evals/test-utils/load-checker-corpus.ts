@@ -32,7 +32,9 @@ const sampleSchema = z
 const corpusSchema = z.strictObject({ samples: z.array(sampleSchema).readonly() }).readonly();
 
 export type CheckerCorpus = z.infer<typeof corpusSchema>;
+
 export type CheckerSample = CheckerCorpus['samples'][number];
+
 export type CheckerPair = z.infer<typeof pairSchema>;
 
 // Loads the checker corpus: messages, each with the memories it does and does not assert, labelled

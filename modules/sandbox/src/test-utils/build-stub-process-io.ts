@@ -32,6 +32,7 @@ export function buildStubProcessIO(output: StubProcessOutput): StubProcessIO {
       stderr: buildStream(output.stderr),
       write: (bytes) => {
         written.push(bytes);
+
         return Promise.resolve();
       },
       closeStdin: () => Promise.resolve(),
@@ -40,6 +41,7 @@ export function buildStubProcessIO(output: StubProcessOutput): StubProcessIO {
         if (signals.length > 0) {
           return;
         }
+
         signals.push('SIGTERM');
         exit.resolve({ code: null, signal: 'SIGTERM' });
       },
@@ -56,6 +58,7 @@ function buildStream(chunks: readonly Uint8Array[]): ReadableStream<Uint8Array> 
       for (const chunk of chunks) {
         controller.enqueue(chunk);
       }
+
       controller.close();
     },
   });

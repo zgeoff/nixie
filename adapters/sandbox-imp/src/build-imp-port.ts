@@ -18,6 +18,7 @@ export function buildImpPort(connection: ImpConnection): ImpPort {
     ...buildLifecycleCalls(client),
     readSecretHosts: async (secret) => {
       const secrets = await client.secrets.list();
+
       const found = secrets.find((row) => row.name === secret);
 
       return found ? found.rules.map((rule) => rule.host) : null;
@@ -76,6 +77,7 @@ function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
         return imp.backup !== false;
       } catch (error) {
         requireNotFound(error);
+
         return null;
       }
     },
@@ -101,6 +103,7 @@ async function readFeatures(client: ImpClient): ReturnType<ImpPort['readFeatures
   if (!check.compatible) {
     throw new Error(`impd ${check.serverVersion} does not speak imp client ${check.clientVersion}`);
   }
+
   return {
     publicEgress: info.features?.publicEgress === true,
     isEgressEnforced: info.egress?.isEnforced === true,

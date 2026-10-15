@@ -7,12 +7,14 @@ import { startTestNixie } from './start-test-nixie';
 
 async function setupTest() {
   const nixie = await startTestNixie();
+
   const first = nixie.harness.start();
 
   await first.ready;
 
   // boot data: the oracle reads a log that nixie wrote, so one task commits a step before nixie dies
   const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
   const taskID = String(created);
 
   await nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
@@ -23,7 +25,6 @@ async function setupTest() {
 
 test('it finds nothing wrong in a log that nixie wrote', async () => {
   const ctx = await setupTest();
-
   const oracle = await runOracle(ctx.nixie);
 
   expect(oracle).toStrictEqual({
@@ -39,9 +40,11 @@ test('it finds nothing wrong in a log that nixie wrote', async () => {
 
 test('it reports a projection table whose rows a fold of the log does not rebuild', async () => {
   const ctx = await setupTest();
+
   const db = startDatabase(join(ctx.nixie.dataDir, 'nixie.db'));
 
   onTestFinished(() => db.destroy());
+
   await db.$extendTables<TasksTables>().updateTable('tasks').set({ step_errors: 7 }).execute();
 
   const oracle = await runOracle(ctx.nixie);
@@ -53,6 +56,7 @@ test('it reports a provider call that no attempt of an action made', async () =>
   const ctx = await setupTest();
 
   ctx.nixie.provider.addReplies({ kind: 'success', result: {} });
+
   await fetch(`${ctx.nixie.provider.url}/send`, {
     method: 'POST',
     headers: { 'idempotency-key': 'action-nobody-queued' },
@@ -68,6 +72,7 @@ test('it reports a provider call without an idempotency key', async () => {
   const ctx = await setupTest();
 
   ctx.nixie.provider.addReplies({ kind: 'success', result: {} });
+
   await fetch(`${ctx.nixie.provider.url}/send`, { method: 'POST', body: '{}' });
 
   const oracle = await runOracle(ctx.nixie);
@@ -77,6 +82,7 @@ test('it reports a provider call without an idempotency key', async () => {
 
 test('it reports a lease that is still held once recovery ran', async () => {
   const ctx = await setupTest();
+
   const db = startDatabase(join(ctx.nixie.dataDir, 'nixie.db'));
 
   onTestFinished(() => db.destroy());

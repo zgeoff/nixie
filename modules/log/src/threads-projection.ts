@@ -9,6 +9,7 @@ export const threadsProjection: Projection = {
     if (record.thread === null) {
       return [];
     }
+
     await tx
       .$extendTables<LogTables>()
       .insertInto('threads')
@@ -27,6 +28,7 @@ export const threadsProjection: Projection = {
         })),
       )
       .execute();
+
     return [record.thread];
   },
 };

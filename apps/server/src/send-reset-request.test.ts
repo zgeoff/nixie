@@ -15,6 +15,7 @@ async function setupTest() {
 
 test('it returns what the running server reports of the finished reset', async () => {
   const ctx = await setupTest();
+
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
@@ -42,6 +43,7 @@ test('it returns what the running server reports of the finished reset', async (
 
 test('it rejects with the status and the reason when the reset fails', async () => {
   const ctx = await setupTest();
+
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),

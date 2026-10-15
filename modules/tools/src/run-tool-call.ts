@@ -54,6 +54,7 @@ export async function runToolCall(
   }
 
   const policy = options.decide({ tool: call.tool, toolList: run.tools });
+
   const callSequence = await recorder.writeCall(policy);
   const settled = await runDecidedCall({ policy, registered, call, run, callSequence, options });
 
@@ -110,6 +111,7 @@ function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions
       ]);
 
       invariant(written, 'the log wrote no record for the tool call');
+
       return written.sequence;
     },
     writeResult: async (callSequence, settled) => {
@@ -131,6 +133,7 @@ function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions
           ...(contentSource === null ? {} : { contentSource }),
         },
       ]);
+
       return toCallToolResult(settled);
     },
   };
@@ -259,6 +262,7 @@ function buildTypedResult(
       messageOptions,
     );
   }
+
   return {
     outcome: 'result',
     actionID,
@@ -284,6 +288,7 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
   if (outcome === null) {
     return buildMessage('queued', `queued as ${actionID}`, { isError: false, actionID });
   }
+
   if (outcome.outcome === 'done') {
     return buildTypedResult(allowed.registered, outcome, actionID);
   }

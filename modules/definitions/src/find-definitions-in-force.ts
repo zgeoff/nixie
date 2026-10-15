@@ -34,6 +34,7 @@ export async function findDefinitionsInForce(
   if (row === undefined) {
     return null;
   }
+
   return {
     seededAt: new Date(row.seeded_at),
     sourceID: row.source_id,

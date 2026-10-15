@@ -11,12 +11,15 @@ export function pickOutcome(
   if (response.kind === 'success') {
     return { status: 'done' };
   }
+
   if (response.kind === 'refused') {
     return { status: 'failed', reason: 'refused' };
   }
+
   if (response.kind === 'ambiguous') {
     return { status: 'unknown', reason: 'ambiguous' };
   }
+
   const delayMs = retryDelaysMs[attempt - 1];
 
   return delayMs === undefined

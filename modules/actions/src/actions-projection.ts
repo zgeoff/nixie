@@ -16,7 +16,9 @@ export const actionsProjection: Projection = {
     if (parsed === null) {
       return [];
     }
+
     await applyActionRecord(tx.$extendTables<ActionsTables>(), parsed, record);
+
     return [parsed.actionID];
   },
 };
@@ -45,8 +47,10 @@ async function applyActionRecord(
         updated_sequence: record.sequence,
       })
       .execute();
+
     return;
   }
+
   await db
     .updateTable('actions')
     .set({ updated_sequence: record.sequence, ...buildActionUpdate(parsed, record.sequence) })
@@ -61,9 +65,11 @@ function buildActionUpdate(
   if (parsed.kind === 'action.attempt_started') {
     return { attempt_count: parsed.attempt, attempt_open: 1 };
   }
+
   if (parsed.kind === 'action.retry_scheduled') {
     return { attempt_open: 0, next_attempt_at: parsed.nextAttemptAt, reason: parsed.reason };
   }
+
   return {
     status: parsed.status,
     attempt_open: 0,

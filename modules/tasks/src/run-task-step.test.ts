@@ -19,6 +19,7 @@ async function setupTest() {
 
 test('it gives the step its unread inbox and commits what the step returns', async () => {
   const ctx = await setupTest();
+
   const runStep = mock<(input: StepInput) => Promise<StepResult>>(() =>
     Promise.resolve({ next: 'wait', records: [], acknowledged: [2] }),
   );
@@ -56,11 +57,13 @@ test('it gives the step its unread inbox and commits what the step returns', asy
       },
     ],
   ]);
+
   expect(task).toMatchObject({ state: 'waiting', read_cursor: 2 });
 });
 
 test('it gives the next step the session boundary the last commit recorded', async () => {
   const ctx = await setupTest();
+
   const runStep = mock<(input: StepInput) => Promise<StepResult>>(() =>
     Promise.resolve({ next: 'wait', records: [], acknowledged: [] }),
   );
@@ -77,6 +80,7 @@ test('it gives the next step the session boundary the last commit recorded', asy
   const first = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   invariant(first);
+
   await runTaskStep(ctx.context, first, {
     runStep: () =>
       Promise.resolve<StepResult>({
@@ -174,6 +178,7 @@ test('it records the error when the commit refuses what the step returned', asyn
 
 test('it aborts the step and commits nothing once the lease is lost', async () => {
   const ctx = await setupTest();
+
   const seen = { aborted: false };
 
   await writeInboxRecords(ctx.context, [
@@ -195,8 +200,11 @@ test('it aborts the step and commits nothing once the lease is lost', async () =
 
       // the runner stalled past every renewal, so the next one finds the lease expired
       ctx.clock.advance(60_000);
+
       await waitForCondition(() => input.signal.aborted);
+
       seen.aborted = input.signal.aborted;
+
       return { next: 'done', records: [], acknowledged: [2] };
     },
     leaseMs: 60_000,

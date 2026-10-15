@@ -17,17 +17,20 @@ export async function findSourceEvidence(
   if (invisible.test(quote)) {
     return { status: 'review', reason: 'invisible_character' };
   }
+
   const message = toOwnerMessage(source);
   const match = findTypedQuote(message, quote);
 
   if (match.status !== 'typed') {
     return { status: 'review', reason: failureReasons[match.status] };
   }
+
   const forgotten = await readForgottenSequences(log.writer.db, [source.sequence]);
 
   if (forgotten.has(source.sequence)) {
     return { status: 'review', reason: 'forgotten_evidence' };
   }
+
   return {
     status: 'found',
     message,

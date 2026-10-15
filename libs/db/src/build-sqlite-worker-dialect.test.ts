@@ -15,6 +15,7 @@ async function setupTest() {
   stack.defer(() => rm(dir, { recursive: true, force: true }));
 
   const path = join(dir, 'nixie.db');
+
   const db = new Kysely<unknown>({ dialect: buildSqliteWorkerDialect(path) });
 
   stack.defer(() => db.destroy());
@@ -24,7 +25,6 @@ async function setupTest() {
 
 test('it opens the database in WAL mode with a full sync on every commit', async () => {
   const ctx = await setupTest();
-
   const journal = await sql<{ journal_mode: string }>`pragma journal_mode`.execute(ctx.db);
   const synchronous = await sql<{ synchronous: number }>`pragma synchronous`.execute(ctx.db);
 
@@ -79,6 +79,7 @@ test('it rejects a failed statement with the SQLite result code', async () => {
   await sql`create table notes (id integer primary key, title text not null unique)`.execute(
     ctx.db,
   );
+
   await sql`insert into notes (title) values ('same')`.execute(ctx.db);
 
   const insert = sql`insert into notes (title) values ('same')`.execute(ctx.db);
@@ -97,6 +98,7 @@ test('it loses no update when 2 connections race read-then-write transactions', 
   const other = new Kysely<unknown>({ dialect: buildSqliteWorkerDialect(ctx.path) });
 
   ctx.stack.defer(() => other.destroy());
+
   await sql`create table counter (id integer primary key, value integer not null)`.execute(ctx.db);
   await sql`insert into counter (id, value) values (1, 0)`.execute(ctx.db);
 
@@ -106,6 +108,7 @@ test('it loses no update when 2 connections race read-then-write transactions', 
       Array.from({ length: 25 }, () =>
         db.transaction().execute(async (tx) => {
           const result = await sql<{ value: number }>`select value from counter`.execute(tx);
+
           const [row] = result.rows;
 
           await sql`update counter set value = ${(row?.value ?? 0) + 1}`.execute(tx);
@@ -121,11 +124,14 @@ test('it loses no update when 2 connections race read-then-write transactions', 
 
 test('it opens 2 connections that write to a new file at once without a busy error', async () => {
   const ctx = await setupTest();
+
   const paths = Array.from({ length: 10 }, (_, index) => `${ctx.path}-${String(index)}`);
+
   const pairs = paths.map((path) => ({
     first: new Kysely<unknown>({ dialect: buildSqliteWorkerDialect(path) }),
     second: new Kysely<unknown>({ dialect: buildSqliteWorkerDialect(path) }),
   }));
+
   const handles = pairs.flatMap((pair) => [pair.first, pair.second]);
 
   ctx.stack.defer(async () => {
@@ -159,6 +165,7 @@ test('it keeps the event loop free while a long query runs', async () => {
   const ctx = await setupTest();
 
   const order: string[] = [];
+
   const query =
     sql`with recursive n(i) as (select 1 union all select i + 1 from n where i < 3000000)
     select count(*) from n`.execute(ctx.db);
@@ -166,7 +173,9 @@ test('it keeps the event loop free while a long query runs', async () => {
   setTimeout(() => {
     order.push('timer');
   }, 0);
+
   await query;
+
   order.push('query');
 
   expect(order).toStrictEqual(['timer', 'query']);
@@ -193,6 +202,7 @@ test('it fails the rest of a transaction that SQLite rolled back on its own, and
 
   await sql`create table notes (id text primary key)`.execute(ctx.db);
   await sql`create table refused (id text primary key)`.execute(ctx.db);
+
   await sql`create trigger refuse before insert on refused
     begin select raise(rollback, 'refused'); end`.execute(ctx.db);
 
@@ -210,6 +220,7 @@ test('it fails the rest of a transaction that SQLite rolled back on its own, and
     Error,
     'SQLite rolled the transaction back after an earlier error',
   );
+
   expect(notes.rows).toStrictEqual([]);
 });
 

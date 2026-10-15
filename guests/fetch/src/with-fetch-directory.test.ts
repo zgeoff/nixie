@@ -19,9 +19,11 @@ test('it runs each fetch in a new directory of its own and removes it after', as
   const first = await withFetchDirectory(ctx.root, (dir) =>
     Promise.resolve({ dir, existed: existsSync(dir) }),
   );
+
   const second = await withFetchDirectory(ctx.root, (dir) =>
     Promise.resolve({ dir, existed: existsSync(dir) }),
   );
+
   const left = await readdir(ctx.root);
 
   expect(first.existed).toBeTrue();
@@ -37,6 +39,7 @@ test('it removes the directory when the fetch throws', async () => {
 
   const run = withFetchDirectory(ctx.root, async (dir) => {
     await Bun.write(join(dir, 'left.txt'), 'x');
+
     throw new Error('the fetch failed');
   });
 

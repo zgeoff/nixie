@@ -16,6 +16,7 @@ export const memoryProposalMergesMigration: Migration = {
       sequence integer not null references records (sequence),
       recorded_at integer not null
     ) strict`.execute(tx);
+
     await sql`create index memory_proposal_merges_by_proposal on memory_proposal_merges (
       proposal_id, sequence
     )`.execute(tx);

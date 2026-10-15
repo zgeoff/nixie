@@ -21,5 +21,6 @@ export async function writeInboxRecords(
       await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: record.thread });
     }
   }
+
   return records;
 }

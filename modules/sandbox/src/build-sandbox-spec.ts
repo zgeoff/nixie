@@ -39,5 +39,6 @@ function buildEgress(
   if (kind === 'allow') {
     return { kind, hosts };
   }
+
   return { kind };
 }

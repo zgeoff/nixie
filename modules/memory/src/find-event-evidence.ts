@@ -43,12 +43,15 @@ async function readEventMessage(
   if (entry === undefined) {
     return 'no_quote';
   }
+
   if (entry.record.kind !== 'owner_message') {
     return 'quote_not_typed';
   }
+
   if (entry.record.erasable.status !== 'readable') {
     return 'forgotten_evidence';
   }
+
   const fields = messageFields.safeParse(entry.record.erasable.fields);
 
   return fields.success
@@ -57,5 +60,4 @@ async function readEventMessage(
 }
 
 const messageSpan = z.object({ start: z.int(), end: z.int(), source: z.string() });
-
 const messageFields = z.object({ text: z.string(), spans: z.array(messageSpan).optional() });

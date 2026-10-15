@@ -8,11 +8,14 @@ const encoder = new TextEncoder();
 test('it runs each spawn as a guest behind frames and records it', async () => {
   const adapter = buildStubSandboxAdapter(async (stdin, stdout) => {
     const reader = stdin.getReader();
+
     const chunk = await reader.read();
 
     await stdout.write(chunk.value ?? new Uint8Array());
+
     return 0;
   });
+
   const sandbox = await adapter.create({
     kind: 'fetch',
     image: 'fetch',
@@ -24,7 +27,9 @@ test('it runs each spawn as a guest behind frames and records it', async () => {
   });
 
   const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
+
   await stream.send(encoder.encode('echo'));
+
   const first = await stream.messages[Symbol.asyncIterator]().next();
   const exit = await stream.exit;
 
@@ -35,6 +40,7 @@ test('it runs each spawn as a guest behind frames and records it', async () => {
 
 test('it takes a write that the guest never reads, as a pipe buffers it', async () => {
   const adapter = buildStubSandboxAdapter(() => Promise.withResolvers<number>().promise);
+
   const sandbox = await adapter.create({
     kind: 'fetch',
     image: 'fetch',
@@ -44,6 +50,7 @@ test('it takes a write that the guest never reads, as a pipe buffers it', async 
     toolRoute: false,
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
 
   await expect(stream.send(encoder.encode('unread'))).toResolve();
@@ -51,6 +58,7 @@ test('it takes a write that the guest never reads, as a pipe buffers it', async 
 
 test('it ends a stopped guest with SIGTERM', async () => {
   const adapter = buildStubSandboxAdapter(() => Promise.withResolvers<number>().promise);
+
   const sandbox = await adapter.create({
     kind: 'fetch',
     image: 'fetch',
@@ -60,8 +68,8 @@ test('it ends a stopped guest with SIGTERM', async () => {
     toolRoute: false,
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
-  const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
 
+  const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
   const exit = await stream.stop();
 
   expect(exit).toMatchObject({ code: null, signal: 'SIGTERM' });
@@ -69,6 +77,7 @@ test('it ends a stopped guest with SIGTERM', async () => {
 
 test('it ends a guest that throws with exit code 1', async () => {
   const adapter = buildStubSandboxAdapter(() => Promise.reject(new Error('crashed')));
+
   const sandbox = await adapter.create({
     kind: 'fetch',
     image: 'fetch',
@@ -78,8 +87,8 @@ test('it ends a guest that throws with exit code 1', async () => {
     toolRoute: false,
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
-  const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
 
+  const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
   const exit = await stream.exit;
 
   expect(exit).toMatchObject({ code: 1, signal: null });
@@ -87,6 +96,7 @@ test('it ends a guest that throws with exit code 1', async () => {
 
 test('it refuses a spawn in a destroyed sandbox', async () => {
   const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
   const sandbox = await adapter.create({
     kind: 'fetch',
     image: 'fetch',
@@ -96,17 +106,20 @@ test('it refuses a spawn in a destroyed sandbox', async () => {
     toolRoute: false,
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   await sandbox.destroy();
 
   expect(sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 })).rejects.toThrowWithMessage(
     Error,
     `sandbox ${sandbox.id} is destroyed`,
   );
+
   expect(adapter.destroyed).toStrictEqual([sandbox.id]);
 });
 
 test('it lists the live sandboxes of an owner only', async () => {
   const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
   const spec = {
     kind: 'fetch' as const,
     image: 'fetch',
@@ -115,8 +128,10 @@ test('it lists the live sandboxes of an owner only', async () => {
     toolRoute: false,
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   };
+
   const kept = await adapter.create({ ...spec, owner: 'web_fetch' });
   const gone = await adapter.create({ ...spec, owner: 'web_fetch' });
+
   await adapter.create({ ...spec, owner: 'other' });
   await gone.destroy();
 
@@ -139,6 +154,7 @@ test('it refuses a spec a real adapter refuses', () => {
       limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     }),
   ).rejects.toThrow(SandboxSpecRefusedError);
+
   expect(adapter.created).toStrictEqual([]);
 });
 
@@ -158,6 +174,7 @@ test('it refuses a create with the message its failure names, and records no san
       limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
     }),
   ).rejects.toThrowWithMessage(Error, 'impd is down');
+
   expect(adapter.created).toStrictEqual([]);
 });
 
@@ -165,6 +182,7 @@ test('it never answers a create whose failure hangs', async () => {
   const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
     createFailures: [{ kind: 'hang' }],
   });
+
   const create = adapter.create({
     kind: 'fetch',
     image: 'fetch',
@@ -185,6 +203,7 @@ test('it creates a sandbox once the named failures are spent', async () => {
   const adapter = buildStubSandboxAdapter(() => Promise.resolve(0), {
     createFailures: [{ kind: 'reject', message: 'impd is down' }],
   });
+
   const spec = {
     kind: 'fetch' as const,
     image: 'fetch',
@@ -194,6 +213,7 @@ test('it creates a sandbox once the named failures are spent', async () => {
     toolRoute: false,
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   };
+
   await adapter.create(spec).catch(() => null);
 
   const sandbox = await adapter.create(spec);
@@ -204,8 +224,10 @@ test('it creates a sandbox once the named failures are spent', async () => {
 test('it ends the messages with none when the guest exits partway through a frame', async () => {
   const adapter = buildStubSandboxAdapter(async (_stdin, stdout) => {
     await stdout.write(encodeFrame(encoder.encode('framed')).slice(0, 5));
+
     return 0;
   });
+
   const sandbox = await adapter.create({
     kind: 'fetch',
     image: 'fetch',
@@ -215,8 +237,8 @@ test('it ends the messages with none when the guest exits partway through a fram
     toolRoute: false,
     limits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
-  const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
 
+  const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100 });
   const first = await stream.messages[Symbol.asyncIterator]().next();
 
   expect(first.done).toBeTrue();

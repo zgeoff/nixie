@@ -24,7 +24,6 @@ async function setupTest() {
 
 test('it reports a sound database as ready', async () => {
   const ctx = await setupTest();
-
   const report = await checkDatabaseIntegrity(ctx.writer.db);
 
   expect(report).toStrictEqual({

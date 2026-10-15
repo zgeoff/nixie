@@ -30,6 +30,7 @@ export async function writeEnrolmentCode(
       payload: { issuedBy, expiresAt },
     },
   ]);
+
   await tx
     .$extendTables<APITables>()
     .insertInto('enrolment_codes')
@@ -42,5 +43,6 @@ export async function writeEnrolmentCode(
       identity_id: null,
     })
     .execute();
+
   return { code, codeHash, expiresAt };
 }

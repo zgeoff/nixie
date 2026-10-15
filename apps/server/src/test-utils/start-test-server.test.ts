@@ -21,7 +21,9 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
     'memory_consolidations',
     'memory_consolidation_changes',
   ]);
+
   expect(server.sandboxes).toMatchObject({ id: 'process', boundary: 'process' });
+
   expect(server.endpoint.getToolTarget({ id: 's-1', owner: 'conversation' })).toMatchObject({
     path: expect.toStartWith(server.dataDir),
   });
@@ -29,6 +31,7 @@ test('it starts a log with the tasks, sandboxes and memory projections, an endpo
 
 test('it stops a deferred part while the log is still open', async () => {
   const server = await startTestServer();
+
   const seen: { count: number | null } = { count: null };
 
   server.defer(async () => {
@@ -40,6 +43,7 @@ test('it stops a deferred part while the log is still open', async () => {
 
     seen.count = rows.length;
   });
+
   onTestFinished(() => {
     expect(seen.count).toBe(0);
   });

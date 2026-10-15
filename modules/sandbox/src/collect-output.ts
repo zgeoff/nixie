@@ -7,15 +7,18 @@ export async function collectOutput(
   limitBytes: number,
 ): Promise<CollectedOutput> {
   const kept = new Uint8Array(limitBytes);
+
   const counts = { kept: 0, total: 0 };
 
   for await (const chunk of stream) {
     const slice = chunk.subarray(0, Math.max(0, limitBytes - counts.kept));
 
     kept.set(slice, counts.kept);
+
     counts.kept += slice.byteLength;
     counts.total += chunk.byteLength;
   }
+
   return {
     bytes: kept.slice(0, counts.kept),
     totalBytes: counts.total,

@@ -28,14 +28,18 @@ export async function requirePendingProposal(
   if (row === undefined) {
     throw new MemoryProposalNotFoundError(requirement.proposalID);
   }
+
   if (row.status !== 'pending') {
     throw new ProposalClosedError(row.proposal_id, row.status);
   }
+
   if (row.lapse_at <= requirement.now) {
     throw new ProposalClosedError(row.proposal_id, 'lapsed');
   }
+
   if (row.action_hash !== requirement.actionHash) {
     throw new ProposalHashError(row.proposal_id);
   }
+
   return row;
 }

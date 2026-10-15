@@ -26,10 +26,12 @@ export async function writePlannedBatch(log: Log, texts: readonly string[]): Pro
       erasable: { text },
     })),
   ]);
+
   const sequences = records.slice(1).map((record) => record.sequence);
   const end = sequences.at(-1);
 
   invariant(end !== undefined, 'a planned batch needs a message');
+
   await writeRecords(log, [
     {
       kind: 'memory.batch_planned',
@@ -38,5 +40,6 @@ export async function writePlannedBatch(log: Log, texts: readonly string[]): Pro
       payload: { start: 0, end, mode: 'live', at: 1_000_000 },
     },
   ]);
+
   return { sequences, bounds: { start: 0, end } };
 }

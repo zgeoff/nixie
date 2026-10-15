@@ -8,11 +8,13 @@ const decoder = new TextDecoder();
 
 test('it returns each message whole when the transport splits and joins frames', () => {
   const decode = makeFrameDecoder(64);
+
   const stream = new Uint8Array([
     ...encodeFrame(encoder.encode('first')),
     ...encodeFrame(encoder.encode('')),
     ...encodeFrame(encoder.encode('third message')),
   ]);
+
   const messages = [stream.slice(0, 3), stream.slice(3, 11), stream.slice(11)].flatMap((chunk) =>
     decode(chunk).map((message) => decoder.decode(message)),
   );

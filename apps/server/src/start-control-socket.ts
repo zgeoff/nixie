@@ -94,6 +94,7 @@ export async function startControlSocket(options: ControlSocketOptions): Promise
   return {
     stop: async () => {
       await server.stop();
+
       await rm(options.path, { force: true });
     },
   };
@@ -120,11 +121,13 @@ function buildSessionRoutes(options: ControlSocketOptions) {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
         const body: unknown = await request.json().catch(() => null);
+
         const parsed = labelBody.safeParse(body);
 
         if (!parsed.success) {
           throw new ControlRequestError(400, 'a label takes a sessionID and a label');
         }
+
         const result = await options.updateSessionLabel(parsed.data);
 
         if (result.status === 'not_found') {
@@ -133,9 +136,11 @@ function buildSessionRoutes(options: ControlSocketOptions) {
             'no device session that is still signed in has that ID',
           );
         }
+
         if (result.status === 'invalid_label') {
           throw new ControlRequestError(400, 'a label holds 1 to 100 characters besides spaces');
         }
+
         return Response.json({ sessionID: result.sessionID, label: result.label });
       },
     },
@@ -158,6 +163,7 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
         const answer = await parseControlBody(request, answerBody, answerUsage);
+
         const result = await requireHostMemory(options.readMemory).proposals.approve({
           proposalID: answer.proposalID,
           actionHash: answer.actionHash,
@@ -180,11 +186,13 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
         if (answer.editedText !== undefined) {
           throw new ControlRequestError(400, 'a rejection takes no edited text');
         }
+
         await requireHostMemory(options.readMemory).proposals.reject({
           proposalID: answer.proposalID,
           actionHash: answer.actionHash,
           identityID: hostIdentityID,
         });
+
         return Response.json({ proposalID: answer.proposalID });
       },
     },
@@ -238,6 +246,7 @@ function pickErrorStatus(error: Error): number {
   if (error instanceof ControlRequestError) {
     return error.status;
   }
+
   const code = 'code' in error ? error.code : null;
 
   return typeof code === 'string' ? (errorStatuses.get(code) ?? 500) : 500;

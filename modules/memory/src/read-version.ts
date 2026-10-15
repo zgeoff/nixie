@@ -23,5 +23,6 @@ export async function readVersion(
     .executeTakeFirst();
 
   invariant(row, `memory item ${ref.itemID} has no version ${String(ref.version)}`);
+
   return { row, text: await decodeVersionText(key, ref, row.sealed) };
 }

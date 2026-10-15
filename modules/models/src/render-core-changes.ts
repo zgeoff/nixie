@@ -17,8 +17,10 @@ export function renderCoreChanges(
   if (previous === null) {
     return null;
   }
+
   const before = new Map(previous.map((ref) => [ref.itemID, ref.version]));
   const now = new Set(current.map((item) => item.itemID));
+
   const lines = [
     ...current.flatMap((item) => {
       const version = before.get(item.itemID);
@@ -26,6 +28,7 @@ export function renderCoreChanges(
       if (version === undefined) {
         return renderChangedItem('Pinned', item, options);
       }
+
       return version === item.version ? [] : renderChangedItem('Changed', item, options);
     }),
     ...previous
@@ -36,6 +39,7 @@ export function renderCoreChanges(
   if (lines.length === 0) {
     return null;
   }
+
   return [
     'The pinned memory changed since your last turn. Where these differ from the pinned memory this session opened with, or from anything said earlier, these hold.',
     ...lines,

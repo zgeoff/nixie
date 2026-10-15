@@ -20,6 +20,7 @@ test('it renders the same text for the same spans', () => {
     { start: 0, end: 5, source: 'typed' },
     { start: 5, end: 13, source: 'pasted' },
   ]);
+
   const second = renderShownText('see: Fern Row', [
     { start: 0, end: 5, source: 'typed' },
     { start: 5, end: 13, source: 'pasted' },

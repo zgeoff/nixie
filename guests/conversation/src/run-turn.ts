@@ -30,6 +30,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
     inputFailed: Promise.withResolvers(),
     ended: Promise.withResolvers(),
   };
+
   const session = (deps.runQuery ?? query)({
     prompt: readTurnInput(turn, deps.messages, state),
     options,
@@ -43,6 +44,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
     // close() ends a read still waiting on the CLI, and return() waits for the CLI process to exit,
     // so the next turn and the guest's file cleanup never meet a live CLI
     session.close();
+
     await session.return();
   }
 }
@@ -56,6 +58,7 @@ async function drainConnectedSession(
   const failed = await checkToolServer(session, deps.waitBeforeReconnect);
 
   state.toolsReady.resolve(failed === null);
+
   await (failed === null ? drainSession(session, deps, state) : deps.emit(failed));
 }
 
@@ -73,6 +76,7 @@ async function drainSession(
     if (next instanceof Error) {
       throw next;
     }
+
     if (next.done === true) {
       return;
     }
@@ -106,16 +110,21 @@ function emitMessageFrames(
   if (message.type === 'system') {
     return emitSystem(message, deps, state);
   }
+
   if (message.type === 'assistant') {
     return emitAssistant(message, deps, state);
   }
+
   if (message.type === 'user') {
     updateUserBoundary(message, state);
+
     return Promise.resolve('continue');
   }
+
   if (message.type === 'result') {
     return emitResult(message, deps, state);
   }
+
   return emitCommandRead(message, deps, state);
 }
 
@@ -129,9 +138,11 @@ function emitSystem(
   if (message.subtype === 'init') {
     return emitInit(message, deps);
   }
+
   if (message.subtype === 'compact_boundary') {
     return emitCompacted(message, deps);
   }
+
   return emitCommandRead(message, deps, state);
 }
 
@@ -143,11 +154,13 @@ async function emitInit(message: InitMessage, deps: TurnDependencies): Promise<M
   if (server?.status === 'connected') {
     return 'continue';
   }
+
   await deps.emit({
     type: 'failed',
     reason: 'tools_not_connected',
     detail: `nixie's tool server is ${server?.status ?? 'missing'}`,
   });
+
   return 'stop';
 }
 
@@ -164,6 +177,7 @@ async function emitCompacted(
     preTokens: message.compact_metadata.pre_tokens,
     postTokens: message.compact_metadata.post_tokens ?? null,
   });
+
   return 'continue';
 }
 
@@ -178,13 +192,16 @@ async function emitAssistant(
   if (message.parent_tool_use_id !== null) {
     return 'continue';
   }
+
   state.boundary = { sessionID: message.session_id, messageID: message.uuid };
 
   // the CLI's own message for an API error carries no usage from the model
   if (message.error === undefined) {
     state.contextSize = countContextTokens(message.message.usage);
   }
+
   await emitReads(deps, state, [message.user_message_uuid, ...(message.user_message_uuids ?? [])]);
+
   await deps.emit({
     type: 'assistant',
     messageID: message.uuid,
@@ -193,6 +210,7 @@ async function emitAssistant(
       block.type === 'tool_use' ? [{ id: block.id, name: block.name }] : [],
     ),
   });
+
   return 'continue';
 }
 
@@ -227,6 +245,7 @@ async function emitCommandRead(
       typeof lifecycle.command_uuid === 'string' ? lifecycle.command_uuid : undefined,
     ]);
   }
+
   return 'continue';
 }
 
@@ -243,6 +262,7 @@ async function emitReads(
     for (const uuid of uuids) {
       state.pending.delete(uuid);
     }
+
     await deps.emit({ type: 'read', uuids });
   }
 }
@@ -263,13 +283,18 @@ async function emitResult(
       reason: isMissing ? 'session_missing' : 'error',
       detail: message.errors.join('; '),
     });
+
     return 'stop';
   }
+
   if (state.boundary === null) {
     await deps.emit({ type: 'failed', reason: 'error', detail: 'the turn wrote no chain entry' });
+
     return 'stop';
   }
+
   await deps.emit(buildEnded(message, state.boundary, state));
+
   return 'result';
 }
 

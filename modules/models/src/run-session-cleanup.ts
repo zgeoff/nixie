@@ -14,7 +14,9 @@ export function runSessionCleanup(run: CleanupRun, itemID: string): Promise<void
     await writeRecords(run.context.log, [
       buildSessionRecord(run, 'model.session_invalidated', itemID),
     ]);
+
     await runGuestPurge(run);
+
     await writeRecords(run.context.log, [
       buildSessionRecord(run, 'model.session_cleanup_completed', itemID),
     ]);

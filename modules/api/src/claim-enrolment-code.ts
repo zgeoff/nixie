@@ -28,19 +28,23 @@ export function claimEnrolmentCode(context: APIContext, input: EnrolInput): Prom
   return withWriteTransaction(context.log.writer, async (tx) => {
     const code = normalizeEnrolmentCode(input.code);
     const codeHash = deriveSecretHash(code);
+
     const inputHash = buildInputHash({
       code,
       deviceName: input.deviceName,
       tokenDelivery: input.tokenDelivery,
     });
+
     const earlier = await findClientAction(tx, input.clientActionID);
 
     if (earlier === null) {
       return writeEnrolment(tx, context, { input, codeHash, inputHash });
     }
+
     if (earlier.procedure !== 'sessions.enrol' || earlier.inputHash !== inputHash) {
       return { status: 'reused' };
     }
+
     return updateEnrolmentToken(tx, context, {
       codeHash,
       sessionID: String(earlier.result['sessionID']),
@@ -71,6 +75,7 @@ async function writeEnrolment(
   if (code === undefined) {
     return { status: 'invalid' };
   }
+
   const session = await writeSession(tx, context, {
     deviceName: pending.input.deviceName,
     issuedBy: code.issued_by,
@@ -82,6 +87,7 @@ async function writeEnrolment(
     .set({ used_at: context.clock.now(), identity_id: session.sessionID })
     .where('code_hash', '=', pending.codeHash)
     .execute();
+
   await writeClientAction(tx, {
     clientActionID: pending.input.clientActionID,
     procedure: 'sessions.enrol',
@@ -90,6 +96,7 @@ async function writeEnrolment(
     result: { sessionID: session.sessionID },
     recordedAt: context.clock.now(),
   });
+
   return { status: 'enrolled', ...session };
 }
 
@@ -106,6 +113,7 @@ async function writeSession(
 ): Promise<{ readonly sessionID: string; readonly token: string }> {
   const sessionID = crypto.randomUUID();
   const token = createSecret('session-token');
+
   const [record] = await writeRecordsInTransaction(tx, context.log, [
     {
       kind: 'session.enrolled',
@@ -116,6 +124,7 @@ async function writeSession(
   ]);
 
   invariant(record, 'the log wrote no session.enrolled record');
+
   await tx
     .$extendTables<APITables>()
     .insertInto('identities')
@@ -131,6 +140,7 @@ async function writeSession(
       paired_sequence: record.sequence,
     })
     .execute();
+
   return { sessionID, token };
 }
 
@@ -146,6 +156,7 @@ async function updateEnrolmentToken(
   retry: EnrolmentRetry,
 ): Promise<EnrolResult> {
   const db = tx.$extendTables<APITables>();
+
   const code = await db
     .selectFrom('enrolment_codes')
     .select('code_hash')
@@ -157,7 +168,9 @@ async function updateEnrolmentToken(
   if (code === undefined) {
     return { status: 'invalid' };
   }
+
   const token = createSecret('session-token');
+
   const updated = await db
     .updateTable('identities')
     .set({ token_hash: deriveSecretHash(token) })

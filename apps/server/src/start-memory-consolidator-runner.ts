@@ -54,12 +54,14 @@ export async function startMemoryConsolidatorRunner(
     const consolidator = await startConsolidatorParts(options, (stop) => {
       started.defer(stop);
     });
+
     const stack = started.move();
 
     return { ...consolidator, stop: () => stack.disposeAsync() };
   } catch (error) {
     // the server retries a failed start, and each retry opens the run socket again
     await started.disposeAsync();
+
     throw error;
   }
 }
@@ -71,6 +73,7 @@ async function startConsolidatorParts(
 ): Promise<MemoryConsolidator> {
   const staging = createConsolidationStaging();
   const tools = buildConsolidatorTools(options.store, staging, options.config.topItems);
+
   const endpoint = await startConsolidatorEndpoint(options, tools);
 
   defer(() => endpoint.stop());
@@ -112,6 +115,7 @@ function resolveConsolidatorProfile(options: MemoryConsolidatorRunnerOptions): R
 
   // the credentials resolve for every profile, or resolveModelCredentials throws first
   invariant(resolved, `the memory consolidator profile ${profile.id} has no credential`);
+
   return resolved;
 }
 

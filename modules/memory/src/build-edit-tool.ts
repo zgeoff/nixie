@@ -38,6 +38,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
     recordInput: makeInputRecorder(['text', 'quote']),
     run: async (call: ToolCall, context: ToolContext) => {
       const input = editArguments.parse(call.input);
+
       const [itemID = input.itemID] = await readItemIDs(memory, [input.itemID]);
 
       return runWriteCall(

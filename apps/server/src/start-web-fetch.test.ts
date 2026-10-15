@@ -17,7 +17,9 @@ const impEnv = {
   IMP_HOST_ADDRESSES: process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'],
   IMP_EGRESS_DENY: process.env['NIXIE_IMP_TEST_EGRESS_DENY'],
 };
+
 const fetchImage = process.env['NIXIE_IMP_TEST_FETCH_IMAGE'] ?? '';
+
 const hasImpHost =
   impEnv.IMP_URL !== undefined &&
   impEnv.IMP_TOKEN !== undefined &&
@@ -41,6 +43,7 @@ async function setupTest() {
     'wrapKey',
     'unwrapKey',
   ]);
+
   const recorder = buildSandboxRecorder({
     log: { writer, deploymentKey, projections: [...logProjections, sandboxesProjection] },
     definitions: () => ({ snapshotHash: 'sha256:test' }),
@@ -51,18 +54,21 @@ async function setupTest() {
 
 test("it fetches through a new fetcher process in a test build's fetch sandbox", async () => {
   const ctx = await setupTest();
+
   const adapter = buildSandboxAdapter({
     recorder: ctx.recorder,
     toolTarget: () => ({ path: '/nonexistent.sock' }),
     imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
     testRootDir: ctx.dataDir,
   });
+
   const webFetch = startWebFetch({
     adapter,
     image: 'fetch',
     argv: [process.execPath, join(import.meta.dir, '../../../guests/fetch/src/main.ts')],
     deniedRanges: [],
   });
+
   ctx.stack.defer(() => webFetch.stop());
 
   const outcome = await webFetch.tool.run(
@@ -76,6 +82,7 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox",
       },
     },
   );
+
   const left = await ctx.recorder.list('process', 'web_fetch');
 
   expect(outcome).toStrictEqual({
@@ -85,6 +92,7 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox",
       'localhost resolves to ::1, which is not a public address',
     ]),
   });
+
   expect(left).toStrictEqual([]);
 });
 
@@ -92,13 +100,16 @@ test.skipIf(!hasImpHost)(
   'it fetches a public page through the fetch sandbox on an imp host',
   async () => {
     const ctx = await setupTest();
+
     const config = parseImpConfig(impEnv);
+
     const adapter = buildImpSandboxAdapter({
       port: buildImpPort(config),
       recorder: ctx.recorder,
       config,
       toolTarget: () => ({ path: '/nonexistent.sock' }),
     });
+
     const webFetch = startWebFetch({
       adapter,
       image: fetchImage,
@@ -108,6 +119,7 @@ test.skipIf(!hasImpHost)(
         ...(config.publicEgress?.egressDeny ?? []),
       ],
     });
+
     ctx.stack.defer(() => webFetch.stop());
 
     const outcome = await webFetch.tool.run(
@@ -143,13 +155,16 @@ test.skipIf(!hasImpHost)(
   'it reaches the internet from a fetch sandbox on an imp host',
   async () => {
     const ctx = await setupTest();
+
     const config = parseImpConfig(impEnv);
+
     const adapter = buildImpSandboxAdapter({
       port: buildImpPort(config),
       recorder: ctx.recorder,
       config,
       toolTarget: () => ({ path: '/nonexistent.sock' }),
     });
+
     const sandbox = await adapter.create(
       buildSandboxSpec({
         kind: 'fetch',
@@ -158,6 +173,7 @@ test.skipIf(!hasImpHost)(
         limits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
       }),
     );
+
     ctx.stack.defer(() => sandbox.destroy());
 
     const result = await sandbox.exec(
@@ -173,7 +189,9 @@ test.skipIf(!hasImpHost)(
   'it never reaches impd or the host from a fetch sandbox on an imp host',
   async () => {
     const ctx = await setupTest();
+
     const config = parseImpConfig(impEnv);
+
     const sandbox = await buildImpSandboxAdapter({
       port: buildImpPort(config),
       recorder: ctx.recorder,
@@ -187,14 +205,18 @@ test.skipIf(!hasImpHost)(
         limits: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
       }),
     );
+
     ctx.stack.defer(() => sandbox.destroy());
+
     const impd = new URL(config.url);
+
     const impdPort =
       impd.port === '' && impd.protocol === 'https:' ? 443 : Number(impd.port || '80');
 
     // the guest cannot resolve impd's name, so a probe of the name fails on the lookup and shows
     // nothing about reach; the test host resolves it, and the guest probes each address
     const impdAddresses = await Bun.dns.lookup(impd.hostname);
+
     const targets: readonly (readonly [string, number])[] = [
       ...impdAddresses.map((entry) => [entry.address, impdPort] as const),
       ...(config.publicEgress?.hostAddresses ?? []).map(

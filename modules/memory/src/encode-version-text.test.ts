@@ -13,10 +13,10 @@ async function setupTest() {
 
 test('it seals a version text that opens under the same item and version', async () => {
   const ctx = await setupTest();
+
   const text = { text: 'Lives on Elm Street', evidenceQuote: 'my flat', intentQuote: null };
 
   const sealed = await encodeVersionText(ctx.key, { itemID: 'item-a', version: 2 }, text);
-
   const result = await decodeVersionText(ctx.key, { itemID: 'item-a', version: 2 }, sealed);
 
   expect(result).toStrictEqual(text);
@@ -24,6 +24,7 @@ test('it seals a version text that opens under the same item and version', async
 
 test('it seals the same text differently each time', async () => {
   const ctx = await setupTest();
+
   const text = { text: 'Lives on Elm Street', evidenceQuote: null, intentQuote: null };
 
   const first = await encodeVersionText(ctx.key, { itemID: 'item-a', version: 1 }, text);

@@ -19,6 +19,7 @@ export async function createSystemTask(
     if (existing !== undefined) {
       return;
     }
+
     await writeRecordsInTransaction(tx, context.log, [
       {
         kind: 'task.created',

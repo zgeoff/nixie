@@ -11,6 +11,7 @@ async function setupTest() {
   const server = await startTestServer();
 
   await runTestSeed(server.context.log, server.dataDir);
+
   return {
     ...server,
     context: { ...server.context, settings: defaultAPISettings },
@@ -20,6 +21,7 @@ async function setupTest() {
 
 test('it ends the start and stops its work before it resets', async () => {
   const ctx = await setupTest();
+
   const stopRunners = mock(() => Promise.resolve());
 
   await ctx.work.defer(stopRunners);
@@ -36,6 +38,7 @@ test('it ends the start and stops its work before it resets', async () => {
 
   expect(ctx.work.signal.aborted).toBeTrue();
   expect(stopRunners).toHaveBeenCalledOnce();
+
   expect(answer).toStrictEqual({
     resetAt: expect.toBeValidDate(),
     lastSequence: 1,
@@ -45,7 +48,9 @@ test('it ends the start and stops its work before it resets', async () => {
 
 test('it logs the reset and resolves done once the reset finishes', async () => {
   const ctx = await setupTest();
+
   const log = mock<Parameters<typeof buildServerReset>[0]['log']>();
+
   const reset = buildServerReset({
     context: ctx.context,
     adapter: ctx.sandboxes,
@@ -59,6 +64,7 @@ test('it logs the reset and resolves done once the reset finishes', async () => 
   await reset.run();
 
   expect(Bun.peek.status(reset.done)).toBe('fulfilled');
+
   expect(log.mock.calls).toStrictEqual([
     ['reset.started'],
     ['reset.finished', { lastSequence: 1, keptSessions: 0 }],
@@ -67,6 +73,7 @@ test('it logs the reset and resolves done once the reset finishes', async () => 
 
 test('it answers a request that arrives while a reset runs with that reset', async () => {
   const ctx = await setupTest();
+
   const reset = buildServerReset({
     context: ctx.context,
     adapter: ctx.sandboxes,
@@ -87,6 +94,7 @@ test('it answers a request that arrives while a reset runs with that reset', asy
 
 test('it reports a failed reset as the server failing, and never resolves done', async () => {
   const ctx = await setupTest();
+
   const onFailure = mock<Parameters<typeof buildServerReset>[0]['onFailure']>();
 
   await ctx.work.defer(() => Promise.reject(new Error('the runners failed to stop')));
@@ -100,6 +108,7 @@ test('it reports a failed reset as the server failing, and never resolves done',
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
     onFailure,
   });
+
   const run = reset.run();
 
   await Promise.allSettled([run]);
@@ -111,6 +120,7 @@ test('it reports a failed reset as the server failing, and never resolves done',
 
 test('it logs a failed reset with the error', async () => {
   const ctx = await setupTest();
+
   const log = mock<Parameters<typeof buildServerReset>[0]['log']>();
 
   await ctx.work.defer(() => Promise.reject(new Error('the runners failed to stop')));
@@ -147,6 +157,7 @@ test('it waits for a reset in flight to settle, and never rejects with its failu
     log: mock<Parameters<typeof buildServerReset>[0]['log']>(),
     onFailure: mock<Parameters<typeof buildServerReset>[0]['onFailure']>(),
   });
+
   const run = reset.run();
 
   await reset.waitForSettled();
@@ -156,10 +167,12 @@ test('it waits for a reset in flight to settle, and never rejects with its failu
 
 test('it closes the API before it stops the work', async () => {
   const ctx = await setupTest();
+
   const closeAPI = mock(() => Promise.resolve());
   const stopRunners = mock(() => Promise.resolve());
 
   await ctx.work.defer(stopRunners);
+
   await buildServerReset({
     context: ctx.context,
     adapter: ctx.sandboxes,

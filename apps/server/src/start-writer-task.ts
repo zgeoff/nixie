@@ -31,6 +31,7 @@ export async function startWriterTask(
   // a failed read stops this writer, so the start's retry never leaves a second one running
   const status = await writer.readStatus().catch(async (error: unknown) => {
     await writer.stop();
+
     throw error;
   });
 
@@ -42,5 +43,6 @@ export async function startWriterTask(
     backlog: status.backlog,
     isCatchingUp: status.isCatchingUp,
   });
+
   return writer.runStep;
 }

@@ -29,11 +29,13 @@ export async function startTestActions(): Promise<TestTasks> {
     'wrapKey',
     'unwrapKey',
   ]);
+
   const log: Log = {
     writer,
     deploymentKey,
     projections: [...logProjections, ...tasksProjections, actionsProjection],
   };
+
   const clock = buildTestClock(1_000_000);
 
   return {

@@ -12,11 +12,14 @@ export function startFaultPointFailure(id: FaultPointID): void {
     if (arrived !== id) {
       return;
     }
+
     arrivals.count += 1;
+
     if (arrivals.count === 1) {
       throw new Error(`crashed at ${id}`);
     }
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });

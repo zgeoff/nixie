@@ -14,6 +14,7 @@ export function buildCheckOptions(
   if (home === undefined || home === '') {
     throw new Error('the check guest needs HOME');
   }
+
   return {
     tools: [],
     allowedTools: [],
@@ -74,6 +75,7 @@ function buildCheckEnv(
   if (placeholder === undefined || placeholder === '') {
     throw new Error(`the check guest has no placeholder credential in ${credentialVariable}`);
   }
+
   const passed = passedVariables.flatMap((name) => {
     const value = env[name];
 

@@ -17,6 +17,7 @@ const schemaObject = z.strictObject({
   tableName: z.string(),
   sql: z.string().nullable(),
 });
+
 const releasedSchema = z.strictObject({
   migrations: z.array(z.string()),
   oldestReader: z.int().nonnegative(),
@@ -37,30 +38,38 @@ if ((args.values.released === undefined) !== (args.values['last-tag'] === undefi
   process.stderr.write('usage: --released and --last-tag go together\n');
   process.exit(2);
 }
+
 const releasedText =
   args.values.released === undefined ? null : await readFile(args.values.released, 'utf8');
+
 const released = releasedText === null ? null : releasedSchema.parse(JSON.parse(releasedText));
+
 const dir = await mkdtemp(join(tmpdir(), 'nixie-migration-check-'));
 const check = await checkMigrations(nixieSchema, released, dir);
 
 await rm(dir, { recursive: true, force: true });
+
 const notes = renderMigrationNotes(check, args.values['last-tag'] ?? null, marker);
 
 process.stdout.write(notes);
+
 if (args.values['release-body'] !== undefined) {
   const body = await readFile(args.values['release-body'], 'utf8');
+
   const kept = body.includes(marker)
     ? body.slice(0, body.indexOf(marker))
     : `${body.trimEnd()}\n\n`;
 
   await writeFile(args.values['release-body'], `${kept}${notes}`);
 }
+
 const refused = check.added.flatMap((migration) =>
   migration.refused.map(
     (statement) =>
       `migration ${migration.version} "${migration.name}" holds a statement that the release before cannot read around: ${statement}`,
   ),
 );
+
 const failures = [
   ...check.changed.map((name) => `the build changed or removed the released migration "${name}"`),
   ...check.changedObjects.map(
@@ -74,6 +83,7 @@ if (refused.length > 0) {
     'A migration that keeps the schema readable adds only tables, columns and indexes. Raise oldestReader in nixie-schema.ts to declare that the release before cannot read the schema.',
   );
 }
+
 if (failures.length > 0) {
   process.stderr.write(`${failures.join('\n')}\n`);
   process.exit(1);

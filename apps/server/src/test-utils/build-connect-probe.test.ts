@@ -38,6 +38,7 @@ test('it prints failed with the reason for a port where nothing listens', async 
       },
     },
   });
+
   const port = listener.port;
 
   listener.stop(true);

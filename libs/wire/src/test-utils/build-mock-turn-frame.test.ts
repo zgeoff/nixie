@@ -19,6 +19,7 @@ test('it builds a default turn frame', () => {
     systemPrompt: expect.toBeString(),
     input: [{ uuid: expect.toBeString(), text: expect.toBeString() }],
   });
+
   expect(hostFrameSchema.parse(frame)).toStrictEqual(frame);
 });
 

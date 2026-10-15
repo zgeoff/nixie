@@ -23,6 +23,7 @@ export const tasksMigration: Migration = {
       created_sequence integer not null references records (sequence),
       updated_sequence integer not null references records (sequence)
     ) strict`.execute(tx);
+
     await sql`create index tasks_by_state on tasks (state, claimable_at)`.execute(tx);
 
     await sql`create table timers (
@@ -34,6 +35,7 @@ export const tasksMigration: Migration = {
       fired_sequence integer references records (sequence),
       check ((fired_at is null) = (fired_sequence is null))
     ) strict`.execute(tx);
+
     await sql`create index timers_by_due on timers (fired_at, due_at)`.execute(tx);
 
     // one row per piece of work a runner ever claimed; the generation only rises

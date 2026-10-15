@@ -15,12 +15,14 @@ test('it approves each change of the whole diff and leaves none pending', async 
   const ctx = await setupTest();
   const stale = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
   const trip = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },
       { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
     ],
   });
+
   const [first, second] = diff.changes;
 
   invariant(first && second);
@@ -39,6 +41,7 @@ test('it approves each change of the whole diff and leaves none pending', async 
     { changeID: first.changeID, status: 'applied', versions: [{ ...stale, version: 2 }] },
     { changeID: second.changeID, status: 'applied', versions: [{ ...trip, version: 2 }] },
   ]);
+
   expect(pending).toBeNull();
 });
 
@@ -46,12 +49,14 @@ test('it writes one approval record for each change of the whole diff', async ()
   const ctx = await setupTest();
   const stale = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
   const trip = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },
       { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
     ],
   });
+
   const [first, second] = diff.changes;
 
   invariant(first && second);
@@ -87,6 +92,7 @@ test('it reports a refused change with its code and still applies the changes af
   const ctx = await setupTest();
   const moved = await createMemoryItem(ctx.memory.store, { text: 'owner likes. tea green' });
   const trip = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -99,9 +105,11 @@ test('it reports a refused change with its code and still applies the changes af
       { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
     ],
   });
+
   const [first, second] = diff.changes;
 
   invariant(first && second);
+
   await ctx.memory.store.retire({
     target: moved,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -122,12 +130,14 @@ test('it applies only the changes the answers name', async () => {
   const ctx = await setupTest();
   const stale = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
   const trip = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },
       { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
     ],
   });
+
   const [first, second] = diff.changes;
 
   invariant(first && second);

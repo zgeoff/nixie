@@ -41,10 +41,12 @@ export async function createConsolidationDiff(
   for (const record of records) {
     threaded.push({ ...record, thread: memoryConsolidatorTaskID });
   }
+
   await writeRecords(memory.log, threaded);
 
   const diff = await memory.store.consolidations.readPending();
 
   invariant(diff, 'the run made no pending diff');
+
   return diff;
 }

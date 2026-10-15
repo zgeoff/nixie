@@ -61,6 +61,7 @@ export async function startFakeImp(): Promise<FakeImp> {
     failExitOnStop: false,
     refuseImageAdd: false,
   };
+
   const sleeps = buildFakeSleeps(state.calls);
 
   return Object.assign(state, {
@@ -74,6 +75,7 @@ export async function startFakeImp(): Promise<FakeImp> {
 function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposableStack): ImpPort {
   const updateCallLog = (call: string): Promise<void> => {
     state.calls.push(call);
+
     return Promise.resolve();
   };
 
@@ -85,9 +87,11 @@ function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposa
     ...buildFakeImageCalls(state, updateCallLog),
     createImp: async (input) => {
       await updateCallLog(`create ${input.name}`);
+
       if (state.failCreate) {
         throw new Error('RAM_BUDGET_EXCEEDED');
       }
+
       state.created.push(input);
     },
 
@@ -96,6 +100,7 @@ function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposa
       Promise.resolve(state.created.findLast((input) => input.name === name)?.backup ?? null),
     removeImp: async (name) => {
       await updateCallLog(`remove ${name}`);
+
       if (state.failRemove) {
         throw new Error('INTERNAL_SERVER_ERROR');
       }
@@ -103,7 +108,9 @@ function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposa
     sleepImp: (name) => updateCallLog(`sleep ${name}`),
     wakeImp: async (name) => {
       await sleeps.waitForAwake(name, 'wake');
+
       await updateCallLog(`wake ${name}`);
+
       sleeps.startSleepAfterWake(name);
     },
     ...buildFakeSecretCalls(state, updateCallLog),
@@ -113,6 +120,7 @@ function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposa
       const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
 
       state.execs.push(exec);
+
       return Promise.resolve(
         buildPendingExec(sleeps.waitForAwake(name, 'exec'), () => startFakeExec(exec, stack)),
       );
@@ -133,6 +141,7 @@ const brokerEnv: Readonly<Record<string, string>> = {
 // An exec that requires the broker gets these, and impd refuses one whose env replaces any.
 function requireBrokerEnv(options: ImpExecOptions): void {
   const env = options.env;
+
   const replaced = Object.keys(brokerEnv).find(
     (key) => env[key] !== undefined && env[key] !== brokerEnv[key],
   );
@@ -165,6 +174,7 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
   stack.defer(() => {
     sendGroupSignal(child.pid, 'SIGKILL');
   });
+
   return {
     started: Promise.resolve(),
     stdout: child.stdout,
@@ -178,9 +188,11 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
     },
     sendSignal: (signal) => {
       exec.signals.push(signal);
+
       if (exec.failsOnStop) {
         lost.reject(new Error('CONNECTION_CLOSED'));
       }
+
       stopProcessGroup(child.pid, exec.options.killGraceMs, stack);
     },
     close: () => {
@@ -211,6 +223,7 @@ function stopProcessGroup(pid: number, graceMs: number, stack: AsyncDisposableSt
 
 async function waitForExit<T>(exited: Promise<number>, readExit: () => T): Promise<T> {
   await exited;
+
   return readExit();
 }
 
@@ -232,6 +245,7 @@ function buildFakeForwardCall(state: FakeState, sleeps: FakeSleeps): ForwardPort
       });
 
       sleeps.registerForward(name, forward);
+
       return forward;
     },
   };
@@ -242,11 +256,13 @@ async function findFreePort(): Promise<number> {
   const listening = Promise.withResolvers<void>();
 
   server.listen(0, '127.0.0.1', listening.resolve);
+
   await listening.promise;
 
   const address = server.address();
 
   server.close();
+
   return typeof address === 'object' && address !== null ? address.port : 0;
 }
 
@@ -259,6 +275,7 @@ function sendGroupSignal(pid: number, signal: NodeJS.Signals): void {
 }
 
 type FakeImageCalls = Pick<ImpPort, 'listImages' | 'addImage'>;
+
 type UpdateCallLog = (call: string) => Promise<void>;
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own image store
@@ -270,9 +287,11 @@ function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): Fa
       ),
     addImage: async (image) => {
       await updateCallLog(`image ${image.name} ${image.ref}`);
+
       if (state.refuseImageAdd) {
         throw new Error('token nixie-test is limited to some imps; this call is host-wide');
       }
+
       state.images.set(image.name, { digest: image.digest, ref: image.ref });
     },
   };
@@ -287,6 +306,7 @@ function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): F
     addGrant: (name, secret) => updateCallLog(`grant ${name} ${secret}`),
     addSecret: async (secret) => {
       await updateCallLog(`secret ${secret.name} ${secret.host} ${secret.header} ${secret.scheme}`);
+
       state.secrets.set(secret.name, [secret.host]);
     },
   };

@@ -8,5 +8,6 @@ export function updateSystemColorScheme(scheme: 'dark' | 'light'): void {
   const window = globalThis as unknown as Window;
 
   window.happyDOM.settings.device.prefersColorScheme = scheme;
+
   window.dispatchEvent(new window.Event('resize'));
 }

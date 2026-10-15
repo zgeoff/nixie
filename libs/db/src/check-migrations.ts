@@ -46,7 +46,9 @@ export async function checkMigrations(
 ): Promise<MigrationCheck> {
   const releasedNames = released?.migrations ?? [];
   const readableByReleaseBefore = schema.oldestReader <= releasedNames.length;
+
   const run = await runRecordedMigrations(schema.migrations, releasedNames.length, dir);
+
   const added = collectAddedSchema(run.added.flatMap((migration) => migration.statements));
   const lint = released !== null && readableByReleaseBefore;
 
@@ -87,6 +89,7 @@ async function runRecordedMigrations(
   dir: string,
 ): Promise<RecordedRun> {
   const statements: string[] = [];
+
   const db = new Kysely<unknown>({
     dialect: buildSqliteWorkerDialect(join(dir, 'check-migrations.db')),
     log: (event) => {
@@ -101,7 +104,9 @@ async function runRecordedMigrations(
       schema: { migrations: migrations.slice(0, releasedCount), oldestReader: 0 },
       copyDir: dir,
     });
+
     const objects = await readSchemaObjects(db);
+
     const added = await runAddedMigrations(
       { db, drainStatements: () => statements.splice(0) },
       migrations.slice(releasedCount),
@@ -133,12 +138,14 @@ async function runAddedMigrations(
 
     // oxlint-disable-next-line no-await-in-loop -- each migration builds on the one before it
     await recorder.db.transaction().execute((tx) => migration.up(tx));
+
     recorded.push({
       version: releasedCount + index + 1,
       name: migration.name,
       statements: recorder.drainStatements(),
     });
   }
+
   return recorded;
 }
 
@@ -148,6 +155,7 @@ function collectChangedObjects(
 ): string[] {
   const builtByName = new Map(built.map((object) => [object.name, object]));
   const releasedNames = new Set(released.map((object) => object.name));
+
   const differing = released.filter((object) => {
     const match = builtByName.get(object.name);
 
@@ -166,8 +174,10 @@ function collectChangedObjects(
 }
 
 const createTable = /^create table (?:if not exists )?(?<table>[^\s(]+)/u;
+
 const createIndex =
   /^create (?<unique>unique )?index (?:if not exists )?\S+ on (?<table>[^\s(]+) ?\((?<columns>[^)]*)\)/u;
+
 const addColumn = /^alter table (?<table>\S+) add (?:column )?(?<definition>.+)$/u;
 const update = /^update (?<table>\S+) set (?<assignments>.+?)(?: where .*)?$/u;
 const select = /^select\b/u;

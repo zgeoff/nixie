@@ -40,6 +40,7 @@ export function buildRestartKind(
         detail.previousVersion === null
           ? `nixie restarted on version ${detail.version}.`
           : `nixie restarted on version ${detail.version} (was ${detail.previousVersion}).`;
+
       const changes = detail.changes === null ? [] : formatChanges(detail.changes);
 
       return changes.length === 0
@@ -58,6 +59,7 @@ const changesPayload = z.object({
   removedTools: z.array(z.string()),
   isPersonaUpdated: z.boolean(),
 });
+
 const startPayload = z.object({
   version: z.string(),
   previousVersion: z.string().nullable(),

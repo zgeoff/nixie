@@ -26,12 +26,15 @@ export async function readConsolidationItems(
   do {
     // oxlint-disable-next-line no-await-in-loop -- each page starts after the one before
     const result = await store.recall(buildPageRequest(query.thread, page.after));
+
     const fits = collectFittingItems(result.items, page.budget);
 
     listed.push(...fits.items);
+
     if (fits.items.length < result.items.length) {
       return { items: listed, isComplete: false };
     }
+
     Object.assign(page, { after: result.next, budget: page.budget - fits.tokens });
   } while (page.after !== null);
 
@@ -57,9 +60,12 @@ function collectFittingItems(
     if (tokens + itemTokens > budget) {
       break;
     }
+
     tokens += itemTokens;
+
     fitting.push(item);
   }
+
   return { items: fitting, tokens };
 }
 

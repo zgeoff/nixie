@@ -12,6 +12,7 @@ export async function applyProjections(
   for (const projection of projections) {
     // oxlint-disable-next-line no-await-in-loop -- one projection may read what another folded
     const folded = await projection.fold(tx, record);
+
     const keys = [...new Set(folded)];
 
     if (keys.length > 0) {
@@ -33,6 +34,7 @@ async function writeChanges(
 ): Promise<void> {
   const result = await sql<Record<string, unknown>>`select * from ${sql.table(projection.table)}
     where ${sql.ref(projection.keyColumn)} in (${sql.join(folded.keys)})`.execute(tx);
+
   const rows = new Map(result.rows.map((row) => [String(row[projection.keyColumn]), row]));
 
   await tx

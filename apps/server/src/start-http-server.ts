@@ -40,6 +40,7 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
       }),
     )
     .use(buildAPIApp(options.apiContext));
+
   const http = Bun.serve({
     hostname: options.config.server.hostname,
     port: options.config.server.port,
@@ -47,5 +48,6 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
   });
 
   await options.cleanup.defer(() => http.stop(true));
+
   return http.port ?? options.config.server.port;
 }

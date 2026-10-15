@@ -39,6 +39,7 @@ export async function runConversationGuest(io: GuestIO): Promise<void> {
     if (first.done === true || first.value.type === 'message') {
       throw new Error('the first host frame must start a turn or purge the session');
     }
+
     await runFirstFrame(first.value, { io, frames, emit });
   } catch (error) {
     await emit({ type: 'failed', reason: 'error', detail: String(error) });
@@ -57,9 +58,12 @@ async function runFirstFrame(
 ): Promise<void> {
   if (frame.type === 'purge') {
     await removeSessionState(getHome(run.io.env));
+
     await run.emit({ type: 'purged' });
+
     return;
   }
+
   await runTurn(frame, {
     env: run.io.env,
     toolServer: (run.io.buildToolServer ?? buildHTTPToolServer)(frame),
@@ -91,9 +95,11 @@ async function* readMessages(frames: AsyncIterator<HostFrame>): AsyncGenerator<I
     if (next.done === true) {
       return;
     }
+
     if (next.value.type !== 'message') {
       throw new Error('a turn is already running');
     }
+
     yield next.value.message;
   }
 }

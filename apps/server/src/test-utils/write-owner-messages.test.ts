@@ -12,9 +12,7 @@ async function setupTest() {
 
 test('it records each message on the conversation thread, typed in full, and returns their sequences', async () => {
   const ctx = await setupTest();
-
   const sequences = await writeOwnerMessages(ctx.log, ['I live at 4 Elm Row.', 'I work nights.']);
-
   const entries = await readRecords(ctx.log, { afterSequence: 0, thread: 'conversation' });
 
   expect(entries.map((entry) => entry.record)).toMatchObject([

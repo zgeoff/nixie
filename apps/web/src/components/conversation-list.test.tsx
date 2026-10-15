@@ -27,6 +27,7 @@ test('it shows how full the context stood after a turn and marks its compaction 
       ]}
     />,
   );
+
   const list = rendered.getByRole('list', { name: 'Conversation' });
   const marker = rendered.getByRole('note', { name: 'compaction' });
 
@@ -35,6 +36,7 @@ test('it shows how full the context stood after a turn and marks its compaction 
       (item) => item.querySelector('summary')?.textContent ?? item.textContent,
     ),
   ).toStrictEqual(['conversation · no tools · 41k / 400k · 12.3s', 'nixie Here is a plan.']);
+
   expect(marker).toBeVisible();
   expect(marker).toHaveTextContent('compacted (auto) · 384k → 42k tokens');
   expect(list.children.item(0)?.contains(marker)).toBe(true);

@@ -13,6 +13,7 @@ async function setupTest() {
 
 test('it stops the stale writer at its first write, and the new writer expires its lease', async () => {
   const ctx = await setupTest();
+
   const processA = ctx.nixie.harness.start();
   const lateReply = Promise.withResolvers<void>();
 
@@ -22,14 +23,17 @@ test('it stops the stale writer at its first write, and the new writer expires i
   // starts and then tries to commit
   ctx.nixie.model.addReplies({ text: 'Late.', gate: lateReply.promise }, { text: 'Hi.' });
   void processA.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
+
   await waitForCondition(() =>
     ctx.nixie.model.requests.some((request) => request.path === '/v1/messages'),
   );
+
   await processA.request('releaseWriterLock', null);
 
   const processB = ctx.nixie.harness.start();
 
   await processB.ready;
+
   lateReply.resolve();
 
   const exitA = await processA.exited;
@@ -38,9 +42,11 @@ test('it stops the stale writer at its first write, and the new writer expires i
   await processB.kill();
 
   const records = await ctx.nixie.readRecords();
+
   const startedByA = records.find(
     (record) => record.kind === 'task.step_started' && record.payload['generation'] === 1,
   );
+
   const expiredByB = records.find((record) => record.kind === 'task.lease_expired');
 
   const oracle = await runOracle(ctx.nixie);
@@ -48,17 +54,21 @@ test('it stops the stale writer at its first write, and the new writer expires i
   expect(exitA.code).not.toBe(0);
   expect(processA.readStderr()).toInclude('stale writer: writer epoch 1 is stale');
   expect(Number(startedByA?.sequence)).toBeLessThan(Number(expiredByB?.sequence));
+
   expect(
     records
       .filter((record) => record.kind === 'task.step_started')
       .map((record) => record.payload['generation']),
   ).toStrictEqual([1, 2]);
+
   expect(
     records
       .filter((record) => record.kind === 'task.step_committed')
       .map((record) => record.stepKey),
   ).toStrictEqual(['conversation:1']);
+
   expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
+
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
     repeatedActions: [],

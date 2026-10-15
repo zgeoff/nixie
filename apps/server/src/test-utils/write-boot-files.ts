@@ -36,6 +36,7 @@ export async function writeBootFiles(
   await writeManifest(join(dir, 'sandbox-manifest.json'));
   await writeStubSops(join(dir, 'sops'));
   await writeConfig(dir, [...buildConfigLines(dir, modelURL), ...extras.config]);
+
   return {
     dataDir,
     configPath: join(dir, 'config.yaml'),

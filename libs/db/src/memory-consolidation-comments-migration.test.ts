@@ -36,6 +36,7 @@ async function setupTest() {
   // a record and a diff for the changes to hang under, which their foreign keys need
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.consolidation_proposed', 'snapshot-a', '{}')`.execute(db);
+
   await sql`insert into memory_consolidations (diff_id, model, changes, shown_items, sequence,
     created_at) values ('diff-1', 'claude-test-1', 2, 2, 1, 1767225600000)`.execute(db);
 
@@ -90,7 +91,9 @@ test('it leaves the short IDs as they are when it runs again', async () => {
       'pending', 'sha256:a', 'c2VhbGVk', 'claude-test-1', 1, 1767225600000, 1767830400000)`.execute(
     ctx.db,
   );
+
   await ctx.db.transaction().execute((tx) => memoryConsolidationCommentsMigration.up(tx));
+
   await sql`insert into memory_consolidation_changes (change_id, diff_id, position, kind, item_id,
     inputs, source, status, action_hash, sealed, model, created_sequence, created_at, lapse_at,
     short_id) values

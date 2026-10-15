@@ -14,6 +14,7 @@ async function setupTest() {
 
 test('it loads each sample with its message and its labelled pairs', async () => {
   const ctx = await setupTest();
+
   const corpus = {
     samples: [
       {

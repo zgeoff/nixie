@@ -72,10 +72,12 @@ test('it gives a new item a 10-character cuid2 short ID', async () => {
 
 test('it keeps the short ID of an item through its later versions', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const created = await ctx.db
     .selectFrom('memory_items')
     .select('short_id')
@@ -99,10 +101,12 @@ test('it keeps the short ID of an item through its later versions', async () => 
 
 test('it adds an edited version that keeps the state of the item', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const retired = await ctx.memory.store.retire({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -113,12 +117,14 @@ test('it adds an edited version that keeps the state of the item', async () => {
     target: retired,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const recalled = await ctx.memory.store.recall({
     itemIDs: [item.itemID],
     includeRetired: true,
   });
 
   expect(edited).toStrictEqual({ itemID: item.itemID, version: 3 });
+
   expect(recalled.items).toMatchObject([
     { version: 3, change: 'edited', state: 'retired', text: 'Lived on Elm Street until 2024' },
   ]);
@@ -139,6 +145,7 @@ test('it rejects an edit that grows a pinned item past the 2,000-token pinned co
     isPinned: true,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const edit = ctx.memory.store.remember({
     text: 'Keeps a long reading list for winter. '.repeat(116),
     target: item,
@@ -155,6 +162,7 @@ test('it rejects an edit that grows a pinned item past the 2,000-token pinned co
 
 test('it rejects an edit made from a stale revision', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -212,10 +220,12 @@ test('it pins a new item when asked', async () => {
 
 test('it rejects an edit that pins a retired item', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const retired = await ctx.memory.store.retire({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -238,12 +248,14 @@ test('it rejects an edit that pins a retired item', async () => {
 
 test('it keeps no item text in plain form in nixie.db or any file beside it', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Zebra-crossing keyword marmalade',
     evidenceQuote: 'quoted evidence periwinkle',
     evidence: { recordSequence: 1, start: 0, end: 26 },
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const edited = await ctx.memory.store.remember({
     text: 'Second version tangerine',
     target: item,
@@ -255,14 +267,17 @@ test('it keeps no item text in plain form in nixie.db or any file beside it', as
     intentQuote: 'retirement request saffron',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   await ctx.memory.store.recall({ itemIDs: [item.itemID], includeRetired: true });
 
   const names = await readdir(ctx.memory.dataDir);
+
   const files = await Promise.all(
     names
       .filter((name) => name.startsWith('nixie.db') || name.startsWith('keys.db'))
       .map((name) => readFile(join(ctx.memory.dataDir, name), 'latin1')),
   );
+
   const contents = files.join('\n');
 
   expect(names).toIncludeAllMembers(['nixie.db', 'nixie.db-wal', 'keys.db']);

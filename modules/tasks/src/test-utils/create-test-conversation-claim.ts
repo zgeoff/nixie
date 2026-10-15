@@ -12,6 +12,7 @@ export async function createTestConversationClaim(
   text: string,
 ): Promise<TaskClaim> {
   await createConversationTask(context);
+
   await writeInboxRecords(context, [
     {
       kind: 'owner_message',
@@ -25,5 +26,6 @@ export async function createTestConversationClaim(
 
   // the message just made the conversation ready, so the claim finds it
   invariant(claim);
+
   return claim;
 }

@@ -13,6 +13,7 @@ test('it answers now with the time of its clock', async () => {
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 1_000_000 });
 
   onTestFinished(() => nixie.kill());
+
   await nixie.ready;
 
   expect(nixie.request('now', null)).resolves.toBe(1_000_000);
@@ -20,6 +21,7 @@ test('it answers now with the time of its clock', async () => {
 
 test('it holds a hold at stub.point with the work it names, and answers once released', async () => {
   const ctx = setupTest();
+
   const nixie = startNixieProcess({
     entry: ctx.entry,
     env: {},
@@ -28,9 +30,11 @@ test('it holds a hold at stub.point with the work it names, and answers once rel
   });
 
   onTestFinished(() => nixie.kill());
+
   await nixie.ready;
 
   const held = nixie.request('hold', 'work-1');
+
   const arrival = await nixie.waitForArrival('stub.point');
 
   nixie.release(arrival);
@@ -44,9 +48,11 @@ test('it starts a child that keeps running and answers with its PID', async () =
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });
 
   onTestFinished(() => nixie.kill());
+
   await nixie.ready;
 
   const started = await nixie.request('startChild', null);
+
   const childPID = Number(started);
 
   onTestFinished(() => {
@@ -61,7 +67,9 @@ test('it leaves a sleeper that an advance wakes and that does not sleep again', 
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });
 
   onTestFinished(() => nixie.kill());
+
   await nixie.ready;
+
   await nixie.request('sleepOnce', 1000);
 
   expect(
@@ -74,7 +82,9 @@ test('it starts a poll that sleeps again each time an advance wakes it', async (
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });
 
   onTestFinished(() => nixie.kill());
+
   await nixie.ready;
+
   await nixie.request('startPoll', 1000);
 
   expect(
@@ -84,6 +94,7 @@ test('it starts a poll that sleeps again each time an advance wakes it', async (
 
 test('it exits with code 3 before it is ready when told to refuse', async () => {
   const ctx = setupTest();
+
   const nixie = startNixieProcess({
     entry: ctx.entry,
     env: { STUB_NIXIE_REFUSE: '1' },

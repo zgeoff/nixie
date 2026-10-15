@@ -17,8 +17,10 @@ export async function readEventsBlock(
   settings: EventsBlockSettings,
 ): Promise<EventsBlock> {
   const read = await Promise.all(registry.map((kind) => kind.read(range)));
+
   const events = read.flat().toSorted((left, right) => left.sequence - right.sequence);
   const listed = events.slice(0, eventsCap);
+
   const completed = await Promise.all(
     registry.map((kind) => kind.complete(listed.filter((event) => event.kind === kind.name))),
   );

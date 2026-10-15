@@ -13,6 +13,7 @@ async function setupTest() {
 
 test('it rejects a sealed text copied under another version', async () => {
   const ctx = await setupTest();
+
   const sealed = await encodeVersionText(
     ctx.key,
     { itemID: 'item-a', version: 1 },
@@ -26,6 +27,7 @@ test('it rejects a sealed text copied under another version', async () => {
 
 test('it rejects a sealed text copied under another item', async () => {
   const ctx = await setupTest();
+
   const sealed = await encodeVersionText(
     ctx.key,
     { itemID: 'item-a', version: 1 },
@@ -39,10 +41,12 @@ test('it rejects a sealed text copied under another item', async () => {
 
 test('it rejects a sealed text under another key', async () => {
   const ctx = await setupTest();
+
   const other = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
     'encrypt',
     'decrypt',
   ]);
+
   const sealed = await encodeVersionText(
     ctx.key,
     { itemID: 'item-a', version: 1 },

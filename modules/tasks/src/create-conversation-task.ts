@@ -25,11 +25,14 @@ export async function createConversationTask(
           payload: { taskID: conversationTaskID },
         },
       ]);
+
       return;
     }
+
     if (existing !== undefined) {
       return;
     }
+
     await writeRecordsInTransaction(tx, context.log, [
       {
         kind: 'task.created',

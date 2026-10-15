@@ -7,6 +7,7 @@ async function setupTest() {
 
 test('it reads every version of an item with its provenance, oldest first', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -56,7 +57,6 @@ test('it reads every version of an item with its provenance, oldest first', asyn
 
 test('it reads the history of an item that does not exist as null', async () => {
   const ctx = await setupTest();
-
   const history = await ctx.memory.store.readHistory('no-such-item');
 
   expect(history).toBeNull();

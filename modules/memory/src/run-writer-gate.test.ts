@@ -9,9 +9,11 @@ test('it releases the verdicts it gathered when a later check throws', async () 
     records: [],
     plan: null,
   };
+
   const check = mock<() => Promise<GateVerdict>>()
     .mockResolvedValueOnce(proposed)
     .mockRejectedValueOnce(new Error('the checker crashed'));
+
   const release = mock(() => Promise.resolve());
 
   const gating = runWriterGate(

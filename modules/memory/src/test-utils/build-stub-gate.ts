@@ -30,6 +30,7 @@ function buildStubVerdict(write: StagedWrite, source: SourceMessage): GateVerdic
       plan: null,
     };
   }
+
   return {
     outcome: 'apply',
     source: 'owner',

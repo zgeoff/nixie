@@ -22,6 +22,7 @@ export async function planHop(text: string, options: HopOptions): Promise<Planne
   if (!(url instanceof URL)) {
     return url;
   }
+
   const host = toBareHost(url.hostname);
   const addresses = isIP(host) === 0 ? await resolveOrAbort(host, options) : [host];
 
@@ -32,14 +33,17 @@ function parseHTTPSURL(text: string): URL | Extract<PlannedHop, { kind: 'refused
   if (!URL.canParse(text)) {
     return { kind: 'refused', reason: `${text} is not a URL` };
   }
+
   const url = new URL(text);
 
   if (url.protocol !== 'https:') {
     return { kind: 'refused', reason: `only https URLs are fetched, not ${url.protocol}` };
   }
+
   url.username = '';
   url.password = '';
   url.hash = '';
+
   return url;
 }
 
@@ -48,11 +52,13 @@ async function resolveOrAbort(host: string, options: HopOptions): Promise<readon
   options.signal.throwIfAborted();
 
   const aborted = Promise.withResolvers<never>();
+
   const onAbort = () => {
     aborted.reject(options.signal.reason);
   };
 
   options.signal.addEventListener('abort', onAbort, { once: true });
+
   try {
     return await Promise.race([options.resolveHost(host), aborted.promise]);
   } finally {
@@ -72,11 +78,13 @@ function pickCheckedAddress(
   if (addresses[0] === undefined) {
     return { kind: 'refused', reason: `${host} resolves to no address` };
   }
+
   if (refused !== undefined) {
     return {
       kind: 'refused',
       reason: `${host} resolves to ${refused}, which is not a public address`,
     };
   }
+
   return { kind: 'connect', url, address: addresses[0] };
 }

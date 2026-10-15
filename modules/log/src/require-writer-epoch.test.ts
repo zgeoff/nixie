@@ -25,11 +25,11 @@ async function setupTest() {
 
 test('it accepts the epoch the database holds', async () => {
   const ctx = await setupTest();
-
   const epoch = await claimWriterEpoch(ctx.db);
 
   const passed = await ctx.db.transaction().execute(async (tx) => {
     await requireWriterEpoch(tx, epoch);
+
     return true;
   });
 
@@ -38,7 +38,6 @@ test('it accepts the epoch the database holds', async () => {
 
 test('it refuses an epoch older than the one the database holds', async () => {
   const ctx = await setupTest();
-
   const epoch = await claimWriterEpoch(ctx.db);
 
   await claimWriterEpoch(ctx.db);

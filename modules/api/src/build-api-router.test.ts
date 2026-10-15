@@ -11,6 +11,7 @@ import type { APITables } from './types';
 
 async function setupTest() {
   const api = await startTestAPI();
+
   const db = api.writer.db.$extendTables<APITables & { records: { kind: string } }>();
 
   return { ...api, db };
@@ -18,8 +19,8 @@ async function setupTest() {
 
 test('#sessions.enrol sets a host-only HttpOnly Secure SameSite=Strict cookie on Path=/', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const response = await fetch(`${ctx.url}/rpc/sessions/enrol`, {
     method: 'POST',
     headers: { [clientHeaderName]: 'web', 'content-type': 'application/json' },
@@ -32,22 +33,25 @@ test('#sessions.enrol sets a host-only HttpOnly Secure SameSite=Strict cookie on
       },
     }),
   });
+
   const cookie = response.headers.get('set-cookie') ?? '';
 
   expect(response.status).toBe(200);
+
   expect(cookie).toMatch(
     new RegExp(
       `^${sessionCookieName}=[\\w-]{43}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=34560000$`,
       'u',
     ),
   );
+
   expect(cookie).not.toInclude('Domain');
 });
 
 test('#sessions.enrol sends no cookie to a client that takes a bearer token', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const enrolled = await buildTestClient(ctx.url).sessions.enrol({
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     code: issued.code,
@@ -60,7 +64,6 @@ test('#sessions.enrol sends no cookie to a client that takes a bearer token', as
 
 test('#sessions.enrol refuses a used code with a typed error', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
 
   await buildTestClient(ctx.url).sessions.enrol({
@@ -85,13 +88,14 @@ test('#sessions.enrol refuses a used code with a typed error', async () => {
 
 test('#sessions.issueCode issues a code that enrols one more device', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const issued = await laptopClient.sessions.issueCode({
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
   });
+
   const enrolled = await buildTestClient(ctx.url).sessions.enrol({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     code: issued.code,
@@ -105,13 +109,14 @@ test('#sessions.issueCode issues a code that enrols one more device', async () =
 
 test('#sessions.issueCode answers a retry with a new code that keeps the first expiry', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const first = await laptopClient.sessions.issueCode({
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
   });
+
   const retry = await laptopClient.sessions.issueCode({
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
   });
@@ -122,8 +127,8 @@ test('#sessions.issueCode answers a retry with a new code that keeps the first e
 
 test('#sessions.issueCode answers a retry with a code that replaces the first', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const first = await laptopClient.sessions.issueCode({
@@ -140,6 +145,7 @@ test('#sessions.issueCode answers a retry with a code that replaces the first', 
       tokenDelivery: 'bearer',
     }),
   );
+
   const codes = await ctx.db.selectFrom('enrolment_codes').select('used_at').execute();
 
   expect(enrolWithFirst.error).toMatchObject({ code: 'ENROLMENT_CODE_INVALID' });
@@ -150,8 +156,8 @@ test('#sessions.issueCode answers a retry with a code that replaces the first', 
 
 test('#sessions.list lists the live sessions and marks the caller', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const other = await createDeviceSession(ctx.context, 'phone');
@@ -177,11 +183,12 @@ test('#sessions.list lists the live sessions and marks the caller', async () => 
 
 test('#sessions.revoke refuses every later call from the revoked session', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const other = await createDeviceSession(ctx.context, 'phone');
+
   const phone = buildTestClient(ctx.url, other.token);
 
   await laptopClient.sessions.revoke({
@@ -197,11 +204,12 @@ test('#sessions.revoke refuses every later call from the revoked session', async
 
 test('#sessions.revoke answers a second revoke with the first time', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const other = await createDeviceSession(ctx.context, 'phone');
+
   const first = await laptopClient.sessions.revoke({
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     sessionID: other.sessionID,
@@ -219,8 +227,8 @@ test('#sessions.revoke answers a second revoke with the first time', async () =>
 
 test('#sessions.revoke refuses a session ID nixie never issued', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const result = await safe(
@@ -235,8 +243,8 @@ test('#sessions.revoke refuses a session ID nixie never issued', async () => {
 
 test('#sessions.revoke drops the cookie of a browser that revokes its own session', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const response = await fetch(`${ctx.url}/rpc/sessions/revoke`, {
     method: 'POST',
     headers: {
@@ -259,8 +267,8 @@ test('#sessions.revoke drops the cookie of a browser that revokes its own sessio
 
 test('#conversation.send writes a message once for the same client message ID', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const input = {
@@ -269,6 +277,7 @@ test('#conversation.send writes a message once for the same client message ID', 
     text: 'hello',
     spans: [{ start: 0, end: 5, source: 'typed' as const }],
   };
+
   const first = await laptopClient.conversation.send(input);
   const retry = await laptopClient.conversation.send(input);
 
@@ -278,8 +287,8 @@ test('#conversation.send writes a message once for the same client message ID', 
 
 test('#conversation.send refuses a client message ID that came with another text', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   await laptopClient.conversation.send({
@@ -303,8 +312,8 @@ test('#conversation.send refuses a client message ID that came with another text
 
 test('#conversation.send refuses a thread no task has', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const result = await safe(
@@ -321,8 +330,8 @@ test('#conversation.send refuses a thread no task has', async () => {
 
 test('#conversation.send from a revoked session writes only a refusal record', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const other = await createDeviceSession(ctx.context, 'phone');
@@ -333,6 +342,7 @@ test('#conversation.send from a revoked session writes only a refusal record', a
   });
 
   const before = await ctx.db.selectFrom('records').select('kind').execute();
+
   const result = await safe(
     buildTestClient(ctx.url, other.token).conversation.send({
       clientMessageId: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
@@ -341,6 +351,7 @@ test('#conversation.send from a revoked session writes only a refusal record', a
       spans: [{ start: 0, end: 17, source: 'typed' }],
     }),
   );
+
   const after = await ctx.db.selectFrom('records').select('kind').execute();
 
   expect(result.error).toMatchObject({ code: 'UNAUTHORIZED' });
@@ -349,8 +360,8 @@ test('#conversation.send from a revoked session writes only a refusal record', a
 
 test('#conversation.read returns a page of the thread and the sequence it read at', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const sent = await laptopClient.conversation.send({
@@ -359,6 +370,7 @@ test('#conversation.read returns a page of the thread and the sequence it read a
     text: 'hello',
     spans: [{ start: 0, end: 5, source: 'typed' }],
   });
+
   const page = await laptopClient.conversation.read({ thread: 'conversation', limit: 1 });
 
   expect(page).toStrictEqual({
@@ -383,8 +395,8 @@ test('#conversation.read returns a page of the thread and the sequence it read a
 
 test('#conversation.read refuses a thread with no records', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const result = await safe(laptopClient.conversation.read({ thread: 'task-404' }));
@@ -394,9 +406,10 @@ test('#conversation.read refuses a thread with no records', async () => {
 
 test('#records.follow streams the records of the thread after the sequence asked for', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
+
   const sendText = (clientMessageId: string, text: string) =>
     laptopClient.conversation.send({
       clientMessageId,
@@ -413,6 +426,7 @@ test('#records.follow streams the records of the thread after the sequence asked
     afterSequence: 0,
     thread: 'conversation',
   });
+
   const seen = await collectEvents(connection, 3);
 
   expect(seen.map((event) => event.record.message?.text)).toStrictEqual([undefined, 'one', 'two']);
@@ -420,8 +434,8 @@ test('#records.follow streams the records of the thread after the sequence asked
 
 test('#log.follow still streams the records of the thread for a client of an earlier release', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   await laptopClient.conversation.send({
@@ -439,9 +453,10 @@ test('#log.follow still streams the records of the thread for a client of an ear
 
 test('#records.follow resumes from the last event ID with exactly the records it missed', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
+
   const sendText = (clientMessageId: string, text: string) =>
     laptopClient.conversation.send({
       clientMessageId,
@@ -449,9 +464,11 @@ test('#records.follow resumes from the last event ID with exactly the records it
       text,
       spans: [{ start: 0, end: text.length, source: 'typed' }],
     });
+
   const firstConnection = await sendText('00000000-0000-4000-8000-000000000001', 'one')
     .then(() => sendText('00000000-0000-4000-8000-000000000002', 'two'))
     .then(() => laptopClient.records.follow({ afterSequence: 0, thread: 'conversation' }));
+
   const seen = await collectEvents(firstConnection, 3);
 
   await firstConnection
@@ -463,6 +480,7 @@ test('#records.follow resumes from the last event ID with exactly the records it
     { afterSequence: 0, thread: 'conversation' },
     { lastEventId: String(seen.at(-1)?.record.sequence) },
   );
+
   const missed = await collectEvents(secondConnection, 2);
 
   expect(missed.map((event) => event.record.message?.text)).toStrictEqual(['three', 'four']);
@@ -470,11 +488,12 @@ test('#records.follow resumes from the last event ID with exactly the records it
 
 test('#records.follow ends with UNAUTHORIZED once the session is revoked', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const stream = await laptopClient.records.follow({ afterSequence: 0, thread: 'conversation' });
+
   const reading = collectEvents(stream, Number.POSITIVE_INFINITY);
 
   await laptopClient.sessions.revoke({
@@ -493,14 +512,15 @@ test('#records.follow ends with UNAUTHORIZED once the session is revoked', async
 
 test('#records.follow started past the head still ends once the session is revoked', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const stream = await laptopClient.records.follow({
     afterSequence: 1_000_000,
     thread: 'conversation',
   });
+
   const reading = collectEvents(stream, Number.POSITIVE_INFINITY);
 
   await laptopClient.sessions.revoke({
@@ -518,8 +538,8 @@ test('#records.follow started past the head still ends once the session is revok
 
 test('#records.follow refuses a revoked session before the stream opens', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   await laptopClient.sessions.revoke({
@@ -534,8 +554,8 @@ test('#records.follow refuses a revoked session before the stream opens', async 
 
 test('#sessions.issueCode refuses a retry once its code enrolled a device', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const issued = await laptopClient.sessions.issueCode({
@@ -558,11 +578,12 @@ test('#sessions.issueCode refuses a retry once its code enrolled a device', asyn
 
 test("#sessions.issueCode refuses another session's retry of the action", async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   const other = await createDeviceSession(ctx.context, 'phone');
+
   const phone = buildTestClient(ctx.url, other.token);
 
   await laptopClient.sessions.issueCode({ clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60' });
@@ -576,8 +597,8 @@ test("#sessions.issueCode refuses another session's retry of the action", async 
 
 test('#memory.writerStatus reports every message of yours as backlog before the writer starts', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const laptopClient = buildTestClient(ctx.url, laptop.token);
 
   await laptopClient.conversation.send({
@@ -602,7 +623,6 @@ test('#memory.writerStatus reports every message of yours as backlog before the 
 
 test('#memory.writerStatus reports the last error with its time and when the writer tries again', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   await writeRecords(ctx.context.log, [

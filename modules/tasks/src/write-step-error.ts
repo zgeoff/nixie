@@ -33,6 +33,7 @@ export function writeStepError(
       .select(['step_errors', 'is_conversation'])
       .where('task_id', '=', taskID)
       .executeTakeFirstOrThrow();
+
     const errors = task.step_errors + 1;
     const retry = planRetry(task.is_conversation === 1, errors, failure);
     const retryAt = now + retry.delayMs;
@@ -53,7 +54,9 @@ export function writeStepError(
         erasable: { message: formatError(failure.error) },
       },
     ]);
+
     await resetLease(tx, claim.lease);
+
     return {
       taskID,
       stepKey: claim.stepKey,
@@ -80,6 +83,7 @@ function planRetry(
       delayMs: planRetryDelay(errors, options.retryDelayMs, options.maxRetryDelayMs),
     };
   }
+
   return {
     nextState: errors >= options.maxStepErrors ? 'failed' : 'ready',
     delayMs: options.retryDelayMs,

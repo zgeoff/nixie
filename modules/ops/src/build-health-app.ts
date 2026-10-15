@@ -15,6 +15,7 @@ export interface HealthChecks {
 // 200 when every part is ready and 503 otherwise, with each part's report in the body.
 export function buildHealthApp(checks: HealthChecks) {
   const timeoutMs = checks.timeoutMs ?? 2000;
+
   const renderReport = async (parts: Readonly<Record<string, PartCheck>>) => {
     const report = await checkParts(parts, timeoutMs);
 

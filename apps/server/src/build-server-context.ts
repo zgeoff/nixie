@@ -18,6 +18,7 @@ export async function buildServerContext(
   deploymentKey: CryptoKey,
 ): Promise<ServerContext> {
   const current = { inForce: await findDefinitionsInForce(writer.db) };
+
   const inForce: InForce = {
     read: () => current.inForce,
     set: (next) => {

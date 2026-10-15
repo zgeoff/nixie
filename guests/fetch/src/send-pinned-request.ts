@@ -30,6 +30,7 @@ export function sendPinnedRequest(
 ): Promise<IncomingMessage> {
   const host = toBareHost(target.url.hostname);
   const response = Promise.withResolvers<IncomingMessage>();
+
   const outgoing = request(
     {
       host,
@@ -54,6 +55,7 @@ export function sendPinnedRequest(
 
   outgoing.on('error', response.reject);
   outgoing.end();
+
   return response.promise;
 }
 

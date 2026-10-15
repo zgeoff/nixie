@@ -39,10 +39,12 @@ async function readPathSnapshot(dir: string, limits: SizeLimits): Promise<Snapsh
   if (entries.escapes.length > 0) {
     throw new SnapshotError('a symlink leads outside the definitions root', entries.escapes);
   }
+
   requireFileLimit(entries.files, limits.maxFileBytes);
   requireTotalLimit(entries.files, limits.maxTotalBytes);
 
   const files = await readFiles(base, entries.files, limits.maxFileBytes);
+
   const contentHash = buildContentHash(files);
 
   return { contentHash, files, revision: contentHash, skipped: entries.skipped.toSorted() };
@@ -62,6 +64,7 @@ interface WalkEntries {
 // visits names in sorted order, and Promise.all keeps that order, so files come out in path order
 async function collectEntries(base: string, dir: string): Promise<WalkEntries> {
   const names = await readdir(dir);
+
   const entries = await Promise.all(
     names.toSorted().map((name) => collectEntry(base, join(dir, name))),
   );
@@ -79,14 +82,17 @@ async function collectEntry(base: string, full: string): Promise<WalkEntries> {
   if (basename(full).startsWith('.') || isOutsideLayout(path)) {
     return { files: [], skipped: [path], escapes: [] };
   }
+
   const stat = await lstat(full);
 
   if (stat.isSymbolicLink()) {
     return collectSymlink(base, full);
   }
+
   if (stat.isDirectory()) {
     return collectEntries(base, full);
   }
+
   return stat.isFile() && isDefinitionsPath(path)
     ? { files: [{ path, size: stat.size }], skipped: [], escapes: [] }
     : { files: [], skipped: [path], escapes: [] };
@@ -104,11 +110,13 @@ function isOutsideLayout(path: string): boolean {
 // a link that resolves nowhere counts as outside, because nothing shows where it would lead
 async function collectSymlink(base: string, link: string): Promise<WalkEntries> {
   const path = toRootPath(base, link);
+
   const target = await realpath(link).catch(() => null);
 
   if (target === null || !target.startsWith(`${base}${sep}`)) {
     return { files: [], skipped: [], escapes: [path] };
   }
+
   return { files: [], skipped: [path], escapes: [] };
 }
 
@@ -126,6 +134,7 @@ function requireTotalLimit(files: readonly WalkFile[], maxTotalBytes: number): v
     path: file.path,
     total: files.slice(0, index + 1).reduce((sum, earlier) => sum + earlier.size, 0),
   }));
+
   const past = totals.filter((entry) => entry.total > maxTotalBytes).map((entry) => entry.path);
 
   if (past.length > 0) {

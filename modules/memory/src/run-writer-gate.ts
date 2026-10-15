@@ -35,13 +35,16 @@ export async function runWriterGate(
       },
       writes,
     );
+
     if (NIXIE_TEST_BUILD) {
       await waitAtFaultPoint('writer.batch.gated', { kind: 'task', id: memoryWriterTaskID });
     }
   } catch (error) {
     await gate.release(gated.map((entry) => entry.verdict));
+
     throw error;
   }
+
   return gated;
 }
 

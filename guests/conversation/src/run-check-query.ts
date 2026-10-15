@@ -36,6 +36,7 @@ export async function runCheckQuery(
           : { kind: 'failed', reason: message.subtype };
       }
     }
+
     return { kind: 'failed', reason: 'the query ended with no result' };
   } finally {
     session.close();

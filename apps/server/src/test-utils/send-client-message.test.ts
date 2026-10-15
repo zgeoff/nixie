@@ -15,6 +15,7 @@ test('it sends the message with its spans and returns the thread once the reply 
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'Hello back.' });
+
   const records = await sendClientMessage(
     ctx.client,
     { text: 'Hello.', spans: [{ start: 0, end: 6, source: 'typed' }] },
@@ -34,6 +35,7 @@ test('it sends a message with no spans, which the server labels unknown', async 
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'Hello back.' });
+
   const records = await sendClientMessage(ctx.client, { text: 'Hello.' }, 'Hello back.');
 
   expect(records.find((record) => record.kind === 'owner_message')?.message?.spans).toStrictEqual([
@@ -45,6 +47,7 @@ test('it waits for the model reply when the reply repeats the message', async ()
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'Echo.' });
+
   const records = await sendClientMessage(ctx.client, { text: 'Echo.' }, 'Echo.');
 
   expect(records.filter((record) => record.message?.text === 'Echo.')).toMatchObject([
@@ -57,6 +60,7 @@ test('it waits for a new reply when an earlier turn gave the same one', async ()
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'Noted.' }, { text: 'Noted.' });
+
   await sendClientMessage(ctx.client, { text: 'First.' }, 'Noted.');
 
   const records = await sendClientMessage(ctx.client, { text: 'Second.' }, 'Noted.');

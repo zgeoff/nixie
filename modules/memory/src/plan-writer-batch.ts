@@ -40,14 +40,17 @@ export function planWriterBatch(input: BatchPlanInput): BatchPlan {
   if (catchUpEnd !== null) {
     return catchUpEnd;
   }
+
   if (owners.length === 0) {
     return { kind: 'wait', wakeAt: null };
   }
+
   const earliest = planEarliestBatch(input, owners);
 
   if (input.now < earliest) {
     return { kind: 'wait', wakeAt: earliest };
   }
+
   return {
     kind: 'batch',
     bounds: { start: input.cursor, end: planBatchEnd(input) },
@@ -73,6 +76,7 @@ function planCatchUpEnd(
   if (input.cursor >= input.startSequence || isWaiting) {
     return null;
   }
+
   return {
     kind: 'batch',
     bounds: { start: input.cursor, end: input.startSequence },
@@ -86,12 +90,14 @@ function planDueTime(input: BatchPlanInput, owners: readonly PlannedMessage[]): 
   if (owners.length >= input.config.batchMessages) {
     return input.now;
   }
+
   const oldest = owners[0]?.arrivedAt ?? null;
   const latest = owners.at(-1)?.arrivedAt ?? null;
 
   if (oldest === null || latest === null) {
     return input.now;
   }
+
   return Math.min(latest + input.config.idleMs, oldest + input.config.maxAgeMs);
 }
 
@@ -115,10 +121,12 @@ function planBatchEnd(input: BatchPlanInput): number {
     if (group.hasOwner && (taken.owners >= config.batchMessages || isOverBudget)) {
       break;
     }
+
     taken.owners += group.hasOwner ? 1 : 0;
     taken.tokens += group.tokens;
     taken.end = group.end;
   }
+
   return taken.end;
 }
 
@@ -145,5 +153,6 @@ function splitTurnGroups(messages: readonly PlannedMessage[]): readonly TurnGrou
       };
     }
   }
+
   return groups;
 }

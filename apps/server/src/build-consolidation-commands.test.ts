@@ -21,6 +21,7 @@ async function setupTest() {
   onTestFinished(() => rm(dir, { recursive: true, force: true }));
 
   const memory = await startTestMemory();
+
   const socket = await startControlSocket({
     path: join(dir, 'run', 'control.sock'),
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
@@ -48,21 +49,25 @@ async function setupTest() {
       'definitions: { source: { kind: path, path: /etc/nixie/definitions } }',
     ].join('\n'),
   );
+
   return { memory, configPath };
 }
 
 test('it prints the pending diff, approves one change alone and rejects another', async () => {
   const ctx = await setupTest();
+
   const [stale, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' }),
     createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },
       { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
     ],
   });
+
   const [first, second] = diff.changes;
 
   invariant(first && second);
@@ -85,12 +90,15 @@ test('it prints the pending diff, approves one change alone and rejects another'
 test('it prints the comment the conversation left through memory.comment beside its change', async () => {
   const ctx = await setupTest();
   const joke = await createMemoryItem(ctx.memory.store, { text: 'Names plants after drummers' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'rewrite', inputs: [joke], text: 'Owns plants', reason: 'Long.', source: 'owner' },
     ],
   });
+
   const [rewrite] = diff.changes;
+
   const comment = buildMemoryTools(ctx.memory.store, {
     clock: { now: () => Date.now() },
     ownerName: null,
@@ -99,6 +107,7 @@ test('it prints the comment the conversation left through memory.comment beside 
   }).find((definition) => definition.name === 'memory.comment');
 
   invariant(rewrite && comment);
+
   await comment.run(
     {
       callID: 'call-1',
@@ -132,11 +141,13 @@ test('it prints the comment the conversation left through memory.comment beside 
 
 test('it prints the summary of a conflict beside the changes of its diff', async () => {
   const ctx = await setupTest();
+
   const [oat, black, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
     createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' }],
     summary: {
@@ -156,10 +167,12 @@ test('it prints the summary of a conflict beside the changes of its diff', async
 
 test('it prints the summary alone when the run proposed no change', async () => {
   const ctx = await setupTest();
+
   const [oat, black] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [],
     summary: {
@@ -181,10 +194,12 @@ test('it prints the summary alone when the run proposed no change', async () => 
 
 test('it approves the whole diff when it names every change', async () => {
   const ctx = await setupTest();
+
   const [stale, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' }),
     createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },

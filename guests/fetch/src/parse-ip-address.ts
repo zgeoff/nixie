@@ -12,9 +12,11 @@ export function parseIPAddress(text: string): IPAddress | null {
   if (isIPv4(text)) {
     return { family: 4, value: parseIPv4(text) };
   }
+
   if (isIPv6(text) && !text.includes('%')) {
     return { family: 6, value: parseIPv6(text) };
   }
+
   return null;
 }
 
@@ -37,10 +39,12 @@ function splitGroups(text: string): readonly bigint[] {
   if (text.length === 0) {
     return [];
   }
+
   return text.split(':').flatMap((group) => {
     if (!group.includes('.')) {
       return [BigInt(`0x${group}`)];
     }
+
     const value = parseIPv4(group);
 
     return [value >> 16n, value & 0xff_ffn];

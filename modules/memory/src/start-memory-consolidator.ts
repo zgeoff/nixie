@@ -16,6 +16,7 @@ export async function startMemoryConsolidator(
   const context = parts.context;
 
   await createSystemTask(context, memoryConsolidatorTaskID);
+
   await writeInboxRecords(context, [
     {
       kind: 'task.wake',
@@ -24,5 +25,6 @@ export async function startMemoryConsolidator(
       payload: { at: context.clock.now() },
     },
   ]);
+
   return { runStep: (input) => runConsolidatorStep(parts, input) };
 }

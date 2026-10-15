@@ -35,9 +35,11 @@ export function makeDecisionPoint(options: DecisionPointOptions): DecisionPoint 
         `The tool ${call.tool} is unknown or has no effect declaration.`,
       );
     }
+
     if (!call.toolList.includes(call.tool)) {
       return buildStageDenial(scopeStage, `The tool ${call.tool} is not on this run's tool list.`);
     }
+
     return pickRuleDecision(rules, call, declaration);
   };
 }
@@ -54,6 +56,7 @@ function pickRuleDecision(
   const decided = findRuleOutcome(rules, call, declaration);
 
   invariant(decided, 'no fixed rule decided the call, but slice1.read-only decides every call');
+
   return {
     decision: {
       outcome: decided.outcome,
@@ -77,5 +80,6 @@ function findRuleOutcome(
       return { rule, outcome };
     }
   }
+
   return undefined;
 }

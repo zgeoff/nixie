@@ -33,6 +33,7 @@ export function renderCheckerInput(
   const sorted = marks.toSorted(
     (left, right) => left.at - right.at || getMarkRank(left.mark) - getMarkRank(right.mark),
   );
+
   let marked = '';
   let at = 0;
 
@@ -40,7 +41,9 @@ export function renderCheckerInput(
     marked += message.text.slice(at, entry.at) + entry.mark;
     at = entry.at;
   }
+
   marked += message.text.slice(at);
+
   return `<owner_message>\n${marked}\n</owner_message>\n\n<${checked.kind}>\n${checked.text}\n</${checked.kind}>`;
 }
 

@@ -22,8 +22,10 @@ function renderStartLine(start: SessionStart): string {
   if (start.kind === 'first') {
     return `Start: a new session. ${historyLine}`;
   }
+
   if (start.reason === 'lost') {
     return `Start: a rebuild, because the earlier session was lost. ${historyLine}`;
   }
+
   return `Start: a rebuild after a forget. The forget erased the summary of earlier sessions, so the gap is deliberate. ${historyLine}`;
 }

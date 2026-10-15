@@ -20,8 +20,10 @@ export function updateSessionLabel(context: APIContext, input: LabelInput): Prom
   if (label === null) {
     return Promise.resolve({ status: 'invalid_label' });
   }
+
   return withWriteTransaction(context.log.writer, async (tx) => {
     const db = tx.$extendTables<APITables>();
+
     const session = await db
       .selectFrom('identities')
       .select('identity_id')
@@ -33,6 +35,7 @@ export function updateSessionLabel(context: APIContext, input: LabelInput): Prom
     if (session === undefined) {
       return { status: 'not_found' };
     }
+
     await writeRecordsInTransaction(tx, context.log, [
       {
         kind: 'session.labelled',
@@ -41,11 +44,13 @@ export function updateSessionLabel(context: APIContext, input: LabelInput): Prom
         erasable: { label },
       },
     ]);
+
     await db
       .updateTable('identities')
       .set({ label })
       .where('identity_id', '=', input.sessionID)
       .execute();
+
     return { status: 'labelled', sessionID: input.sessionID, label };
   });
 }

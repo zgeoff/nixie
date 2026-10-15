@@ -41,11 +41,13 @@ export interface CrashHarness {
 export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
   const clock = { now: options.startMs };
   const processes: TrackedProcesses = { started: new Set(), running: new Set() };
+
   const stop = async (): Promise<void> => {
     await Promise.all([...processes.started].map((nixie) => nixie.kill()));
   };
 
   onTestFinished(stop);
+
   return {
     now: () => clock.now,
     start: (faultPoints = []) => {
@@ -57,12 +59,14 @@ export function startCrashHarness(options: CrashHarnessOptions): CrashHarness {
       });
 
       void updateTracked(processes, nixie);
+
       return nixie;
     },
     advance: async (ms, advanceOptions = {}) => {
       if (processes.started.size > processes.running.size) {
         throw new Error('a nixie is not ready yet, so it would miss the advance');
       }
+
       clock.now += ms;
 
       const replies = await Promise.all(
@@ -93,13 +97,17 @@ interface TrackedProcesses {
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the harness's own sets
 async function updateTracked(processes: TrackedProcesses, nixie: NixieProcess): Promise<void> {
   processes.started.add(nixie);
+
   try {
     await nixie.ready;
+
     processes.running.add(nixie);
   } catch {
     // a nixie that exits before it is ready never gets an advance
   }
+
   await nixie.exited;
+
   processes.started.delete(nixie);
   processes.running.delete(nixie);
 }

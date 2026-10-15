@@ -83,6 +83,7 @@ export function buildDiffTool(memory: DiffToolStore): ToolDefinition {
       if (diff === null) {
         return { status: 'ok', result: { changes: [] }, record: { changes: [] } };
       }
+
       const shortIDs = await memory.readShortIDs(
         diff.changes.flatMap((change) => change.inputs.map((input) => input.itemID)),
       );

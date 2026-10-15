@@ -64,9 +64,13 @@ export async function readSessionOpening(
   query: SessionOpeningQuery,
 ): Promise<SessionOpening> {
   const recalledThrough = await readRecalledThrough(context, query.taskID);
+
   const openedAt = new Date(context.clock.now());
+
   const at = formatMessageTime(openedAt, query.zone, query.times);
+
   const summary = await findSessionSummary(context, query.taskID);
+
   const recent = await readRecentTurns(context, {
     taskID: query.taskID,
     beforeSequence: query.beforeSequence,
@@ -74,11 +78,15 @@ export async function readSessionOpening(
     tokens: query.rebuildTokens,
     times: query.times,
   });
+
   const facts = { ...query, openedAt };
+
   const status = await Promise.all(
     query.status.map(async (entry) => ({ name: entry.name, line: await entry.read(facts) })),
   );
+
   const replayed = await readReplayedNote(context, query, recent);
+
   const blocks = [
     renderOpeningMessage('pinned-memory', at, query.pinnedMemory),
     renderOpeningMessage('status', at, status.map((read) => `- ${read.line.text}`).join('\n')),
@@ -122,8 +130,10 @@ async function readReplayedNote(
   if (oldest === undefined || query.readTurnNote === undefined) {
     return null;
   }
+
   const first = await readTurnNoteRange(context.log, oldest.record.sequence);
   const last = await readTurnNoteRange(context.log);
+
   const span = { after: first.after, through: last.after };
 
   return span.through > span.after ? query.readTurnNote(span) : null;

@@ -8,6 +8,7 @@ import { tasksProjections } from '@heynixie/tasks';
 // and the log's, the tasks, the sandboxes and the memory projections. The caller stops the writer.
 export async function startTestLog(dataDir: string): Promise<Log & { readonly writer: Writer }> {
   const writer = await startWriter({ dataDir });
+
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
     'unwrapKey',

@@ -15,7 +15,6 @@ async function setupTest() {
 
 test('it starts a log with the tasks, sandboxes and memory projections and a fresh key', async () => {
   const ctx = await setupTest();
-
   const log = await startTestLog(ctx.dataDir);
 
   onTestFinished(() => log.writer.stop());
@@ -35,5 +34,6 @@ test('it starts a log with the tasks, sandboxes and memory projections and a fre
     'memory_consolidations',
     'memory_consolidation_changes',
   ]);
+
   expect(log.deploymentKey.algorithm).toMatchObject({ name: 'AES-KW', length: 256 });
 });

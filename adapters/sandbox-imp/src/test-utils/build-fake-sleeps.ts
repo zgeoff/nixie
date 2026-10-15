@@ -40,6 +40,7 @@ interface SleepState {
 // `woken by <call>`, each with the imp's name.
 export function buildFakeSleeps(calls: string[]): FakeSleeps {
   const state: SleepState = { calls, sleeping: new Map(), asleep: new Set(), forwards: new Map() };
+
   const sleepsAfterWake = new Map<string, Promise<void>>();
 
   return {
@@ -69,6 +70,7 @@ function startIdleSleep(state: SleepState, name: string, snapshot: Promise<void>
   const sleep = runIdleSleep(state, name, snapshot);
 
   state.sleeping.set(name, sleep);
+
   return sleep;
 }
 
@@ -80,11 +82,15 @@ async function runIdleSleep(
   snapshot: Promise<void>,
 ): Promise<void> {
   await snapshot;
+
   for (const forward of state.forwards.get(name) ?? []) {
     forward.stopAsLost();
   }
+
   state.calls.push(`slept ${name}`);
+
   await waitForTurn();
+
   state.asleep.add(name);
   state.sleeping.delete(name);
 }
@@ -94,8 +100,10 @@ async function waitForAwake(state: SleepState, name: string, call: string): Prom
 
   if (sleep !== undefined) {
     state.calls.push(`wait ${call} ${name}`);
+
     await sleep;
   }
+
   if (state.asleep.delete(name)) {
     state.calls.push(`woken by ${call} ${name}`);
   }
@@ -113,7 +121,10 @@ async function updateOpenForwards(
     // a forward that never listened was never open
     return;
   }
+
   open.add(forward);
+
   await forward.ended;
+
   open.delete(forward);
 }

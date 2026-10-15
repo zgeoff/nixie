@@ -10,6 +10,7 @@ const received = Promise.withResolvers<string>();
 process.once('SIGTERM', () => {
   received.resolve('SIGTERM');
 });
+
 process.once('SIGINT', () => {
   received.resolve('SIGINT');
 });

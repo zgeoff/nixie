@@ -7,8 +7,10 @@ if (command !== 'decrypt' || flag !== '--output-type' || format !== 'json' || pa
   process.stderr.write('usage: decrypt --output-type json <file>\n');
   process.exit(2);
 }
+
 try {
   const text = await Bun.file(path).text();
+
   const json = JSON.stringify(Bun.YAML.parse(text));
 
   process.stdout.write(json);

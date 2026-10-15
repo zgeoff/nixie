@@ -14,8 +14,10 @@ export async function startRunners(parts: ServerParts, runStep: RunStep): Promis
     parts.log('runner.failed', toErrorFields(error));
     parts.onFailure(error);
   };
+
   const logStepError = makeStepErrorLogger(parts.log);
   const markConversationFailure = makeConversationFailureMarker(parts.state);
+
   const tasks = startTaskRunners(parts.context, {
     runStep,
     onStepErrored: (errored) => {
@@ -25,6 +27,7 @@ export async function startRunners(parts: ServerParts, runStep: RunStep): Promis
     onError,
     size: parts.config.tasks.runners,
   });
+
   const actions = startActionRunners(parts.context, {
     connectors: new Map(),
     onError,

@@ -24,9 +24,11 @@ export function parseImpConfig(env: Readonly<Record<string, string | undefined>>
   if (!URL.canParse(url) || !/^https?:$/u.test(new URL(url).protocol)) {
     throw new Error("IMP_URL must be impd's http or https URL");
   }
+
   if (token.length === 0) {
     throw new Error('IMP_TOKEN must hold an impd token');
   }
+
   const hostAddresses = splitRanges('IMP_HOST_ADDRESSES', env['IMP_HOST_ADDRESSES']);
   const egressDeny = splitRanges('IMP_EGRESS_DENY', env['IMP_EGRESS_DENY']);
 
@@ -45,5 +47,6 @@ function splitRanges(name: string, value: string | undefined): readonly string[]
       throw new Error(`${name} holds ${range}, which is not an address or a network`);
     }
   }
+
   return ranges;
 }

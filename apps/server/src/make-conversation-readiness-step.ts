@@ -11,6 +11,7 @@ export function makeConversationReadinessStep(
     const result = await runStep(input);
 
     state.update({ conversation: { isReady: true, reason: null } });
+
     return result;
   };
 }

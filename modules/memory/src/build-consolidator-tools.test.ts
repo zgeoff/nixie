@@ -9,6 +9,7 @@ import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
   const memory = await startTestMemory();
+
   const staging = createConsolidationStaging();
   const registry = buildToolRegistry(buildConsolidatorTools(memory.store, staging, 5));
 
@@ -31,11 +32,13 @@ test('it offers recall, which declares read, and consolidate, which declares not
 
 test('it shows the session each item a recall returns, so a change to it binds to that version', async () => {
   const ctx = await setupTest();
+
   const item = await createMemoryItem(ctx.memory.store, {
     text: 'Keeps bees on the roof',
     origin: 'task',
     source: 'owner_data',
   });
+
   const recall = ctx.registry.findTool('memory.recall');
   const consolidate = ctx.registry.findTool('memory.consolidate');
 
@@ -47,6 +50,7 @@ test('it shows the session each item a recall returns, so a change to it binds t
     { callID: 'call-1', tool: 'memory.recall', input: { query: 'bees' }, toolUseID: null },
     buildMockToolContext({ thread: 'memory-consolidator' }),
   );
+
   await consolidate.definition.run(
     {
       callID: 'call-2',
@@ -66,10 +70,12 @@ test('it returns each recalled item by the short ID the model reads', async () =
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the roof' });
   const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
+
   const shortID = shortIDs.get(item.itemID);
   const recall = ctx.registry.findTool('memory.recall');
 
   invariant(recall && shortID !== undefined);
+
   ctx.staging.open(new Map(), 30);
 
   const recalled = await recall.definition.run(
@@ -85,15 +91,19 @@ test('it returns each recalled item by the short ID the model reads', async () =
 
 test('it returns the quote each recalled item was saved from, and no quote for an item without one', async () => {
   const ctx = await setupTest();
+
   const hens = await createMemoryItem(ctx.memory.store, {
     text: 'Owns three chickens that live in the garden',
     quote: 'we have three hens and honestly they rule the garden',
   });
+
   const coop = await createMemoryItem(ctx.memory.store, { text: 'Built a coop in the garden' });
   const shortIDs = await ctx.memory.store.readShortIDs([hens.itemID, coop.itemID]);
+
   const recall = ctx.registry.findTool('memory.recall');
 
   invariant(recall);
+
   ctx.staging.open(new Map(), 30);
 
   const recalled = await recall.definition.run(
@@ -118,9 +128,11 @@ test('it returns the quote each recalled item was saved from, and no quote for a
 
 test('it stages the diff and returns how many changes it holds', async () => {
   const ctx = await setupTest();
+
   const consolidate = ctx.registry.findTool('memory.consolidate');
 
   invariant(consolidate);
+
   ctx.staging.open(
     new Map([
       [
@@ -159,9 +171,11 @@ test('it stages the diff and returns how many changes it holds', async () => {
 
 test('it returns a refused diff to the model as an error', async () => {
   const ctx = await setupTest();
+
   const consolidate = ctx.registry.findTool('memory.consolidate');
 
   invariant(consolidate);
+
   ctx.staging.open(new Map(), 30);
 
   const outcome = await consolidate.definition.run(
@@ -182,6 +196,7 @@ test('it returns a refused diff to the model as an error', async () => {
 
 test('it keeps the summary the session gives with its diff, for the owner', async () => {
   const ctx = await setupTest();
+
   const consolidate = ctx.registry.findTool('memory.consolidate');
 
   invariant(consolidate);

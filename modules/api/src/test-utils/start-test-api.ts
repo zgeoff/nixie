@@ -41,11 +41,13 @@ export async function startTestAPI(): Promise<TestAPI> {
   stack.defer(() => writer.stop());
 
   const context = await buildTestContext(writer);
+
   const app = buildAPIApp(context).listen({ hostname: '127.0.0.1', port: 0 });
 
   stack.defer(async () => {
     await app.stop(true);
   });
+
   return {
     dataDir,
     writer,
@@ -80,5 +82,6 @@ async function buildTestContext(
   };
 
   await createConversationTask(context);
+
   return context;
 }

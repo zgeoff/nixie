@@ -20,6 +20,7 @@ export function renderMemoryLine(
   next: NextVersion | null = null,
 ): string {
   const owner = options.ownerName ?? 'the owner';
+
   const parts = [
     `${version.shortID} v${version.version}`,
     formatMemoryDay(version.recordedAt, options),
@@ -52,9 +53,11 @@ function formatBacking(
   if (source === 'owner') {
     return `${owner} said this`;
   }
+
   if (source === 'owner_data') {
     return `from ${owner}'s data`;
   }
+
   return approval?.isQuotePasted === true ? 'from a pasted page' : 'unconfirmed';
 }
 

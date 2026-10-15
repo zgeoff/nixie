@@ -39,6 +39,7 @@ function parseProviderResponse(answer: ProviderAnswer, body: ProviderBody): Prov
   if (answer.status === 200) {
     return { kind: 'success', result: body.result ?? {} };
   }
+
   const reason = body.reason ?? `the provider answered ${answer.status}`;
 
   if (answer.status === 429) {
@@ -46,5 +47,6 @@ function parseProviderResponse(answer: ProviderAnswer, body: ProviderBody): Prov
       ? { kind: 'refused_retryable', reason }
       : { kind: 'refused_retryable', reason, retryAfterMs: Number(answer.retryAfter) };
   }
+
   return answer.status === 422 ? { kind: 'refused', reason } : { kind: 'ambiguous', reason };
 }

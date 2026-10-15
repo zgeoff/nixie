@@ -2,6 +2,7 @@
 // waits for your review instead of applying.
 export class ForgottenEvidenceError extends Error {
   override readonly name = 'ForgottenEvidenceError';
+
   readonly code = 'FORGOTTEN_EVIDENCE';
 
   constructor(recordSequence: number) {

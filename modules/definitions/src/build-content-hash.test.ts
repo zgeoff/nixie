@@ -31,6 +31,7 @@ test('it gives the same hash for the same files in any order', () => {
       ['rules/rule-0.yaml', rule],
     ]),
   );
+
   const backward = buildContentHash(
     new Map([
       ['rules/rule-0.yaml', rule],
@@ -43,6 +44,7 @@ test('it gives the same hash for the same files in any order', () => {
 
 test('it hashes the version line, then each path with its length and its own hash', () => {
   const persona = new TextEncoder().encode('# Persona\n');
+
   const fileHash = createHash('sha256').update('# Persona\n').digest('hex');
   const listing = `nixie-definitions-v1\npersona.md\t10\t${fileHash}\n`;
 

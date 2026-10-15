@@ -13,6 +13,7 @@ test('it answers with the verdict the query returned and the profile model', asy
     model: 'claude-test-1',
     failure: null,
   });
+
   expect(ask).toHaveBeenCalledExactlyOnceWith(
     { prompt: 'You check one memory.', input: 'the input' },
     expect.any(AbortSignal),
@@ -21,9 +22,11 @@ test('it answers with the verdict the query returned and the profile model', asy
 
 test('it answers unsure and aborts the query when the query outlasts the timeout', async () => {
   const signals: AbortSignal[] = [];
+
   const check = makeChecker({
     ask: (_request, signal) => {
       signals.push(signal);
+
       return Promise.withResolvers<never>().promise;
     },
     model: 'claude-test-1',
@@ -38,6 +41,7 @@ test('it answers unsure and aborts the query when the query outlasts the timeout
     model: 'claude-test-1',
     failure: 'timeout',
   });
+
   expect(signals.map((signal) => signal.aborted)).toStrictEqual([true]);
 });
 

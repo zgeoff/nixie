@@ -85,9 +85,11 @@ test('it applies a backed fact with the caller and model of the run, never of th
   const ctx = await setupTest({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
+
   const tool = ctx.registry.findTool('memory.remember');
 
   invariant(tool);
+
   await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'task-9',
     text: "I'm allergic to hazelnuts",
@@ -121,7 +123,9 @@ test('it applies a backed fact with the caller and model of the run, never of th
     status: 'ok',
     result: { status: 'applied', itemID: expect.toBeString(), version: 1 },
   });
+
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
+
   expect(row).toStrictEqual({
     origin: 'task',
     source: 'owner',
@@ -137,6 +141,7 @@ test('it applies a fact quoted from a message outside the window by its event ID
       limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10, closeMatchScore: 0.6 },
     },
   });
+
   const tool = ctx.registry.findTool('memory.remember');
 
   invariant(tool);
@@ -175,6 +180,7 @@ test('it applies a fact quoted from a message outside the window by its event ID
 
 test('it returns a proposal with the sentence for its reason, not an error, for a fact with no quote', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.remember');
 
   invariant(tool);
@@ -197,6 +203,7 @@ test('it returns a proposal with the sentence for its reason, not an error, for 
   );
 
   invariant(outcome.status === 'ok');
+
   expect(outcome.result).toStrictEqual({
     status: 'proposed',
     proposalID: expect.toBeString(),
@@ -204,6 +211,7 @@ test('it returns a proposal with the sentence for its reason, not an error, for 
       "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or neither the owner's last 20 messages nor the message its eventID names contains it.",
     merged: false,
   });
+
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 });
 
@@ -289,11 +297,13 @@ test("it names the gate's configured window in the sentence for a quote older th
     text: 'I keep bees on the roof',
     spans: [{ start: 0, end: 23, source: 'typed' }],
   });
+
   await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',
     text: 'The kettle is broken',
     spans: [{ start: 0, end: 20, source: 'typed' }],
   });
+
   await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',
     text: 'Back by six',
@@ -328,13 +338,16 @@ test('it applies a backed edit of the item its short ID names as a new version a
   const ctx = await setupTest({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   invariant(shortID);
+
   await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',
     text: 'I live on Oak Avenue now',
@@ -360,6 +373,7 @@ test('it applies a backed edit of the item its short ID names as a new version a
     },
     ctx.toolCallOptions,
   );
+
   const history = await ctx.memory.store.readHistory(item.itemID);
 
   expect(result.structuredContent).toStrictEqual({
@@ -367,6 +381,7 @@ test('it applies a backed edit of the item its short ID names as a new version a
     itemID: shortID,
     version: 2,
   });
+
   expect(history?.versions).toMatchObject([
     { version: 1, change: 'created', text: 'Lives on Elm Street' },
     { version: 2, change: 'edited', origin: 'conversation', text: 'Lives on Oak Avenue' },
@@ -375,6 +390,7 @@ test('it applies a backed edit of the item its short ID names as a new version a
 
 test('it turns an edit with no backing words into a proposal with the sentence for its reason', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Drinks oat milk',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -394,6 +410,7 @@ test('it turns an edit with no backing words into a proposal with the sentence f
     },
     ctx.toolCallOptions,
   );
+
   const pending = await ctx.memory.store.proposals.listPending();
   const history = await ctx.memory.store.readHistory(item.itemID);
 
@@ -404,6 +421,7 @@ test('it turns an edit with no backing words into a proposal with the sentence f
       "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or neither the owner's last 20 messages nor the message its eventID names contains it.",
     merged: false,
   });
+
   expect(pending).toMatchObject([
     {
       operation: 'remember',
@@ -413,11 +431,13 @@ test('it turns an edit with no backing words into a proposal with the sentence f
       reason: 'no_quote',
     },
   ]);
+
   expect(history?.versions).toMatchObject([{ version: 1, text: 'Drinks oat milk' }]);
 });
 
 test('it records an edit call with neither its text nor its quote, which the gate has not checked', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Owns a tabby cat called Miso',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -451,19 +471,24 @@ test('it records an edit call with neither its text nor its quote, which the gat
       fields: { input: { itemID: item.itemID, version: 1 } },
     },
   });
+
   expect(JSON.stringify(entries)).not.toInclude('Udon');
 });
 
 test('it returns a stale edit to the model as an error that names the item by its short ID', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.edit');
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   invariant(tool);
+
   await ctx.memory.store.retire({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -494,6 +519,7 @@ test('it returns a stale edit to the model as an error that names the item by it
 
 test('it returns an edit of an ID that names no item to the model as an error with that ID', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.edit');
 
   invariant(tool);
@@ -525,11 +551,14 @@ test('it retires the item its short ID names when the model read it and you aske
   const ctx = await setupTest({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
+
   const tool = ctx.registry.findTool('memory.retire');
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const [shortID] = await Promise.all([
     readItemShortID(ctx.memory.log, item.itemID),
     writeOwnerMessageRecord(ctx.memory.log, {
@@ -540,6 +569,7 @@ test('it retires the item its short ID names when the model read it and you aske
   ]);
 
   invariant(tool);
+
   await ctx.memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' });
 
   const outcome = await tool.definition.run(
@@ -558,12 +588,14 @@ test('it retires the item its short ID names when the model read it and you aske
       },
     },
   );
+
   const history = await ctx.memory.store.readHistory(item.itemID);
 
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { status: 'applied', itemID: shortID, version: 2 },
   });
+
   expect(history?.versions.at(-1)).toMatchObject({ change: 'retired', origin: 'conversation' });
 });
 
@@ -573,6 +605,7 @@ test('it returns a full proposal cap to the model as an error', async () => {
       limits: { evidenceWindow: 20, proposalLapseMs: 1000, proposalCap: 1, closeMatchScore: 0.6 },
     },
   });
+
   const tool = buildToolRegistry(
     buildMemoryTools(memory.store, {
       clock: { now: () => Date.now() },
@@ -581,12 +614,14 @@ test('it returns a full proposal cap to the model as an error', async () => {
       defaultZone: 'UTC',
     }),
   ).findTool('memory.remember');
+
   const call = {
     callID: 'call-1',
     tool: 'memory.remember',
     input: { text: 'Likes jazz' },
     toolUseID: null,
   };
+
   const context = {
     run: {
       runID: 'run-1',
@@ -597,6 +632,7 @@ test('it returns a full proposal cap to the model as an error', async () => {
   };
 
   invariant(tool);
+
   await tool.definition.run(call, context);
 
   const outcome = await tool.definition.run(
@@ -609,9 +645,11 @@ test('it returns a full proposal cap to the model as an error', async () => {
 
 test('it recalls items with a result that its output schema accepts', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.recall');
 
   invariant(tool);
+
   await ctx.memory.store.remember({
     text: 'Allergic to hazelnuts',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -635,7 +673,9 @@ test('it recalls items with a result that its output schema accepts', async () =
   );
 
   invariant(outcome.status === 'ok');
+
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
+
   expect(outcome.result).toMatchObject({
     items: [{ text: 'Allergic to hazelnuts', history: [{ version: 1 }] }],
     next: null,
@@ -644,6 +684,7 @@ test('it recalls items with a result that its output schema accepts', async () =
 
 test('it tells the model when to reach for recall', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.recall');
 
   expect(tool?.definition.description).toInclude(
@@ -656,6 +697,7 @@ test('it recalls a version with its quote, its model and the line that says wher
 
   setSystemTime(new Date(Date.UTC(2026, 9, 1, 9, 30)));
   onTestFinished(() => setSystemTime());
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps a sourdough starter called Gerald',
     evidenceQuote: 'Gerald the starter needs feeding again',
@@ -668,6 +710,7 @@ test('it recalls a version with its quote, its model and the line that says wher
       model: 'test-model-1',
     },
   });
+
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   const result = await runToolCall(
@@ -703,13 +746,16 @@ test('it recalls a version with no quote or model without them', async () => {
   const ctx = await setupTest();
 
   setSystemTime(new Date(Date.UTC(2026, 8, 14, 18, 5)));
+
   onTestFinished(() => {
     setSystemTime();
   });
+
   const item = await ctx.memory.store.remember({
     text: 'Plays the cello on Sundays',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   const result = await runToolCall(
@@ -745,6 +791,7 @@ test('it recalls an approved proposal as approved by the owner, with its stored 
 
   setSystemTime(new Date(Date.UTC(2026, 9, 13, 9, 30)));
   onTestFinished(() => setSystemTime());
+
   const pending = await createProposal(ctx.memory.store, { text: 'Keeps a fern on the desk' });
 
   await ctx.memory.store.proposals.approve({
@@ -752,6 +799,7 @@ test('it recalls an approved proposal as approved by the owner, with its stored 
     actionHash: pending.actionHash,
     identityID: 'identity-1',
   });
+
   const shortID = await readItemShortID(ctx.memory.log, pending.itemID);
 
   const result = await runToolCall(
@@ -764,6 +812,7 @@ test('it recalls an approved proposal as approved by the owner, with its stored 
     },
     ctx.toolCallOptions,
   );
+
   const row = await ctx.memory.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
@@ -779,6 +828,7 @@ test('it recalls an approved proposal as approved by the owner, with its stored 
       },
     ],
   });
+
   expect(row?.source).toBe('untrusted');
 });
 
@@ -787,6 +837,7 @@ test('it recalls each past version with the version that replaced it', async () 
 
   setSystemTime(new Date(Date.UTC(2026, 2, 2, 9, 30)));
   onTestFinished(() => setSystemTime());
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Juniper Lane',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -797,6 +848,7 @@ test('it recalls each past version with the version that replaced it', async () 
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   const result = await runToolCall(
@@ -832,6 +884,7 @@ test('it recalls each past version with the version that replaced it', async () 
 
 test('it recalls the item its short ID names', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps the bike lock code in the blue notebook',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -841,6 +894,7 @@ test('it recalls the item its short ID names', async () => {
     text: 'Waters the ferns on Fridays',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   invariant(shortID);
@@ -864,10 +918,12 @@ test('it recalls the item its short ID names', async () => {
 
 test('it recalls an item by the item ID the model read before short IDs, under its short ID', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps the bike lock code in the blue notebook',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   const result = await runToolCall(
@@ -888,10 +944,12 @@ test('it recalls an item by the item ID the model read before short IDs, under i
 
 test('it gives the model a recalled item and leaves no readable copy once the item is forgotten', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Sister Ada lives in Leeds',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
 
   const result = await runToolCall(
@@ -915,12 +973,14 @@ test('it gives the model a recalled item and leaves no readable copy once the it
   expect(result.structuredContent).toMatchObject({
     items: [{ itemID: shortID, text: 'Sister Ada lives in Leeds' }],
   });
+
   expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
     erasable: {
       status: 'readable',
       fields: { result: { items: [{ itemID: item.itemID, version: 1 }], next: null } },
     },
   });
+
   expect(JSON.stringify(entries)).not.toInclude('Leeds');
 });
 
@@ -949,6 +1009,7 @@ test('it applies a remembered fact and leaves no readable copy of its text once 
     },
     ctx.toolCallOptions,
   );
+
   const [item] = await ctx.memory.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
@@ -956,6 +1017,7 @@ test('it applies a remembered fact and leaves no readable copy of its text once 
     .execute();
 
   invariant(item, 'the remember applied no item');
+
   await ctx.memory.store.forget({
     target: { itemID: item.item_id, version: 1 },
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -969,6 +1031,7 @@ test('it applies a remembered fact and leaves no readable copy of its text once 
     itemID: item.short_id,
     version: 1,
   });
+
   expect(JSON.stringify(entries)).not.toInclude('Allergic to hazelnuts');
 });
 

@@ -10,12 +10,14 @@ export async function findRecordKeys(
   if (keyIDs.length === 0) {
     return new Map();
   }
+
   const rows = await log.writer.keys
     .$extendTables<KeyStoreTables>()
     .selectFrom('record_keys')
     .select(['key_id', 'wrapped'])
     .where('key_id', 'in', keyIDs)
     .execute();
+
   const entries = await Promise.all(
     rows.map(
       async (row) =>

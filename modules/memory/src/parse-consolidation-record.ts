@@ -47,7 +47,6 @@ const approved = z
   .readonly();
 
 const rejected = z.strictObject({ changeID: z.string(), identityID: z.string() }).readonly();
-
 const lapsed = z.strictObject({ changeID: z.string() }).readonly();
 
 const commented = z
@@ -72,12 +71,15 @@ export function parseConsolidationRecord(record: EnvelopeRecord): ConsolidationR
   if (record.kind === 'memory.consolidation_proposed') {
     return { kind: record.kind, ...proposed.parse(record.payload) };
   }
+
   if (record.kind === 'memory.consolidation_summarized') {
     return { kind: record.kind, ...summarized.parse(record.payload) };
   }
+
   if (record.kind === 'memory.consolidation_commented') {
     return { kind: record.kind, ...commented.parse(record.payload) };
   }
+
   return parseAnswerRecord(record);
 }
 
@@ -86,11 +88,14 @@ function parseAnswerRecord(record: EnvelopeRecord): ConsolidationRecord | null {
   if (record.kind === 'memory.consolidation_approved') {
     return { kind: record.kind, ...approved.parse(record.payload) };
   }
+
   if (record.kind === 'memory.consolidation_rejected') {
     return { kind: record.kind, ...rejected.parse(record.payload) };
   }
+
   if (record.kind === 'memory.consolidation_lapsed') {
     return { kind: record.kind, ...lapsed.parse(record.payload) };
   }
+
   return null;
 }

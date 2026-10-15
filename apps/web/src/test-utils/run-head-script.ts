@@ -10,7 +10,10 @@ export function runHeadScript(text: string): void {
 
   script.textContent = text;
   window.happyDOM.settings.enableJavaScriptEvaluation = true;
+
   globalThis.document.head.append(script);
+
   window.happyDOM.settings.enableJavaScriptEvaluation = false;
+
   script.remove();
 }

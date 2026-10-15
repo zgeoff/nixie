@@ -16,16 +16,20 @@ export async function planChangeVersions(
   answer: ChangeAnswer,
 ): Promise<readonly VersionPlan[]> {
   const opened = await readChangeText(parts.context.log, row);
+
   const [first, ...rest] = parseChangeInputs(row.inputs);
 
   if (first === undefined) {
     throw new Error(`consolidation change ${row.change_id} has no input`);
   }
+
   const provenance = buildChangeProvenance(row);
+
   const lead =
     opened.text === null
       ? planRetiredVersion({ target: first, provenance })
       : planActiveEdit(first, opened.text, provenance);
+
   const retired = rest.map((target) => planRetiredVersion({ target, provenance }));
 
   return [...retired, { ...lead, approval: buildApproval(parts, row, answer) }];

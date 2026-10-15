@@ -15,8 +15,10 @@ export async function startKeyStoreReader(dataDir: string): Promise<KeyStoreRead
   const reader = startDatabase(join(dataDir, 'keys.db'));
 
   onTestFinished(() => reader.destroy());
+
   await sql`begin`.execute(reader);
   await sql`select count(*) from record_keys`.execute(reader);
+
   return {
     release: async () => {
       await sql`commit`.execute(reader);

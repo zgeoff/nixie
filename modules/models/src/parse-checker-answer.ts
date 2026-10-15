@@ -9,6 +9,7 @@ export function parseCheckerAnswer(output: unknown, model: string): CheckerAnswe
   if (!parsed.success) {
     return { verdict: 'unsure', reason: 'the answer was unreadable', model, failure: 'unreadable' };
   }
+
   return { verdict: parsed.data.verdict, reason: parsed.data.reason, model, failure: null };
 }
 

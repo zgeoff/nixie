@@ -30,10 +30,12 @@ export function renderWriterPrompt(input: WriterPromptInput): string {
   const heading = input.isComplete
     ? 'Current memory items (the complete list):'
     : 'Current memory items that match this batch (not the complete list):';
+
   const items =
     input.items.length === 0
       ? '(none)'
       : input.items.map((item) => `- ${item.itemID}: ${item.text}`).join('\n');
+
   const messages = input.messages
     .map(
       (message) =>
@@ -57,6 +59,7 @@ function renderProposal(proposal: ShownProposal): string {
   if (proposal.operation === 'retire') {
     return `- ${proposal.proposalID} (retires ${proposal.itemID}): ${text}`;
   }
+
   return proposal.targetVersion === null
     ? `- ${proposal.proposalID}: ${text}`
     : `- ${proposal.proposalID} (revises ${proposal.itemID}): ${text}`;

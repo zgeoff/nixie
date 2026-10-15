@@ -8,6 +8,7 @@ import { writeOwnerMessages } from './write-owner-messages';
 // a test server and a scripted model whose requests the removal waits on
 async function setupTest() {
   const server = await startTestServer();
+
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());

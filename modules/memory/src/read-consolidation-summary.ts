@@ -17,9 +17,12 @@ export async function readConsolidationSummary(
   if (run.summary === null || run.summary_shares === null || (run.summary_lapse_at ?? 0) <= now) {
     return null;
   }
+
   const shares = summaryShares.parse(JSON.parse(run.summary_shares));
   const itemIDs = shares.map((share) => share.itemID);
+
   const found = await findRecordKeys(parts.context.log, itemIDs);
+
   const keys = new Map(
     [...found].flatMap(([itemID, key]) => (key === null ? [] : [[itemID, key] as const])),
   );
@@ -27,6 +30,7 @@ export async function readConsolidationSummary(
   if (itemIDs.some((itemID) => !keys.has(itemID))) {
     return null;
   }
+
   const sealed = { sealed: run.summary, shares };
 
   return { text: await decodeConsolidationSummary(run.diff_id, sealed, keys), itemIDs };

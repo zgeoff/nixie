@@ -11,6 +11,7 @@ async function setupTest() {
   onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
 
   const state = buildStartState({ isReady: true, reason: null });
+
   const checks = buildReadinessChecks(
     state,
     { checkRuntime: () => Promise.resolve({ isReady: true, reason: null }) },
@@ -22,7 +23,6 @@ async function setupTest() {
 
 test('it reports the conversation imp unready before it starts', async () => {
   const ctx = await setupTest();
-
   const report = await ctx.checks.conversation_imp();
 
   expect(report).toStrictEqual({

@@ -30,9 +30,11 @@ test('it opens a first session with the pinned memory and the status, in that or
       (match) => match.groups?.['type'],
     ),
   ).toStrictEqual(['pinned-memory', 'status']);
+
   expect(opening.blocks.at(1)).toInclude(
     '- Start: a new session. Earlier history is in the event log.\n- Model: claude-test-1\n',
   );
+
   expect(opening.record).toStrictEqual({
     kind: 'first',
     reason: null,
@@ -79,12 +81,15 @@ test('it opens a rebuild with no summary with the pinned memory, the status and 
       (match) => match.groups?.['type'],
     ),
   ).toStrictEqual(['pinned-memory', 'status', 'recent-turns']);
+
   expect(opening.blocks.at(1)).toInclude(
     '- Start: a rebuild, because the earlier session was lost. Earlier history is in the event log.\n',
   );
+
   expect(opening.blocks.at(2)).toMatch(
     /\] owner: Did the parcel come\?\n\[[^\]]+\] nixie: It came at noon\.\n<\/system-message/u,
   );
+
   expect(opening.record).toMatchObject({
     kind: 'rebuild',
     reason: 'lost',
@@ -118,6 +123,7 @@ test('it opens a rebuild after a forget erased the summary with the status that 
     where kind = 'model.session_summarized'`.execute(ctx.tasks.writer.db);
 
   invariant(keys.rows[0]);
+
   await removeRecordKey(ctx.tasks.context.log, keys.rows[0].key_id);
 
   const opening = await readSessionOpening(ctx.tasks.context, {
@@ -136,9 +142,11 @@ test('it opens a rebuild after a forget erased the summary with the status that 
       (match) => match.groups?.['type'],
     ),
   ).toStrictEqual(['pinned-memory', 'status', 'recent-turns']);
+
   expect(opening.blocks.at(1)).toInclude(
     '- Start: a rebuild after a forget. The forget erased the summary of earlier sessions, so the gap is deliberate. Earlier history is in the event log.\n',
   );
+
   expect(opening.blocks.at(2)).toInclude('] owner: Did the parcel come?\n</system-message');
   expect(opening.record).toMatchObject({ summarySequence: null, recentRecords: 1 });
 });
@@ -184,6 +192,7 @@ test('it opens with the newest readable summary in its slot and only the turns a
       (match) => match.groups?.['type'],
     ),
   ).toStrictEqual(['pinned-memory', 'status', 'summary', 'recent-turns']);
+
   expect(opening.blocks.at(2)).toInclude('\nThey asked after a parcel.\n');
   expect(opening.blocks.at(3)).toInclude('] owner: It came.');
   expect(opening.blocks.at(3)).not.toInclude('parcel');
@@ -217,6 +226,7 @@ test('it carries the note again over the span from the oldest recent turn throug
   const readTurnNote = mock(() =>
     Promise.resolve({ text: 'REPLAYED NOTE', throughSequence: 3, eventCount: 1 }),
   );
+
   const opening = await readSessionOpening(ctx.tasks.context, {
     taskID: 'conversation',
     start: { kind: 'rebuild', reason: 'lost', lostSessionID: null },

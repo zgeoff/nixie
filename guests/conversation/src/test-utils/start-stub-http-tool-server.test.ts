@@ -41,6 +41,7 @@ test('it resets each connection while it drops connections, and counts each rese
   expect(fetch(ctx.tools.config.url, { method: 'POST', body: '{}' })).rejects.toMatchObject({
     code: 'ECONNRESET',
   });
+
   expect(ctx.tools.resets()).toBeGreaterThanOrEqual(1);
 });
 
@@ -48,6 +49,7 @@ test('it relays connections again once the test accepts them', async () => {
   const ctx = await setupTest();
 
   ctx.tools.dropConnections();
+
   await ctx.tools.acceptConnections();
 
   const response = await fetch(ctx.tools.config.url, { method: 'GET' });

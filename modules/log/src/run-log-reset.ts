@@ -47,12 +47,14 @@ export async function runLogReset<Kept>(
 
   await removeSchemaCopies(log.writer.dataDir);
   await writeCompactFiles(log);
+
   return reset;
 }
 
 // the checkpoint moves every frame out of the key store's WAL, so no deleted key stays on disk
 async function removeRecordKeys(log: Log): Promise<void> {
   await log.writer.keys.$extendTables<KeyStoreTables>().deleteFrom('record_keys').execute();
+
   await writeKeyStoreCheckpoint(log, null);
 }
 
@@ -64,20 +66,25 @@ async function removeLogRows<Kept>(
   options: LogResetOptions<Kept>,
 ): Promise<LogReset> {
   const records = tx.$extendTables<LogTables>();
+
   const last = await records
     .selectFrom('records')
     .select((eb) => eb.fn.max('sequence').as('sequence'))
     .executeTakeFirst();
+
   const lastSequence = last?.sequence ?? 0;
+
   const kept = await options.readKept(tx);
 
   await removeTableRows(tx, [...logKeptTables, ...options.keptTables]);
+
   await records.deleteFrom('records').where('sequence', '<', lastSequence).execute();
 
   const reset = { resetAt: new Date(), lastSequence };
 
   await options.writeFirstRecords(tx, kept, reset);
   await records.deleteFrom('records').where('sequence', '=', lastSequence).execute();
+
   return reset;
 }
 
@@ -87,6 +94,7 @@ const logKeptTables = ['writer_epoch', 'schema_version', 'records'];
 // the copies the migration runner takes before a migration, finished or cut short
 async function removeSchemaCopies(dataDir: string): Promise<void> {
   const names = await readdir(dataDir);
+
   const copies = names.filter((name) => schemaCopyName.test(name));
 
   await Promise.all(copies.map((name) => rm(join(dataDir, name), { force: true })));
@@ -100,5 +108,6 @@ async function writeCompactFiles(log: Log): Promise<void> {
   await sql`vacuum`.execute(log.writer.db);
   await sql`pragma wal_checkpoint(truncate)`.execute(log.writer.db);
   await sql`vacuum`.execute(log.writer.keys);
+
   await writeKeyStoreCheckpoint(log, null);
 }

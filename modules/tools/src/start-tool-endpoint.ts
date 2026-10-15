@@ -21,7 +21,9 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
   await mkdir(options.socketDir, { recursive: true, mode: 0o700 });
 
   const callOptions: ToolCallOptions = { ...options, queuedWaitMs: options.queuedWaitMs ?? 10_000 };
+
   const runs = new Map<string, RunEndpoint>();
+
   const getSocketPath = (runID: string) => join(options.socketDir, buildSocketName(runID));
 
   return {
@@ -29,6 +31,7 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
       if (runs.has(run.runID)) {
         throw new Error(`the run ${run.runID} already has a tool endpoint`);
       }
+
       const endpoint = await startRunEndpoint({
         run,
         socketPath: getSocketPath(run.runID),
@@ -39,6 +42,7 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
       });
 
       runs.set(run.runID, endpoint);
+
       return endpoint;
     },
 
@@ -74,6 +78,7 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
   const handlers = new Map<string, McpHandler>([
     [token, createMcpHandler(() => buildRunServer(spec.run, spec.options))],
   ]);
+
   const server = Bun.serve({
     unix: spec.socketPath,
     fetch: makeRunFetch((authorization) =>
@@ -95,14 +100,18 @@ async function startRunEndpoint(spec: RunEndpointSpec): Promise<RunEndpoint> {
       if (state.isRevoked) {
         return;
       }
+
       state.isRevoked = true;
+
       spec.onStop();
 
       const stopped = [...handlers.values()];
 
       handlers.clear();
+
       await Promise.all(stopped.map((handler) => handler.close()));
       await server.stop(true);
+
       await rm(spec.socketPath, { force: true });
     },
   };
@@ -124,6 +133,7 @@ function makeStepStarter(
     const handler = createMcpHandler(() => buildRunServer(stepRun, spec.options));
 
     handlers.set(token, handler);
+
     return {
       token,
       stop: async () => {
@@ -145,6 +155,7 @@ function findTokenHandler(
       return handler;
     }
   }
+
   return null;
 }
 
@@ -162,9 +173,11 @@ function makeRunFetch(findHandler: FindHandler): (request: Request) => Promise<R
         new Response('unauthorized', { status: 401, headers: { 'www-authenticate': 'Bearer' } }),
       );
     }
+
     if (new URL(request.url).pathname !== '/mcp') {
       return Promise.resolve(new Response('not found', { status: 404 }));
     }
+
     return handler.fetch(request);
   };
 }

@@ -22,15 +22,18 @@ export function buildRouteRegistry(options: RouteOptions): RouteRegistry {
   // the next open listens again
   const removeWhenEnded = async (id: string, opening: Promise<ImpForward>): Promise<void> => {
     await waitForForwardEnd(opening);
+
     if (forwards.get(id) === opening) {
       forwards.delete(id);
     }
   };
+
   const startForward = (id: string, spec: SandboxSpec): Promise<ImpForward> => {
     const opening = startReverseForward(options, id, spec);
 
     forwards.set(id, opening);
     void removeWhenEnded(id, opening);
+
     return opening;
   };
 
@@ -44,6 +47,7 @@ export function buildRouteRegistry(options: RouteOptions): RouteRegistry {
       const opening = forwards.get(id);
 
       forwards.delete(id);
+
       await stopForward(opening);
     },
   };
@@ -62,6 +66,7 @@ async function startReverseForward(
 
   try {
     await forward.listening;
+
     return forward;
   } catch (error) {
     forward.stop();

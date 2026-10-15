@@ -9,6 +9,7 @@ import { writeStepCommit } from './write-step-commit';
 
 async function setupTest() {
   const tasks = await startTestTasks();
+
   const db = tasks.writer.db.$extendTables<TasksTables>();
 
   return { ...tasks, db };
@@ -16,7 +17,9 @@ async function setupTest() {
 
 test('it runs 3 steps at once by default', async () => {
   const ctx = await setupTest();
+
   const held = Promise.withResolvers<void>();
+
   const running = new Set<string>();
 
   await Promise.all(['a', 'b', 'c', 'd'].map((brief) => createTask(ctx.context, brief)));
@@ -24,7 +27,9 @@ test('it runs 3 steps at once by default', async () => {
   const runners = startTaskRunners(ctx.context, {
     runStep: async (input): Promise<StepResult> => {
       running.add(input.taskID);
+
       await held.promise;
+
       return { next: 'done', records: [], acknowledged: [] };
     },
     onStepErrored: () => {},
@@ -33,6 +38,7 @@ test('it runs 3 steps at once by default', async () => {
 
   onTestFinished(async () => {
     held.resolve();
+
     await runners.stop(0);
   });
 
@@ -52,6 +58,7 @@ test('it runs 3 steps at once by default', async () => {
 test('it runs a claimed step and commits its result', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'tidy the inbox');
+
   const runners = startTaskRunners(ctx.context, {
     runStep: () => Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
     onStepErrored: () => {},
@@ -69,14 +76,19 @@ test('it runs a claimed step and commits its result', async () => {
 
     return task.state === 'done';
   });
+
   expect(runners).toBeObject();
 });
 
 test('it reports a step that throws once its error record commits', async () => {
   const ctx = await setupTest();
+
   const failure = new Error('the model profile is unreachable');
+
   const onStepErrored = mock<(errored: StepErrored) => void>();
+
   const taskID = await createTask(ctx.context, 'tidy the inbox');
+
   const runners = startTaskRunners(ctx.context, {
     runStep: () => Promise.reject(failure),
     onStepErrored,
@@ -84,6 +96,7 @@ test('it reports a step that throws once its error record commits', async () => 
   });
 
   onTestFinished(() => runners.stop(0));
+
   await waitForCondition(() => onStepErrored.mock.calls.length === 1);
 
   const errored = await ctx.db
@@ -93,6 +106,7 @@ test('it reports a step that throws once its error record commits', async () => 
     .execute();
 
   expect(errored).toHaveLength(1);
+
   expect(onStepErrored.mock.calls).toStrictEqual([
     [
       {
@@ -131,7 +145,9 @@ test('it fires a due timer on its next poll', async () => {
   });
 
   onTestFinished(() => runners.stop(0));
+
   await waitForCondition(() => ctx.clock.countSleepers() === 4);
+
   ctx.clock.advance(60_000);
 
   await waitForCondition(async () => {
@@ -139,5 +155,6 @@ test('it fires a due timer on its next poll', async () => {
 
     return timer.fired_at === 1_060_000;
   });
+
   expect(ctx.clock.now()).toBe(1_060_000);
 });

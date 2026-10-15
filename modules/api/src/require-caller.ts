@@ -13,5 +13,6 @@ export async function requireCaller(
   if (caller === null) {
     throw buildUnauthorized();
   }
+
   return caller;
 }

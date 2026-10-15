@@ -7,6 +7,7 @@ export function normalizeLineEndings(bytes: Uint8Array): Uint8Array {
   if (!bytes.includes(carriageReturn)) {
     return bytes;
   }
+
   const lf: number[] = [];
 
   for (const [index, byte] of bytes.entries()) {
@@ -14,5 +15,6 @@ export function normalizeLineEndings(bytes: Uint8Array): Uint8Array {
       lf.push(byte);
     }
   }
+
   return Uint8Array.from(lf);
 }

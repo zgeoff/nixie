@@ -10,7 +10,9 @@ export async function createDatabaseCopy(db: Kysely<unknown>, path: string): Pro
   const temporaryPath = `${path}.partial`;
 
   await rm(temporaryPath, { force: true });
+
   await sql`vacuum into ${temporaryPath}`.execute(db);
+
   await writePathToDisk(temporaryPath);
   await rename(temporaryPath, path);
   await writePathToDisk(dirname(path));

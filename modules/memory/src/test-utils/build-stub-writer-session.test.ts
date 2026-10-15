@@ -9,6 +9,7 @@ test('it stages the write into the open batch, bound to the version shown, and e
     sourceSequence: 7,
     itemID: 'item-1',
   });
+
   const batch = stub.staging.open({
     sources: new Map([[7, { sequence: 7, text: 'I moved to Oak Lane', spans: [] }]]),
     shown: new Map([['item-1', 2]]),
@@ -29,6 +30,7 @@ test('it stages the write into the open batch, bound to the version shown, and e
       target: { itemID: 'item-1', version: 2 },
     },
   ]);
+
   expect(usage).toStrictEqual({
     inputTokens: 100,
     outputTokens: 10,
@@ -45,11 +47,14 @@ test('it stages the write again in each later session, bound to the version that
     sourceSequence: 7,
     itemID: 'item-1',
   });
+
   const sources = new Map([[7, { sequence: 7, text: 'I moved to Oak Lane', spans: [] }]]);
   const signal = new AbortController().signal;
+
   const first = stub.staging.open({ sources, shown: new Map([['item-1', 2]]) });
 
   await stub.model.runSession({ systemPrompt: '', prompt: '', signal });
+
   first.close();
 
   const second = stub.staging.open({ sources, shown: new Map([['item-1', 3]]) });

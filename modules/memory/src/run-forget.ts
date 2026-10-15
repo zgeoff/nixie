@@ -21,6 +21,7 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
         operation: 'forget',
         states: ['active', 'retired'],
       });
+
       await writeRecordsInTransaction(tx, log, [
         {
           kind: 'memory.forget_started',
@@ -34,8 +35,10 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
         },
       ]);
     });
+
     await parts.index.remove(itemID);
   });
+
   await runForgetCleanup(parts, itemID);
 }
 
@@ -50,11 +53,13 @@ async function collectEvidenceSequences(
     .select(['evidence', 'intent_evidence'])
     .where('item_id', '=', itemID)
     .execute();
+
   const proposals = await db
     .selectFrom('memory_proposals')
     .select('evidence')
     .where('item_id', '=', itemID)
     .execute();
+
   const columns = [
     ...versions.flatMap((row) => [row.evidence, row.intent_evidence]),
     ...proposals.map((row) => row.evidence),

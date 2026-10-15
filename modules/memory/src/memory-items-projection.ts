@@ -16,7 +16,9 @@ export const memoryItemsProjection: Projection = {
     if (parsed === null) {
       return [];
     }
+
     await applyMemoryRecord(tx.$extendTables<MemoryTables>(), parsed, record);
+
     return [parsed.itemID];
   },
 };
@@ -43,8 +45,10 @@ async function applyMemoryRecord(
         short_id: parsed.shortID ?? buildShortIDFromUUID(parsed.itemID),
       })
       .execute();
+
     return;
   }
+
   await db
     .updateTable('memory_items')
     .set({ updated_sequence: record.sequence, ...buildItemUpdate(parsed, record.sequence) })
@@ -59,14 +63,17 @@ function buildItemUpdate(parsed: MemoryRecord, sequence: number) {
       ? { version: parsed.version, state: parsed.state, is_pinned: 0, pinned_sequence: null }
       : { version: parsed.version, state: parsed.state };
   }
+
   if (parsed.kind === 'memory.pinned') {
     return {
       is_pinned: parsed.isPinned ? 1 : 0,
       pinned_sequence: parsed.isPinned ? sequence : null,
     };
   }
+
   if (parsed.kind === 'memory.forget_started') {
     return { state: 'forgetting' as const, is_pinned: 0, pinned_sequence: null };
   }
+
   return { state: 'forgotten' as const, forgotten_sequence: sequence };
 }

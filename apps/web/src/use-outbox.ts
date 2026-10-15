@@ -21,6 +21,7 @@ export function useOutbox() {
   const sendEntry = useCallback(
     (message: OutboxMessage): Promise<void> => {
       setEntries((current) => buildEntriesWithStatus(current, message, 'sending'));
+
       const previous = queue.current;
 
       queue.current = (async () => {

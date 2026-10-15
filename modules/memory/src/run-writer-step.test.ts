@@ -12,10 +12,12 @@ import { writerConfigSchema } from './writer-config-schema';
 // that starts the writer, claims its task and runs one step once the test has written its messages.
 async function setupTest() {
   const memory = await startTestMemory();
+
   const log = { ...memory.log, projections: [...memory.log.projections, ...tasksProjections] };
   const clock = buildTestClock(1_000_000);
   const context = { log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
   const session = makeGatedCall(() => Promise.reject(new Error('the provider refused the call')));
+
   const writer = {
     context,
     store: memory.store,
@@ -44,6 +46,7 @@ async function setupTest() {
       const claim = await claimTask(context, { holder: 'runner-a', leaseMs: 3_600_000 });
 
       invariant(claim);
+
       return started.runStep({
         taskID: claim.lease.workID,
         stepKey: claim.stepKey,
@@ -71,6 +74,7 @@ test('it counts the backoff from the failure, not from the start of a slow batch
   const step = ctx.runStep();
 
   await ctx.session.started;
+
   ctx.clock.advance(600_000);
   ctx.session.release();
 

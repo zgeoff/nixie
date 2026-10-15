@@ -11,8 +11,8 @@ function setupTest() {
 
 test('it finds a session live while it is neither revoked nor lapsed', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
+
   const live = await withWriteTransaction(ctx.writer, (tx) =>
     isLiveIdentity(tx, ctx.context, session.sessionID),
   );
@@ -22,7 +22,6 @@ test('it finds a session live while it is neither revoked nor lapsed', async () 
 
 test('it finds a revoked session not live', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
 
   await ctx.writer.db
@@ -40,7 +39,6 @@ test('it finds a revoked session not live', async () => {
 
 test('it finds a lapsed session not live', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
 
   ctx.clock.advance(30 * 24 * 60 * 60 * 1000 + 1);

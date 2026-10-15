@@ -13,6 +13,7 @@ export const refusalsProjection: Projection = {
     if (refusal === null) {
       return [];
     }
+
     const refusalKey = `${refusal.channel}:${refusal.externalID}`;
 
     await tx
@@ -30,6 +31,7 @@ export const refusalsProjection: Projection = {
         })),
       )
       .execute();
+
     return [refusalKey];
   },
 };

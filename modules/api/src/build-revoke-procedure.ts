@@ -13,6 +13,7 @@ export function buildRevokeProcedure(context: APIContext) {
       options.context.sessionToken,
       options.errors.UNAUTHORIZED,
     );
+
     const result = await writeSessionRevocation(context, caller, options.input);
 
     if (result.status !== 'revoked') {
@@ -27,6 +28,7 @@ export function buildRevokeProcedure(context: APIContext) {
     if (options.input.sessionID === caller.identityID && options.context.tokenSource === 'cookie') {
       options.context.resHeaders?.append('set-cookie', renderSessionCookie(null));
     }
+
     return { revokedAt: new Date(result.revokedAt) };
   });
 }

@@ -30,9 +30,11 @@ export async function readApprovalRecords(
         if (key === 'sealed') {
           return '<sealed>';
         }
+
         if (key === 'shortID') {
           return '<short-id>';
         }
+
         return typeof value === 'string' ? (placeholders.get(value) ?? value) : value;
       });
 
@@ -47,6 +49,7 @@ async function readEveryRecord(
   afterSequence: number,
 ): Promise<readonly RecordWithChanges[]> {
   const page = await readRecords(log, { afterSequence });
+
   const last = page.at(-1);
 
   return last === undefined

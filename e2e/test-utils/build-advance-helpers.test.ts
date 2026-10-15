@@ -10,11 +10,13 @@ async function setupTest() {
 
 test('#advanceUntilRecord advances the clock until the record that a later advance brings shows', async () => {
   const ctx = await setupTest();
+
   const first = ctx.nixie.harness.start();
 
   await first.ready;
 
   const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
   const taskID = String(created);
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
@@ -23,6 +25,7 @@ test('#advanceUntilRecord advances the clock until the record that a later advan
     advanceWaitMs: 1000,
     lastAdvanceWaitMs: 10_000,
   });
+
   const fired = await helpers.advanceUntilRecord(
     1_800_000,
     3,
@@ -39,6 +42,7 @@ test('#advanceUntilRecord advances the clock until the record that a later advan
 
 test('#advanceUntilRecord throws after its last advance when no record matches', async () => {
   const ctx = await setupTest();
+
   const helpers = buildAdvanceHelpers(ctx.nixie.harness, () => Promise.resolve([]), {
     advanceWaitMs: 10,
     lastAdvanceWaitMs: 50,
@@ -54,11 +58,13 @@ test('#advanceUntilRecord throws after its last advance when no record matches',
 
 test('#advanceUntilArrival advances the clock until nixie arrives at the fault point', async () => {
   const ctx = await setupTest();
+
   const first = ctx.nixie.harness.start([{ point: 'timer.fire.before' }]);
 
   await first.ready;
 
   const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
   const taskID = String(created);
 
   await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
@@ -67,6 +73,7 @@ test('#advanceUntilArrival advances the clock until nixie arrives at the fault p
     advanceWaitMs: 1000,
     lastAdvanceWaitMs: 10_000,
   });
+
   const arrival = await helpers.advanceUntilArrival(first, 'timer.fire.before', {
     stepMs: 1_800_000,
     maxSteps: 3,
@@ -77,6 +84,7 @@ test('#advanceUntilArrival advances the clock until nixie arrives at the fault p
 
 test('#advanceUntilArrival throws after its last advance when nixie never arrives', async () => {
   const ctx = await setupTest();
+
   const first = ctx.nixie.harness.start([{ point: 'timer.fire.before' }]);
 
   await first.ready;

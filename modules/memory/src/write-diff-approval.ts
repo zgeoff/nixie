@@ -17,6 +17,7 @@ export async function writeDiffApproval(
 
     outcomes.push(outcome);
   }
+
   return outcomes;
 }
 
@@ -31,6 +32,7 @@ async function tryApproveChange(parts: StoreParts, answer: ChangeAnswer): Promis
     if (typeof code !== 'string' || !refusalCodes.has(code)) {
       throw error;
     }
+
     return { changeID: answer.changeID, status: 'refused', code };
   }
 }

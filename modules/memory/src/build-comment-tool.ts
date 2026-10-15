@@ -80,6 +80,7 @@ async function runCommentCall(
     ) {
       return { status: 'error', message: error.message };
     }
+
     throw error;
   }
 }

@@ -5,6 +5,7 @@ test('it stages the diff into the open run, bound to the versions shown, and end
   const stub = buildStubConsolidatorSession([
     { kind: 'retire', itemIDs: ['item-1'], reason: 'The trip ended in May.' },
   ]);
+
   const run = stub.staging.open(
     new Map([
       [
@@ -35,6 +36,7 @@ test('it stages the diff into the open run, bound to the versions shown, and end
       source: 'owner',
     },
   ]);
+
   expect(usage).toStrictEqual({
     inputTokens: 400,
     outputTokens: 60,
@@ -47,16 +49,20 @@ test('it stages the diff again in each later run, bound to the versions that run
   const stub = buildStubConsolidatorSession([
     { kind: 'retire', itemIDs: ['item-1'], reason: 'The trip ended in May.' },
   ]);
+
   const signal = new AbortController().signal;
+
   const item = {
     shortID: 'k3x9m2p7qa',
     text: 'Is in Lisbon until May',
     source: 'owner',
     isPinned: false,
   } as const;
+
   const first = stub.staging.open(new Map([['item-1', { ...item, version: 3 }]]), 30);
 
   await stub.model.runSession({ systemPrompt: '', prompt: '', signal });
+
   first.close();
 
   const second = stub.staging.open(new Map([['item-1', { ...item, version: 4 }]]), 30);
@@ -69,6 +75,7 @@ test('it stages the diff again in each later run, bound to the versions that run
 
 test('it stages the summary it is given beside an empty diff', async () => {
   const stub = buildStubConsolidatorSession([], 'Two items about tea conflict.');
+
   const item = {
     shortID: 'k3x9m2p7qa',
     version: 1,
@@ -76,6 +83,7 @@ test('it stages the summary it is given beside an empty diff', async () => {
     source: 'owner',
     isPinned: false,
   } as const;
+
   const run = stub.staging.open(new Map([['item-1', item]]), 30);
 
   await stub.model.runSession({

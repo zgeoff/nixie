@@ -36,6 +36,7 @@ async function setupTest() {
   // a run that a release before folded, which names no summary columns
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.consolidation_proposed', 'snapshot-a', '{}')`.execute(db);
+
   await sql`insert into memory_consolidations (diff_id, model, changes, shown_items, sequence,
     created_at) values ('diff-1', 'claude-test-1', 0, 2, 1, 1767225600000)`.execute(db);
 
@@ -50,6 +51,7 @@ test('it leaves an existing run with no summary, and a run a release before fold
   const ctx = await setupTest();
 
   await ctx.db.transaction().execute((tx) => memoryConsolidationSummaryMigration.up(tx));
+
   await sql`insert into memory_consolidations (diff_id, model, changes, shown_items, sequence,
     created_at) values ('diff-2', 'claude-test-1', 0, 2, 1, 1767225600000)`.execute(ctx.db);
 
@@ -66,6 +68,7 @@ test('it keeps a summary as it is when it runs again', async () => {
   const ctx = await setupTest();
 
   await ctx.db.transaction().execute((tx) => memoryConsolidationSummaryMigration.up(tx));
+
   await sql`update memory_consolidations set summary = 'c2VhbGVk', summary_shares = '[]',
     summary_lapse_at = 1767830400000`.execute(ctx.db);
 

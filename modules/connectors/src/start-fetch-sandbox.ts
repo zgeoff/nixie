@@ -56,8 +56,10 @@ export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
       const done = Promise.withResolvers<void>();
 
       state.queue = done.promise;
+
       try {
         await previous;
+
         return state.isStopped ? stoppedReply : await runFetch(options, state, url);
       } finally {
         done.resolve();
@@ -65,6 +67,7 @@ export function startFetchSandbox(options: FetchSandboxOptions): FetchSandbox {
     },
     stop: async () => {
       state.isStopped = true;
+
       await state.queue;
       await removeSandbox(options, state);
     },
@@ -88,9 +91,11 @@ async function runFetch(
   const reply = await tryRunFetcher(options, state, url);
 
   state.fetches += 1;
+
   if (reply.kind !== 'page' || state.fetches >= options.fetchesPerSandbox) {
     await removeSandbox(options, state);
   }
+
   return reply;
 }
 
@@ -118,6 +123,7 @@ async function createFetchSandbox(options: FetchSandboxOptions): Promise<Sandbox
   const leftovers = await options.adapter.list(fetchSandboxOwner);
 
   await Promise.all(leftovers.map((sandbox) => sandbox.destroy()));
+
   return options.adapter.create(
     buildSandboxSpec({
       kind: 'fetch',
@@ -151,6 +157,7 @@ async function removeSandbox(
 
   state.sandbox = null;
   state.fetches = 0;
+
   try {
     const created = await sandbox;
 
@@ -171,12 +178,14 @@ async function runFetcher(
   url: string,
 ): Promise<FetchReply> {
   const clock = options.clock ?? systemClock;
+
   const limit = {
     clock,
     deadline:
       clock.now() + options.limits.timeoutMs + (options.replyGraceMs ?? defaultReplyGraceMs),
     message: 'the fetcher passed its time limit',
   };
+
   const stream = await waitOrTimeOut(
     sandbox.spawn({
       argv: options.argv,
@@ -184,12 +193,14 @@ async function runFetcher(
     }),
     limit,
   );
+
   const request = { url, limits: options.limits, deniedRanges: options.deniedRanges };
 
   try {
     return await sendFetchRequest(stream, encodeFetchMessage(request), limit);
   } catch (error) {
     await stream.stop();
+
     throw error;
   }
 }
@@ -208,9 +219,11 @@ async function sendFetchRequest(
   if (exit.code !== 0) {
     throw new Error(`the fetcher exited with ${exit.code ?? exit.signal ?? 'no code'}`);
   }
+
   if (reply === null) {
     throw new Error('the fetcher closed its output with no reply');
   }
+
   return decodeFetchReply(reply);
 }
 
@@ -249,5 +262,6 @@ async function waitOrTimeOut<T>(promise: Promise<T>, limit: TimeLimit): Promise<
 // rejects with the limit's message once the clock reaches its deadline
 async function waitForDeadline(limit: TimeLimit, settled: AbortSignal): Promise<never> {
   await limit.clock.sleep(limit.deadline - limit.clock.now(), settled);
+
   throw new Error(limit.message);
 }

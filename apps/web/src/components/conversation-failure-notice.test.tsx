@@ -34,6 +34,7 @@ test('it shows the failure from the last step end when the page no longer holds 
       taskID: 'conversation',
     },
   });
+
   const started = buildMockLogRecord({
     kind: 'task.step_started',
     sequence: 11,

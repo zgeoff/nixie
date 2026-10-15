@@ -10,9 +10,11 @@ export function decodeFetchReply(bytes: Uint8Array): FetchReply {
   if (kind === 'refused' || kind === 'failed') {
     return { kind, reason: requireString(reply, 'reason') };
   }
+
   if (kind !== 'page') {
     throw new TypeError('a fetch reply needs a kind of page, refused or failed');
   }
+
   return {
     kind,
     url: requireString(reply, 'url'),
@@ -30,6 +32,7 @@ function requireStatus(reply: Readonly<Record<string, unknown>>): number {
   if (typeof status !== 'number' || !Number.isInteger(status) || status < 100 || status > 999) {
     throw new TypeError('a fetch reply needs a status, a whole number from 100 to 999');
   }
+
   return status;
 }
 
@@ -39,6 +42,7 @@ function requireBoolean(reply: Readonly<Record<string, unknown>>, name: string):
   if (typeof value !== 'boolean') {
     throw new TypeError(`a fetch reply needs ${name}, a boolean`);
   }
+
   return value;
 }
 
@@ -48,6 +52,7 @@ function requireString(reply: Readonly<Record<string, unknown>>, name: string): 
   if (typeof value !== 'string') {
     throw new TypeError(`a fetch reply needs ${name}, a string`);
   }
+
   return value;
 }
 
@@ -60,5 +65,6 @@ function requireStringOrNull(
   if (value !== null && typeof value !== 'string') {
     throw new TypeError(`a fetch reply needs ${name}, a string or null`);
   }
+
   return value;
 }

@@ -15,5 +15,6 @@ export function buildShortIDFromUUID(uuid: string): string {
     id += alphabet.charAt(Number(rest % 36n));
     rest /= 36n;
   }
+
   return id;
 }

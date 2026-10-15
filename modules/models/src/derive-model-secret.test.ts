@@ -36,7 +36,6 @@ test('it derives the same secret for the same profile and credential', () => {
 
 test('it gives a changed credential a new name', () => {
   const profile = buildMockModelProfile();
-
   const first = deriveModelSecret({ profile, credential: 'key-one' });
   const rotated = deriveModelSecret({ profile, credential: 'key-two' });
 

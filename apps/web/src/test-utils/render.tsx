@@ -10,6 +10,7 @@ import { NixieClientContext } from '../nixie-client-context';
 // fresh query cache per call with no retries, so a refused call shows at once.
 export function render(ui: ReactNode): RenderResult {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
   const client = buildBrowserClient();
 
   return renderWithTestingLibrary(

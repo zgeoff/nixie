@@ -65,6 +65,7 @@ function buildRecallTool(
     execution: 'direct',
     run: async (call, context) => {
       const input = recallArguments.parse(call.input);
+
       const result = await store.recall({
         query: input.query,
         limit: topItems,
@@ -80,6 +81,7 @@ function buildRecallTool(
           isPinned: item.isPinned,
         });
       }
+
       return {
         status: 'ok',
         result: { items: result.items.map((item) => toRecalledItemJSON(item)) },

@@ -31,18 +31,23 @@ export function startHarnessLink(
 ): HarnessLink {
   const clock = buildTestClock(Number(env[harnessEnv.clockMs] ?? '0'));
   const arms = parseArms(env[harnessEnv.faultPoints]);
+
   const operations = new Map<string, HarnessOperation>();
   const holds = new Map<number, () => void>();
+
   const arrivals = { next: 1 };
 
   operations.set('advance', (args) => runAdvance(clock, args));
   operations.set('arm', (args) => runArm(arms, args));
+
   channel.subscribe((message) => {
     if (message.type === 'release') {
       holds.get(message.arrivalID)?.();
       holds.delete(message.arrivalID);
+
       return;
     }
+
     void runRequest(channel, operations, message);
   });
 
@@ -54,14 +59,17 @@ export function startHarnessLink(
       if (arm === undefined) {
         return;
       }
+
       arm.held.remaining -= 1;
 
       const arrivalID = arrivals.next;
       const hold = Promise.withResolvers<void>();
 
       arrivals.next += 1;
+
       holds.set(arrivalID, hold.resolve);
       channel.send({ type: 'arrived', arrivalID, point, work });
+
       await hold.promise;
     },
     registerOperation: (name, operation) => {
@@ -78,6 +86,7 @@ const processChannel: HarnessChannel = {
     if (process.send === undefined) {
       throw new Error('nixie runs without the crash harness IPC channel');
     }
+
     process.send(message);
   },
   subscribe: (onMessage) => {
@@ -104,6 +113,7 @@ function parseArms(text: string | undefined): HeldArm[] {
 function runArm(arms: HeldArm[], args: unknown): null {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
   arms.push(buildHeldArm(args as FaultPointArm));
+
   return null;
 }
 
@@ -139,15 +149,18 @@ async function runAdvance(clock: TestClock, args: unknown): Promise<{ readonly s
   const before = clock.countSleepers();
 
   clock.advance(advance.ms);
+
   if (advance.settle !== true) {
     return { settled: false };
   }
+
   const deadline = Date.now() + (advance.settleTimeoutMs ?? defaultSettleTimeoutMs);
 
   while (clock.countSleepers() < before && Date.now() < deadline) {
     // oxlint-disable-next-line no-await-in-loop -- polls the woken sleepers on the real clock
     await Bun.sleep(5);
   }
+
   return { settled: clock.countSleepers() >= before };
 }
 
@@ -162,10 +175,12 @@ async function runRequest(
   // request waits a task, so the code a release let go, such as a graceful stop that starts its
   // grace sleep, runs to its next wait before an advance moves the clock.
   await setImmediate();
+
   try {
     if (operation === undefined) {
       throw new Error(`nixie has no harness operation ${request.operation}`);
     }
+
     const result: unknown = await operation(request.args);
 
     channel.send({ type: 'reply', requestID: request.requestID, result: result ?? null });

@@ -34,12 +34,14 @@ export function requirePinnedCoreRoom(
 ): void {
   const core = [...pinned.filter((item) => item.itemID !== pin.itemID), pin];
   const lines = { ownerName: context.gate.ownerName, defaultZone: 'UTC', now: new Date(0) };
+
   const tokens = core.reduce(
     (total, item) =>
       total +
       countTextTokens(renderMemoryItem({ ...item, recordedAt: widestDay }, lines).join('\n')),
     0,
   );
+
   const budget = context.pinnedCoreTokens ?? defaultPinnedCoreTokens;
 
   if (tokens > budget) {

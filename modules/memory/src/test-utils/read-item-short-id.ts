@@ -14,5 +14,6 @@ export async function readItemShortID(log: Pick<Log, 'writer'>, itemID: string):
   if (row.short_id === null) {
     throw new Error(`memory item ${itemID} holds no short ID`);
   }
+
   return row.short_id;
 }

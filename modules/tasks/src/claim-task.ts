@@ -16,6 +16,7 @@ export async function claimTask(
   options: ClaimTaskOptions,
 ): Promise<TaskClaim | null> {
   const started = { stepKey: '' };
+
   const lease = await claimLease(context, {
     kind: 'task',
     holder: options.holder,
@@ -56,14 +57,17 @@ async function writeStepStart(
   lease: Lease,
 ): Promise<string> {
   const taskID = lease.workID;
+
   const task = await tx
     .$extendTables<TasksTables>()
     .selectFrom('tasks')
     .select(['committed_steps', 'started_step_key'])
     .where('task_id', '=', taskID)
     .executeTakeFirstOrThrow();
+
   const stepKey = `${taskID}:${task.committed_steps + 1}`;
   const definitions = context.definitions();
+
   const interrupted =
     task.started_step_key === null
       ? []
@@ -85,5 +89,6 @@ async function writeStepStart(
       payload: { taskID, stepKey, generation: lease.generation },
     },
   ]);
+
   return stepKey;
 }

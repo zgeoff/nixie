@@ -8,7 +8,6 @@ function setupTest() {
 
 test('it claims the first step of a new task under a 60 s lease', async () => {
   const ctx = await setupTest();
-
   const step = await createTestStep(ctx.context);
 
   expect(step).toStrictEqual({

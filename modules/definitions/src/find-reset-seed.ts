@@ -23,12 +23,14 @@ export async function findResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
   if (inForce === null) {
     return null;
   }
+
   const snapshot = await db
     .$extendTables<DefinitionsTables>()
     .selectFrom('definition_snapshots')
     .select(['policy_hash', 'form', 'label', 'created_at'])
     .where('snapshot_hash', '=', inForce.snapshotHash)
     .executeTakeFirstOrThrow();
+
   const record = await db
     .$extendTables<SeedRecordTables>()
     .selectFrom('records')
@@ -38,6 +40,7 @@ export async function findResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
 
   // the seed row's foreign key holds its record in place
   invariant(record);
+
   return {
     inForce,
     policyHash: snapshot.policy_hash,

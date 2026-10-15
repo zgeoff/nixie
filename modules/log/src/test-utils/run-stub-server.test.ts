@@ -19,6 +19,7 @@ test('it prints the epoch of the writer it started', async () => {
 
   onTestFinished(async () => {
     server.kill('SIGKILL');
+
     await server.exited;
   });
 
@@ -34,6 +35,7 @@ test('it keeps holding the writer lock after it prints the epoch', async () => {
 
   onTestFinished(async () => {
     server.kill('SIGKILL');
+
     await server.exited;
   });
 
@@ -62,10 +64,12 @@ test('it exits non-zero with the start error on stderr when the writer fails to 
 
   onTestFinished(async () => {
     server.kill('SIGKILL');
+
     await server.exited;
   });
 
   const exitCode = await server.exited;
+
   const stderr = await new Response(server.stderr).text();
 
   expect(exitCode).not.toBe(0);
@@ -79,10 +83,12 @@ test('it exits non-zero with its usage on stderr when no data directory is given
 
   onTestFinished(async () => {
     server.kill('SIGKILL');
+
     await server.exited;
   });
 
   const exitCode = await server.exited;
+
   const stderr = await new Response(server.stderr).text();
 
   expect(exitCode).not.toBe(0);

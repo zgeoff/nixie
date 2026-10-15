@@ -8,10 +8,12 @@ async function setupTest() {
 
 test('it shows every active item while their text fits the list budget', async () => {
   const ctx = await setupTest();
+
   const street = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const bees = await ctx.memory.store.remember({
     text: 'Keeps bees on the roof',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -25,6 +27,7 @@ test('it shows every active item while their text fits the list budget', async (
   });
 
   expect(shown.isComplete).toBeTrue();
+
   expect(shown.items).toIncludeSameMembers([
     { itemID: street.itemID, version: 1, text: 'Lives on Elm Street' },
     { itemID: bees.itemID, version: 1, text: 'Keeps bees on the roof' },
@@ -33,6 +36,7 @@ test('it shows every active item while their text fits the list budget', async (
 
 test('it shows the top items by keyword over your messages once the list passes its budget', async () => {
   const ctx = await setupTest();
+
   const street = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

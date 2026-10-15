@@ -23,9 +23,11 @@ function formatStatus(step: StepActivity): readonly string[] {
   if (step.status === 'done') {
     return [];
   }
+
   if (step.status !== 'failed' || step.error === undefined) {
     return [step.status];
   }
+
   const error = step.error.length > errorLimit ? `${step.error.slice(0, errorLimit)}…` : step.error;
 
   return [`failed: ${error}`];

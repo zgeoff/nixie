@@ -20,6 +20,7 @@ test('it writes a message of yours with its text and spans in the erasable field
       { start: 7, end: 22, source: 'pasted' },
     ],
   });
+
   const [entry] = await readRecords(ctx.memory.log, { afterSequence: sequence - 1, limit: 1 });
 
   expect(entry?.record).toMatchObject({

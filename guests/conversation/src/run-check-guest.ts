@@ -19,6 +19,7 @@ export interface CheckIO extends CheckDependencies {
 // reply frame. A failure becomes a failed reply, so the host always learns how the check ended.
 export async function runCheckGuest(io: CheckIO): Promise<void> {
   const reply = await readReply(io);
+
   const bytes = new TextEncoder().encode(JSON.stringify(reply));
 
   await io.write(encodeFrame(bytes));
@@ -44,5 +45,6 @@ async function readRequest(input: CheckIO['input']): Promise<CheckRequest> {
       return decodeTurnFrame(checkRequestSchema, message);
     }
   }
+
   throw new Error('the host sent no check request');
 }

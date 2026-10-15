@@ -97,6 +97,7 @@ function toRecordedRating(rating: JSONValue): readonly JSONObject[] {
   if (!isJSONObject(rating)) {
     return [];
   }
+
   const item = rating['item'];
   const verdict = rating['verdict'];
 
@@ -141,6 +142,7 @@ async function runRateCall(
     if (error instanceof MemoryRatingError) {
       return { status: 'error', message: error.message };
     }
+
     throw error;
   }
 }

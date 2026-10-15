@@ -7,6 +7,7 @@ import { startTestMemory } from './test-utils/start-test-memory';
 
 test('it gives each change the short ID its UUID gives', async () => {
   const memory = await startTestMemory();
+
   const [trip, stale] = await Promise.all([
     createMemoryItem(memory.store, { text: 'Is in Lisbon until May' }),
     createMemoryItem(memory.store, { text: 'Has a dentist appointment' }),
@@ -18,9 +19,11 @@ test('it gives each change the short ID its UUID gives', async () => {
       { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },
     ],
   });
+
   const [first, second] = diff.changes;
 
   invariant(first && second);
+
   expect(first.shortID).toBe(buildShortIDFromUUID(first.changeID));
   expect(second.shortID).toBe(buildShortIDFromUUID(second.changeID));
 });

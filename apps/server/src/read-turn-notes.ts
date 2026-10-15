@@ -34,15 +34,22 @@ export async function readTurnNotes(
   span?: TurnNoteRange,
 ): Promise<TurnNote> {
   const range = await readNoteRange(options.log, span);
+
   const isReplay = span !== undefined;
+
   const messageZone = await findMessageTimeZone(options.log);
+
   const timeZone = messageZone ?? options.defaultZone;
+
   const [memory, events] = await Promise.all([
     readMemoryChangeNote(options.log, options.store, { cap: memoryNoteCap, range, isReplay }),
     readEventsBlock(options.events, range, { ownerName: options.ownerName, timeZone, isReplay }),
   ]);
+
   const now = new Date(options.clock.now());
+
   const at = formatMessageTime(now, timeZone, { defaultZone: options.defaultZone, now });
+
   const blocks = [
     renderNoteMessage('memory-changes', at, memory.text),
     renderNoteMessage('events', at, events.text),

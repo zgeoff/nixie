@@ -38,6 +38,7 @@ export function writeStartRecord(
       .orderBy('sequence', 'desc')
       .limit(1)
       .executeTakeFirst();
+
     const payload: unknown = previous === undefined ? null : JSON.parse(previous.payload);
     const parsed = startPayload.safeParse(payload);
     const tools = [...new Set(given.tools)].toSorted();
@@ -70,6 +71,7 @@ const givenPayload = z.object({
   tools: z.array(z.string()),
   personaVersion: z.string().nullable(),
 });
+
 const startPayload = z.object({ version: z.string(), given: givenPayload.optional() });
 
 function buildStartChanges(previous: StartGiven, current: StartGiven): StartChanges {

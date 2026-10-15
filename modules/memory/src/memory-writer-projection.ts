@@ -17,7 +17,9 @@ export const memoryWriterProjection: Projection = {
     if (parsed === null) {
       return [];
     }
+
     await applyWriterRecord(tx.$extendTables<WriterTables>(), parsed, record);
+
     return [memoryWriterTaskID];
   },
 };
@@ -48,8 +50,10 @@ async function applyWriterRecord(
         updated_sequence: record.sequence,
       })
       .execute();
+
     return;
   }
+
   const row = await db
     .selectFrom('memory_writer')
     .select(['catch_up_applied', 'batches'])
@@ -76,6 +80,7 @@ function buildWriterUpdate(
   if (parsed.kind === 'memory.batch_planned') {
     return { pending_start: parsed.start, pending_end: parsed.end };
   }
+
   if (parsed.kind === 'memory.batch_published') {
     return {
       cursor: parsed.end,
@@ -92,6 +97,7 @@ function buildWriterUpdate(
       ...(parsed.catchUpEnded ? { caught_up_sequence: record.sequence } : {}),
     };
   }
+
   return {
     failures: parsed.failures,
     retry_at: parsed.retryAt,

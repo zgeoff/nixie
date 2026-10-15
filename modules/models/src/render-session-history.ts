@@ -11,6 +11,7 @@ export function renderSessionHistory(
   if (turns.length === 0) {
     return null;
   }
+
   return [
     'The most recent turns before this session, oldest first, word for word. Older turns are in the event log.',
     ...turns.map((turn) => renderHistoryLine(turn, times)),

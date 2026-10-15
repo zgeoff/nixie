@@ -10,6 +10,7 @@ async function setupTest() {
 
 test('it reads the row the writer start created', async () => {
   const ctx = await setupTest();
+
   const [started] = await writeRecords(ctx.memory.log, [
     {
       kind: 'memory.writer_started',
@@ -22,6 +23,7 @@ test('it reads the row the writer start created', async () => {
   const row = await readWriterRow(ctx.memory.log);
 
   invariant(started);
+
   expect(row).toStrictEqual({
     writer_id: 'memory-writer',
     cursor: 0,

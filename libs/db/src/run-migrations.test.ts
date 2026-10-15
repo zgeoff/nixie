@@ -72,6 +72,7 @@ test('it rolls back a failed migration together with its schema version', async 
           name: 'create tags, then fail',
           up: async (tx) => {
             await sql`create table tags (id text primary key)`.execute(tx);
+
             throw new Error('the migration failed');
           },
         },
@@ -84,6 +85,7 @@ test('it rolls back a failed migration together with its schema version', async 
   await run.catch(() => {});
 
   const stored = await sql`select version from schema_version`.execute(ctx.db);
+
   const tables =
     await sql`select name from sqlite_schema where type = 'table' order by name`.execute(ctx.db);
 
@@ -120,6 +122,7 @@ test('it rolls back a migration that writes the schema version itself', async ()
   await run.catch(() => {});
 
   const stored = await sql`select version from schema_version`.execute(ctx.db);
+
   const tables =
     await sql`select name from sqlite_schema where type = 'table' order by name`.execute(ctx.db);
 
@@ -127,6 +130,7 @@ test('it rolls back a migration that writes the schema version itself', async ()
     Error,
     'schema_version moved during migration create tags and set the version',
   );
+
   expect(stored.rows).toStrictEqual([{ version: 1 }]);
   expect(tables.rows).toStrictEqual([{ name: 'notes' }, { name: 'schema_version' }]);
 });
@@ -148,6 +152,7 @@ test('it copies the database with VACUUM INTO before the first migration of a re
     },
     copyDir: ctx.dir,
   });
+
   await sql`insert into notes (id) values ('n1')`.execute(ctx.db);
 
   const report = await runMigrations(ctx.db, {
@@ -201,6 +206,7 @@ test('it takes no copy of a database that holds no schema yet', async () => {
   });
 
   expect(report.copyPath).toBeNull();
+
   const names = await readdir(ctx.dir);
 
   expect(names.toSorted()).toStrictEqual(['nixie.db', 'nixie.db-shm', 'nixie.db-wal']);
@@ -226,6 +232,7 @@ test('it takes no copy when no migration is pending', async () => {
   const report = await runMigrations(ctx.db, { schema, copyDir: ctx.dir });
 
   expect(report).toStrictEqual({ from: 1, to: 1, copyPath: null });
+
   const names = await readdir(ctx.dir);
 
   expect(names.toSorted()).toStrictEqual(['nixie.db', 'nixie.db-shm', 'nixie.db-wal']);
@@ -236,9 +243,11 @@ test('it refuses a schema newer than the build reads, and names the copy to rest
 
   await sql`create table schema_version (id integer primary key, version integer not null,
     oldest_reader integer not null)`.execute(ctx.db);
+
   await sql`insert into schema_version (id, version, oldest_reader) values (1, 3, 3)`.execute(
     ctx.db,
   );
+
   await writeFile(join(ctx.dir, 'nixie-schema-1.db'), '');
   await writeFile(join(ctx.dir, 'nixie-schema-2.db'), '');
 
@@ -266,6 +275,7 @@ test('it tells a refused build to restore a backup when no older copy exists', a
 
   await sql`create table schema_version (id integer primary key, version integer not null,
     oldest_reader integer not null)`.execute(ctx.db);
+
   await sql`insert into schema_version (id, version, oldest_reader) values (1, 3, 3)`.execute(
     ctx.db,
   );
@@ -288,6 +298,7 @@ test('it opens a newer schema that the build can still read, and leaves it as it
 
   await sql`create table schema_version (id integer primary key, version integer not null,
     oldest_reader integer not null)`.execute(ctx.db);
+
   await sql`insert into schema_version (id, version, oldest_reader) values (1, 3, 2)`.execute(
     ctx.db,
   );
@@ -343,6 +354,7 @@ test('it keeps the child rows when a migration rebuilds their parent table', asy
     name: 'create tasks and steps',
     up: async (tx) => {
       await sql`create table tasks (id text primary key)`.execute(tx);
+
       await sql`create table steps (id text primary key,
         task_id text not null references tasks (id) on delete cascade)`.execute(tx);
     },
@@ -352,6 +364,7 @@ test('it keeps the child rows when a migration rebuilds their parent table', asy
     schema: { migrations: [createTables], oldestReader: 0 },
     copyDir: ctx.dir,
   });
+
   await sql`insert into tasks (id) values ('t1')`.execute(ctx.db);
   await sql`insert into steps (id, task_id) values ('s1', 't1')`.execute(ctx.db);
 
@@ -365,6 +378,7 @@ test('it keeps the child rows when a migration rebuilds their parent table', asy
             await sql`create table tasks_new (id text primary key, title text not null default '')`.execute(
               tx,
             );
+
             await sql`insert into tasks_new (id) select id from tasks`.execute(tx);
             await sql`drop table tasks`.execute(tx);
             await sql`alter table tasks_new rename to tasks`.execute(tx);
@@ -393,8 +407,10 @@ test('it fails a migration that leaves a foreign key violation', async () => {
           name: 'create a step without its task',
           up: async (tx) => {
             await sql`create table tasks (id text primary key)`.execute(tx);
+
             await sql`create table steps (id text primary key,
               task_id text not null references tasks (id))`.execute(tx);
+
             await sql`insert into steps (id, task_id) values ('s1', 'missing')`.execute(tx);
           },
         },
@@ -412,6 +428,7 @@ test('it fails a migration that leaves a foreign key violation', async () => {
     Error,
     'migration create a step without its task leaves 1 foreign key violations',
   );
+
   expect(stored.rows).toStrictEqual([{ version: 0 }]);
 });
 
@@ -422,6 +439,7 @@ test('it lets the build before read a database that a failed upgrade left betwee
   const two: Migration = { name: 'two', up: () => Promise.resolve() };
 
   await runMigrations(ctx.db, { schema: { migrations: [one], oldestReader: 0 }, copyDir: ctx.dir });
+
   await runMigrations(ctx.db, {
     schema: {
       migrations: [one, two, { name: 'three', up: () => Promise.reject(new Error('failed')) }],

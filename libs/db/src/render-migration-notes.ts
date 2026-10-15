@@ -21,9 +21,11 @@ export function renderMigrationNotes(
       '',
     ].join('\n');
   }
+
   if (check.added.length === 0) {
     return [...heading, `This release adds no migration since ${lastTag}.`, ''].join('\n');
   }
+
   const readable = check.readableByReleaseBefore ? 'yes' : 'no';
 
   return [

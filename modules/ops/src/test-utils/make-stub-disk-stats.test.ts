@@ -14,6 +14,7 @@ test('it answers the block counts it is given for any path', async () => {
 
 test('it answers in the fields that statfs reports the block counts in', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'nixie-ops-'));
+
   onTestFinished(() => rm(dir, { recursive: true, force: true }));
 
   const stats = await statfs(dir);

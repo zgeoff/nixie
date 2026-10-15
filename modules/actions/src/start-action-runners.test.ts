@@ -17,6 +17,7 @@ async function setupTest() {
 
 test('it retries a refusal that can clear on the schedule', async () => {
   const ctx = await setupTest();
+
   const attemptTimes: number[] = [];
 
   await createAllowedAction(ctx.context, {
@@ -33,6 +34,7 @@ test('it retries a refusal that can clear on the schedule', async () => {
         'test.send',
         buildStubConnector(() => {
           attemptTimes.push(ctx.clock.now());
+
           return Promise.resolve({ kind: 'refused_retryable', reason: 'rate limited' });
         }).connector,
       ],
@@ -50,6 +52,7 @@ test('it retries a refusal that can clear on the schedule', async () => {
 
       return action.attempt_count === index + 1 && action.attempt_open === 0;
     });
+
     ctx.clock.advance(delayMs);
   }
 
@@ -87,6 +90,7 @@ test('it fails a refusal that can clear on its fifth attempt', async () => {
 
       return action.attempt_count === index + 1 && action.attempt_open === 0;
     });
+
     ctx.clock.advance(delayMs);
   }
 
@@ -97,11 +101,13 @@ test('it fails a refusal that can clear on its fifth attempt', async () => {
 
 test('it runs 4 actions at once by default', async () => {
   const ctx = await setupTest();
+
   const unanswered = Promise.withResolvers<ProviderResponse>();
 
   onTestFinished(() => {
     unanswered.resolve({ kind: 'success', result: {} });
   });
+
   await Promise.all(
     ['sha256:1', 'sha256:2', 'sha256:3', 'sha256:4', 'sha256:5'].map((actionHash) =>
       createAllowedAction(ctx.context, {
@@ -115,6 +121,7 @@ test('it runs 4 actions at once by default', async () => {
   );
 
   const stub = buildStubConnector(() => unanswered.promise);
+
   const runners = startActionRunners(ctx.context, {
     connectors: new Map([['test.send', stub.connector]]),
     onError: () => {},

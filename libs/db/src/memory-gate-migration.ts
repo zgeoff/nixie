@@ -9,6 +9,7 @@ export const memoryGateMigration: Migration = {
   name: 'create the memory gate tables',
   up: async (tx) => {
     await sql`alter table memory_versions add column model text`.execute(tx);
+
     await createProposalTable(tx);
     await createNoticeEntryTable(tx);
     await createForgottenEvidenceTable(tx);
@@ -41,9 +42,11 @@ async function createProposalTable(tx: Transaction<unknown>): Promise<void> {
     lapse_at integer not null,
     resolved_sequence integer references records (sequence)
   ) strict`.execute(tx);
+
   await sql`create index memory_proposals_by_status on memory_proposals (status, lapse_at)`.execute(
     tx,
   );
+
   await sql`create index memory_proposals_by_cap_group on memory_proposals (cap_group)`.execute(tx);
 }
 
@@ -61,6 +64,7 @@ async function createNoticeEntryTable(tx: Transaction<unknown>): Promise<void> {
     sequence integer not null references records (sequence),
     recorded_at integer not null
   ) strict`.execute(tx);
+
   await sql`create index memory_notice_entries_by_thread on memory_notice_entries (
     thread, notice_key, sequence
   )`.execute(tx);
@@ -72,6 +76,7 @@ async function createForgottenEvidenceTable(tx: Transaction<unknown>): Promise<v
     record_sequence integer not null,
     item_id text not null
   ) strict`.execute(tx);
+
   await sql`create index memory_forgotten_evidence_by_record on memory_forgotten_evidence (
     record_sequence
   )`.execute(tx);

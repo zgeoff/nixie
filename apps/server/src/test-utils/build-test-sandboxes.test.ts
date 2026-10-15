@@ -24,14 +24,16 @@ test('it builds the process double', async () => {
 
 test('it lists every sandbox the owner held at the retire as retired, and a later one as kept', async () => {
   const ctx = await setupTest();
+
   const spec = buildMockSandboxSpec({ grants: [], toolRoute: false });
+
   const old = await ctx.sandboxes.create(spec);
   const retired = await ctx.retireSandboxes(spec.owner);
   const replacement = await ctx.sandboxes.create(spec);
-
   const listed = await ctx.sandboxes.list(spec.owner);
 
   expect(retired).toStrictEqual([old.id]);
+
   expect(listed.map((sandbox) => [sandbox.id, sandbox.isRetired])).toIncludeSameMembers([
     [old.id, true],
     [replacement.id, false],
@@ -51,7 +53,9 @@ test('it never retires a sandbox of another owner', async () => {
 
 test('it gets a retired sandbox as retired', async () => {
   const ctx = await setupTest();
+
   const spec = buildMockSandboxSpec({ grants: [], toolRoute: false });
+
   const sandbox = await ctx.sandboxes.create(spec);
 
   await ctx.retireSandboxes(spec.owner);

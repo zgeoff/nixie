@@ -13,7 +13,9 @@ export async function collectEvents<T>(
     if (next.done === true) {
       throw new Error(`the stream ended after ${events.length} of ${count} events`);
     }
+
     events.push(next.value);
   }
+
   return events;
 }

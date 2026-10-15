@@ -53,9 +53,12 @@ async function runTokenTurn(
   plan.signal.throwIfAborted();
 
   const [url, note] = await Promise.all([getToolURL(run, plan.signal), readTurnNote(run)]);
+
   const batch = input.inbox.slice(0, inboxBatchLimit);
+
   const sent = new Set(batch.map((record) => record.sequence));
   const live = new AbortController();
+
   const hasMore = input.inbox.length > batch.length;
 
   try {
@@ -103,6 +106,7 @@ async function getToolURL(run: ConversationRun, signal: AbortSignal): Promise<st
 
   // a conversation sandbox's spec always asks for a tool route, and every adapter gives one then
   invariant(route, 'the conversation sandbox has no tool route');
+
   return route.url;
 }
 
@@ -118,6 +122,7 @@ function buildTurnInput(
   if (first === undefined || preamble.length === 0) {
     return messages;
   }
+
   return [{ uuid: first.uuid, text: [...preamble, first.text].join('\n\n') }, ...rest];
 }
 

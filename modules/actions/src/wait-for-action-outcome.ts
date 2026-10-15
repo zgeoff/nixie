@@ -18,12 +18,14 @@ export async function waitForActionOutcome(
 ): Promise<ModelView> {
   const deadline = context.clock.now() + (options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   const db = context.log.writer.db.$extendTables<ActionsTables>();
+
   const readAction = () =>
     db
       .selectFrom('actions')
       .select(['action_id', 'status', 'reason', 'outcome_sequence'])
       .where('action_id', '=', actionID)
       .executeTakeFirstOrThrow();
+
   const action = { row: await readAction() };
 
   while (action.row.status === 'pending' && context.clock.now() < deadline) {
@@ -33,7 +35,9 @@ export async function waitForActionOutcome(
     // oxlint-disable-next-line no-await-in-loop -- each poll reads the row again
     action.row = await readAction();
   }
+
   const sequence = action.row.outcome_sequence;
+
   const [entry] =
     sequence === null
       ? []

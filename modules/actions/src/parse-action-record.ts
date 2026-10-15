@@ -34,12 +34,14 @@ export function parseActionRecord(record: EnvelopeRecord): ActionRecord | null {
   if (parse === undefined) {
     return null;
   }
+
   return parse((key) => {
     const value = record.payload[key];
 
     if (value === undefined) {
       throw new Error(`record ${record.sequence} of kind ${record.kind} lacks ${key}`);
     }
+
     return value;
   });
 }
@@ -94,6 +96,7 @@ function toString(value: JSONValue): string {
   if (typeof value !== 'string') {
     throw new TypeError(`expected a string, got ${JSON.stringify(value)}`);
   }
+
   return value;
 }
 
@@ -101,6 +104,7 @@ function toNumber(value: JSONValue): number {
   if (typeof value !== 'number') {
     throw new TypeError(`expected a number, got ${JSON.stringify(value)}`);
   }
+
   return value;
 }
 
@@ -111,6 +115,7 @@ function toSettledStatus(value: JSONValue): Exclude<ActionStatus, 'pending'> {
   if (settled === undefined) {
     throw new TypeError(`expected a settled action status, got ${status}`);
   }
+
   return settled;
 }
 
@@ -123,6 +128,7 @@ function toReason(value: JSONValue): OutcomeReason {
   if (known === undefined) {
     throw new TypeError(`expected an outcome reason, got ${reason}`);
   }
+
   return known;
 }
 

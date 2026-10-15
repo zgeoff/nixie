@@ -15,6 +15,7 @@ test('it gives each new action its own ID and holds the action under it', async 
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
   });
+
   const second = await stub.queue.enqueue({
     call: { callID: 'call-2', tool: 'test.send', input: { to: 'b' }, toolUseID: null },
     run: {
@@ -28,6 +29,7 @@ test('it gives each new action its own ID and holds the action under it', async 
   });
 
   expect(first).not.toBe(second);
+
   expect(stub.actions.map((entry) => [entry.actionID, entry.action.callSequence])).toStrictEqual([
     [first, 1],
     [second, 3],
@@ -48,6 +50,7 @@ test("it gives a repeat of an earlier action's tool and input that action's ID",
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
   });
+
   const repeat = await stub.queue.enqueue({
     call: { callID: 'call-2', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
@@ -78,6 +81,7 @@ test("it gives another task's call with the same tool and input its own ID", asy
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
   });
+
   const other = await stub.queue.enqueue({
     call: { callID: 'call-2', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
@@ -108,6 +112,7 @@ test('it answers a pending wait with the outcome written for its action', async 
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
   });
+
   const wait = stub.queue.waitForOutcome(actionID, 10_000);
 
   stub.writeOutcome(actionID, { outcome: 'done', result: { delivered: true } });
@@ -151,6 +156,7 @@ test('it ends a pending wait with null once the waits drain', async () => {
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
   });
+
   const wait = stub.queue.waitForOutcome(actionID, 10_000);
 
   stub.drainWaits();
@@ -174,6 +180,7 @@ test('it records each wait with the timeout it was given', async () => {
   });
 
   stub.writeOutcome(actionID, { outcome: 'done', result: {} });
+
   await stub.queue.waitForOutcome(actionID, 250);
 
   expect(stub.waits).toStrictEqual([{ actionID, timeoutMs: 250 }]);
@@ -202,6 +209,7 @@ test('it rejects a pending wait once stopped', async () => {
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
   });
+
   const wait = stub.queue.waitForOutcome(actionID, 10_000);
 
   stub.stop();

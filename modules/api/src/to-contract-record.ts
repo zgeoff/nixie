@@ -8,6 +8,7 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
   if (record.thread === null) {
     return null;
   }
+
   const message = messageKinds.has(record.kind) ? toMessage(record) : undefined;
   const task = record.kind.startsWith('task.') ? toTask(record) : undefined;
   const toolCall = toolKinds.has(record.kind) ? toToolCall(record) : undefined;
@@ -40,6 +41,7 @@ function toMessage(record: LogRecord): Message | undefined {
   if (record.erasable.status !== 'readable') {
     return undefined;
   }
+
   const text = record.erasable.fields['text'];
   const clientMessageId = record.payload['clientMessageId'];
 
@@ -66,6 +68,7 @@ function toTask(record: LogRecord): Task | undefined {
   const taskID = record.payload['taskID'];
   const payloadKey = record.payload['stepKey'];
   const stepKey = typeof payloadKey === 'string' ? payloadKey : record.stepKey;
+
   const error =
     record.kind === 'task.step_errored' && record.erasable.status === 'readable'
       ? record.erasable.fields['message']
@@ -112,6 +115,7 @@ function toToolCall(record: LogRecord): ToolCall | undefined {
   if (typeof callID !== 'string') {
     return undefined;
   }
+
   const fields = record.erasable.status === 'readable' ? record.erasable.fields : undefined;
   const input = record.kind === 'tool_called' ? fields?.['input'] : undefined;
   const content = record.kind === 'tool_result' ? fields : undefined;
@@ -126,6 +130,7 @@ function toToolCall(record: LogRecord): ToolCall | undefined {
 }
 
 type Recall = NonNullable<ContractRecord['recall']>;
+
 type RecallItem = Recall['items'][number];
 
 // A recall's record lists the versions it delivered, each with its match score when a query ranked
@@ -140,6 +145,7 @@ function toRecallItem(item: JSONValue): readonly RecallItem[] {
   if (!isJSONObject(item)) {
     return [];
   }
+
   const itemID = item['itemID'];
   const version = item['version'];
   const score = item['score'];
@@ -152,6 +158,7 @@ function toRecallItem(item: JSONValue): readonly RecallItem[] {
 }
 
 type Rating = NonNullable<ContractRecord['rating']>;
+
 type RatingItem = Rating['items'][number];
 
 // A rating's record names the recall it rates and each item's verdict, and holds each note sealed,
@@ -179,6 +186,7 @@ function toRatingItem(item: JSONValue): readonly RatingItem[] {
   if (!isJSONObject(item)) {
     return [];
   }
+
   const itemID = item['itemID'];
   const version = item['version'];
   const verdict = item['verdict'];

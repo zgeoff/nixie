@@ -13,7 +13,9 @@ export async function verifySessionToken(
   if (token === undefined || token === '') {
     return null;
   }
+
   const tokenHash = deriveSecretHash(token);
+
   const row = await findIdentityRow(context, tokenHash);
 
   if (row === undefined || !isLive(context, row)) {
@@ -21,8 +23,10 @@ export async function verifySessionToken(
       channel: row?.channel ?? 'client',
       externalID: row?.external_id ?? unknownTokenID,
     });
+
     return null;
   }
+
   const lastSeenAt = await updateLastSeen(context, row);
 
   return {
@@ -62,6 +66,7 @@ async function updateLastSeen(context: APIContext, row: IdentityRow): Promise<nu
   if (now - row.last_seen_at < context.settings.lastSeenIntervalMs) {
     return row.last_seen_at;
   }
+
   await withWriteTransaction(context.log.writer, (tx) =>
     tx
       .$extendTables<APITables>()
@@ -71,5 +76,6 @@ async function updateLastSeen(context: APIContext, row: IdentityRow): Promise<nu
       .where('last_seen_at', '<', now)
       .execute(),
   );
+
   return now;
 }

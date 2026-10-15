@@ -16,6 +16,7 @@ export function buildConversationProcedures(context: APIContext) {
       if (page === null) {
         throw options.errors.THREAD_NOT_FOUND();
       }
+
       return { ...page, records: [...page.records] };
     }),
 
@@ -25,17 +26,21 @@ export function buildConversationProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
       const result = await writeOwnerMessage(context, caller, options.input);
 
       if (result.status === 'thread_not_found') {
         throw options.errors.THREAD_NOT_FOUND();
       }
+
       if (result.status === 'reused') {
         throw options.errors.CLIENT_ACTION_ID_REUSED();
       }
+
       if (result.status === 'unauthorized') {
         throw options.errors.UNAUTHORIZED();
       }
+
       return { duplicate: result.duplicate, sequence: result.sequence };
     }),
   };

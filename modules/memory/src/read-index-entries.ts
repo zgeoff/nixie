@@ -17,10 +17,12 @@ export async function readIndexEntries(context: MemoryContext): Promise<readonly
     .select(['memory_items.item_id', 'memory_items.version', 'memory_versions.sealed'])
     .where('memory_items.state', '=', 'active')
     .execute();
+
   const keys = await findRecordKeys(
     context.log,
     rows.map((row) => row.item_id),
   );
+
   const entries = await Promise.all(
     rows.map(async (row) => {
       const key = keys.get(row.item_id);
@@ -28,6 +30,7 @@ export async function readIndexEntries(context: MemoryContext): Promise<readonly
       if (key === undefined || key === null) {
         return null;
       }
+
       try {
         const text = await decodeVersionText(
           key,

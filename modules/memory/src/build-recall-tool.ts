@@ -112,6 +112,7 @@ export function buildRecallTool(
     run: async (call, context) => {
       const request = await readRecallRequest(memory, call.input, context.run.thread);
       const result = await memory.recall(request);
+
       const lines = {
         ownerName: options.ownerName,
         defaultZone: options.defaultZone,
@@ -139,6 +140,7 @@ async function readRecallRequest(
   thread: string,
 ): Promise<RecallRequest> {
   const input = recallArguments.parse(callInput);
+
   const itemIDs =
     input.itemIDs === undefined ? undefined : await readItemIDs(memory, input.itemIDs);
 
@@ -171,6 +173,7 @@ function toPastVersionJSON(
   lines: MemoryLineOptions,
 ): JSONObject {
   const after = item.history?.find((later) => later.version === version.version + 1);
+
   const next =
     after === undefined
       ? null

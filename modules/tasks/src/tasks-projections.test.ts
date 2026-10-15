@@ -21,6 +21,7 @@ test('it rebuilds the tasks table equal to the live one after a commit and a mes
   const claim = await createTestClaim(ctx.context, 'check back in a minute');
 
   await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [] });
+
   await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',
@@ -70,7 +71,9 @@ test('it rebuilds the timers table equal to the live one after a timer fires', a
     acknowledged: [],
     timers: [{ dueAt: 1_060_000 }],
   });
+
   ctx.clock.advance(60_000);
+
   await runDueTimers(ctx.context);
 
   const live = await ctx.db.selectFrom('timers').selectAll().execute();

@@ -45,6 +45,7 @@ export interface StubModel {
 export function startStubModel(): StubModel {
   const requests: StubModelRequest[] = [];
   const script: ScriptedReply[] = [];
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -52,6 +53,7 @@ export function startStubModel(): StubModel {
       const recorded = await readRequest(request);
 
       requests.push(recorded);
+
       return renderResponse(recorded, script);
     },
   });
@@ -86,9 +88,11 @@ function renderResponse(request: StubModelRequest, script: ScriptedReply[]): Res
   if (request.path === '/v1/messages/count_tokens') {
     return Response.json({ input_tokens: 10 });
   }
+
   if (request.path !== '/v1/messages' || request.body === null) {
     return new Response('not found', { status: 404 });
   }
+
   const reply = script.shift();
 
   if (reply === undefined) {
@@ -100,6 +104,7 @@ function renderResponse(request: StubModelRequest, script: ScriptedReply[]): Res
       { status: 400 },
     );
   }
+
   const model = request.body.model ?? 'stub';
 
   return request.body.stream === true ? renderStream(reply, model) : renderWhole(reply, model);
@@ -136,6 +141,7 @@ function buildUsage(reply: ScriptedReply, outputTokens: number): Record<string, 
 function renderStream(reply: ScriptedReply, model: string): Response {
   const block = buildBlock(reply);
   const isTool = 'toolUse' in reply;
+
   const events = [
     {
       type: 'message_start',
@@ -186,5 +192,6 @@ function buildBlock(reply: ScriptedReply): Readonly<Record<string, unknown>> {
       input: reply.toolUse.input,
     };
   }
+
   return { type: 'text', text: reply.text };
 }

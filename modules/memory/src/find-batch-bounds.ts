@@ -17,11 +17,13 @@ export async function findBatchBounds(
   if (row.pending_start !== null && row.pending_end !== null) {
     return { start: row.pending_start, end: row.pending_end };
   }
+
   const backlog = await readWriterBacklog(parts.context.log, {
     after: row.cursor,
     ownerLimit: parts.config.batchMessages,
     through: null,
   });
+
   const plan = planWriterBatch({
     cursor: row.cursor,
     startSequence: row.start_sequence,
@@ -39,6 +41,8 @@ export async function findBatchBounds(
   if (plan.kind === 'wait') {
     return { wakeAt: plan.wakeAt };
   }
+
   await writeBatchPlan(parts, { ...state, bounds: plan.bounds, mode: plan.mode });
+
   return plan.bounds;
 }

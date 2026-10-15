@@ -9,8 +9,11 @@ import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
+
   const memory = await startTestMemory({ gate: { clock } });
+
   const log = { ...memory.log, projections: [...memory.log.projections, ...tasksProjections] };
+
   const parts = {
     context: { log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) },
     store: memory.store,

@@ -27,6 +27,7 @@ export async function sendClientMessage(
     text: message.text,
     thread: 'conversation',
   });
+
   await waitForCondition(
     async () => {
       const read = await client.conversation.read({ thread: 'conversation' });
@@ -42,5 +43,6 @@ export async function sendClientMessage(
     },
     { timeoutMs: 30_000 },
   );
+
   return page.records;
 }

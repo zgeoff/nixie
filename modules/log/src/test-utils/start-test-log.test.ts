@@ -7,8 +7,8 @@ import { startTestLog } from './start-test-log';
 
 test('it starts a writer on a fresh data directory with the log projections', async () => {
   const started = await startTestLog();
-
   const names = await readdir(started.dataDir);
+
   const tables = await sql<{ name: string }>`select name from sqlite_schema
     where type = 'table' and name = 'records'`.execute(started.writer.db);
 

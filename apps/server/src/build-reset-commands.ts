@@ -22,12 +22,16 @@ async function runReset(flags: CLIFlags, io: CLIIO): Promise<number> {
     io.print(
       `nixie reset runs only with --keep-sessions, which keeps every device that is signed in now signed in.\n${resetWarning}`,
     );
+
     return 2;
   }
+
   if (!flags.yes) {
     io.print(`${resetWarning}\nRun nixie reset --keep-sessions --yes to reset.`);
+
     return 2;
   }
+
   const socketPath = await resolveSocketPath(flags.config);
   const reset = await sendResetRequest(socketPath);
 
@@ -38,5 +42,6 @@ async function runReset(flags: CLIFlags, io: CLIIO): Promise<number> {
       backupNote,
     ].join('\n'),
   );
+
   return 0;
 }

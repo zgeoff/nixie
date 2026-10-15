@@ -13,6 +13,7 @@ function renderCanonicalJSON(value: JSONValue): string {
   if (isJSONArray(value)) {
     return `[${value.map((item) => renderCanonicalJSON(item)).join(',')}]`;
   }
+
   if (typeof value === 'object' && value !== null) {
     const entries = Object.entries(value)
       .toSorted(([a], [b]) => (a < b ? -1 : 1))
@@ -20,6 +21,7 @@ function renderCanonicalJSON(value: JSONValue): string {
 
     return `{${entries.join(',')}}`;
   }
+
   return JSON.stringify(value);
 }
 

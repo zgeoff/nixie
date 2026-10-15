@@ -43,7 +43,6 @@ test('it grants the lock again once the holder releases it', async () => {
 
 test('it locks only its own data directory', async () => {
   const ctx = await setupTest();
-
   const other = await mkdtemp(join(tmpdir(), 'nixie-lock-other-'));
 
   onTestFinished(() => rm(other, { recursive: true, force: true }));
@@ -71,6 +70,7 @@ test('it ignores a second release, which leaves a later holder its lock', async 
   onTestFinished(() => {
     first.release();
   });
+
   first.release();
 
   const second = claimWriterLock(ctx.dataDir);
@@ -78,6 +78,7 @@ test('it ignores a second release, which leaves a later holder its lock', async 
   onTestFinished(() => {
     second.release();
   });
+
   first.release();
 
   expect(() => claimWriterLock(ctx.dataDir)).toThrowWithMessage(

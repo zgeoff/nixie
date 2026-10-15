@@ -22,6 +22,7 @@ export async function readWriterBatch(
     ownerLimit: Number.POSITIVE_INFINITY,
     through: bounds.end,
   });
+
   const sources = new Map<number, SourceMessage>(
     entries.flatMap((entry) =>
       entry.role === 'owner' && entry.text !== null

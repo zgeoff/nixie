@@ -14,9 +14,13 @@ export interface GuestCommand {
 }
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
+
 type AssistantFrame = Extract<GuestFrame, { type: 'assistant' }>;
+
 type EndedFrame = Extract<GuestFrame, { type: 'ended' }>;
+
 type CompactedFrame = Extract<GuestFrame, { type: 'compacted' }>;
+
 type FailedFrame = Extract<GuestFrame, { type: 'failed' }>;
 
 export interface GuestTurnSpec {
@@ -62,16 +66,21 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
     env: spec.command.env,
     maxMessageBytes: turnFrameLimitBytes,
   });
+
   const unsubscribe = subscribeToAbort(spec.signal, stream);
 
   try {
     // a signal that aborted while the guest started never fires its listener
     spec.signal.throwIfAborted();
+
     await stream.send(encodeTurnFrame(spec.turn));
+
     void sendMessages(stream, spec.messages);
+
     return await collectTurn(stream, spec.readRecallMark);
   } catch (error) {
     await stream.stop();
+
     throw error;
   } finally {
     unsubscribe();
@@ -86,6 +95,7 @@ function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
   };
 
   signal.addEventListener('abort', stopStream, { once: true });
+
   return () => {
     signal.removeEventListener('abort', stopStream);
   };
@@ -141,9 +151,11 @@ async function collectTurn(stream: ExecStream, readRecallMark: MarkReader): Prom
 
     updateTurn(turn, frame, mark);
   }
+
   const exit = await stream.exit;
 
   requireTurnEnd(turn, exit);
+
   return {
     assistants: turn.assistants.slice(0, turn.settled.assistants),
     read: turn.read.slice(0, turn.settled.read),
@@ -169,7 +181,9 @@ function updateTurn(turn: MutableTurn, frame: GuestFrame, mark: number | undefin
     turn.read.push(...frame.uuids);
   } else if (frame.type === 'ended') {
     turn.ended.push(frame);
+
     turn.endedMark = mark ?? null;
+
     turn.settled = {
       assistants: turn.assistants.length,
       read: turn.read.length,
@@ -190,6 +204,7 @@ function requireTurnEnd(turn: Pick<GuestTurn, 'ended' | 'failure'>, exit: Stream
   if (turn.ended.length > 0 || turn.failure !== null) {
     return;
   }
+
   const stderr = new TextDecoder().decode(exit.stderr.bytes);
 
   throw new Error(

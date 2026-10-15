@@ -44,10 +44,12 @@ export function buildProposalAnswerKind(
     },
     render: (detail, settings) => {
       const owner = settings.ownerName ?? 'The owner';
+
       const proposal =
         detail.origin === 'conversation'
           ? `your memory proposal ${detail.proposalID}`
           : `a memory proposal from ${proposerWords[detail.origin]} ${detail.proposalID}`;
+
       const line =
         detail.answer === 'edited'
           ? `${owner} approved ${proposal} with edits`
@@ -129,18 +131,21 @@ async function readApprovedTexts(
   if (versions.length === 0) {
     return events;
   }
+
   const result = await store.recall({
     versions,
     includeRetired: true,
     limit: versions.length,
     thread: conversationTaskID,
   });
+
   const texts = new Map(
     result.items.map((item) => [`${item.itemID}@${String(item.version)}`, item.text]),
   );
 
   return events.map((event) => {
     const written = event.detail.written;
+
     const text =
       written === null ? undefined : texts.get(`${written.itemID}@${String(written.version)}`);
 

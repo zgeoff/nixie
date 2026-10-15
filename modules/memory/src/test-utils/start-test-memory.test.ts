@@ -5,7 +5,6 @@ import { startTestMemory } from './start-test-memory';
 
 test('it starts a store over a log that folds the memory projections, with no record', async () => {
   const ctx = await startTestMemory();
-
   const records = await readRecords(ctx.log, { afterSequence: 0 });
 
   expect(ctx.log.projections.map((projection) => projection.table)).toStrictEqual([
@@ -20,6 +19,7 @@ test('it starts a store over a log that folds the memory projections, with no re
     'memory_consolidations',
     'memory_consolidation_changes',
   ]);
+
   expect(records).toStrictEqual([]);
 });
 

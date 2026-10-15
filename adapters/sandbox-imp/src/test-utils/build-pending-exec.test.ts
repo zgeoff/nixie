@@ -3,6 +3,7 @@ import { buildPendingExec } from './build-pending-exec';
 
 test('it starts the exec only once the wait resolves', async () => {
   const wait = Promise.withResolvers<void>();
+
   const exec = buildPendingExec(wait.promise, () => ({
     started: Promise.resolve('running'),
     stdout: new Response('out').body ?? new ReadableStream(),
@@ -17,6 +18,7 @@ test('it starts the exec only once the wait resolves', async () => {
   const before = await Promise.race([exec.started, Promise.resolve('waiting')]);
 
   wait.resolve();
+
   const started = await exec.started;
 
   expect(before).toBe('waiting');

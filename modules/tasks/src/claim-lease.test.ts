@@ -40,6 +40,7 @@ test('it refuses work whose lease another runner holds and has not expired', asy
     durationMs: 60_000,
     findCandidate: () => Promise.resolve('work-1'),
   });
+
   ctx.clock.advance(59_999);
 
   const lease = await claimLease(ctx.context, {
@@ -61,6 +62,7 @@ test('it claims work whose lease expired at the next generation', async () => {
     durationMs: 60_000,
     findCandidate: () => Promise.resolve('work-1'),
   });
+
   ctx.clock.advance(60_000);
 
   const lease = await claimLease(ctx.context, {
@@ -75,6 +77,7 @@ test('it claims work whose lease expired at the next generation', async () => {
 
 test('it claims work whose lease was reset at the next generation', async () => {
   const ctx = await setupTest();
+
   const first = await claimLease(ctx.context, {
     kind: 'action',
     holder: 'runner-a',
@@ -83,6 +86,7 @@ test('it claims work whose lease was reset at the next generation', async () => 
   });
 
   invariant(first);
+
   await withWriteTransaction(ctx.writer, (tx) => resetLease(tx, first));
 
   const lease = await claimLease(ctx.context, {
@@ -158,11 +162,13 @@ test('it rolls the lease back when the claim records fail', async () => {
 
 test('it reaches the claim.after fault point once the claim commits', async () => {
   const ctx = await setupTest();
+
   const reached: { id: FaultPointID; context: FaultPointContext }[] = [];
 
   setFaultPointHandler((id, context) => {
     reached.push({ id, context });
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });

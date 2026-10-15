@@ -23,6 +23,7 @@ export async function writeReplacedSession(spec: ReplacedSessionSpec): Promise<v
   if (spec.replaced.length === 0) {
     return;
   }
+
   const failures: string[] = [];
 
   for (const from of spec.replaced) {
@@ -32,8 +33,10 @@ export async function writeReplacedSession(spec: ReplacedSessionSpec): Promise<v
     if (failure === null) {
       return;
     }
+
     failures.push(failure);
   }
+
   spec.log('conversation.session_copy_failed', {
     toSandboxID: spec.target.id,
     reason: failures.join('; '),
@@ -48,6 +51,7 @@ async function tryWriteKeptSession(
   try {
     // the first start makes the sandbox before the conversation's task, so the read sits in the try
     const boundary = await readSessionBoundary(spec.context, conversationTaskID);
+
     const resume = parseSessionBoundary(boundary);
 
     if (resume !== null) {
@@ -58,6 +62,7 @@ async function tryWriteKeptSession(
         sessionID: resume.sessionID,
       });
     }
+
     return null;
   } catch (error) {
     return `${from.id}: ${error instanceof Error ? error.message : String(error)}`;

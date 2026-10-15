@@ -4,6 +4,7 @@ import type { MemoryState } from './types';
 // item or a pin of a retired one.
 export class MemoryStateError extends Error {
   override readonly name = 'MemoryStateError';
+
   readonly code = 'WRONG_STATE';
 
   constructor(itemID: string, operation: string, state: MemoryState) {

@@ -38,6 +38,7 @@ export interface ToolsOptions {
 export async function startTools(options: ToolsOptions): Promise<Tools> {
   const holder: { endpoint: ToolEndpoint | null } = { endpoint: null };
   const slot: { store: ReturnType<MemorySlot['read']> } = { store: null };
+
   const adapter = buildSandboxAdapter({
     recorder: buildSandboxRecorder({
       log: options.context.log,
@@ -47,11 +48,13 @@ export async function startTools(options: ToolsOptions): Promise<Tools> {
       if (holder.endpoint === null) {
         throw new Error('the tool endpoint has not started');
       }
+
       return holder.endpoint.getToolTarget(sandbox);
     },
     imp: { ...options.config.imp, token: options.impdToken },
     testRootDir: join(options.config.server.dataDir, 'sandboxes'),
   });
+
   const webFetch = startWebFetch({
     adapter,
     image: options.images.fetch.name,
@@ -64,12 +67,14 @@ export async function startTools(options: ToolsOptions): Promise<Tools> {
   });
 
   await options.cleanup.defer(() => webFetch.stop());
+
   const served = await startConversationEndpoint(options, {
     webFetch: webFetch.tool,
     readStore: () => slot.store,
   });
 
   holder.endpoint = served.endpoint;
+
   return {
     adapter,
     endpoint: served.endpoint,

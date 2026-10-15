@@ -12,6 +12,7 @@ async function setupTest() {
   onTestFinished(async () => {
     await rm(clientDir, { force: true, recursive: true });
   });
+
   await mkdir(join(clientDir, 'assets'));
 
   return { clientDir };
@@ -19,7 +20,9 @@ async function setupTest() {
 
 test('it answers live without calling the API or Start', async () => {
   const ctx = await setupTest();
+
   const startFetch = mock(() => new Response('start'));
+
   const webFetch = makeWebFetch({
     apiURL: 'http://127.0.0.1:9',
     clientDir: ctx.clientDir,
@@ -36,7 +39,9 @@ test('it answers live without calling the API or Start', async () => {
 
 test('it answers ready when the API answers', async () => {
   const ctx = await setupTest();
+
   const api = startStubAPI();
+
   const webFetch = makeWebFetch({
     apiURL: api.url,
     clientDir: ctx.clientDir,
@@ -52,7 +57,9 @@ test('it answers ready when the API answers', async () => {
 
 test('it probes the API with no credential', async () => {
   const ctx = await setupTest();
+
   const api = startStubAPI();
+
   const webFetch = makeWebFetch({
     apiURL: api.url,
     clientDir: ctx.clientDir,
@@ -72,6 +79,7 @@ test('it probes the API with no credential', async () => {
 
 test('it answers unready when the API does not answer', async () => {
   const ctx = await setupTest();
+
   const closed = Bun.serve({ fetch: () => new Response(), hostname: '127.0.0.1', port: 0 });
   const apiURL = `http://127.0.0.1:${closed.port}`;
 
@@ -149,9 +157,12 @@ test('it serves an app icon for an hour', async () => {
 // A PNG holds its width and height as 4-byte integers at bytes 16 and 20, inside its header chunk.
 test('it serves each icon the manifest lists at its listed size', async () => {
   const publicDir = join(import.meta.dir, '..', 'public');
+
   const manifestJSON: unknown = await Bun.file(join(publicDir, 'manifest.webmanifest')).json();
+
   const iconSchema = z.object({ sizes: z.string(), src: z.string() });
   const manifest = z.object({ icons: z.array(iconSchema) }).parse(manifestJSON);
+
   const webFetch = makeWebFetch({
     apiURL: 'http://127.0.0.1:9',
     clientDir: publicDir,
@@ -162,6 +173,7 @@ test('it serves each icon the manifest lists at its listed size', async () => {
     manifest.icons.map(async (icon) => {
       const response = await webFetch(new Request(`http://web.test${icon.src}`));
       const bytes = await response.arrayBuffer();
+
       const view = new DataView(bytes);
 
       return `${view.getUint32(16)}x${view.getUint32(20)}`;
@@ -207,7 +219,9 @@ test('it never serves a file outside the browser assets', async () => {
 
 test('it sends every other path to Start', async () => {
   const ctx = await setupTest();
+
   const startFetch = mock(() => new Response('start'));
+
   const webFetch = makeWebFetch({
     apiURL: 'http://127.0.0.1:9',
     clientDir: ctx.clientDir,
@@ -223,6 +237,7 @@ test('it sends every other path to Start', async () => {
 
 test('it marks a rendered page private to the browser that asked for it', async () => {
   const ctx = await setupTest();
+
   const webFetch = makeWebFetch({
     apiURL: 'http://127.0.0.1:9',
     clientDir: ctx.clientDir,

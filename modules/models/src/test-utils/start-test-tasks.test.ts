@@ -10,13 +10,13 @@ test('it starts a writer whose log folds the tasks projections, on a test clock'
     'tasks',
     'timers',
   ]);
+
   expect(ctx.context.clock.now()).toBe(1_000_000);
   expect(ctx.writer.epoch).toBe(1);
 });
 
 test('it types the writer handle for the tasks tables', async () => {
   const ctx = await startTestTasks();
-
   const rows = await ctx.db.selectFrom('tasks').selectAll().execute();
 
   expect(rows).toStrictEqual([]);

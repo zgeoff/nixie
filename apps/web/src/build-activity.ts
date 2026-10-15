@@ -153,11 +153,13 @@ function applyRecord(state: ActivityState, record: LiveRecord): void {
   } else if (record.kind === 'task.step_started') {
     state.open = buildStep([...state.pending, record], 'running', state.ratings);
     state.pending = [];
+
     state.items.push(state.open);
   } else if (state.open === null) {
     applyRecordOutsideStep(state, record);
   } else {
     const index = state.items.indexOf(state.open);
+
     const step = buildStep(
       [...state.open.records, record],
       pickStatus(record, state.open),
@@ -179,6 +181,7 @@ function applyRecordOutsideStep(state: ActivityState, record: LiveRecord): void 
     state.pending.push(record);
   } else {
     state.items.push(buildStep([...state.pending, record], endStatus, state.ratings));
+
     state.pending = [];
   }
 }
@@ -198,6 +201,7 @@ function buildStep(
   const durationMs = status === 'running' ? undefined : findDuration(records);
   const recalls = records.filter((record) => record.recall !== undefined);
   const context = records.findLast((record) => record.context !== undefined)?.context;
+
   const compactions = records.flatMap((record) =>
     record.compaction === undefined ? [] : [{ ...record.compaction, sequence: record.sequence }],
   );

@@ -14,10 +14,12 @@ async function setupTest() {
 
 test('it deletes the item key and leaves no copy of it in the key store files', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const stored = await ctx.memory.writer.keys
     .$extendTables<{ record_keys: { key_id: string; wrapped: Uint8Array } }>()
     .selectFrom('record_keys')
@@ -38,6 +40,7 @@ test('it deletes the item key and leaves no copy of it in the key store files', 
     .select('key_id')
     .where('key_id', '=', item.itemID)
     .execute();
+
   const [keysFile, keysLog] = await Promise.all([
     readFile(join(ctx.memory.dataDir, 'keys.db')),
     readFile(join(ctx.memory.dataDir, 'keys.db-wal')),
@@ -50,10 +53,12 @@ test('it deletes the item key and leaves no copy of it in the key store files', 
 
 test('it reads every version of a forgotten item as a gap', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const edited = await ctx.memory.store.remember({
     text: 'Lives on Oak Avenue',
     target: item,
@@ -95,6 +100,7 @@ test('it reads every version of a forgotten item as a gap', async () => {
 
 test('it stops recall from returning the forgotten item by query or by ID', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -114,6 +120,7 @@ test('it stops recall from returning the forgotten item by query or by ID', asyn
 
 test('it runs the session cleanup and then records the forget as complete', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -127,6 +134,7 @@ test('it runs the session cleanup and then records the forget as complete', asyn
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
   expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith(item.itemID);
+
   expect(records.map((entry) => entry.record)).toMatchObject([
     { kind: 'memory.version_added', payload: { itemID: item.itemID, version: 1 } },
     { kind: 'memory.forget_started', payload: { itemID: item.itemID, version: 1 } },
@@ -136,6 +144,7 @@ test('it runs the session cleanup and then records the forget as complete', asyn
 
 test('it rejects a forget bound to a version the item has moved past', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -159,6 +168,7 @@ test('it rejects a forget bound to a version the item has moved past', async () 
 
 test('it rejects a second forget of a forgotten item', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

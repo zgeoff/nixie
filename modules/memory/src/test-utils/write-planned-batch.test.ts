@@ -11,23 +11,24 @@ async function setupTest() {
 
 test('it leaves the writer row waiting on a batch through the last message', async () => {
   const ctx = await setupTest();
-
   const planned = await writePlannedBatch(ctx.memory.log, ['I keep bees.', 'I play the cello.']);
   const row = await readWriterRow(ctx.memory.log);
+
   const last = planned.sequences.at(-1);
 
   invariant(last !== undefined);
+
   expect(planned.bounds).toStrictEqual({ start: 0, end: last });
   expect(row).toMatchObject({ cursor: 0, pending_start: 0, pending_end: last });
 });
 
 test('it records each text as your message at the sequence it returns', async () => {
   const ctx = await setupTest();
-
   const planned = await writePlannedBatch(ctx.memory.log, ['I keep bees.', 'I play the cello.']);
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, thread: 'conversation' });
 
   expect(entries.map((entry) => entry.record.sequence)).toStrictEqual([...planned.sequences]);
+
   expect(entries.map((entry) => entry.record.erasable)).toStrictEqual([
     { status: 'readable', fields: { text: 'I keep bees.' } },
     { status: 'readable', fields: { text: 'I play the cello.' } },

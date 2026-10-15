@@ -44,6 +44,7 @@ export function buildStubSandboxAdapter(
   const created: { id: string; spec: SandboxSpec }[] = [];
   const destroyed: string[] = [];
   const spawned: { sandboxID: string; argv: readonly string[] }[] = [];
+
   const live = new Map<string, Sandbox>();
 
   return {
@@ -54,7 +55,9 @@ export function buildStubSandboxAdapter(
     spawned,
     create: async (spec) => {
       await Promise.resolve();
+
       requireSandboxSpec(spec);
+
       await applyCreateFailure(createFailures.shift());
 
       const id = crypto.randomUUID();
@@ -62,6 +65,7 @@ export function buildStubSandboxAdapter(
 
       live.set(id, sandbox);
       created.push({ id, spec });
+
       return sandbox;
     },
     get: (id) => Promise.resolve(live.get(id) ?? null),
@@ -77,6 +81,7 @@ async function applyCreateFailure(failure: StubCreateFailure | undefined): Promi
   if (failure?.kind === 'reject') {
     throw new Error(failure.message);
   }
+
   if (failure?.kind === 'hang') {
     await Promise.withResolvers<never>().promise;
   }
@@ -98,7 +103,9 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
       if (!state.live.has(id)) {
         return Promise.reject(new Error(`sandbox ${id} is destroyed`));
       }
+
       state.spawned.push({ sandboxID: id, argv: command.argv });
+
       return Promise.resolve(startExecStream(startGuest(state.guest), command.maxMessageBytes));
     },
     copyIn: () => Promise.resolve(),
@@ -109,6 +116,7 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
     destroy: () => {
       state.live.delete(id);
       state.destroyed.push(id);
+
       return Promise.resolve();
     },
   };
@@ -122,12 +130,15 @@ function startGuest(guest: StubGuest): ProcessIO {
     { highWaterMark: Number.POSITIVE_INFINITY },
     { highWaterMark: Number.POSITIVE_INFINITY },
   );
+
   const stdout = new TransformStream<Uint8Array, Uint8Array>();
+
   const stdinWriter = stdin.writable.getWriter();
   const exit = Promise.withResolvers<ExecExit>();
   const process = { stdout: stdout.writable.getWriter(), exit };
 
   void runGuest(guest, stdin.readable, process);
+
   return {
     stdout: stdout.readable,
     stderr: new Blob([]).stream(),
@@ -162,6 +173,7 @@ async function runGuest(
 // the first exit wins, as a process exits once
 async function stopProcess(process: GuestProcess, exit: ExecExit): Promise<void> {
   process.exit.resolve(exit);
+
   try {
     await process.stdout.close();
   } catch {

@@ -32,7 +32,6 @@ test('it advances the clock in every nixie still running', async () => {
   const second = ctx.harness.start();
 
   await Promise.all([first.ready, second.ready]);
-
   await ctx.harness.advance(60_000);
 
   const firstNow = await first.request('now', null);
@@ -58,6 +57,7 @@ test('it settles an advance once every runner it woke sleeps again', async () =>
   const nixie = ctx.harness.start();
 
   await nixie.ready;
+
   await nixie.request('startPoll', 1000);
 
   await expect(ctx.harness.advance(1000, { settle: true, settleTimeoutMs: 200 })).toResolve();
@@ -68,6 +68,7 @@ test('it refuses a settled advance when a runner it woke does not sleep again', 
   const nixie = ctx.harness.start();
 
   await nixie.ready;
+
   await nixie.request('sleepOnce', 1000);
 
   expect(ctx.harness.advance(1000, { settle: true, settleTimeoutMs: 200 })).rejects.toThrow(
@@ -80,6 +81,7 @@ test('it kills every nixie still running when the test finishes', async () => {
   const nixie = ctx.harness.start();
 
   await nixie.ready;
+
   onTestFinished(async () => {
     const exit = await nixie.exited;
 

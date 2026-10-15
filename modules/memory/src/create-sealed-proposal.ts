@@ -14,6 +14,7 @@ export async function createSealedProposal(
   plan: ProposalPlan,
 ): Promise<SealedProposal> {
   const itemID = plan.target?.itemID ?? crypto.randomUUID();
+
   const key = await readProposalKey(parts, plan, itemID);
 
   return buildSealedProposal(key, plan, itemID);
@@ -29,11 +30,13 @@ async function readProposalKey(
 
     return created.key;
   }
+
   const key = await findItemKey(parts.context.log, itemID);
 
   if (key === null || key === undefined) {
     throw new MemoryItemNotFoundError(itemID);
   }
+
   return key;
 }
 
@@ -46,12 +49,14 @@ async function buildSealedProposal(
 ): Promise<SealedProposal> {
   const proposalID = crypto.randomUUID();
   const salt = Buffer.from(crypto.getRandomValues(new Uint8Array(saltBytes))).toString('base64');
+
   const sealed = await encodeProposalText(key, proposalID, {
     text: plan.text,
     quote: plan.quote,
     checkerReason: plan.checkerReason,
     salt,
   });
+
   const actionHash = buildProposalHash({
     operation: plan.operation,
     itemID,

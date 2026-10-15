@@ -48,6 +48,7 @@ export async function readLogPage(
   if (bounds === null) {
     return { entries: [], next: null };
   }
+
   const scan = await collectPageEntries(log, query, bounds);
 
   return { entries: scan.entries, next: scan.after >= bounds.through ? null : scan.after };
@@ -55,11 +56,8 @@ export async function readLogPage(
 
 // the kinds a thread's reader sees: your messages, the replies, and each tool's result
 const entryKinds = ['owner_message', 'model.reply', 'tool_result'];
-
 const batchSize = 100;
-
 const scanLimit = 500;
-
 const textLimit = 2000;
 
 interface SequenceBounds {
@@ -87,6 +85,7 @@ async function readSequenceBounds(
   if (row?.first === null || row?.first === undefined || row.last === null) {
     return null;
   }
+
   return { after: row.first - 1, through: row.last };
 }
 
@@ -125,6 +124,7 @@ async function collectPageEntries(
         ? { ...scan, after: bounds.through }
         : buildNextScan(scan, batch, { query, words });
   }
+
   return scan;
 }
 
@@ -145,6 +145,7 @@ function buildNextScan(
     if (next.entries.length === filter.query.limit) {
       break;
     }
+
     next.after = read.record.sequence;
     next.scanned += 1;
 
@@ -154,6 +155,7 @@ function buildNextScan(
       next.entries.push(toShownEntry(item.entry));
     }
   }
+
   return next;
 }
 
@@ -178,6 +180,7 @@ function buildScannedEntry(record: LogRecord): ScannedEntry {
       plain,
     };
   }
+
   const text = record.kind === 'model.reply' ? readReplyText(fields) : readToolText(fields);
 
   return {
@@ -197,9 +200,7 @@ function readToolText(fields: JSONObject | null): string | null {
 }
 
 const spanFields = z.object({ start: z.int(), end: z.int(), source: z.string() });
-
 const ownerFields = z.object({ text: z.string(), spans: z.array(spanFields).optional() });
-
 const replyFields = z.object({ text: z.string() });
 
 // a record's time can step back past a clock change, so each entry is checked against the range
@@ -215,9 +216,11 @@ function hasEveryWord(plain: string | null, words: readonly string[]): boolean {
   if (words.length === 0) {
     return true;
   }
+
   if (plain === null) {
     return false;
   }
+
   const text = normalizeSearchText(plain);
 
   return words.every((word) => text.includes(word));
@@ -232,5 +235,6 @@ function toShownEntry(entry: LogEntry): LogEntry {
   if (entry.text === null || entry.text.length <= textLimit) {
     return entry;
   }
+
   return { ...entry, text: entry.text.slice(0, textLimit), isCut: true };
 }

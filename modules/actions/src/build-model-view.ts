@@ -9,18 +9,20 @@ export function buildModelView(
   outcome: LogRecord | null,
 ): ModelView {
   const fields = outcome?.erasable.status === 'readable' ? outcome.erasable.fields : null;
-
   const actionID = action.action_id;
 
   if (action.status === 'done') {
     return { status: 'done', actionID, result: toResult(fields) };
   }
+
   if (action.status === 'failed') {
     return { status: 'failed', actionID, reason: toReason(fields) ?? action.reason ?? 'failed' };
   }
+
   if (action.status === 'pending') {
     return { status: 'pending', actionID, message: `queued as \`${actionID}\`` };
   }
+
   return { status: 'unknown', actionID, message: 'you were asked whether this happened' };
 }
 

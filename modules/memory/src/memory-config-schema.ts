@@ -3,7 +3,6 @@ import { defaultGateLimits } from './default-gate-limits';
 import type { GateLimits } from './gate-types';
 
 const dayMs = 24 * 60 * 60 * 1000;
-
 const countSchema = z.number().int().positive();
 
 export interface MemoryConfig {

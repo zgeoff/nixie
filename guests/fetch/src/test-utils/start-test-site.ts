@@ -29,13 +29,16 @@ interface RecordedRequest {
 // the test finishes. It records each request before the test's handler answers it.
 export async function startTestSite(options: TestSiteOptions): Promise<TestSite> {
   const certificate = await createTestCertificate(options.names);
+
   const requests: RecordedRequest[] = [];
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
     tls: { cert: certificate.cert, key: certificate.key },
     fetch: (request) => {
       requests.push({ url: request.url, headers: Object.fromEntries(request.headers) });
+
       return options.fetch(request);
     },
   });

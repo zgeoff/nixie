@@ -17,9 +17,11 @@ export const memoryMigration: Migration = {
       updated_sequence integer not null references records (sequence),
       forgotten_sequence integer references records (sequence)
     ) strict`.execute(tx);
+
     await sql`create index memory_items_by_state on memory_items (state, created_sequence)`.execute(
       tx,
     );
+
     await sql`create table memory_versions (
       version_key text primary key,
       item_id text not null references memory_items (item_id),

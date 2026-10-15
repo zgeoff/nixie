@@ -18,8 +18,10 @@ export async function runStalledAttempt(options: StalledAttemptOptions): Promise
   if (lease === null) {
     throw new Error('no action was due for a stalled attempt');
   }
+
   const stub = buildStubConnector(() => {
     options.clock.advance(60_000);
+
     return { kind: 'success', result: {} };
   });
 
@@ -27,5 +29,6 @@ export async function runStalledAttempt(options: StalledAttemptOptions): Promise
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
   });
+
   return stub.calls.length;
 }

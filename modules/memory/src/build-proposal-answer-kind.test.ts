@@ -49,6 +49,7 @@ test('it renders the rejection of the conversation own proposed edit, quoting th
     text: 'Avery prefers spaces.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const proposal = await createProposal(ctx.memory.store, {
     text: 'Avery prefers tabs.',
     target: item,
@@ -76,10 +77,12 @@ test('it renders the rejection of the conversation own proposed edit, quoting th
 
 test('it leaves a rejected edit unquoted once a forget of its item began, before its key is gone', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Avery prefers spaces.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const proposal = await createProposal(ctx.memory.store, {
     text: 'Avery prefers tabs.',
     target: item,
@@ -90,6 +93,7 @@ test('it leaves a rejected edit unquoted once a forget of its item began, before
     actionHash: proposal.actionHash,
     identityID: 'identity-1',
   });
+
   await writeRecords(ctx.memory.log, [
     {
       kind: 'memory.forget_started',
@@ -116,6 +120,7 @@ test('it leaves an approval unquoted once a forget of its item began, before its
     actionHash: proposal.actionHash,
     identityID: 'identity-1',
   });
+
   await writeRecords(ctx.memory.log, [
     {
       kind: 'memory.forget_started',
@@ -144,6 +149,7 @@ test('it renders a rejected new item without its text, which the rejection remov
   });
 
   const kind = buildProposalAnswerKind(ctx.memory.log, ctx.memory.store);
+
   const events = await kind.read({ after: 0, through: 100 });
 
   expect(
@@ -175,10 +181,12 @@ test('it renders an approval with edits, quoting the edited text', async () => {
 
 test('it quotes an approval applied as a revision of another item, from the item it revised', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Avery has two cats.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const proposal = await createProposal(ctx.memory.store, { text: 'Avery has three cats.' });
 
   await ctx.memory.store.proposals.approve({
@@ -222,10 +230,12 @@ test('it names the owner in general terms when the configuration sets no name', 
 
 test('it names who made a proposal from outside the conversation, without its rejected text', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Avery prefers spaces.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const proposal = await createProposal(ctx.memory.store, {
     text: 'Avery prefers tabs.',
     target: item,
@@ -245,6 +255,7 @@ test('it names who made a proposal from outside the conversation, without its re
   });
 
   const kind = buildProposalAnswerKind(ctx.memory.log, ctx.memory.store);
+
   const events = await kind.read({ after: 0, through: 100 });
 
   expect(
@@ -255,6 +266,7 @@ test('it names who made a proposal from outside the conversation, without its re
 test('it records the approved text it quotes as recalled into the conversation', async () => {
   const ctx = await setupTest();
   const proposal = await createProposal(ctx.memory.store, { text: 'Avery has two cats.' });
+
   const approval = await ctx.memory.store.proposals.approve({
     proposalID: proposal.proposalID,
     actionHash: proposal.actionHash,
@@ -273,6 +285,7 @@ test('it records the approved text it quotes as recalled into the conversation',
   });
 
   expect(approval.status).toBe('applied');
+
   expect(recalls.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
     ['conversation', { items: [{ itemID: proposal.itemID, version: 1 }] }],
   ]);
@@ -280,10 +293,12 @@ test('it records the approved text it quotes as recalled into the conversation',
 
 test('it records only the approved version it quotes, never the rest of the item history', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Avery has two cats.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const proposal = await createProposal(ctx.memory.store, {
     text: 'Avery has three cats.',
     target: item,
@@ -300,12 +315,14 @@ test('it records only the approved version it quotes, never the rest of the item
     { after: 0, through: 100 },
     { ownerName: 'Avery', timeZone: 'UTC' },
   );
+
   const recalls = await readRecords(ctx.memory.log, {
     afterSequence: 0,
     kinds: ['memory.recalled'],
   });
 
   expect(note).toEndWith(': "Avery has three cats."');
+
   expect(recalls.map((entry) => entry.record.payload)).toStrictEqual([
     { items: [{ itemID: item.itemID, version: 2 }] },
   ]);
@@ -320,6 +337,7 @@ test('it leaves an approval unquoted once its item changed again, and records no
     actionHash: proposal.actionHash,
     identityID: 'identity-1',
   });
+
   await ctx.memory.store.remember({
     text: 'Avery has four cats.',
     target: { itemID: proposal.itemID, version: 1 },
@@ -331,6 +349,7 @@ test('it leaves an approval unquoted once its item changed again, and records no
     { after: 0, through: 100 },
     { ownerName: 'Avery', timeZone: 'UTC' },
   );
+
   const recalls = await readRecords(ctx.memory.log, {
     afterSequence: 0,
     kinds: ['memory.recalled'],
@@ -358,6 +377,7 @@ test('it reads only the answers inside the range, and leaves out a pending propo
     actionHash: second.actionHash,
     identityID: 'identity-1',
   });
+
   await createProposal(ctx.memory.store, { text: 'Avery grows tomatoes.' });
 
   const events = await buildProposalAnswerKind(ctx.memory.log, ctx.memory.store).read({

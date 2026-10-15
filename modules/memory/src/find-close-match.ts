@@ -24,12 +24,16 @@ export async function findCloseMatch(
   if (itemIDs.length === 0) {
     return null;
   }
+
   const items = await readCandidates(parts, itemIDs, query.db);
+
   const words = collectContentWords(query.text);
+
   const scored = items
     .map((item) => ({ item, score: buildOverlapScore(words, collectContentWords(item.text)) }))
     .filter((entry) => entry.score >= parts.context.gate.limits.closeMatchScore)
     .toSorted((first, second) => second.score - first.score);
+
   const best = scored[0]?.item;
 
   return best === undefined
@@ -47,6 +51,7 @@ async function readCandidates(
   if (db !== undefined) {
     return readDeliverableItems(parts, { itemIDs, states: ['active'], includeHistory: false, db });
   }
+
   const recalled = await readRecall(parts, { itemIDs, limit: itemIDs.length });
 
   return recalled.items;
@@ -101,6 +106,7 @@ function buildOverlapScore(first: readonly string[], second: readonly string[]):
   if (total === 0) {
     return 0;
   }
+
   const shared = first.filter((word) => second.includes(word)).length;
 
   return (2 * shared) / total;

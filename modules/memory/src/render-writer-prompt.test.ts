@@ -50,6 +50,7 @@ test('it renders the same prompt for the same batch', () => {
       { sequence: 41, role: 'owner', shown: 'I play the cello', recordedAt: Date.UTC(2026, 2, 14) },
     ],
   });
+
   const second = renderWriterPrompt({
     items: [{ itemID: 'item-cello', version: 1, text: 'The owner plays the cello.' }],
     isComplete: true,

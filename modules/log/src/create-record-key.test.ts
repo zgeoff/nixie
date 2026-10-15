@@ -11,7 +11,6 @@ async function setupTest() {
 
 test('it writes a key under a fresh random ID that reads back from the key store', async () => {
   const ctx = await setupTest();
-
   const created = await createRecordKey(ctx.log);
   const keys = await findRecordKeys(ctx.log, [created.keyID]);
 
@@ -21,7 +20,6 @@ test('it writes a key under a fresh random ID that reads back from the key store
 
 test('it writes a key under the ID the caller keys by', async () => {
   const ctx = await setupTest();
-
   const created = await createRecordKey(ctx.log, 'item-7f3e');
   const keys = await findRecordKeys(ctx.log, ['item-7f3e']);
 

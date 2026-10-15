@@ -25,9 +25,11 @@ export async function runIntentGate(
   if (!(await hasReadVersion(context, request))) {
     return buildGateReview('ambiguous_target', { checks: { read: 'fail' } });
   }
+
   if (request.intentQuote === null) {
     return buildGateReview('no_quote', { checks: { read: 'pass', quote: 'fail' } });
   }
+
   const found = await findQuoteEvidence(context.log, {
     thread: request.thread,
     quote: request.intentQuote,
@@ -37,6 +39,7 @@ export async function runIntentGate(
   if (found.status === 'review') {
     return buildGateReview(found.reason, { checks: { read: 'pass', quote: 'fail' } });
   }
+
   return runRetirementChecker(context, request.itemText, found);
 }
 

@@ -10,6 +10,7 @@ async function setupTest() {
 
 test('it reads every active item, oldest first, while they fit the budget', async () => {
   const ctx = await setupTest();
+
   const owner = {
     origin: 'owner',
     source: 'owner',
@@ -17,6 +18,7 @@ test('it reads every active item, oldest first, while they fit the budget', asyn
     proposalID: null,
     checks: null,
   } as const;
+
   const bees = await ctx.memory.store.remember({ text: 'Keeps bees', provenance: owner });
   const choir = await ctx.memory.store.remember({ text: 'Sings in a choir', provenance: owner });
   const old = await ctx.memory.store.remember({ text: 'Lives on Elm Street', provenance: owner });
@@ -34,6 +36,7 @@ test('it reads every active item, oldest first, while they fit the budget', asyn
 
 test('it stops at the item that passes the budget and says the list is not complete', async () => {
   const ctx = await setupTest();
+
   const owner = {
     origin: 'owner',
     source: 'owner',
@@ -41,6 +44,7 @@ test('it stops at the item that passes the budget and says the list is not compl
     proposalID: null,
     checks: null,
   } as const;
+
   const bees = await ctx.memory.store.remember({ text: 'Keeps bees', provenance: owner });
 
   await ctx.memory.store.remember({ text: 'Sings in a choir', provenance: owner });
@@ -56,6 +60,7 @@ test('it stops at the item that passes the budget and says the list is not compl
 
 test('it counts each item quote against the budget', async () => {
   const ctx = await setupTest();
+
   const owner = {
     origin: 'owner',
     source: 'owner',
@@ -63,6 +68,7 @@ test('it counts each item quote against the budget', async () => {
     proposalID: null,
     checks: null,
   } as const;
+
   const bees = await ctx.memory.store.remember({ text: 'Keeps bees', provenance: owner });
 
   await ctx.memory.store.remember({

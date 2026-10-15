@@ -24,7 +24,9 @@ export async function writeGatedRemember(
       states: ['active', 'retired'],
     });
   }
+
   const tool = request.target === undefined ? 'memory.remember' : 'memory.edit';
+
   const gate = await runContentGate(
     parts.context,
     {
@@ -36,12 +38,15 @@ export async function writeGatedRemember(
     },
     tool,
   );
+
   const newest = await findNewestMessage(parts.context.log, request.caller.thread);
+
   const group = buildWriteGroup(request.caller, newest);
 
   if (gate.status === 'pass') {
     return applyPassedRemember(parts, request, { gate, group });
   }
+
   return writeRememberProposal(parts, request, { review: gate, group });
 }
 
@@ -56,6 +61,7 @@ async function writeRememberProposal(
   reviewed: ReviewedRemember,
 ): Promise<WriteOutcome> {
   const review = reviewed.review;
+
   const written = await writeMemoryProposal(parts, {
     operation: 'remember',
     target: request.target ?? null,
@@ -85,7 +91,9 @@ async function applyPassedRemember(
     if (!(error instanceof ForgottenEvidenceError)) {
       throw error;
     }
+
     const gate = passed.gate;
+
     const review = {
       status: 'review' as const,
       reason: 'forgotten_evidence' as const,
@@ -111,6 +119,7 @@ async function applyRemember(
 ): Promise<WriteOutcome> {
   const caller = request.caller;
   const evidence = passed.gate.evidence;
+
   const ref = await writeRememberedItem(
     parts,
     {

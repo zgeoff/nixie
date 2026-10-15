@@ -6,6 +6,7 @@ import { sql } from 'kysely';
 // the zone stays readable after the message's text is forgotten.
 export async function findMessageTimeZone(log: Pick<Log, 'writer'>): Promise<string | null> {
   const timeZone = sql<string | null>`json_extract(payload, '$.timeZone')`;
+
   const row = await log.writer.db
     .$extendTables<LogTables>()
     .selectFrom('records')

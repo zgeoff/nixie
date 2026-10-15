@@ -30,6 +30,7 @@ test('it refuses to start when statfs reports a network filesystem', async () =>
     Error,
     `data directory ${ctx.dataDir} is on a network filesystem (nfs), and nixie needs a local one`,
   );
+
   expect(names).toStrictEqual([]);
 });
 
@@ -40,6 +41,7 @@ test('it exits a second process on the same data directory with the writer lock 
 
   onTestFinished(async () => {
     first.kill('SIGKILL');
+
     await first.exited;
   });
 
@@ -53,10 +55,12 @@ test('it exits a second process on the same data directory with the writer lock 
 
   onTestFinished(async () => {
     second.kill('SIGKILL');
+
     await second.exited;
   });
 
   const exitCode = await second.exited;
+
   const stderr = await new Response(second.stderr).text();
 
   expect(exitCode).not.toBe(0);
@@ -70,11 +74,14 @@ test('it takes the lock and the next epoch once the process that held them dies'
 
   onTestFinished(async () => {
     first.kill('SIGKILL');
+
     await first.exited;
   });
 
   await first.stdout.getReader().read();
+
   first.kill('SIGKILL');
+
   await first.exited;
 
   const writer = await startWriter({ dataDir: ctx.dataDir });
@@ -88,6 +95,7 @@ test('it raises the writer epoch before the first migration runs', async () => {
   const ctx = await setupTest();
 
   const seen: number[] = [];
+
   const writer = await startWriter({
     dataDir: ctx.dataDir,
     schema: {
@@ -126,6 +134,7 @@ test('it reports the copy it takes before the first migration of a release', asy
   });
 
   onTestFinished(() => release1.stop());
+
   await release1.stop();
 
   const release2 = await startWriter({
@@ -169,6 +178,7 @@ test('it copies the database before the first migration of a release and never t
   });
 
   onTestFinished(() => release1.stop());
+
   await release1.stop();
 
   const release2 = await startWriter({
@@ -199,7 +209,6 @@ test('it copies the database before the first migration of a release and never t
 
 test('it opens the key store as keys.db beside nixie.db, with secure delete on', async () => {
   const ctx = await setupTest();
-
   const writer = await startWriter({ dataDir: ctx.dataDir });
 
   onTestFinished(() => writer.stop());
@@ -207,8 +216,10 @@ test('it opens the key store as keys.db beside nixie.db, with secure delete on',
   const secureDelete = await sql<{ secure_delete: number }>`pragma secure_delete`.execute(
     writer.keys,
   );
+
   const tables = await sql<{ name: string }>`select name from sqlite_schema
     where type = 'table' and name = 'record_keys'`.execute(writer.keys);
+
   const names = await readdir(ctx.dataDir);
 
   expect(secureDelete.rows).toStrictEqual([{ secure_delete: 1 }]);

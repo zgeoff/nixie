@@ -18,15 +18,18 @@ test('it applies an approved proposal as proposed, keeping its outside source', 
     actionHash: pending.actionHash,
     identityID: 'identity-1',
   });
+
   const [history, remaining] = await Promise.all([
     memory.store.readHistory(pending.itemID),
     memory.store.proposals.listPending(),
   ]);
 
   expect(ref).toStrictEqual({ status: 'applied', itemID: pending.itemID, version: 1 });
+
   expect(history?.versions).toMatchObject([
     { text: 'Likes jazz', origin: 'conversation', source: 'untrusted' },
   ]);
+
   expect(remaining).toStrictEqual([]);
 });
 
@@ -39,6 +42,7 @@ test('it recalls an approved proposal with your approval and its stored source u
     actionHash: pending.actionHash,
     identityID: 'identity-1',
   });
+
   const result = await memory.store.recall({ itemIDs: [pending.itemID] });
 
   expect(result.items).toMatchObject([
@@ -54,6 +58,7 @@ test('it recalls an approved proposal whose quote sat in a quoted block as appro
     text: 'have a look:\n> Robin plays the oboe on Tuesdays',
     spans: [{ start: 0, end: 47, source: 'typed' }],
   });
+
   const outcome = await memory.store.writes.remember({
     text: 'Plays the oboe on Tuesdays',
     quote: 'plays the oboe on Tuesdays',
@@ -65,11 +70,13 @@ test('it recalls an approved proposal whose quote sat in a quoted block as appro
   const [pending] = await memory.store.proposals.listPending();
 
   invariant(pending);
+
   await memory.store.proposals.approve({
     proposalID: pending.proposalID,
     actionHash: pending.actionHash,
     identityID: 'identity-1',
   });
+
   const result = await memory.store.recall({ itemIDs: [pending.itemID] });
 
   expect(result.items).toMatchObject([{ source: 'untrusted', approval: { isQuotePasted: true } }]);
@@ -77,6 +84,7 @@ test('it recalls an approved proposal whose quote sat in a quoted block as appro
 
 test('it recalls a version that applied at once with no approval', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Likes jazz',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -89,10 +97,12 @@ test('it recalls a version that applied at once with no approval', async () => {
 
 test("it fails as stale when the proposal's item moved on", async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const pending = await createProposal(memory.store, { text: 'Lives on Oak Avenue', target: item });
 
   await memory.store.remember({
@@ -129,6 +139,7 @@ test('it applies your edited text with the approval record', async () => {
     identityID: 'identity-1',
     editedText: 'Likes bebop jazz',
   });
+
   const [history, records, row] = await Promise.all([
     memory.store.readHistory(pending.itemID),
     readRecords(memory.log, { afterSequence: 0 }),
@@ -139,14 +150,17 @@ test('it applies your edited text with the approval record', async () => {
       .where('item_id', '=', pending.itemID)
       .executeTakeFirstOrThrow(),
   ]);
+
   const [approval, version] = ['memory.approval_recorded', 'memory.version_added'].map((kind) =>
     records.find((entry) => entry.record.kind === kind),
   );
 
   invariant(version?.record.approval);
+
   expect(history?.versions).toMatchObject([
     { text: 'Likes bebop jazz', origin: 'owner', source: 'owner' },
   ]);
+
   expect(approval?.record.payload).toStrictEqual({
     proposalID: pending.proposalID,
     approvalID: version.record.approval.approvalID,
@@ -154,11 +168,13 @@ test('it applies your edited text with the approval record', async () => {
     answer: 'edited',
     identityID: 'identity-1',
   });
+
   expect(version.record.approval).toStrictEqual({
     proposalID: pending.proposalID,
     approvalID: expect.toBeString(),
     actionHash: pending.actionHash,
   });
+
   expect(row).toStrictEqual({ proposal_id: pending.proposalID, model: null });
 });
 
@@ -226,6 +242,7 @@ test('it refuses a second approval of one proposal', async () => {
 
 test("it refuses an approval after the proposal's lapse time", async () => {
   const clock = buildTestClock(1_000_000);
+
   const memory = await startTestMemory({
     gate: {
       clock,
@@ -247,6 +264,7 @@ test("it refuses an approval after the proposal's lapse time", async () => {
   const [pending] = await memory.store.proposals.listPending();
 
   invariant(pending);
+
   clock.advance(5000);
 
   const approval = memory.store.proposals.approve({
@@ -276,6 +294,7 @@ test('it refuses an unknown proposal', async () => {
 
 test('it refuses edited text for a retirement proposal', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -310,6 +329,7 @@ test('it refuses edited text for a retirement proposal', async () => {
 
 test('it retires an item when you approve a retirement proposal', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -335,6 +355,7 @@ test('it retires an item when you approve a retirement proposal', async () => {
     actionHash: pending.actionHash,
     identityID: 'identity-1',
   });
+
   const history = await memory.store.readHistory(item.itemID);
 
   expect(ref).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
@@ -343,10 +364,12 @@ test('it retires an item when you approve a retirement proposal', async () => {
 
 test('it holds an approval whose text an active item closely matches, and reports that item', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'The owner is allergic to peanuts.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const pending = await createProposal(memory.store, { text: 'Owner is allergic to peanuts' });
 
   const result = await memory.store.proposals.approve({
@@ -354,6 +377,7 @@ test('it holds an approval whose text an active item closely matches, and report
     actionHash: pending.actionHash,
     identityID: 'identity-1',
   });
+
   const [remaining, history] = await Promise.all([
     memory.store.proposals.listPending(),
     memory.store.readHistory(pending.itemID),
@@ -363,16 +387,19 @@ test('it holds an approval whose text an active item closely matches, and report
     status: 'close_match',
     item: { itemID: item.itemID, version: 1, text: 'The owner is allergic to peanuts.' },
   });
+
   expect(remaining.map((proposal) => proposal.proposalID)).toStrictEqual([pending.proposalID]);
   expect(history).toBeNull();
 });
 
 test('it applies a held proposal as a revision of the close match, and drops the key its new item would have used', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'The owner is allergic to peanuts.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const pending = await createProposal(memory.store, { text: 'Owner is allergic to peanuts' });
 
   const result = await memory.store.proposals.approve({
@@ -381,6 +408,7 @@ test('it applies a held proposal as a revision of the close match, and drops the
     identityID: 'identity-1',
     revisionOf: { itemID: item.itemID, version: 1 },
   });
+
   const [history, remaining, key] = await Promise.all([
     memory.store.readHistory(item.itemID),
     memory.store.proposals.listPending(),
@@ -388,11 +416,13 @@ test('it applies a held proposal as a revision of the close match, and drops the
   ]);
 
   expect(result).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+
   expect(history?.versions.at(-1)).toMatchObject({
     text: 'Owner is allergic to peanuts',
     change: 'edited',
     origin: 'conversation',
   });
+
   expect(remaining).toStrictEqual([]);
   expect(key).toBeUndefined();
 });
@@ -404,6 +434,7 @@ test('it applies a held proposal as a new item when your answer ignores the clos
     text: 'The owner is allergic to peanuts.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const pending = await createProposal(memory.store, { text: 'Owner is allergic to peanuts' });
 
   const result = await memory.store.proposals.approve({
@@ -423,6 +454,7 @@ test('it applies a proposal that shares its subject but not its fact with an act
     text: 'The owner is allergic to shellfish.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const pending = await createProposal(memory.store, { text: 'The owner is allergic to peanuts.' });
 
   const result = await memory.store.proposals.approve({
@@ -436,6 +468,7 @@ test('it applies a proposal that shares its subject but not its fact with an act
 
 test('it refuses to apply an edit proposal as a revision of another item', async () => {
   const memory = await startTestMemory();
+
   const [item, other] = await Promise.all(
     ['Lives on Elm Street', 'Works at the library'].map((text) =>
       memory.store.remember({
@@ -457,6 +490,7 @@ test('it refuses to apply an edit proposal as a revision of another item', async
     text: 'Lives on Oak Avenue',
     target: item,
   });
+
   const approval = memory.store.proposals.approve({
     proposalID: pending.proposalID,
     actionHash: pending.actionHash,
@@ -483,11 +517,15 @@ test('it applies one of 2 reworded proposals approved at once, and holds the oth
       }),
     ),
   );
+
   const active = await memory.store.recall({ limit: 10 });
+
   const [item] = active.items;
 
   invariant(item);
+
   expect(active.items).toHaveLength(1);
+
   expect(results.toSorted((a, b) => a.status.localeCompare(b.status))).toStrictEqual([
     { status: 'applied', itemID: item.itemID, version: 1 },
     { status: 'close_match', item: { itemID: item.itemID, version: 1, text: item.text } },

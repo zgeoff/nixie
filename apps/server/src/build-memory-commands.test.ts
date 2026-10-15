@@ -18,6 +18,7 @@ async function setupTest() {
   await nixie.waitForLogEvent('ready');
 
   const url = `http://127.0.0.1:${String(listening['port'])}`;
+
   const signedOut = createORPCClient<ContractClient>(
     new RPCLink({ url: `${url}/rpc`, headers: { [clientHeaderName]: 'test' } }),
   );
@@ -29,6 +30,7 @@ async function setupTest() {
     deviceName: 'laptop',
     tokenDelivery: 'bearer',
   });
+
   const client = createORPCClient<ContractClient>(
     new RPCLink({
       url: `${url}/rpc`,
@@ -46,21 +48,26 @@ test('it approves a proposal with your text, then edits, retires, restores and p
     { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Likes jaz' } } },
     { text: 'Noted.' },
   );
+
   await ctx.client.conversation.send({
     clientMessageId: crypto.randomUUID(),
     spans: [],
     text: 'I like jazz.',
     thread: 'conversation',
   });
+
   await waitForCondition(async () => {
     const page = await ctx.client.conversation.read({ thread: 'conversation' });
 
     return page.records.some((record) => record.message?.text === 'Noted.');
   });
+
   const listed = await runHostCommand(ctx.configPath, ['memory-pending']);
+
   const [{ proposalID, itemID, actionHash }] = z
     .tuple([z.object({ proposalID: z.string(), itemID: z.string(), actionHash: z.string() })])
     .parse(JSON.parse(listed.stdout));
+
   const runs = await runHostCommands(ctx.configPath, [
     ['memory-approve', proposalID, '--hash', actionHash, '--text', 'Likes jazz'],
     ['memory-edit', `${itemID}@1`, '--text', 'Likes jazz and blues'],

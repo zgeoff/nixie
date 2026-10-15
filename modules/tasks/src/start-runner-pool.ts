@@ -27,8 +27,10 @@ export interface RunnerPool {
 // pool of their own, so a send goes out while every task runner is busy with a long turn.
 export function startRunnerPool<W>(clock: Clock, options: RunnerPoolOptions<W>): RunnerPool {
   const stopping = new AbortController();
+
   const waking = { controller: new AbortController() };
   const busy = { count: 0 };
+
   const state: RunnerState = {
     stopping: stopping.signal,
     getWakeSignal: () => waking.controller.signal,
@@ -40,21 +42,26 @@ export function startRunnerPool<W>(clock: Clock, options: RunnerPoolOptions<W>):
       options.onError(error);
     },
   };
+
   const runners = Array.from({ length: options.size }, () => runRunner(clock, options, state));
 
   return {
     wake: () => {
       waking.controller.abort();
+
       waking.controller = new AbortController();
     },
     stop: async (graceMs = DEFAULT_GRACE_MS) => {
       stopping.abort();
+
       if (NIXIE_TEST_BUILD && busy.count > 0) {
         await waitAtFaultPoint('sigterm.grace', { kind: 'pool', id: null });
       }
+
       const grace = new AbortController();
 
       await Promise.race([Promise.all(runners), clock.sleep(graceMs, grace.signal)]);
+
       grace.abort();
     },
   };
@@ -94,6 +101,7 @@ async function runRunner<W>(
 // claims one piece of work and runs it, and tells whether there was any
 async function runClaim<W>(options: RunnerPoolOptions<W>, state: RunnerState): Promise<boolean> {
   state.updateBusy(1);
+
   try {
     const work = await options.claim();
 
@@ -106,6 +114,7 @@ async function runClaim<W>(options: RunnerPoolOptions<W>, state: RunnerState): P
     if (!state.stopping.aborted) {
       await options.run(work);
     }
+
     return true;
   } finally {
     state.updateBusy(-1);

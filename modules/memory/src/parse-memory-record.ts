@@ -32,6 +32,7 @@ const versionAdded = z.strictObject({
 });
 
 const pinned = z.strictObject({ itemID: z.string(), isPinned: z.boolean() });
+
 const forgetStarted = z.strictObject({
   itemID: z.string(),
   version: z.int().min(1),
@@ -40,6 +41,7 @@ const forgetStarted = z.strictObject({
   // gate carries none
   evidenceSequences: z.array(z.int()).default([]),
 });
+
 const forgotten = z.strictObject({ itemID: z.string() });
 
 interface VersionAddedRecord {
@@ -85,14 +87,18 @@ export function parseMemoryRecord(record: EnvelopeRecord): MemoryRecord | null {
   if (record.kind === 'memory.version_added') {
     return { kind: record.kind, ...versionAdded.parse(record.payload) };
   }
+
   if (record.kind === 'memory.pinned') {
     return { kind: record.kind, ...pinned.parse(record.payload) };
   }
+
   if (record.kind === 'memory.forget_started') {
     return { kind: record.kind, ...forgetStarted.parse(record.payload) };
   }
+
   if (record.kind === 'memory.forgotten') {
     return { kind: record.kind, ...forgotten.parse(record.payload) };
   }
+
   return null;
 }

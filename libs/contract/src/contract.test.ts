@@ -187,6 +187,7 @@ test('it generates an OpenAPI document with one operation for each procedure', (
 // never reaches a procedure whose path holds a log segment.
 test('it keeps a log segment out of the path of every procedure that is not deprecated', async () => {
   const document = await buildOpenAPIDocument();
+
   const current = Object.entries(document.paths ?? {})
     .filter(([, item]) => item?.post?.deprecated !== true)
     .map(([path]) => path);

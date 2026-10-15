@@ -10,6 +10,7 @@ export async function writeProposalRejection(
   answer: Omit<ProposalAnswer, 'editedText'>,
 ): Promise<void> {
   const log = parts.context.log;
+
   const row = await withWriteTransaction(log.writer, async (tx) => {
     const pending = await requirePendingProposal(tx.$extendTables<MemoryTables>(), {
       proposalID: answer.proposalID,
@@ -25,6 +26,7 @@ export async function writeProposalRejection(
         payload: { proposalID: pending.proposal_id },
       },
     ]);
+
     return pending;
   });
 

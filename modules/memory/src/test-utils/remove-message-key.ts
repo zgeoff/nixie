@@ -14,5 +14,6 @@ export async function removeMessageKey(log: Pick<Log, 'writer'>, sequence: numbe
   if (typeof row?.key_id !== 'string') {
     throw new TypeError(`the record ${String(sequence)} has no key`);
   }
+
   await removeRecordKey(log, row.key_id);
 }

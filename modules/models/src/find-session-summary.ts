@@ -19,6 +19,7 @@ const readableText = z.object({
   status: z.literal('readable'),
   fields: z.object({ text: z.string() }),
 });
+
 const summarySchema = z.object({
   payload: z.object({ throughSequence: z.int().nonnegative() }),
   erasable: readableText,
@@ -41,5 +42,6 @@ export async function findSessionSummary(
       };
     }
   }
+
   return null;
 }

@@ -50,6 +50,7 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
       if (!ctx.spec.toolRoute) {
         return null;
       }
+
       const port = await ctx.state.openRelay(ctx.toolTarget({ id: ctx.id, owner: ctx.spec.owner }));
 
       return { url: `http://127.0.0.1:${port}` };
@@ -58,10 +59,12 @@ export function buildProcessSandbox(ctx: ProcessSandboxContext): Sandbox {
       kind: 'memory',
       sleep: async () => {
         ctx.state.sleep();
+
         await ctx.recorder.write({ event: 'slept', sandboxID: ctx.id });
       },
       wake: async () => {
         ctx.state.wake();
+
         await ctx.recorder.write({ event: 'woken', sandboxID: ctx.id });
       },
     },
@@ -79,6 +82,7 @@ function tryStartGuestProcess(ctx: ProcessSandboxContext, command: RunSpec): Pro
   if (ctx.state.isAsleep()) {
     return new Error(`sandbox ${ctx.id} is asleep`);
   }
+
   const group = startProcessGroup({
     argv: command.argv,
     cwd: resolveGuestPath(ctx.fsRoot, command.cwd ?? '/'),
@@ -91,6 +95,7 @@ function tryStartGuestProcess(ctx: ProcessSandboxContext, command: RunSpec): Pro
   });
 
   ctx.state.track(group);
+
   return group;
 }
 

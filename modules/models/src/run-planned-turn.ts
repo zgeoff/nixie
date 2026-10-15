@@ -40,6 +40,7 @@ export async function runPlannedTurn(
 ): Promise<PlannedTurn> {
   const times = { defaultZone: turn.run.defaultZone, now: new Date(turn.run.context.clock.now()) };
   const opening = session.resume === null ? await readOpening(turn, session.start, times) : null;
+
   const completed = await runLiveTurn(turn.run, turn.input, {
     resume: session.resume,
     systemPrompt: turn.context.systemPrompt,
@@ -49,6 +50,7 @@ export async function runPlannedTurn(
   });
 
   turn.signal.throwIfAborted();
+
   return { completed, opening: opening?.record ?? null };
 }
 

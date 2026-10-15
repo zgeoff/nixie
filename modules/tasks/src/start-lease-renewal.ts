@@ -17,6 +17,7 @@ export function startLeaseRenewal(
 ): LeaseRenewal {
   const lost = new AbortController();
   const stopping = new AbortController();
+
   const loop = runRenewals(context, {
     lease,
     durationMs,
@@ -30,6 +31,7 @@ export function startLeaseRenewal(
     signal: lost.signal,
     stop: async () => {
       stopping.abort();
+
       await loop;
     },
   };
@@ -51,6 +53,7 @@ async function runRenewals(
   while (renewal.held) {
     // oxlint-disable-next-line no-await-in-loop -- one renewal per third of the lease
     await context.clock.sleep(loop.durationMs / 3, loop.stopping);
+
     if (loop.stopping.aborted) {
       return;
     }
@@ -72,11 +75,13 @@ async function runRenewal(
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('renew.before', faultContext);
   }
+
   const held = await tryUpdateLeaseExpiry(context, loop);
 
   if (NIXIE_TEST_BUILD && held) {
     await waitAtFaultPoint('renew.after', faultContext);
   }
+
   return held;
 }
 
@@ -91,9 +96,11 @@ async function tryUpdateLeaseExpiry(
     if (!held) {
       loop.onLost();
     }
+
     return held;
   } catch (error) {
     loop.onLost(error);
+
     return false;
   }
 }
@@ -105,6 +112,7 @@ function updateLeaseExpiry(
 ): Promise<boolean> {
   return withWriteTransaction(context.log.writer, async (tx) => {
     const now = context.clock.now();
+
     const row = await tx
       .$extendTables<TasksTables>()
       .updateTable('leases')

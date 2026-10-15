@@ -11,6 +11,7 @@ function setupTest() {
 test('it claims the due action for the holder under the lease length', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
+
   const queued = await createAllowedAction(ctx.context, {
     step,
     tool: 'test.send',

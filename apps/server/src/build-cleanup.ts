@@ -4,8 +4,10 @@ import type { Cleanup } from './types';
 // after the parts that use it. A part that fails to stop never keeps the rest running.
 export function buildCleanup(): Cleanup {
   const stopping = new AbortController();
+
   const stops: (() => Promise<void> | void)[] = [];
   const stopped: { pending: Promise<void> | null } = { pending: null };
+
   const reason = new Error('nixie is stopping');
 
   return {
@@ -22,7 +24,9 @@ export function buildCleanup(): Cleanup {
     },
     stop: () => {
       stopping.abort(reason);
+
       stopped.pending ??= runStops(stops);
+
       return stopped.pending;
     },
   };
@@ -40,6 +44,7 @@ async function runStops(stops: (() => Promise<void> | void)[]): Promise<void> {
       errors.push(error);
     }
   }
+
   if (errors.length > 0) {
     throw new AggregateError(errors, 'a part failed to stop');
   }

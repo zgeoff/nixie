@@ -30,6 +30,7 @@ export function buildStubToolEndpoint(): StubToolEndpoint {
     endpoint: {
       startRun: (run) => {
         runs.push(run);
+
         return Promise.resolve({
           runID: run.runID,
           token: 'run-token',
@@ -43,10 +44,12 @@ export function buildStubToolEndpoint(): StubToolEndpoint {
             };
 
             steps.push(step);
+
             return {
               token: step.token,
               stop: () => {
                 step.isStopped = true;
+
                 return Promise.resolve();
               },
             };

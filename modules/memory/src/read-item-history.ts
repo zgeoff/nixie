@@ -11,6 +11,7 @@ export async function readItemHistory(
   itemID: string,
 ): Promise<ItemHistory | null> {
   const db = parts.context.log.writer.db.$extendTables<MemoryTables>();
+
   const item = await db
     .selectFrom('memory_items')
     .select('state')
@@ -20,12 +21,14 @@ export async function readItemHistory(
   if (item === undefined) {
     return null;
   }
+
   const rows = await db
     .selectFrom('memory_versions')
     .selectAll()
     .where('item_id', '=', itemID)
     .orderBy('version')
     .execute();
+
   const key = await findItemKey(parts.context.log, itemID);
   const versions = await Promise.all(rows.map((row) => readHistoryVersion(row, key)));
 
@@ -48,9 +51,11 @@ async function readHistoryVersion(
   if (key === undefined) {
     return { ...base, status: 'shredded' };
   }
+
   if (key === null) {
     return { ...base, status: 'unreadable' };
   }
+
   try {
     const text = await decodeVersionText(
       key,

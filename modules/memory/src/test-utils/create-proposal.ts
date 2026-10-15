@@ -25,11 +25,14 @@ export async function createProposal(
     ...(request.target === undefined ? {} : { target: request.target }),
     caller: request.caller ?? buildMockWriteCaller(),
   });
+
   const pending = await store.proposals.listPending();
+
   const proposal = pending.find(
     (entry) => outcome.status === 'proposed' && entry.proposalID === outcome.proposalID,
   );
 
   invariant(proposal, 'the write made no pending proposal');
+
   return proposal;
 }

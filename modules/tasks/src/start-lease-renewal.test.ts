@@ -14,12 +14,14 @@ async function setupTest() {
 
 test('it leaves the lease as claimed until a third of its length passes', async () => {
   const ctx = await setupTest();
+
   const lease = await claimTestLease(ctx.context, {
     kind: 'task',
     workID: 'work-1',
     holder: 'runner-a',
     durationMs: 60_000,
   });
+
   const renewal = startLeaseRenewal(ctx.context, lease, 60_000);
 
   onTestFinished(() => renewal.stop());
@@ -33,12 +35,14 @@ test('it leaves the lease as claimed until a third of its length passes', async 
 
 test('it renews the lease a third of its length after the claim', async () => {
   const ctx = await setupTest();
+
   const lease = await claimTestLease(ctx.context, {
     kind: 'task',
     workID: 'work-1',
     holder: 'runner-a',
     durationMs: 60_000,
   });
+
   const renewal = startLeaseRenewal(ctx.context, lease, 60_000);
 
   onTestFinished(() => renewal.stop());
@@ -55,16 +59,20 @@ test('it renews the lease a third of its length after the claim', async () => {
 
 test('it renews again every third of the lease', async () => {
   const ctx = await setupTest();
+
   const lease = await claimTestLease(ctx.context, {
     kind: 'task',
     workID: 'work-1',
     holder: 'runner-a',
     durationMs: 60_000,
   });
+
   const renewal = startLeaseRenewal(ctx.context, lease, 60_000);
 
   onTestFinished(() => renewal.stop());
+
   ctx.clock.advance(20_000);
+
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
   ctx.clock.advance(20_000);
@@ -79,12 +87,14 @@ test('it renews again every third of the lease', async () => {
 
 test('it aborts its signal when a renewal finds the lease lost', async () => {
   const ctx = await setupTest();
+
   const lease = await claimTestLease(ctx.context, {
     kind: 'task',
     workID: 'work-1',
     holder: 'runner-a',
     durationMs: 60_000,
   });
+
   const renewal = startLeaseRenewal(ctx.context, lease, 60_000);
 
   onTestFinished(() => renewal.stop());
@@ -101,15 +111,18 @@ test('it aborts its signal when a renewal finds the lease lost', async () => {
 
 test('it stops renewing once stopped', async () => {
   const ctx = await setupTest();
+
   const lease = await claimTestLease(ctx.context, {
     kind: 'task',
     workID: 'work-1',
     holder: 'runner-a',
     durationMs: 60_000,
   });
+
   const renewal = startLeaseRenewal(ctx.context, lease, 60_000);
 
   await renewal.stop();
+
   ctx.clock.advance(20_000);
 
   const row = await ctx.db.selectFrom('leases').select('expires_at').executeTakeFirstOrThrow();
@@ -120,7 +133,9 @@ test('it stops renewing once stopped', async () => {
 
 test('it reaches renew.before and renew.after around each renewal', async () => {
   const ctx = await setupTest();
+
   const reached: FaultPointID[] = [];
+
   const lease = await claimTestLease(ctx.context, {
     kind: 'task',
     workID: 'work-1',
@@ -131,6 +146,7 @@ test('it reaches renew.before and renew.after around each renewal', async () => 
   setFaultPointHandler((id) => {
     reached.push(id);
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });
@@ -138,8 +154,10 @@ test('it reaches renew.before and renew.after around each renewal', async () => 
   const renewal = startLeaseRenewal(ctx.context, lease, 60_000);
 
   onTestFinished(() => renewal.stop());
+
   ctx.clock.advance(20_000);
 
   await waitForCondition(() => reached.length === 2);
+
   expect(reached).toStrictEqual(['renew.before', 'renew.after']);
 });

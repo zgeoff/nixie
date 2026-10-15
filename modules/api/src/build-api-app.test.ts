@@ -6,6 +6,7 @@ import type { APITables } from './types';
 
 async function setupTest() {
   const api = await startTestAPI();
+
   const db = api.writer.db.$extendTables<APITables & { records: { kind: string } }>();
 
   return { ...api, db };
@@ -22,8 +23,8 @@ test.each([
   ['/rpc/records/follow'],
 ])('it refuses %s without the client header, even with a live session', async (path) => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const response = await fetch(`${ctx.url}${path}`, {
     method: 'POST',
     headers: {
@@ -38,7 +39,6 @@ test.each([
 
 test('it writes nothing for a call without the client header', async () => {
   const ctx = await setupTest();
-
   const before = await ctx.db.selectFrom('records').select('kind').execute();
 
   await fetch(`${ctx.url}/rpc/sessions/list`, {
@@ -54,8 +54,8 @@ test('it writes nothing for a call without the client header', async () => {
 
 test('it takes the session from the cookie when no bearer token comes', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const response = await fetch(`${ctx.url}/rpc/sessions/list`, {
     method: 'POST',
     headers: {
@@ -71,8 +71,8 @@ test('it takes the session from the cookie when no bearer token comes', async ()
 
 test('it takes the bearer token over the cookie', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const response = await fetch(`${ctx.url}/rpc/sessions/list`, {
     method: 'POST',
     headers: {

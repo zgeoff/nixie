@@ -7,6 +7,7 @@ import type { MemoryTables, StoreParts } from './types';
 // any key an earlier close left behind.
 export async function runProposalLapses(parts: StoreParts): Promise<number> {
   const log = parts.context.log;
+
   const due = await withWriteTransaction(log.writer, async (tx) => {
     const rows = await tx
       .$extendTables<MemoryTables>()
@@ -26,9 +27,11 @@ export async function runProposalLapses(parts: StoreParts): Promise<number> {
         payload: { proposalID: row.proposal_id },
       })),
     );
+
     return rows;
   });
 
   await removeClosedProposalKeys(parts);
+
   return due.length;
 }

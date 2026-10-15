@@ -13,6 +13,7 @@ export async function runProbe(
   options: ProbeOptions,
 ): Promise<string> {
   const proxy = options.viaBroker ? '' : '--noproxy "*"';
+
   const result = await sandbox.exec({
     argv: [
       'sh',

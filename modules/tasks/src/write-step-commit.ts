@@ -21,13 +21,16 @@ export async function writeStepCommit(
   const faultContext = { kind: 'task', id: taskID } as const;
 
   requireStepResult(result);
+
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('step.commit.before', faultContext);
   }
+
   await withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, claim.lease, context.clock.now());
 
     const cursor = await readStepCursor(tx, taskID, result.acknowledged);
+
     await writeRecordsInTransaction(tx, context.log, [
       ...result.records.map((record) => ({ ...record, thread: taskID })),
       {
@@ -47,6 +50,7 @@ export async function writeStepCommit(
         },
       },
     ]);
+
     await resetLease(tx, claim.lease);
   }).catch((error: unknown) => {
     throw isStepKeyConflict(error) ? new StepAlreadyCommittedError(claim.stepKey) : error;
@@ -69,11 +73,13 @@ async function readStepCursor(
   acknowledged: readonly number[],
 ): Promise<StepCursor> {
   const db = tx.$extendTables<TasksTables>();
+
   const task = await db
     .selectFrom('tasks')
     .select(['read_cursor', 'last_inbox_sequence'])
     .where('task_id', '=', taskID)
     .executeTakeFirstOrThrow();
+
   const unread = await db
     .selectFrom('records')
     .select(['sequence', 'kind', 'thread'])
@@ -81,6 +87,7 @@ async function readStepCursor(
     .where('sequence', '>', task.read_cursor)
     .orderBy('sequence')
     .execute();
+
   const readCursor = planReadCursor(
     unread.filter((record) => isInboxRecord(record)).map((record) => record.sequence),
     task.read_cursor,
@@ -99,6 +106,7 @@ function requireStepResult(result: StepResult): void {
   if (keyed !== undefined) {
     throw new Error(`a step's ${keyed.kind} record carries a step key; only its commit does`);
   }
+
   if (timer !== undefined) {
     throw new Error(`a step's timer is due at ${timer.dueAt}, which is no time`);
   }
@@ -110,6 +118,7 @@ function pickNextState(next: StepResult['next'], hasUnread: boolean): TaskState 
   if (hasUnread || next === 'continue') {
     return 'ready';
   }
+
   return next === 'done' ? 'done' : 'waiting';
 }
 

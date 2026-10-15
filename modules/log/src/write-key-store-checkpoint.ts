@@ -12,6 +12,7 @@ export async function writeKeyStoreCheckpoint(
   const result = await sql<CheckpointResult>`pragma wal_checkpoint(truncate)`.execute(
     log.writer.keys,
   );
+
   const checkpoint = result.rows.at(0);
 
   if (

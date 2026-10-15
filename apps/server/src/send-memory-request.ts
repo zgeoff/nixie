@@ -43,6 +43,7 @@ export async function sendMemoryRequest(
   request: MemoryRequest,
 ): Promise<unknown> {
   const route = buildMemoryRoute(request);
+
   const response =
     route.body === null
       ? await Bun.fetch(`http://localhost${route.path}`, { unix: socketPath })
@@ -60,6 +61,7 @@ export async function sendMemoryRequest(
       `nixie answered the memory ${request.command} request with ${response.status}: ${reason}`,
     );
   }
+
   return response.json();
 }
 
@@ -75,15 +77,18 @@ function buildMemoryRoute(request: MemoryRequest): MemoryRoute {
       ? { path: '/memory/consolidation', body: null }
       : { path: '/memory/consolidation/approve', body: { answers: request.answers } };
   }
+
   if (request.command === 'diff-reject') {
     return {
       path: '/memory/consolidation/reject',
       body: { changeID: request.changeID, actionHash: request.actionHash },
     };
   }
+
   if (request.command === 'pending') {
     return { path: '/memory/proposals', body: null };
   }
+
   if ('proposalID' in request) {
     return {
       path: `/memory/proposals/${request.command}`,
@@ -96,6 +101,7 @@ function buildMemoryRoute(request: MemoryRequest): MemoryRoute {
       },
     };
   }
+
   return buildItemRoute(request);
 }
 
@@ -108,14 +114,17 @@ function buildItemRoute(request: ItemRequest): MemoryRoute {
   if (request.command === 'show') {
     return { path: `/memory/items/${encodeURIComponent(request.itemID)}`, body: null };
   }
+
   if (request.command === 'edit') {
     return { path: '/memory/items/edit', body: { ...request.target, text: request.text } };
   }
+
   if (request.command === 'pin') {
     return {
       path: '/memory/items/pin',
       body: { itemID: request.itemID, isPinned: request.isPinned },
     };
   }
+
   return { path: `/memory/items/${request.command}`, body: request.target };
 }

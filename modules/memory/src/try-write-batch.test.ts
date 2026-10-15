@@ -13,8 +13,10 @@ import { writerConfigSchema } from './writer-config-schema';
 // step that holds the lease; the model and the gate never run, because a publish reaches neither
 async function setupTest() {
   const memory = await startTestMemory();
+
   const clock = buildTestClock(1_000_000);
   const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
+
   const lease = await claimLease(context, {
     kind: 'task',
     holder: 'runner-1',
@@ -42,6 +44,7 @@ async function setupTest() {
     getPersona: () => '',
     ownerName: null,
   };
+
   const input = {
     taskID: 'memory-writer',
     stepKey: 'step-1',
@@ -67,6 +70,7 @@ test('it publishes the batch and advances the cursor with its record', async () 
     capped: { kind: 'publish', writes: [], dropped: 0 },
     usage: null,
   });
+
   const after = await readWriterRow(ctx.memory.log);
 
   expect(result).toStrictEqual({ status: 'published', applied: [], proposed: 0, forgotten: 0 });
@@ -76,6 +80,7 @@ test('it publishes the batch and advances the cursor with its record', async () 
 test('it returns superseded when an item moved on since the session read it', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -87,6 +92,7 @@ test('it returns superseded when an item moved on since the session read it', as
   });
 
   const row = await readWriterRow(ctx.memory.log);
+
   const result = await tryWriteBatch(ctx.parts, {
     input: ctx.input,
     row,
@@ -122,6 +128,7 @@ test('it returns superseded when an item moved on since the session read it', as
 test('it returns superseded when an item a proposal names was forgotten since the session read it', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

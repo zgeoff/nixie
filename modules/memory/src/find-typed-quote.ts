@@ -19,7 +19,9 @@ export function findTypedQuote(message: OwnerMessage, quote: string): QuoteMatch
   if (needle.length === 0 || invisible.test(quote)) {
     return { status: 'missing' };
   }
+
   const blocks = findQuotedBlocks(message.text);
+
   const matches = collectOccurrences(normalizeMatchText(message.text), needle).map((range) =>
     pickOccurrenceMatch(message, blocks, range),
   );
@@ -46,6 +48,7 @@ function collectOccurrences(text: MatchText, needle: string): readonly TextRange
     from = text.text.indexOf(needle, from + 1)
   ) {
     const after = from + needle.length;
+
     const isOnBoundaries =
       text.boundaries.has(from) && (after === text.text.length || text.boundaries.has(after));
 
@@ -53,6 +56,7 @@ function collectOccurrences(text: MatchText, needle: string): readonly TextRange
       ranges.push({ start: text.starts[from] ?? 0, end: text.ends[after - 1] ?? 0 });
     }
   }
+
   return ranges;
 }
 
@@ -64,6 +68,7 @@ function pickOccurrenceMatch(
   if (isInBlock(blocks, range)) {
     return { status: 'in_quoted_block' };
   }
+
   return isTypedRange(message, range) ? { status: 'typed', ...range } : { status: 'not_typed' };
 }
 
@@ -80,5 +85,6 @@ function isTypedRange(message: OwnerMessage, range: TextRange): boolean {
       return false;
     }
   }
+
   return true;
 }

@@ -42,11 +42,14 @@ export async function readRecentTurns(
 
   for await (const turn of readTurnsNewestFirst(context, query)) {
     total.tokens += countTextTokens(renderHistoryLine(turn, query.times));
+
     if (total.tokens > query.tokens) {
       break;
     }
+
     kept.push(turn);
   }
+
   return kept.toReversed();
 }
 
@@ -66,6 +69,7 @@ async function* readTurnsNewestFirst(
     if (record.sequence <= (query.afterSequence ?? 0)) {
       break;
     }
+
     if (record.kind === 'model.reply') {
       unanswered.push(record);
     } else if (record.sequence < query.beforeSequence) {
@@ -73,5 +77,6 @@ async function* readTurnsNewestFirst(
       yield { record, answered: null };
     }
   }
+
   yield* unanswered.map((reply) => ({ record: reply, answered: null }));
 }

@@ -14,20 +14,25 @@ import type {
 // result field with no source.
 export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolRegistry {
   const validator = new AjvJsonSchemaValidator();
+
   const makeSchemaParser = (schema: JsonSchema) => toSchemaParser(validator.getValidator(schema));
+
   const tools = new Map<string, RegisteredTool>();
 
   for (const definition of definitions) {
     if (tools.has(definition.name)) {
       throw new Error(`the tool ${definition.name} is defined twice`);
     }
+
     assertDefinition(definition);
+
     tools.set(definition.name, {
       definition,
       parseInput: makeSchemaParser(definition.input),
       parseOutput: makeSchemaParser(definition.output),
     });
   }
+
   return { findTool: (name) => tools.get(name) ?? null };
 }
 
@@ -35,6 +40,7 @@ function assertDefinition(definition: ToolDefinition): void {
   if (definition.input['type'] !== 'object') {
     throw new Error(`the tool ${definition.name} needs an object input schema`);
   }
+
   assertExecution(definition);
   assertResultSources(definition);
 }
@@ -59,10 +65,12 @@ function assertExecution(definition: ToolDefinition): void {
 // source names a field, so each result field's record carries its source.
 function assertResultSources(definition: ToolDefinition): void {
   const properties = definition.output['properties'];
+
   const fields =
     typeof properties === 'object' && properties !== null && !Array.isArray(properties)
       ? Object.keys(properties)
       : [];
+
   const sources = Object.keys(definition.declaration.results);
   const unsourced = fields.filter((field) => !sources.includes(field));
   const unknown = sources.filter((field) => !fields.includes(field));

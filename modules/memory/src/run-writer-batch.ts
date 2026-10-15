@@ -18,8 +18,10 @@ export async function runWriterBatch(
   if ('wakeAt' in bounds) {
     return { next: 'wait', timers: bounds.wakeAt === null ? [] : [{ dueAt: bounds.wakeAt }] };
   }
+
   const batch = await readWriterBatch(parts.context.log, bounds);
   const extracted = await runWriterExtraction(parts, batch, state.input.signal);
+
   const gated = await tryRunWriterGate(parts.gate, extracted.writes, {
     findSource: (sequence) => batch.sources.get(sequence),
     isShownText: (text) => extracted.shownTexts.has(text),
@@ -29,5 +31,6 @@ export async function runWriterBatch(
   if (gated === null) {
     return { next: 'continue', timers: [] };
   }
+
   return writeGatedBatch(parts, { ...state, batch, gated, usage: extracted.usage });
 }

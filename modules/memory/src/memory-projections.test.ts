@@ -43,12 +43,14 @@ test('it gives an item whose record holds no short ID the one its UUID gives, as
 
 test('it rebuilds an edited, retired and undone item equal to the live rows', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     evidenceQuote: 'my flat on Elm Street',
     evidence: { recordSequence: 4, start: 3, end: 21 },
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const moved = await ctx.memory.store.remember({
     text: 'Lives on Oak Avenue',
     target: item,
@@ -60,6 +62,7 @@ test('it rebuilds an edited, retired and undone item equal to the live rows', as
       checks: { quote: 'pass' },
     },
   });
+
   const retired = await ctx.memory.store.retire({
     target: moved,
     intentQuote: 'I moved out',
@@ -72,6 +75,7 @@ test('it rebuilds an edited, retired and undone item equal to the live rows', as
       checks: null,
     },
   });
+
   await ctx.memory.store.undo({
     target: retired,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -89,11 +93,13 @@ test('it rebuilds an edited, retired and undone item equal to the live rows', as
 
 test('it rebuilds pinned, unpinned and forgotten items equal to the live rows', async () => {
   const ctx = await setupTest();
+
   const pinned = await ctx.memory.store.remember({
     text: 'Goes by Sam',
     isPinned: true,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const forgotten = await ctx.memory.store.remember({
     text: 'Allergic to hazelnuts',
     isPinned: true,
@@ -105,6 +111,7 @@ test('it rebuilds pinned, unpinned and forgotten items equal to the live rows', 
     isPinned: false,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   await ctx.memory.store.forget({
     target: forgotten,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -122,10 +129,12 @@ test('it rebuilds pinned, unpinned and forgotten items equal to the live rows', 
 
 test('it rebuilds a restored item equal to the live rows', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const retired = await ctx.memory.store.retire({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

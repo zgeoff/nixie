@@ -25,6 +25,7 @@ test('it answers each request with the next scripted reply', async () => {
 
     return response.json();
   };
+
   const first = await sendRequest();
   const second = await sendRequest();
 
@@ -33,6 +34,7 @@ test('it answers each request with the next scripted reply', async () => {
     stop_reason: 'tool_use',
     content: [{ type: 'tool_use', name: 'mcp__nixie__note_read', input: { name: 'a' } }],
   });
+
   expect(second).toMatchObject({
     model: 'model-a',
     stop_reason: 'end_turn',
@@ -49,6 +51,7 @@ test('it streams a reply as server-sent events when the request asks', async () 
     method: 'POST',
     body: JSON.stringify({ model: 'model-a', stream: true, messages: [] }),
   });
+
   const text = await response.text();
 
   expect(response.headers.get('content-type')).toBe('text/event-stream');
@@ -69,6 +72,7 @@ test('it reports the input tokens a scripted reply sets, and 10 for one that set
 
     return response.json();
   };
+
   const first = await sendRequest();
   const second = await sendRequest();
 
@@ -105,6 +109,7 @@ test('it reports the cache tokens a scripted reply sets beside its input tokens'
     method: 'POST',
     body: JSON.stringify({ model: 'model-a', messages: [] }),
   });
+
   const body = await response.json();
 
   expect(body).toMatchObject({
@@ -131,6 +136,7 @@ test('it streams the cache tokens a scripted reply sets in its message start', a
     method: 'POST',
     body: JSON.stringify({ model: 'model-a', stream: true, messages: [] }),
   });
+
   const text = await response.text();
 
   expect(text).toInclude(
@@ -153,6 +159,7 @@ test('it records every request with its path, headers and body', async () => {
   const ctx = setupTest();
 
   ctx.stub.addReplies({ text: 'ok' });
+
   await fetch(`${ctx.stub.url}/v1/messages`, {
     method: 'POST',
     headers: { 'x-api-key': 'placeholder' },

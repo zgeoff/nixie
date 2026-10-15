@@ -4,11 +4,13 @@ import { encodeConsolidationSummary } from './encode-consolidation-summary';
 
 async function setupTest() {
   const itemIDs = ['item-a', 'item-b', 'item-c'];
+
   const generated = await Promise.all(
     itemIDs.map(() =>
       crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']),
     ),
   );
+
   const keys = new Map(generated.map((key, index) => [itemIDs[index] ?? '', key] as const));
 
   return { keys };

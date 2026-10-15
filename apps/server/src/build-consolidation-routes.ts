@@ -14,6 +14,7 @@ export function buildConsolidationRoutes(readMemory: ReadMemory) {
     '/memory/consolidation': {
       GET: async () => {
         const diff = await requireHostMemory(readMemory).consolidations.readPending();
+
         const entry = diff === null ? null : buildDiffEntry(diff);
 
         return Response.json(entry);
@@ -23,11 +24,13 @@ export function buildConsolidationRoutes(readMemory: ReadMemory) {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
         const body = await parseControlBody(request, approveBody, approveUsage);
+
         const answers = body.answers.map((answer) => ({
           changeID: answer.changeID,
           actionHash: answer.actionHash,
           identityID: hostIdentityID,
         }));
+
         const outcomes = await requireHostMemory(readMemory).consolidations.approveAll(answers);
 
         return Response.json({ outcomes });
@@ -42,6 +45,7 @@ export function buildConsolidationRoutes(readMemory: ReadMemory) {
           ...answer,
           identityID: hostIdentityID,
         });
+
         return Response.json({ changeID: answer.changeID });
       },
     },
@@ -85,7 +89,5 @@ const changeAnswer = z.strictObject({
 });
 
 const approveBody = z.strictObject({ answers: z.array(changeAnswer).min(1).max(30) });
-
 const approveUsage = 'an approval takes answers: 1 to 30 of { changeID, actionHash }';
-
 const rejectUsage = 'a rejection takes a changeID and an actionHash';

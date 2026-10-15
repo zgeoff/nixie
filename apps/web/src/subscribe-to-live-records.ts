@@ -45,6 +45,7 @@ export async function subscribeToLiveRecords(options: SubscribeOptions): Promise
     // A page that wakes during the pause ends it, so the client follows again at once.
     // oxlint-disable-next-line no-await-in-loop -- the client pauses before it reconnects
     await waitForDelay(pickReconnectDelay(state.failures), options.startTimer, wake.signal);
+
     wake.stop();
   }
 }
@@ -60,14 +61,17 @@ interface WakeWatch {
 // connection that no error reports, and a network that came back skips the rest of the backoff.
 function startWakeWatch(outer: AbortSignal): WakeWatch {
   const controller = new AbortController();
+
   const stop = (): void => {
     outer.removeEventListener('abort', stopOnAbort);
     globalThis.removeEventListener('online', stopOnWake);
     globalThis.document.removeEventListener('visibilitychange', stopOnWake);
   };
+
   const stopOnAbort = (): void => {
     controller.abort();
   };
+
   const stopOnWake = (): void => {
     if (globalThis.document.visibilityState === 'visible') {
       controller.abort();
@@ -145,6 +149,7 @@ async function drainRecordStream(
   try {
     for await (const event of events) {
       state.after = event.record.sequence;
+
       options.onRecord(event.record);
     }
   } catch (error) {

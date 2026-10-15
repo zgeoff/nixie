@@ -16,7 +16,9 @@ export const memoryProposalsProjection: Projection = {
     if (parsed === null) {
       return [];
     }
+
     await writeProposalChange(tx.$extendTables<MemoryTables>(), record, parsed);
+
     return [parsed.proposalID];
   },
 };
@@ -29,16 +31,20 @@ async function writeProposalChange(
 ): Promise<void> {
   if (parsed.kind === 'memory.proposed') {
     await writeProposalRow(db, record, parsed);
+
     return;
   }
+
   if (parsed.kind === 'memory.proposal_merged') {
     await db
       .updateTable('memory_proposals')
       .set((eb) => ({ lapse_at: eb.fn('max', ['lapse_at', eb.val(parsed.lapseAt)]) }))
       .where('proposal_id', '=', parsed.proposalID)
       .execute();
+
     return;
   }
+
   await db
     .updateTable('memory_proposals')
     .set({ status: statusAfter[parsed.kind], resolved_sequence: record.sequence })

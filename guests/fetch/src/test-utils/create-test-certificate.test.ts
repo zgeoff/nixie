@@ -4,6 +4,7 @@ import { createTestCertificate } from './create-test-certificate';
 
 test('it creates a certificate for every name, signed by its own key', async () => {
   const certificate = await createTestCertificate(['site.test', 'other.test']);
+
   const x509 = new X509Certificate(certificate.cert);
 
   expect(x509.subjectAltName).toBe('DNS:site.test, DNS:other.test');

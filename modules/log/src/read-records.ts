@@ -36,6 +36,7 @@ export async function readRecords(
 ): Promise<readonly RecordWithChanges[]> {
   const db = log.writer.db.$extendTables<LogTables>();
   const direction = options.order === 'newest' ? 'desc' : 'asc';
+
   const rows = await db
     .selectFrom('records')
     .selectAll()
@@ -52,6 +53,7 @@ export async function readRecords(
   if (rows.length === 0) {
     return [];
   }
+
   const changeRows = await db
     .selectFrom('projection_changes')
     .selectAll()
@@ -64,6 +66,7 @@ export async function readRecords(
     .orderBy('projection')
     .orderBy('row_key')
     .execute();
+
   const keys = await findRecordKeys(
     log,
     rows.flatMap((row) => (row.key_id === null ? [] : [row.key_id])),
@@ -104,14 +107,17 @@ function decodeRecordErasable(
   if (row.key_id === null || row.sealed === null) {
     return Promise.resolve({ status: 'none' });
   }
+
   const key = getKey(row.key_id);
 
   if (key === undefined) {
     return Promise.resolve({ status: 'shredded' });
   }
+
   if (key === null) {
     return Promise.resolve({ status: 'unreadable' });
   }
+
   return decodeErasable(key, row.key_id, row.sealed).then(
     (fields): ErasableFields => ({ status: 'readable', fields }),
     (): ErasableFields => ({ status: 'unreadable' }),

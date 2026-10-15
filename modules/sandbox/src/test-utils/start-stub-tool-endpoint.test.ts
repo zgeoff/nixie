@@ -56,5 +56,6 @@ test('it stops listening when the test finishes', async () => {
     // curl's exit code for a connection that reached no server
     expect(result.exitCode).toBe(7);
   });
+
   onTestFinished(() => rm(dir, { recursive: true, force: true }));
 });

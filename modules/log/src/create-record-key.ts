@@ -16,6 +16,7 @@ export async function createRecordKey(
     'encrypt',
     'decrypt',
   ]);
+
   const wrapped = await crypto.subtle.wrapKey('raw', key, log.deploymentKey, 'AES-KW');
 
   await log.writer.keys
@@ -23,5 +24,6 @@ export async function createRecordKey(
     .insertInto('record_keys')
     .values({ key_id: keyID, wrapped: new Uint8Array(wrapped) })
     .execute();
+
   return { keyID, key };
 }

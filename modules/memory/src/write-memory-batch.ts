@@ -58,13 +58,16 @@ export function writeMemoryBatch(
     if (result.status === 'superseded') {
       return result;
     }
+
     for (const version of result.written) {
       // oxlint-disable-next-line no-await-in-loop -- the index takes one entry at a time
       await updateVersionIndex(parts, version.ref.itemID, version.next);
     }
+
     if (NIXIE_TEST_BUILD) {
       await waitAtFaultPoint('writer.publish.after', { kind: 'task', id: memoryWriterTaskID });
     }
+
     return { status: 'published', ...result.outcome };
   });
 }
@@ -89,17 +92,22 @@ async function writeBatchInTransaction(
   publication: BatchPublication,
 ): Promise<WrittenBatch> {
   await requireLease(tx, publication.lease, publication.clock.now());
+
   if (!(await isPendingBatch(tx, publication.bounds))) {
     return { status: 'superseded' };
   }
+
   const kept = await findReadableWrites(parts, tx, publication.writes);
   const written = await writeAppliedVersions(parts, tx, kept);
+
   const outcome = buildBatchOutcome(publication, kept, written);
 
   await writePublishedRecords(parts, tx, { kept, records: publication.buildRecords(outcome) });
+
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('writer.publish.before', { kind: 'task', id: memoryWriterTaskID });
   }
+
   return { status: 'published', written, outcome };
 }
 

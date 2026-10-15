@@ -10,7 +10,9 @@ export async function registerSandboxImages(parts: ImageParts): Promise<void> {
   for (const image of Object.values(parts.images)) {
     // oxlint-disable-next-line no-await-in-loop -- impd pulls one image at a time
     await parts.tools.adapter.addImage(image);
+
     parts.log('image.added', { name: image.name });
   }
+
   parts.state.update({ areImagesAdded: true });
 }

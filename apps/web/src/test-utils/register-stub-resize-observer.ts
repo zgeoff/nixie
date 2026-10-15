@@ -10,15 +10,18 @@ export interface StubResizeObserver {
 // and stops once it disconnects or unobserves that element.
 export function registerStubResizeObserver(): StubResizeObserver {
   const original = globalThis.ResizeObserver;
+
   const observers = new Set<StubObserver>();
 
   // the DOM names the observer's methods, so they are fields that keep those names
   class StubObserver implements ResizeObserver {
     readonly targets = new Set<Element>();
+
     readonly #onResize: ResizeObserverCallback;
 
     constructor(onResize: ResizeObserverCallback) {
       this.#onResize = onResize;
+
       observers.add(this);
     }
 
@@ -40,6 +43,7 @@ export function registerStubResizeObserver(): StubResizeObserver {
   }
 
   globalThis.ResizeObserver = StubObserver;
+
   onTestFinished(() => {
     globalThis.ResizeObserver = original;
   });

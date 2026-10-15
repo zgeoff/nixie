@@ -18,6 +18,7 @@ export function renderEventsBlock(
   if (events.length === 0 && moreCount === 0) {
     return null;
   }
+
   const sorted = events.toSorted((left, right) => left.sequence - right.sequence);
 
   return [

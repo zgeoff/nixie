@@ -30,6 +30,7 @@ test('it queues an allowed call as a pending action due at once', async () => {
   const action = await ctx.db.selectFrom('actions').selectAll().executeTakeFirstOrThrow();
 
   expect(queued).toStrictEqual({ actionID: action.action_id, status: 'pending', isRepeat: false });
+
   expect(action).toMatchObject({
     task_id: ctx.step.lease.workID,
     step_key: `${ctx.step.lease.workID}:1`,
@@ -89,6 +90,7 @@ test('it refuses a call the decision point did not allow', async () => {
 
 test('it returns the earlier action for a repeat call under the same step key', async () => {
   const ctx = await setupTest();
+
   const first = await createAllowedAction(ctx.context, {
     step: ctx.step,
     tool: 'test.send',
@@ -112,6 +114,7 @@ test('it returns the earlier action for a repeat call under the same step key', 
 
 test('it returns the earlier action for a repeat call while that action is pending', async () => {
   const ctx = await setupTest();
+
   const first = await createAllowedAction(ctx.context, {
     step: ctx.step,
     tool: 'test.send',
@@ -133,6 +136,7 @@ test('it returns the earlier action for a repeat call while that action is pendi
 
 test('it returns the earlier action for a repeat call while that action is unknown', async () => {
   const ctx = await setupTest();
+
   const first = await createAllowedAction(ctx.context, {
     step: ctx.step,
     tool: 'test.send',
@@ -156,6 +160,7 @@ test('it returns the earlier action for a repeat call while that action is unkno
 
 test('it queues a new action when the same call settled under an earlier step', async () => {
   const ctx = await setupTest();
+
   const first = await createAllowedAction(ctx.context, {
     step: ctx.step,
     tool: 'test.send',
@@ -201,11 +206,13 @@ test('it queues nothing once the step lost its lease', async () => {
 
 test('it reaches queue.commit.before and queue.commit.after around the queue', async () => {
   const ctx = await setupTest();
+
   const reached: FaultPointID[] = [];
 
   setFaultPointHandler((id) => {
     reached.push(id);
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });
@@ -227,6 +234,7 @@ test('it leaves no queue fault point in a release bundle', async () => {
     target: 'bun',
     define: { NIXIE_TEST_BUILD: 'false' },
   });
+
   const texts = await Promise.all(build.outputs.map((output) => output.text()));
 
   expect(texts.join('\n')).not.toInclude('queue.commit.');
@@ -238,6 +246,7 @@ test('it keeps both queue fault points in a test bundle', async () => {
     target: 'bun',
     define: { NIXIE_TEST_BUILD: 'true' },
   });
+
   const texts = await Promise.all(build.outputs.map((output) => output.text()));
 
   expect(texts.join('\n')).toIncludeMultiple(['queue.commit.before', 'queue.commit.after']);

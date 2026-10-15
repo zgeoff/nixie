@@ -16,9 +16,11 @@ export const memoryConsolidationsProjection: Projection = {
     if (parsed?.kind === 'memory.consolidation_summarized') {
       return updateRunSummary(db, parsed);
     }
+
     if (parsed?.kind !== 'memory.consolidation_proposed') {
       return [];
     }
+
     await db
       .insertInto('memory_consolidations')
       .values({
@@ -33,6 +35,7 @@ export const memoryConsolidationsProjection: Projection = {
         summary_lapse_at: null,
       })
       .execute();
+
     return [parsed.diffID];
   },
 };
@@ -51,5 +54,6 @@ async function updateRunSummary(
     })
     .where('diff_id', '=', parsed.diffID)
     .execute();
+
   return [parsed.diffID];
 }

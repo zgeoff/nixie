@@ -20,20 +20,22 @@ test('it keeps a sleeper asleep until an advance reaches its due time', () => {
 
 test('it wakes a sleeper once an advance reaches its due time', async () => {
   const clock = buildTestClock(0);
-
   const sleep = clock.sleep(20_000);
 
   clock.advance(20_000);
 
   await expect(sleep).toResolve();
+
   expect(clock.countSleepers()).toBe(0);
 });
 
 test('it wakes sleepers earliest first', async () => {
   const clock = buildTestClock(0);
   const woken: string[] = [];
+
   const waitAndRecord = async (name: string, ms: number): Promise<void> => {
     await clock.sleep(ms);
+
     woken.push(name);
   };
 
@@ -41,6 +43,7 @@ test('it wakes sleepers earliest first', async () => {
   const early = waitAndRecord('early', 100);
 
   clock.advance(500);
+
   await Promise.all([late, early]);
 
   expect(woken).toStrictEqual(['early', 'late']);
@@ -48,6 +51,7 @@ test('it wakes sleepers earliest first', async () => {
 
 test('it ends a sleep at once when its signal aborts', async () => {
   const clock = buildTestClock(0);
+
   const controller = new AbortController();
 
   const sleep = clock.sleep(60_000, controller.signal);
@@ -55,6 +59,7 @@ test('it ends a sleep at once when its signal aborts', async () => {
   controller.abort();
 
   await expect(sleep).toResolve();
+
   expect(clock.countSleepers()).toBe(0);
 });
 

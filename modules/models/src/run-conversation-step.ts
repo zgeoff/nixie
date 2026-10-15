@@ -23,6 +23,7 @@ export function runConversationStep(run: ConversationRun, input: StepInput): Pro
       sessionBoundary: input.sessionBoundary,
     });
   }
+
   return run.session.withTurn((invalidated) =>
     runSessionTurn(run, input, AbortSignal.any([input.signal, invalidated])),
   );
@@ -34,14 +35,18 @@ async function runSessionTurn(
   signal: AbortSignal,
 ): Promise<StepResult> {
   const source = { definitions: run.context.definitions, model: run.model };
+
   const marks = await readSessionMarks(run.context, input.taskID);
+
   const boundary = parseSessionBoundary(input.sessionBoundary);
   const step = { run, input, signal, marks };
 
   if (!marks.isInvalidated && boundary !== null && marks.hasOpening) {
     return runResumedTurn(step, boundary);
   }
+
   const opened = await readSessionTurn(step, true);
+
   const start: SessionStart = pickSessionStart(marks.isInvalidated, boundary);
 
   return runOpenedTurn(opened, source, start);
@@ -51,6 +56,7 @@ async function runSessionTurn(
 // context read again for the new session.
 async function runResumedTurn(step: SessionStep, boundary: SessionPoint): Promise<StepResult> {
   const source = { definitions: step.run.context.definitions, model: step.run.model };
+
   const turn = await readSessionTurn(step, false);
   const resumed = await runPlannedTurn(turn, { resume: boundary });
 
@@ -59,6 +65,7 @@ async function runResumedTurn(step: SessionStep, boundary: SessionPoint): Promis
 
     return buildStepResult(source, { ...resumed.completed, memory }, []);
   }
+
   const opened = await readSessionTurn(step, true);
 
   return runOpenedTurn(opened, source, {
@@ -76,6 +83,7 @@ function pickSessionStart(isInvalidated: boolean, boundary: SessionPoint | null)
   if (isInvalidated) {
     return { kind: 'rebuild', reason: 'forget', lostSessionID };
   }
+
   return boundary === null ? { kind: 'first' } : { kind: 'rebuild', reason: 'lost', lostSessionID };
 }
 

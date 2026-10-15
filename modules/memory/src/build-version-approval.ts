@@ -17,6 +17,7 @@ export function buildVersionApproval(
   if (proposalID === null) {
     return null;
   }
+
   return {
     isQuotePasted:
       proposal?.operation === 'remember' && proposal.reason === 'quote_in_quoted_block',

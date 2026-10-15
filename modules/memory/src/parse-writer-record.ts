@@ -65,14 +65,18 @@ export function parseWriterRecord(record: EnvelopeRecord): WriterRecord | null {
   if (record.kind === 'memory.writer_started') {
     return { kind: record.kind, ...writerStarted.parse(record.payload) };
   }
+
   if (record.kind === 'memory.batch_planned') {
     return { kind: record.kind, ...batchPlanned.parse(record.payload) };
   }
+
   if (record.kind === 'memory.batch_published') {
     return { kind: record.kind, ...batchPublished.parse(record.payload) };
   }
+
   if (record.kind === 'memory.writer_failed') {
     return { kind: record.kind, ...writerFailed.parse(record.payload) };
   }
+
   return null;
 }

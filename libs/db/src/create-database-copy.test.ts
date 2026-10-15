@@ -47,12 +47,13 @@ test('it replaces an older copy and a partial copy left by an interrupted run', 
   const ctx = await setupTest();
 
   await sql`create table notes (id text primary key)`.execute(ctx.db);
+
   await writeFile(join(ctx.dir, 'copy.db'), 'an older copy');
   await writeFile(join(ctx.dir, 'copy.db.partial'), 'an interrupted copy');
-
   await createDatabaseCopy(ctx.db, join(ctx.dir, 'copy.db'));
 
   const names = await readdir(ctx.dir);
+
   const copy = new Database(join(ctx.dir, 'copy.db'), { readonly: true });
 
   onTestFinished(() => {
@@ -63,5 +64,6 @@ test('it replaces an older copy and a partial copy left by an interrupted run', 
     { name: 'notes' },
     { name: 'sqlite_autoindex_notes_1' },
   ]);
+
   expect(names.toSorted()).toStrictEqual(['copy.db', 'nixie.db', 'nixie.db-shm', 'nixie.db-wal']);
 });

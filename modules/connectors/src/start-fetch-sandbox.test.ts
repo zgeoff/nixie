@@ -16,7 +16,9 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
     isTruncated: false,
     blocked: null,
   }));
+
   const adapter = buildStubSandboxAdapter(makeStubFetcher(answer));
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -26,6 +28,7 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   const reply = await fetchSandbox.readPage('https://example.com/');
@@ -39,6 +42,7 @@ test("it sends the fetcher the URL, the limits and the deployment's ranges, and 
     isTruncated: false,
     blocked: null,
   });
+
   expect(answer).toHaveBeenCalledExactlyOnceWith({
     url: 'https://example.com/',
     limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 50 },
@@ -58,6 +62,7 @@ test('it creates one fetch sandbox with public egress, no grants and no tool rou
       blocked: null,
     })),
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -67,6 +72,7 @@ test('it creates one fetch sandbox with public egress, no grants and no tool rou
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   await fetchSandbox.readPage('https://example.com/');
@@ -99,6 +105,7 @@ test('it runs each fetch in a new fetcher process in the same sandbox', async ()
       blocked: null,
     })),
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -108,6 +115,7 @@ test('it runs each fetch in a new fetcher process in the same sandbox', async ()
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   await fetchSandbox.readPage('https://example.com/1');
@@ -117,6 +125,7 @@ test('it runs each fetch in a new fetcher process in the same sandbox', async ()
   const [only = 'none', ...others] = adapter.created.map((created) => created.id);
 
   expect(others).toStrictEqual([]);
+
   expect(adapter.spawned).toStrictEqual([
     { sandboxID: only, argv: ['bun', '/app/fetch.js'] },
     { sandboxID: only, argv: ['bun', '/app/fetch.js'] },
@@ -136,6 +145,7 @@ test('it replaces the sandbox after the configured number of fetches', async () 
       blocked: null,
     })),
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -145,11 +155,13 @@ test('it replaces the sandbox after the configured number of fetches', async () 
     fetchesPerSandbox: 2,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   await fetchSandbox.readPage('https://example.com/1');
   await fetchSandbox.readPage('https://example.com/2');
   await fetchSandbox.readPage('https://example.com/3');
+
   const [first = 'none', second = 'none', ...others] = adapter.created.map((created) => created.id);
 
   expect(others).toStrictEqual([]);
@@ -175,6 +187,7 @@ test.each([
   ],
 ])('it replaces the sandbox after %s', async (_label, answer, reason) => {
   const adapter = buildStubSandboxAdapter(makeStubFetcher(() => answer));
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -184,10 +197,13 @@ test.each([
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   const reply = await fetchSandbox.readPage('https://example.com/');
+
   await fetchSandbox.readPage('https://example.com/');
+
   const ids = adapter.created.map((created) => created.id);
 
   expect(reply).toStrictEqual({ kind: expect.toBeOneOf(['failed', 'refused']), reason });
@@ -197,6 +213,7 @@ test.each([
 
 test('it replaces the sandbox after a reply that is not a fetch reply', async () => {
   const adapter = buildStubSandboxAdapter(makeStubFetcher(() => ({ kind: 'garbage' })));
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -206,6 +223,7 @@ test('it replaces the sandbox after a reply that is not a fetch reply', async ()
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   const reply = await fetchSandbox.readPage('https://example.com/');
@@ -214,12 +232,14 @@ test('it replaces the sandbox after a reply that is not a fetch reply', async ()
     kind: 'failed',
     reason: expect.toStartWith('the fetch sandbox failed: '),
   });
+
   expect(adapter.created).toHaveLength(1);
   expect(adapter.destroyed).toStrictEqual(adapter.created.map((created) => created.id));
 });
 
 test('it fails a fetch whose fetcher exits with no reply, and replaces the sandbox', async () => {
   const adapter = buildStubSandboxAdapter(() => Promise.resolve(0));
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -229,6 +249,7 @@ test('it fails a fetch whose fetcher exits with no reply, and replaces the sandb
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   const reply = await fetchSandbox.readPage('https://example.com/');
@@ -237,6 +258,7 @@ test('it fails a fetch whose fetcher exits with no reply, and replaces the sandb
     kind: 'failed',
     reason: 'the fetch sandbox failed: the fetcher closed its output with no reply',
   });
+
   expect(adapter.created).toHaveLength(1);
   expect(adapter.destroyed).toStrictEqual(adapter.created.map((created) => created.id));
 });
@@ -244,6 +266,7 @@ test('it fails a fetch whose fetcher exits with no reply, and replaces the sandb
 test('it stops a fetcher that sends no reply in time', async () => {
   const clock = buildTestClock(0);
   const adapter = buildStubSandboxAdapter(makeStubFetcher(() => ({ kind: 'hang' })));
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -255,11 +278,15 @@ test('it stops a fetcher that sends no reply in time', async () => {
     replyGraceMs: 500,
     clock,
   });
+
   onTestFinished(() => fetchSandbox.stop());
+
   const pending = fetchSandbox.readPage('https://example.com/');
+
   await waitForCondition(() => adapter.spawned.length === 1);
 
   clock.advance(1500);
+
   const reply = await pending;
 
   expect(reply).toStrictEqual({
@@ -271,6 +298,7 @@ test('it stops a fetcher that sends no reply in time', async () => {
 test('it replaces the sandbox of a fetcher that sends no reply in time', async () => {
   const clock = buildTestClock(0);
   const adapter = buildStubSandboxAdapter(makeStubFetcher(() => ({ kind: 'hang' })));
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -282,11 +310,15 @@ test('it replaces the sandbox of a fetcher that sends no reply in time', async (
     replyGraceMs: 500,
     clock,
   });
+
   onTestFinished(() => fetchSandbox.stop());
+
   const pending = fetchSandbox.readPage('https://example.com/');
+
   await waitForCondition(() => adapter.spawned.length === 1);
 
   clock.advance(1500);
+
   await pending;
 
   expect(adapter.created).toHaveLength(1);
@@ -296,6 +328,7 @@ test('it replaces the sandbox of a fetcher that sends no reply in time', async (
 test('it waits on a fetcher that sends no reply until the time limit passes', async () => {
   const clock = buildTestClock(0);
   const adapter = buildStubSandboxAdapter(makeStubFetcher(() => ({ kind: 'hang' })));
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -307,11 +340,15 @@ test('it waits on a fetcher that sends no reply until the time limit passes', as
     replyGraceMs: 500,
     clock,
   });
+
   onTestFinished(async () => {
     clock.advance(1);
+
     await fetchSandbox.stop();
   });
+
   const pending = fetchSandbox.readPage('https://example.com/');
+
   await waitForCondition(() => adapter.spawned.length === 1);
 
   clock.advance(1499);
@@ -323,10 +360,12 @@ test('it waits on a fetcher that sends no reply until the time limit passes', as
 test('it fails a fetch whose time limit passed before its fetcher exited', async () => {
   const sleeps = buildTestClock(0);
   const time = { now: 0 };
+
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => {
       // the time passes while the fetcher answers, with no sleep woken, as a stalled event loop does
       time.now = 2500;
+
       return {
         kind: 'page',
         url: request.url,
@@ -338,6 +377,7 @@ test('it fails a fetch whose time limit passed before its fetcher exited', async
       };
     }),
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -349,6 +389,7 @@ test('it fails a fetch whose time limit passed before its fetcher exited', async
     replyGraceMs: 500,
     clock: { now: () => time.now, sleep: sleeps.sleep },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   const reply = await fetchSandbox.readPage('https://example.com/');
@@ -371,6 +412,7 @@ test('it removes the fetch sandboxes a past process left before it creates one',
       blocked: null,
     })),
   );
+
   const leftover = await adapter.create(
     buildMockSandboxSpec({
       kind: 'fetch',
@@ -381,6 +423,7 @@ test('it removes the fetch sandboxes a past process left before it creates one',
       toolRoute: false,
     }),
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -390,6 +433,7 @@ test('it removes the fetch sandboxes a past process left before it creates one',
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   await fetchSandbox.readPage('https://example.com/');
@@ -413,7 +457,9 @@ test('it runs one fetch at a time', async () => {
       blocked: null,
     })),
   );
+
   const adapter = buildStubSandboxAdapter(fetcher.call);
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -423,6 +469,7 @@ test('it runs one fetch at a time', async () => {
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   const replies = Promise.all([
@@ -430,9 +477,11 @@ test('it runs one fetch at a time', async () => {
     fetchSandbox.readPage('https://example.com/2'),
     fetchSandbox.readPage('https://example.com/3'),
   ]);
+
   await fetcher.started;
 
   fetcher.release();
+
   const settled = await replies;
 
   expect(settled).toMatchObject([{ kind: 'page' }, { kind: 'page' }, { kind: 'page' }]);
@@ -452,6 +501,7 @@ test('it fails the fetch when the sandbox cannot be created, and tries again on 
     })),
     { createFailures: [{ kind: 'reject', message: 'impd is down' }] },
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -461,6 +511,7 @@ test('it fails the fetch when the sandbox cannot be created, and tries again on 
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   const failed = await fetchSandbox.readPage('https://example.com/1');
@@ -470,11 +521,13 @@ test('it fails the fetch when the sandbox cannot be created, and tries again on 
     kind: 'failed',
     reason: 'the fetch sandbox failed: impd is down',
   });
+
   expect(second).toMatchObject({ kind: 'page', url: 'https://example.com/2' });
 });
 
 test('it fails a fetch whose sandbox never finishes creating', async () => {
   const clock = buildTestClock(0);
+
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
@@ -487,6 +540,7 @@ test('it fails a fetch whose sandbox never finishes creating', async () => {
     })),
     { createFailures: [{ kind: 'hang' }] },
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -498,11 +552,15 @@ test('it fails a fetch whose sandbox never finishes creating', async () => {
     sandboxCallTimeoutMs: 30_000,
     clock,
   });
+
   onTestFinished(() => fetchSandbox.stop());
+
   const pending = fetchSandbox.readPage('https://example.com/1');
+
   await waitForCondition(() => clock.countSleepers() === 1);
 
   clock.advance(30_000);
+
   const stuck = await pending;
 
   expect(stuck).toStrictEqual({
@@ -513,6 +571,7 @@ test('it fails a fetch whose sandbox never finishes creating', async () => {
 
 test('it waits on a sandbox that never finishes creating until the time limit passes', async () => {
   const clock = buildTestClock(0);
+
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
@@ -525,6 +584,7 @@ test('it waits on a sandbox that never finishes creating until the time limit pa
     })),
     { createFailures: [{ kind: 'hang' }] },
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -536,11 +596,15 @@ test('it waits on a sandbox that never finishes creating until the time limit pa
     sandboxCallTimeoutMs: 30_000,
     clock,
   });
+
   onTestFinished(async () => {
     clock.advance(1);
+
     await fetchSandbox.stop();
   });
+
   const pending = fetchSandbox.readPage('https://example.com/1');
+
   await waitForCondition(() => clock.countSleepers() === 1);
 
   clock.advance(29_999);
@@ -551,6 +615,7 @@ test('it waits on a sandbox that never finishes creating until the time limit pa
 
 test('it serves the next fetch after a sandbox that never finished creating', async () => {
   const clock = buildTestClock(0);
+
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
       kind: 'page',
@@ -563,6 +628,7 @@ test('it serves the next fetch after a sandbox that never finished creating', as
     })),
     { createFailures: [{ kind: 'hang' }] },
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -574,10 +640,15 @@ test('it serves the next fetch after a sandbox that never finished creating', as
     sandboxCallTimeoutMs: 30_000,
     clock,
   });
+
   onTestFinished(() => fetchSandbox.stop());
+
   const stuck = fetchSandbox.readPage('https://example.com/1');
+
   await waitForCondition(() => clock.countSleepers() === 1);
+
   clock.advance(30_000);
+
   await stuck;
 
   const next = await fetchSandbox.readPage('https://example.com/2');
@@ -597,6 +668,7 @@ test('it fails a fetch after it stops, and creates no sandbox', async () => {
       blocked: null,
     })),
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -606,6 +678,7 @@ test('it fails a fetch after it stops, and creates no sandbox', async () => {
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   await fetchSandbox.stop();
 
   const reply = await fetchSandbox.readPage('https://example.com/');
@@ -626,6 +699,7 @@ test('it destroys the sandbox when it stops', async () => {
       blocked: null,
     })),
   );
+
   const fetchSandbox = startFetchSandbox({
     adapter,
     image: 'nixie-fetch',
@@ -635,10 +709,10 @@ test('it destroys the sandbox when it stops', async () => {
     fetchesPerSandbox: 10,
     sandboxLimits: { vcpus: 1, memoryMiB: 512, diskMiB: 1024 },
   });
+
   onTestFinished(() => fetchSandbox.stop());
 
   await fetchSandbox.readPage('https://example.com/');
-
   await fetchSandbox.stop();
 
   expect(adapter.created).toHaveLength(1);

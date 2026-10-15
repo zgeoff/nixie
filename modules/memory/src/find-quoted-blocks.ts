@@ -10,12 +10,15 @@ export interface TextRange {
 export function findQuotedBlocks(text: string): readonly TextRange[] {
   const lines = collectLines(text);
   const fences = collectFences(lines, text.length);
+
   const outside = lines.filter(
     (line) => !fences.some((fence) => fence.start <= line.start && line.start < fence.end),
   );
+
   const header = outside.find((line) => isReplyHeader(line.trimmed));
   const cut = header?.start ?? text.length;
   const quotes = outside.filter((line) => line.trimmed.startsWith('>') && line.start < cut);
+
   const blocks = [
     ...fences.filter((fence) => fence.start < cut),
     ...quotes.map((line) => ({ start: line.start, end: line.end })),
@@ -36,6 +39,7 @@ function collectLines(text: string): readonly Line[] {
     const start = offset;
 
     offset += line.length + 1;
+
     return { start, end: start + line.length, trimmed: line.trimStart() };
   });
 }
@@ -53,9 +57,11 @@ function collectFences(lines: readonly Line[], length: number): readonly TextRan
       open = { start: line.start, run };
     } else if (open !== null && run !== undefined && isClosingFence(line.trimmed, open.run)) {
       fences.push({ start: open.start, end: line.end });
+
       open = null;
     }
   }
+
   return open === null ? fences : [...fences, { start: open.start, end: length }];
 }
 

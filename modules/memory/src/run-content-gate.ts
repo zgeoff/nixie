@@ -17,6 +17,7 @@ export async function runContentGate(
   if (invisible.test(request.text)) {
     return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
   }
+
   const rule = await context.gate.findAllowRule({
     tool,
     thread: request.thread,
@@ -25,6 +26,7 @@ export async function runContentGate(
   if (rule !== null) {
     return runRuleGate(context, request, { id: rule.ruleID, revision: rule.revision });
   }
+
   if (request.quote === null) {
     return buildGateReview('no_quote', { checks: { quote: 'fail' } });
   }

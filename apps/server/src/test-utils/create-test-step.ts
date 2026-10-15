@@ -11,6 +11,7 @@ export async function createTestStep(context: TasksContext): Promise<StepInput> 
 
   // the task just created is ready, so the claim takes it
   invariant(claim);
+
   return {
     taskID: claim.lease.workID,
     stepKey: claim.stepKey,

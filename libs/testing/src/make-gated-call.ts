@@ -34,13 +34,16 @@ export function makeGatedCall<Args extends readonly unknown[], Result>(
     call: async (...args) => {
       running.now += 1;
       running.most = Math.max(running.most, running.now);
+
       started.resolve();
 
       try {
         await gate.promise;
+
         if (options.delayMs !== undefined) {
           await Bun.sleep(options.delayMs);
         }
+
         return await callThrough(...args);
       } finally {
         running.now -= 1;

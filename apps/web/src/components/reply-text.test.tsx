@@ -19,14 +19,17 @@ test('it renders bold, lists, links and code blocks', () => {
   );
 
   expect(rendered.getByText('front pages').tagName).toBe('STRONG');
+
   expect(rendered.getAllByRole('listitem').map((item) => item.textContent)).toStrictEqual([
     'The Verge',
     'Ars Technica',
   ]);
+
   expect(rendered.getByRole('link', { name: 'The Verge' })).toHaveAttribute(
     'href',
     'https://www.theverge.com/',
   );
+
   expect(rendered.getByText('const answer = 42;').closest('pre')).not.toBeNull();
 });
 
@@ -66,6 +69,7 @@ test('it renders the raw HTML in a reply inert', () => {
   );
 
   expect(rendered.getByText('Quoted from the page:')).toBeInTheDocument();
+
   expect(
     rendered.container.querySelector('script, img, iframe, b, [onerror], [onclick]'),
   ).toBeNull();
@@ -98,6 +102,7 @@ test('it shows a linked image as one link to the outer link', () => {
   const rendered = render(
     <ReplyText text="[![a chart](https://example.com/chart.png)](https://example.com/report)" />,
   );
+
   const links = rendered.getAllByRole('link');
 
   expect(links).toHaveLength(1);

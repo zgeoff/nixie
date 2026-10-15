@@ -12,6 +12,7 @@ test('it opens a memory to its full text', async () => {
   const user = userEvent.setup();
 
   await createDeviceSession();
+
   await store.memoryVersions.create({
     itemID: 'item-1',
     text: 'Stub memory one\nwith a second line',
@@ -37,6 +38,7 @@ test('it shows a dash for a memory recalled without a score', async () => {
   const user = userEvent.setup();
 
   await createDeviceSession();
+
   await store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 });
 
   const rendered = render(<StepMemories memories={[{ itemID: 'item-1', version: 1 }]} />);
@@ -52,6 +54,7 @@ test('it shows each rating with its note beside the memory it rates', async () =
   const user = userEvent.setup();
 
   await createDeviceSession();
+
   await Promise.all([
     store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
     store.memoryVersions.create({ itemID: 'item-2', text: 'Stub memory two', version: 1 }),
@@ -94,6 +97,7 @@ test('it shows the note of a forgotten memory as forgotten, under the plain labe
   const user = userEvent.setup();
 
   await createDeviceSession();
+
   await Promise.all([
     store.memoryVersions.create({ itemID: 'item-1', status: 'shredded', version: 1 }),
     store.ratingNotes.create({ itemID: 'item-1', sequence: 12, status: 'shredded' }),
@@ -120,12 +124,14 @@ test('it shows the note of a forgotten memory as forgotten, under the plain labe
 
 test('it reads the text of more memories than one call to the API takes', async () => {
   const user = userEvent.setup();
+
   const memories = Array.from({ length: 101 }, (_, index) => ({
     itemID: `item-${index}`,
     version: 1,
   }));
 
   await createDeviceSession();
+
   await Promise.all(
     memories.map((memory) =>
       store.memoryVersions.create({ ...memory, text: `Stub ${memory.itemID}` }),
@@ -149,6 +155,7 @@ test('it shows a memory forgotten since the section last opened as forgotten', a
     store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
     createDeviceSession(),
   ]);
+
   const rendered = render(
     <StepMemories memories={[{ itemID: 'item-1', score: 0.61, version: 1 }]} />,
   );
@@ -156,6 +163,7 @@ test('it shows a memory forgotten since the section last opened as forgotten', a
   await user.click(rendered.getByText('Memories 1'));
   await rendered.findByText('item-1 0.61 Stub memory one');
   await user.click(rendered.getByText('Memories 1'));
+
   await store.memoryVersions.update(version, {
     data(draft) {
       draft.status = 'shredded';
@@ -176,6 +184,7 @@ test('it hides the old text of a memory forgotten since the section last opened 
     store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
     createDeviceSession(),
   ]);
+
   const rendered = render(
     <StepMemories memories={[{ itemID: 'item-1', score: 0.61, version: 1 }]} />,
   );
@@ -192,10 +201,10 @@ test('it hides the old text of a memory forgotten since the section last opened 
       },
     }),
   ]);
+
   server.use(http.post('*/rpc/memory/readVersions', () => delay('infinite')));
 
   await user.click(rendered.getByText('Memories 1'));
-
   await rendered.findByText('item-1 0.61 loading…');
 
   expect(rendered.queryByText(/Stub memory one/u)).toBeNull();
@@ -208,6 +217,7 @@ test('it shows a memory forgotten since the section last opened as unavailable w
     store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
     createDeviceSession(),
   ]);
+
   const rendered = render(
     <StepMemories memories={[{ itemID: 'item-1', score: 0.61, version: 1 }]} />,
   );
@@ -224,10 +234,10 @@ test('it shows a memory forgotten since the section last opened as unavailable w
       },
     }),
   ]);
+
   server.use(http.post('*/rpc/memory/readVersions', () => HttpResponse.error()));
 
   await user.click(rendered.getByText('Memories 1'));
-
   await rendered.findByText('item-1 0.61 (text unavailable)');
 
   expect(rendered.queryByText(/Stub memory one/u)).toBeNull();
@@ -237,6 +247,7 @@ test('it shows two scores near zero with their significant digits', async () => 
   const user = userEvent.setup();
 
   await createDeviceSession();
+
   await Promise.all([
     store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
     store.memoryVersions.create({ itemID: 'item-2', text: 'Stub memory two', version: 1 }),

@@ -19,12 +19,14 @@ export async function writeRefusal(context: APIContext, event: RefusedEvent): Pr
   if (refusedBefore) {
     return false;
   }
+
   return withWriteTransaction(context.log.writer, async (tx) => {
     const refused = await isRecentlyRefused(context, tx, refusalKey);
 
     if (refused) {
       return false;
     }
+
     await writeRecordsInTransaction(tx, context.log, [
       {
         kind: 'identity.refused',
@@ -36,6 +38,7 @@ export async function writeRefusal(context: APIContext, event: RefusedEvent): Pr
         },
       },
     ]);
+
     return true;
   });
 }

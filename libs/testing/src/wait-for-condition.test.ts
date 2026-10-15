@@ -6,6 +6,7 @@ test('it resolves once the condition holds', async () => {
 
   await waitForCondition(() => {
     state.checks += 1;
+
     return state.checks === 3;
   });
 

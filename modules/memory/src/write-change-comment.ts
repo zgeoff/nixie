@@ -24,12 +24,15 @@ export async function writeChangeComment(
     request.changeID,
     parts.context.gate.clock.now(),
   );
+
   const keys = await findRecordKeys(parts.context.log, [row.item_id]);
+
   const key = keys.get(row.item_id);
 
   if (key === null || key === undefined) {
     throw new ConsolidationChangeClosedError(request.changeID, 'forgotten');
   }
+
   const sealed = await encodeChangeComment(key, row.change_id, request.text);
 
   await withWriteTransaction(parts.context.log.writer, async (tx) => {
@@ -38,6 +41,7 @@ export async function writeChangeComment(
       request.changeID,
       parts.context.gate.clock.now(),
     );
+
     await writeRecordsInTransaction(tx, parts.context.log, [
       {
         kind: 'memory.consolidation_commented',
@@ -47,6 +51,7 @@ export async function writeChangeComment(
       },
     ]);
   });
+
   return row.short_id ?? buildShortIDFromUUID(row.change_id);
 }
 
@@ -62,12 +67,15 @@ async function requireOpenChange(
   if (row === undefined) {
     throw new ConsolidationChangeNotFoundError(changeID);
   }
+
   if (row.status !== 'pending') {
     throw new ConsolidationChangeClosedError(changeID, row.status);
   }
+
   if (row.lapse_at <= now) {
     throw new ConsolidationChangeClosedError(changeID, 'lapsed');
   }
+
   return row;
 }
 
@@ -86,6 +94,7 @@ async function findChange(
   if (row !== undefined) {
     return row;
   }
+
   const unaliased = await db
     .selectFrom('memory_consolidation_changes')
     .selectAll()

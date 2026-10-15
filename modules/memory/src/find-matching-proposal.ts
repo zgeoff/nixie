@@ -26,8 +26,10 @@ export async function findMatchingProposal(
   if (change.operation !== 'remember') {
     return null;
   }
+
   const target = change.target;
   const isPinned = change.isPinned ? 1 : 0;
+
   const pending = db
     .selectFrom('memory_proposals')
     .selectAll()
@@ -35,10 +37,12 @@ export async function findMatchingProposal(
     .where('lapse_at', '>', parts.context.gate.clock.now())
     .where('operation', '=', 'remember')
     .where('is_pinned', '=', isPinned);
+
   const sameTarget =
     target === null
       ? pending.where('is_new_item', '=', 1)
       : pending.where('item_id', '=', target.itemID).where('target_version', '=', target.version);
+
   const rows = await sameTarget.orderBy('created_sequence').execute();
 
   return findSameText(parts, rows, normalizeFactText(change.text));
@@ -52,10 +56,12 @@ async function findSameText(
   if (rows.length === 0) {
     return null;
   }
+
   const keys = await findRecordKeys(
     parts.context.log,
     rows.map((row) => row.item_id),
   );
+
   const texts = await Promise.all(
     rows.map(async (row) => {
       const key = keys.get(row.item_id);
@@ -64,6 +70,7 @@ async function findSameText(
       if (key === null || key === undefined) {
         return null;
       }
+
       const opened = await decodeProposalText(key, row.proposal_id, row.sealed);
 
       return opened.text;

@@ -97,8 +97,10 @@ function startNixieRun(start: TestNixieFiles): TestNixie {
 
   start.stack.defer(async () => {
     child.kill('SIGKILL');
+
     await child.exited;
   });
+
   return buildTestNixie({ ...start, child, startAgain: () => startNixieRun(start) });
 }
 
@@ -135,6 +137,7 @@ function buildTestNixie(parts: TestNixieParts): TestNixie {
 
   void collectOutput(parts.child.stdout, output);
   void collectOutput(parts.child.stderr, output);
+
   return {
     ...parts.files,
     dir: parts.dir,
@@ -146,6 +149,7 @@ function buildTestNixie(parts: TestNixieParts): TestNixie {
     },
     sendStopSignal: async () => {
       parts.child.kill('SIGTERM');
+
       await waitForLogEvent('stopping');
     },
     exited: parts.child.exited,
@@ -188,11 +192,13 @@ function makeLogEventWaiter(
     await waitForCondition(() => findLine() !== undefined || readExitCode() !== null, {
       timeoutMs: 30_000,
     });
+
     const line = findLine();
 
     if (line === undefined) {
       throw new Error(`nixie exited without the log event ${event}:\n${output.read()}`);
     }
+
     return line;
   };
 }

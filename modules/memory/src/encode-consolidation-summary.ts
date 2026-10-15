@@ -25,6 +25,7 @@ export async function encodeConsolidationSummary(
 
   const summaryKey = crypto.getRandomValues(new Uint8Array(summaryKeyBytes));
   const shares = splitSummaryKey(summaryKey, keys.size);
+
   const key = await crypto.subtle.importKey('raw', summaryKey, 'AES-GCM', false, ['encrypt']);
 
   return {
@@ -49,6 +50,7 @@ function splitSummaryKey(summaryKey: Uint8Array, count: number): readonly Uint8A
   const shares = Array.from({ length: count - 1 }, () =>
     crypto.getRandomValues(new Uint8Array(summaryKeyBytes)),
   );
+
   const last = Uint8Array.from(summaryKey);
 
   for (const share of shares) {
@@ -56,5 +58,6 @@ function splitSummaryKey(summaryKey: Uint8Array, count: number): readonly Uint8A
       last[index] = (last[index] ?? 0) ^ byte;
     }
   }
+
   return [...shares, last];
 }

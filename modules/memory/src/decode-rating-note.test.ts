@@ -14,6 +14,7 @@ async function setupTest() {
 
 test('it opens the note it sealed for the same rating and item', async () => {
   const ctx = await setupTest();
+
   const sealed = await encodeRatingNote(
     ctx.key,
     { ratingID: 'rating-a', itemID: 'item-a' },
@@ -27,6 +28,7 @@ test('it opens the note it sealed for the same rating and item', async () => {
 
 test('it rejects a note sealed for another item', async () => {
   const ctx = await setupTest();
+
   const sealed = await encodeRatingNote(
     ctx.key,
     { ratingID: 'rating-a', itemID: 'item-a' },
@@ -40,6 +42,7 @@ test('it rejects a note sealed for another item', async () => {
 
 test('it rejects a note sealed for another rating', async () => {
   const ctx = await setupTest();
+
   const sealed = await encodeRatingNote(
     ctx.key,
     { ratingID: 'rating-a', itemID: 'item-a' },

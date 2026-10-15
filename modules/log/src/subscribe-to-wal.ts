@@ -5,10 +5,12 @@ import { watch } from 'node:fs';
 // the caller's polling covers it.
 export function subscribeToWAL(dataDir: string, onChange: () => void): () => void {
   const timers = new Set<ReturnType<typeof setTimeout>>();
+
   const resetTimers = (): void => {
     for (const timer of timers) {
       clearTimeout(timer);
     }
+
     timers.clear();
   };
 
@@ -17,9 +19,11 @@ export function subscribeToWAL(dataDir: string, onChange: () => void): () => voi
   const onWrite = (): void => {
     resetTimers();
     onChange();
+
     for (const delay of SETTLE_DELAYS_MS) {
       const timer = setTimeout(() => {
         timers.delete(timer);
+
         onChange();
       }, delay);
 
@@ -37,8 +41,10 @@ export function subscribeToWAL(dataDir: string, onChange: () => void): () => voi
     watcher.on('error', () => {
       watcher.close();
     });
+
     return () => {
       resetTimers();
+
       watcher.close();
     };
   } catch {

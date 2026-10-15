@@ -30,6 +30,7 @@ const batchSize = 100;
 // twice, so each row's key holds its place as well.
 function MemoryList(props: StepMemoriesProps): ReactNode {
   const nixie = useNixieClient();
+
   const refs = [
     ...new Map(
       props.memories.map((memory) => [
@@ -52,10 +53,13 @@ function MemoryList(props: StepMemoriesProps): ReactNode {
       nixie.queryUtils.memory.readVersions.queryOptions({ input: { versions } }),
     ),
   });
+
   const byNote = useRatingNotes(props.memories);
+
   const byVersion = new Map(
     texts.versions.map((version) => [buildVersionKey(version), formatMemoryText(version)]),
   );
+
   const fallback = texts.isError ? '(text unavailable)' : 'loading…';
 
   return (
@@ -81,6 +85,7 @@ function useRatingNotes(
   memories: readonly RecalledMemory[],
 ): ReadonlyMap<string, string | undefined> {
   const nixie = useNixieClient();
+
   const refs = [
     ...new Map(
       memories.flatMap((memory) =>
@@ -95,6 +100,7 @@ function useRatingNotes(
       ),
     ).values(),
   ];
+
   const notes = useQueries({
     combine: (results) =>
       results.flatMap((result) =>

@@ -16,6 +16,7 @@ export interface QueryRecorder {
 // call, and reports it only through a command lifecycle that the SDK types leave out.
 export function buildQueryRecorder(): QueryRecorder {
   const options: Options[] = [];
+
   const queued = new Set<string>();
   const waiters = new Map<string, () => void>();
 
@@ -35,6 +36,7 @@ export function buildQueryRecorder(): QueryRecorder {
               queued.add(uuid);
               waiters.get(uuid)?.();
             }
+
             yield message;
           }
         },
@@ -45,9 +47,11 @@ export function buildQueryRecorder(): QueryRecorder {
       if (queued.has(uuid)) {
         return Promise.resolve();
       }
+
       const waiter = Promise.withResolvers<void>();
 
       waiters.set(uuid, waiter.resolve);
+
       return waiter.promise;
     },
   };

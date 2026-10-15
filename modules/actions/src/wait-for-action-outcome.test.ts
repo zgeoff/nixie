@@ -18,6 +18,7 @@ async function setupTest() {
 
 test('it returns the outcome once the action settles within the wait', async () => {
   const ctx = await setupTest();
+
   const queued = await createAllowedAction(ctx.context, {
     step: ctx.step,
     tool: 'test.send',
@@ -25,7 +26,9 @@ test('it returns the outcome once the action settles within the wait', async () 
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
   const waiting = waitForActionOutcome(ctx.context, queued.actionID);
 
   await runActionAttempt(ctx.context, lease, {
@@ -37,7 +40,9 @@ test('it returns the outcome once the action settles within the wait', async () 
     ]),
     leaseMs: 60_000,
   });
+
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
   ctx.clock.advance(250);
 
   const view = await waiting;
@@ -51,6 +56,7 @@ test('it returns the outcome once the action settles within the wait', async () 
 
 test('it returns "queued as" with the action ID once 10 s pass with the action pending', async () => {
   const ctx = await setupTest();
+
   const queued = await createAllowedAction(ctx.context, {
     step: ctx.step,
     tool: 'test.send',
@@ -64,6 +70,7 @@ test('it returns "queued as" with the action ID once 10 s pass with the action p
   for (let polls = 0; polls < 40; polls += 1) {
     // oxlint-disable-next-line no-await-in-loop -- each poll sleeps before time moves on
     await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
     ctx.clock.advance(250);
   }
 

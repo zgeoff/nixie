@@ -13,6 +13,7 @@ import { writeStartRecord } from './write-start-record';
 // conversation. A refused seed leaves the last good one in force, and the poll retries it soon.
 export async function startWork(parts: ServerParts, runStep: RunStep): Promise<void> {
   parts.cleanup.signal.throwIfAborted();
+
   const seeded = await runDefinitionsSeed(parts);
 
   await runWithRetry(
@@ -23,12 +24,18 @@ export async function startWork(parts: ServerParts, runStep: RunStep): Promise<v
       }),
     { signal: parts.cleanup.signal, log: parts.log, step: 'start_record' },
   );
+
   await createConversationTask(parts.context);
+
   parts.cleanup.signal.throwIfAborted();
+
   await startRunners(parts, runStep);
+
   parts.state.update({ areRunnersStarted: true });
+
   await startSeedPoll(parts, { isRefusedAtStart: seeded.status === 'refused' });
   await printFirstEnrolmentCode(parts);
+
   parts.log('ready');
 }
 

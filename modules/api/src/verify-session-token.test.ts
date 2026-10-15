@@ -7,6 +7,7 @@ import { writeSessionRevocation } from './write-session-revocation';
 
 async function setupTest() {
   const api = await startTestAPI();
+
   const db = api.writer.db.$extendTables<
     APITables & { records: { kind: string; payload: string; key_id: string | null } }
   >();
@@ -16,9 +17,7 @@ async function setupTest() {
 
 test('it resolves a live session to its row of the identity record', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
-
   const result = await verifySessionToken(ctx.context, session.token);
 
   expect(result).toStrictEqual({
@@ -32,13 +31,13 @@ test('it resolves a live session to its row of the identity record', async () =>
 
 test('it refuses a revoked session', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
   const caller = await verifySessionToken(ctx.context, session.token);
 
   if (caller === null) {
     throw new Error('the session failed to resolve');
   }
+
   await writeSessionRevocation(ctx.context, caller, {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     sessionID: session.sessionID,
@@ -51,7 +50,6 @@ test('it refuses a revoked session', async () => {
 
 test('it refuses a session unused for more than 30 days', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
 
   ctx.clock.advance(30 * 24 * 60 * 60 * 1000 + 1);
@@ -63,11 +61,12 @@ test('it refuses a session unused for more than 30 days', async () => {
 
 test('it keeps a session that is used within every 30 days', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
 
   ctx.clock.advance(20 * 24 * 60 * 60 * 1000);
+
   await verifySessionToken(ctx.context, session.token);
+
   ctx.clock.advance(20 * 24 * 60 * 60 * 1000);
 
   const result = await verifySessionToken(ctx.context, session.token);
@@ -79,10 +78,10 @@ test('it keeps a session that is used within every 30 days', async () => {
 
 test('it moves the last seen time at most once a minute', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
 
   ctx.clock.advance(30_000);
+
   await verifySessionToken(ctx.context, session.token);
 
   const row = await ctx.db
@@ -95,8 +94,8 @@ test('it moves the last seen time at most once a minute', async () => {
 
 test('it treats a call with no token as signed out and writes no refusal', async () => {
   const ctx = await setupTest();
-
   const caller = await verifySessionToken(ctx.context, undefined);
+
   const refusals = await ctx.db
     .selectFrom('records')
     .select('kind')
@@ -132,17 +131,18 @@ test('it writes a refusal for an unknown token under one shared ID, never the to
 
 test('it writes a refusal for a revoked session under its session ID', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
   const caller = await verifySessionToken(ctx.context, session.token);
 
   if (caller === null) {
     throw new Error('the session failed to resolve');
   }
+
   await writeSessionRevocation(ctx.context, caller, {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     sessionID: session.sessionID,
   });
+
   await verifySessionToken(ctx.context, session.token);
 
   const refusals = await ctx.db
@@ -170,9 +170,13 @@ test('it writes one refusal an hour for every token nixie never issued', async (
       verifySessionToken(ctx.context, `a-random-token-${index}`),
     ),
   );
+
   ctx.clock.advance(59 * 60 * 1000);
+
   await verifySessionToken(ctx.context, 'another-random-token');
+
   ctx.clock.advance(60 * 1000);
+
   await verifySessionToken(ctx.context, 'a-last-random-token');
 
   const refusals = await ctx.db
@@ -194,17 +198,18 @@ test('it writes one refusal an hour for every token nixie never issued', async (
 
 test('it refuses a revoked session and an unknown token each under its own ID', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
   const caller = await verifySessionToken(ctx.context, session.token);
 
   if (caller === null) {
     throw new Error('the session failed to resolve');
   }
+
   await writeSessionRevocation(ctx.context, caller, {
     clientActionID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
     sessionID: session.sessionID,
   });
+
   await verifySessionToken(ctx.context, 'a-token-nixie-never-issued');
   await verifySessionToken(ctx.context, session.token);
 

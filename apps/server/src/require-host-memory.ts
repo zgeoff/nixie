@@ -15,5 +15,6 @@ export function requireHostMemory(readMemory: () => HostMemory | null): HostMemo
   if (memory === null) {
     throw new ControlRequestError(503, 'the memory store has not started yet');
   }
+
   return memory;
 }

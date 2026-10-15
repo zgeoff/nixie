@@ -24,11 +24,13 @@ export function useThemeChoice(): ThemeChoiceState {
 
   useEffect(() => {
     const query = globalThis.matchMedia('(prefers-color-scheme: dark)');
+
     const update = (): void => {
       updateDocumentTheme(themeStorageKey);
     };
 
     update();
+
     query.addEventListener('change', update);
 
     return () => {

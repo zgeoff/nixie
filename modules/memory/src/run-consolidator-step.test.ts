@@ -13,7 +13,9 @@ import { startTestMemory } from './test-utils/start-test-memory';
 // consolidator on the session the test gives, claims its task, runs one step and commits it.
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
+
   const memory = await startTestMemory({ gate: { clock } });
+
   const log = { ...memory.log, projections: [...memory.log.projections, ...tasksProjections] };
   const context = { log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
   const errors: unknown[] = [];
@@ -37,6 +39,7 @@ async function setupTest() {
           errors.push(error);
         },
       });
+
       const claim = await claimTask(context, { holder: 'runner-a', leaseMs: 3_600_000 });
 
       invariant(claim);
@@ -51,6 +54,7 @@ async function setupTest() {
       });
 
       await writeStepCommit(context, claim, result);
+
       return result;
     },
   };
@@ -60,11 +64,13 @@ test('it proposes a merge of duplicate items and a retirement of a stale one, ea
   const ctx = await setupTest();
   const allergy = await createMemoryItem(ctx.memory.store, { text: 'Is allergic to peanuts' });
   const first = await createMemoryItem(ctx.memory.store, { text: 'has peanut allergy' });
+
   const duplicate = await ctx.memory.store.remember({
     text: 'Has a peanut allergy',
     target: first,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const stale = await createMemoryItem(ctx.memory.store, {
     text: 'Has a dentist visit 2026-03-02',
   });
@@ -114,6 +120,7 @@ test('it shows the session the persona, the rules and every active item, and no 
   });
 
   const shortIDs = await ctx.memory.store.readShortIDs([bees.itemID, choir.itemID]);
+
   const session = buildStubConsolidatorSession([]);
 
   await ctx.runStep(session);
@@ -132,6 +139,7 @@ test('it shows the session the persona, the rules and every active item, and no 
 
 test('it keeps the summary of a conflict it left alone, sealed under the key of every item the session was shown', async () => {
   const ctx = await setupTest();
+
   const [oat, black, bees] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
@@ -151,7 +159,9 @@ test('it keeps the summary of a conflict it left alone, sealed under the key of 
     'memory.consolidation_proposed',
     'memory.consolidation_summarized',
   ]);
+
   expect(JSON.stringify(result.records)).not.toInclude('oat milk');
+
   expect(diff).toMatchObject({
     changes: [],
     summary: {
@@ -163,6 +173,7 @@ test('it keeps the summary of a conflict it left alone, sealed under the key of 
 
 test('it shows no diff once a forget erases the summary of a run that proposed no change', async () => {
   const ctx = await setupTest();
+
   const [oat] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
@@ -171,6 +182,7 @@ test('it shows no diff once a forget erases the summary of a run that proposed n
   await ctx.runStep(
     buildStubConsolidatorSession([], 'Two items about coffee conflict and stay unchanged.'),
   );
+
   await ctx.memory.store.forget({
     target: oat,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -188,9 +200,11 @@ test('it lets the summary of a run that proposed no change lapse at the lapse ti
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
   ]);
+
   await ctx.runStep(
     buildStubConsolidatorSession([], 'Two items about coffee conflict and stay unchanged.'),
   );
+
   ctx.clock.advance(7 * 24 * 60 * 60 * 1000);
 
   const diff = await ctx.memory.store.consolidations.readPending();
@@ -208,20 +222,24 @@ test('it records a run with no session when fewer than 2 items are active', asyn
   const result = await ctx.runStep(session);
 
   expect(session.model.runSession).not.toHaveBeenCalled();
+
   expect(result.records).toMatchObject([
     {
       kind: 'memory.consolidation_proposed',
       payload: { model: null, shownItems: 1, changes: [] },
     },
   ]);
+
   expect(result.timers).toStrictEqual([{ dueAt: Date.parse('2026-10-19T09:00:00Z') }]);
 });
 
 test('it waits a whole period after the last run before it runs again', async () => {
   const ctx = await setupTest();
+
   const session = buildStubConsolidatorSession([]);
 
   await ctx.runStep(session);
+
   ctx.clock.advance(24 * 60 * 60 * 1000);
 
   const result = await ctx.runStep(session);
@@ -239,11 +257,13 @@ test('it holds the next run while a change of the last diff waits, until that ch
   const trip = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' });
 
   await createMemoryItem(ctx.memory.store, { text: 'Sings in a choir' });
+
   await ctx.runStep(
     buildStubConsolidatorSession([
       { kind: 'retire', itemIDs: [trip.itemID], reason: 'The trip has ended.' },
     ]),
   );
+
   ctx.clock.advance(7 * 24 * 60 * 60 * 1000 - 1);
 
   const session = buildStubConsolidatorSession([]);
@@ -259,11 +279,13 @@ test('it lapses the last diff once its lapse time passes, and runs again', async
   const trip = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' });
 
   await createMemoryItem(ctx.memory.store, { text: 'Sings in a choir' });
+
   await ctx.runStep(
     buildStubConsolidatorSession([
       { kind: 'retire', itemIDs: [trip.itemID], reason: 'The trip has ended.' },
     ]),
   );
+
   ctx.clock.advance(7 * 24 * 60 * 60 * 1000);
 
   const session = buildStubConsolidatorSession([]);
@@ -294,5 +316,6 @@ test('it waits the retry time after a failed session, and stages nothing', async
     acknowledged: [],
     timers: [{ dueAt: Date.parse('2026-10-12T10:00:00Z') }],
   });
+
   expect(ctx.errors).toStrictEqual([new Error('the provider refused the call')]);
 });

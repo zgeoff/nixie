@@ -102,6 +102,7 @@ test("it copies a rating with each verdict, and leaves the agent's name out wher
       recalledSequence: 2,
     },
   });
+
   const unnamed = await store.records.create({
     kind: 'memory.rated',
     rating: {
@@ -115,6 +116,7 @@ test("it copies a rating with each verdict, and leaves the agent's name out wher
     ratedBy: 'Pip',
     recalledSequence: 2,
   });
+
   expect(toLogRecord(unnamed).rating).toStrictEqual({
     items: [{ hasNote: false, itemID: 'item-b', verdict: 'helpful', version: 1 }],
     recalledSequence: 2,

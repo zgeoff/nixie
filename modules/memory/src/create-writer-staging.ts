@@ -64,11 +64,13 @@ export function createWriterStaging(): WriterStaging {
       };
 
       state.batch = opened;
+
       return {
         close: () => {
           if (state.batch === opened) {
             state.batch = null;
           }
+
           return opened.writes;
         },
         readRecalledTexts: () => opened.recalledTexts,
@@ -82,6 +84,7 @@ export function createWriterStaging(): WriterStaging {
       if (state.batch === null) {
         return { status: 'refused', reason: 'no batch is open' };
       }
+
       return updateStagedBatch(state.batch, request);
     },
   };
@@ -102,10 +105,13 @@ function updateStagedBatch(batch: OpenBatch, request: StagedWriteRequest): Stage
   if ('reason' in planned) {
     return { status: 'refused', reason: planned.reason };
   }
+
   if (planned.target !== null) {
     batch.touched.add(planned.target.itemID);
   }
+
   batch.writes.push(planned);
+
   return { status: 'staged' };
 }
 
@@ -120,9 +126,11 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
       reason: `sourceID ${String(request.sourceSequence)} is not one of the owner's messages in this batch`,
     };
   }
+
   if (request.itemID === null) {
     // a retirement always names its item
     invariant(request.op === 'remember', 'a retirement staged with no item');
+
     return {
       op: 'remember',
       text: request.text,
@@ -131,6 +139,7 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
       target: null,
     };
   }
+
   return planTargetedWrite(batch, { ...request, itemID: request.itemID });
 }
 
@@ -146,11 +155,13 @@ function planTargetedWrite(batch: OpenBatch, request: TargetedRequest): PlannedW
       reason: `item ${request.itemID} is not one you were shown; find it with memory.recall first`,
     };
   }
+
   if (batch.touched.has(request.itemID)) {
     return {
       reason: `item ${request.itemID} already has a change in this batch; change each item at most once`,
     };
   }
+
   return { ...buildWriteFields(request), target: { itemID: request.itemID, version } };
 }
 

@@ -15,6 +15,7 @@ async function setupTest() {
 
 test('it resumes a forget that a crash cut short after the key went, and completes it', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -34,11 +35,13 @@ test('it resumes a forget that a crash cut short after the key went, and complet
       },
     })
     .catch((error: unknown) => error);
+
   const restarted = await startNextTestMemory(ctx.memory, { cleanupSessions: ctx.cleanupSessions });
   const records = await readRecords(restarted.log, { afterSequence: 0 });
 
   expect(crash).toMatchObject({ message: 'crashed at memory.forget.key_removed' });
   expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith(item.itemID);
+
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'memory.version_added',
     'memory.forget_started',
@@ -48,12 +51,13 @@ test('it resumes a forget that a crash cut short after the key went, and complet
 
 test('it leaves an item with no pending forget alone', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
-  const restarted = await startNextTestMemory(ctx.memory, { cleanupSessions: ctx.cleanupSessions });
 
+  const restarted = await startNextTestMemory(ctx.memory, { cleanupSessions: ctx.cleanupSessions });
   const result = await restarted.store.recall({ query: 'flowerpot' });
 
   expect(ctx.cleanupSessions).not.toHaveBeenCalled();

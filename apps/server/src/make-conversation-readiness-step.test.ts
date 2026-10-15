@@ -18,6 +18,7 @@ test('it marks the conversation imp ready again after a turn that succeeds', asy
 
 test('it keeps the mark and rethrows when a turn fails', () => {
   const state = buildStartState({ isReady: true, reason: null });
+
   const failure = new Error('the provider is overloaded');
 
   state.update({ conversation: { isReady: false, reason: 'the last 3 turns failed' } });
@@ -25,6 +26,7 @@ test('it keeps the mark and rethrows when a turn fails', () => {
   const step = makeConversationReadinessStep(state, () => Promise.reject(failure));
 
   expect(step(buildMockStepInput())).rejects.toBe(failure);
+
   expect(state.read().conversation).toStrictEqual({
     isReady: false,
     reason: 'the last 3 turns failed',

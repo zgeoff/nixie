@@ -10,7 +10,6 @@ function setupTest() {
 
 test('it creates a ready task with its brief in the erasable fields', async () => {
   const ctx = await setupTest();
-
   const taskID = await createTask(ctx.context, 'keep the backlog moving today');
 
   const task = await ctx.writer.db
@@ -18,6 +17,7 @@ test('it creates a ready task with its brief in the erasable fields', async () =
     .selectFrom('tasks')
     .selectAll()
     .executeTakeFirstOrThrow();
+
   const entries = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   expect(task).toStrictEqual({
@@ -34,6 +34,7 @@ test('it creates a ready task with its brief in the erasable fields', async () =
     created_sequence: 1,
     updated_sequence: 1,
   });
+
   expect(entries.map((entry) => entry.record)).toMatchObject([
     {
       kind: 'task.created',
@@ -46,7 +47,6 @@ test('it creates a ready task with its brief in the erasable fields', async () =
 
 test('it gives each task a random ID', async () => {
   const ctx = await setupTest();
-
   const first = await createTask(ctx.context, 'first');
   const second = await createTask(ctx.context, 'second');
 

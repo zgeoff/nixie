@@ -49,6 +49,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
 
     return { status: 'refused', error: read, inForce };
   }
+
   const built = buildDefinitionsSnapshot({ persona: read.parsed.persona, policy: options.policy });
 
   return withWriteTransaction(options.log.writer, async (tx) => {
@@ -57,6 +58,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     if (inForce !== null && isSameSeed(inForce, { ...read, built, sourceID: options.source.id })) {
       return { status: 'unchanged', inForce };
     }
+
     return applySeed(tx, options, { ...read, built });
   });
 }
@@ -102,6 +104,7 @@ async function applySeed(
   await writeSnapshotRows(tx, plan, seededAt);
 
   const record = await writeSeedRecord(tx, options, plan);
+
   const inForce: DefinitionsInForce = {
     seededAt: new Date(seededAt),
     sourceID: options.source.id,
@@ -116,6 +119,7 @@ async function applySeed(
   };
 
   await writeSeedRow(tx, inForce);
+
   return { status: 'seeded', record, inForce };
 }
 
@@ -132,6 +136,7 @@ async function writeSnapshotRows(
     .values({ persona_version: plan.built.personaVersion, instructions: plan.built.persona })
     .onConflict((conflict) => conflict.doNothing())
     .execute();
+
   await tables
     .insertInto('definition_snapshots')
     .values({
@@ -173,6 +178,7 @@ async function writeSeedRecord(
 
   // the log writes one record for each input
   invariant(record);
+
   return record;
 }
 

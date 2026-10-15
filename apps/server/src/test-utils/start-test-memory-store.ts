@@ -36,5 +36,6 @@ export async function startTestMemoryStore(
   });
 
   onTestFinished(() => store.stop());
+
   return store;
 }

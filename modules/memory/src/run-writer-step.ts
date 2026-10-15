@@ -12,11 +12,13 @@ import type { WriterParts } from './writer-parts';
 export async function runWriterStep(parts: WriterParts, input: StepInput): Promise<StepResult> {
   const acknowledged = input.inbox.map((record) => record.sequence);
   const now = parts.context.clock.now();
+
   const row = await readWriterRow(parts.context.log);
 
   if (row.retry_at !== null && now < row.retry_at) {
     return { next: 'wait', records: [], acknowledged, timers: [{ dueAt: row.retry_at }] };
   }
+
   try {
     return { ...(await runWriterBatch(parts, { input, row, now })), records: [], acknowledged };
   } catch (error) {

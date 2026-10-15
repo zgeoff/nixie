@@ -29,7 +29,9 @@ test('it refuses a call without the client header', async () => {
 
 test('it takes the device session from a bearer token', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({ deviceName: 'phone' });
+
   const client = ctx.buildClient({
     authorization: `Bearer ${session.token}`,
     'x-nixie-client': 'web',
@@ -42,7 +44,9 @@ test('it takes the device session from a bearer token', async () => {
 
 test('it takes the device session from the session cookie', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({ deviceName: 'laptop' });
+
   const client = ctx.buildClient({
     cookie: `theme=dark; nixie_session=${session.token}`,
     'x-nixie-client': 'web',
@@ -55,7 +59,9 @@ test('it takes the device session from the session cookie', async () => {
 
 test('it refuses a revoked session', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({ revokedAt: new Date() });
+
   const client = ctx.buildClient({
     authorization: `Bearer ${session.token}`,
     'x-nixie-client': 'web',
@@ -81,6 +87,7 @@ test('it sets a host-only session cookie on a cookie enrolment', async () => {
       method: 'POST',
     }),
   );
+
   const session = store.sessions.findFirst((query) => query.where({ deviceName: 'laptop' }));
 
   expect(response.headers.getSetCookie()).toStrictEqual([
@@ -109,11 +116,14 @@ test('it refuses an enrolment code that another enrolment used', async () => {
 
 test('it writes a message once per client message ID', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({});
+
   const client = ctx.buildClient({
     authorization: `Bearer ${session.token}`,
     'x-nixie-client': 'web',
   });
+
   const message = {
     clientMessageId: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     spans: [{ end: 5, source: 'typed' as const, start: 0 }],
@@ -131,7 +141,9 @@ test('it writes a message once per client message ID', async () => {
 
 test('it refuses a client message ID reused for a different message', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({});
+
   const client = ctx.buildClient({
     authorization: `Bearer ${session.token}`,
     'x-nixie-client': 'web',
@@ -156,7 +168,9 @@ test('it refuses a client message ID reused for a different message', async () =
 
 test('it streams the records written after the sequence a client follows from', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({});
+
   const client = ctx.buildClient({
     authorization: `Bearer ${session.token}`,
     'x-nixie-client': 'web',
@@ -177,7 +191,9 @@ test('it streams the records written after the sequence a client follows from', 
 
 test('it reports a memory writer caught up with the newest record', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({});
+
   const client = ctx.buildClient({
     authorization: `Bearer ${session.token}`,
     'x-nixie-client': 'web',
@@ -201,7 +217,9 @@ test('it reports a memory writer caught up with the newest record', async () => 
 
 test('it reports the memory writer cursor at the start of an empty log', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({});
+
   const client = ctx.buildClient({
     authorization: `Bearer ${session.token}`,
     'x-nixie-client': 'web',
@@ -221,7 +239,9 @@ test('it refuses the memory writer status to a caller with no session', () => {
 
 test('it carries the versions a recall delivered on its record', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({});
+
   const client = ctx.buildClient({
     authorization: `Bearer ${session.token}`,
     'x-nixie-client': 'web',
@@ -241,7 +261,9 @@ test('it carries the versions a recall delivered on its record', async () => {
 
 test('it reads the text of each named memory version, and one it lacks as missing', async () => {
   const ctx = setupTest();
+
   const session = await store.sessions.create({});
+
   const client = ctx.buildClient({
     authorization: `Bearer ${session.token}`,
     'x-nixie-client': 'web',

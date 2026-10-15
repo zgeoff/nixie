@@ -14,11 +14,13 @@ async function setupTest() {
 test('it writes a merged item with the least trusted source among its inputs', async () => {
   const ctx = await setupTest();
   const typed = await createMemoryItem(ctx.memory.store, { text: 'Is allergic to peanuts' });
+
   const fetched = await createMemoryItem(ctx.memory.store, {
     text: 'Has a peanut allergy',
     origin: 'task',
     source: 'untrusted',
   });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -30,6 +32,7 @@ test('it writes a merged item with the least trusted source among its inputs', a
       },
     ],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -90,6 +93,7 @@ test('it merges 2 pinned items into one that fits the pinned core once the other
       },
     ],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -109,11 +113,13 @@ test('it merges 2 pinned items into one that fits the pinned core once the other
 test('it retires every input but the first when it applies a merge, each keeping its own source', async () => {
   const ctx = await setupTest();
   const kept = await createMemoryItem(ctx.memory.store, { text: 'Is allergic to peanuts' });
+
   const dropped = await createMemoryItem(ctx.memory.store, {
     text: 'Has a peanut allergy',
     origin: 'task',
     source: 'owner_data',
   });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -125,6 +131,7 @@ test('it retires every input but the first when it applies a merge, each keeping
       },
     ],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -141,6 +148,7 @@ test('it retires every input but the first when it applies a merge, each keeping
     { itemID: kept.itemID, version: 2 },
     { itemID: dropped.itemID, version: 2 },
   ]);
+
   expect(history?.versions.at(-1)).toMatchObject({
     change: 'retired',
     state: 'retired',
@@ -151,11 +159,13 @@ test('it retires every input but the first when it applies a merge, each keeping
 
 test('it approves one change alone and leaves the rest of the diff pending', async () => {
   const ctx = await setupTest();
+
   const items = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'owner likes. tea green' }),
     createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment on 2026-03-02' }),
     createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -169,6 +179,7 @@ test('it approves one change alone and leaves the rest of the diff pending', asy
       { kind: 'retire', inputs: [items[2]], reason: 'The trip has ended.', source: 'owner' },
     ],
   });
+
   const [first, approved, third] = diff.changes;
 
   invariant(first && approved && third);
@@ -180,6 +191,7 @@ test('it approves one change alone and leaves the rest of the diff pending', asy
   });
 
   const pending = await ctx.memory.store.consolidations.readPending();
+
   const histories = await Promise.all(
     items.map((item) => ctx.memory.store.readHistory(item.itemID)),
   );
@@ -188,15 +200,18 @@ test('it approves one change alone and leaves the rest of the diff pending', asy
     first.changeID,
     third.changeID,
   ]);
+
   expect(histories.map((history) => history?.state)).toStrictEqual(['active', 'retired', 'active']);
 });
 
 test('it gives a rewritten item its new text and keeps its source', async () => {
   const ctx = await setupTest();
+
   const item = await createMemoryItem(ctx.memory.store, {
     text: 'owner likes. tea green, no sugar',
     origin: 'memory_writer',
   });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -208,6 +223,7 @@ test('it gives a rewritten item its new text and keeps its source', async () => 
       },
     ],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -227,12 +243,15 @@ test('it gives a rewritten item its new text and keeps its source', async () => 
 
 test('it retires the item a retirement names and keeps its text', async () => {
   const ctx = await setupTest();
+
   const item = await createMemoryItem(ctx.memory.store, {
     text: 'Has a dentist appointment on 2026-03-02',
   });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'The date has passed.', source: 'owner' }],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -261,12 +280,15 @@ test('it retires the item a retirement names and keeps its text', async () => {
 
 test('it records your approval with the versions it wrote, bound to the change it approves', async () => {
   const ctx = await setupTest();
+
   const item = await createMemoryItem(ctx.memory.store, {
     text: 'Has a dentist appointment on 2026-03-02',
   });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'The date has passed.', source: 'owner' }],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -305,9 +327,11 @@ test('it records your approval with the versions it wrote, bound to the change i
 test('it refuses a second approval of a change it consumed', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'The trip has ended.', source: 'owner' }],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -330,9 +354,11 @@ test('it refuses a second approval of a change it consumed', async () => {
 test('it refuses an answer that names another action hash, and applies nothing', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'The trip has ended.', source: 'owner' }],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -367,10 +393,12 @@ test('it refuses an answer to a change that does not exist', async () => {
 
 test('it fails a merge as stale when one input moved on', async () => {
   const ctx = await setupTest();
+
   const [kept, moved] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Is allergic to peanuts' }),
     createMemoryItem(ctx.memory.store, { text: 'Has a peanut allergy' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -382,9 +410,11 @@ test('it fails a merge as stale when one input moved on', async () => {
       },
     ],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
+
   await ctx.memory.store.retire({
     target: moved,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -403,10 +433,12 @@ test('it fails a merge as stale when one input moved on', async () => {
 
 test('it leaves the first input of a stale merge as it was', async () => {
   const ctx = await setupTest();
+
   const [kept, moved] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Is allergic to peanuts' }),
     createMemoryItem(ctx.memory.store, { text: 'Has a peanut allergy' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -418,13 +450,16 @@ test('it leaves the first input of a stale merge as it was', async () => {
       },
     ],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
+
   await ctx.memory.store.retire({
     target: moved,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   await ctx.memory.store.consolidations
     .approve({ changeID: change.changeID, actionHash: change.actionHash, identityID: 'device-1' })
     .catch(() => {});
@@ -437,6 +472,7 @@ test('it leaves the first input of a stale merge as it was', async () => {
 test('it refuses a change whose first input was forgotten', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'owner likes. tea green' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -448,9 +484,11 @@ test('it refuses a change whose first input was forgotten', async () => {
       },
     ],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
+
   await ctx.memory.store.forget({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

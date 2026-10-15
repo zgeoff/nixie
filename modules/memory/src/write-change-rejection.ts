@@ -15,6 +15,7 @@ export async function writeChangeRejection(parts: StoreParts, answer: ChangeAnsw
       actionHash: answer.actionHash,
       now: parts.context.gate.clock.now(),
     });
+
     await writeRecordsInTransaction(tx, parts.context.log, [
       {
         kind: 'memory.consolidation_rejected',
@@ -23,6 +24,7 @@ export async function writeChangeRejection(parts: StoreParts, answer: ChangeAnsw
         payload: { changeID: answer.changeID, identityID: answer.identityID },
       },
     ]);
+
     await writeConsolidatorWakeInTransaction(tx, parts);
   });
 }

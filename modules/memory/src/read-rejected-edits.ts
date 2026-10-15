@@ -12,6 +12,7 @@ export function readRejectedEdits(
   if (proposalIDs.length === 0) {
     return Promise.resolve(new Map());
   }
+
   return parts.lock(async () => {
     const rows = await parts.context.log.writer.db
       .$extendTables<MemoryTables>()
@@ -28,15 +29,18 @@ export function readRejectedEdits(
       .where('memory_proposals.is_new_item', '=', 0)
       .where('memory_items.state', 'in', ['active', 'retired'])
       .execute();
+
     const keys = await findRecordKeys(
       parts.context.log,
       rows.map((row) => row.item_id),
     );
+
     const readable = rows.flatMap((row) => {
       const key = keys.get(row.item_id);
 
       return key === undefined || key === null ? [] : [{ ...row, key }];
     });
+
     const texts = await Promise.all(
       readable.map((row) =>
         decodeProposalText(row.key, row.proposal_id, row.sealed).then(

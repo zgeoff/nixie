@@ -25,11 +25,13 @@ function resolveOwnerValue(
   if (!value.startsWith('deployment:')) {
     return value;
   }
+
   const key = value.slice('deployment:'.length);
   const resolved = Object.hasOwn(settings, key) ? settings[key] : undefined;
 
   if (resolved === undefined) {
     throw new Error(`${label} is ${value}, and the secrets file has no settings entry ${key}`);
   }
+
   return resolved;
 }

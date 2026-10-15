@@ -20,6 +20,7 @@ export function buildMemoryItemRoutes(readMemory: ReadMemory) {
         if (history === null) {
           throw new ControlRequestError(404, 'no memory item has that ID');
         }
+
         return Response.json(buildHistoryEntry(history));
       },
     },
@@ -27,6 +28,7 @@ export function buildMemoryItemRoutes(readMemory: ReadMemory) {
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
       POST: async (request: Request) => {
         const edit = await parseControlBody(request, editBody, editUsage);
+
         const ref = await requireHostMemory(readMemory).remember({
           text: edit.text,
           target: { itemID: edit.itemID, version: edit.version },
@@ -44,6 +46,7 @@ export function buildMemoryItemRoutes(readMemory: ReadMemory) {
         const pin = await parseControlBody(request, pinBody, pinUsage);
 
         await requireHostMemory(readMemory).pin({ ...pin, provenance: ownerProvenance });
+
         return Response.json(pin);
       },
     },
@@ -82,7 +85,6 @@ const versionRef = z.strictObject({
 });
 
 const editBody = versionRef.extend({ text: itemText });
-
 const editUsage = 'an edit takes an itemID, the version it read, and text of 1 to 2,000 characters';
 
 // A change through the socket comes from a shell in nixie's container, which only you reach, so it
@@ -100,7 +102,9 @@ function makeVersionChange(readMemory: ReadMemory, change: 'retire' | 'restore')
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
   return async (request: Request) => {
     const target = await parseControlBody(request, versionRef, versionUsage);
+
     const memory = requireHostMemory(readMemory);
+
     const ref = await memory[change]({ target, provenance: ownerProvenance });
 
     return Response.json(ref);
@@ -108,7 +112,5 @@ function makeVersionChange(readMemory: ReadMemory, change: 'retire' | 'restore')
 }
 
 const versionUsage = 'a retire or a restore takes an itemID and the version it read';
-
 const pinBody = z.strictObject({ itemID: z.string().min(1), isPinned: z.boolean() });
-
 const pinUsage = 'a pin takes an itemID and isPinned';

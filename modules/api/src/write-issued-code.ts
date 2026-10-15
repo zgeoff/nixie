@@ -30,7 +30,9 @@ export function writeIssuedCode(
     if (!live) {
       return { status: 'unauthorized' };
     }
+
     const earlier = await findClientAction(tx, clientActionID);
+
     const issued =
       earlier === null
         ? await writeEnrolmentCode(tx, context, caller.identityID)
@@ -48,6 +50,7 @@ export function writeIssuedCode(
       result: { codeHash: issued.codeHash },
       recordedAt: context.clock.now(),
     });
+
     return { status: 'issued', code: issued.code, expiresAt: issued.expiresAt };
   });
 }
@@ -70,9 +73,11 @@ async function updateRetriedCode(
   ) {
     return null;
   }
+
   const codeHash = String(retry.earlier.result['codeHash']);
   const code = createSecret('enrolment-code');
   const freshHash = deriveSecretHash(normalizeEnrolmentCode(code));
+
   const updated = await tx
     .$extendTables<APITables>()
     .updateTable('enrolment_codes')

@@ -7,6 +7,7 @@ export class DatabaseError extends Error {
 
   constructor(message: string, code: string | undefined) {
     super(message);
+
     this.code = code;
   }
 }

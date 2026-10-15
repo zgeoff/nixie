@@ -12,10 +12,13 @@ import { startTestServer } from './test-utils/start-test-server';
 // conversation task before its runners claim work
 async function setupTest() {
   const server = await startTestServer();
+
   const context = { ...server.context, settings: defaultAPISettings };
+
   const seeded = await runTestSeed(context.log, server.dataDir);
 
   await createConversationTask(context);
+
   return { ...server, context, seeded };
 }
 
@@ -63,6 +66,7 @@ test('it destroys every sandbox before it resets', async () => {
   const sandbox = await ctx.sandboxes.create(
     buildMockSandboxSpec({ kind: 'conversation', image: 'conversation', owner: 'conversation' }),
   );
+
   const before = await ctx.readSandboxIDs();
 
   await runServerReset({
@@ -83,6 +87,7 @@ test('it removes nothing from the database or the key store when a sandbox destr
   await ctx.sandboxes.create(
     buildMockSandboxSpec({ kind: 'conversation', image: 'conversation', owner: 'conversation' }),
   );
+
   await writeRecords(ctx.context.log, [
     {
       kind: 'owner_message',
@@ -105,15 +110,18 @@ test('it removes nothing from the database or the key store when a sandbox destr
   });
 
   await Promise.allSettled([reset]);
+
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   expect(reset).rejects.toThrowWithMessage(Error, 'the runtime refused the destroy');
+
   expect(read.map((entry) => [entry.record.sequence, entry.record.kind])).toStrictEqual([
     [1, 'definitions_seeded'],
     [2, 'task.created'],
     [3, 'sandbox.created'],
     [4, 'owner_message'],
   ]);
+
   expect(read.at(-1)?.record.erasable).toStrictEqual({
     status: 'readable',
     fields: { text: 'book the dentist' },
@@ -122,6 +130,7 @@ test('it removes nothing from the database or the key store when a sandbox destr
 
 test('it refuses a reset before any definitions are in force, and stops no work', async () => {
   const server = await startTestServer();
+
   const stopWork = mock(() => Promise.resolve());
 
   const reset = runServerReset({
@@ -136,6 +145,7 @@ test('it refuses a reset before any definitions are in force, and stops no work'
     Error,
     'no definitions are in force yet, so the reset has nothing to start from',
   );
+
   expect(stopWork).not.toHaveBeenCalled();
 });
 
@@ -162,6 +172,7 @@ test('it commits nothing of a turn still running at the end of the stop grace', 
       acknowledged: [],
     }),
   );
+
   const runners = startTaskRunners(ctx.context, {
     runStep: turn.call,
     onStepErrored: mock<Parameters<typeof startTaskRunners>[1]['onStepErrored']>(),
@@ -170,6 +181,7 @@ test('it commits nothing of a turn still running at the end of the stop grace', 
   });
 
   ctx.defer(() => runners.stop());
+
   await turn.started;
 
   const reset = await runServerReset({
@@ -199,6 +211,7 @@ test('it folds the reset on the conversation thread, which the conversation task
   await createConversationTask(ctx.context);
 
   const thread = await readRecords(ctx.context.log, { afterSequence: 0, thread: 'conversation' });
+
   const tasks = await ctx.context.log.writer.db
     .$extendTables<{ tasks: { task_id: string; created_sequence: number } }>()
     .selectFrom('tasks')
@@ -209,6 +222,7 @@ test('it folds the reset on the conversation thread, which the conversation task
     [reset.lastSequence + 2, 'log_reset'],
     [reset.lastSequence + 3, 'task.created'],
   ]);
+
   expect(tasks).toStrictEqual([
     { task_id: 'conversation', created_sequence: reset.lastSequence + 3 },
   ]);

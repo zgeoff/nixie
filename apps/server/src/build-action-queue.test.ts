@@ -46,7 +46,9 @@ async function setupTest() {
 
 test('it queues a call that a step makes under that step and returns its action ID', async () => {
   const ctx = await setupTest();
+
   const queue = buildActionQueue(ctx.context);
+
   const step = queue.trackSteps(async () => {
     const actionID = await queue.queue.enqueue({
       call: { callID: 'call-1', tool: 'test.send', input: { to: 'team' }, toolUseID: null },
@@ -65,7 +67,6 @@ test('it queues a call that a step makes under that step and returns its action 
   });
 
   const result = await step(ctx.step);
-
   const actions = await ctx.db.selectFrom('actions').selectAll().execute();
 
   expect(actions).toMatchObject([
@@ -82,7 +83,9 @@ test('it queues a call that a step makes under that step and returns its action 
 
 test('it returns the action a step queued when its rerun makes the same call', async () => {
   const ctx = await setupTest();
+
   const queue = buildActionQueue(ctx.context);
+
   const sendCall = () =>
     queue.queue.enqueue({
       call: { callID: 'call-1', tool: 'test.send', input: { to: 'team' }, toolUseID: null },
@@ -96,6 +99,7 @@ test('it returns the action a step queued when its rerun makes the same call', a
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
     });
+
   const step = queue.trackSteps(async () => {
     const first = await sendCall();
     const rerun = await sendCall();
@@ -104,8 +108,8 @@ test('it returns the action a step queued when its rerun makes the same call', a
   });
 
   const result = await step(ctx.step);
-
   const actions = await ctx.db.selectFrom('actions').select('action_id').execute();
+
   const [first, rerun] = String(result.sessionBoundary).split(' ');
 
   expect(actions).toHaveLength(1);
@@ -114,6 +118,7 @@ test('it returns the action a step queued when its rerun makes the same call', a
 
 test('it refuses a call on a thread where no step runs', async () => {
   const ctx = await setupTest();
+
   const queue = buildActionQueue(ctx.context);
 
   expect(
@@ -134,7 +139,9 @@ test('it refuses a call on a thread where no step runs', async () => {
 
 test('it forgets the step once it ends, so a later call queues nothing', async () => {
   const ctx = await setupTest();
+
   const queue = buildActionQueue(ctx.context);
+
   const step = queue.trackSteps(() =>
     Promise.resolve({ next: 'wait', records: [], acknowledged: [] }),
   );
@@ -159,11 +166,14 @@ test('it forgets the step once it ends, so a later call queues nothing', async (
 
 test('it refuses a call from a step whose claim a takeover replaced, and queues nothing', async () => {
   const ctx = await setupTest();
+
   const queue = buildActionQueue(ctx.context);
+
   const takeover = {
     ...ctx.step,
     lease: { ...ctx.step.lease, generation: ctx.step.lease.generation + 1 },
   };
+
   const step = queue.trackSteps(async () => {
     await queue.queue.enqueue({
       call: { callID: 'call-1', tool: 'test.send', input: { to: 'team' }, toolUseID: null },
@@ -192,7 +202,9 @@ test('it refuses a call from a step whose claim a takeover replaced, and queues 
 
 test('it refuses a call that carries no step run ID, and queues nothing', async () => {
   const ctx = await setupTest();
+
   const queue = buildActionQueue(ctx.context);
+
   const step = queue.trackSteps(async () => {
     await queue.queue.enqueue({
       call: { callID: 'call-1', tool: 'test.send', input: { to: 'team' }, toolUseID: null },
@@ -220,7 +232,9 @@ test('it refuses a call that carries no step run ID, and queues nothing', async 
 
 test('it gives no outcome for an action still pending when the wait ends', async () => {
   const ctx = await setupTest();
+
   const queue = buildActionQueue(ctx.context);
+
   const step = queue.trackSteps(async () => {
     const actionID = await queue.queue.enqueue({
       call: { callID: 'call-1', tool: 'test.send', input: { to: 'team' }, toolUseID: null },
@@ -237,8 +251,8 @@ test('it gives no outcome for an action still pending when the wait ends', async
 
     return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
   });
-  const result = await step(ctx.step);
 
+  const result = await step(ctx.step);
   const outcome = await queue.queue.waitForOutcome(String(result.sessionBoundary), 0);
 
   expect(outcome).toBeNull();
@@ -264,7 +278,9 @@ test.each([
   'it gives the outcome of an action that settled as %s',
   async (_status, response, expected) => {
     const ctx = await setupTest();
+
     const queue = buildActionQueue(ctx.context);
+
     const step = queue.trackSteps(async () => {
       const actionID = await queue.queue.enqueue({
         call: { callID: 'call-1', tool: 'test.send', input: { to: 'team' }, toolUseID: null },
@@ -281,12 +297,14 @@ test.each([
 
       return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
     });
+
     const result = await step(ctx.step);
     const lease = await claimAction(ctx.context, { holder: 'action-runner', leaseMs: 60_000 });
 
     if (lease === null) {
       throw new Error('the queued action was not claimable');
     }
+
     await runActionAttempt(ctx.context, lease, {
       connectors: new Map([['test.send', { run: () => Promise.resolve(response) }]]),
       leaseMs: 60_000,

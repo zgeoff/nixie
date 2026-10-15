@@ -72,6 +72,7 @@ function buildRecallTool(
     execution: 'direct',
     run: async (call, context) => {
       const input = recallArguments.parse(call.input);
+
       const result = await store.recall({
         query: input.query,
         limit: topItems,
@@ -81,6 +82,7 @@ function buildRecallTool(
       for (const item of result.items) {
         staging.show(item.itemID, item.version, item.text);
       }
+
       return {
         status: 'ok',
         result: { items: result.items.map((item) => ({ itemID: item.itemID, text: item.text })) },

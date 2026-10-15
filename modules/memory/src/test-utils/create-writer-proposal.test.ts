@@ -10,6 +10,7 @@ test('it returns the pending proposal the memory writer made of the staged write
     text: 'The owner keeps bees.',
     quote: 'I keep bees',
   });
+
   const pending = await memory.store.proposals.listPending();
 
   expect(proposal).toMatchObject({
@@ -21,5 +22,6 @@ test('it returns the pending proposal the memory writer made of the staged write
     quote: 'I keep bees',
     sources: [{ origin: 'memory_writer', thread: 'memory-writer' }],
   });
+
   expect(pending.map((entry) => entry.proposalID)).toStrictEqual([proposal.proposalID]);
 });

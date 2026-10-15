@@ -26,8 +26,10 @@ type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
 // the step that takes it
 async function setupTest() {
   const tasks = await startTestTasks();
+
   const sandboxes = buildStubSandboxes();
   const tools = buildStubToolEndpoint();
+
   const writeMessage = (text: string) =>
     writeInboxRecords(tasks.context, [
       {
@@ -79,6 +81,7 @@ test('it records each reply with the model and the profile in force, never what 
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
     credential: 'not-a-real-key',
@@ -104,6 +107,7 @@ test('it records each reply with the model and the profile in force, never what 
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
   ]);
+
   await ctx.writeMessage('Who are you?');
   await ctx.runNextStep(runner);
 
@@ -126,6 +130,7 @@ test('it records the new model on the next reply once the conversation role poin
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const before = await ctx.startRunner({
     models: buildMockModelsConfig({
       profiles: {
@@ -159,6 +164,7 @@ test('it records the new model on the next reply once the conversation role poin
     { payload: { model: 'claude-test-1', profile: 'chat-direct' } },
     { payload: { model: 'glm-5.3', profile: 'chat-aggregator' } },
   ]);
+
   expect(ctx.sandboxes.turns.map((turn) => turn.profile.model)).toStrictEqual([
     'claude-test-1',
     'glm-5.3',
@@ -169,6 +175,7 @@ test('it sends the guest the profile context tokens with every turn', async () =
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({
       profiles: { 'chat-direct': { model: 'claude-test-1', contextTokens: 400_000 } },
@@ -186,6 +193,7 @@ test("it gives each turn a step token of the step's run identity, and stops it o
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -199,6 +207,7 @@ test("it gives each turn a step token of the step's run identity, and stops it o
     'step-token-1',
     'step-token-2',
   ]);
+
   expect(ctx.steps).toStrictEqual([
     { stepRunID: 'conversation:1@1', token: 'step-token-1', isStopped: true },
     { stepRunID: 'conversation:2@2', token: 'step-token-2', isStopped: true },
@@ -209,6 +218,7 @@ test('it records the model and the profile on the turn end and on every tool cal
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
     credential: 'not-a-real-key',
@@ -225,6 +235,7 @@ test('it records the model and the profile on the turn end and on every tool cal
       usage: { inputTokens: 20, outputTokens: 10, cacheReadTokens: 3, cacheWriteTokens: 4 },
     },
   ]);
+
   await ctx.sendMessage(runner, 'Hi.');
 
   const records = await ctx.readKinds('model.turn_ended');
@@ -243,6 +254,7 @@ test('it records the model and the profile on the turn end and on every tool cal
       },
     },
   ]);
+
   expect(ctx.runs).toStrictEqual([
     {
       runID: 'conversation',
@@ -257,6 +269,7 @@ test('it records the context of the last model call that reported one on the tur
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -283,6 +296,7 @@ test('it records the context of the last model call that reported one on the tur
       context: { size: 41_000, window: 400_000 },
     },
   ]);
+
   await ctx.sendMessage(runner, 'Hi.');
 
   const records = await ctx.readKinds('model.turn_ended');
@@ -304,6 +318,7 @@ test('it records no context on a turn end whose model calls reported none', asyn
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -321,6 +336,7 @@ test('it records no context on a turn end whose model calls reported none', asyn
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
   ]);
+
   await ctx.sendMessage(runner, 'Hi.');
 
   const records = await ctx.readKinds('model.turn_ended');
@@ -334,6 +350,7 @@ test('it commits the session boundary and resumes the next turn at it', async ()
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -353,6 +370,7 @@ test('it commits the session boundary and resumes the next turn at it', async ()
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
   ]);
+
   await ctx.sendMessage(runner, 'Remember APPLE.');
   await ctx.sendMessage(runner, 'What was the word?');
 
@@ -364,6 +382,7 @@ test('it commits the session boundary and resumes the next turn at it', async ()
   expect(task.session_boundary).toBe(
     '{"sessionID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001","messageID":"7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002"}',
   );
+
   expect(ctx.sandboxes.turns.map((turn) => turn.resume)).toStrictEqual([
     null,
     {
@@ -377,6 +396,7 @@ test('it sends each inbox record with its sequence as the message uuid and at th
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -397,7 +417,6 @@ test('it sends each inbox record with its sequence as the message uuid and at th
 
   await ctx.writeMessage('First.');
   await ctx.writeMessage('Second.');
-
   await ctx.runNextStep(runner);
 
   const task = await ctx.db
@@ -421,6 +440,7 @@ test('it sends each inbox record with its sequence as the message uuid and at th
       ),
     },
   ]);
+
   expect(task).toStrictEqual({ state: 'ready', read_cursor: 2 });
 });
 
@@ -428,6 +448,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
     credential: 'not-a-real-key',
@@ -453,6 +474,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
         ]
       : [{ type: 'failed', reason: 'session_missing', detail: 'No conversation found' }],
   );
+
   await ctx.sendMessage(runner, 'Hi.');
   await ctx.sendMessage(runner, 'Hi again.');
 
@@ -461,6 +483,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
     '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
     null,
   ]);
+
   expect(ctx.sandboxes.turns.at(-1)?.input).toStrictEqual([
     {
       uuid: expect.toBeString(),
@@ -479,6 +502,7 @@ test('it gives a resumed session your next message after its send time, with no 
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -494,6 +518,7 @@ test('it gives a resumed session your next message after its send time, with no 
       erasable: { text: 'Hi.' },
     },
   ]);
+
   await ctx.runNextStep(runner);
   await ctx.sendMessage(runner, 'Hi again.');
 
@@ -514,6 +539,7 @@ test('it records the opening and the session it replaced when the guest has lost
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
     credential: 'not-a-real-key',
@@ -539,6 +565,7 @@ test('it records the opening and the session it replaced when the guest has lost
         ]
       : [{ type: 'failed', reason: 'session_missing', detail: 'No conversation found' }],
   );
+
   await ctx.sendMessage(runner, 'Hi.');
   await ctx.sendMessage(runner, 'Hi again.');
 
@@ -564,6 +591,7 @@ test('it opens the first turn on a fresh session with the pinned memory and the 
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -586,6 +614,7 @@ test('it opens the first turn on a fresh session with the pinned memory and the 
       },
     ],
   ]);
+
   expect(opened).toMatchObject([
     { payload: { kind: 'first', reason: null, summarySequence: null, recentRecords: 0 } },
   ]);
@@ -595,6 +624,7 @@ test('it opens the first turn after a forget with a status that says so, and res
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -620,6 +650,7 @@ test('it opens the first turn after a forget with a status that says so, and res
       ),
     },
   ]);
+
   expect(resumed).toMatchObject({
     resume: expect.toBeObject(),
     input: [
@@ -637,6 +668,7 @@ test('it opens a session from before opening records again as a rebuild, because
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -657,11 +689,13 @@ test('it opens a session from before opening records again as a rebuild, because
       }),
     }),
   );
+
   await ctx.sendMessage(runner, 'Hi again.');
 
   const opened = await ctx.readKinds('model.session_opened');
 
   expect(ctx.sandboxes.turns.map((turn) => turn.resume)).toStrictEqual([null]);
+
   expect(opened).toMatchObject([
     {
       payload: {
@@ -677,6 +711,7 @@ test('it sends the pinned memory again on the turn after the SDK compacted the s
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -696,6 +731,7 @@ test('it sends the pinned memory again on the turn after the SDK compacted the s
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
   ]);
+
   await ctx.sendMessage(runner, 'Hi.');
   await ctx.sendMessage(runner, 'Hi again.');
 
@@ -718,6 +754,7 @@ test('it records each compaction with its token counts, its recall mark and no s
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig({ profiles: { 'chat-direct': { model: 'claude-test-1' } } }),
     credential: 'not-a-real-key',
@@ -737,6 +774,7 @@ test('it records each compaction with its token counts, its recall mark and no s
       usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
   ]);
+
   await ctx.sendMessage(runner, 'Hi.');
 
   const records = await ctx.readKinds('model.compacted');
@@ -761,6 +799,7 @@ test('it invalidates the session, removes the guest session state and records th
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -773,12 +812,15 @@ test('it invalidates the session, removes the guest session state and records th
   const completed = await ctx.readKinds('model.session_cleanup_completed');
 
   expect(ctx.sandboxes.purged).toHaveLength(1);
+
   expect(invalidated).toMatchObject([
     { thread: 'conversation', payload: { itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' } },
   ]);
+
   expect(completed).toMatchObject([
     { thread: 'conversation', payload: { itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' } },
   ]);
+
   expect(completed.at(0)?.sequence).toBeGreaterThan(invalidated.at(0)?.sequence ?? Infinity);
 });
 
@@ -786,6 +828,7 @@ test('it rebuilds the session on the turn after a forget invalidated it, and rec
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -799,6 +842,7 @@ test('it rebuilds the session on the turn after a forget invalidated it, and rec
   const opened = await ctx.readKinds('model.session_opened');
 
   expect(ctx.sandboxes.turns.map((turn) => turn.resume)).toStrictEqual([null, null]);
+
   expect(opened).toMatchObject([
     { payload: { kind: 'first' } },
     {
@@ -816,6 +860,7 @@ test('it records the invalidation each turn saw, and resumes the rebuilt session
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -834,6 +879,7 @@ test('it records the invalidation each turn saw, and resumes the rebuilt session
     true,
     false,
   ]);
+
   expect(ended.map((record) => record.payload['invalidatedThrough'])).toStrictEqual([
     0,
     expect.toBePositive(),
@@ -845,20 +891,26 @@ test('it aborts a running turn on a forget, and fails the step so it retries on 
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
   });
+
   const started = Promise.withResolvers<void>();
 
   // the guest holds its turn until the host stops it
   ctx.sandboxes.setGuestScript(async (_turn, guest) => {
     started.resolve();
+
     await guest.waitForMessage();
+
     return [];
   });
+
   await ctx.writeMessage('Hi.');
+
   await Promise.all([
     ctx.runNextStep(runner),
     started.promise.then(() => runner.cleanupSessions('0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01')),
@@ -877,6 +929,7 @@ test('it fails the step and records no reply when nixie tool server is not conne
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -887,6 +940,7 @@ test('it fails the step and records no reply when nixie tool server is not conne
     { type: 'assistant', messageID: crypto.randomUUID(), text: 'Made up.', toolUses: [] },
     { type: 'failed', reason: 'tools_not_connected', detail: "nixie's tool server is failed" },
   ]);
+
   await ctx.sendMessage(runner, 'Hi.');
 
   const task = await ctx.db
@@ -904,6 +958,7 @@ test('it answers your next message after 4 turns failed in a row, past the error
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -913,10 +968,12 @@ test('it answers your next message after 4 turns failed in a row, past the error
   ctx.sandboxes.setGuestScript(() => [
     { type: 'failed', reason: 'tools_not_connected', detail: "nixie's tool server is failed" },
   ]);
+
   await ['Hi.', 'Hello?', 'Anyone?', 'Still there?'].reduce(
     (sent, text) => sent.then(() => ctx.sendMessage(runner, text)),
     Promise.resolve(),
   );
+
   ctx.sandboxes.setGuestScript(() => [
     {
       type: 'assistant',
@@ -947,6 +1004,7 @@ test('it answers your next message after 4 turns failed in a row, past the error
   expect(replies).toMatchObject([
     { erasable: { status: 'readable', fields: { text: 'I am here.' } } },
   ]);
+
   expect(errored).toHaveLength(4);
 });
 
@@ -954,11 +1012,13 @@ test('it passes a message that lands during the turn into it and acknowledges it
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
   });
+
   const live = { sequence: 0 };
 
   ctx.sandboxes.setGuestScript(async (turn, guest) => {
@@ -966,6 +1026,7 @@ test('it passes a message that lands during the turn into it and acknowledges it
     const message = await guest.waitForMessage();
 
     live.sequence = record?.sequence ?? 0;
+
     return [
       { type: 'read', uuids: [turn.input[0]?.uuid ?? '', message.uuid] },
       {
@@ -978,6 +1039,7 @@ test('it passes a message that lands during the turn into it and acknowledges it
       },
     ];
   });
+
   await ctx.writeMessage('Buy milk.');
   await ctx.runNextStep(runner);
 
@@ -1012,6 +1074,7 @@ test('it stores the profile credential and grants it to the conversation sandbox
       header: 'x-api-key',
     },
   ]);
+
   expect(ctx.sandboxes.created).toMatchObject([
     {
       kind: 'conversation',
@@ -1033,6 +1096,7 @@ test('it opens a turn with at most the batch limit of inbox records and leaves t
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -1053,6 +1117,7 @@ test('it keeps the session boundary and runs no turn for a step with nothing unr
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -1081,6 +1146,7 @@ test('it keeps the session boundary and runs no turn for a step with nothing unr
     acknowledged: [],
     sessionBoundary: '{"sessionID":"s","messageID":"m"}',
   });
+
   expect(ctx.sandboxes.turns).toStrictEqual([]);
 });
 
@@ -1088,6 +1154,7 @@ test('it keeps the conversation sandbox across restarts on one profile and repla
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const profiles = {
     'chat-direct': { baseURL: 'https://api.anthropic.com' },
     'chat-aggregator': { baseURL: 'https://gateway.example/anthropic' },
@@ -1098,11 +1165,13 @@ test('it keeps the conversation sandbox across restarts on one profile and repla
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
   });
+
   await ctx.startRunner({
     models: buildMockModelsConfig({ profiles }),
     credential: 'not-a-real-key',
     toolNames: ['notes_read'],
   });
+
   await ctx.startRunner({
     models: buildMockModelsConfig({ profiles, roles: { conversation: 'chat-aggregator' } }),
     credential: 'not-a-real-key',
@@ -1113,6 +1182,7 @@ test('it keeps the conversation sandbox across restarts on one profile and repla
     'api.anthropic.com',
     'gateway.example',
   ]);
+
   expect(ctx.sandboxes.destroyed).toHaveLength(1);
 });
 
@@ -1120,6 +1190,7 @@ test('it tries every replaced sandbox for the session and logs one warning that 
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const before = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -1137,6 +1208,7 @@ test('it tries every replaced sandbox for the session and logs one warning that 
   );
 
   const replaced = await ctx.sandboxes.adapter.list('conversation');
+
   const log = mock<ConversationRunnerOptions['log']>();
 
   // a rotated credential changes the grant, which replaces the sandbox
@@ -1159,6 +1231,7 @@ test('it puts the memory note before the first message of the turn and leaves th
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -1199,6 +1272,7 @@ test('it records the sequence the memory note covers on the turn end', async () 
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -1225,6 +1299,7 @@ test('it records the sequence a turn with no memory changes covers and adds no m
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -1249,6 +1324,7 @@ test('it records the sequence a turn with no memory changes covers and adds no m
       ),
     },
   ]);
+
   expect(records).toMatchObject([{ payload: { memoryNotedThrough: 4 } }]);
 });
 
@@ -1256,6 +1332,7 @@ test('it records no noted sequence on the turn end of a runner with no memory no
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',

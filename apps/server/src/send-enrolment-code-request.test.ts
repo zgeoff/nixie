@@ -15,6 +15,7 @@ async function setupTest() {
 
 test('it returns the code the running server issues', async () => {
   const ctx = await setupTest();
+
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () =>
@@ -37,6 +38,7 @@ test('it returns the code the running server issues', async () => {
 
 test('it rejects with the status and the reason when the server fails to issue a code', async () => {
   const ctx = await setupTest();
+
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('the database is locked')),

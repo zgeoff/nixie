@@ -25,16 +25,20 @@ export async function createTestClient(
     nixie.waitForLogEvent('enrolment_code.issued'),
     nixie.waitForLogEvent('ready'),
   ]);
+
   const url = `http://127.0.0.1:${String(listening['port'])}`;
+
   const signedOut = createORPCClient<ContractClient>(
     new RPCLink({ url: `${url}/rpc`, headers: { [clientHeaderName]: 'test' } }),
   );
+
   const session = await signedOut.sessions.enrol({
     clientActionID: crypto.randomUUID(),
     code: String(issued['code']),
     deviceName: 'laptop',
     tokenDelivery: 'bearer',
   });
+
   const client = createORPCClient<ContractClient>(
     new RPCLink({
       url: `${url}/rpc`,

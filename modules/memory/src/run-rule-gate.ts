@@ -18,13 +18,16 @@ export async function runRuleGate(
     thread: request.thread,
     limit: context.gate.limits.evidenceWindow,
   });
+
   const typed = messages.flatMap((message) => findTypedSegments(message)).join('\n');
 
   if (findMissingToken(request.text, typed) !== null) {
     return buildGateReview('token_missing', { checks: { rule, tokens: 'fail' } });
   }
+
   if (request.isPinned) {
     return buildGateReview('pinned', { checks: { rule, tokens: 'pass' } });
   }
+
   return { status: 'pass', source: 'untrusted', evidence: null, checks: { rule, tokens: 'pass' } };
 }

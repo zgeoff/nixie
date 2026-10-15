@@ -6,6 +6,7 @@ import { setupTestRecorder } from './test-utils/setup-test-recorder';
 
 async function setupTest() {
   const recorder = await setupTestRecorder();
+
   const adapter = buildStubRecordedAdapter(recorder.recorder, 'imp');
 
   return { log: recorder.log, writeEvents: recorder.writeEvents, adapter };

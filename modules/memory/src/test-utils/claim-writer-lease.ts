@@ -17,5 +17,6 @@ export async function claimWriterLease(
   if (lease === null) {
     throw new Error("another holder has the memory writer's lease");
   }
+
   return lease;
 }

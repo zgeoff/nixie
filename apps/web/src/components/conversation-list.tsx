@@ -19,6 +19,7 @@ export interface ConversationListProps {
 // not show yet, then a quiet spinner while nixie works.
 export function ConversationList(props: ConversationListProps): ReactNode {
   const shown = new Set(props.records.map((record) => record.message?.clientMessageId));
+
   const activity = buildActivity(props.records);
   const unshown = props.entries.filter((entry) => !shown.has(entry.message.clientMessageId));
 

@@ -13,6 +13,7 @@ async function setupTest() {
   onTestFinished(() => rm(dir, { recursive: true, force: true }));
 
   const memory = await startTestMemory();
+
   const socket = await startControlSocket({
     path: join(dir, 'control.sock'),
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
@@ -29,9 +30,7 @@ async function setupTest() {
 
 test('it returns the pending proposals the running server lists', async () => {
   const ctx = await setupTest();
-
   const proposal = await createProposal(ctx.memory.store, { text: 'Likes jazz' });
-
   const pending = await sendMemoryRequest(ctx.path, { command: 'pending' });
 
   expect(pending).toMatchObject([
@@ -41,7 +40,6 @@ test('it returns the pending proposals the running server lists', async () => {
 
 test('it returns the version an approval applied', async () => {
   const ctx = await setupTest();
-
   const proposal = await createProposal(ctx.memory.store, { text: 'Likes jazz' });
 
   const ref = await sendMemoryRequest(ctx.path, {
@@ -55,10 +53,12 @@ test('it returns the version an approval applied', async () => {
 
 test('it sends an approval held for a close match again as a new item, or as a revision', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The owner swims every Tuesday.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const [kept, revised] = await Promise.all(
     ['Owner swims every Tuesday', 'The owner swims every Tuesday morning'].map((text) =>
       createProposal(ctx.memory.store, { text }),
@@ -73,6 +73,7 @@ test('it sends an approval held for a close match again as a new item, or as a r
     actionHash: kept.actionHash,
     ignoreCloseMatch: true,
   });
+
   const asRevision = await sendMemoryRequest(ctx.path, {
     command: 'approve',
     proposalID: revised.proposalID,
@@ -86,7 +87,6 @@ test('it sends an approval held for a close match again as a new item, or as a r
 
 test('it returns the proposal a rejection answered', async () => {
   const ctx = await setupTest();
-
   const proposal = await createProposal(ctx.memory.store, { text: 'Likes jazz' });
 
   const answered = await sendMemoryRequest(ctx.path, {
@@ -100,7 +100,6 @@ test('it returns the proposal a rejection answered', async () => {
 
 test('it rejects with the status and the reason when the server refuses the answer', async () => {
   const ctx = await setupTest();
-
   const proposal = await createProposal(ctx.memory.store, { text: 'Likes jazz' });
 
   expect(
@@ -117,7 +116,6 @@ test('it rejects with the status and the reason when the server refuses the answ
 
 test('it sends an approval with your edited text in place of the proposal’s', async () => {
   const ctx = await setupTest();
-
   const proposal = await createProposal(ctx.memory.store, { text: 'Likes jaz' });
 
   const ref = await sendMemoryRequest(ctx.path, {
@@ -126,6 +124,7 @@ test('it sends an approval with your edited text in place of the proposal’s', 
     actionHash: proposal.actionHash,
     editedText: 'Likes jazz',
   });
+
   const history = await ctx.memory.store.readHistory(proposal.itemID);
 
   expect(ref).toStrictEqual({ status: 'applied', itemID: proposal.itemID, version: 1 });
@@ -134,6 +133,7 @@ test('it sends an approval with your edited text in place of the proposal’s', 
 
 test('it returns an item with its history, and the version an edit added', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Drinks oat milk',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -144,9 +144,11 @@ test('it returns an item with its history, and the version an edit added', async
     target: item,
     text: 'Drinks soy milk',
   });
+
   const shown = await sendMemoryRequest(ctx.path, { command: 'show', itemID: item.itemID });
 
   expect(edited).toStrictEqual({ itemID: item.itemID, version: 2 });
+
   expect(shown).toMatchObject({
     itemID: item.itemID,
     state: 'active',
@@ -159,12 +161,14 @@ test('it returns an item with its history, and the version an edit added', async
 
 test('it returns the versions a retirement and a restore added', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives in Lisbon',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
   const retired = await sendMemoryRequest(ctx.path, { command: 'retire', target: item });
+
   const restored = await sendMemoryRequest(ctx.path, {
     command: 'restore',
     target: { itemID: item.itemID, version: 2 },
@@ -176,6 +180,7 @@ test('it returns the versions a retirement and a restore added', async () => {
 
 test('it returns the pin it set', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Is allergic to peanuts',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

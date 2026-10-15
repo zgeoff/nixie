@@ -9,7 +9,9 @@ async function setupTest() {
 
 test('it reads every pinned active item in the order you pinned them', async () => {
   const ctx = await setupTest();
+
   const provenance = buildMockProvenance({ origin: 'owner', source: 'owner', proposalID: null });
+
   const name = await ctx.memory.store.remember({ text: 'Goes by Sam', provenance });
   const pronouns = await ctx.memory.store.remember({ text: 'Uses they/them', provenance });
 
@@ -55,6 +57,7 @@ test('it reads every pinned active item in the order you pinned them', async () 
 
 test('it reads the current text of a pinned item that was edited', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -62,6 +65,7 @@ test('it reads the current text of a pinned item that was edited', async () => {
     proposalID: null,
     checks: null,
   } as const;
+
   const item = await ctx.memory.store.remember({ text: 'Goes by Sam', isPinned: true, provenance });
 
   await ctx.memory.store.remember({ text: 'Goes by Sasha', target: item, provenance });
@@ -73,6 +77,7 @@ test('it reads the current text of a pinned item that was edited', async () => {
 
 test('it never reads an item that a forget began', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -80,7 +85,9 @@ test('it never reads an item that a forget began', async () => {
     proposalID: null,
     checks: null,
   } as const;
+
   const item = await ctx.memory.store.remember({ text: 'Goes by Sam', isPinned: true, provenance });
+
   const hold = startFaultPointHold('memory.forget.key_removed');
   const forget = ctx.memory.store.forget({ target: item, provenance });
 
@@ -89,6 +96,7 @@ test('it never reads an item that a forget began', async () => {
   const core = await ctx.memory.store.readPinnedCore();
 
   hold.release();
+
   await forget;
 
   expect(core).toStrictEqual([]);

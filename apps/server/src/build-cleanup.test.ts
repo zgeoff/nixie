@@ -8,9 +8,11 @@ test('it stops each part in reverse, the last registered first', async () => {
   await cleanup.defer(() => {
     stopped.push('writer');
   });
+
   await cleanup.defer(() => {
     stopped.push('runners');
   });
+
   await cleanup.stop();
 
   expect(stopped).toStrictEqual(['runners', 'writer']);
@@ -23,6 +25,7 @@ test('it stops every part when one fails, then throws the failure', async () => 
   await cleanup.defer(() => {
     stopped.push('writer');
   });
+
   await cleanup.defer(() => Promise.reject(new Error('the endpoint failed to stop')));
 
   expect(cleanup.stop()).rejects.toThrow('a part failed to stop');
@@ -34,6 +37,7 @@ test('it stops a part at once when it registers after the stop began', async () 
   const stopped: string[] = [];
 
   await cleanup.stop();
+
   await cleanup.defer(() => {
     stopped.push('conversation');
   });
@@ -49,11 +53,15 @@ test('it keeps a part that registers after an abort for the stop, in its order',
   await cleanup.defer(() => {
     stopped.push('writer');
   });
+
   cleanup.abort();
+
   await cleanup.defer(() => {
     stopped.push('conversation');
   });
+
   const stoppedAtAbort = [...stopped];
+
   await cleanup.stop();
 
   expect(cleanup.signal.aborted).toBeTrue();

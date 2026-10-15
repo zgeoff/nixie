@@ -14,6 +14,7 @@ export const sandboxesProjection: Projection = {
     if (!record.kind.startsWith('sandbox.') || typeof sandboxID !== 'string') {
       return [];
     }
+
     const changed = await applySandboxRecord(tx.$extendTables<SandboxTables>(), sandboxID, record);
 
     return changed ? [sandboxID] : [];
@@ -37,6 +38,7 @@ async function applySandboxRecord(
   } else {
     return false;
   }
+
   return true;
 }
 
@@ -56,6 +58,7 @@ async function writeSandboxRow(
   ) {
     throw new Error(`record ${record.sequence} holds no sandbox spec`);
   }
+
   await db
     .insertInto('sandboxes')
     .values({

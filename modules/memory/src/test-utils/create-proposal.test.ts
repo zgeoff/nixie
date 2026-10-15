@@ -6,7 +6,6 @@ import { startTestMemory } from './start-test-memory';
 
 test('it returns the pending proposal for a new item', async () => {
   const memory = await startTestMemory();
-
   const proposal = await createProposal(memory.store, { text: 'Likes jazz' });
 
   expect(proposal).toMatchObject({
@@ -19,6 +18,7 @@ test('it returns the pending proposal for a new item', async () => {
 
 test('it returns the pending proposal for an edit of the item it names', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -43,6 +43,7 @@ test('it makes the proposal through the caller given', async () => {
     text: 'Likes jazz',
     caller: buildMockWriteCaller({ model: 'claude-test-1' }),
   });
+
   const records = await readRecords(memory.log, { afterSequence: 0, kinds: ['memory.proposed'] });
 
   expect(records.map((entry) => entry.record.payload)).toMatchObject([

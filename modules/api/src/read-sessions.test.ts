@@ -10,7 +10,6 @@ function setupTest() {
 
 test('it leaves out a revoked session', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const phone = await createDeviceSession(ctx.context, 'phone');
 
@@ -26,10 +25,10 @@ test('it leaves out a revoked session', async () => {
 
 test('it marks the caller’s own session as current', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   ctx.clock.advance(1);
+
   await createDeviceSession(ctx.context, 'phone');
 
   const sessions = await readSessions(ctx.context, laptop.caller);
@@ -44,7 +43,9 @@ test('it marks no session as current for a read with no caller', async () => {
   const ctx = await setupTest();
 
   await createDeviceSession(ctx.context, 'laptop');
+
   ctx.clock.advance(1);
+
   await createDeviceSession(ctx.context, 'phone');
 
   const sessions = await readSessions(ctx.context, null);
@@ -57,10 +58,10 @@ test('it marks no session as current for a read with no caller', async () => {
 
 test('it leaves out a lapsed session', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   await createDeviceSession(ctx.context, 'phone');
+
   ctx.clock.advance(30 * 24 * 60 * 60 * 1000 + 1);
 
   const sessions = await readSessions(ctx.context, laptop.caller);

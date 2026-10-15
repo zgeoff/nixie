@@ -20,12 +20,14 @@ test('it reads a bearer credential placeholder from ANTHROPIC_AUTH_TOKEN', () =>
   );
 
   invariant(options.env);
+
   expect(options.env).toContainEntries([
     ['ANTHROPIC_AUTH_TOKEN', 'imp-placeholder'],
     ['ANTHROPIC_BASE_URL', 'https://gateway.example/anthropic'],
     ['ANTHROPIC_MODEL', 'glm-5.3'],
     ['CLAUDE_CODE_EFFORT_LEVEL', 'high'],
   ]);
+
   expect(options.env).not.toContainKey('ANTHROPIC_API_KEY');
 });
 
@@ -45,6 +47,7 @@ test('it passes the broker proxy settings on by name and nothing else from the g
   });
 
   invariant(options.env);
+
   expect(options.env).toContainEntries([
     ['HTTPS_PROXY', 'http://127.0.0.1:3128'],
     ['NO_PROXY', '127.0.0.1,localhost'],
@@ -52,6 +55,7 @@ test('it passes the broker proxy settings on by name and nothing else from the g
     ['NODE_EXTRA_CA_CERTS', '/etc/imp/ca.pem'],
     ['NODE_USE_ENV_PROXY', '1'],
   ]);
+
   expect(options.env).not.toContainKey('UNRELATED');
 });
 

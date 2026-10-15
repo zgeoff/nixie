@@ -24,17 +24,21 @@ export interface StubHTTPToolServer {
 // relays each connection to the server, or resets it at once while the test drops connections.
 export async function startStubHTTPToolServer(): Promise<StubHTTPToolServer> {
   const handler = createMcpHandler(buildNoteServer);
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
     fetch: (request) => handler.fetch(request),
   });
+
   const state: RouteState = { isDropping: false, resets: 0, sockets: new Set() };
+
   const route = createServer((client) => {
     startRelay(client, server.port ?? 0, state);
   });
 
   route.listen(0, '127.0.0.1');
+
   await once(route, 'listening');
 
   return {
@@ -45,14 +49,18 @@ export async function startStubHTTPToolServer(): Promise<StubHTTPToolServer> {
     },
     acceptConnections: () => {
       state.isDropping = false;
+
       return Promise.resolve();
     },
     stop: async () => {
       for (const socket of state.sockets) {
         socket.destroy();
       }
+
       route.close();
+
       await once(route, 'close');
+
       await handler.close();
       await server.stop(true);
     },
@@ -73,9 +81,11 @@ function buildNoteServer(): Server {
       },
     ],
   }));
+
   server.setRequestHandler('tools/call', () => ({
     content: [{ type: 'text', text: 'the note groceries' }],
   }));
+
   return server;
 }
 
@@ -89,21 +99,27 @@ interface RouteState {
 function startRelay(client: Socket, port: number, state: RouteState): void {
   if (state.isDropping) {
     state.resets += 1;
+
     client.destroy();
+
     return;
   }
+
   const upstream = createConnection({ host: '127.0.0.1', port });
 
   for (const socket of [client, upstream]) {
     state.sockets.add(socket);
+
     socket.once('close', () => {
       state.sockets.delete(socket);
     });
+
     socket.on('error', () => {
       client.destroy();
       upstream.destroy();
     });
   }
+
   client.pipe(upstream).pipe(client);
 }
 
@@ -114,5 +130,6 @@ function getPort(route: NetServer): number {
   if (address === null || typeof address === 'string') {
     throw new Error('the stub tool route has no TCP address');
   }
+
   return address.port;
 }

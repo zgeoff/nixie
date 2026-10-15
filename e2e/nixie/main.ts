@@ -28,9 +28,11 @@ const testLog = await startTestLog({
   deploymentKey: env.deploymentKey,
   clock: link.clock,
 }).catch(stopWithError);
+
 const context = testLog.context;
 
 await createConversationTask(context).catch(stopWithError);
+
 await runRecovery(context, {
   writeUnknownOutcomes: () => writeUnknownOutcomes(context),
 
@@ -42,22 +44,27 @@ await runRecovery(context, {
 await link.waitAtFaultPoint('test.recovered', { kind: 'recovery', id: null });
 
 const tools = await startTestTools(context, env.providerURL).catch(stopWithError);
+
 const sessions = await startTestSessions(context, tools, {
   modelURL: env.modelURL,
   writerModelURL: env.writerModelURL,
 }).catch(stopWithError);
+
 const holder = `nixie-${process.pid}`;
+
 const tasks = startTaskRunners(context, {
   runStep: tools.trackSteps(runTestBuildStep),
   onStepErrored: () => {},
   onError: stopWithError,
   holder,
 });
+
 const actions = startActionRunners(context, {
   connectors: tools.connectors,
   onError: stopWithError,
   holder,
 });
+
 const stopping = new AbortController();
 
 startRecordWakes([tasks, actions], stopping.signal);
@@ -68,6 +75,7 @@ process.once('SIGTERM', () => {
   stopping.abort();
   void stopGracefully();
 });
+
 link.sendReady();
 
 // the conversation and the memory writer run their sessions in guests, and every other task is a
@@ -85,6 +93,7 @@ async function stopGracefully(): Promise<void> {
   await sessions.stop();
   await tools.endpoint.stop();
   await testLog.writer.stop();
+
   stopProcessTree(0);
 }
 
@@ -94,6 +103,7 @@ function stopWithError(error: unknown): never {
   const kind = error instanceof StaleWriterError ? 'stale writer' : 'nixie stopped';
 
   process.stderr.write(`${kind}: ${error instanceof Error ? error.message : String(error)}\n`);
+
   stopProcessTree(1);
 }
 
@@ -101,6 +111,7 @@ function stopWithError(error: unknown): never {
 // loses its sandboxes too, so the test build kills every process it started before it exits.
 function stopProcessTree(code: number): never {
   stopProcesses(collectDescendants(process.pid));
+
   process.exit(code);
 }
 

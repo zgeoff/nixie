@@ -22,13 +22,16 @@ export async function writeApprovedNewItem(
 
     // the closed-proposal sweep removes a key that a crash here leaves
     await removeRecordKey(parts.context.log, opened.row.item_id);
+
     return toAppliedResult(ref);
   }
+
   if (answer.ignoreCloseMatch === true) {
     const ref = await writeApprovedRemember(parts, { opened, answer, target: null });
 
     return toAppliedResult(ref);
   }
+
   return writeUnmatchedNewItem(parts, opened, answer);
 }
 
@@ -41,11 +44,13 @@ async function writeUnmatchedNewItem(
   answer: ProposalAnswer,
 ): Promise<ApprovalResult> {
   const text = answer.editedText ?? opened.text.text;
+
   const match = await findCloseMatch(parts, { text });
 
   if (match !== null) {
     return { status: 'close_match', item: match };
   }
+
   try {
     const ref = await writeApprovedRemember(parts, {
       opened,
@@ -63,6 +68,7 @@ async function writeUnmatchedNewItem(
     if (!(error instanceof CloseMatchError)) {
       throw error;
     }
+
     return writeUnmatchedNewItem(parts, opened, answer);
   }
 }

@@ -19,11 +19,14 @@ async function setupTest() {
   const db = startDatabase(join(dir, 'nixie.db'));
 
   stack.defer(() => db.destroy());
+
   await sql`create table entries (id integer primary key) strict`.execute(db);
+
   await sql`create table pins (
     pin text primary key,
     entry integer not null references entries (id)
   ) strict`.execute(db);
+
   await sql`create trigger entries_refuse_delete before delete on entries
     begin select raise(abort, 'entries are append-only'); end`.execute(db);
 
@@ -63,6 +66,7 @@ test('it keeps the triggers when the callback throws', async () => {
   const ctx = await setupTest();
 
   await sql`insert into entries (id) values (1)`.execute(ctx.db);
+
   const run = ctx.db
     .transaction()
     .execute((tx) =>

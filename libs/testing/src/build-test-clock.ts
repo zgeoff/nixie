@@ -20,6 +20,7 @@ interface Sleeper {
 // or when its signal aborts, as the system clock's sleep does; a sleep of no time resolves at once.
 export function buildTestClock(startMs: number): TestClock {
   const state = { now: startMs };
+
   const sleepers = new Set<Sleeper>();
 
   return {
@@ -28,7 +29,9 @@ export function buildTestClock(startMs: number): TestClock {
       if (signal?.aborted === true || ms <= 0) {
         return;
       }
+
       const sleep = Promise.withResolvers<void>();
+
       const sleeper: Sleeper = {
         dueAt: state.now + ms,
         stop: () => {
@@ -40,6 +43,7 @@ export function buildTestClock(startMs: number): TestClock {
 
       sleepers.add(sleeper);
       signal?.addEventListener('abort', sleeper.stop, { once: true });
+
       await sleep.promise;
     },
     advance: (ms) => {

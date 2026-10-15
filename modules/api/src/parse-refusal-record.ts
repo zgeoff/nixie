@@ -14,6 +14,7 @@ export function parseRefusalRecord(
   if (record.kind !== 'identity.refused') {
     return null;
   }
+
   const payload = record.payload;
 
   if (
@@ -23,6 +24,7 @@ export function parseRefusalRecord(
   ) {
     return null;
   }
+
   return {
     channel: payload['channel'],
     externalID: payload['externalID'],

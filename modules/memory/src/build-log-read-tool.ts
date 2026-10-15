@@ -91,6 +91,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
       if (Number.isNaN(range.from) || Number.isNaN(range.to)) {
         return { status: 'error', message: 'from and to must be real UTC dates or times' };
       }
+
       const page = await readLogPage(log, {
         thread: context.run.thread,
         after: input.after === undefined ? 0 : Number(input.after),
@@ -98,6 +99,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
         words: input.query === undefined ? [] : input.query.split(/\s+/u),
         limit: input.limit ?? defaultLimit,
       });
+
       const next = page.next === null ? null : String(page.next);
 
       return {
@@ -125,12 +127,14 @@ function parseTime(value: string | undefined): number | null {
   if (value === undefined) {
     return null;
   }
+
   const date = value.slice(0, 10);
   const day = Date.parse(date);
 
   if (Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== date) {
     return Number.NaN;
   }
+
   return Date.parse(value);
 }
 

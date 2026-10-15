@@ -51,6 +51,7 @@ async function setupTest() {
 
 test('it records every create, grant, sleep, wake and destroy', async () => {
   const ctx = await setupTest();
+
   const grant = buildMockGrantSpec();
 
   ctx.imp.secrets.set(grant.secret, [grant.host]);
@@ -60,6 +61,7 @@ test('it records every create, grant, sleep, wake and destroy', async () => {
   );
 
   invariant(sandbox.suspension.kind === 'memory');
+
   await sandbox.suspension.sleep();
   await sandbox.suspension.wake();
   await sandbox.destroy();
@@ -77,6 +79,7 @@ test('it records every create, grant, sleep, wake and destroy', async () => {
 
 test('it closes the forward for a sleep and opens it again after the wake', async () => {
   const ctx = await setupTest();
+
   const grant = buildMockGrantSpec();
 
   ctx.imp.secrets.set(grant.secret, [grant.host]);
@@ -86,6 +89,7 @@ test('it closes the forward for a sleep and opens it again after the wake', asyn
   );
 
   invariant(sandbox.suspension.kind === 'memory');
+
   await sandbox.suspension.sleep();
   await sandbox.suspension.wake();
   await sandbox.destroy();
@@ -112,6 +116,7 @@ test('it lists every sandbox of the owner until it is destroyed', async () => {
   const second = await ctx.adapter.create(
     buildMockSandboxSpec({ owner: 'conversation:step-7', kind: 'code_run', toolRoute: false }),
   );
+
   const before = await ctx.adapter.list('conversation:step-7');
 
   await first.destroy();
@@ -124,6 +129,7 @@ test('it lists every sandbox of the owner until it is destroyed', async () => {
 
 test('it creates the imp with policy none, out of every backup, and leaves the grant to the broker', async () => {
   const ctx = await setupTest();
+
   const grant = buildMockGrantSpec();
 
   ctx.imp.secrets.set(grant.secret, [grant.host]);
@@ -158,13 +164,14 @@ test('it refuses a sandbox on an impd that would back it up', async () => {
   expect(ctx.adapter.create(buildMockSandboxSpec({ grants: [] }))).rejects.toThrow(
     new SandboxSpecRefusedError('a sandbox on an impd that would back it up'),
   );
+
   expect(ctx.imp.calls).toStrictEqual([]);
 });
 
 test('it lists a sandbox whose imp impd still backs up as retired', async () => {
   const ctx = await setupTest();
-
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
+
   const created = ctx.imp.created.at(0);
 
   invariant(created);
@@ -179,9 +186,7 @@ test('it lists a sandbox whose imp impd still backs up as retired', async () => 
 
 test('it lists a sandbox whose imp stays out of the backups as kept', async () => {
   const ctx = await setupTest();
-
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
-
   const listed = await ctx.adapter.list(sandbox.spec.owner);
 
   expect(listed.map((row) => [row.id, row.isRetired])).toStrictEqual([[sandbox.id, false]]);
@@ -189,11 +194,12 @@ test('it lists a sandbox whose imp stays out of the backups as kept', async () =
 
 test('it gets a sandbox whose imp impd still backs up as retired', async () => {
   const ctx = await setupTest();
-
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
+
   const created = ctx.imp.created.at(0);
 
   invariant(created);
+
   ctx.imp.created[0] = { ...created, backup: true };
 
   const found = await ctx.adapter.get(sandbox.id);
@@ -218,6 +224,7 @@ test.each([
   'it refuses %s for a %s sandbox and touches neither impd nor the log',
   async (reason, kind, egress) => {
     const ctx = await setupTest();
+
     const spec = buildMockSandboxSpec({ kind, egress, grants: [buildMockGrantSpec()] });
 
     expect(ctx.adapter.create(spec)).rejects.toThrow(new SandboxSpecRefusedError(reason));
@@ -231,6 +238,7 @@ test.each([
 
 test('it gives a coding session a box policy with its hosts beside its grant', async () => {
   const ctx = await setupTest();
+
   const grant = buildMockGrantSpec();
 
   ctx.imp.secrets.set(grant.secret, [grant.host]);
@@ -251,6 +259,7 @@ test('it gives a coding session a box policy with its hosts beside its grant', a
 
 test('it makes a public imp with imp public policy', async () => {
   const ctx = await setupTest();
+
   const adapter = ctx.buildAdapter({
     publicEgress: { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] },
   });
@@ -264,6 +273,7 @@ test('it makes a public imp with imp public policy', async () => {
 
 test('it refuses public egress on an impd that does not enforce it', async () => {
   const ctx = await setupTest();
+
   const adapter = ctx.buildAdapter({
     publicEgress: { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] },
   });
@@ -307,6 +317,7 @@ test('it refuses a grant whose secret covers another host beside its own', async
 
 test('it refuses a grant whose secret impd does not hold', async () => {
   const ctx = await setupTest();
+
   const grant = buildMockGrantSpec({ secret: 'missing', host: 'api.anthropic.com' });
 
   expect(
@@ -329,19 +340,23 @@ test('it records a failed create as destroyed and removes the imp', async () => 
 
   const records = await ctx.readSandboxRecords();
   const listed = await ctx.adapter.list('conversation:step-7');
+
   const id = records.at(0)?.payload['sandboxID'];
 
   invariant(typeof id === 'string');
+
   expect(records.map((record) => [record.kind, record.payload['reason'] ?? null])).toStrictEqual([
     ['sandbox.created', null],
     ['sandbox.destroyed', 'create_failed'],
   ]);
+
   expect(ctx.imp.calls).toStrictEqual([`create ${id}`, `remove ${id}`]);
   expect(listed).toStrictEqual([]);
 });
 
 test('it cuts exec output past 1 MiB, with the broker required and its NO_PROXY left alone', async () => {
   const ctx = await setupTest();
+
   const grant = buildMockGrantSpec({ env: { ANTHROPIC_API_KEY: 'broker-placeholder' } });
 
   ctx.imp.secrets.set(grant.secret, [grant.host]);
@@ -359,18 +374,23 @@ test('it cuts exec output past 1 MiB, with the broker required and its NO_PROXY 
     stdout: { totalBytes: 1_572_864, isCut: true },
     stderr: { isCut: false },
   });
+
   expect(result.stdout.bytes.byteLength).toBe(1_048_576);
+
   expect(new TextDecoder().decode(result.stderr.bytes)).toBe(
     'broker-placeholder localhost,127.0.0.1,::1\n',
   );
+
   expect(ctx.imp.execs.at(0)?.options).toMatchObject({ killGraceMs: 5000, requireBroker: true });
 });
 
 test('it passes the command env alone to an exec in an imp with no grant, with no broker required', async () => {
   const ctx = await setupTest();
+
   const adapter = ctx.buildAdapter({
     publicEgress: { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] },
   });
+
   const sandbox = await adapter.create(
     buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] }),
   );
@@ -393,6 +413,7 @@ test('it carries framed messages on a spawn stream, and a stop sends SIGTERM und
 
   expect(message).toStrictEqual({ done: false, value: new TextEncoder().encode('hello') });
   expect(exit.signal).toBe('SIGTERM');
+
   expect(ctx.imp.execs.at(0)).toMatchObject({
     argv: ['cat'],
     options: { killGraceMs: 5000 },
@@ -417,6 +438,7 @@ test('it lets the guest reach the tool endpoint through the reverse forward', as
   });
 
   expect(route).toStrictEqual({ url: `http://127.0.0.1:${ctx.imp.guestToolPort}` });
+
   expect(JSON.parse(new TextDecoder().decode(result.stdout.bytes))).toStrictEqual({
     path: '/mcp',
     authorization: 'Bearer run-token',
@@ -430,6 +452,7 @@ test('it lets the guest reach the tool endpoint again after a sleep and a wake',
 
   invariant(route);
   invariant(sandbox.suspension.kind === 'memory');
+
   await sandbox.suspension.sleep();
   await sandbox.suspension.wake();
 
@@ -472,9 +495,13 @@ test('it refuses to copy out a guest path that climbs', async () => {
 
 test('it lets a restarted adapter list and destroy what the last one made, for recovery', async () => {
   const ctx = await setupTest();
+
   const spec = buildMockSandboxSpec({ owner: 'conversation:step-7' });
+
   const made = await ctx.adapter.create(spec);
+
   const restarted = ctx.buildAdapter();
+
   const [orphan] = await restarted.list('conversation:step-7');
 
   await orphan?.destroy();
@@ -499,7 +526,9 @@ test('it rejects the exit of a session that impd loses after a stop', async () =
 
 test('it fails only the guest connection to a tool endpoint that is down', async () => {
   const ctx = await setupTest();
+
   const adapter = ctx.buildAdapter({ toolTarget: { path: join(ctx.dir, 'missing.sock') } });
+
   const sandbox = await adapter.create(buildMockSandboxSpec({ toolRoute: true }));
   const route = await sandbox.toolRoute();
 
@@ -522,6 +551,7 @@ test('it records the wake that a call on a sleeping imp causes', async () => {
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ owner: 'conversation:step-7' }));
 
   invariant(sandbox.suspension.kind === 'memory');
+
   await sandbox.suspension.sleep();
   await sandbox.exec({ argv: ['true'] });
 
@@ -532,6 +562,7 @@ test('it records the wake that a call on a sleeping imp causes', async () => {
     'sandbox.slept',
     'sandbox.woken',
   ]);
+
   expect(row?.state).toBe('awake');
 });
 
@@ -564,6 +595,7 @@ test('it stores no secret when one already has the name', async () => {
   const ctx = await setupTest();
 
   ctx.imp.secrets.set('model-default', ['api.anthropic.com']);
+
   await ctx.adapter.addSecret({
     name: 'model-default',
     value: 'not-a-real-key',
@@ -594,6 +626,7 @@ test('it adds nothing when impd holds the name at the same digest', async () => 
     digest: `sha256:${'a'.repeat(64)}`,
     ref: 'ghcr.io/example/nixie-fetch:0.1.0',
   });
+
   await ctx.adapter.addImage({
     name: 'nixie-fetch-aaaaaaaaaaaa',
     ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
@@ -609,6 +642,7 @@ test('it adds nothing when impd built the name from a reference pinned at the sa
     digest: `imp-build-${'c'.repeat(64)}`,
     ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
   });
+
   await ctx.adapter.addImage({
     name: 'nixie-fetch-aaaaaaaaaaaa',
     ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
@@ -621,6 +655,7 @@ test('it adds nothing, and succeeds, when impd holds the name and would refuse a
   const ctx = await setupTest();
 
   ctx.imp.refuseImageAdd = true;
+
   ctx.imp.images.set('nixie-fetch-aaaaaaaaaaaa', {
     digest: `sha256:${'a'.repeat(64)}`,
     ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
@@ -632,6 +667,7 @@ test('it adds nothing, and succeeds, when impd holds the name and would refuse a
       ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
     }),
   ).toResolve();
+
   expect(ctx.imp.calls).toStrictEqual([]);
 });
 
@@ -715,7 +751,6 @@ test('it refuses an image reference with no digest', async () => {
 
 test('it reports the runtime ready while impd answers', async () => {
   const ctx = await setupTest();
-
   const report = await ctx.adapter.checkRuntime();
 
   expect(report).toStrictEqual({ isReady: true, reason: null });

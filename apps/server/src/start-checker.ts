@@ -24,6 +24,7 @@ export function startChecker(options: CheckerOptions): Promise<RunCheck> {
 
   // the credentials resolve for every profile, or resolveModelCredentials throws first
   invariant(resolved, `the checker profile ${profile.id} has no credential`);
+
   return startCheckerRunner({
     profile: resolved,
     sandboxes: options.sandboxes,
@@ -44,5 +45,6 @@ function buildCheckCommand(): GuestCommand {
       env: {},
     };
   }
+
   return { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: { HOME: '/home/nixie' } };
 }

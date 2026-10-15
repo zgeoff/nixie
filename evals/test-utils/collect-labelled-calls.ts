@@ -25,7 +25,9 @@ export function collectLabelledCalls(
         `the report checks pair ${call.pair} of ${call.sample}, which is not in the corpus`,
       );
     }
+
     const input = buildCheckerEvalInput(sample, pair, report.ownerName);
+
     const inputHash = new Bun.CryptoHasher('sha256').update(input).digest('hex');
 
     if (call.input !== `sha256:${inputHash}`) {
@@ -33,6 +35,7 @@ export function collectLabelledCalls(
         `the report checks pair ${call.pair} of ${call.sample} on an input the corpus no longer renders`,
       );
     }
+
     return { call, pair };
   });
 }

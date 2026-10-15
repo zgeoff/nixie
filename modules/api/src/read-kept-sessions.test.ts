@@ -10,10 +10,10 @@ function setupTest() {
 
 test('it reads each live session with its channel, label and paired time, oldest first', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   ctx.clock.advance(1);
+
   const phone = await createDeviceSession(ctx.context, 'phone');
   const kept = await readKeptSessions(ctx.writer.db, ctx.context);
 
@@ -25,7 +25,6 @@ test('it reads each live session with its channel, label and paired time, oldest
 
 test('it leaves out a revoked session', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const phone = await createDeviceSession(ctx.context, 'phone');
 
@@ -43,6 +42,7 @@ test('it leaves out a lapsed session', async () => {
   const ctx = await setupTest();
 
   await createDeviceSession(ctx.context, 'laptop');
+
   ctx.clock.advance(30 * 24 * 60 * 60 * 1000 + 1);
 
   const kept = await readKeptSessions(ctx.writer.db, ctx.context);

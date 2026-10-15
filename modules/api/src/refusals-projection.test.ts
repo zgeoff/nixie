@@ -12,7 +12,9 @@ test('it keeps the last refusal time for each external ID', async () => {
   const ctx = await setupTest();
 
   await writeRefusal(ctx.context, { channel: 'client', externalID: 'ab12' });
+
   ctx.clock.advance(60 * 60 * 1000);
+
   await writeRefusal(ctx.context, { channel: 'client', externalID: 'ab12' });
 
   const rows = await ctx.writer.db
@@ -33,6 +35,7 @@ test('it gives the live rows again after a rebuild', async () => {
   await writeRefusal(ctx.context, { channel: 'client', externalID: 'cd34' });
 
   const db = ctx.writer.db.$extendTables<APITables>();
+
   const live = await db.selectFrom('refusals').selectAll().orderBy('refusal_key').execute();
 
   await runProjectionRebuild(ctx.context.log);

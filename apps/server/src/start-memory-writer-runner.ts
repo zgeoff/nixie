@@ -55,12 +55,14 @@ export async function startMemoryWriterRunner(
     const writer = await startWriterParts(options, (stop) => {
       started.defer(stop);
     });
+
     const stack = started.move();
 
     return { ...writer, stop: () => stack.disposeAsync() };
   } catch (error) {
     // the server retries a failed start, and each retry opens the run socket again
     await started.disposeAsync();
+
     throw error;
   }
 }
@@ -72,6 +74,7 @@ async function startWriterParts(
 ): Promise<MemoryWriter> {
   const staging = createWriterStaging();
   const tools = buildWriterTools(options.store, staging, options.config.topItems);
+
   const endpoint = await startWriterEndpoint(options, tools);
 
   defer(() => endpoint.stop());
@@ -108,6 +111,7 @@ async function startWriterParts(
   });
 
   defer(() => writer.stop());
+
   return writer;
 }
 
@@ -118,6 +122,7 @@ function resolveWriterProfile(options: MemoryWriterRunnerOptions): ResolvedProfi
 
   // the credentials resolve for every profile, or resolveModelCredentials throws first
   invariant(resolved, `the memory writer profile ${profile.id} has no credential`);
+
   return resolved;
 }
 

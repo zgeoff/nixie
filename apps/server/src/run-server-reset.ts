@@ -30,6 +30,7 @@ export async function runServerReset(options: ServerResetOptions): Promise<Serve
   if ((await findResetSeed(options.context.log.writer.db)) === null) {
     throw new Error('no definitions are in force yet, so the reset has nothing to start from');
   }
+
   await options.stopWork();
 
   // the conversation's transcript lives on its sandbox's disk, so a kept sandbox would resume it
@@ -40,6 +41,7 @@ export async function runServerReset(options: ServerResetOptions): Promise<Serve
   });
 
   const kept = { sessions: 0 };
+
   const reset = await runLogReset(options.context.log, {
     keptTables: ['identities'],
     readKept: async (tx) => ({
@@ -48,6 +50,7 @@ export async function runServerReset(options: ServerResetOptions): Promise<Serve
     }),
     writeFirstRecords: async (tx, read, logReset) => {
       kept.sessions = read.sessions.length;
+
       await writeFirstRecords(tx, options.context, { ...read, reset: logReset });
     },
   });
@@ -73,7 +76,9 @@ async function writeFirstRecords(
 ): Promise<void> {
   // the reset checked for a seed before it began, and nothing removes one outside a reset
   invariant(first.seed);
+
   const inForce = await writeResetSeed(tx, context.log, first.seed);
+
   const definitions = { snapshotHash: inForce.snapshotHash };
 
   await writeRecordsInTransaction(tx, context.log, [
@@ -89,5 +94,6 @@ async function writeFirstRecords(
       },
     },
   ]);
+
   await writeKeptSessions(tx, context.log, { sessions: first.sessions, definitions });
 }

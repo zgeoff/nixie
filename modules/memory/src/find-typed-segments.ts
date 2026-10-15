@@ -17,6 +17,7 @@ export function findTypedSegments(message: OwnerMessage): readonly string[] {
       runs.push({ start: span.start, end: span.end });
     }
   }
+
   return runs.flatMap((run) => splitRun(message.text, run, blocks));
 }
 
@@ -28,10 +29,13 @@ function splitRun(text: string, run: TextRange, blocks: readonly TextRange[]): r
     if (block.start > at) {
       segments.push(text.slice(at, block.start));
     }
+
     at = Math.max(at, block.end);
   }
+
   if (at < run.end) {
     segments.push(text.slice(at, run.end));
   }
+
   return segments;
 }

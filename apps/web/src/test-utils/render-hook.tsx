@@ -9,6 +9,7 @@ import { NixieClientContext } from '../nixie-client-context';
 // Renders a hook inside the providers the web client gives it, as render does for a view.
 export function renderHook<Result>(hook: () => Result): RenderHookResult<Result, unknown> {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
   const client = buildBrowserClient();
 
   return renderHookWithTestingLibrary(hook, {

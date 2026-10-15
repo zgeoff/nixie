@@ -17,7 +17,6 @@ async function setupTest() {
 
 test('it writes a configuration that loads, with the scripted model as the conversation', async () => {
   const ctx = await setupTest();
-
   const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', { config: [], secrets: [] });
   const config = await loadDeploymentConfig(files.configPath);
 
@@ -27,17 +26,19 @@ test('it writes a configuration that loads, with the scripted model as the conve
     port: 0,
     secretsFile: join(ctx.dir, 'secrets.yaml'),
   });
+
   expect(config.models.profiles['scripted']?.baseURL).toBe('http://127.0.0.1:4010');
 });
 
 test('it writes secrets that its sops stand-in decrypts, with the key it returns', async () => {
   const ctx = await setupTest();
-
   const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', { config: [], secrets: [] });
+
   const secrets = await loadSecrets({
     path: join(ctx.dir, 'secrets.yaml'),
     sopsArgv: [files.sopsPath],
   });
+
   const text = await readFile(join(ctx.dir, 'secrets.yaml'), 'utf8');
 
   expect(secrets.models).toStrictEqual({ model_credentials: { scripted: 'scripted-model-key' } });
@@ -46,7 +47,6 @@ test('it writes secrets that its sops stand-in decrypts, with the key it returns
 
 test('it writes a sandbox manifest that loads', async () => {
   const ctx = await setupTest();
-
   const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', { config: [], secrets: [] });
   const images = await loadSandboxManifest(files.manifestPath);
 
@@ -60,6 +60,7 @@ test('it appends the extra lines to the configuration', async () => {
     config: ['tasks:', '  runners: 5'],
     secrets: [],
   });
+
   const config = await loadDeploymentConfig(files.configPath);
 
   expect(config.tasks).toStrictEqual({ runners: 5 });
@@ -72,6 +73,7 @@ test('it appends the extra lines to the secrets file', async () => {
     config: [],
     secrets: ['settings:', '  owner_name: Wren Halloway'],
   });
+
   const secrets = await loadSecrets({
     path: join(ctx.dir, 'secrets.yaml'),
     sopsArgv: [files.sopsPath],

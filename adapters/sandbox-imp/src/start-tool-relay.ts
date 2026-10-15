@@ -9,6 +9,7 @@ export function startToolRelay(
   accept: (handlers: ImpRelayHandlers) => ImpRelay,
 ): void {
   const socket = 'path' in target ? createConnection(target.path) : createConnection(target);
+
   const relay = accept({
     onData: async (data) => {
       const written = Promise.withResolvers<void>();
@@ -16,6 +17,7 @@ export function startToolRelay(
       socket.write(data, () => {
         written.resolve();
       });
+
       await written.promise;
     },
     onEof: () => {
@@ -32,6 +34,7 @@ export function startToolRelay(
       void waitForRoom(relay, () => socket.resume());
     }
   });
+
   socket.once('end', relay.sendEof);
   socket.once('close', relay.close);
 
@@ -43,5 +46,6 @@ export function startToolRelay(
 
 async function waitForRoom(relay: ImpRelay, resume: () => unknown): Promise<void> {
   await relay.waitForRoom();
+
   resume();
 }

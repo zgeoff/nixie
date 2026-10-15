@@ -27,11 +27,13 @@ export function buildActionQueue(context: TasksContext): ActionQueueBridge {
         if (step === undefined) {
           throw new Error(`no step of ${action.run.thread} runs, so its call queues nothing`);
         }
+
         if (action.run.stepRunID !== buildStepRunID(step)) {
           throw new Error(
             `the call comes from no step that holds ${action.run.thread}'s claim, so it queues nothing`,
           );
         }
+
         const queued = await createAllowedAction(context, {
           step,
           tool: action.call.tool,
@@ -52,6 +54,7 @@ export function buildActionQueue(context: TasksContext): ActionQueueBridge {
       const step: TaskClaim = { lease: input.lease, stepKey: input.stepKey };
 
       steps.set(input.taskID, step);
+
       try {
         return await runStep(input);
       } finally {
@@ -70,8 +73,10 @@ function toActionOutcome(view: ModelView): ActionOutcome | null {
   if (view.status === 'done') {
     return view.result === null ? null : { outcome: 'done', result: view.result };
   }
+
   if (view.status === 'failed') {
     return { outcome: 'failed', reason: view.reason };
   }
+
   return view.status === 'unknown' ? { outcome: 'unknown', reason: view.message } : null;
 }

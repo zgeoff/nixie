@@ -87,6 +87,7 @@ test('it lists the oldest 10 events of every kind, then how many more', async ()
 
 test('it has each kind complete only its events that the block lists', async () => {
   const completed: number[][] = [];
+
   const registry = buildEventRegistry([
     {
       name: 'doorbell',
@@ -100,6 +101,7 @@ test('it has each kind complete only its events that the block lists', async () 
         ),
       complete: (events) => {
         completed.push(events.map((event) => event.sequence));
+
         return Promise.resolve(events);
       },
       render: () => 'The doorbell rang.',

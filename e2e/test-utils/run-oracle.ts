@@ -40,6 +40,7 @@ export async function runOracle(nixie: TestNixie): Promise<OracleReport> {
     deploymentKey: nixie.deploymentKey,
     clock: buildTestClock(nixie.harness.now()),
   });
+
   const context = testLog.context;
 
   try {
@@ -68,6 +69,7 @@ type RecoveryChecks = Pick<OracleReport, 'changedEndStates' | 'heldLeases' | 'un
 
 async function runRecoveryChecks(context: TasksContext, nixie: TestNixie): Promise<RecoveryChecks> {
   const recovered = nixie.readRecoveredStates();
+
   const before = await nixie.readRows('tasks');
 
   await runRecovery(context, {
@@ -122,11 +124,13 @@ function findChangedEndStates(
       if (endState !== undefined && endState !== task['state']) {
         changed.add(String(task['task_id']));
       }
+
       if (endState === undefined && (task['state'] === 'done' || task['state'] === 'failed')) {
         ended.set(task['task_id'], task['state']);
       }
     }
   }
+
   return [...changed];
 }
 
@@ -138,6 +142,7 @@ function findRepeats<T>(items: readonly T[], getKey: (item: T) => unknown): read
 
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
+
   return [...counts].filter(([, count]) => count > 1).map(([key]) => key);
 }
 
@@ -150,12 +155,14 @@ function findStrayCalls(
   for (const record of records.filter((entry) => entry.kind === 'action.attempt_started')) {
     attempts.set(record.payload['actionID'], (attempts.get(record.payload['actionID']) ?? 0) + 1);
   }
+
   return nixie.provider.calls
     .map((call) => call.idempotencyKey)
     .filter((key) => {
       const remaining = key === null ? 0 : (attempts.get(key) ?? 0);
 
       attempts.set(key, remaining - 1);
+
       return remaining <= 0;
     });
 }
@@ -164,6 +171,7 @@ function findStrayCalls(
 async function findProjectionDrift(log: Log): Promise<readonly string[]> {
   const tables = [...log.projections.map((projection) => projection.table), 'projection_changes'];
   const readTables = () => Promise.all(tables.map((table) => readTable(log.writer.db, table)));
+
   const live = await readTables();
 
   await runProjectionRebuild(log);

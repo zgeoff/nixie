@@ -29,6 +29,7 @@ export interface ProviderDouble {
 export function startProviderDouble(): ProviderDouble {
   const calls: ProviderCall[] = [];
   const script: ProviderReply[] = [];
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -36,6 +37,7 @@ export function startProviderDouble(): ProviderDouble {
       if (request.method !== 'POST' || new URL(request.url).pathname !== '/send') {
         return new Response('not found', { status: 404 });
       }
+
       const body: unknown = await request.json();
 
       calls.push({ idempotencyKey: request.headers.get('idempotency-key'), body });
@@ -46,6 +48,7 @@ export function startProviderDouble(): ProviderDouble {
       };
 
       await reply.gate;
+
       return renderReply(reply);
     },
   });
@@ -66,15 +69,18 @@ function renderReply(reply: ProviderReply): Response {
   if (reply.kind === 'success') {
     return Response.json({ result: reply.result });
   }
+
   if (reply.kind === 'refused_retryable') {
     const headers: Record<string, string> =
       reply.retryAfterMs === undefined ? {} : { 'retry-after-ms': String(reply.retryAfterMs) };
 
     return Response.json({ reason: reply.reason }, { status: 429, headers });
   }
+
   if (reply.kind === 'refused') {
     return Response.json({ reason: reply.reason }, { status: 422 });
   }
+
   return new Response(
     new ReadableStream({
       start: (controller) => {

@@ -19,7 +19,9 @@ export interface StubPoolWork {
 // or finds none, and each run holds until the test releases it, so a test sees what runs at once.
 export function buildStubPoolWork(work: readonly string[]): StubPoolWork {
   const queue = [...work];
+
   const running = new Map<string, () => void>();
+
   const finished: string[] = [];
   const peak = { running: 0 };
 
@@ -33,8 +35,11 @@ export function buildStubPoolWork(work: readonly string[]): StubPoolWork {
       const held = Promise.withResolvers<void>();
 
       running.set(item, held.resolve);
+
       peak.running = Math.max(peak.running, running.size);
+
       await held.promise;
+
       running.delete(item);
       finished.push(item);
     },

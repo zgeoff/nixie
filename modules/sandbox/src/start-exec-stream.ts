@@ -30,6 +30,7 @@ export function startExecStream(io: ProcessIO, maxMessageBytes: number): ExecStr
     exit,
     stop: () => {
       io.stop();
+
       return exit;
     },
   };

@@ -7,8 +7,10 @@ test('it stops the guest and sends no request when the timeout fired while the g
     signal: 'SIGTERM',
     stderr: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
   };
+
   const send = mock(() => Promise.resolve());
   const stop = mock(() => Promise.resolve(exit));
+
   const controller = new AbortController();
 
   controller.abort();
@@ -43,6 +45,7 @@ test('it stops the guest and sends no request when the timeout fired while the g
       log: () => {},
     }),
   ).toReject();
+
   expect(send).not.toHaveBeenCalled();
   expect(stop).toHaveBeenCalled();
 });
@@ -53,6 +56,7 @@ test('it logs the spawn, reply, CLI and API times of an answered check', async (
     signal: null,
     stderr: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
   };
+
   const reply = { kind: 'answer', output: {}, costUSD: 0.003, durationMs: 2400.4, apiMs: 2100.6 };
   const log = mock<Parameters<typeof runSandboxCheck>[0]['log']>();
 
@@ -102,6 +106,7 @@ test('it logs the answer and its times when the guest fails to stop after replyi
     signal: null,
     stderr: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
   };
+
   const reply = { kind: 'answer', output: {}, costUSD: 0.003, durationMs: 2400.4, apiMs: 2100.6 };
   const log = mock<Parameters<typeof runSandboxCheck>[0]['log']>();
 
@@ -153,10 +158,13 @@ test('it logs an aborted check with no reply, CLI or API time', async () => {
     signal: 'SIGTERM',
     stderr: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
   };
+
   const controller = new AbortController();
+
   const log = mock<Parameters<typeof runSandboxCheck>[0]['log']>();
 
   controller.abort();
+
   await expect(
     runSandboxCheck({
       sandbox: {
@@ -204,6 +212,7 @@ test('it logs a check whose guest exited with no reply as an error', async () =>
     signal: null,
     stderr: { bytes: new Uint8Array(), totalBytes: 0, isCut: false },
   };
+
   const log = mock<Parameters<typeof runSandboxCheck>[0]['log']>();
 
   await expect(

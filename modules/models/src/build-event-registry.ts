@@ -13,6 +13,7 @@ export function buildEventRegistry<Details extends readonly unknown[]>(kinds: {
   if (repeated !== undefined) {
     throw new Error(`the events block has two event kinds named ${repeated}`);
   }
+
   return entries.map((kind) => buildRegistryEntry(kind));
 }
 
@@ -30,6 +31,7 @@ function buildRegistryEntry(kind: EventKind<unknown>): EventRegistry[number] {
         const read = { kind: kind.name, sequence: event.sequence, at: event.at };
 
         details.set(read, event);
+
         return read;
       });
     },
@@ -39,6 +41,7 @@ function buildRegistryEntry(kind: EventKind<unknown>): EventRegistry[number] {
 
         return found === undefined ? [] : [found];
       });
+
       const completed = kind.complete === undefined ? noted : await kind.complete(noted);
 
       return completed.map((event): BoundEvent => ({

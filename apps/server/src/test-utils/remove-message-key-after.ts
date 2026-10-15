@@ -37,5 +37,6 @@ export async function removeMessageKeyAfter(
   if (typeof row?.key_id !== 'string') {
     throw new TypeError(`the record ${String(removal.sequence)} has no key`);
   }
+
   await removeRecordKey(wiring.log, row.key_id);
 }

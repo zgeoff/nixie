@@ -16,10 +16,12 @@ export async function writeChangeApproval(
   answer: ChangeAnswer,
 ): Promise<readonly VersionRef[]> {
   const requirement = { changeID: answer.changeID, actionHash: answer.actionHash };
+
   const row = await requirePendingChange(
     parts.context.log.writer.db.$extendTables<ConsolidationTables>(),
     { ...requirement, now: parts.context.gate.clock.now() },
   );
+
   const plans = await planChangeVersions(parts, row, answer);
 
   return parts.lock(async () => {
@@ -37,7 +39,9 @@ export async function writeChangeApproval(
 
         versions.push(version);
       }
+
       await writeConsolidatorWakeInTransaction(tx, parts);
+
       return versions;
     });
 
@@ -45,6 +49,7 @@ export async function writeChangeApproval(
       // oxlint-disable-next-line no-await-in-loop -- the index takes one entry at a time
       await updateVersionIndex(parts, version.ref.itemID, version.next);
     }
+
     const refs = written.map((version) => version.ref);
 
     // the change's own item first, though it writes last

@@ -18,6 +18,7 @@ export type SandboxImages = Readonly<Record<keyof z.infer<typeof manifestSchema>
 // name a spec gives, which replaces the sandbox.
 export async function loadSandboxManifest(path: string): Promise<SandboxImages> {
   const text = await readFile(path, 'utf8');
+
   const result = manifestSchema.safeParse(JSON.parse(text));
 
   if (!result.success) {
@@ -25,6 +26,7 @@ export async function loadSandboxManifest(path: string): Promise<SandboxImages> 
 
     throw new Error(`nixie refuses the sandbox manifest in ${path}:\n${issues.join('\n')}`);
   }
+
   return {
     conversation: buildImage('conversation', result.data.conversation),
     fetch: buildImage('fetch', result.data.fetch),

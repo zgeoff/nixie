@@ -10,5 +10,6 @@ export function parseFetchObject(
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new TypeError(`a fetch ${name} must be a JSON object`);
   }
+
   return Object.fromEntries(Object.entries(value));
 }

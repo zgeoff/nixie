@@ -15,6 +15,7 @@ export async function readInbox(
     .select('read_cursor')
     .where('task_id', '=', taskID)
     .executeTakeFirstOrThrow();
+
   const inbox: LogRecord[] = [];
   const cursor = { after: task.read_cursor, done: false };
 
@@ -23,8 +24,10 @@ export async function readInbox(
     const page = await readRecords(context.log, { afterSequence: cursor.after, thread: taskID });
 
     inbox.push(...page.map((entry) => entry.record).filter((record) => isInboxRecord(record)));
+
     cursor.after = page.at(-1)?.record.sequence ?? cursor.after;
     cursor.done = page.length === 0;
   }
+
   return inbox;
 }

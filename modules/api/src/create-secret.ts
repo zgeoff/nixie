@@ -5,6 +5,7 @@ export function createSecret(kind: 'session-token' | 'enrolment-code'): string {
   if (kind === 'session-token') {
     return Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
   }
+
   const characters = Array.from(
     crypto.getRandomValues(new Uint8Array(10)),
     (byte) => CODE_ALPHABET[byte % 32],

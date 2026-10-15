@@ -35,11 +35,14 @@ export async function runMigrations(
 
   if (stored.version >= writes) {
     await requireReadableSchema(stored, writes, options.copyDir);
+
     return { from: stored.version, to: stored.version, copyPath: null };
   }
+
   const copyPath = await createCopyBeforeMigration(db, stored.version, options.copyDir);
 
   await runPendingMigrations(db, options, stored.version);
+
   return { from: stored.version, to: writes, copyPath };
 }
 
@@ -50,19 +53,23 @@ function createSchemaVersion(
 ): Promise<StoredSchema> {
   return db.transaction().execute(async (tx) => {
     await options.requireWriter?.(tx);
+
     await sql`create table if not exists schema_version (
       id integer primary key check (id = 1),
       version integer not null,
       oldest_reader integer not null
     ) strict`.execute(tx);
+
     await sql`insert into schema_version (id, version, oldest_reader) values (1, 0, 0)
       on conflict do nothing`.execute(tx);
+
     const result = await sql<{ version: number; oldest_reader: number }>`
       select version, oldest_reader from schema_version where id = 1`.execute(tx),
       [row] = result.rows;
 
     // the insert above leaves the one row in place
     invariant(row);
+
     return { version: row.version, oldestReader: row.oldest_reader };
   });
 }
@@ -75,6 +82,7 @@ async function requireReadableSchema(
   if (writes >= stored.oldestReader) {
     return;
   }
+
   const restore = await findRestore(copyDir, writes);
 
   throw new SchemaTooNewError(stored, writes, restore);
@@ -90,6 +98,7 @@ async function findRestore(copyDir: string, writes: number): Promise<string> {
   if (newest === undefined) {
     return `no copy of schema ${writes} or older sits in ${copyDir}, so restore a backup`;
   }
+
   return `restore ${join(copyDir, newest.name)}, the copy taken before an upgrade`;
 }
 
@@ -110,9 +119,11 @@ async function createCopyBeforeMigration(
   if (version === 0) {
     return null;
   }
+
   const copyPath = join(copyDir, `nixie-schema-${version}.db`);
 
   await createDatabaseCopy(db, copyPath);
+
   return copyPath;
 }
 
@@ -125,6 +136,7 @@ async function runPendingMigrations(
   from: number,
 ): Promise<void> {
   await sql`pragma foreign_keys = off`.execute(db);
+
   try {
     for (const [index, migration] of options.schema.migrations.entries()) {
       if (index >= from) {
@@ -150,6 +162,7 @@ function runMigration(
   return db.transaction().execute(async (tx) => {
     await options.requireWriter?.(tx);
     await pending.migration.up(tx);
+
     const violations = await sql`pragma foreign_key_check`.execute(tx);
 
     if (violations.rows.length > 0) {
@@ -161,6 +174,7 @@ function runMigration(
     // a version short of the build's own can be read by the builds that write it
     const version = pending.index + 1;
     const oldestReader = Math.min(options.schema.oldestReader, version);
+
     const result = await sql`update schema_version
         set version = ${version}, oldest_reader = ${oldestReader}
         where id = 1 and version = ${pending.index}`.execute(tx);

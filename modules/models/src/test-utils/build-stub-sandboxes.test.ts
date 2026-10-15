@@ -9,10 +9,12 @@ function setupTest() {
 
 test('it answers a turn frame with the script frames, then exits', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
   const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
 
   ctx.stub.setGuestScript((turn) => [{ type: 'read', uuids: [turn.input[0]?.uuid ?? ''] }]);
+
   await stream.send(
     encodeTurnFrame({
       type: 'turn',
@@ -29,17 +31,20 @@ test('it answers a turn frame with the script frames, then exits', async () => {
       input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
     }),
   );
+
   const messages = await Array.fromAsync(stream.messages);
   const exit = await stream.exit;
 
   expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toStrictEqual([
     { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] },
   ]);
+
   expect(exit).toMatchObject({ code: 0, signal: null });
 });
 
 test('it answers a purge frame as purged, records the sandbox, then exits', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
   const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
 
@@ -51,12 +56,14 @@ test('it answers a purge frame as purged, records the sandbox, then exits', asyn
   expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toStrictEqual([
     { type: 'purged' },
   ]);
+
   expect(exit).toMatchObject({ code: 0, signal: null });
   expect(ctx.stub.purged).toStrictEqual([sandbox.id]);
 });
 
 test('it answers a purge frame with the frames a test sets', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
   ctx.stub.setPurgeAnswer([{ type: 'failed', reason: 'error', detail: 'the disk is read-only' }]);
@@ -74,9 +81,11 @@ test('it answers a purge frame with the frames a test sets', async () => {
 
 test('it lists a sandbox by its owner until it is destroyed', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', owner: 'conversation' }),
   );
+
   const listed = await ctx.stub.adapter.list('conversation');
 
   await sandbox.destroy();
@@ -90,6 +99,7 @@ test('it lists a sandbox by its owner until it is destroyed', async () => {
 
 test('it records each secret it is given', async () => {
   const ctx = setupTest();
+
   const secret = {
     name: 'model-chat-1',
     value: 'not-a-real-key',

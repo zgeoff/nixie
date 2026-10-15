@@ -81,6 +81,7 @@ export async function startTestMemoryWriter(
   onTestFinished(() => model.stop());
 
   const store = await startTestStore(server, { context, clock, check: options.check });
+
   const started: { writer: MemoryWriterRunner | null } = { writer: null };
   const socketDir = `${server.dataDir}/tools`;
 
@@ -98,6 +99,7 @@ export async function startTestMemoryWriter(
         socketDir,
         options,
       });
+
       return started.writer;
     },
     run: (run) => runWriterSteps({ context, clock, writer: started.writer }, run),
@@ -110,6 +112,7 @@ export async function startTestMemoryWriter(
       if (started.writer === null) {
         throw new Error('the writer has not started');
       }
+
       return started.writer.readStatus();
     },
   };
@@ -137,6 +140,7 @@ async function startTestStore(
   });
 
   server.defer(() => store.stop());
+
   return store;
 }
 
@@ -183,6 +187,7 @@ async function startTestWriterRunner(
   });
 
   server.defer(() => writer.stop());
+
   return writer;
 }
 
@@ -196,6 +201,7 @@ async function runWriterSteps(wiring: StepsWiring, run: WriterRun = {}): Promise
   if (wiring.writer === null) {
     throw new Error('the writer has not started');
   }
+
   await runTaskSteps(wiring.context, {
     steps: { ...run.steps, 'memory-writer': wiring.writer.runStep },
     advance: (ms) => {

@@ -19,6 +19,7 @@ export async function writeBatchPlan(
 
   await withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, plan.input.lease, context.clock.now());
+
     await writeRecordsInTransaction(tx, context.log, [
       {
         kind: 'memory.batch_planned',
@@ -28,6 +29,7 @@ export async function writeBatchPlan(
       },
     ]);
   });
+
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('writer.batch.planned', { kind: 'task', id: memoryWriterTaskID });
   }

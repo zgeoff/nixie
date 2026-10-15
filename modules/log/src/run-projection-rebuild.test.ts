@@ -30,6 +30,7 @@ test('it folds a recorded log into the live tables once every projection is drop
     { kind: 'definitions_seeded', definitions: { snapshotHash: 'sha256:dd44' } },
     { kind: 'task_created', definitions: { snapshotHash: 'sha256:dd44' }, thread: 'task-backlog' },
   ]);
+
   await writeRecords(ctx.log, [
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:dd44' }, thread: 'conversation' },
   ]);
@@ -40,9 +41,11 @@ test('it folds a recorded log into the live tables once every projection is drop
       last_recorded_at)) from (select * from threads order by thread)) as threads,
     (select json_group_array(json_array(sequence, projection, row_key, row))
       from (select * from projection_changes order by sequence, row_key)) as changes`;
+
   const live = await readTables.execute(ctx.writer.db);
 
   await sql`delete from projection_changes; delete from threads`.execute(ctx.writer.db);
+
   await runProjectionRebuild(ctx.log);
 
   const folded = await readTables.execute(ctx.writer.db);
@@ -70,6 +73,7 @@ test('it folds the same rows after a record key is gone', async () => {
   const [key] = keys.rows;
 
   invariant(key);
+
   await removeRecordKey(ctx.log, key.key_id);
 
   const live = await sql`select * from threads`.execute(ctx.writer.db);
@@ -87,6 +91,7 @@ test('it refuses to rebuild under a stale writer epoch and leaves the projection
   await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },
   ]);
+
   await sql`update writer_epoch set epoch = epoch + 1`.execute(ctx.writer.db);
 
   const rebuild = runProjectionRebuild(ctx.log);

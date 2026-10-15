@@ -34,6 +34,7 @@ function parseIPRange(text: string): IPRange {
   if (parsed === null || !/^\d{1,3}$/u.test(prefixText ?? '0') || prefix > bits) {
     throw new Error(`${text} is not an address or a network`);
   }
+
   return { family: parsed.family, base: parsed.value, prefix };
 }
 
@@ -74,14 +75,17 @@ function isPublic(address: IPAddress, denied: readonly IPRange[]): boolean {
   if (address.family === 4) {
     return ![...ipv4NonPublic, ...denied].some((range) => isInRange(address, range));
   }
+
   const embedded = findEmbeddedIPv4(address.value);
 
   if ([...ipv6NonPublic, ...denied].some((range) => isInRange(address, range))) {
     return false;
   }
+
   if (embedded === null) {
     return isInRange(address, ipv6GlobalUnicast);
   }
+
   return embedded.every((value) => isPublic({ family: 4, value }, denied));
 }
 
@@ -124,6 +128,7 @@ function isInRange(address: IPAddress, range: IPRange): boolean {
   if (address.family !== range.family) {
     return false;
   }
+
   const shift = BigInt((range.family === 4 ? 32 : 128) - range.prefix);
 
   return address.value >> shift === range.base >> shift;

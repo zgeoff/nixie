@@ -7,6 +7,7 @@ import { startTestServer } from './test-utils/start-test-server';
 // a test server for its process sandboxes, and the scripted model
 async function setupTest() {
   const server = await startTestServer();
+
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
@@ -16,6 +17,7 @@ async function setupTest() {
 
 test('it runs each check in the check guest on the checker role profile', async () => {
   const ctx = await setupTest();
+
   const check = await startChecker({
     models: modelsConfigSchema.parse({
       profiles: {
@@ -58,6 +60,7 @@ test('it runs each check in the check guest on the checker role profile', async 
     model: 'claude-test-checker',
     failure: null,
   });
+
   expect(ctx.model.requests.filter((request) => request.path === '/v1/messages')).toMatchObject([
     { headers: { 'x-api-key': 'imp-broker-placeholder' }, body: { model: 'claude-test-checker' } },
   ]);
@@ -65,7 +68,9 @@ test('it runs each check in the check guest on the checker role profile', async 
 
 test('it logs where each check spent its time', async () => {
   const ctx = await setupTest();
+
   const log = mock<Parameters<typeof startChecker>[0]['log']>();
+
   const check = await startChecker({
     models: modelsConfigSchema.parse({
       profiles: {

@@ -12,7 +12,9 @@ import { writePlannedBatch } from './test-utils/write-planned-batch';
 // memory, a test clock, and the writer step's lease, which every publish checks first
 async function setupTest() {
   const memory = await startTestMemory();
+
   const clock = buildTestClock(1_000_000);
+
   const lease = await claimLease(
     { clock, log: memory.log },
     {
@@ -24,6 +26,7 @@ async function setupTest() {
   );
 
   invariant(lease);
+
   return { memory, clock, lease };
 }
 
@@ -54,6 +57,7 @@ test('it publishes an applied write as a version the writer made', async () => {
     ],
     buildRecords: () => [],
   });
+
   const recalled = await ctx.memory.store.recall({ query: 'Elm' });
 
   expect(result).toStrictEqual({
@@ -62,6 +66,7 @@ test('it publishes an applied write as a version the writer made', async () => {
     proposed: 0,
     forgotten: 0,
   });
+
   expect(recalled.items).toMatchObject([
     { text: 'You live at 4 Elm Row.', origin: 'memory_writer', source: 'owner' },
   ]);
@@ -101,6 +106,7 @@ test('it publishes a proposal records and counts the proposal', async () => {
     ],
     buildRecords: () => [],
   });
+
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, thread: 'memory-writer' });
 
   expect(result).toStrictEqual({ status: 'published', applied: [], proposed: 1, forgotten: 0 });
@@ -109,10 +115,12 @@ test('it publishes a proposal records and counts the proposal', async () => {
 
 test('it rejects a batch whose proposal names an item that moved on since the session read it', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
 
   await ctx.memory.store.remember({
@@ -219,6 +227,7 @@ test('it leaves out a write whose source was forgotten and counts it', async () 
     ],
     buildRecords: () => [],
   });
+
   const recalled = await ctx.memory.store.recall({ limit: 10 });
 
   expect(result).toStrictEqual({ status: 'published', applied: [], proposed: 0, forgotten: 1 });
@@ -252,6 +261,7 @@ test('it returns superseded for a batch the cursor no longer waits on', async ()
     ],
     buildRecords: () => [],
   });
+
   const recalled = await ctx.memory.store.recall({ limit: 10 });
 
   expect(result).toStrictEqual({ status: 'superseded' });
@@ -297,6 +307,7 @@ test('it rejects a publish after the lease expired', async () => {
 test('it rejects a publish whose lease expired while it waited for the delivery lock', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
+
   const hold = startFaultPointHold('memory.recall.checked');
   const recall = ctx.memory.store.recall({ limit: 10 });
 
@@ -342,6 +353,7 @@ test('it rejects a publish whose lease expired while it waited for the delivery 
 test('it leaves out a write whose message backed an item forgotten after the gate ran', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);
+
   const item = await ctx.memory.store.remember({
     text: 'Lives at 4 Elm Row',
     evidenceQuote: '4 Elm Row',

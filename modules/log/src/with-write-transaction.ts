@@ -11,6 +11,7 @@ export function withWriteTransaction<T>(
 ): Promise<T> {
   return writer.db.transaction().execute(async (tx) => {
     await requireWriterEpoch(tx, writer.epoch);
+
     return fn(tx);
   });
 }

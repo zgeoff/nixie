@@ -24,6 +24,7 @@ export function Conversation(props: ConversationProps): ReactNode {
   if (conversation.status === 'pending') {
     return <p>Loading the conversation…</p>;
   }
+
   if (conversation.status === 'failed') {
     return <p role="alert">The conversation did not load. Reload the page to try again.</p>;
   }
@@ -44,6 +45,7 @@ export function Conversation(props: ConversationProps): ReactNode {
         <Composer
           onSend={(message) => {
             setSends(sends + 1);
+
             outbox.add({ ...message, clientMessageId: crypto.randomUUID(), thread: props.thread });
           }}
         />

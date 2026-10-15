@@ -13,7 +13,9 @@ import { startTestSite } from './test-utils/start-test-site';
 
 test('it reads one request frame, however it arrives, and writes one reply frame', async () => {
   const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('hello') });
+
   const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1']] } });
+
   const frame = encodeFrame(
     encodeFetchMessage({
       url: `https://site.test:${site.port}/`,
@@ -21,6 +23,7 @@ test('it reads one request frame, however it arrives, and writes one reply frame
       deniedRanges: ['10.96.0.0/12'],
     }),
   );
+
   const write = mock<(bytes: Uint8Array) => Promise<void>>(() => Promise.resolve());
 
   await runFetcher(
@@ -33,10 +36,12 @@ test('it reads one request frame, however it arrives, and writes one reply frame
         ca: site.ca,
       }),
   );
+
   const written = write.mock.calls.map(([bytes]) => bytes);
   const [reply] = written;
 
   expect(written).toHaveLength(1);
+
   expect(
     makeFrameDecoder(1000)(reply ?? new Uint8Array()).map((message) => decodeFetchReply(message)),
   ).toStrictEqual([
@@ -54,6 +59,7 @@ test('it reads one request frame, however it arrives, and writes one reply frame
 
 test('it throws when the input closes before a whole request arrives', () => {
   const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1']] } });
+
   const frame = encodeFrame(
     encodeFetchMessage({
       url: 'https://site.test/',
@@ -71,6 +77,7 @@ test('it throws when the input closes before a whole request arrives', () => {
       }),
     ),
   ).rejects.toThrowWithMessage(Error, 'the input closed before a whole request arrived');
+
   expect(resolver.hosts).toStrictEqual([]);
 });
 
@@ -87,5 +94,6 @@ test('it throws on a malformed request without reading a page', () => {
       }),
     ),
   ).rejects.toThrow(TypeError);
+
   expect(resolver.hosts).toStrictEqual([]);
 });

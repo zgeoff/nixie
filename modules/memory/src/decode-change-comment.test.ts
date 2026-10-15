@@ -21,6 +21,7 @@ test('it rejects a comment sealed for another change', async () => {
 
 test("it rejects a change's own text in place of its comment", async () => {
   const ctx = await setupTest();
+
   const sealed = await encodeChangeText(ctx.key, 'change-a', {
     text: 'Owns a cat',
     reason: 'Shorter.',

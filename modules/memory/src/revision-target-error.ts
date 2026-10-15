@@ -2,6 +2,7 @@
 // new item can become.
 export class RevisionTargetError extends Error {
   override readonly name = 'RevisionTargetError';
+
   readonly code = 'REVISION_TARGET';
 
   constructor(proposalID: string) {

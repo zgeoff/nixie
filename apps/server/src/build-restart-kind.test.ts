@@ -20,6 +20,7 @@ async function setupTest() {
   const log = await startTestLog(dataDir);
 
   stack.defer(() => log.writer.stop());
+
   return { log, context: { log, definitions: () => ({ snapshotHash: 'sha256:test' }) } };
 }
 
@@ -55,6 +56,7 @@ test('it renders a start with no start before it by its version alone', async ()
   await writeStartRecord(ctx.context, given, '0.12.0');
 
   const kind = buildRestartKind(ctx.log);
+
   const events = await kind.read({ after: 0, through: 1 });
 
   expect(
@@ -113,6 +115,7 @@ test('it says the persona was updated when a restart changes it', async () => {
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.11.0');
+
   await writeStartRecord(
     ctx.context,
     { tools: ['memory_search'], personaVersion: 'sha256:persona-2' },
@@ -120,6 +123,7 @@ test('it says the persona was updated when a restart changes it', async () => {
   );
 
   const kind = buildRestartKind(ctx.log);
+
   const events = await kind.read({ after: 1, through: 2 });
 
   expect(
@@ -133,6 +137,7 @@ test('it names every change on the one line, tools removed included', async () =
   const ctx = await setupTest();
 
   await writeStartRecord(ctx.context, given, '0.11.0');
+
   await writeStartRecord(
     ctx.context,
     { tools: ['web_fetch', 'event_log_read'], personaVersion: 'sha256:persona-2' },
@@ -140,6 +145,7 @@ test('it names every change on the one line, tools removed included', async () =
   );
 
   const kind = buildRestartKind(ctx.log);
+
   const events = await kind.read({ after: 1, through: 2 });
 
   expect(
@@ -159,6 +165,7 @@ test('it adds no line when a restart changes nothing the conversation is given',
   await writeStartRecord(ctx.context, given, '0.12.0');
 
   const kind = buildRestartKind(ctx.log);
+
   const events = await kind.read({ after: 1, through: 2 });
 
   expect(
@@ -176,9 +183,11 @@ test('it adds no line after a start from a release that recorded nothing given',
       payload: { version: '0.11.0', previousVersion: null },
     },
   ]);
+
   await writeStartRecord(ctx.context, given, '0.12.0');
 
   const kind = buildRestartKind(ctx.log);
+
   const events = await kind.read({ after: 0, through: 2 });
 
   expect(

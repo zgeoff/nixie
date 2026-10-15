@@ -15,12 +15,14 @@ export function buildMockModelsConfig(overrides: ModelsConfigOverrides = {}): Mo
   const profileOverrides = overrides.profiles ?? {
     [faker.helpers.slugify(faker.lorem.words(2))]: {},
   };
+
   const profiles = Object.fromEntries(
     Object.entries(profileOverrides).map(([id, profile]) => [
       id,
       buildMockModelProfile({ id, ...profile }),
     ]),
   );
+
   const [first = ''] = Object.keys(profiles);
 
   return { profiles, roles: { conversation: first, ...overrides.roles } };

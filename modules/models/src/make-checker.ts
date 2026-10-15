@@ -29,6 +29,7 @@ export function makeChecker(options: CheckerOptions): RunCheck {
           failure: 'timeout',
         };
       }
+
       return parseCheckerAnswer(output, options.model);
     } catch {
       return {
@@ -51,6 +52,7 @@ const timedOut: unique symbol = Symbol('timed out');
 // settles to the query's output, or to timedOut when the timeout fires first
 async function waitForOutput(query: Promise<unknown>, timeoutMs: number): Promise<unknown> {
   const timeout = Promise.withResolvers<typeof timedOut>();
+
   const timer = setTimeout(() => {
     timeout.resolve(timedOut);
   }, timeoutMs);

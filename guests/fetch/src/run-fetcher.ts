@@ -23,7 +23,9 @@ export async function runFetcher(
   readPageFor: (request: FetchRequest) => Promise<FetchReply>,
 ): Promise<void> {
   const frame = await readFirstFrame(io.input);
+
   const request = decodeFetchRequest(frame);
+
   const reply = await readPageFor(request);
 
   await io.write(encodeFrame(encodeFetchMessage(reply)));
@@ -41,5 +43,6 @@ async function readFirstFrame(
       return message;
     }
   }
+
   throw new Error('the input closed before a whole request arrived');
 }

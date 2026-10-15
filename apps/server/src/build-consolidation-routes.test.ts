@@ -18,7 +18,9 @@ async function setupTest() {
   onTestFinished(() => rm(dir, { recursive: true, force: true }));
 
   const memory = await startTestMemory();
+
   const path = join(dir, 'run', 'control.sock');
+
   const socket = await startControlSocket({
     path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
@@ -36,11 +38,13 @@ async function setupTest() {
 test('it shows the pending diff with each input at the version its change read, and the hash an answer binds to', async () => {
   const ctx = await setupTest();
   const kept = await createMemoryItem(ctx.memory.store, { text: 'Is allergic to peanuts' });
+
   const dropped = await createMemoryItem(ctx.memory.store, {
     text: 'Has a peanut allergy',
     origin: 'task',
     source: 'untrusted',
   });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -83,10 +87,12 @@ test('it shows the pending diff with each input at the version its change read, 
 
 test('it shows the comment the conversation left beside its change, and none beside the other', async () => {
   const ctx = await setupTest();
+
   const [joke, stale] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Calls the cat the night manager' }),
     createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -99,9 +105,11 @@ test('it shows the comment the conversation left beside its change, and none bes
       { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },
     ],
   });
+
   const [rewrite, retirement] = diff.changes;
 
   invariant(rewrite && retirement);
+
   await ctx.memory.store.consolidations.comment({
     changeID: rewrite.shortID,
     text: 'The rewrite drops the joke: the cat is the night manager.',
@@ -127,7 +135,6 @@ test('it shows the comment the conversation left beside its change, and none bes
 
 test('it answers null when no diff waits', async () => {
   const ctx = await setupTest();
-
   const response = await Bun.fetch('http://localhost/memory/consolidation', { unix: ctx.path });
   const body: unknown = await response.json();
 
@@ -136,16 +143,19 @@ test('it answers null when no diff waits', async () => {
 
 test('it approves one change as the host and leaves the rest pending', async () => {
   const ctx = await setupTest();
+
   const [stale, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' }),
     createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' },
       { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
     ],
   });
+
   const [first, second] = diff.changes;
 
   invariant(first && second);
@@ -157,6 +167,7 @@ test('it approves one change as the host and leaves the rest pending', async () 
       answers: [{ changeID: first.changeID, actionHash: first.actionHash }],
     }),
   });
+
   const body = await response.json();
   const pending = await ctx.memory.store.consolidations.readPending();
 
@@ -165,15 +176,18 @@ test('it approves one change as the host and leaves the rest pending', async () 
       { changeID: first.changeID, status: 'applied', versions: [{ ...stale, version: 2 }] },
     ],
   });
+
   expect(pending?.changes.map((change) => change.changeID)).toStrictEqual([second.changeID]);
 });
 
 test('it records the host as the identity that approved a change', async () => {
   const ctx = await setupTest();
   const stale = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' }],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -201,9 +215,11 @@ test('it records the host as the identity that approved a change', async () => {
 test('it rejects one change, which leaves the diff', async () => {
   const ctx = await setupTest();
   const stale = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' }],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -213,6 +229,7 @@ test('it rejects one change, which leaves the diff', async () => {
     unix: ctx.path,
     body: JSON.stringify({ changeID: change.changeID, actionHash: change.actionHash }),
   });
+
   const body = await response.json();
   const pending = await ctx.memory.store.consolidations.readPending();
 
@@ -223,9 +240,11 @@ test('it rejects one change, which leaves the diff', async () => {
 test('it answers 409 to a rejection under another action hash', async () => {
   const ctx = await setupTest();
   const stale = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [stale], reason: 'The date has passed.', source: 'owner' }],
   });
+
   const [change] = diff.changes;
 
   invariant(change);

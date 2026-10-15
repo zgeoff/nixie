@@ -35,6 +35,7 @@ afterEach(() => {
   store.reset();
   browserCookies.clear();
   globalThis.localStorage.clear();
+
   window.happyDOM.settings.device.prefersColorScheme = 'light';
   delete globalThis.document.documentElement.dataset['theme'];
 });

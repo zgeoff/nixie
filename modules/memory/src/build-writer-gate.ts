@@ -14,11 +14,13 @@ export function buildWriterGate(parts: StoreParts): WriterGate {
   return {
     check: async (write, source, batch) => {
       const checked = await runBatchGate(parts, write, source);
+
       const gate = checked.gate;
 
       if (gate.status === 'pass') {
         // every batch check is quoted, and a quoted check passes only with the quote's place
         invariant(gate.evidence, 'a batch write passed with no evidence');
+
         return {
           outcome: 'apply',
           source: gate.source,
@@ -26,6 +28,7 @@ export function buildWriterGate(parts: StoreParts): WriterGate {
           evidence: gate.evidence,
         };
       }
+
       const proposal = await createBatchProposal(
         parts,
         { write, review: gate, text: checked.text },
@@ -35,6 +38,7 @@ export function buildWriterGate(parts: StoreParts): WriterGate {
       if (proposal.newItemID !== null) {
         newItems.set(proposal.verdict, proposal.newItemID);
       }
+
       return proposal.verdict;
     },
     release: (verdicts) =>

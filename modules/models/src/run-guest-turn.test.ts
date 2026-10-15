@@ -11,7 +11,9 @@ function setupTest() {
 
 test('it collects the frames the guest sent for the turn', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
   const turn = await runGuestTurn({
     sandbox,
     command: { argv: ['guest'], env: {} },
@@ -35,7 +37,9 @@ test('it collects the frames the guest sent for the turn', async () => {
 
 test('it collects each compaction that came before the last result, and drops one after it', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
   const replyID = '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01';
 
   ctx.stub.setGuestScript(() => [
@@ -67,6 +71,7 @@ test('it collects each compaction that came before the last result, and drops on
 
 test('it drops the reads and replies a guest sent after its last result when it dies before the next', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
   const replyID = '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01';
@@ -107,8 +112,11 @@ test('it drops the reads and replies a guest sent after its last result when it 
 
 test('it reports the mark it read at each compaction and at the last result, before a guest that died sent more', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
   const replyID = '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01';
+
   const readRecallMark = mock(() => Promise.resolve(0))
     .mockResolvedValueOnce(17)
     .mockResolvedValueOnce(42);
@@ -139,13 +147,16 @@ test('it reports the mark it read at each compaction and at the last result, bef
   expect(turn.compactions).toStrictEqual([
     { type: 'compacted', trigger: 'auto', preTokens: 150_000, postTokens: 400, mark: 17 },
   ]);
+
   expect(turn.endedMark).toBe(42);
   expect(readRecallMark).toHaveBeenCalledTimes(2);
 });
 
 test('it passes each live message into the running turn', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
   const live: InboxMessage[] = [{ uuid: '6e697869-0000-8000-8000-000000000003', text: 'And?' }];
 
   ctx.stub.setGuestScript(async (_turn, guest) => {
@@ -169,6 +180,7 @@ test('it passes each live message into the running turn', async () => {
 
 test('it throws when the guest exits before it ends or fails its turn', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
   ctx.stub.setGuestScript(() => []);
@@ -190,7 +202,9 @@ test('it throws when the guest exits before it ends or fails its turn', async ()
 
 test('it stops the guest and sends no turn when the signal aborted while the guest started', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
   const forget = new AbortController();
 
   forget.abort(new Error('a forget invalidated the session'));
@@ -211,12 +225,16 @@ test('it stops the guest and sends no turn when the signal aborted while the gue
 
 test('it stops the guest when the step signal aborts', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
   const lease = new AbortController();
 
   ctx.stub.setGuestScript(async (_turn, guest) => {
     lease.abort();
+
     await guest.waitForMessage();
+
     return [];
   });
 

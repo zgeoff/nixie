@@ -48,7 +48,9 @@ async function readContent(
       blocked: findBotChallenge(status, response.headers, null),
     };
   }
+
   const body = await readBodyText(response, limits);
+
   const readable = kind === 'html' ? buildReadableText(body.text) : body.text;
   const text = buildTextWithinLimit(readable, limits.textBytes);
 
@@ -68,12 +70,14 @@ async function readBodyText(
     decodeContent(response, response.headers['content-encoding']),
     limits.bodyBytes,
   );
+
   const text = makeTextDecoder(response.headers['content-type'] ?? null).decode(body.bytes);
 
   return { text, isTruncated: body.isTruncated };
 }
 
 const htmlTypes: ReadonlySet<string> = new Set(['text/html', 'application/xhtml+xml']);
+
 const textTypes: ReadonlySet<string> = new Set([
   'application/json',
   'application/xml',
@@ -87,6 +91,7 @@ function pickBodyKind(contentType: string | null): 'html' | 'text' | 'binary' {
   if (htmlTypes.has(mediaType)) {
     return 'html';
   }
+
   const isText =
     mediaType.startsWith('text/') ||
     textTypes.has(mediaType) ||

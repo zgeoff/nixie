@@ -3,6 +3,7 @@ import { setFaultPointHandler } from './set-fault-point-handler';
 
 test('it refuses a handler outside a test build', () => {
   Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
   onTestFinished(() => {
     Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
   });

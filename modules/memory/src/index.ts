@@ -7,6 +7,7 @@ export { buildWriterTools } from './build-writer-tools';
 export { buildConsolidatorTools } from './build-consolidator-tools';
 export type { ConsolidationConfig, ConsolidationConfigInput } from './consolidation-config-schema';
 export { consolidationConfigSchema } from './consolidation-config-schema';
+
 export type {
   ChangeAnswer,
   ChangeInput,
@@ -17,6 +18,7 @@ export type {
   ConsolidationSchedule,
   MemoryConsolidations,
 } from './consolidation-types';
+
 export type { ConsolidationStaging } from './create-consolidation-staging';
 export { createConsolidationStaging } from './create-consolidation-staging';
 export { memoryConsolidatorTaskID } from './memory-consolidator-task-id';
@@ -56,6 +58,7 @@ export type { StartedMemoryStore } from './start-memory-store';
 export { startMemoryStore } from './start-memory-store';
 export type { MemoryWriter, MemoryWriterOptions } from './start-memory-writer';
 export { startMemoryWriter } from './start-memory-writer';
+
 export type {
   AllowRuleCall,
   AllowRuleMatch,
@@ -77,7 +80,9 @@ export type {
   WriteCaller,
   WriteOutcome,
 } from './gate-types';
+
 export type { HistoryVersion, ItemHistory } from './history-types';
+
 export type {
   CleanupSessions,
   ForgetRequest,
@@ -100,9 +105,11 @@ export type {
   VersionRef,
   VersionState,
 } from './types';
+
 export type { BatchPublication, GatedWrite, PublishResult } from './write-memory-batch';
 export type { WriterConfig, WriterConfigInput } from './writer-config-schema';
 export { writerConfigSchema } from './writer-config-schema';
+
 export type {
   GateBatch,
   GateVerdict,
@@ -113,6 +120,7 @@ export type {
   WriterSessionInput,
   WriterUsage,
 } from './writer-types';
+
 export { findTypedQuote } from './find-typed-quote';
 export { renderCheckerInput } from './render-checker-input';
 export { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';

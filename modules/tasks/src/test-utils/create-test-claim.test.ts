@@ -9,7 +9,6 @@ function setupTest() {
 
 test('it claims the first step of a new task for runner-a under a 60 s lease', async () => {
   const ctx = await setupTest();
-
   const claim = await createTestClaim(ctx.context, 'check back in a minute');
 
   expect(claim).toStrictEqual({
@@ -27,9 +26,7 @@ test('it claims the first step of a new task for runner-a under a 60 s lease', a
 
 test('it creates the task with the brief it is given', async () => {
   const ctx = await setupTest();
-
   const claim = await createTestClaim(ctx.context, 'check back in a minute');
-
   const entries = await readRecords(ctx.context.log, { afterSequence: 0 });
 
   expect(entries.map((entry) => entry.record)).toIncludeAllPartialMembers([

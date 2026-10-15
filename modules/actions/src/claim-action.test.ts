@@ -14,6 +14,7 @@ async function setupTest() {
 test('it claims a due pending action with an action lease at generation 1', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
+
   const queued = await createAllowedAction(ctx.context, {
     step,
     tool: 'test.send',
@@ -45,6 +46,7 @@ test('it leaves an action whose next attempt is not yet due', async () => {
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   await ctx.db.updateTable('actions').set({ next_attempt_at: 1_030_000 }).execute();
 
   const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
@@ -63,6 +65,7 @@ test('it leaves a settled action', async () => {
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   await ctx.db.updateTable('actions').set({ status: 'done' }).execute();
 
   const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
@@ -81,6 +84,7 @@ test('it leaves an action whose lease another runner holds', async () => {
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   const lease = await claimAction(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });

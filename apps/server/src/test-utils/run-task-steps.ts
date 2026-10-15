@@ -37,6 +37,7 @@ export async function runTaskSteps(
       return steps + 1;
     }
   }
+
   throw new Error(`the tasks ran ${String(options.maxSteps)} steps and still had work`);
 }
 
@@ -50,6 +51,7 @@ async function runNextStep(context: TasksContext, options: TaskStepsOptions): Pr
   if (claim === null) {
     return runAfterNextTimer(context, options);
   }
+
   await runTaskStep(context, claim, {
     runStep: getTaskStep(options, claim),
     leaseMs: 60_000,
@@ -57,6 +59,7 @@ async function runNextStep(context: TasksContext, options: TaskStepsOptions): Pr
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
   });
+
   return true;
 }
 
@@ -66,6 +69,7 @@ function getTaskStep(options: TaskStepsOptions, claim: TaskClaim): RunStep {
   if (step === undefined) {
     throw new Error(`the run has no step for the task ${claim.lease.workID}`);
   }
+
   return step;
 }
 
@@ -78,7 +82,9 @@ async function runAfterNextTimer(
   if (dueAt === null) {
     return false;
   }
+
   options.advance(Math.max(0, dueAt - context.clock.now()));
+
   return runNextStep(context, options);
 }
 

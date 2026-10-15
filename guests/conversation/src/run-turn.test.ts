@@ -38,6 +38,7 @@ async function setupTest() {
       messages: [],
       emit: (frame: GuestFrame) => {
         frames.push(frame);
+
         return Promise.resolve();
       },
       runQuery: recorder.runQuery,
@@ -55,6 +56,7 @@ test('it gives every query() nixie tools alone, no settings, skills or SDK memor
     { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'groceries' } } },
     { text: 'You need milk.' },
   );
+
   await runTurn(
     buildMockTurnFrame({ profile: { baseURL: ctx.model.url }, systemPrompt: 'You are nixie.' }),
     ctx.deps,
@@ -90,6 +92,7 @@ test('it gives every query() the profile base URL, model and effort in its env',
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'Hello.' });
+
   await runTurn(
     buildMockTurnFrame({
       profile: { model: 'model-a', baseURL: ctx.model.url, effort: 'low', authHeader: 'x-api-key' },
@@ -119,6 +122,7 @@ test('it offers the model nixie tools alone, on the profile model, with the plac
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'Hello.' });
+
   await runTurn(
     buildMockTurnFrame({
       profile: { model: 'model-a', baseURL: ctx.model.url, authHeader: 'x-api-key' },
@@ -141,6 +145,7 @@ test('it stops the turn with no model output when nixie tool server stays unreac
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'The note says to buy milk.' });
+
   await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
     ...ctx.deps,
 
@@ -155,6 +160,7 @@ test('it stops the turn with no model output when nixie tool server stays unreac
       detail: expect.toStartWith("nixie's tool server is failed: ECONNREFUSED"),
     },
   ]);
+
   expect(ctx.model.requests).toStrictEqual([]);
 });
 
@@ -162,9 +168,11 @@ test('it returns from a turn that ends at a result once the CLI process has exit
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'You need milk.' });
+
   await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), ctx.deps);
 
   const pids = await readdir('/proc');
+
   const workDirs = await Promise.all(
     pids.map((pid) => readlink(join('/proc', pid, 'cwd')).catch(() => null)),
   );
@@ -183,6 +191,7 @@ test('it returns from a turn that stops early once the CLI process has exited', 
   });
 
   const pids = await readdir('/proc');
+
   const workDirs = await Promise.all(
     pids.map((pid) => readlink(join('/proc', pid, 'cwd')).catch(() => null)),
   );
@@ -197,6 +206,7 @@ test('it reports each inbox message the model read, then the turn end at the las
     { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'groceries' } } },
     { text: 'You need milk.' },
   );
+
   await runTurn(
     buildMockTurnFrame({
       profile: { baseURL: ctx.model.url },
@@ -210,6 +220,7 @@ test('it reports each inbox message the model read, then the turn end at the las
   if (reply?.type !== 'assistant') {
     throw new Error('the third frame is not an assistant frame');
   }
+
   expect(ctx.frames).toStrictEqual([
     { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
     {
@@ -244,6 +255,7 @@ test('it reports the context of the last model call and the profile cap at the t
     },
     { text: 'You need milk.', inputTokens: 300, cacheReadTokens: 38_000, cacheWriteTokens: 2700 },
   );
+
   await runTurn(
     buildMockTurnFrame({ profile: { baseURL: ctx.model.url, contextTokens: 400_000 } }),
     ctx.deps,
@@ -272,6 +284,7 @@ test('it marks the turn end as an error when the model API refuses the request',
   if (reply?.type !== 'assistant') {
     throw new Error('the second frame is not an assistant frame');
   }
+
   expect(ctx.frames).toStrictEqual([
     { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
     {
@@ -310,27 +323,34 @@ test('it passes a message into the running turn at the next tool boundary and re
 
   onTestFinished(async () => {
     ctx.tools.release();
+
     await turn;
   });
+
   await ctx.tools.waitForHeldCall();
+
   await Promise.all([
     ctx.channel.writable
       .getWriter()
       .write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' }),
     ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002'),
   ]);
+
   ctx.tools.release();
+
   await turn;
 
   expect(ctx.frames.filter((frame) => frame.type === 'read')).toStrictEqual([
     { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000001'] },
     { type: 'read', uuids: ['6e697869-0000-8000-8000-000000000002'] },
   ]);
+
   expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude('Also buy eggs.');
 });
 
 test('it fails the turn with the error its host message stream throws', async () => {
   const ctx = await setupTest();
+
   const writer = ctx.channel.writable.getWriter();
 
   ctx.model.addReplies({ text: 'Hello.' });
@@ -346,6 +366,7 @@ test('it fails the turn with the error its host message stream throws', async ()
 
 test('it fails the turn at once when the host message stream throws during a held tool call', async () => {
   const ctx = await setupTest();
+
   const writer = ctx.channel.writable.getWriter();
 
   ctx.model.addReplies(
@@ -360,16 +381,19 @@ test('it fails the turn at once when the host message stream throws during a hel
 
   onTestFinished(async () => {
     ctx.tools.release();
+
     await Promise.allSettled([turn]);
   });
-  await ctx.tools.waitForHeldCall();
-  void writer.abort(new Error('a turn is already running'));
 
+  await ctx.tools.waitForHeldCall();
+
+  void writer.abort(new Error('a turn is already running'));
   expect(turn).rejects.toThrow('a turn is already running');
 });
 
 test('it resumes at a boundary on a new session that holds nothing after the boundary', async () => {
   const ctx = await setupTest();
+
   const runTurnAt = async (text: string, resume: SessionPoint | null) => {
     await runTurn(
       buildMockTurnFrame({
@@ -379,11 +403,13 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
       }),
       { ...ctx.deps, toolServer: buildStubToolServer().config },
     );
+
     const last = ctx.frames.at(-1);
 
     if (last?.type !== 'ended') {
       throw new Error('the turn did not end');
     }
+
     return last.boundary;
   };
 
@@ -394,6 +420,7 @@ test('it resumes at a boundary on a new session that holds nothing after the bou
   await runTurnAt('two', first);
 
   const rerun = await runTurnAt('three', first);
+
   const messages = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
 
   // toInclude fails on a missing request, so the negative check below reads a real one
@@ -406,6 +433,7 @@ test('it sends the system prompt of each turn on a resumed session, not the one 
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+
   await runTurn(
     buildMockTurnFrame({ profile: { baseURL: ctx.model.url }, systemPrompt: 'You are nixie.' }),
     { ...ctx.deps, toolServer: buildStubToolServer().config },
@@ -416,6 +444,7 @@ test('it sends the system prompt of each turn on a resumed session, not the one 
   if (first?.type !== 'ended') {
     throw new Error('the first turn did not end');
   }
+
   await runTurn(
     buildMockTurnFrame({
       profile: { baseURL: ctx.model.url },
@@ -432,6 +461,7 @@ test('it sends the system prompt of each turn on a resumed session, not the one 
 
 test('it reports an automatic compaction with its token counts and no summary text', async () => {
   const ctx = await setupTest();
+
   const runTurnAt = async (text: string, resume: SessionPoint | null) => {
     await runTurn(
       buildMockTurnFrame({
@@ -441,11 +471,13 @@ test('it reports an automatic compaction with its token counts and no summary te
       }),
       { ...ctx.deps, toolServer: buildStubToolServer().config },
     );
+
     const last = ctx.frames.at(-1);
 
     if (last?.type !== 'ended') {
       throw new Error('the turn did not end');
     }
+
     return last.boundary;
   };
 
@@ -461,6 +493,7 @@ test('it reports an automatic compaction with its token counts and no summary te
     { text: 'SUMMARY: the owner said one and two.' },
     { text: 'CHERRY' },
   );
+
   await runTurnAt('three', second);
 
   expect(ctx.frames.filter((frame) => frame.type === 'compacted')).toStrictEqual([
@@ -471,6 +504,7 @@ test('it reports an automatic compaction with its token counts and no summary te
       postTokens: expect.toBeNumber(),
     },
   ]);
+
   expect(JSON.stringify(ctx.frames)).not.toInclude('SUMMARY');
 });
 
@@ -499,6 +533,7 @@ test('it reports a session to resume that is not on the guest disk as missing', 
 
 test('it keeps only the session it resumes and the fork it writes on the guest disk', async () => {
   const ctx = await setupTest();
+
   const runTurnAt = async (text: string, resume: SessionPoint | null) => {
     await runTurn(
       buildMockTurnFrame({
@@ -508,11 +543,13 @@ test('it keeps only the session it resumes and the fork it writes on the guest d
       }),
       { ...ctx.deps, toolServer: buildStubToolServer().config },
     );
+
     const last = ctx.frames.at(-1);
 
     if (last?.type !== 'ended') {
       throw new Error('the turn did not end');
     }
+
     return last.boundary;
   };
 
