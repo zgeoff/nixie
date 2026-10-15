@@ -1,3 +1,4 @@
+import type { CheckedTables } from '@heynixie/db';
 import type { ContentSource } from '@heynixie/log';
 import type { Selectable } from 'kysely';
 import type { VersionRef } from './types';
@@ -194,9 +195,11 @@ interface ConsolidationChangeTable {
 }
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
-export type ConsolidationTables = Readonly<{
-  memory_consolidations: ConsolidationTable;
-  memory_consolidation_changes: ConsolidationChangeTable;
-}>;
+export type ConsolidationTables = CheckedTables<
+  Readonly<{
+    memory_consolidations: ConsolidationTable;
+    memory_consolidation_changes: ConsolidationChangeTable;
+  }>
+>;
 
 export type ConsolidationChangeRow = Selectable<ConsolidationChangeTable>;

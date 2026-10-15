@@ -1,4 +1,5 @@
 import type { ImageMediaType } from '@heynixie/contract';
+import type { CheckedTables } from '@heynixie/db';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 
@@ -113,12 +114,15 @@ interface ThreadRow {
 }
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
-export type APITables = Readonly<{
-  identities: IdentityRow;
-  enrolment_codes: EnrolmentCodeRow;
-  client_actions: ClientActionRow;
-  refusals: RefusalRow;
-  tasks: TaskRow;
-  records: RecordRow;
-  threads: ThreadRow;
-}>;
+export type APITables = CheckedTables<
+  Readonly<{
+    identities: IdentityRow;
+    enrolment_codes: EnrolmentCodeRow;
+    client_actions: ClientActionRow;
+    refusals: RefusalRow;
+    tasks: TaskRow;
+    records: RecordRow;
+    threads: ThreadRow;
+  }>,
+  'tasks' | 'records' | 'threads'
+>;
