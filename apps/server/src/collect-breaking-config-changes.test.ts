@@ -45,6 +45,20 @@ test.each([
     { additionalProperties: true },
   ],
   [
+    'a new key with only a description where any key passed',
+    { type: 'object' },
+    { type: 'object', properties: { label: { description: 'a label' } } },
+  ],
+  [
+    'a new key that the released extra-key schema covers',
+    { type: 'object', additionalProperties: { type: 'string' } },
+    {
+      type: 'object',
+      properties: { label: { type: 'string' } },
+      additionalProperties: { type: 'string' },
+    },
+  ],
+  [
     'a new anyOf choice',
     { anyOf: [{ type: 'string' }] },
     { anyOf: [{ type: 'string' }, { type: 'null' }] },
@@ -160,6 +174,28 @@ test.each([
     released: { anyOf: [{ type: 'string' }] },
     current: { anyOf: [{ type: 'string', minLength: 1 }] },
     expected: ['(root): adds minLength'],
+  },
+  {
+    label: 'a widened oneOf choice',
+    released: { oneOf: [{ type: 'integer' }, { type: 'number' }] },
+    current: { oneOf: [{ type: 'number' }, { type: 'number' }] },
+    expected: ['(root): changes the oneOf choices'],
+  },
+  {
+    label: 'a new key that narrows the released extra-key schema',
+    released: { type: 'object', additionalProperties: { type: 'string' } },
+    current: {
+      type: 'object',
+      properties: { label: { type: 'string', minLength: 2 } },
+      additionalProperties: { type: 'string' },
+    },
+    expected: ['label: adds minLength'],
+  },
+  {
+    label: 'a new key where any key passed',
+    released: { type: 'object' },
+    current: { type: 'object', properties: { label: { type: 'string' } } },
+    expected: ['label: constrains a key that any value passed'],
   },
   {
     label: 'a new oneOf choice',

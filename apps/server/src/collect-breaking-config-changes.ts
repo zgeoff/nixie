@@ -5,10 +5,10 @@ type SchemaNode = Readonly<Record<string, unknown>>;
 // config.yaml the released schema accepts, as `<path>: <change>`. A change it cannot prove
 // harmless counts as breaking, so the list can hold a false alarm but never misses a break.
 export function collectBreakingConfigChanges(
-  released: SchemaNode,
-  current: SchemaNode,
+  released: unknown,
+  current: unknown,
 ): readonly string[] {
-  return collectNodeChanges(released, current, []);
+  return collectNodeChanges(toNode(released), toNode(current), []);
 }
 
 function collectNodeChanges(
@@ -23,17 +23,19 @@ function collectNodeChanges(
       keyword,
       before: released[keyword],
       after: current[keyword],
+      released,
       current,
       path,
     }),
   );
 }
 
-// One keyword's value in the released node and in the current node, which holds it
+// One keyword's value in the released node and in the current node, which hold it
 interface KeywordChange {
   readonly keyword: string;
   readonly before: unknown;
   readonly after: unknown;
+  readonly released: SchemaNode;
   readonly current: SchemaNode;
   readonly path: readonly string[];
 }
@@ -93,22 +95,50 @@ function collectNarrowingChanges(change: KeywordChange): readonly string[] {
   return collect(change);
 }
 
-// A key the current schema drops passes only where additionalProperties accepts any value
+// A key the current schema drops passes only where additionalProperties accepts any value, and a key
+// it names for the first time had to pass the released additionalProperties
 function collectPropertyChanges(change: KeywordChange): readonly string[] {
   const before = toNode(change.before);
   const after = toNode(change.after);
+
+  return [
+    ...Object.keys(before).flatMap((key) => collectKeptPropertyChanges(change, key)),
+    ...Object.keys(after)
+      .filter((key) => before[key] === undefined)
+      .flatMap((key) => collectNamedPropertyChanges(change, key)),
+  ];
+}
+
+function collectKeptPropertyChanges(change: KeywordChange, key: string): readonly string[] {
+  const path = [...change.path, key];
+  const kept = toNode(change.after)[key];
   const extra = change.current['additionalProperties'];
-  const acceptsAnyKey = extra === undefined || extra === true;
 
-  return Object.keys(before).flatMap((key) => {
-    const path = [...change.path, key];
+  if (kept !== undefined) {
+    return collectNodeChanges(toNode(toNode(change.before)[key]), toNode(kept), path);
+  }
 
-    if (after[key] !== undefined) {
-      return collectNodeChanges(toNode(before[key]), toNode(after[key]), path);
-    }
+  return extra === undefined || extra === true
+    ? []
+    : [`${formatPath(path)}: is no longer accepted`];
+}
 
-    return acceptsAnyKey ? [] : [`${formatPath(path)}: is no longer accepted`];
-  });
+function collectNamedPropertyChanges(change: KeywordChange, key: string): readonly string[] {
+  const path = [...change.path, key];
+  const extra = change.released['additionalProperties'] ?? true;
+  const named = toNode(toNode(change.after)[key]);
+
+  if (extra === false) {
+    return [];
+  }
+
+  if (extra === true) {
+    return Object.keys(named).every((keyword) => annotations.has(keyword))
+      ? []
+      : [`${formatPath(path)}: constrains a key that any value passed`];
+  }
+
+  return collectNodeChanges(toNode(extra), named, path);
 }
 
 function collectRequiredChanges(change: KeywordChange): readonly string[] {
@@ -170,13 +200,13 @@ function collectSubschemaChanges(change: KeywordChange, segment: string): readon
   return collectNodeChanges(toNode(change.before), toNode(change.after), path);
 }
 
-// oneOf refuses a value that matches two choices, and a choice the current schema adds could match
-// a value that a released choice matches, so oneOf passes only the same number of choices
+// oneOf refuses a value that matches two choices, and any change to a choice can make a value that
+// matched one choice match two, so every oneOf change counts
 function collectChoiceChanges(change: KeywordChange): readonly string[] {
   const before = toArray(change.before);
   const after = toArray(change.after);
 
-  if (change.keyword === 'oneOf' && before.length !== after.length) {
+  if (change.keyword === 'oneOf') {
     return [`${formatPath(change.path)}: changes the oneOf choices`];
   }
 
@@ -192,9 +222,13 @@ function formatPath(path: readonly string[]): string {
 }
 
 function toNode(value: unknown): SchemaNode {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as SchemaNode)
-    : {};
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  const entries: readonly (readonly [string, unknown])[] = Object.entries(value);
+
+  return Object.fromEntries(entries);
 }
 
 function toArray(value: unknown): readonly unknown[] {

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import addFormats from 'ajv-formats';
 import Ajv2020 from 'ajv/dist/2020';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { buildConfigJSONSchema } from './build-config-json-schema';
 
 function setupTest() {
@@ -35,16 +36,18 @@ test('it accepts the example configuration in the Kubernetes reference manifests
     'utf8',
   );
 
-  const manifests = Bun.YAML.parse(text) as readonly {
-    readonly metadata: { readonly name: string };
-    readonly data: Readonly<Record<string, string>>;
-  }[];
+  const manifestSchema = z.looseObject({
+    metadata: z.looseObject({ name: z.string() }),
+    data: z.record(z.string(), z.string()),
+  });
+
+  const manifests = z.array(manifestSchema).parse(Bun.YAML.parse(text));
 
   const example = manifests.find((manifest) => manifest.metadata.name === 'nixie-config')?.data[
     'config.yaml'
   ];
 
-  invariant(example);
+  invariant(example !== undefined);
 
   ctx.validate(Bun.YAML.parse(example));
 

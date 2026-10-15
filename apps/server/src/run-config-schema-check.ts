@@ -33,15 +33,7 @@ const releasedText =
   args.values.released === undefined ? null : await readFile(args.values.released, 'utf8');
 
 const released: unknown = releasedText === null ? null : JSON.parse(releasedText);
-
-const breaking =
-  released === null
-    ? []
-    : collectBreakingConfigChanges(
-        released as Record<string, unknown>,
-        current as Record<string, unknown>,
-      );
-
+const breaking = released === null ? [] : collectBreakingConfigChanges(released, current);
 const lastTag = args.values['last-tag'] ?? null;
 const notes = renderConfigSchemaNotes(breaking, lastTag, marker);
 
