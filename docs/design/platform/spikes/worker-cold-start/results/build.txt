@@ -1,0 +1,4 @@
+conversation image: 21s
+turn image, runtimes no: 2s
+turn image, runtimes yes: 106s
+fetch image: 1s
