@@ -9,9 +9,9 @@ import {
   startTestMemory,
 } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
-import { startControlSocket } from './start-control-socket';
 import { runHostCommand } from './test-utils/run-host-command';
 import { runHostCommands } from './test-utils/run-host-commands';
+import { startTestControlSocket } from './test-utils/start-test-control-socket';
 
 // the control socket over a test memory in a data directory, and a configuration that names it, as
 // a shell in nixie's container finds the running server
@@ -22,16 +22,10 @@ async function setupTest() {
 
   const memory = await startTestMemory();
 
-  const socket = await startControlSocket({
+  await startTestControlSocket({
     path: join(dir, 'run', 'control.sock'),
-    createEnrolmentCode: () => Promise.reject(new Error('unused')),
     readMemory: () => memory.store,
-    readSessions: () => Promise.reject(new Error('unused')),
-    runReset: () => Promise.reject(new Error('unused')),
-    updateSessionLabel: () => Promise.reject(new Error('unused')),
   });
-
-  onTestFinished(() => socket.stop());
 
   // boot data: a host command reads the data directory from the configuration, which must parse
   const configPath = join(dir, 'config.yaml');

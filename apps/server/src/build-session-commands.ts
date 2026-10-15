@@ -1,6 +1,5 @@
 import { resolveSocketPath } from './resolve-socket-path';
-import { sendEnrolmentCodeRequest } from './send-enrolment-code-request';
-import { sendSessionRequest } from './send-session-request';
+import { sendHostRequest } from './send-host-request';
 import type { CLIIO, Command } from './types';
 
 // The device session host commands: enrol-code asks the running server for a code that signs one
@@ -16,7 +15,10 @@ export function buildSessionCommands(): readonly (readonly [string, Command])[] 
 
 async function runEnrolCode(configPath: string, io: CLIIO): Promise<number> {
   const socketPath = await resolveSocketPath(configPath);
-  const issued = await sendEnrolmentCodeRequest(socketPath);
+
+  const issued = await sendHostRequest(socketPath, 'enrolment code', (client) =>
+    client.sessions.issueCode(),
+  );
 
   io.print(`${issued.code}\nThe code works once, until ${issued.expiresAt.toISOString()}.`);
 
@@ -25,7 +27,10 @@ async function runEnrolCode(configPath: string, io: CLIIO): Promise<number> {
 
 async function runSessions(configPath: string, io: CLIIO): Promise<number> {
   const socketPath = await resolveSocketPath(configPath);
-  const sessions = await sendSessionRequest(socketPath, { command: 'list' });
+
+  const sessions = await sendHostRequest(socketPath, 'session list', (client) =>
+    client.sessions.list(),
+  );
 
   io.print(JSON.stringify(sessions));
 
@@ -48,11 +53,9 @@ async function runSessionLabel(
 
   const socketPath = await resolveSocketPath(configPath);
 
-  const labelled = await sendSessionRequest(socketPath, {
-    command: 'label',
-    sessionID,
-    label: words.join(' '),
-  });
+  const labelled = await sendHostRequest(socketPath, 'session label', (client) =>
+    client.sessions.label({ sessionID, label: words.join(' ') }),
+  );
 
   io.print(JSON.stringify(labelled));
 

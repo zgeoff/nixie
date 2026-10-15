@@ -1,5 +1,5 @@
 import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
-import { findNoAllowRule, startMemoryStore } from '@heynixie/memory';
+import { findNoAllowRule, startLapseSweep, startMemoryStore } from '@heynixie/memory';
 import { toErrorFields } from '@heynixie/ops';
 import { startChecker } from './start-checker';
 import type { ServerParts } from './types';
@@ -37,26 +37,14 @@ export async function startMemory(
 
   await parts.cleanup.defer(() => store.stop());
 
-  // a proposal or a consolidation change past its lapse time lapses on the next sweep, so none waits
-  // on a restart
-  const sweep = setInterval(() => {
-    void runLapseSweep(parts, store);
-  }, lapseSweepMs);
-
-  await parts.cleanup.defer(() => {
-    clearInterval(sweep);
+  const sweep = startLapseSweep({
+    store,
+    onError: (error) => {
+      parts.log('memory.lapse_failed', toErrorFields(error));
+    },
   });
 
+  await parts.cleanup.defer(() => sweep.stop());
+
   return store;
-}
-
-const lapseSweepMs = 60 * 60 * 1000;
-
-async function runLapseSweep(parts: ServerParts, store: StartedMemoryStore): Promise<void> {
-  try {
-    await store.proposals.lapse();
-    await store.consolidations.lapse();
-  } catch (error) {
-    parts.log('memory.lapse_failed', toErrorFields(error));
-  }
 }

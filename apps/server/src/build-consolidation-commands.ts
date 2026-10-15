@@ -1,5 +1,5 @@
 import { resolveSocketPath } from './resolve-socket-path';
-import { sendMemoryRequest } from './send-memory-request';
+import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
 // The consolidation host commands: they print the consolidator's pending diff as JSON, approve the
@@ -15,7 +15,10 @@ export function buildConsolidationCommands(): readonly (readonly [string, Comman
 
 async function runMemoryDiff(configPath: string, io: CLIIO): Promise<number> {
   const socketPath = await resolveSocketPath(configPath);
-  const diff = await sendMemoryRequest(socketPath, { command: 'diff' });
+
+  const diff = await sendHostRequest(socketPath, 'memory diff', (client) =>
+    client.memory.consolidation.read(),
+  );
 
   io.print(JSON.stringify(diff));
 
@@ -38,10 +41,11 @@ async function runDiffApprove(
 
   const socketPath = await resolveSocketPath(flags.config);
 
-  const outcomes = await sendMemoryRequest(socketPath, {
-    command: 'diff-approve',
-    answers: answers.filter((answer) => answer !== null),
-  });
+  const outcomes = await sendHostRequest(socketPath, 'memory diff-approve', (client) =>
+    client.memory.consolidation.approve({
+      answers: answers.filter((answer) => answer !== null),
+    }),
+  );
 
   io.print(JSON.stringify(outcomes));
 
@@ -59,11 +63,11 @@ async function runDiffReject(flags: CLIFlags, io: CLIIO, args: readonly string[]
 
   const socketPath = await resolveSocketPath(flags.config);
 
-  const rejected = await sendMemoryRequest(socketPath, {
-    command: 'diff-reject',
-    changeID,
-    actionHash: flags.hash,
-  });
+  const actionHash = flags.hash;
+
+  const rejected = await sendHostRequest(socketPath, 'memory diff-reject', (client) =>
+    client.memory.consolidation.reject({ changeID, actionHash }),
+  );
 
   io.print(JSON.stringify(rejected));
 

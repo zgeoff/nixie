@@ -1,5 +1,6 @@
 import type { ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
+import type { HostMemoryStore } from '@heynixie/memory';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 
@@ -41,6 +42,27 @@ export interface APIContext extends TasksContext {
   // the session cleanup a record forget runs, or null before the conversation starts, when the
   // start sequence finishes the forget before any runner claims work
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
+}
+
+// What the host router reaches beyond the API's context: the memory store, and the server's reset.
+export interface HostRouterOptions {
+  readonly context: APIContext;
+
+  // the memory store, or null until the start sequence fills it
+  readonly readMemory: ReadHostMemory;
+
+  // resets the log and keeps the live sessions, then the server stops
+  readonly runReset: () => Promise<HostReset>;
+}
+
+export type ReadHostMemory = () => HostMemoryStore | null;
+
+// What the server reports of a finished reset: when it ran, the last sequence of the old log and
+// how many device sessions it kept.
+interface HostReset {
+  readonly resetAt: Date;
+  readonly lastSequence: number;
+  readonly keptSessions: number;
 }
 
 // What one call carries into the router: the device session's token, from the bearer header or
