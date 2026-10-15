@@ -4,7 +4,7 @@ import type { NetworkInterfaceInfo } from 'node:os';
 // link-local address (fe80::/10) alone does not count, so an IPv4-only pod with only a link-local
 // IPv6 address has no routable IPv6.
 export function hasRoutableIPv6(
-  interfaces: Readonly<Record<string, readonly NetworkInterfaceInfo[] | undefined>>,
+  interfaces: Readonly<Record<string, readonly Readonly<NetworkInterfaceInfo>[] | undefined>>,
 ): boolean {
   return Object.values(interfaces).some((entries) =>
     (entries ?? []).some(

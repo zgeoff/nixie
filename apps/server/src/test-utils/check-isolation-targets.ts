@@ -12,7 +12,7 @@ export async function checkIsolationTargets(
   targets: readonly IsolationTarget[],
   probeFromSandbox: (host: string, port: number) => Promise<string>,
   interfaces: Readonly<
-    Record<string, readonly NetworkInterfaceInfo[] | undefined>
+    Record<string, readonly Readonly<NetworkInterfaceInfo>[] | undefined>
   > = networkInterfaces(),
 ): Promise<string[]> {
   const hasIPv6 = hasRoutableIPv6(interfaces);
@@ -41,7 +41,10 @@ async function checkListener(host: string, port: number, hasIPv6: boolean): Prom
   }
 
   const timeout = Promise.withResolvers<string>();
-  const timer = setTimeout(() => timeout.resolve('failed timeout'), 5000);
+
+  const timer = setTimeout(() => {
+    timeout.resolve('failed timeout');
+  }, 5000);
 
   try {
     return await Promise.race([tryConnect(host, port), timeout.promise]);
