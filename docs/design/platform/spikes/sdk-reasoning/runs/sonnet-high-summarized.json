@@ -1,0 +1,174 @@
+{
+  "profile": "sonnet-high",
+  "model": "claude-sonnet-5-5",
+  "effort": "high",
+  "setting": "summarized",
+  "thinking": {
+    "type": "adaptive",
+    "display": "summarized"
+  },
+  "ranAt": "2026-10-15T02:39:40.695Z",
+  "apiCalls": [
+    {
+      "model": "claude-sonnet-5-5",
+      "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+      },
+      "outputConfig": {
+        "effort": "high"
+      },
+      "status": 200,
+      "blocks": [
+        {
+          "type": "thinking",
+          "textBytes": 275,
+          "signatureBytes": 1444,
+          "dataBytes": 0,
+          "text": "Working out ferry departures every 35 minutes from 07:40, I find the earliest one reaching the north pier at or after 08:55 is the 09:25 ferry, arriving 09:47. Checking the bus schedule, buses leave at 10 and 40 past each hour, so the next one after arrival would be 10:10.\n\n"
+        },
+        {
+          "type": "text",
+          "textBytes": 237,
+          "signatureBytes": 0,
+          "dataBytes": 0,
+          "text": "Take the 09:25 ferry, the first one you can catch after reaching the north pier at 08:55 (the 08:50 leaves too early). It arrives at the south pier at 09:47, so you'll wait 23 minutes for the 10:10 bus, well ahead of your 11:00 deadline."
+        }
+      ],
+      "events": {
+        "message_start": 1,
+        "content_block_start/thinking {signature,thinking,type}": 1,
+        "ping": 1,
+        "content_block_delta/thinking_delta {estimated_tokens,thinking,type}": 29,
+        "content_block_delta/signature_delta {signature,type}": 1,
+        "content_block_stop": 2,
+        "content_block_start/text {text,type}": 1,
+        "content_block_delta/text_delta {text,type}": 18,
+        "message_delta": 1,
+        "message_stop": 1
+      },
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 531,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 531,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 354,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 254
+        }
+      }
+    }
+  ],
+  "sdkBlocks": [
+    {
+      "type": "thinking",
+      "textBytes": 275,
+      "signatureBytes": 1444,
+      "dataBytes": 0,
+      "text": "Working out ferry departures every 35 minutes from 07:40, I find the earliest one reaching the north pier at or after 08:55 is the 09:25 ferry, arriving 09:47. Checking the bus schedule, buses leave at 10 and 40 past each hour, so the next one after arrival would be 10:10.\n\n"
+    },
+    {
+      "type": "text",
+      "textBytes": 237,
+      "signatureBytes": 0,
+      "dataBytes": 0,
+      "text": "Take the 09:25 ferry, the first one you can catch after reaching the north pier at 08:55 (the 08:50 leaves too early). It arrives at the south pier at 09:47, so you'll wait 23 minutes for the 10:10 bus, well ahead of your 11:00 deadline."
+    }
+  ],
+  "thinkingTokenEvents": [
+    2,
+    3,
+    4,
+    7,
+    10,
+    11,
+    15,
+    17,
+    19,
+    24,
+    25,
+    28,
+    32,
+    35,
+    38,
+    40,
+    44,
+    45,
+    46,
+    48,
+    54,
+    55,
+    60,
+    64,
+    71,
+    72,
+    77,
+    78,
+    79,
+    271
+  ],
+  "transcriptBlocks": [
+    {
+      "type": "thinking",
+      "textBytes": 275,
+      "signatureBytes": 1444,
+      "dataBytes": 0,
+      "text": "Working out ferry departures every 35 minutes from 07:40, I find the earliest one reaching the north pier at or after 08:55 is the 09:25 ferry, arriving 09:47. Checking the bus schedule, buses leave at 10 and 40 past each hour, so the next one after arrival would be 10:10.\n\n"
+    },
+    {
+      "type": "text",
+      "textBytes": 237,
+      "signatureBytes": 0,
+      "dataBytes": 0,
+      "text": "Take the 09:25 ferry, the first one you can catch after reaching the north pier at 08:55 (the 08:50 leaves too early). It arrives at the south pier at 09:47, so you'll wait 23 minutes for the 10:10 bus, well ahead of your 11:00 deadline."
+    }
+  ],
+  "result": {
+    "subtype": "success",
+    "isError": false,
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 531,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 354,
+      "output_tokens_details": {
+        "thinking_tokens": 254
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 531
+      },
+      "inference_geo": "global",
+      "iterations": [],
+      "speed": "standard",
+      "fallback_credit": null
+    },
+    "modelUsage": {
+      "claude-sonnet-5-5": {
+        "inputTokens": 2,
+        "outputTokens": 354,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 531,
+        "webSearchRequests": 0,
+        "costUSD": 0.0048715,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 254,
+        "canonicalModel": "claude-sonnet-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "text": "Take the 09:25 ferry, the first one you can catch after reaching the north pier at 08:55 (the 08:50 leaves too early). It arrives at the south pier at 09:47, so you'll wait 23 minutes for the 10:10 bus, well ahead of your 11:00 deadline."
+  }
+}

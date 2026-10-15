@@ -413,3 +413,5 @@ left untested. The [spikes index](design/platform/spikes/README.md) describes ho
 - [A turn past the context window](design/platform/spikes/sdk-overflow/) — the result the SDK ends
   an overflow with when auto-compaction is off, and a compact-and-retry from the last committed
   boundary
+- [The model's reasoning through the SDK](design/platform/spikes/sdk-reasoning/) — empty thinking
+  text under nixie's options, a summary with the summarized display, and its storage cost per turn
