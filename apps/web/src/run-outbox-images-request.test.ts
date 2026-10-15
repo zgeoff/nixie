@@ -4,7 +4,7 @@ import { runOutboxImagesRequest } from './run-outbox-images-request';
 test("it resolves with the request's result once its transaction commits", async () => {
   await runOutboxImagesRequest('readwrite', (store) => store.put(['kept'], 'message-a'));
 
-  const read = await runOutboxImagesRequest('readonly', (store) => store.get('message-a'));
+  const read: unknown = await runOutboxImagesRequest('readonly', (store) => store.get('message-a'));
 
   expect(read).toStrictEqual(['kept']);
 });

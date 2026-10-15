@@ -42,7 +42,7 @@ test('it shows the images of your message, each read from the API', async () => 
   expect(images.map((image) => image.getAttribute('alt'))).toStrictEqual(['Image 1', 'Image 2']);
 
   expect(images).toSatisfyAll(
-    (image: HTMLElement) => image.getAttribute('src')?.startsWith('blob:') === true,
+    (image: Element) => image.getAttribute('src')?.startsWith('blob:') === true,
   );
 });
 

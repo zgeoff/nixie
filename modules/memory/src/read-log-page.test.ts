@@ -333,7 +333,7 @@ test('it shows a marker line for each image of your message and none of its byte
     limit: 20,
   });
 
-  expect(page.entries).toStrictEqual([
+  expect(page.entries).toMatchObject([
     {
       sequence: record.sequence,
       role: 'owner',

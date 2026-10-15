@@ -112,10 +112,10 @@ test('it forgets the images of your message, whose sealed bytes then decrypt in 
 
   expect(after.get(sent.sequence)).toStrictEqual({ status: 'shredded' });
 
-  expect(sealed.map((row) => new TextDecoder().decode(row.sealed))).toStrictEqual([
-    expect.not.stringContaining('Porch-image-'),
-    expect.not.stringContaining('Porch-image-'),
-  ]);
+  // each of the 2 sealed rows stays in the table, and neither holds an image's bytes in the clear
+  expect(
+    sealed.map((row) => new TextDecoder().decode(row.sealed).includes('Porch-image-')),
+  ).toStrictEqual([false, false]);
 });
 
 test("it forgets a reply of the conversation's model", async () => {

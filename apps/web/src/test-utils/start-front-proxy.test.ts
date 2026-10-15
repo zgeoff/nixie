@@ -75,7 +75,9 @@ test('it ends a stream whose server stops partway, after the part it sent', asyn
     fetch: () =>
       new Response(
         new ReadableStream({
-          start: (controller) => controller.enqueue(new TextEncoder().encode('event 1\n')),
+          start: (controller) => {
+            controller.enqueue(new TextEncoder().encode('event 1\n'));
+          },
         }),
       ),
     hostname: '127.0.0.1',

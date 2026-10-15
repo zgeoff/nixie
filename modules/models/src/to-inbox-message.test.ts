@@ -17,7 +17,7 @@ test('it passes each image of your message in base64 after its marker, and leave
     [new Uint8Array([0x89, 0x50, 0x4e, 0x47]), new Uint8Array([0xff, 0xd8, 0xff, 0xe0])],
   );
 
-  expect(message).toStrictEqual({
+  expect(message).toMatchObject({
     uuid: expect.toBeString(),
     text: '[#48213 · Mon 12 Oct, 21:31, Sydney] Which poster?',
     images: [

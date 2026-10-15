@@ -13,7 +13,7 @@ async function setupTest() {
 
   const script = await built.outputs[0]?.text();
 
-  invariant(script, 'the build wrote no bundle');
+  invariant(script !== undefined, 'the build wrote no bundle');
 
   const page = Bun.serve({
     fetch: (request) =>

@@ -122,7 +122,10 @@ test('it attaches a photo from the camera', async () => {
   });
 
   const rendered = render(
-    <Composer normalizeImage={() => Promise.resolve(scaled)} onSend={mock()} />,
+    <Composer
+      normalizeImage={() => Promise.resolve(scaled)}
+      onSend={mock<(message: ComposedMessage) => void>()}
+    />,
   );
 
   await user.upload(
@@ -141,7 +144,10 @@ test('it attaches a pasted image and leaves the box as it was', async () => {
   const scaled = new File([new Uint8Array([0x89, 0x50])], 'image.png', { type: 'image/png' });
 
   const rendered = render(
-    <Composer normalizeImage={() => Promise.resolve(scaled)} onSend={mock()} />,
+    <Composer
+      normalizeImage={() => Promise.resolve(scaled)}
+      onSend={mock<(message: ComposedMessage) => void>()}
+    />,
   );
 
   // happy-dom's DataTransfer takes only its own File, so the paste carries a plain clipboard
@@ -162,7 +168,10 @@ test('it attaches a dropped image', async () => {
   const scaled = new File([new Uint8Array([0x89, 0x50])], 'image.png', { type: 'image/png' });
 
   const rendered = render(
-    <Composer normalizeImage={() => Promise.resolve(scaled)} onSend={mock()} />,
+    <Composer
+      normalizeImage={() => Promise.resolve(scaled)}
+      onSend={mock<(message: ComposedMessage) => void>()}
+    />,
   );
 
   fireEvent.drop(rendered.getByRole('textbox', { name: 'Message' }), {
@@ -183,7 +192,10 @@ test('it takes no more than 4 images and says why it left the rest out', async (
   const scaled = new File([new Uint8Array([0x89, 0x50])], 'image.png', { type: 'image/png' });
 
   const rendered = render(
-    <Composer normalizeImage={() => Promise.resolve(scaled)} onSend={mock()} />,
+    <Composer
+      normalizeImage={() => Promise.resolve(scaled)}
+      onSend={mock<(message: ComposedMessage) => void>()}
+    />,
   );
 
   await user.upload(
@@ -206,7 +218,7 @@ test('it leaves out an image the browser cannot read and says so', async () => {
   const rendered = render(
     <Composer
       normalizeImage={() => Promise.reject(new Error('no HEIC decoder'))}
-      onSend={mock()}
+      onSend={mock<(message: ComposedMessage) => void>()}
     />,
   );
 
