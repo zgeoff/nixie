@@ -547,6 +547,51 @@ test('it records each item and version it delivered, and no text', async () => {
   ]);
 });
 
+test("it marks a turn note's recall record as the turn note's", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.recall({
+    itemIDs: [item.itemID],
+    thread: 'conversation',
+    isTurnNote: true,
+  });
+
+  const [recalled] = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(recalled?.record.payload).toStrictEqual({
+    items: [{ itemID: item.itemID, version: 1 }],
+    isTurnNote: true,
+  });
+});
+
+test('it leaves the turn note mark off a recall record that did not ask for it', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' });
+
+  const [recalled] = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(recalled?.record.payload).toStrictEqual({
+    items: [{ itemID: item.itemID, version: 1 }],
+  });
+});
+
 test('it records the match score of each item a query delivered', async () => {
   const ctx = await setupTest();
 

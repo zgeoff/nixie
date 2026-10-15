@@ -1,12 +1,12 @@
 import type { JSONObject } from '@heynixie/log';
-import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { z } from 'zod';
 import { encodeRatingNote } from './encode-rating-note';
 import { findItemIDs } from './find-item-ids';
 import { findItemKey } from './find-item-key';
 import { MemoryRatingError } from './memory-rating-error';
 import type { MemoryRating, RateRequest } from './rating-types';
+import { readLatestRecall } from './read-latest-recall';
 import { readShortIDs } from './read-short-ids';
 import type { StoreParts } from './types';
 
@@ -47,40 +47,6 @@ export async function writeMemoryRatings(parts: StoreParts, request: RateRequest
     ]),
   );
 }
-
-interface LatestRecall {
-  readonly sequence: number;
-
-  // the newest version the recall delivered of each item, by item ID
-  readonly versions: ReadonlyMap<string, number>;
-}
-
-async function readLatestRecall(parts: StoreParts, thread: string): Promise<LatestRecall> {
-  const [newest] = await readRecords(parts.context.log, {
-    afterSequence: 0,
-    thread,
-    kinds: ['memory.recalled'],
-    order: 'newest',
-    limit: 1,
-  });
-
-  if (newest === undefined) {
-    throw new MemoryRatingError(
-      'You have not been given any memories in this conversation yet, so there is nothing to rate.',
-    );
-  }
-
-  const versions = new Map<string, number>();
-
-  for (const item of recalledPayload.parse(newest.record.payload).items) {
-    versions.set(item.itemID, Math.max(item.version, versions.get(item.itemID) ?? 0));
-  }
-
-  return { sequence: newest.record.sequence, versions };
-}
-
-const recalledItem = z.object({ itemID: z.string(), version: z.int() });
-const recalledPayload = z.object({ items: z.array(recalledItem) });
 
 // Each named item, by the item ID it names and the short ID the store holds for it. The model can
 // pass any text as an item, so an item that names no memory is refused in fixed words, and every

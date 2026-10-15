@@ -140,6 +140,9 @@ export interface RecallRequest {
 
   // the thread the recall record belongs to
   readonly thread?: string;
+
+  // whether the recall reads the text of a turn note, which a rating never binds to
+  readonly isTurnNote?: boolean;
 }
 
 export interface RecalledVersion {

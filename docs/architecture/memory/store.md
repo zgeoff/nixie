@@ -185,12 +185,15 @@ A rating tells the user whether a recalled item helped the model, was noise, or 
 optional one-line note. It is no memory write, so it passes no gate and changes no item, and nothing
 acts on it. Each call binds to the thread's latest recall record and refuses an item that recall did
 not deliver, with a plain reason the model reads, so a rating always names an item the model was
-given on that turn. One rating record holds the call's ratings, each by item and the newest version
-the recall delivered, and names the recall it rates, so the user sees the rating beside that turn's
-memories. The note is free text the model can copy an item's words into, so the record seals it
-under the rated item's key, as a consolidation comment is sealed, and a forget leaves the note
-unreadable. The call's own record keeps only item IDs and known verdicts, and a refusal names an
-item only by its stored short ID, so no copy of the model's words outlives a forget.
+given on that turn. A turn note's recall record says it belongs to a turn note, and a rating binds
+past it, because the turn note reads its items after the turn's retrieval and would otherwise hide
+the retrieval from the rating. One rating record holds the call's ratings, each by item and the
+newest version the recall delivered, and names the recall it rates, so the user sees the rating
+beside that turn's memories. The note is free text the model can copy an item's words into, so the
+record seals it under the rated item's key, as a consolidation comment is sealed, and a forget
+leaves the note unreadable. The call's own record keeps only item IDs and known verdicts, and a
+refusal names an item only by its stored short ID, so no copy of the model's words outlives a
+forget.
 
 Each write tool runs its gate, and returns either the version it applied or the proposal it became,
 with its review reason. A missing quote is no tool error, because the gate turns it into a proposal.

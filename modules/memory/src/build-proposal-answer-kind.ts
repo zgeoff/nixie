@@ -119,7 +119,8 @@ function readAnsweredProposals(
 }
 
 // Each listed approval's text, through a recall of the exact version it wrote, which records only
-// that version and leaves out an item that a forget has begun or that changed since.
+// that version as a turn note's and leaves out an item that a forget has begun or that changed
+// since.
 async function readApprovedTexts(
   store: Pick<MemoryStore, 'recall'>,
   events: readonly NotedEvent<ProposalAnswerEvent>[],
@@ -137,6 +138,7 @@ async function readApprovedTexts(
     includeRetired: true,
     limit: versions.length,
     thread: conversationTaskID,
+    isTurnNote: true,
   });
 
   const texts = new Map(
