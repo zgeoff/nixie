@@ -10,11 +10,17 @@ export interface StoredOutboxOptions {
   readonly setEntries: (entries: readonly OutboxEntry[]) => void;
 }
 
+export interface StoredOutbox {
+  // drops stored messages by client message ID, which the outbox's own writes would keep as
+  // another tab's once the outbox no longer holds them
+  readonly remove: (clientMessageIDs: ReadonlySet<string>) => void;
+}
+
 const storageKey = 'nixie.outbox';
 
 // Keeps the outbox's unconfirmed messages in device storage. Storage exists only in the browser,
 // so the outbox loads after hydration and sends again whatever an earlier page left unsent.
-export function useStoredOutbox(options: StoredOutboxOptions): void {
+export function useStoredOutbox(options: StoredOutboxOptions): StoredOutbox {
   const [loaded, setLoaded] = useState(false);
   const sendEntry = options.sendEntry;
   const setEntries = options.setEntries;
@@ -35,6 +41,19 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
       writeStoredMessages(mergeStoredMessages(readStoredMessages(), options.entries));
     }
   }, [loaded, options.entries]);
+
+  return storedOutbox;
+}
+
+const storedOutbox: StoredOutbox = { remove: removeStoredMessages };
+
+function removeStoredMessages(clientMessageIDs: ReadonlySet<string>): void {
+  const stored = readStoredMessages();
+  const kept = stored.filter((message) => !clientMessageIDs.has(message.clientMessageId));
+
+  if (kept.length !== stored.length) {
+    writeStoredMessages(kept);
+  }
 }
 
 // Another tab shares the storage key, so a write keeps every stored message this outbox does not

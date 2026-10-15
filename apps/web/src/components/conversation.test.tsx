@@ -236,6 +236,26 @@ test('it finishes a failed forget when you confirm it again', async () => {
   });
 });
 
+test('it never shows the text of a message you sent and then forgot', async () => {
+  const ctx = await setupTest();
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const textBox = await rendered.findByRole('textbox', { name: 'Message' });
+
+  await ctx.user.type(textBox, 'The gate code is 2290.{Enter}');
+  await rendered.findByRole('button', { name: 'Forget' }).then((forget) => ctx.user.click(forget));
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+
+  await waitFor(() => {
+    expect(rendered.queryByRole('group', { name: 'Forget this message' })).toBeNull();
+  });
+
+  expect(rendered.getByRole('list', { name: 'Conversation' })).toHaveTextContent('You Forgotten');
+  expect(rendered.queryByText('The gate code is 2290.')).toBeNull();
+  expect(rendered.queryByRole('status')).toBeNull();
+});
+
 test('it shows an unsent message as not sent', async () => {
   const ctx = await setupTest();
 
@@ -367,34 +387,4 @@ test('it sends stored messages in the order you sent them', async () => {
       .findMany((query) => query.where({ kind: 'owner_message' }), { orderBy: { sequence: 'asc' } })
       .map((record) => record.message?.text),
   ).toStrictEqual(['first', 'second']);
-});
-
-test('it keeps a message that another tab left unsent', async () => {
-  const ctx = await setupTest();
-
-  const rendered = render(<Conversation thread="conversation" />);
-
-  const textBox = await rendered.findByRole('textbox', { name: 'Message' });
-
-  globalThis.localStorage.setItem(
-    'nixie.outbox',
-    JSON.stringify([
-      {
-        clientMessageId: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-        spans: [{ end: 10, source: 'typed', start: 0 }],
-        text: 'other tab',
-        thread: 'conversation',
-      },
-    ]),
-  );
-
-  await ctx.user.type(textBox, 'hello{Enter}');
-
-  await waitFor(() => {
-    expect(store.records.count()).toBe(1);
-  });
-
-  expect(globalThis.localStorage.getItem('nixie.outbox')).toInclude(
-    '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-  );
 });

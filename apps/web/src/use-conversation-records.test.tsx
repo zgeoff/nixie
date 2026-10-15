@@ -61,6 +61,32 @@ test('it drops the text of a message once a forget on the live stream names it',
   });
 });
 
+test('it names the client message ID of a message a forget dropped the text of', async () => {
+  await setupTest();
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: {
+      clientMessageId: '3d7e1a9c-5b2f-4e8d-a6c0-9f1b4e7d2a53',
+      text: 'Pick up the parcel.',
+    },
+  });
+
+  const hook = renderHook(() => useConversationRecords('conversation'));
+
+  await waitFor(() => {
+    expect(hook.result.current.status).toBe('ready');
+  });
+
+  await store.records.create({ forget: { sequence: message.sequence }, kind: 'record.forgotten' });
+
+  await waitFor(() => {
+    expect(hook.result.current.forgottenClientMessageIDs).toStrictEqual([
+      '3d7e1a9c-5b2f-4e8d-a6c0-9f1b4e7d2a53',
+    ]);
+  });
+});
+
 test('it reports the conversation failed when the first read fails', async () => {
   await setupTest();
 
