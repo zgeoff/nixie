@@ -236,6 +236,7 @@ export type SandboxTables = CheckedTables<
       readonly kind: string;
       readonly state: 'awake' | 'sleeping';
       readonly spec: string;
+      readonly mood: string;
       readonly created_sequence: number;
     };
   }>

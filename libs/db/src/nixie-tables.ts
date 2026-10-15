@@ -243,6 +243,7 @@ export interface NixieTables {
     readonly sandbox_id: string;
     readonly adapter: string;
     readonly owner: string;
+    readonly nickname: string | null;
     readonly kind: string;
     readonly state: string;
     readonly spec: string;
