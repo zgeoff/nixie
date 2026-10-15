@@ -19,7 +19,7 @@ per credentialed request, with byte counts but no query, header or body.
 The checks run against a dev impd built from the imp repository at tag `v0.38.1`, never against a
 production host. Only a dev instance reads `broker-test-upstreams.json`, the file that sends a
 granted hostname to a local server whose certificate verifies against an extra CA
-([imp development guide](https://github.com/zgeoff/imp/blob/v0.38.1/docs/guides/development.md#end-to-end-tests)).
+([imp development guide](https://github.com/zgeoff/impz/blob/v0.38.1/docs/guides/development.md#end-to-end-tests)).
 TLS verification stays on.
 
 [`mock.ts`](mock.ts) is the local OAuth server and protected resource. It serves HTTPS on the Docker
@@ -43,11 +43,13 @@ on exit.
 
 1. Clone imp at the tag outside this repository, and copy a built guest kernel to
    `kernel/out/vmlinux` in the clone
-   ([imp install guide](https://github.com/zgeoff/imp/blob/v0.38.1/docs/guides/install.md#set-up)).
+   ([imp install guide](https://github.com/zgeoff/impz/blob/v0.38.1/docs/guides/install.md#set-up)).
+   The tag's CLI is `scripts/imp`; link it onto your `PATH` as `impz`, the name `run.sh` calls.
 
    ```bash
-   git clone --branch v0.38.1 --depth 1 https://github.com/zgeoff/imp <imp_clone>
+   git clone --branch v0.38.1 --depth 1 https://github.com/zgeoff/impz <imp_clone>
    cd <imp_clone> && bun install
+   ln -s <imp_clone>/scripts/imp <bin_dir>/impz
    ```
 
 2. Start a dev instance with its own name, ports and data directory, off the private network:
@@ -116,7 +118,7 @@ The mock saw the guest's data on the exfiltration request:
 {"method":"POST","path":"/v1/messages","query":"?leak=guest-data","bodyBytes":1048576,"auth":"Bearer","exfilHeader":"guest-data"}
 ```
 
-`imp audit nixie-spike-a` listed 7 rows, one per credentialed request that reached the upstream:
+`impz audit nixie-spike-a` listed 7 rows, one per credentialed request that reached the upstream:
 
 ```text
 SECRET            METHOD  HOST                   PATH                 STATUS  BYTES       MS
@@ -140,18 +142,18 @@ A grant cannot be limited by method or path. The run sent `DELETE /v1/anything/a
 
 The source has no field for either limit:
 
-- [`BrokerRuleSchema`](https://github.com/zgeoff/imp/blob/v0.38.1/packages/api/src/secret-schema.ts#L34-L44)
+- [`BrokerRuleSchema`](https://github.com/zgeoff/impz/blob/v0.38.1/packages/api/src/secret-schema.ts#L34-L44)
   holds `host`, `header`, `scheme` and `user` only.
 - The broker front sends a `CONNECT` to the terminator when the port is 443 and a grant covers the
   host
-  ([`broker-front.ts:268`](https://github.com/zgeoff/imp/blob/v0.38.1/packages/daemon/src/broker/broker-front.ts#L268)).
+  ([`broker-front.ts:268`](https://github.com/zgeoff/impz/blob/v0.38.1/packages/daemon/src/broker/broker-front.ts#L268)).
 - The terminator's forwarder looks up the credential by imp and host, sets the header, and sends the
   request's own method, path and query upstream
-  ([`forward-request.ts:74-122`](https://github.com/zgeoff/imp/blob/v0.38.1/packages/daemon/src/broker/forward-request.ts#L74-L122)).
+  ([`forward-request.ts:74-122`](https://github.com/zgeoff/impz/blob/v0.38.1/packages/daemon/src/broker/forward-request.ts#L74-L122)).
 
 A change would add optional `methods` and `paths` (path prefixes) to `BrokerRuleSchema`, with CLI
-flags on `imp secret add --kind custom`. `findCredential` in
-[`broker-service.ts`](https://github.com/zgeoff/imp/blob/v0.38.1/packages/daemon/src/broker/broker-service.ts#L314-L330)
+flags on `impz secret add --kind custom`. `findCredential` in
+[`broker-service.ts`](https://github.com/zgeoff/impz/blob/v0.38.1/packages/daemon/src/broker/broker-service.ts#L314-L330)
 would return them with the header. The forwarder would check `request.method` and `url.pathname`
 right after the lookup at `forward-request.ts:74`, and answer 403 with an audit row on a miss. The
 new fields would join the secret's binding, so changing them would need `--rebind`. The path check
@@ -163,12 +165,12 @@ has to match the pathname after URL parsing, and it has to decide what to do wit
 The broker injects a static value and never refreshes it. Once the 30 s access token expired, the
 granted request got `401 expired_token`. The broker has no refresh, OAuth or expiry code:
 `findCredential` reads the value file that the secret's row names and renders it into the header
-([`broker-service.ts:314-330`](https://github.com/zgeoff/imp/blob/v0.38.1/packages/daemon/src/broker/broker-service.ts#L314-L330)).
+([`broker-service.ts:314-330`](https://github.com/zgeoff/impz/blob/v0.38.1/packages/daemon/src/broker/broker-service.ts#L314-L330)).
 
 A refresher outside the imp works with the broker as it is. The script fetched a fresh token on the
-host and ran `imp secret add --replace`. The next request returned 200, and the grant stayed in
+host and ran `impz secret add --replace`. The next request returned 200, and the grant stayed in
 place, because a replace with the same binding is a rotation
-([connectors guide](https://github.com/zgeoff/imp/blob/v0.38.1/docs/guides/connectors.md#rotate-or-rebind)).
+([connectors guide](https://github.com/zgeoff/impz/blob/v0.38.1/docs/guides/connectors.md#rotate-or-rebind)).
 A refresher has to replace the value before each expiry. Requests in the gap between expiry and
 replace fail.
 
@@ -182,7 +184,7 @@ grant must never cover a token endpoint.
 The imp reached the granted host and nothing else. The broker refused a `CONNECT` to `example.com`
 with 403. A direct connection to `1.1.1.1:443` failed at once. The granted host stayed reachable, as
 the
-[imp networking doc](https://github.com/zgeoff/imp/blob/v0.38.1/docs/architecture/networking.md#egress)
+[imp networking doc](https://github.com/zgeoff/impz/blob/v0.38.1/docs/architecture/networking.md#egress)
 states.
 
 The imp can send arbitrary data to the granted host. A 1 MiB random body, a query string and a
@@ -196,8 +198,8 @@ an open outbound channel for whatever the imp holds.
 The broker writes one audit row per credentialed request that reaches the forwarder's upstream call:
 time, imp, secret, method, host, path without the query, status, request and response bytes, and
 duration
-([`AuditEntrySchema`](https://github.com/zgeoff/imp/blob/v0.38.1/packages/api/src/secret-schema.ts#L76),
-[`forward-request.ts:82-95`](https://github.com/zgeoff/imp/blob/v0.38.1/packages/daemon/src/broker/forward-request.ts#L82-L95)).
+([`AuditEntrySchema`](https://github.com/zgeoff/impz/blob/v0.38.1/packages/api/src/secret-schema.ts#L76),
+[`forward-request.ts:82-95`](https://github.com/zgeoff/impz/blob/v0.38.1/packages/daemon/src/broker/forward-request.ts#L82-L95)).
 An upstream failure records status 502.
 
 The audit log leaves out:
@@ -206,13 +208,13 @@ The audit log leaves out:
   appear nowhere in the audit
 - a request refused for a wrong `Host` header: the run's 421 left no row
 - a request refused for a missing grant: the 403 returns before the audit write
-  ([`forward-request.ts:74-78`](https://github.com/zgeoff/imp/blob/v0.38.1/packages/daemon/src/broker/forward-request.ts#L74-L78))
+  ([`forward-request.ts:74-78`](https://github.com/zgeoff/impz/blob/v0.38.1/packages/daemon/src/broker/forward-request.ts#L74-L78))
 - every plain tunnel to an ungranted host, and every refused `CONNECT`
 
-The log keeps the newest 1000 rows per imp, and `imp rm` deletes an imp's rows
-([connectors guide](https://github.com/zgeoff/imp/blob/v0.38.1/docs/guides/connectors.md#secrets-and-grants)).
-`imp audit --json` returns the rows for export. A decision record that needs more than 1000 rows, or
-rows that outlive the imp, has to copy them out.
+The log keeps the newest 1000 rows per imp, and `impz rm` deletes an imp's rows
+([connectors guide](https://github.com/zgeoff/impz/blob/v0.38.1/docs/guides/connectors.md#secrets-and-grants)).
+`impz audit --json` returns the rows for export. A decision record that needs more than 1000 rows,
+or rows that outlive the imp, has to copy them out.
 
 ## Untested
 

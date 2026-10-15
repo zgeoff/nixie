@@ -33,57 +33,57 @@ for index in $(seq 0 $((samples - 1))); do ours+=("nixie-spike-c$index" "nixie-s
 
 # Refuse to start when any of those names, the template or the secret exists already, so cleanup
 # removes only what this run made.
-existing=$(imp ls --json | jq -r '.[].name')
+existing=$(impz ls --json | jq -r '.[].name')
 for name in "${ours[@]}"; do
   if grep -qx "$name" <<< "$existing"; then echo "run.sh: imp $name exists; remove it first" >&2; exit 1; fi
 done
-if imp image ls | grep -q "^$template "; then echo "run.sh: image $template exists" >&2; exit 1; fi
-if imp secret ls | grep -q "^$secret "; then echo "run.sh: secret $secret exists" >&2; exit 1; fi
+if impz image ls | grep -q "^$template "; then echo "run.sh: image $template exists" >&2; exit 1; fi
+if impz secret ls | grep -q "^$secret "; then echo "run.sh: secret $secret exists" >&2; exit 1; fi
 
 cleanup() {
   [ -n "$serve_pid" ] && { kill "$serve_pid" 2>/dev/null || true; }
-  existing=$(imp ls --json 2>/dev/null | jq -r '.[].name' || true)
+  existing=$(impz ls --json 2>/dev/null | jq -r '.[].name' || true)
   for name in "${ours[@]}"; do
-    if grep -qx "$name" <<< "$existing"; then imp rm "$name" >/dev/null 2>&1 || true; fi
+    if grep -qx "$name" <<< "$existing"; then impz rm "$name" >/dev/null 2>&1 || true; fi
   done
-  [ -n "$made_template" ] && { imp template rm "$template" >/dev/null 2>&1 || true; }
-  [ -n "$made_secret" ] && { imp secret rm "$secret" >/dev/null 2>&1 || true; }
+  [ -n "$made_template" ] && { impz template rm "$template" >/dev/null 2>&1 || true; }
+  [ -n "$made_secret" ] && { impz secret rm "$secret" >/dev/null 2>&1 || true; }
 }
 trap cleanup EXIT
 
 step() { printf '\n== %s\n' "$*"; }
-in_golden() { imp exec "$golden" -- sh -c "$1"; }
+in_golden() { impz exec "$golden" -- sh -c "$1"; }
 bench() { (cd "$here" && bun bench.ts "$@"); }
 
 step "versions and pre-existing state"
-imp info | head -3
+impz info | head -3
 uname -r
 bun --version
-imp ls
+impz ls
 # Each run starts from an empty results/, so a summary never mixes runs.
 rm -rf "$here/results"
 mkdir -p "$SPIKE_WORK/home" "$here/results"
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 step "prepare $golden: ca-certificates, Bun, the spike package"
-imp new "$golden" --image ubuntu --memory 2g >/dev/null
+impz new "$golden" --image ubuntu --memory 2g >/dev/null
 in_golden "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates >/dev/null 2>&1"
-imp cp "$(command -v bun)" "$golden:/usr/local/bin/bun"
+impz cp "$(command -v bun)" "$golden:/usr/local/bin/bun"
 stage=$SPIKE_WORK/stage/app
 rm -rf "$stage" && mkdir -p "$stage"
 cp "$here"/package.json "$here"/bun.lock "$here"/turn.ts "$stage/"
-imp cp "$stage" "$golden:/"
+impz cp "$stage" "$golden:/"
 in_golden "cd /app && start=\$(date +%s%N) && bun install --frozen-lockfile >/dev/null 2>&1 \
   && echo \"bun install: \$(( (\$(date +%s%N) - start) / 1000000 )) ms\""
 in_golden "du -sh /usr/local/bin/bun /app/node_modules /app/node_modules/@anthropic-ai/* && df -h / | tail -1"
-imp stop "$golden"
-imp template create "$golden" "$template" >/dev/null
+impz stop "$golden"
+impz template create "$golden" "$template" >/dev/null
 made_template=1
-imp rm "$golden" >/dev/null
-imp image ls
+impz rm "$golden" >/dev/null
+impz image ls
 
 step "the model secret and the host MCP server"
-printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" | imp secret add "$secret" --kind custom \
+printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" | impz secret add "$secret" --kind custom \
   --hosts api.anthropic.com --header authorization --scheme bearer >/dev/null
 made_secret=1
 mcp_token=$(openssl rand -hex 24)
@@ -104,10 +104,10 @@ step "warm-up creates, so impd has a boot template for this shape; not summarize
 SPIKE_TAG=warmup bench lifecycle 2
 
 step "the long-lived imp $box, granted, with one turn to settle it"
-imp new "$box" --image "$template" --memory 2g --policy box --allow "$mcp_host/32" >/dev/null
-imp grant "$box" "$secret" >/dev/null
-imp policy "$box"
-imp exec --require broker "$box" -- sh -c "cd /app && NIXIE_PLACEMENT=imp NIXIE_TOOLS=3 \
+impz new "$box" --image "$template" --memory 2g --policy box --allow "$mcp_host/32" >/dev/null
+impz grant "$box" "$secret" >/dev/null
+impz policy "$box"
+impz exec --require broker "$box" -- sh -c "cd /app && NIXIE_PLACEMENT=imp NIXIE_TOOLS=3 \
   NIXIE_MCP_URL=$NIXIE_MCP_URL NIXIE_MCP_TOKEN=$mcp_token NIXIE_MODEL=$NIXIE_MODEL bun turn.ts"
 
 for phase in cli lifecycle wake sdk e2e-new e2e-wake; do
@@ -118,8 +118,8 @@ done
 step "host MCP server requests by path"
 sort "$SPIKE_WORK/serve.log" | uniq -c
 
-step "imp audit $box"
-imp audit "$box" | head -8
+step "impz audit $box"
+impz audit "$box" | head -8
 
 step "summary"
 (cd "$here" && bun summarize.ts)

@@ -41,7 +41,7 @@ function checkPolicy(name: string, input: Record<string, string>): string | unde
 }
 
 function runCode(code: string): string {
-  const result = spawnSync('imp', ['exec', readEnv('NIXIE_RUN_BOX'), '--', 'sh', '-c', code], {
+  const result = spawnSync('impz', ['exec', readEnv('NIXIE_RUN_BOX'), '--', 'sh', '-c', code], {
     encoding: 'utf8',
     timeout: 60_000,
   });

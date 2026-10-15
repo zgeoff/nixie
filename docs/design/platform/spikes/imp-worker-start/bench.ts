@@ -1,4 +1,4 @@
-// The host-side driver: every time comes from the host clock, around imp CLI calls and the arrival
+// The host-side driver: every time comes from the host clock, around impz CLI calls and the arrival
 // of turn.ts's lines. Usage: bun bench.ts <cli|lifecycle|wake|sdk|e2e-new|e2e-wake> [samples].
 // run.sh sets its env; each sample goes to results/<phase>.jsonl.
 import { appendFileSync, mkdirSync } from 'node:fs';
@@ -30,7 +30,7 @@ function readElapsed(origin: number): number {
   return Math.round(performance.now() - origin);
 }
 
-// The imp CLI never sees the model token.
+// The impz CLI never sees the model token.
 function buildImpEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
@@ -74,9 +74,9 @@ async function run(command: string[], origin: number, env = buildImpEnv()): Prom
 }
 
 async function runImp(args: string[]): Promise<number> {
-  const result = await run(['imp', ...args], performance.now());
+  const result = await run(['impz', ...args], performance.now());
   if (result.code !== 0) {
-    throw new Error(`imp ${args.join(' ')} exited ${result.code}: ${result.stderr}`);
+    throw new Error(`impz ${args.join(' ')} exited ${result.code}: ${result.stderr}`);
   }
   return result.totalMs;
 }
@@ -111,7 +111,7 @@ function buildImpTurnCommand(box: string, tools: number): string[] {
     `NIXIE_MODEL=${readEnv('NIXIE_MODEL')}`,
   ].join(' ');
   return [
-    'imp',
+    'impz',
     'exec',
     '--require',
     'broker',

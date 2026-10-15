@@ -13,7 +13,7 @@ it.
 
 If every worker runs entirely inside its own imp, what does it cost in time per worker?
 
-1. imp lifecycle: `imp new` from a prepared image, and a wake from sleep, each to the guest agent
+1. imp lifecycle: `impz new` from a prepared image, and a wake from sleep, each to the guest agent
    answering.
 2. Inside the imp: an SDK `query()` call to the init message, to the first streamed text, and to the
    result, with `tools: []` and 0, 1 or 3 MCP tools on the host over HTTP.
@@ -45,19 +45,19 @@ bridge gateway `172.17.0.1`, behind a bearer token that each run makes fresh. Th
 many tools it lists. Host turns and imp turns reach the same server.
 
 [`bench.ts`](bench.ts) drives every phase from the host and takes every time from the host clock,
-around `imp` CLI calls and the arrival of `turn.ts`'s lines. Guest-side times count from the
+around `impz` CLI calls and the arrival of `turn.ts`'s lines. Guest-side times count from the
 `query()` call inside one process, so no time mixes the two clocks. Each phase runs 10 samples.
 
 [`run.sh`](run.sh) does the rest:
 
 1. It prepares the image `nixie-spike-worker-tpl`: an imp from impd's `ubuntu` image, with
    `ca-certificates`, the host's Bun binary and this package installed in `/app`, made into an
-   [imp template](https://github.com/zgeoff/imp/blob/v0.40.2/docs/guides/templates.md).
+   [imp template](https://github.com/zgeoff/impz/blob/v0.40.2/docs/guides/templates.md).
 2. It stores the model token as a `custom` secret for `api.anthropic.com`, as an
    `authorization: Bearer` header. Each imp gets policy `box` with `172.17.0.1/32` as its only allow
    entry, and a grant for the secret. The guest sets `CLAUDE_CODE_OAUTH_TOKEN` to a placeholder.
 3. It makes 2 warm-up imps, so impd has a
-   [boot template](https://github.com/zgeoff/imp/blob/v0.40.2/docs/architecture/boot-templates.md)
+   [boot template](https://github.com/zgeoff/impz/blob/v0.40.2/docs/architecture/boot-templates.md)
    for the shape (2 vCPUs, 2048 MiB), then creates the long-lived imp `nixie-spike-w` and runs one
    turn in it.
 4. It runs the phases in order: `cli`, `lifecycle`, `wake`, `sdk`, `e2e-new`, `e2e-wake`. The `sdk`
@@ -73,14 +73,14 @@ empties `results/` first, so a summary never mixes runs.
 ## Run it
 
 1. Clone imp at the tag outside this repository, put the release kernel at `kernel/out/vmlinux`, and
-   run `bun install` there. Put the release CLI on your `PATH` as `imp`.
+   run `bun install` there. Put the release CLI on your `PATH` as `impz`.
 
    ```bash
-   git clone --branch v0.40.2 --depth 1 https://github.com/zgeoff/imp <imp_clone>
+   git clone --branch v0.40.2 --depth 1 https://github.com/zgeoff/impz <imp_clone>
    cd <imp_clone> && bun install
-   gh release download v0.40.2 -R zgeoff/imp -p vmlinux -D kernel/out
-   gh release download v0.40.2 -R zgeoff/imp -p imp-linux-x64 -O <bin_dir>/imp
-   chmod +x <bin_dir>/imp
+   gh release download v0.40.2 -R zgeoff/impz -p vmlinux -D kernel/out
+   gh release download v0.40.2 -R zgeoff/impz -p imp-linux-x64 -O <bin_dir>/impz
+   chmod +x <bin_dir>/impz
    ```
 
 2. Start a dev instance off the private network, with its data directory on a disk filesystem:
@@ -118,16 +118,16 @@ Every turn exited 0, with its MCP server `connected` whenever it had one.
 
 ### 1. imp lifecycle
 
-| Step                               | Median | p90 |
-| ---------------------------------- | -----: | --: |
-| `imp new` from the prepared image  |    392 | 430 |
-| then `imp exec -- true`            |     79 |  83 |
-| create to the agent answering      |    472 | 513 |
-| `imp grant` of the model secret    |     64 |  65 |
-| `imp wake` of a sleeping imp       |    183 | 197 |
-| then `imp exec -- true`            |    185 | 215 |
-| wake to the agent answering        |    363 | 404 |
-| `imp ls`, the CLI's own round trip |     48 |  50 |
+| Step                                | Median | p90 |
+| ----------------------------------- | -----: | --: |
+| `impz new` from the prepared image  |    392 | 430 |
+| then `impz exec -- true`            |     79 |  83 |
+| create to the agent answering       |    472 | 513 |
+| `impz grant` of the model secret    |     64 |  65 |
+| `impz wake` of a sleeping imp       |    183 | 197 |
+| then `impz exec -- true`            |    185 | 215 |
+| wake to the agent answering         |    363 | 404 |
+| `impz ls`, the CLI's own round trip |     48 |  50 |
 
 Every create restored impd's boot template. impd logged a median of 338 ms per create, about 170 ms
 of it in the guest agent's start. The only create without a boot template, the first boot of this
@@ -151,7 +151,7 @@ The imp is awake and has run turns before. Times count from the `query()` call.
 A warm imp adds no time a sample of 10 can see. Init and first text differ by less than the spread
 of either placement. Bun loads `turn.ts` in about 65 ms in both places. Counted from the host's
 spawn of the process, the first text arrives at 1033 ms on the host and 954 ms in the imp with 3
-tools; the imp figure includes `imp exec`. The SDK's `duration_api_ms` was 737 to 756 ms in every
+tools; the imp figure includes `impz exec`. The SDK's `duration_api_ms` was 737 to 756 ms in every
 cell, so the model call dominates the turn.
 
 The first sample of the phase, with 0 tools, ran cold in both places: the imp had just woken at the
@@ -167,13 +167,13 @@ the server before it emits init, and reconnects per turn because every `query()`
 
 ### 4. End to end
 
-Times count on the host from before `imp new`, or before the `imp exec` that wakes the imp, to each
-line's arrival. Each turn has 3 tools.
+Times count on the host from before `impz new`, or before the `impz exec` that wakes the imp, to
+each line's arrival. Each turn has 3 tools.
 
 | Milestone                   | New median | New p90 | Woken median | Woken p90 |
 | --------------------------- | ---------: | ------: | -----------: | --------: |
-| `imp new` returns           |        383 |     430 |              |           |
-| `imp grant` takes           |         64 |      68 |              |           |
+| `impz new` returns          |        383 |     430 |              |           |
+| `impz grant` takes          |         64 |      68 |              |           |
 | `turn.ts` reaches `query()` |        937 |     973 |          865 |      1013 |
 | init message                |       2288 |    2849 |         1821 |      2046 |
 | first text                  |       3051 |    3605 |         2536 |      2807 |
@@ -198,7 +198,7 @@ new imp and about 1.6 s for a woken one.
   `claude-agent-sdk-linux-x64` (242 MB) and `claude-agent-sdk-linux-x64-musl` (236 MB), and a glibc
   guest runs only the first. Bun adds 76 MB.
 - `bun install --frozen-lockfile` took 17.9 s in the guest. The template took 139 to 274 ms to make
-  from the stopped imp, and `imp image ls` lists it at 778 MiB.
+  from the stopped imp, and `impz image ls` lists it at 778 MiB.
 - Nothing else goes in the image: the SDK starts its bundled binary, and no global Claude Code
   install or `~/.claude` is needed.
 
@@ -207,7 +207,7 @@ new imp and about 1.6 s for a woken one.
 The broker injected the model token, and the guest held only the placeholder. A `custom` secret with
 `--header authorization --scheme bearer` works for the OAuth token that `claude setup-token` makes,
 as the [placement spike](../sdk-placement/README.md#5-the-token-through-a-broker-grant) found on imp
-0.38.1. imp's `anthropic` kind sets `x-api-key`, which an OAuth token does not use. `imp audit`
+0.38.1. imp's `anthropic` kind sets `x-api-key`, which an OAuth token does not use. `impz audit`
 listed 3 paths per turn on `api.anthropic.com`: `/v1/messages`, `/api/claude_code/settings` and
 `/api/claude_code/policy_limits`. No file the run wrote held the token's value.
 
@@ -224,5 +224,5 @@ sooner needs imp's `oauth` kind, which the spike did not try.
 - A turn that calls a tool, or runs code, or lasts past a few seconds.
 - Creates without a boot template beyond the one first boot, and elastic imps, which never restore
   one.
-- An image built with `imp image build` from a Dockerfile, and an install that skips the musl
+- An image built with `impz image build` from a Dockerfile, and an install that skips the musl
   package.

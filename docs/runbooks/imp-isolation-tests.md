@@ -55,7 +55,7 @@ skip unless the variables below are set.
 1. Build the fetch image into impd, with the repo root as the build folder:
 
    ```bash
-   imp image build . --file=guests/fetch/Dockerfile --name=<fetch_image_name>
+   impz image build . --file=guests/fetch/Dockerfile --name=<fetch_image_name>
    ```
 
    impd refuses a `FROM` line that names its image with a variable, so the Dockerfile writes out the
