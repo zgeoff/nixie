@@ -2,7 +2,7 @@
 
 - Decisions: [0016](../../../decisions/0016-own-interfaces.md),
   [0013](../../../decisions/0013-definition-versioning.md),
-  [0015](../../../decisions/0015-taint-scope.md),
+  [0005](../../../decisions/0005-effects-and-taint.md),
   [0027](../../../decisions/0027-tasks-and-actions.md)
 
 A trigger source starts work without you: a schedule, a poll, a held stream or a webhook. A batch of

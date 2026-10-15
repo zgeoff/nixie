@@ -208,4 +208,4 @@ skill before the export merges shows the conflict in the client to resolve.
   the definitions repo with the lock entry and a review report.
 - Skills in coding sessions: a coding adapter owns its harness, and atc manages its own skills.
 - Per-job-run taint from a skill's provenance, which waits for the later stage of
-  [0015](../../decisions/0015-taint-scope.md).
+  [0005](../../decisions/0005-effects-and-taint.md#where-taint-applies).

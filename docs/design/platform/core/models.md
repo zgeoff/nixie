@@ -1,7 +1,7 @@
 # Model profiles
 
 - Decisions: [0033](../../../decisions/0033-model-profiles.md),
-  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md)
+  [0003](../../../decisions/0003-sdk-placement.md)
 
 nixie reaches every model through a model profile: a named route to one model on one
 Anthropic-compatible endpoint, with its credential and its prices. The profile, the role map, the

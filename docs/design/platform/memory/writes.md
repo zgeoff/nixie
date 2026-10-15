@@ -2,9 +2,9 @@
 
 - Decisions: [0002](../../../decisions/0002-approvals.md),
   [0006](../../../decisions/0006-approval-record.md),
-  [0011](../../../decisions/0011-memory-writes.md), [0015](../../../decisions/0015-taint-scope.md),
-  [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
-  [0042](../../../decisions/0042-dictated-text-and-memory.md)
+  [0011](../../../decisions/0011-memory-writes.md),
+  [0005](../../../decisions/0005-effects-and-taint.md),
+  [0031](../../../decisions/0031-memory-capture-context-and-removal.md)
 
 The [memory writes](../../../architecture/memory/writes.md) architecture doc covers the content
 gate, the retirement intent gate, provenance, memory proposals and notices as built. This design
@@ -48,12 +48,11 @@ your allow rule covers job runs.
 ## Dictated text
 
 A voice client marks the words it transcribed as `dictated` spans, and dictated text never counts as
-evidence, under [0042](../../../decisions/0042-dictated-text-and-memory.md). A write whose quote
-touches a `dictated` span fails the quote check and becomes a proposal, whatever the rest of the
-quote holds. A destination token never passes the token check from dictated text. **Why:** a
-transcript can mishear a name, a number or an address, so the token check would match the misheard
-value, and a microphone also hears a TV or another person, whom a transcript cannot tell apart from
-you.
+evidence, under [0011](../../../decisions/0011-memory-writes.md). A write whose quote touches a
+`dictated` span fails the quote check and becomes a proposal, whatever the rest of the quote holds.
+A destination token never passes the token check from dictated text. **Why:** a transcript can
+mishear a name, a number or an address, so the token check would match the misheard value, and a
+microphone also hears a TV or another person, whom a transcript cannot tell apart from you.
 
 During a call, a memory proposal's card appears in the call screen, as
 [channel approvals](../channels/approvals.md#during-a-voice-call) covers, so a dictated fact costs

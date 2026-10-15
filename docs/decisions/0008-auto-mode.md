@@ -15,7 +15,8 @@ you only when auto-mode's denial budget runs out.
 ## What nixie needs from auto-mode
 
 - **Inputs:** the tool call, the task's scope, your last direct message, and whether the caller is
-  untrusted. Under [0015](0015-taint-scope.md), the conversation and every job run are.
+  untrusted. Under [0005](0005-effects-and-taint.md#where-taint-applies), the conversation and every
+  job run are.
 - **Outputs:** allow, or deny with a reason that holds the rule, what it refused, and what would
   clear it.
 - **Final deterministic layers.** auto-mode never overrides a decision that nixie's own layers made,

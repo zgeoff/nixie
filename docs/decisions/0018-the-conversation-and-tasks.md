@@ -1,7 +1,7 @@
 # 0018: The conversation and tasks
 
 - Date: 2026-10-08
-- Updated: 2026-10-14
+- Updated: 2026-10-15
 - Status: decided
 - Design: [tasks](../design/platform/core/tasks.md),
   [live view](../design/platform/channels/live-view.md)
@@ -51,7 +51,8 @@ projections of data nixie already keeps.
 - Several agents joined by hand to share context is the way of working nixie replaces. A design that
   needs you in tasks repeats it.
 - Separate contexts keep the conversation small, so compaction does not discard what you care about,
-  and let each task hold only the tools it needs under [0015](0015-taint-scope.md).
+  and let each task hold only the tools it needs under
+  [0005](0005-effects-and-taint.md#where-taint-applies).
 - Naming where a message went keeps the conversation's handling visible without asking you to manage
   it, and makes a misrouted message easy to catch.
 - One projection behind the conversation's list and both views stops them from disagreeing.
@@ -85,5 +86,7 @@ projections of data nixie already keeps.
 
 ## Changes
 
+- 2026-10-09: the conversation is itself a task, on the same state machine, leases and crash
+  recovery as every task.
 - 2026-10-14: the conversation never fails; it retries with a capped backoff and shows you once its
   failures in a row reach the limit.

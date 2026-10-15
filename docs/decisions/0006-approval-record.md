@@ -1,6 +1,7 @@
 # 0006: The approval record
 
 - Date: 2026-10-07
+- Updated: 2026-10-15
 - Status: decided
 - Design: [proposals and approvals](../design/platform/policy/approvals.md)
 - Research:
@@ -25,8 +26,8 @@ An approval resolves one proposal from [0002](0002-approvals.md), and nixie reco
   checker from [0028](0028-policy-design.md) then confirms the request. Naming a target alone is not
   consent, and injected content cannot reach your message.
 - **Checked identity.** An approval comes from a checked action in nixie's client, bound to that one
-  proposal, from a signed-in device. An approval for the always-ask set takes the passkey check from
-  [0012](0012-high-risk-approvals.md).
+  proposal, from a signed-in device. An approval for the always-ask set takes the passkey check
+  under [0012](0012-high-risk-approvals.md), which makes an unchanged "always allow" one tap.
 
 ## "Always allow"
 
@@ -41,15 +42,14 @@ rules together. The client sorts and filters rules by last use.
 The approval digest lists everything that waits on your answer. Each item stays bound to its own
 action hash. "Approve all" covers routine items only, and each always-ask or lifting item takes its
 own approval. Actions whose outcome is unknown lead the digest, under
-[0027](0027-tasks-and-actions.md), and deferred items collapse into their own group until they
-return.
+[0021](0021-action-outcomes.md), and deferred items collapse into their own group until they return.
 
 ## Why
 
 - Proposals and the destination limits make actions queue while you are away, so approving them one
   at a time would carry most of the friction.
 - A purchase or a widened rule hidden in a batch is the case that distinct rendering under
-  [0023](0023-lifting-always-ask.md) exists to prevent.
+  [0005](0005-effects-and-taint.md) exists to prevent.
 
 ## Alternatives
 
@@ -58,3 +58,9 @@ return.
 - **Approvals one at a time only.** Every queued proposal takes its own answer.
 - **"Approve all" for every item behind one passkey check.** It saves taps when several purchases
   queue, and hides each one in the batch.
+
+## Changes
+
+- 2026-10-08: an approval for the always-ask set takes the passkey check under 0012.
+- 2026-10-10: "Approve all" covers routine items only, and deferred items collapse into their own
+  group, under 0029. The first version let you approve all, some or none of the digest's items.

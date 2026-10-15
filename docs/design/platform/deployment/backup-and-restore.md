@@ -1,9 +1,7 @@
 # Backup and restore
 
 - Decisions: [0032](../../../decisions/0032-offsite-backups-and-replication.md),
-  [0010](../../../decisions/0010-memory-store.md), [0020](../../../decisions/0020-deployment.md),
-  [0035](../../../decisions/0035-backup-sidecar.md),
-  [0044](../../../decisions/0044-recovery-bound.md)
+  [0010](../../../decisions/0010-memory-store.md), [0020](../../../decisions/0020-deployment.md)
 
 nixie backs up its SQLite database and its key store every hour by default. nixie copies each with
 `VACUUM INTO`, and the backup sidecar sends the copies to 2 restic repos that hold only ciphertext.
@@ -153,9 +151,10 @@ outages. Neither tests a cloud provider.
 ### The recovery bound
 
 Once the replica ships, a restore after total host loss loses at most 5 minutes of encrypted
-content, under [0044](../../../decisions/0044-recovery-bound.md). The replica keeps the data within
-seconds, so the key snapshot sets the bound: new content restores only with the key that encrypts
-it.
+content, under
+[0032](../../../decisions/0032-offsite-backups-and-replication.md#the-recovery-bound). The replica
+keeps the data within seconds, so the key snapshot sets the bound: new content restores only with
+the key that encrypts it.
 
 A key change makes nixie stage a key set once 60 seconds pass with no further key change, and never
 later than 5 minutes after the first unpublished key change. **Why:** the quiet wait turns a burst

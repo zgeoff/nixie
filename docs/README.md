@@ -204,7 +204,9 @@ rests on.
 ## Decisions
 
 The locked design baseline: each record states its decision as it stands, with its reasons and the
-alternatives it rejected. The numbers are stable IDs in the order the decisions were made.
+alternatives it rejected, and its changes list gives the history of how it got there. The numbers
+are stable IDs in the order the decisions were made. A record merged into an earlier one leaves its
+number unused, and the earlier record's changes list holds an entry for the merge.
 
 ### Core
 
@@ -213,18 +215,17 @@ The runtime, the durable layer, and how the conversation and tasks share work.
 - [0001: The durable layer](decisions/0001-durable-layer.md) — nixie's own event log, with each long
   task as a state machine, instead of a durable execution engine
 - [0003: Where the Agent SDK runs](decisions/0003-sdk-placement.md) — every model loop in an imp,
-  with only nixie's tools, which run on the host
+  with only nixie's tools, which run on the host, an imp per worker run, and the conversation in a
+  long-lived imp
 - [0018: The conversation and tasks](decisions/0018-the-conversation-and-tasks.md) — you work
   through the conversation, which routes work to tasks, and the conversation is itself a task
-- [0021: Action outcomes](decisions/0021-action-outcomes.md) — actions run on a durable queue, and
-  an unknown outcome is retried only with an idempotency key or a check
+- [0021: Action outcomes](decisions/0021-action-outcomes.md) — actions run on a durable queue, an
+  unknown outcome is retried only with an idempotency key or a check, and it leads the approval
+  digest
 - [0025: The database and the topology](decisions/0025-database-and-topology.md) — one SQLite
   database with nixie's own dialect, and a modular monolith of workspace packages
-- [0026: Where workers and the conversation run](decisions/0026-where-workers-and-the-conversation-run.md)
-  — an imp per worker run with the whole worker inside, and the conversation in a long-lived imp
-- [0027: Tasks and actions](decisions/0027-tasks-and-actions.md) — state tables beside the log,
-  pause, stop and close, trigger details in every task run, and unknown outcomes in the approval
-  digest
+- [0027: Tasks and actions](decisions/0027-tasks-and-actions.md) — pause, stop and close, and
+  trigger details in every job run
 - [0033: Model profiles and model cost](decisions/0033-model-profiles.md) — a profile per model
   route, a profile per role, and model limits in dollars, tokens and turns
 - [0034: The code layout](decisions/0034-code-layout.md) — 5 workspace folders by trust zone and
@@ -243,17 +244,14 @@ Rules, effects, taint, approvals and auto-mode.
 - [0004: The rule engine](decisions/0004-rule-engine.md) — nixie's own rule format with fixed
   checks, and "no rule matched" means ask
 - [0005: Effects, taint and prompts](decisions/0005-effects-and-taint.md) — declared tool effects,
-  the always-ask set, the tool as the boundary, and the 0-prompt target
+  the always-ask set and the bounded rules that lift it, the tool as the boundary, the conversation
+  as always untrusted with taint for jobs in stages, and the 0-prompt target
 - [0006: The approval record](decisions/0006-approval-record.md) — approvals bound to one action and
   used once, consent, one-tap "always allow", and the approval digest
 - [0008: auto-mode decides the grey zone](decisions/0008-auto-mode.md) — auto-mode decides what the
   deterministic layers leave open, and nixie runs fully without it
 - [0012: High-risk approvals](decisions/0012-high-risk-approvals.md) — a passkey check for the
   always-ask set and for any rule wider than the card's, and a tap for everything else
-- [0015: Where taint applies](decisions/0015-taint-scope.md) — the conversation is always untrusted,
-  and taint applies to jobs and workers in stages
-- [0023: Lifting the always-ask set](decisions/0023-lifting-always-ask.md) — a bounded rule can lift
-  it, creating one always asks, and such approvals look distinct
 - [0028: The policy design](decisions/0028-policy-design.md) — the consent checker, your ask rules
   as their own prompt cause, the spending stop as a host proxy, YAML rule files, and the permissive
   starter set with notices for jobs
@@ -267,8 +265,8 @@ The memory store, its writes, how it reaches the model, and definition versionin
 - [0010: The memory store](decisions/0010-memory-store.md) — memory as rows in nixie's database, the
   memory view and a raw recall tool, and forgetting by crypto-shredding
 - [0011: Which memory writes skip review](decisions/0011-memory-writes.md) — a write backed by a
-  quote you typed, or covered by your allow rule, applies at once with undo, and every other write
-  is a proposal
+  quote you typed, or covered by your allow rule, applies at once with undo, dictated text backs no
+  write, and every other write is a proposal
 - [0013: Definition versioning](decisions/0013-definition-versioning.md) — a snapshot hash on every
   record, with rules applying at once and persona and jobs fixed per task
 - [0024: How memory reaches the model](decisions/0024-memory-in-context.md) — the SDK's session with
@@ -280,8 +278,6 @@ The memory store, its writes, how it reaches the model, and definition versionin
   model's reflections, reached by tool call and by links from memory items
 - [0039: The local encoder](decisions/0039-local-encoder.md) — `mdbr-leaf-ir` int8 on ONNX Runtime,
   with 256-number int8 vectors and weights pinned by checksum
-- [0042: Dictated text and memory](decisions/0042-dictated-text-and-memory.md) — dictated text never
-  backs a memory, so a write that quotes it is a proposal
 
 ### Skills
 
@@ -328,17 +324,15 @@ nixie's interfaces, external MCP servers, credentials, search and code.
 Definitions and deployment models.
 
 - [0020: Deployment and definitions](decisions/0020-deployment.md) — definitions in their own repo
-  seed the database, and running nixie lives with the deployment
+  seed the database, running nixie lives with the deployment, and the backup tools run in a sidecar
+  with a secrets file per container
 - [0032: Offsite backups and replication](decisions/0032-offsite-backups-and-replication.md) —
   Restic snapshots first, then a Litestream replica through a host rclone crypt gateway to an
-  S3-compatible backend the deployment supplies
-- [0035: The backup sidecar](decisions/0035-backup-sidecar.md) — restic, Litestream and rclone in
-  their own container beside nixie, with sops kept in nixie
+  S3-compatible backend the deployment supplies, with at most 5 minutes of encrypted content lost
+  once the replica ships
 - [0036: Deployment configuration and reference manifests](decisions/0036-deployment-configuration-and-reference-manifests.md)
   — one YAML file validated by a zod schema, and generic Kubernetes manifests shipped beside the
   Compose recipe
-- [0044: The recovery bound](decisions/0044-recovery-bound.md) — at most 5 minutes of encrypted
-  content lost once the replica ships, with a key snapshot after each key change
 
 ## Archive
 

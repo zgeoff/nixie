@@ -1,7 +1,7 @@
 # Moments
 
 - Decisions: [0011](../../../decisions/0011-memory-writes.md),
-  [0015](../../../decisions/0015-taint-scope.md),
+  [0005](../../../decisions/0005-effects-and-taint.md),
   [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
   [0037](../../../decisions/0037-moments.md)
 
@@ -103,7 +103,8 @@ note or reflection.
 
 `moment.read` returns each record with its source of content. A span that holds outside content
 stays untrusted when it is read, so the task that reads it is tainted under
-[0015](../../../decisions/0015-taint-scope.md), as it would be by reading that content first-hand.
+[0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies), as it would be by reading
+that content first-hand.
 
 The client shows moments on a timeline in time order, with keyword search, and retired moments
 behind a filter. A moment opens as its span, with the note, each reflection with its label, and the

@@ -2,7 +2,7 @@
 
 - Decisions: [0013](../../../decisions/0013-definition-versioning.md),
   [0024](../../../decisions/0024-memory-in-context.md),
-  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
+  [0003](../../../decisions/0003-sdk-placement.md),
   [0031](../../../decisions/0031-memory-capture-context-and-removal.md),
   [0037](../../../decisions/0037-moments.md), [0039](../../../decisions/0039-local-encoder.md)
 

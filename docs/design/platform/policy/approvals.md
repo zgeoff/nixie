@@ -5,7 +5,7 @@
   [0011](../../../decisions/0011-memory-writes.md),
   [0012](../../../decisions/0012-high-risk-approvals.md),
   [0021](../../../decisions/0021-action-outcomes.md),
-  [0023](../../../decisions/0023-lifting-always-ask.md),
+  [0005](../../../decisions/0005-effects-and-taint.md),
   [0027](../../../decisions/0027-tasks-and-actions.md),
   [0028](../../../decisions/0028-policy-design.md),
   [0041](../../../decisions/0041-approvals-during-a-voice-call.md)

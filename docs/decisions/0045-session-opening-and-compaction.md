@@ -120,9 +120,9 @@ a moment destroy all run the cleanup, so each one erases every summary.
   as nixie's.
 - Erasing every summary on a forget keeps the first build simple while forgets are rare, and a later
   dependency set can narrow it with no change of contract.
-- The conversation is always untrusted under [0015](0015-taint-scope.md), so a summary that carries
-  untrusted text into a new session needs no taint flag. A summary takes no path into memory, which
-  keeps the reason in [0024](0024-memory-in-context.md).
+- The conversation is always untrusted under [0005](0005-effects-and-taint.md#where-taint-applies),
+  so a summary that carries untrusted text into a new session needs no taint flag. A summary takes
+  no path into memory, which keeps the reason in [0024](0024-memory-in-context.md).
 
 ## Alternatives
 

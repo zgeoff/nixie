@@ -2,8 +2,7 @@
 
 - Decisions: [0005](../../../decisions/0005-effects-and-taint.md),
   [0012](../../../decisions/0012-high-risk-approvals.md),
-  [0023](../../../decisions/0023-lifting-always-ask.md),
-  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
+  [0003](../../../decisions/0003-sdk-placement.md),
   [0028](../../../decisions/0028-policy-design.md),
   [0033](../../../decisions/0033-model-profiles.md),
   [0043](../../../decisions/0043-paid-tool-budgets.md)

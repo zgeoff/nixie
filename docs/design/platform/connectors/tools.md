@@ -1,7 +1,6 @@
 # Serving nixie's tools
 
 - Decisions: [0003](../../../decisions/0003-sdk-placement.md),
-  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
   [0030](../../../decisions/0030-connectors-and-sandbox-environments.md)
 
 nixie's tools run in nixie's process on the host, and the model reaches them only through MCP. Every
