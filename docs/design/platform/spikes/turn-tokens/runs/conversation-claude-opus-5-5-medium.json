@@ -2,16 +2,16 @@
   "role": "conversation",
   "model": "claude-opus-5-5",
   "effort": "medium",
-  "ranAt": "2026-10-14T20:55:37.965Z",
+  "ranAt": "2026-10-15T03:39:19.791Z",
   "sessions": [
     {
       "label": "turn-1",
       "guestUsage": {
         "inputTokens": 4,
-        "outputTokens": 238,
-        "cacheReadTokens": 5411,
-        "cacheWriteTokens": 5555,
-        "contextSize": 5557
+        "outputTokens": 244,
+        "cacheReadTokens": 8400,
+        "cacheWriteTokens": 1157,
+        "contextSize": 4876
       },
       "modelCalls": 2,
       "toolCalls": [
@@ -22,23 +22,23 @@
           "tag": "turn-1",
           "model": "claude-opus-5-5",
           "input": 2,
-          "cacheWrite5m": 5411,
+          "cacheWrite5m": 966,
           "cacheWrite1h": 0,
-          "cacheRead": 0,
-          "output": 34
+          "cacheRead": 3717,
+          "output": 81
         },
         {
           "tag": "turn-1",
           "model": "claude-opus-5-5",
           "input": 2,
-          "cacheWrite5m": 144,
+          "cacheWrite5m": 191,
           "cacheWrite1h": 0,
-          "cacheRead": 5411,
-          "output": 204
+          "cacheRead": 4683,
+          "output": 163
         }
       ],
       "replies": [
-        "Morning! It's **17:12 in Tokyo** right now (09:12 for you in Lisbon), so Tokyo is 8 hours ahead.\n\nIf the call is \"later\" your time, keep in mind it's already late afternoon there. For a call during their working hours, before about 10:00 your time is safest. After 25 October, when Lisbon goes back to winter time, the gap becomes 9 hours."
+        "Morning! It's **17:12 on Wednesday** in Tokyo right now. Tokyo is 8 hours ahead of Lisbon at the moment, and Japan doesn't change its clocks.\n\nOn 25 October Lisbon moves back to winter time, and the gap grows to 9 hours. That only matters if the call is after that date. If it's later today, keep in mind it's already early evening for your supplier."
       ],
       "error": null
     },
@@ -46,10 +46,10 @@
       "label": "turn-2",
       "guestUsage": {
         "inputTokens": 6,
-        "outputTokens": 376,
-        "cacheReadTokens": 11634,
-        "cacheWriteTokens": 907,
-        "contextSize": 6464
+        "outputTokens": 347,
+        "cacheReadTokens": 10221,
+        "cacheWriteTokens": 885,
+        "contextSize": 5761
       },
       "modelCalls": 2,
       "toolCalls": [
@@ -60,23 +60,23 @@
           "tag": "turn-2",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 524,
+          "cacheWrite5m": 473,
           "cacheWrite1h": 0,
-          "cacheRead": 5555,
-          "output": 98
+          "cacheRead": 4874,
+          "output": 127
         },
         {
           "tag": "turn-2",
           "model": "claude-opus-5-5",
           "input": 2,
-          "cacheWrite5m": 383,
+          "cacheWrite5m": 412,
           "cacheWrite1h": 0,
-          "cacheRead": 6079,
-          "output": 278
+          "cacheRead": 5347,
+          "output": 220
         }
       ],
       "replies": [
-        "Here's what I have saved about your bike:\n\n- **It's a 1984 steel touring bike** that you're restoring.\n- **It needs a new rear derailleur.** You said this in mid-August. The note doesn't say which bike, but the touring bike is the likely one.\n- **Your spare inner tubes are in the hallway cupboard**, so you probably don't need to order those.\n- **You were also looking for a used road bike** for faster rides (that was in September). That's separate from the restoration.\n\nOn the derailleur: older steel frames often have their own hanger and cable-pull needs. Check the dropout type and how many speeds your shifters handle before you order."
+        "Here's what I have on your bike:\n\n- **Rear derailleur:** On 16 August you said \"the bike needs a new rear derailleur\". That's the main part to order.\n- **Inner tubes:** In September you said your spares \"are in the hallway cupboard\", so check how many are left before you order more.\n- **Road bike:** On 13 September you said you're looking for a used road bike for faster rides. That's a separate bike, not a part.\n\nThe derailleur note doesn't say which bike it's for, the old one you're restoring or something else. It also doesn't list the model or how many gears, so check the shifter and cassette before you buy so the new one fits."
       ],
       "error": null
     },
@@ -84,10 +84,10 @@
       "label": "turn-3",
       "guestUsage": {
         "inputTokens": 6,
-        "outputTokens": 457,
-        "cacheReadTokens": 13271,
-        "cacheWriteTokens": 2311,
-        "contextSize": 8775
+        "outputTokens": 360,
+        "cacheReadTokens": 11817,
+        "cacheWriteTokens": 2263,
+        "contextSize": 8024
       },
       "modelCalls": 2,
       "toolCalls": [
@@ -98,9 +98,9 @@
           "tag": "turn-3",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 347,
+          "cacheWrite5m": 299,
           "cacheWrite1h": 0,
-          "cacheRead": 6462,
+          "cacheRead": 5759,
           "output": 75
         },
         {
@@ -109,39 +109,60 @@
           "input": 2,
           "cacheWrite5m": 1964,
           "cacheWrite1h": 0,
-          "cacheRead": 6809,
-          "output": 382
+          "cacheRead": 6058,
+          "output": 285
         }
       ],
       "replies": [
-        "The guide lists these tools:\n\n- **5 mm hex key** for the mounting bolt\n- **Cable cutter** that cuts cleanly without fraying\n- **Chain tool or quick-link pliers**, depending on how your chain is joined\n- **Phillips screwdriver** for the limit screws\n- **A little grease** for the bolt threads\n- **A bike stand** is optional. Otherwise, turn the bike upside down on a soft mat.\n\nIt also says to tighten the mounting bolt to the torque printed on the derailleur, usually 8–10 Nm. A torque wrench helps with that if you have one. Before fitting the new part, check that the hanger is straight. The guide says a bent hanger causes most poor shifting.\n\nFor your order this week, you'll probably want a new gear cable too, since you'll be cutting the old one. The guide doesn't list a cable or housing as parts, though."
+        "The guide says you'll need:\n\n- **5 mm hex key** for the mounting bolt\n- **Cable cutter** that cuts cleanly without fraying the cable\n- **Chain tool or quick-link pliers** to open the chain\n- **Phillips screwdriver** for the limit screws\n- **A little grease** for the bolt threads\n\nIt also suggests a **bike stand**, or a soft mat if you turn the bike upside down. The derailleur bolt should be tightened to the torque printed on the derailleur body, usually 8–10 Nm, so a torque wrench helps, though the guide doesn't list one. It also says to check that the hanger is straight first, because a bent hanger causes most poor shifting.\n\nThe page repeats the same text four times, but that's just a formatting glitch. The content is the same in each copy."
       ],
       "error": null
     },
     {
       "label": "turn-4",
       "guestUsage": {
-        "inputTokens": 4,
-        "outputTokens": 333,
-        "cacheReadTokens": 8773,
-        "cacheWriteTokens": 542,
-        "contextSize": 9319
+        "inputTokens": 8,
+        "outputTokens": 557,
+        "cacheReadTokens": 25273,
+        "cacheWriteTokens": 986,
+        "contextSize": 9010
       },
-      "modelCalls": 1,
-      "toolCalls": [],
+      "modelCalls": 3,
+      "toolCalls": [
+        "memory.pending",
+        "memory.remember"
+      ],
       "calls": [
         {
           "tag": "turn-4",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 542,
+          "cacheWrite5m": 435,
           "cacheWrite1h": 0,
-          "cacheRead": 8773,
-          "output": 333
+          "cacheRead": 8022,
+          "output": 129
+        },
+        {
+          "tag": "turn-4",
+          "model": "claude-opus-5-5",
+          "input": 2,
+          "cacheWrite5m": 337,
+          "cacheWrite1h": 0,
+          "cacheRead": 8457,
+          "output": 150
+        },
+        {
+          "tag": "turn-4",
+          "model": "claude-opus-5-5",
+          "input": 2,
+          "cacheWrite5m": 214,
+          "cacheWrite1h": 0,
+          "cacheRead": 8794,
+          "output": 278
         }
       ],
       "replies": [
-        "Sounds good. Check your chain for a quick link first, too. If it has one, you can usually open it with quick-link pliers or even by hand, and you might not need the chain tool at all."
+        "Borrowing it from Tomas makes sense, since he already lends you his hiking poles. If your chain has a quick link, quick-link pliers can open it instead, but you'll still need the chain tool if the chain has to be shortened.\n\nI've saved a note that you don't own a chain tool and plan to borrow Tomas's. It's waiting for your review.\n\nWhile I was checking, I found something that matters for your order. The note-taker has a proposal from two days ago, still waiting for your review, that would change the derailleur note to say your bike needs **a new rear derailleur and a new chain**. If that's right, add a chain to this week's order. If it isn't, reject the proposal."
       ],
       "error": null
     },
@@ -149,10 +170,10 @@
       "label": "turn-5",
       "guestUsage": {
         "inputTokens": 4,
-        "outputTokens": 371,
-        "cacheReadTokens": 9315,
-        "cacheWriteTokens": 641,
-        "contextSize": 9960
+        "outputTokens": 449,
+        "cacheReadTokens": 9008,
+        "cacheWriteTokens": 574,
+        "contextSize": 9586
       },
       "modelCalls": 1,
       "toolCalls": [],
@@ -161,31 +182,28 @@
           "tag": "turn-5",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 641,
+          "cacheWrite5m": 574,
           "cacheWrite1h": 0,
-          "cacheRead": 9315,
-          "output": 371
+          "cacheRead": 9008,
+          "output": 449
         }
       ],
       "replies": [
-        "**Red lentil and tomato soup with crusty bread.** It's quick enough for tonight and it's your kind of autumn dinner.\n\n- Soften a chopped onion, carrot and 2 garlic cloves in olive oil for about 5 min. Cooking the onion keeps it gentle on your stomach.\n- Stir in 1 tsp cumin and 1 tsp smoked paprika. That's warming without being hot.\n- Add 200 g red lentils, a 400 g tin of chopped tomatoes and about 1 L vegetable stock. Simmer for 20 min, until the lentils fall apart.\n- Season, squeeze in some lemon, and blend half of it if you like it thicker.\n\nServe it with a spoon of yoghurt and some of your sourdough if you have a loaf going. It's about 30 min in total, with no cashews and nothing spicy."
+        "**Chickpea, spinach and tomato stew with crusty bread** takes about 30 minutes.\n\n1. Soften 2 cloves of sliced garlic and a cooked-down onion in olive oil (5 min). The onion is fully cooked, so it shouldn't give you heartburn.\n2. Add 1 tsp smoked paprika and ½ tsp cumin. Then add a 400 g tin of chopped tomatoes and 2 drained 400 g tins of chickpeas, and simmer for 15 min.\n3. Stir in 200 g of spinach until it wilts. Finish with lemon juice and salt.\n4. Serve with bread, a spoon of yoghurt on top, or a fried egg if you want more protein.\n\nIt's warming without being spicy, and it has no cashews. If you'd like something closer to your winter lentil soups, swap the chickpeas for 200 g of red lentils and 800 ml of stock. They cook in about 20 minutes."
       ],
       "error": null
     },
     {
       "label": "turn-6",
       "guestUsage": {
-        "inputTokens": 10,
-        "outputTokens": 810,
-        "cacheReadTokens": 43200,
-        "cacheWriteTokens": 1806,
-        "contextSize": 11764
+        "inputTokens": 6,
+        "outputTokens": 231,
+        "cacheReadTokens": 19778,
+        "cacheWriteTokens": 827,
+        "contextSize": 10411
       },
-      "modelCalls": 5,
+      "modelCalls": 2,
       "toolCalls": [
-        "log.read",
-        "memory.recall",
-        "memory.pending",
         "memory.remember"
       ],
       "calls": [
@@ -193,41 +211,23 @@
           "tag": "turn-6",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 546,
+          "cacheWrite5m": 614,
           "cacheWrite1h": 0,
-          "cacheRead": 9956,
-          "output": 219
+          "cacheRead": 9582,
+          "output": 147
         },
         {
           "tag": "turn-6",
           "model": "claude-opus-5-5",
           "input": 2,
-          "cacheWrite5m": 705,
+          "cacheWrite5m": 213,
           "cacheWrite1h": 0,
-          "cacheRead": 10502,
-          "output": 122
-        },
-        {
-          "tag": "turn-6",
-          "model": "claude-opus-5-5",
-          "input": 2,
-          "cacheWrite5m": 328,
-          "cacheWrite1h": 0,
-          "cacheRead": 11207,
-          "output": 163
-        },
-        {
-          "tag": "turn-6",
-          "model": "claude-opus-5-5",
-          "input": 2,
-          "cacheWrite5m": 227,
-          "cacheWrite1h": 0,
-          "cacheRead": 11535,
-          "output": 306
+          "cacheRead": 10196,
+          "output": 84
         }
       ],
       "replies": [
-        "Nice, Tuesdays and Thursdays fit well around your Saturday hikes. I've saved your running days as a new memory. It's waiting for your review before it becomes active. I couldn't attach your message's ID to it, which is likely why it didn't save straight away.\n\nSomething else in your review queue matters for your parts order: the note-taker has suggested changing your bike note to \"needs a new rear derailleur **and a new chain**.\" It's been waiting 2 days. If that's right, add a chain to this week's order. If not, reject it so it doesn't confuse things later."
+        "Nice, Tuesdays and Thursdays along the river to Belém sounds like a good routine. Tomorrow's a run day, so the lentils tonight are good fuel for it.\n\nI've saved a note about your running schedule. It's waiting for your review."
       ],
       "error": null
     },
@@ -235,10 +235,10 @@
       "label": "turn-7",
       "guestUsage": {
         "inputTokens": 6,
-        "outputTokens": 381,
-        "cacheReadTokens": 23866,
-        "cacheWriteTokens": 822,
-        "contextSize": 12586
+        "outputTokens": 351,
+        "cacheReadTokens": 20948,
+        "cacheWriteTokens": 649,
+        "contextSize": 11060
       },
       "modelCalls": 3,
       "toolCalls": [
@@ -250,23 +250,23 @@
           "tag": "turn-7",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 342,
+          "cacheWrite5m": 130,
           "cacheWrite1h": 0,
-          "cacheRead": 11762,
-          "output": 107
+          "cacheRead": 10409,
+          "output": 69
         },
         {
           "tag": "turn-7",
           "model": "claude-opus-5-5",
           "input": 2,
-          "cacheWrite5m": 480,
+          "cacheWrite5m": 519,
           "cacheWrite1h": 0,
-          "cacheRead": 12104,
-          "output": 274
+          "cacheRead": 10539,
+          "output": 282
         }
       ],
       "replies": [
-        "Three memory changes are waiting for you:\n\n1. **\"Sam is learning to make rye bread.\"** This is new, from the note-taker, 1 day ago. The checker wasn't sure your message actually said it. Your saved memories mention sourdough, not rye, so check this one before approving.\n2. **\"Sam's bike needs a new rear derailleur and a new chain.\"** The note-taker wants to edit your derailleur note. It's been waiting 2 days. If the chain part is right, add a chain to this week's order.\n3. **\"Sam runs twice a week, on Tuesdays and Thursdays (started October 2026).\"** I added this one just now from what you told me.\n\nThere's no weekly consolidation waiting for you."
+        "Four memory proposals are waiting for your review:\n\n1. **\"Sam is learning to make rye bread.\"** The note-taker noted this a day ago. The checker wasn't sure your message actually said it, so check whether it's true.\n2. **\"Sam's bike needs a new rear derailleur and a new chain.\"** The note-taker proposed this two days ago as a change to your existing derailleur note. It matters for this week's parts order.\n3. **\"Sam doesn't own a chain tool and plans to borrow one from Tomas.\"** I added this just now.\n4. **\"Sam runs twice a week, on Tuesdays and Thursdays.\"** I also added this one just now.\n\nThere's no weekly consolidation waiting. Only you can approve or reject these."
       ],
       "error": null
     },
@@ -274,10 +274,10 @@
       "label": "turn-8",
       "guestUsage": {
         "inputTokens": 6,
-        "outputTokens": 330,
-        "cacheReadTokens": 25685,
-        "cacheWriteTokens": 746,
-        "contextSize": 13332
+        "outputTokens": 255,
+        "cacheReadTokens": 22631,
+        "cacheWriteTokens": 769,
+        "contextSize": 11829
       },
       "modelCalls": 2,
       "toolCalls": [
@@ -288,23 +288,23 @@
           "tag": "turn-8",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 517,
+          "cacheWrite5m": 515,
           "cacheWrite1h": 0,
-          "cacheRead": 12584,
-          "output": 59
+          "cacheRead": 11058,
+          "output": 84
         },
         {
           "tag": "turn-8",
           "model": "claude-opus-5-5",
           "input": 2,
-          "cacheWrite5m": 229,
+          "cacheWrite5m": 254,
           "cacheWrite1h": 0,
-          "cacheRead": 13101,
-          "output": 271
+          "cacheRead": 11573,
+          "output": 171
         }
       ],
       "replies": [
-        "I only have one note about it: you're planning to **cycle along the Douro in late spring**. You told me that in August. I don't have dates, a route, a distance or bookings saved.\n\nA few other things I know could matter for it:\n\n- **Your sister Ines lives in Porto**, at the mouth of the Douro. That could be a start, an end or a place to stay.\n- **For trips under 600 km you'd rather take the train.** Lisbon to Porto is well under that, and I have a note that you like aisle seats.\n- **Your touring bike still needs its derailleur.** Fixing it this week leaves you plenty of time to ride it in before spring."
+        "I only have one note about it. On 15 August you said \"I'm planning to cycle along the Douro in late spring\". I don't have any dates, a route, accommodation or who's going with you.\n\nOne other note might help: you always pick an aisle seat on the train, which matters if you're taking the train up to Porto. Whether the new derailleur is meant to be ready in time for the trip is something only you'd know."
       ],
       "error": null
     },
@@ -312,10 +312,10 @@
       "label": "turn-9",
       "guestUsage": {
         "inputTokens": 6,
-        "outputTokens": 377,
-        "cacheReadTokens": 26996,
-        "cacheWriteTokens": 1874,
-        "contextSize": 15206
+        "outputTokens": 414,
+        "cacheReadTokens": 23900,
+        "cacheWriteTokens": 1784,
+        "contextSize": 13613
       },
       "modelCalls": 2,
       "toolCalls": [
@@ -326,9 +326,9 @@
           "tag": "turn-9",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 336,
+          "cacheWrite5m": 246,
           "cacheWrite1h": 0,
-          "cacheRead": 13330,
+          "cacheRead": 11827,
           "output": 70
         },
         {
@@ -337,12 +337,12 @@
           "input": 2,
           "cacheWrite5m": 1538,
           "cacheWrite1h": 0,
-          "cacheRead": 13666,
-          "output": 307
+          "cacheRead": 12073,
+          "output": 344
         }
       ],
       "replies": [
-        "It depends on the day you travel. All times are from Porto São Bento:\n\n- **Weekdays: the 07:25, arriving in Régua at 09:20.** The 06:20 also gets there in time: the page gives the trip as about 1 h 55 min, so roughly 08:15. The 09:15 arrives at 11:12, which is too late.\n- **Weekends: the 08:05, arriving at 10:02.** The 07:25 doesn't run on weekends.\n\nFrom Porto Campanhã, trains leave 5 minutes after the São Bento times. Bikes travel free when there's space, up to two per carriage. Seats aren't reserved on these regional trains, so your aisle seat is first come, first served. The page also says to check for engineering works before travelling in summer. A late-spring trip should be clear of that, but it's worth checking closer to the date."
+        "**On a weekday, take the 07:25 from Porto São Bento.** It gets into Régua at 09:20. The 09:15 arrives at 11:12, which misses your 11:00 cutoff.\n\n- **Weekends:** the 07:25 doesn't run. Take the 08:05 instead, which arrives at 10:02.\n- **Earlier option:** the 06:20 runs too. The page doesn't list its arrival time, but with a journey of about 1 h 55 min it should reach Régua around 08:15.\n- **From Campanhã:** trains leave 5 minutes after the São Bento times.\n- **Your bike:** bikes ride free on regional trains when there's space, up to two per carriage. An early train is a safer bet for getting a spot.\n- **Seats:** they can't be reserved on regional trains, so board early if you want an aisle seat.\n\nThe page also says to check for engineering works in the summer months, so look again closer to your trip."
       ],
       "error": null
     },
@@ -350,10 +350,10 @@
       "label": "turn-10",
       "guestUsage": {
         "inputTokens": 6,
-        "outputTokens": 418,
-        "cacheReadTokens": 30955,
-        "cacheWriteTokens": 891,
-        "contextSize": 16097
+        "outputTokens": 393,
+        "cacheReadTokens": 27796,
+        "cacheWriteTokens": 936,
+        "contextSize": 14549
       },
       "modelCalls": 2,
       "toolCalls": [
@@ -364,38 +364,39 @@
           "tag": "turn-10",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 547,
+          "cacheWrite5m": 574,
           "cacheWrite1h": 0,
-          "cacheRead": 15204,
-          "output": 278
+          "cacheRead": 13611,
+          "output": 296
         },
         {
           "tag": "turn-10",
           "model": "claude-opus-5-5",
           "input": 2,
-          "cacheWrite5m": 344,
+          "cacheWrite5m": 362,
           "cacheWrite1h": 0,
-          "cacheRead": 15751,
-          "output": 140
+          "cacheRead": 14185,
+          "output": 97
         }
       ],
       "replies": [
-        "That's lovely, and it makes Porto a natural starting point. You could take the train to Régua together. Bikes ride free at up to two per carriage, so the two of you would fit in one.\n\nI've saved that Ines is joining for the first two days. Like the running note, it's waiting for your review tonight."
+        "Lovely, it'll be nice to have Ines along for the start. If she's bringing a bike, remember the limit is two bikes per carriage, so the early train makes it more likely you'll both fit.\n\nI've saved a note that she's joining for the first two days. It's waiting for your review, along with the others."
       ],
       "error": null
     },
     {
       "label": "turn-11",
       "guestUsage": {
-        "inputTokens": 8,
-        "outputTokens": 721,
-        "cacheReadTokens": 49244,
-        "cacheWriteTokens": 1084,
-        "contextSize": 17181
+        "inputTokens": 10,
+        "outputTokens": 951,
+        "cacheReadTokens": 59887,
+        "cacheWriteTokens": 1326,
+        "contextSize": 15875
       },
-      "modelCalls": 3,
+      "modelCalls": 4,
       "toolCalls": [
         "log.read",
+        "memory.edit",
         "memory.edit"
       ],
       "calls": [
@@ -403,32 +404,41 @@
           "tag": "turn-11",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 294,
+          "cacheWrite5m": 241,
           "cacheWrite1h": 0,
-          "cacheRead": 16095,
-          "output": 151
+          "cacheRead": 14547,
+          "output": 110
         },
         {
           "tag": "turn-11",
           "model": "claude-opus-5-5",
           "input": 2,
-          "cacheWrite5m": 371,
+          "cacheWrite5m": 324,
           "cacheWrite1h": 0,
-          "cacheRead": 16389,
-          "output": 367
+          "cacheRead": 14788,
+          "output": 276
         },
         {
           "tag": "turn-11",
           "model": "claude-opus-5-5",
           "input": 2,
-          "cacheWrite5m": 419,
+          "cacheWrite5m": 328,
           "cacheWrite1h": 0,
-          "cacheRead": 16760,
-          "output": 203
+          "cacheRead": 15112,
+          "output": 381
+        },
+        {
+          "tag": "turn-11",
+          "model": "claude-opus-5-5",
+          "input": 2,
+          "cacheWrite5m": 433,
+          "cacheWrite1h": 0,
+          "cacheRead": 15440,
+          "output": 184
         }
       ],
       "replies": [
-        "Yesterday you told me you'd booked the ceramics class at the studio near Graça for **8 November, 10:00–13:00**. I replied with a reminder to bring old clothes.\n\nI need to correct that reply: I called it a Saturday, but 8 November 2026 is a **Sunday**. Your Saturday hike that weekend is safe.\n\nYour saved memory only said \"a ceramics class in November,\" so I've updated it with the studio, the date and the time. That change went through straight away. Your other three changes are still waiting for your review tonight."
+        "Yesterday at 18:40 you told me you'd booked the ceramics class at the studio near Graça for **8 November, 10:00 to 13:00**. I replied that I'd noted it and suggested bringing old clothes.\n\nI got one thing wrong, though: I called it a Saturday, and **8 November is actually a Sunday**. Check your booking says the same.\n\nYour ceramics note only said \"November\", so I've updated it with the studio, date and time. That change is already saved."
       ],
       "error": null
     },
@@ -436,10 +446,10 @@
       "label": "turn-12",
       "guestUsage": {
         "inputTokens": 4,
-        "outputTokens": 91,
-        "cacheReadTokens": 17179,
-        "cacheWriteTokens": 241,
-        "contextSize": 17424
+        "outputTokens": 43,
+        "cacheReadTokens": 15873,
+        "cacheWriteTokens": 232,
+        "contextSize": 16109
       },
       "modelCalls": 1,
       "toolCalls": [],
@@ -448,14 +458,14 @@
           "tag": "turn-12",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 241,
+          "cacheWrite5m": 232,
           "cacheWrite1h": 0,
-          "cacheRead": 17179,
-          "output": 91
+          "cacheRead": 15873,
+          "output": 43
         }
       ],
       "replies": [
-        "You too, Sam. Enjoy the lentil soup tonight, and good luck with the Tokyo call."
+        "You too, Sam. Enjoy the lentils tonight."
       ],
       "error": null
     },
@@ -463,10 +473,10 @@
       "label": "turn-13-cold",
       "guestUsage": {
         "inputTokens": 4,
-        "outputTokens": 183,
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 17550,
-        "contextSize": 17554
+        "outputTokens": 164,
+        "cacheReadTokens": 3717,
+        "cacheWriteTokens": 12480,
+        "contextSize": 16201
       },
       "modelCalls": 1,
       "toolCalls": [],
@@ -475,14 +485,14 @@
           "tag": "turn-13-cold",
           "model": "claude-opus-5-5",
           "input": 4,
-          "cacheWrite5m": 17550,
+          "cacheWrite5m": 12480,
           "cacheWrite1h": 0,
-          "cacheRead": 0,
-          "output": 183
+          "cacheRead": 3717,
+          "output": 164
         }
       ],
       "replies": [
-        "We didn't settle on one, since it depends on the day you travel. Here are the options I found, all from Porto São Bento:\n\n- **Weekday:** the 07:25, arriving in Régua at 09:20\n- **Weekend:** the 08:05, arriving at 10:02\n\nBoth get you there before 11:00. From Campanhã, add 5 minutes to the departure times. Once you know whether you and Ines are starting on a weekday or a weekend, the choice is made."
+        "We didn't settle on one, but this morning I suggested:\n\n- **Weekday:** the 07:25 from Porto São Bento, which gets into Régua at 09:20\n- **Weekend:** the 08:05, since the 07:25 doesn't run then. It arrives at 10:02.\n\nBoth get you there before 11:00. Which one you take depends on the day you travel."
       ],
       "error": null
     }
