@@ -11,13 +11,23 @@ export interface SeedInputs {
   readonly policy: SnapshotPolicy;
 }
 
+// The tools whose declarations the policy covers: the conversation's, and the queue check's tool,
+// which the conversation's list leaves out
+export interface SeedTools {
+  readonly definitions: readonly ToolDefinition[];
+  readonly actions: { readonly logConnector: { readonly tool: ToolDefinition } };
+}
+
 // What every seed reads: the configured definitions source, and the policy in force from the
-// build's fixed rules, the memory gate's checker prompts and its registered tools.
+// build's fixed rules, the memory gate's checker prompts and the registered tools.
 export function buildSeedInputs(
-  config: DeploymentConfig,
-  tools: readonly ToolDefinition[],
+  config: Pick<DeploymentConfig, 'definitions' | 'owner'>,
+  tools: SeedTools,
 ): SeedInputs {
-  const policy = buildSnapshotPolicy(getFixedRules(), tools);
+  const policy = buildSnapshotPolicy(getFixedRules(), [
+    ...tools.definitions,
+    tools.actions.logConnector.tool,
+  ]);
 
   return {
     source: createPathSource({ dir: config.definitions.source.path }),

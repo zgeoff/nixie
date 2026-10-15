@@ -43,7 +43,7 @@ export async function startServerWork(
   start.ready = startInBackground({
     ...options,
     ...base,
-    ...buildSeedInputs(options.config, base.tools.definitions),
+    ...buildSeedInputs(options.config, base.tools),
     context: base.apiContext,
     cleanup: work,
     modelSecrets: options.secrets.models,
