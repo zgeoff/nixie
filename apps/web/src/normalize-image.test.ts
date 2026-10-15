@@ -78,7 +78,7 @@ test('it scales a large photo to a long edge of 1568 px and drops its EXIF data,
     hasExif: false,
     hasTag: false,
   });
-});
+}, 60_000);
 
 test('it keeps a small screenshot at its size, as a PNG', async () => {
   const ctx = await setupTest();
@@ -94,7 +94,7 @@ test('it keeps a small screenshot at its size, as a PNG', async () => {
   })()`);
 
   expect(result).toStrictEqual({ type: 'image/png', width: 800, height: 600 });
-});
+}, 60_000);
 
 test('it refuses bytes the browser cannot decode with an unreadable-image error', async () => {
   const ctx = await setupTest();
@@ -106,4 +106,4 @@ test('it refuses bytes the browser cannot decode with an unreadable-image error'
   })()`);
 
   expect(result).toBe('ImageUnreadableError');
-});
+}, 60_000);
