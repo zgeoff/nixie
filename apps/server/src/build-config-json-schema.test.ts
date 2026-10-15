@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import addFormats from 'ajv-formats';
@@ -6,8 +6,16 @@ import Ajv2020 from 'ajv/dist/2020';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildConfigJSONSchema } from './build-config-json-schema';
+import { deploymentConfigSchema } from './deployment-config-schema';
 
+// The published schema describes a release build, so each test reads nixie's own schema as one
 function setupTest() {
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
   const ajv = new Ajv2020({ allErrors: true, strict: true });
 
   addFormats(ajv);
@@ -127,4 +135,468 @@ test('it refuses a credential that is not a deployment reference', () => {
   expect(ctx.validate.errors).toPartiallyContain({
     instancePath: '/models/profiles/main/credential',
   });
+});
+
+test('it refuses the test sandbox, which a release build does not hold', () => {
+  const ctx = setupTest();
+
+  ctx.validate({
+    models: {
+      profiles: {
+        main: {
+          base_url: 'https://models.example.com',
+          credential: 'deployment:models',
+          auth_header: 'bearer',
+          model: 'model-large',
+          effort: 'medium',
+        },
+      },
+      roles: { conversation: 'main' },
+    },
+    sandbox: { adapter: 'test' },
+    imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+    definitions: { source: { kind: 'path', path: '/definitions' } },
+  });
+
+  expect(ctx.validate.errors).toPartiallyContain({ instancePath: '/sandbox/adapter' });
+});
+
+test('it refuses a model URL that is not HTTP', () => {
+  const ctx = setupTest();
+
+  ctx.validate({
+    models: {
+      profiles: {
+        main: {
+          base_url: 'ftp://models.example.com',
+          credential: 'deployment:models',
+          auth_header: 'bearer',
+          model: 'model-large',
+          effort: 'medium',
+        },
+      },
+      roles: { conversation: 'main' },
+    },
+    imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+    definitions: { source: { kind: 'path', path: '/definitions' } },
+  });
+
+  expect(ctx.validate.errors).toPartiallyContain({
+    instancePath: '/models/profiles/main/base_url',
+  });
+});
+
+// Each row holds a whole configuration and the answer that both the published schema and a release
+// build of nixie give for it, so a rule that one of them drops fails its row
+test.each([
+  [
+    'a configuration with only the required sections',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    true,
+  ],
+  [
+    'the test sandbox',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      sandbox: { adapter: 'test' },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+  [
+    'the imp sandbox set by name',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      sandbox: { adapter: 'imp' },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    true,
+  ],
+  [
+    'no imp section',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+  [
+    'an FTP model URL',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'ftp://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+  [
+    'a model URL with no slashes after the scheme',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https:models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+  [
+    'a model URL with an uppercase scheme',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'HTTPS://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    true,
+  ],
+  [
+    'a plain HTTP imp URL',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'http://impd.example.com:8443', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    true,
+  ],
+  [
+    'an FTP imp URL',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'ftp://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+  [
+    'no conversation role',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { task: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+  [
+    'an uppercase IPv6 host address',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['2001:DB8::/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    true,
+  ],
+  [
+    'a host address that is a name',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['gateway.example.com'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+  [
+    'a canonical time zone',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+      time: { default_zone: 'Europe/Lisbon' },
+    },
+    true,
+  ],
+  [
+    'a time zone that does not exist',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+      time: { default_zone: 'Mars/Olympus_Mons' },
+    },
+    false,
+  ],
+  [
+    'a context cap below the CLI range',
+    {
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+            context_tokens: 99_999,
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+  [
+    'a port past 65535',
+    {
+      server: { port: 65_536 },
+      models: {
+        profiles: {
+          main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+  [
+    'a profile ID that is not a slug',
+    {
+      models: {
+        profiles: {
+          Main: {
+            base_url: 'https://models.example.com',
+            credential: 'deployment:models',
+            auth_header: 'bearer',
+            model: 'model-large',
+            effort: 'medium',
+          },
+        },
+        roles: { conversation: 'main' },
+      },
+      imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+      definitions: { source: { kind: 'path', path: '/definitions' } },
+    },
+    false,
+  ],
+])('it gives the same answer as a release build for %s', (_label, config, expected) => {
+  const ctx = setupTest();
+  const isSchemaValid = ctx.validate(config);
+  const isNixieValid = deploymentConfigSchema.safeParse(config).success;
+
+  expect(isSchemaValid).toBe(expected);
+  expect(isNixieValid).toBe(expected);
+});
+
+// nixie reads any zone that Intl resolves, and the schema lists only the canonical names, so it can
+// refuse a zone that nixie reads but never pass one that nixie refuses
+test('it refuses a time zone alias that a release build reads', () => {
+  const ctx = setupTest();
+
+  const config = {
+    models: {
+      profiles: {
+        main: {
+          base_url: 'https://models.example.com',
+          credential: 'deployment:models',
+          auth_header: 'bearer',
+          model: 'model-large',
+          effort: 'medium',
+        },
+      },
+      roles: { conversation: 'main' },
+    },
+    imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+    definitions: { source: { kind: 'path', path: '/definitions' } },
+    time: { default_zone: 'europe/lisbon' },
+  };
+
+  const isSchemaValid = ctx.validate(config);
+  const isNixieValid = deploymentConfigSchema.safeParse(config).success;
+
+  expect(isSchemaValid).toBeFalse();
+  expect(isNixieValid).toBeTrue();
+});
+
+// The schema leaves out the rules that span keys, which nixie checks at start
+test('it accepts a role that names a missing profile, which a release build refuses', () => {
+  const ctx = setupTest();
+
+  const config = {
+    models: {
+      profiles: {
+        main: {
+          base_url: 'https://models.example.com',
+          credential: 'deployment:models',
+          auth_header: 'bearer',
+          model: 'model-large',
+          effort: 'medium',
+        },
+      },
+      roles: { conversation: 'main', task: 'spare' },
+    },
+    imp: { url: 'https://impd.example.com', host_addresses: ['192.0.2.10/32'] },
+    definitions: { source: { kind: 'path', path: '/definitions' } },
+  };
+
+  const isSchemaValid = ctx.validate(config);
+  const isNixieValid = deploymentConfigSchema.safeParse(config).success;
+
+  expect(isSchemaValid).toBeTrue();
+  expect(isNixieValid).toBeFalse();
 });
