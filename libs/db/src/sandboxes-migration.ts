@@ -10,6 +10,7 @@ export const sandboxesMigration: Migration = {
       sandbox_id text primary key,
       adapter text not null,
       owner text not null,
+      nickname text,
       kind text not null,
       state text not null check (state in ('awake', 'sleeping')),
       spec text not null check (json_valid(spec)),
