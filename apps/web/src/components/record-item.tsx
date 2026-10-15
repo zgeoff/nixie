@@ -25,7 +25,11 @@ export function RecordItem(props: RecordItemProps): ReactNode {
       {text === undefined ? <span className={gap}>Forgotten</span> : null}
       {text !== undefined && isYours ? <span className={message}>{text}</span> : null}
       {text !== undefined && isYours && images > 0 ? (
-        <MessageImages count={images} sequence={props.record.sequence} thread={props.record.thread} />
+        <MessageImages
+          count={images}
+          sequence={props.record.sequence}
+          thread={props.record.thread}
+        />
       ) : null}
       {text !== undefined && !isYours ? <ReplyText text={text} /> : null}
       {forgettableKinds.has(props.record.kind) ? (

@@ -73,7 +73,9 @@ test('it attaches an image from the photo picker, shows it, and sends the scaled
   const user = userEvent.setup();
   const onSend = mock<(message: ComposedMessage) => void>();
 
-  const scaled = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'image.jpg', { type: 'image/jpeg' });
+  const scaled = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'image.jpg', {
+    type: 'image/jpeg',
+  });
 
   const normalizeImage = mock<(image: File) => Promise<File>>(() => Promise.resolve(scaled));
   const rendered = render(<Composer normalizeImage={normalizeImage} onSend={onSend} />);
@@ -97,7 +99,9 @@ test('it attaches an image from the photo picker, shows it, and sends the scaled
 test('it attaches a photo from the camera', async () => {
   const user = userEvent.setup();
 
-  const scaled = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'image.jpg', { type: 'image/jpeg' });
+  const scaled = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'image.jpg', {
+    type: 'image/jpeg',
+  });
 
   const rendered = render(
     <Composer normalizeImage={() => Promise.resolve(scaled)} onSend={mock()} />,
