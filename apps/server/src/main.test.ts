@@ -265,6 +265,44 @@ test('it answers a message with a reply that used a tool, with each step in the 
   );
 }, 60_000);
 
+test('it completes a turn that calls a tool from the test sandbox the configuration selects', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__time_now', input: {} } },
+    { text: 'It is just past noon in Reykjavik.' },
+  );
+
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'What time is it in Reykjavik?',
+    thread: 'conversation',
+    timeZone: 'Atlantic/Reykjavik',
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
+  });
+
+  const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+  // the test sandbox keeps a directory per sandbox in the data directory, and imp keeps none there
+  expect(ctx.readSandboxIDs()).resolves.not.toBeEmpty();
+  expect(page.records.at(-1)?.kind).toBe('task.step_committed');
+
+  expect(page.records.find((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({
+    outcome: 'result',
+    content: { result: { timeZone: 'Atlantic/Reykjavik' } },
+  });
+
+  expect(page.records.find((record) => record.kind === 'model.reply')?.message?.text).toBe(
+    'It is just past noon in Reykjavik.',
+  );
+}, 60_000);
+
 test('it shows the model when each message was sent, in its own zone or the default one', async () => {
   const ctx = await setupTest();
 

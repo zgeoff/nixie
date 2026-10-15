@@ -33,8 +33,11 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'writer.publish.after': 'writer.publish.after',
 };
 
-// The IDs that only a test build may hold: every fault point, and the test rule's ID.
+// The IDs that only a test build may hold: every fault point, the test rule's ID, and a text that
+// only the test sandbox holds, the error of its tool relay, so the release build refuses a bundle
+// that could run a guest with no isolation.
 export const testBuildIDs: readonly string[] = [
   ...new Set(Object.values(faultPointTexts)),
   'test.allow-send',
+  'the tool relay has no TCP address',
 ];

@@ -116,5 +116,5 @@ has, not what happened.
   encrypted fields under the record's own key, never in its plain payload, and no projection reads
   them.
 - **Test builds.** One compile-time flag marks a test build. The release bundle drops every branch
-  behind it with its imports, so the process sandbox double, the crash-test fault points and the
-  test policy rule never ship.
+  behind it with its imports, so the test sandbox, the crash-test fault points and the test policy
+  rule never ship.

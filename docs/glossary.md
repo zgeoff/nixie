@@ -70,6 +70,7 @@ one person a nixie deployment works for, and the architecture docs call that per
 | coding adapter  | How nixie starts and steers coding sessions, with atc first                                  |
 | sandbox adapter | How nixie runs sandboxed work, with imp as the reference and containers as an alternative    |
 | imp             | A sandboxed microVM, from the imp project, that runs workers, the conversation and code runs |
+| test sandbox    | The test-build sandbox adapter that runs each guest as a local process, with no isolation    |
 | grant           | A credential that imp's broker injects into one imp, so the guest sees only a placeholder    |
 | binding         | The link between a connector and the credential it uses                                      |
 | disconnect      | Stop nixie's use of a credential it cannot delete at its source                              |

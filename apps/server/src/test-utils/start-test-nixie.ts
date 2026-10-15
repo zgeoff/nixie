@@ -76,6 +76,9 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
     config: options.extraConfig ?? [],
     secrets: options.extraSecrets ?? [],
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
+
+    // a release bundle refuses the test sandbox, so it runs on imp, which it finds down
+    sandboxAdapter: options.entry === undefined ? 'test' : 'imp',
   });
 
   return startNixieRun({ dir, model, files, entry: options.entry, stack });

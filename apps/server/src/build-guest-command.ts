@@ -1,11 +1,13 @@
 import { join } from 'node:path';
 import type { GuestCommand } from '@heynixie/models';
+import type { SandboxAdapter } from '@heynixie/sandbox';
+import { isTestSandbox } from './is-test-sandbox';
 
 // The conversation image runs its guest from /app as the user nixie, for the conversation and each
-// system task on that image. A test build's process double runs the guest's source from the
-// workspace with the test's own Bun, under the sandbox's own directory as its home.
-export function buildGuestCommand(): GuestCommand {
-  if (NIXIE_TEST_BUILD) {
+// system task on that image. The test sandbox runs the guest's source from the workspace with
+// nixie's own Bun, under the sandbox's own directory as its home.
+export function buildGuestCommand(adapter: Pick<SandboxAdapter, 'id'>): GuestCommand {
+  if (isTestSandbox(adapter)) {
     return {
       argv: [process.execPath, join(import.meta.dir, '../../../guests/conversation/src/main.ts')],
       env: {},

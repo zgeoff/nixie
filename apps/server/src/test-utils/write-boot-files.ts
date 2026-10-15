@@ -21,6 +21,10 @@ export interface BootFileExtras {
 
   // the server section's log level, which the configuration leaves at its default when unset
   readonly logLevel?: LogLevel;
+
+  // the sandbox adapter the configuration selects, the test sandbox when unset; a release bundle
+  // refuses the test sandbox, so a test that runs one names imp
+  readonly sandboxAdapter?: 'imp' | 'test';
 }
 
 // Writes what nixie needs to start in a test directory: the definitions, a plaintext secrets file
@@ -39,7 +43,13 @@ export async function writeBootFiles(
   await writeSecrets(join(dir, 'secrets.yaml'), deploymentKey, extras.secrets);
   await writeManifest(join(dir, 'sandbox-manifest.json'));
   await writeStubSops(join(dir, 'sops'));
-  await writeConfig(dir, [...buildConfigLines(dir, modelURL, extras.logLevel), ...extras.config]);
+
+  await writeConfig(dir, [
+    ...buildConfigLines(dir, modelURL, extras.logLevel),
+    'sandbox:',
+    `  adapter: ${extras.sandboxAdapter ?? 'test'}`,
+    ...extras.config,
+  ]);
 
   return {
     dataDir,

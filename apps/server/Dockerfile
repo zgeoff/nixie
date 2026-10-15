@@ -9,7 +9,8 @@ FROM oven/bun:1.4.2@sha256:9114c058aeae42162ee16dd5084b95fe9473970bb6bcb5b232ab1
 WORKDIR /repo
 COPY . .
 
-# the release build exits 1 when the bundle holds a fault point ID or the test rule's ID
+# the release build exits 1 when the bundle holds a fault point ID, the test rule's ID or the test
+# sandbox
 RUN bun install --frozen-lockfile --ignore-scripts \
   && bun apps/server/src/run-release-build.ts /out/app
 

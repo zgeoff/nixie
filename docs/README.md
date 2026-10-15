@@ -73,7 +73,7 @@ below, and planned work lives in Linear.
 - [Tool calls](architecture/connectors/tool-calls.md) — one endpoint per run, tool definitions, the
   call steps, and the records of each call
 - [Sandboxes](architecture/connectors/sandboxes.md) — kinds of work, records and recovery, the tool
-  route, the imp adapter and the process double
+  route, the imp adapter and the test sandbox
 - [Web fetch](architecture/connectors/web-fetch.md) — the fetch sandbox, the fetcher's address
   checks, the limits and the result
 - [Time](architecture/connectors/time.md) — the time zone on each message, and the time tool that

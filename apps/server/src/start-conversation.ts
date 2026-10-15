@@ -71,7 +71,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     toolNames: options.toolNames,
     image: options.image,
     limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
-    command: buildGuestCommand(),
+    command: buildGuestCommand(options.sandboxes),
     getSystemPrompt: options.getSystemPrompt,
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
     ...(options.status === undefined ? {} : { status: options.status }),

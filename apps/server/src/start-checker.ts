@@ -4,6 +4,7 @@ import { resolveModelCredentials, resolveRoleProfile, startCheckerRunner } from 
 import type { Logger } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import invariant from 'tiny-invariant';
+import { isTestSandbox } from './is-test-sandbox';
 
 export interface CheckerOptions {
   readonly models: ModelsConfig;
@@ -30,16 +31,16 @@ export function startChecker(options: CheckerOptions): Promise<RunCheck> {
     sandboxes: options.sandboxes,
     image: options.image,
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
-    command: buildCheckCommand(),
+    command: buildCheckCommand(options.sandboxes),
     timeoutMs: options.timeoutMs,
     log: options.log,
   });
 }
 
-// The check guest runs from the conversation image's /app as the user nixie, and a test build's
-// process double runs its source from the workspace with the test's own Bun.
-function buildCheckCommand(): GuestCommand {
-  if (NIXIE_TEST_BUILD) {
+// The check guest runs from the conversation image's /app as the user nixie, and the test sandbox
+// runs its source from the workspace with nixie's own Bun.
+function buildCheckCommand(adapter: Pick<SandboxAdapter, 'id'>): GuestCommand {
+  if (isTestSandbox(adapter)) {
     return {
       argv: [process.execPath, join(import.meta.dir, '../../../guests/conversation/src/check.ts')],
       env: {},

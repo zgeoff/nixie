@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Sandbox, SandboxSpec } from '@heynixie/sandbox';
+import type { Sandbox, SandboxAdapter, SandboxSpec } from '@heynixie/sandbox';
 import { SandboxSpecRefusedError } from '@heynixie/sandbox';
 import {
   buildMockGrantSpec,
@@ -34,18 +34,23 @@ async function setupTest(config: SetupConfig = {}) {
 
   startStubToolEndpoint(join(rootDir, 'tools.sock'));
 
-  const buildAdapter = () =>
+  // a test that needs the host's environment passes it here, as the server passes its own
+  const buildAdapter = (hostEnv: Readonly<Record<string, string>> = {}) =>
     buildProcessSandboxAdapter({
       recorder: recorder.recorder,
       rootDir,
       toolTarget: () => ({ path: join(rootDir, 'tools.sock') }),
+      hostEnv,
       ...(config.killGraceMs === undefined ? {} : { killGraceMs: config.killGraceMs }),
     });
 
   const adapter = buildAdapter();
 
-  const createSandbox = async (spec: SandboxSpec): Promise<Sandbox> => {
-    const sandbox = await adapter.create(spec);
+  const createSandbox = async (
+    spec: SandboxSpec,
+    on: SandboxAdapter = adapter,
+  ): Promise<Sandbox> => {
+    const sandbox = await on.create(spec);
 
     stack.defer(() => sandbox.destroy());
 
@@ -192,6 +197,43 @@ test('it passes the grant placeholders and keeps the loopback on NO_PROXY', asyn
   expect(new TextDecoder().decode(result.stdout.bytes)).toBe(
     'broker-placeholder example.com,127.0.0.1,localhost\n',
   );
+});
+
+test("it passes the host's broker variables to a guest with a grant", async () => {
+  const ctx = await setupTest();
+
+  const adapter = ctx.buildAdapter({
+    HTTPS_PROXY: 'http://10.0.0.5:7081',
+    NODE_EXTRA_CA_CERTS: '/etc/broker/ca.pem',
+    NO_PROXY: 'internal.example',
+    TOKEN: 'host-only',
+  });
+
+  const sandbox = await ctx.createSandbox(
+    buildMockSandboxSpec({
+      grants: [buildMockGrantSpec({ env: { ANTHROPIC_API_KEY: 'broker-placeholder' } })],
+    }),
+    adapter,
+  );
+
+  const result = await sandbox.exec({
+    argv: ['sh', '-c', 'echo "$HTTPS_PROXY $NODE_EXTRA_CA_CERTS $NO_PROXY [$TOKEN]"'],
+  });
+
+  expect(new TextDecoder().decode(result.stdout.bytes)).toBe(
+    'http://10.0.0.5:7081 /etc/broker/ca.pem internal.example,127.0.0.1,localhost []\n',
+  );
+});
+
+test('it passes no broker variable to a guest without a grant', async () => {
+  const ctx = await setupTest();
+
+  const adapter = ctx.buildAdapter({ HTTPS_PROXY: 'http://10.0.0.5:7081' });
+
+  const sandbox = await ctx.createSandbox(buildMockSandboxSpec({ grants: [] }), adapter);
+  const result = await sandbox.exec({ argv: ['sh', '-c', 'echo "[$HTTPS_PROXY]"'] });
+
+  expect(new TextDecoder().decode(result.stdout.bytes)).toBe('[]\n');
 });
 
 test('it carries framed messages both ways on a spawn stream', async () => {

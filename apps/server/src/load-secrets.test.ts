@@ -40,6 +40,18 @@ test('it keeps the deployment key, the impd token and the model credentials', as
   expect(deploymentKey.algorithm).toMatchObject({ name: 'AES-KW', length: 256 });
 });
 
+test('it keeps no impd token when the secrets file holds none', async () => {
+  const ctx = await setupTest();
+
+  const key = Buffer.alloc(32, 7).toString('base64');
+
+  await writeFile(ctx.path, `deployment_key: ${key}\n`);
+
+  const secrets = await loadSecrets({ path: ctx.path, sopsArgv: ctx.sopsArgv });
+
+  expect(secrets.impdToken).toBeNull();
+});
+
 test('it keeps the private settings', async () => {
   const ctx = await setupTest();
 
