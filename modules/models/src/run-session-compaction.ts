@@ -7,6 +7,7 @@ import { countTextTokens } from './count-text-tokens';
 import { formatMessageTime } from './format-message-time';
 import { renderCompactionInstruction } from './render-compaction-instruction';
 import { renderSummaryCut } from './render-summary-cut';
+import { renderSystemPrompt } from './render-system-prompt';
 import type { GuestSummary } from './run-guest-summary';
 import { runGuestSummary } from './run-guest-summary';
 import type { ConversationRun } from './types';
@@ -151,7 +152,9 @@ function runSummaryCall(
       type: 'summarize',
       profile: run.turnProfile,
       resume: call.resume,
-      systemPrompt: run.getSystemPrompt(),
+      systemPrompt: renderSystemPrompt(run.getSystemPrompt(), {
+        ownerName: run.memorySettings.ownerName,
+      }),
       instruction: call.instruction,
     },
     signal: request.signal,

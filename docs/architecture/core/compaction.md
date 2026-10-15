@@ -31,8 +31,10 @@ flowchart LR
 2. A step whose session's last turn ended past the threshold runs the compaction before it takes the
    inbox, so a message that lands meanwhile waits for one model call.
 3. The guest forks the session at its committed boundary, as a turn does, and runs the compaction
-   instruction as one model call with no tools, so the summary cannot act. The tools are part of the
-   cached prefix, so the call writes its cache afresh rather than reading the turn's.
+   instruction as one model call with no tools, so the summary cannot act. The call keeps the turn's
+   system prompt, so the model reads a quoted system message in the history as text, as it does in a
+   turn. The tools are part of the cached prefix, so the call writes its cache afresh rather than
+   reading the turn's.
 4. The step commits the summary record and clears the session boundary in one transaction, and goes
    back to waiting. An unread inbox makes the task ready again, and the next turn opens a new
    session whose kind of start reads "after a compaction".
