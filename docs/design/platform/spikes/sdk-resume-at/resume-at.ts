@@ -33,10 +33,11 @@ function buildOptions(extra: Partial<Options>): Options {
     cwd,
     env: {
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
-      CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? '',
+      CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? 'placeholder',
       CLAUDE_CONFIG_DIR: configDir,
       HOME: process.env.HOME ?? '',
       PATH: process.env.PATH ?? '',
+      ...collectProxyEnv(),
     },
     maxTurns: 1,
     model: 'claude-haiku-4-5-20251001',
@@ -44,6 +45,16 @@ function buildOptions(extra: Partial<Options>): Options {
     tools: [],
     ...extra,
   };
+}
+
+// the egress proxy, where a broker adds the model credential
+function collectProxyEnv(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] =>
+        /proxy|^SSL_CERT_FILE$|^NODE_EXTRA_CA_CERTS$/i.test(entry[0]) && entry[1] !== undefined,
+    ),
+  );
 }
 
 function collect(result: TurnResult, message: SDKMessage): void {
