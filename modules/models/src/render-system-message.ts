@@ -7,7 +7,6 @@ export type SystemMessageType =
   | 'summary'
   | 'recent-turns'
   | 'events'
-  | 'memory-changes'
   | 'retrieved-memory'
   | 'pinned-memory-changes'
   | 'timer'

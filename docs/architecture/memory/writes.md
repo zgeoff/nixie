@@ -141,8 +141,8 @@ second proposer against the proposal and adds no proposal against the cap. It mo
 lapse to a full lapse window from the merge, so a fact proposed again never lapses sooner than a
 proposal of its own. The listing shows every source that proposed the change, and the second
 proposer's result says that it merged. A conversation whose proposal another source proposed again
-learns of it from [the change note](./writer.md#the-change-note). A reworded fact stays a proposal
-of its own: wording that differs is the model's to reconcile.
+learns of it from an event in [the events block](./writer.md#changes-the-conversation-hears-of). A
+reworded fact stays a proposal of its own: wording that differs is the model's to reconcile.
 
 An approval of a proposal for a new item first searches the retrieval index with its text. When an
 active item shares enough of the proposal's content words, the approval holds, applies nothing and

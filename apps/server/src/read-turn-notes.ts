@@ -1,8 +1,6 @@
 import { findMessageTimeZone } from '@heynixie/connectors';
 import type { Log } from '@heynixie/log';
-import type { MemoryStore } from '@heynixie/memory';
-import { readMemoryChangeNote } from '@heynixie/memory';
-import type { EventRegistry, SystemMessageType, TurnNote, TurnNoteRange } from '@heynixie/models';
+import type { EventRegistry, TurnNote, TurnNoteRange } from '@heynixie/models';
 import {
   formatMessageTime,
   readEventsBlock,
@@ -13,7 +11,6 @@ import type { Clock } from '@heynixie/tasks';
 
 export interface TurnNotesOptions {
   readonly log: Pick<Log, 'writer'>;
-  readonly store: Pick<MemoryStore, 'recall'>;
   readonly events: EventRegistry;
 
   // the clock the note's messages take their time from
@@ -27,8 +24,8 @@ export interface TurnNotesOptions {
 }
 
 // Reads the note before the next turn, or over a span a new session's recent turns cover: the
-// memory changes, then the events, each as a system message over one range. Times show in the zone
-// of the owner's newest message, as the time tool answers.
+// events block over one range, memory changes included, as a system message. Times show in the
+// zone of the owner's newest message, as the time tool answers.
 export async function readTurnNotes(
   options: TurnNotesOptions,
   span?: TurnNoteRange,
@@ -41,22 +38,19 @@ export async function readTurnNotes(
 
   const timeZone = messageZone ?? options.defaultZone;
 
-  const [memory, events] = await Promise.all([
-    readMemoryChangeNote(options.log, options.store, { cap: memoryNoteCap, range, isReplay }),
-    readEventsBlock(options.events, range, { ownerName: options.ownerName, timeZone, isReplay }),
-  ]);
+  const events = await readEventsBlock(options.events, range, {
+    ownerName: options.ownerName,
+    timeZone,
+    isReplay,
+  });
 
   const now = new Date(options.clock.now());
 
   const at = formatMessageTime(now, timeZone, { defaultZone: options.defaultZone, now });
 
-  const blocks = [
-    renderNoteMessage('memory-changes', at, memory.text),
-    renderNoteMessage('events', at, events.text),
-  ].filter((block) => block !== null);
-
   return {
-    text: blocks.length === 0 ? null : blocks.join('\n\n'),
+    text:
+      events.text === null ? null : renderSystemMessage({ type: 'events', at, body: events.text }),
     throughSequence: range.through,
     eventCount: events.count,
   };
@@ -68,14 +62,3 @@ function readNoteRange(
 ): Promise<TurnNoteRange> {
   return span === undefined ? readTurnNoteRange(log) : Promise.resolve(span);
 }
-
-function renderNoteMessage(
-  type: SystemMessageType,
-  at: string,
-  body: string | null,
-): string | null {
-  return body === null ? null : renderSystemMessage({ type, at, body });
-}
-
-// the memory note lists up to 5 changed items, then how many more
-const memoryNoteCap = 5;

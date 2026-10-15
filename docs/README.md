@@ -90,7 +90,8 @@ below, and planned work lives in Linear.
   to a version, a key per item, recall with its index and delivery lock, forgetting, and the model's
   tools
 - [The memory writer](architecture/memory/writer.md) — batches of conversation turns, the catch-up,
-  a fresh session per batch, publishing in one transaction, backoff, and the change note
+  a fresh session per batch, publishing in one transaction, backoff, and the memory changes the
+  conversation hears of
 - [Memory writes](architecture/memory/writes.md) — the content gate and its quote, token and checker
   checks, retirement intent, provenance, memory proposals and notices
 - [Memory consolidation](architecture/memory/consolidation.md) — the weekly diff of merges, rewrites

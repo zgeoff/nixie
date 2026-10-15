@@ -135,12 +135,18 @@ whether the catch-up still runs, and its last error with the time it tries again
 [The crash tests](../core/crash-tests.md) kill nixie at each boundary of a batch, in the catch-up
 and in a live batch, and check that the batch publishes once.
 
-## The change note
+## Changes the conversation hears of
 
-A conversation turn sees memory that changed outside it. Before each turn, the conversation reads
-the versions written since its last turn by anything but the conversation itself, such as a writer
-batch or an edit in the memory view, and puts a note of them before the user's message. The note
-lists changes up to a cap, then how many more, and counts the catch-up's items without listing them.
-It also names each of the conversation's pending proposals that another source proposed again since
-the last turn, so the conversation knows its proposal merged. The turn's end record holds the last
-sequence the note covered, so the next turn's note starts after it.
+A conversation turn hears of memory that changed outside it through
+[the events block](../core/conversation-turns.md#the-events-block), where memory registers three
+kinds of event. A memory change is an item that anything but the conversation itself wrote, such as
+a writer batch or an edit in the memory view. Each item lists once, at its latest version in the
+block's range, with its current text. The catch-up's items appear as one event that counts them,
+because the catch-up covers conversation the user already had. A merge names each of the
+conversation's pending proposals that another source proposed again, so the conversation knows its
+proposal merged and still waits.
+
+The block reads a listed item's text through a recall marked as a turn note's, and only after its
+cap, so the recall records no item the block leaves out. A rating binds to the newest recall without
+that mark, so the item list the turn's own recall gave stays the one the model rates. The recall
+leaves out an item that a forget has begun, so that item drops out of the block.
