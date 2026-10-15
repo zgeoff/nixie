@@ -77,7 +77,7 @@ test("it rates each item the turn's recall gave when a note about outside change
   expect(note.text).toInclude('Grows tomatoes on the balcony');
 
   expect(rated?.record.payload).toStrictEqual({
-    ratingID: expect.any(String),
+    ratingID: expect.toBeString(),
     recalledSequence: turnRecall.record.sequence,
     runID: 'run-1',
     ratings: [
