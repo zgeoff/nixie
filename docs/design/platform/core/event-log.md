@@ -161,5 +161,10 @@ per kind of record:
 | Tool results and worker transcripts | Payload expires after 1 year      | They are the bulk of the log, and a year covers any review |
 | Definition snapshots                | Kept while a record points at one | A replay always finds its definitions                      |
 
+A record inside the span of a kept moment never expires, whatever its kind, as
+[moments](../memory/moments.md#removal-and-forgetting) sets. **Why:** a span over an autonomous task
+is mostly tool results, so the 1-year default would empty the moment. A forget still wins over the
+span: forgetting a record inside it deletes the record's key, and the moment shows a gap there.
+
 An expired payload reads as expired in the live view and in an export, next to its envelope. The SDK
 transcript is a live cache, not part of the log, under [memory context](../memory/context.md).
