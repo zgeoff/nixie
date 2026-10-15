@@ -14,7 +14,16 @@ fields belong to.
 Each record with erasable fields gets a fresh AES-256-GCM key under a random key ID. The deployment
 key wraps it with AES-KW before it reaches the key store, so the key store alone decrypts nothing.
 The record's fields are encrypted with the key ID bound in as additional data, so a ciphertext
-copied onto another record fails to decrypt. A record with no free text gets no key.
+copied onto another record fails to decrypt. A record with no free text and no attachments gets no
+key.
+
+An attachment is a block of bytes that belongs to a record, such as an image the user sends with a
+message. Its bytes are too large for the erasable fields, so they sit in an attachments table of
+their own, keyed by the record's sequence and the attachment's position, and sealed under the
+record's own key. The key ID and the position are bound in as additional data, so an attachment
+copied onto another record, or moved to another position, fails to decrypt. The table is append-only
+like the log, and a forget leaves its rows in place, unreadable with the record's text. The payload
+holds only what describes an attachment, such as an image's media type, and never its bytes.
 
 The payload never holds free text, and no projection reads the erasable fields. One kind of value in
 a payload is ciphertext and not free text: a memory version's text, sealed under its item's key,

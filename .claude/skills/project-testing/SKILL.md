@@ -40,10 +40,12 @@ The root `bunfig.toml` preloads, in order:
 1. `libs/testing/src/define-test-build.ts`, which sets the global `NIXIE_TEST_BUILD` to `true`.
 2. `@zgeoff/bun-test-extended`, for the jest-extended matchers.
 3. `@zgeoff/bun-test-react`, for happy-dom and the Testing Library matchers.
-4. `apps/web/src/mocks/test-preload.ts`, which seeds faker, points happy-dom at the web origin, and
-   runs the web client's MSW server for the whole run. After each test it resets the handlers, the
-   mock store, the browser cookies, `localStorage`, the system's light or dark setting and the
-   document's theme attribute.
+4. `libs/testing/src/restore-native-form-data.ts`, which puts Bun's own `File` and `FormData` back
+   in place of happy-dom's, because Bun's fetch cannot send happy-dom's as a multipart body.
+5. `apps/web/src/mocks/test-preload.ts`, which seeds faker, points happy-dom at the web origin, sets
+   an in-memory IndexedDB from fake-indexeddb, and runs the web client's MSW server for the whole
+   run. After each test it resets the handlers, the mock store, the browser cookies, `localStorage`,
+   IndexedDB, the system's light or dark setting and the document's theme attribute.
 
 The MSW server passes a request to a loopback host or to a host under the reserved `.test` domain
 through to the network, and fails every other unmatched request. The web server suites call stub
