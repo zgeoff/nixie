@@ -43,6 +43,7 @@ test('it reads every section, with the default of each setting the file leaves o
       hostname: '0.0.0.0',
       port: 8080,
       secretsFile: '/etc/nixie/secrets.yaml',
+      logLevel: 'info',
     },
     owner: { name: null, pronouns: { they: 'they', their: 'their' } },
     agent: { names: [] },
@@ -212,6 +213,66 @@ test('it refuses to start with the conversation role unset', async () => {
 
   expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
     `nixie refuses the deployment configuration in ${ctx.path}:\nmodels.roles.conversation: the conversation role is unset, and nixie needs it to start`,
+  );
+});
+
+test('it reads the log level the server section sets', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'server:',
+      '  log_level: warn',
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '  roles:',
+      '    conversation: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.server.logLevel).toBe('warn');
+});
+
+test('it refuses a log level nixie has no name for', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'server:',
+      '  log_level: verbose',
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '  roles:',
+      '    conversation: chat-direct',
+      'imp:',
+      '  url: http://127.0.0.1:7070',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+    ].join('\n'),
+  );
+
+  expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
+    `nixie refuses the deployment configuration in ${ctx.path}:\nserver.log_level: Invalid option`,
   );
 });
 

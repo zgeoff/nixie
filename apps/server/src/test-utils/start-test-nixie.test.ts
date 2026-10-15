@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
+import { loadDeploymentConfig } from '../load-deployment-config';
 import { startTestNixie } from './start-test-nixie';
 
 test('it starts nixie in a test build and reaches ready', async () => {
@@ -102,4 +103,11 @@ test('it reads the ID of each sandbox the process double holds', async () => {
       .filter((record) => record.kind === 'sandbox.created')
       .map((record) => record.payload['sandboxID']),
   ).toIncludeAllMembers([...ids]);
+}, 60_000);
+
+test('it writes the log level it names into the configuration', async () => {
+  const nixie = await startTestNixie({ logLevel: 'warn' });
+  const config = await loadDeploymentConfig(nixie.configPath);
+
+  expect(config.server.logLevel).toBe('warn');
 }, 60_000);

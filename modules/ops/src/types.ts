@@ -1,3 +1,5 @@
+import type { logLevels } from './log-levels';
+
 // One part's answer to a health check. reason says why the part is not ready, and is null when it
 // is.
 export interface PartReport {
@@ -18,5 +20,8 @@ export interface HealthReport {
 // outcomes, never message text, tool arguments or results.
 export type LogFields = Readonly<Record<string, string | number | boolean | null>>;
 
-// Writes one JSON line to the log.
-export type Logger = (event: string, fields?: LogFields) => void;
+// How much an event matters, from least to most: a threshold below an event's level writes it.
+export type LogLevel = (typeof logLevels)[number];
+
+// Writes one JSON line to the log, at info unless the call names another level.
+export type Logger = (event: string, fields?: LogFields, level?: LogLevel) => void;

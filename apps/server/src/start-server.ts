@@ -1,6 +1,7 @@
 import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/ops';
+import { makeThresholdLogger } from '@heynixie/ops';
 import { buildCleanup } from './build-cleanup';
 import type { DeploymentConfig } from './deployment-config-schema';
 import { loadDeploymentConfig } from './load-deployment-config';
@@ -36,6 +37,9 @@ export interface Server {
   // resolves once a reset finished, after which the server stops and exits 0
   readonly reset: Promise<void>;
 
+  // the logger that writes only the events at the configured level or above it
+  readonly log: Logger;
+
   // stops claiming steps, gives steps in flight their grace to commit, then releases every part
   readonly stop: () => Promise<void>;
 }
@@ -53,6 +57,25 @@ export interface ServerPartsOptions extends ServerOptions {
 // opens anything, then takes the writer lock and a new writer epoch, and copies and migrates the
 // database, before the health endpoint listens.
 export async function startServer(options: ServerOptions): Promise<Server> {
+  const inputs = await loadServerInputs(options);
+
+  const cleanup = buildCleanup();
+
+  const writer = await startLoggedWriter(inputs.config.server.dataDir, inputs.log, cleanup);
+
+  try {
+    return await startServerParts({ ...options, ...inputs, writer, cleanup });
+  } catch (error) {
+    await cleanup.stop();
+
+    throw error;
+  }
+}
+
+type ServerInputs = Pick<ServerPartsOptions, 'config' | 'secrets' | 'images' | 'log'>;
+
+// From the configuration on, the server logs only the events at the configured level or above it.
+async function loadServerInputs(options: ServerOptions): Promise<ServerInputs> {
   const loaded = await loadDeploymentConfig(options.configPath);
 
   const secrets = await loadSecrets({
@@ -64,17 +87,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
 
   const images = await loadSandboxManifest(options.manifestPath);
 
-  const cleanup = buildCleanup();
-
-  const writer = await startLoggedWriter(config.server.dataDir, options.log, cleanup);
-
-  try {
-    return await startServerParts({ ...options, config, secrets, images, writer, cleanup });
-  } catch (error) {
-    await cleanup.stop();
-
-    throw error;
-  }
+  return { config, secrets, images, log: makeThresholdLogger(options.log, loaded.server.logLevel) };
 }
 
 async function startLoggedWriter(dataDir: string, log: Logger, cleanup: Cleanup): Promise<Writer> {

@@ -704,6 +704,46 @@ test('it lists a pending memory proposal and approves it through the memory comm
   });
 }, 60_000);
 
+test('it writes no info event, its stop included, at the warn level the configuration sets', async () => {
+  const nixie = await startTestNixie({ logLevel: 'warn' });
+
+  await waitForCondition(async () => {
+    const files = await nixie.readDataFiles();
+
+    return files.some((file) => file.name === 'nixie.db');
+  });
+
+  nixie.sendSignal('SIGTERM');
+
+  const exitCode = await nixie.exited;
+
+  expect(exitCode).toBe(0);
+
+  expect(
+    nixie
+      .readOutput()
+      .split('\n')
+      .filter((line) => line.startsWith('{')),
+  ).toStrictEqual([]);
+}, 60_000);
+
+test('it writes its info events, its stop included, at the default level', async () => {
+  const nixie = await startTestNixie();
+
+  await waitForCondition(async () => {
+    const files = await nixie.readDataFiles();
+
+    return files.some((file) => file.name === 'nixie.db');
+  });
+
+  nixie.sendSignal('SIGTERM');
+
+  const exitCode = await nixie.exited;
+
+  expect(exitCode).toBe(0);
+  expect(nixie.readOutput()).toInclude('"event":"stopped"');
+}, 60_000);
+
 test('it refuses to start on a key no module reads, and exits 1', async () => {
   const nixie = await startTestNixie({ extraConfig: ['tasks:', '  runner: 5'] });
   const exitCode = await nixie.exited;

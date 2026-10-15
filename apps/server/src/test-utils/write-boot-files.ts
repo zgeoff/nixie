@@ -1,5 +1,6 @@
 import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { LogLevel } from '@heynixie/ops';
 
 export interface BootFiles {
   readonly dataDir: string;
@@ -17,6 +18,9 @@ export interface BootFileExtras {
 
   // YAML lines appended to the secrets file
   readonly secrets: readonly string[];
+
+  // the server section's log level, which the configuration leaves at its default when unset
+  readonly logLevel?: LogLevel;
 }
 
 // Writes what nixie needs to start in a test directory: the definitions, a plaintext secrets file
@@ -35,7 +39,7 @@ export async function writeBootFiles(
   await writeSecrets(join(dir, 'secrets.yaml'), deploymentKey, extras.secrets);
   await writeManifest(join(dir, 'sandbox-manifest.json'));
   await writeStubSops(join(dir, 'sops'));
-  await writeConfig(dir, [...buildConfigLines(dir, modelURL), ...extras.config]);
+  await writeConfig(dir, [...buildConfigLines(dir, modelURL, extras.logLevel), ...extras.config]);
 
   return {
     dataDir,
@@ -87,13 +91,18 @@ async function writeStubSops(path: string): Promise<void> {
   await chmod(path, 0o755);
 }
 
-function buildConfigLines(dir: string, modelURL: string): readonly string[] {
+function buildConfigLines(
+  dir: string,
+  modelURL: string,
+  logLevel: LogLevel | undefined,
+): readonly string[] {
   return [
     'server:',
     `  data_dir: ${join(dir, 'data')}`,
     '  hostname: 127.0.0.1',
     '  port: 0',
     `  secrets_file: ${join(dir, 'secrets.yaml')}`,
+    ...(logLevel === undefined ? [] : [`  log_level: ${logLevel}`]),
     'models:',
     '  profiles:',
     '    scripted:',

@@ -8,7 +8,7 @@ import { startScriptedModel, waitForCondition } from '@heynixie/testing';
 import { z } from 'zod';
 import { readDataFiles } from './read-data-files';
 import { readTestRecords } from './read-test-records';
-import type { BootFiles } from './write-boot-files';
+import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
 
 export interface TestNixieOptions {
@@ -20,6 +20,9 @@ export interface TestNixieOptions {
 
   // a release bundle's main.js to run in place of a test build of the source
   readonly entry?: string;
+
+  // the server section's log level, info when unset
+  readonly logLevel?: NonNullable<BootFileExtras['logLevel']>;
 }
 
 export interface TestNixie extends BootFiles {
@@ -72,6 +75,7 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
   const files = await writeBootFiles(dir, model.url, {
     config: options.extraConfig ?? [],
     secrets: options.extraSecrets ?? [],
+    ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
   });
 
   return startNixieRun({ dir, model, files, entry: options.entry, stack });
