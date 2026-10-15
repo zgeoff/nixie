@@ -48,6 +48,7 @@ export async function writeMockForget(input: ForgetInput): Promise<ForgetResult>
 type ForgetTarget = NonNullable<ReturnType<typeof store.records.findFirst>>;
 
 // drops the target's text and adds the record.forgotten record that names it, once per record
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the store updates the record it found
 async function writeForgottenRecord(target: ForgetTarget, input: ForgetInput): Promise<Date> {
   const earlier = store.records.findFirst((query) =>
     query.where(
