@@ -32,7 +32,8 @@ bun report.ts runs/main.jsonl
 
 `run.ts` appends one JSON line per run and skips runs the output already holds. Git ignores
 `results/`. [runs/main.jsonl](runs/main.jsonl) holds the run behind the answer below, with each
-reply cut to its start and each call cut to its `connection` value.
+reply cut to its start and each call cut to its `connection` value. `report.ts` counts a run whose
+CLI call failed apart and leaves it out of every score, and that run holds no failed run.
 
 ### Cases and arms
 

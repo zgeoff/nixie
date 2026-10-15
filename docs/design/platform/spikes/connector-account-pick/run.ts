@@ -194,7 +194,12 @@ async function runJob(job: Job): Promise<Record<string, unknown> & { calls: unkn
       turns: parsed.num_turns ?? 0,
     };
   } catch {
-    return { ...base, costUSD: 0, error: `exit ${output.code}: ${output.stderr.slice(0, 300)}` };
+    return {
+      ...base,
+      costUSD: 0,
+      error: `exit ${output.code}: ${output.stderr.slice(0, 300)}`,
+      reply: '',
+    };
   }
 }
 

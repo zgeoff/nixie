@@ -1,7 +1,8 @@
 // Scores an account-pick run. Usage: bun report.ts <out dir or .jsonl file>
 // [--misses]. A named case scores the first call's `connection` value, and the value the last
 // successful call passed. An ask case passes when the model makes no call. An implied case names
-// no account but its content points at one, so a right pick and a question both count as safe.
+// no account but its content points at one, so a right pick and a question both count as safe. A
+// run whose CLI call failed counts as failed and stays out of every score.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -44,6 +45,7 @@ interface Tally {
   askRight: number;
   asks: number;
   cost: number;
+  failed: number;
   finalRight: number;
   firstRight: number;
   impliedAsked: number;
@@ -74,6 +76,11 @@ for (const row of rows) {
     tally = tallies.get(key) ?? buildTally();
   tally.runs += 1;
   tally.cost += row.costUSD;
+  if (row.error !== undefined) {
+    tally.failed += 1;
+    tallies.set(key, tally);
+    continue;
+  }
   if (score.kind === 'ask') {
     tally.asks += 1;
     tally.askRight += score.first === 'none' ? 1 : 0;
@@ -106,6 +113,7 @@ function buildTally(): Tally {
     askRight: 0,
     asks: 0,
     cost: 0,
+    failed: 0,
     finalRight: 0,
     firstRight: 0,
     impliedAsked: 0,
@@ -178,12 +186,12 @@ function printMiss(row: Row, score: Score): void {
 
 function printTable(): void {
   console.log(
-    '| Config and arm | Named: first call right | Named: final right | Invalid value | Wrong account | Ask cases: asked | Implied: right, asked | Runs | Cost |',
+    '| Config and arm | Named: first call right | Named: final right | Invalid value | Wrong account | Ask cases: asked | Implied: right, asked | Failed runs | Runs | Cost |',
   );
-  console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const [key, tally] of [...tallies].toSorted(([a], [b]) => a.localeCompare(b))) {
     console.log(
-      `| ${key} | ${formatShare(tally.firstRight, tally.named)} | ${formatShare(tally.finalRight, tally.named)} | ${tally.invalid} | ${tally.wrongAccount} | ${formatShare(tally.askRight, tally.asks)} | ${tally.impliedRight}, ${tally.impliedAsked} of ${tally.implieds} | ${tally.runs} | $${tally.cost.toFixed(3)} |`,
+      `| ${key} | ${formatShare(tally.firstRight, tally.named)} | ${formatShare(tally.finalRight, tally.named)} | ${tally.invalid} | ${tally.wrongAccount} | ${formatShare(tally.askRight, tally.asks)} | ${tally.impliedRight}, ${tally.impliedAsked} of ${tally.implieds} | ${tally.failed} | ${tally.runs} | $${tally.cost.toFixed(3)} |`,
     );
   }
   console.log('\nBy case kind (passes, as isPass scores them):');
