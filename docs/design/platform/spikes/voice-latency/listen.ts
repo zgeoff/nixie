@@ -26,7 +26,10 @@ export async function listenToCaller(
   const startedAt = performance.now();
   let speechEndAt: number | undefined, vadEndAt: number | undefined;
   for (let offset = 0, index = 0; offset < audio.length; offset += windowSamples, index++) {
-    await waitUntil(startedAt + index * windowMs);
+    // The window arrives at its place in the schedule, as a microphone delivers it. A late wake or
+    // a slow decode before it counts toward the latency, never against it.
+    const arrivesAt = startedAt + index * windowMs;
+    await waitUntil(arrivesAt);
     const window = audio.subarray(offset, offset + windowSamples);
     recognizer.accept(window);
     vad.accept(window);
@@ -35,7 +38,7 @@ export async function listenToCaller(
       vad.clearSegments();
     }
     if (speechEndAt === undefined && offset + windowSamples >= speechEndSample) {
-      speechEndAt = performance.now();
+      speechEndAt = arrivesAt;
     }
     if (speechEndAt !== undefined && vad.hasSegment()) {
       vadEndAt = performance.now();

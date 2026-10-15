@@ -106,7 +106,8 @@ console.log(
         formatStats(rows, 'firstAudioMs'),
         formatStats(rows, 'fullTextMs'),
         formatStats(rows, 'fullAudioMs'),
-        getQuantile(full, 0.5) <= gateMs ? 'yes' : 'no',
+        // A cell with no audio, such as the control, cannot meet or miss the gate.
+        full.length === 0 ? '-' : getQuantile(full, 0.5) <= gateMs ? 'yes' : 'no',
       ];
     }),
   ),
@@ -120,7 +121,9 @@ console.log(
       name,
       formatStats(rows, 'requestMs'),
       formatStats(rows, 'ttftStreamMs'),
-      `${collectNumbers(rows, 'gaps').filter((gaps) => gaps > 0).length} of ${rows.length} turns`,
+      collectNumbers(rows, 'gaps').length === 0
+        ? '-'
+        : `${collectNumbers(rows, 'gaps').filter((gaps) => gaps > 0).length} of ${rows.length} turns`,
       formatStats(rows.filter((row) => Number(row.gaps) > 0), 'gapMs'),
       formatStats(rows, 'ackWords'),
     ]),

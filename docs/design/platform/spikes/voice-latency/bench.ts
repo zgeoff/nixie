@@ -138,6 +138,7 @@ interface Reply {
 function startReply(tts: TextToSpeech): {
   addText: (delta: string, at: number) => void;
   finish: () => Promise<Sentence[]>;
+  flush: () => void;
   reply: Reply;
   stop: () => void;
 } {
@@ -145,6 +146,13 @@ function startReply(tts: TextToSpeech): {
   let pending = '',
     queue = Promise.resolve(),
     stopped = false;
+  // Queues the text after the last sentence break, once the turn's text is complete.
+  function flushPending(): void {
+    if (pending.trim()) {
+      speakSentence(pending.trim(), performance.now());
+      pending = '';
+    }
+  }
   function speakSentence(text: string, textAt: number): void {
     queue = queue.then(async () => {
       if (stopped) {
@@ -172,13 +180,11 @@ function startReply(tts: TextToSpeech): {
       }
     },
     finish: async () => {
-      if (pending.trim()) {
-        speakSentence(pending.trim(), performance.now());
-        pending = '';
-      }
+      flushPending();
       await queue;
       return reply.sentences;
     },
+    flush: flushPending,
     reply,
     stop: () => {
       stopped = true;
@@ -303,21 +309,27 @@ function writeTurnRow(kind: string, round: number, index: number, heard: Heard, 
   const end = heard.speechEndAt,
     first = reply.sentences[0],
     last = reply.sentences.at(-1),
-    playback = planPlayback(reply.sentences);
+    playback = planPlayback(reply.sentences),
+    // A control turn speaks nothing, so its row holds no audio or playback times.
+    audio = control
+      ? {}
+      : {
+          firstAudioMs: first ? first.readyAt - end : undefined,
+          fullAudioMs: last ? last.readyAt - end : undefined,
+          gapMs: playback.gapMs,
+          gaps: playback.gaps,
+          playEndMs: playback.playEndAt - end,
+        };
   writeRow({
+    ...audio,
     ackWords: first?.text.split(/\s+/).length,
     costUSD: reply.costUSD,
     endpointMs: heard.vadEndAt - end,
-    firstAudioMs: first ? first.readyAt - end : undefined,
     firstSentenceMs: first ? first.textAt - end : undefined,
     firstTextMs: reply.firstTextAt === undefined ? undefined : reply.firstTextAt - end,
-    fullAudioMs: last ? last.readyAt - end : undefined,
     fullTextMs: reply.resultAt === undefined ? undefined : reply.resultAt - end,
-    gapMs: playback.gapMs,
-    gaps: playback.gaps,
     kind,
     line: index,
-    playEndMs: playback.playEndAt - end,
     promptMs: heard.transcriptAt - end,
     // The SDK's own share: from the prompt to the CLI's model request.
     requestMs: reply.requestingAt === undefined ? undefined : reply.requestingAt - heard.transcriptAt,
@@ -358,23 +370,22 @@ for (let trial = 0; trial < bargeIns; trial++) {
     turnError: unknown;
   const turn = readTurn(speaker.addText).then((result) => {
     resultSeen = true;
+    // The last sentence joins the queue as soon as the text ends, as on an ordinary turn.
+    speaker.flush();
     return result;
   });
   turn.catch((error: unknown) => {
     turnError = error;
   });
-  // Waits for the first sentence's audio. A reply that ends without a sentence break flushes its
-  // text once the result is in, so a one-sentence reply still plays.
+  // Waits for the first sentence's audio. The result flushes any text after the last sentence
+  // break, so a one-sentence reply still plays; waiting on the whole queue here would start the
+  // barge-in late.
   while (speaker.reply.sentences.length === 0) {
     if (turnError !== undefined) {
       throw turnError;
     }
-    if (resultSeen) {
-      await speaker.finish();
-      if (speaker.reply.sentences.length === 0) {
-        throw new Error('the reply held no text');
-      }
-      break;
+    if (resultSeen && speaker.reply.text.trim() === '') {
+      throw new Error('the reply held no text');
     }
     await Bun.sleep(5);
   }
