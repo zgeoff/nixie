@@ -26,6 +26,10 @@ The [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) gives
 variables and steps. The design spikes under `docs/design/` install and run on their own, so the
 root `bunfig.toml` skips them.
 
+The web server's browser suite drives a headless Chrome or Chromium through `Bun.WebView`, so
+`bun test` needs one that Bun finds on `PATH`, in a standard install location, or at
+`BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome.
+
 Plain `bun test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
 `e2e/nixie/main.ts` as a child process and drive it through the crash harness.
 

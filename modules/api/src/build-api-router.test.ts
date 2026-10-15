@@ -17,7 +17,7 @@ async function setupTest() {
   return { ...api, db };
 }
 
-test('#sessions.enrol sets a host-only HttpOnly Secure SameSite=Strict cookie on Path=/', async () => {
+test('#sessions.enrol sets a host-only HttpOnly Secure SameSite=Lax cookie on Path=/', async () => {
   const ctx = await setupTest();
   const issued = await createEnrolmentCode(ctx.context);
 
@@ -40,7 +40,7 @@ test('#sessions.enrol sets a host-only HttpOnly Secure SameSite=Strict cookie on
 
   expect(cookie).toMatch(
     new RegExp(
-      `^${sessionCookieName}=[\\w-]{43}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=34560000$`,
+      `^${sessionCookieName}=[\\w-]{43}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=34560000$`,
       'u',
     ),
   );
@@ -261,7 +261,7 @@ test('#sessions.revoke drops the cookie of a browser that revokes its own sessio
   });
 
   expect(response.headers.get('set-cookie')).toBe(
-    `${sessionCookieName}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+    `${sessionCookieName}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
   );
 });
 

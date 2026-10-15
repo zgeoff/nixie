@@ -58,7 +58,10 @@ request without crossing sessions, and the API checks every call the same way, w
 comes from.
 
 When the API refuses the session as the page loads, the page renders the enrolment form instead of
-an error, and a successful enrolment loads the page again with the new cookie.
+an error, and a successful enrolment loads the page again with the new cookie. The browser makes
+that decision, never the server render. A browser can leave the session cookie off the first request
+of a page, so a refusal during the server render renders an empty page, and the browser calls the
+API again with its own cookie before it shows the conversation or the form.
 
 The web server answers two health endpoints before Start sees the request. Liveness returns 200
 while the process serves requests. Readiness calls the API with no session and returns 200 when the

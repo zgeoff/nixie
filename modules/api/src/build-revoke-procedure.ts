@@ -1,5 +1,5 @@
+import { renderSessionCookie } from '@heynixie/contract';
 import { apiImplementer } from './api-implementer';
-import { renderSessionCookie } from './render-session-cookie';
 import { requireCaller } from './require-caller';
 import type { APIContext } from './types';
 import { writeSessionRevocation } from './write-session-revocation';

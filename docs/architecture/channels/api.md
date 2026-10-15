@@ -30,10 +30,14 @@ start: it issues a fresh code on each call while no device holds a live session,
 can sign in, and issues nothing once one does. A host command issues a code at any time. A signed-in
 device issues codes through a checked action.
 
-A browser receives its token only in a host-only cookie that is `HttpOnly`, `Secure`,
-`SameSite=Strict` and `Path=/`, so no script reads it. The path matters because enrolment sets the
-cookie from an `/rpc` response, and a cookie with no path would reach only `/rpc`, so the web server
-would render every page signed out. The Android app receives its token in the enrolment output.
+A browser receives its token only in a host-only cookie that is `HttpOnly`, `Secure`, `SameSite=Lax`
+and `Path=/`, so no script reads it. The path matters because enrolment sets the cookie from an
+`/rpc` response, and a cookie with no path would reach only `/rpc`, so the web server would render
+every page signed out. The cookie is `Lax`, not `Strict`, because a launch of the installed web app
+from its icon is a navigation from outside the site, and the browser leaves a `Strict` cookie off
+that first request. `Lax` still keeps the cookie off a cross-site `POST`, and every procedure is a
+`POST` that also needs the client header. The Android app receives its token in the enrolment
+output.
 
 A session lapses after the idle limit passes with no call, and a call moves the session's last seen
 time at most once per short interval, so a busy client does not write on every call. A revoke keeps

@@ -51,7 +51,7 @@ for later devices. A code works once: a successful enrolment consumes it, and an
 after 15 min by default. nixie stores only a hash of each session token, and each session is a row
 in the [identity record](channel-adapter.md).
 
-The web client keeps its token in a host-only `HttpOnly`, `Secure`, `SameSite=Strict` cookie with
+The web client keeps its token in a host-only `HttpOnly`, `Secure`, `SameSite=Lax` cookie with
 `Path=/`, and every procedure requires a custom header that a cross-site form cannot send. The Expo
 app keeps its token in `expo-secure-store` and sends it as a bearer token. A session lapses after 30
 days without use by default. The client lists every session, and revoking one is a checked action.

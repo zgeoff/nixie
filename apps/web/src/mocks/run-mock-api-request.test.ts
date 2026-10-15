@@ -91,7 +91,7 @@ test('it sets a host-only session cookie on a cookie enrolment', async () => {
   const session = store.sessions.findFirst((query) => query.where({ deviceName: 'laptop' }));
 
   expect(response.headers.getSetCookie()).toStrictEqual([
-    `nixie_session=${session?.token}; Path=/; HttpOnly; Secure; SameSite=Strict`,
+    `nixie_session=${session?.token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=34560000`,
   ]);
 });
 

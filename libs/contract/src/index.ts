@@ -6,6 +6,7 @@ export { clientHeaderName } from './client-header-name';
 export { contract } from './contract';
 export { isTimeZone } from './is-time-zone';
 export { pickSpanSource } from './pick-span-source';
+export { renderSessionCookie } from './render-session-cookie';
 export { sessionCookieName } from './session-cookie-name';
 
 export type {

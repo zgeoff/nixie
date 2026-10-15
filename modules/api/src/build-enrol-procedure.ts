@@ -1,7 +1,7 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import { renderSessionCookie } from '@heynixie/contract';
 import { apiImplementer } from './api-implementer';
 import { claimEnrolmentCode } from './claim-enrolment-code';
-import { renderSessionCookie } from './render-session-cookie';
 import type { APIContext } from './types';
 
 // Builds enrolment, the one procedure that needs no device session. A browser gets its token only
