@@ -1,4 +1,4 @@
-import type { StatusEntry } from '@heynixie/models';
+import type { StatusEntry } from '@heynixie/sessions';
 import { nixieVersion } from './nixie-version';
 
 // The status entry for the nixie version that opened the session.

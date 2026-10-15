@@ -5,7 +5,7 @@ import {
   gboardTypedEvents,
 } from '@heynixie/contract/test-utils';
 import { writeRecords } from '@heynixie/log';
-import { makeChecker } from '@heynixie/models';
+import { makeChecker } from '@heynixie/sessions';
 import { buildTestClock, makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer, buildMockWriteCaller, startTestMemory } from './test-utils';

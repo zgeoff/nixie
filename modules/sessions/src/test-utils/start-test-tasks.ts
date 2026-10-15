@@ -27,7 +27,7 @@ export async function startTestTasks(): Promise<TestTasks> {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-models-'));
+  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-sessions-'));
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 

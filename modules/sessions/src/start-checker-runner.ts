@@ -1,12 +1,12 @@
+import { buildModelGrant, deriveModelSecret } from '@heynixie/models';
+import type { ResolvedProfile } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
 import type { Sandbox, SandboxAdapter, SandboxLimits, SandboxSpec } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
-import { buildModelGrant } from './build-model-grant';
-import { deriveModelSecret } from './derive-model-secret';
 import { makeChecker } from './make-checker';
 import type { GuestCommand } from './run-guest-turn';
 import { runSandboxCheck } from './run-sandbox-check';
-import type { ResolvedProfile, RunCheck } from './types';
+import type { RunCheck } from './types';
 
 export interface CheckerRunnerOptions {
   // the checker role's profile, read once at start

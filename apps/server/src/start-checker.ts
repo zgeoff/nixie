@@ -1,8 +1,10 @@
 import { join } from 'node:path';
-import type { GuestCommand, ModelSecrets, ModelsConfig, RunCheck } from '@heynixie/models';
-import { resolveModelCredentials, resolveRoleProfile, startCheckerRunner } from '@heynixie/models';
+import type { ModelSecrets, ModelsConfig } from '@heynixie/models';
+import { resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
+import type { GuestCommand, RunCheck } from '@heynixie/sessions';
+import { startCheckerRunner } from '@heynixie/sessions';
 import invariant from 'tiny-invariant';
 import { isTestSandbox } from './is-test-sandbox';
 

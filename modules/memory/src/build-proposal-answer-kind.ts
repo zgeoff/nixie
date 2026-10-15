@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/models';
+import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
 import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { MemoryProposals } from './gate-types';

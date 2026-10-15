@@ -1,6 +1,6 @@
 import { onTestFinished } from 'bun:test';
-import type { ConversationRunner, ConversationRunnerOptions } from '@heynixie/models';
 import { modelsConfigSchema } from '@heynixie/models';
+import type { ConversationRunner, ConversationRunnerOptions } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
 import { createConversationTask } from '@heynixie/tasks';
 import type { ScriptedModel } from '@heynixie/testing';

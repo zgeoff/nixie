@@ -65,6 +65,7 @@
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/sandbox-imp": "workspace:*",
         "@heynixie/sandbox-process": "workspace:*",
+        "@heynixie/sessions": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "elysia": "catalog:",
@@ -126,7 +127,7 @@
         "@anthropic-ai/claude-agent-sdk": "catalog:",
         "@heynixie/conversation": "workspace:*",
         "@heynixie/memory": "workspace:*",
-        "@heynixie/models": "workspace:*",
+        "@heynixie/sessions": "workspace:*",
         "zod": "catalog:",
       },
     },
@@ -273,8 +274,8 @@
       "dependencies": {
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
-        "@heynixie/models": "workspace:*",
         "@heynixie/retry": "workspace:*",
+        "@heynixie/sessions": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
@@ -292,20 +293,14 @@
       "name": "@heynixie/models",
       "version": "0.0.0",
       "dependencies": {
-        "@heynixie/contract": "workspace:*",
         "@heynixie/log": "workspace:*",
-        "@heynixie/ops": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
-        "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
-        "tiny-invariant": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
-        "@heynixie/testing": "workspace:*",
-        "kysely": "catalog:",
       },
     },
     "modules/ops": {
@@ -340,6 +335,26 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+      },
+    },
+    "modules/sessions": {
+      "name": "@heynixie/sessions",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/contract": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/models": "workspace:*",
+        "@heynixie/ops": "workspace:*",
+        "@heynixie/sandbox": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+        "kysely": "catalog:",
       },
     },
     "modules/tasks": {
@@ -587,6 +602,8 @@
     "@heynixie/sandbox-process": ["@heynixie/sandbox-process@workspace:adapters/sandbox-process"],
 
     "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
+
+    "@heynixie/sessions": ["@heynixie/sessions@workspace:modules/sessions"],
 
     "@heynixie/tasks": ["@heynixie/tasks@workspace:modules/tasks"],
 

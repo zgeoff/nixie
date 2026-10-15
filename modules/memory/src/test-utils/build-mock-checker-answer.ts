@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { CheckerAnswer } from '@heynixie/models';
+import type { CheckerAnswer } from '@heynixie/sessions';
 
 // An answer that confirms the write, with a reason and the checker's model ID.
 export function buildMockCheckerAnswer(overrides: Partial<CheckerAnswer> = {}): CheckerAnswer {

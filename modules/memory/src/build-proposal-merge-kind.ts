@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/models';
+import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/sessions';
 import type { MemoryOrigin, MemoryTables } from './types';
 
 // A write outside the conversation that proposed the same change as one of the conversation's

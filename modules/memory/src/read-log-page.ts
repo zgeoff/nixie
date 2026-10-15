@@ -1,6 +1,6 @@
 import type { JSONObject, Log, LogRecord, LogTables, RecordWithChanges } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { renderImageMarkers, renderOwnerText } from '@heynixie/models';
+import { renderImageMarkers, renderOwnerText } from '@heynixie/sessions';
 import { z } from 'zod';
 
 export interface LogPageQuery {

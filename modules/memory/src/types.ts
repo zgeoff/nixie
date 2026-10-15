@@ -1,6 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
-import type { MemoryApproval } from '@heynixie/models';
+import type { MemoryApproval } from '@heynixie/sessions';
 import type { Selectable } from 'kysely';
 import type {
   GateContext,

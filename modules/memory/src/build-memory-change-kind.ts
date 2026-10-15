@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import type { EventKind, NotedEvent } from '@heynixie/models';
+import type { EventKind, NotedEvent } from '@heynixie/sessions';
 import { conversationTaskID } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import type { OutsideVersion } from './read-outside-versions';

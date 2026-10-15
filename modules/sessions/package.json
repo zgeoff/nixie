@@ -1,0 +1,28 @@
+{
+  "name": "@heynixie/sessions",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/contract": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/models": "workspace:*",
+    "@heynixie/ops": "workspace:*",
+    "@heynixie/sandbox": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "@heynixie/tools": "workspace:*",
+    "@heynixie/wire": "workspace:*",
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*",
+    "kysely": "catalog:"
+  }
+}

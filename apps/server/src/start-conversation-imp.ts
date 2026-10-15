@@ -4,8 +4,8 @@ import {
   buildStartStatus,
   buildStartTimeStatus,
   buildStatusRegistry,
-} from '@heynixie/models';
-import type { SessionCleanupCause } from '@heynixie/models';
+} from '@heynixie/sessions';
+import type { SessionCleanupCause } from '@heynixie/sessions';
 import type { RunStep } from '@heynixie/tasks';
 import { buildVersionStatus } from './build-version-status';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';

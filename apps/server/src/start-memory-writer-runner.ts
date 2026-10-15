@@ -6,9 +6,10 @@ import {
   startMemoryWriter,
 } from '@heynixie/memory';
 import type { ModelSecrets, ModelsConfig, ResolvedProfile } from '@heynixie/models';
-import { resolveModelCredentials, resolveRoleProfile, startSessionRunner } from '@heynixie/models';
+import { resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { SandboxAdapter } from '@heynixie/sandbox';
+import { startSessionRunner } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ActionQueue } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';

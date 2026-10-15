@@ -1,8 +1,8 @@
 import type { RecordInput } from '@heynixie/log';
+import type { ModelRecordSource } from '@heynixie/models';
+import { buildModelRecord } from '@heynixie/models';
 import type { StepResult } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
-import type { ModelRecordSource } from './build-model-record';
-import { buildModelRecord } from './build-model-record';
 import { buildStepResult } from './build-step-result';
 import type { SessionTurn } from './run-planned-turn';
 import { runPlannedTurn } from './run-planned-turn';

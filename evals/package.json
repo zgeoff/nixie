@@ -10,7 +10,7 @@
     "@anthropic-ai/claude-agent-sdk": "catalog:",
     "@heynixie/conversation": "workspace:*",
     "@heynixie/memory": "workspace:*",
-    "@heynixie/models": "workspace:*",
+    "@heynixie/sessions": "workspace:*",
     "zod": "catalog:"
   }
 }

@@ -10,8 +10,10 @@ cache that makes the next turn cheaper. [Tasks](./tasks.md) covers steps and the
 [memory in context](../memory/context.md) covers the pinned core and the items each turn places,
 [session opening](./session-opening.md) covers what a new session opens with, and
 [compaction](./compaction.md) covers how nixie shrinks a session that grows past its threshold.
-`modules/models` holds the host side, `guests/conversation` holds the guest, and the turn frames
-between them live in `libs/wire`.
+`modules/sessions` holds the host side, `guests/conversation` holds the guest, and the turn frames
+between them live in `libs/wire`. The sessions package runs every model loop's sessions, the
+conversation's and the memory roles' alike, and takes each loop's profile from the models package,
+which holds only the profiles and the call cost.
 
 ## The guest and its sandbox
 

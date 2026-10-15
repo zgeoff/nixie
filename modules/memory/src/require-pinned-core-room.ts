@@ -1,6 +1,6 @@
 import type { ContentSource } from '@heynixie/log';
-import type { MemoryApproval } from '@heynixie/models';
-import { countTextTokens, renderMemoryItem } from '@heynixie/models';
+import type { MemoryApproval } from '@heynixie/sessions';
+import { countTextTokens, renderMemoryItem } from '@heynixie/sessions';
 import { PinnedCoreFullError } from './pinned-core-full-error';
 import type { MemoryContext, MemoryOrigin, RecalledItem } from './types';
 

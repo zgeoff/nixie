@@ -1,5 +1,5 @@
 import type { ContentSource } from '@heynixie/log';
-import type { RunCheck } from '@heynixie/models';
+import type { RunCheck } from '@heynixie/sessions';
 import type { Clock } from '@heynixie/tasks';
 import type { Selectable } from 'kysely';
 import type { reviewReasons } from './review-reasons';

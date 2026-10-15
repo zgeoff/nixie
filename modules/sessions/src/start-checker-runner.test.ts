@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { startCheckerRunner } from './start-checker-runner';
-import { buildMockModelProfile } from './test-utils/build-mock-model-profile';
 import { buildStubSandboxes } from './test-utils/build-stub-sandboxes';
 
 test('it starts the checker in a checker sandbox with a model grant, no egress and no tool route', async () => {

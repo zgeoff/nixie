@@ -1,5 +1,5 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
-import { buildEventRegistry, readEventsNote } from '@heynixie/models';
+import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
 import invariant from 'tiny-invariant';
 import { buildProposalMergeKind } from './build-proposal-merge-kind';
 import { startTestMemory } from './test-utils/start-test-memory';

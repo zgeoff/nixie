@@ -1,9 +1,9 @@
+import { buildModelGrant } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
 import type { Sandbox, SandboxAdapter, SandboxLimits, SecretSpec } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
-import { buildModelGrant } from './build-model-grant';
 import type { GuestCommand } from './run-guest-turn';
 import { writeReplacedSession } from './write-replaced-session';
 

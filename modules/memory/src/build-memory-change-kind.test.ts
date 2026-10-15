@@ -1,6 +1,6 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
-import { buildEventRegistry, readEventsNote } from '@heynixie/models';
+import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
 import invariant from 'tiny-invariant';
 import { buildMemoryChangeKind } from './build-memory-change-kind';
 import { buildProposalAnswerKind } from './build-proposal-answer-kind';

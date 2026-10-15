@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import type { EventKind } from '@heynixie/models';
+import type { EventKind } from '@heynixie/sessions';
 import { readOutsideVersions } from './read-outside-versions';
 
 // How many items the memory writer's catch-up took in over the range.

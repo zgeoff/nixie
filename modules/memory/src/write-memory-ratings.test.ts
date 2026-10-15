@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { buildEventRegistry, readEventsNote } from '@heynixie/models';
+import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
 import invariant from 'tiny-invariant';
 import { buildMemoryChangeKind } from './build-memory-change-kind';
 import { MemoryRatingError } from './memory-rating-error';

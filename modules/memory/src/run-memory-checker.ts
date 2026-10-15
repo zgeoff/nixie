@@ -1,5 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
-import type { CheckerAnswer } from '@heynixie/models';
+import type { CheckerAnswer } from '@heynixie/sessions';
 import { buildGateReview } from './build-gate-review';
 import type { QuoteEvidenceResult } from './find-quote-evidence';
 import type { ContentGateRequest, ContentGateResult } from './gate-types';

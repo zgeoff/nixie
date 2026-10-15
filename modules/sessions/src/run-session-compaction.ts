@@ -1,8 +1,8 @@
 import type { RecordInput } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import type { ModelRecordSource } from '@heynixie/models';
+import { buildModelRecord } from '@heynixie/models';
 import type { SessionPoint } from '@heynixie/wire';
-import type { ModelRecordSource } from './build-model-record';
-import { buildModelRecord } from './build-model-record';
 import { countTextTokens } from './count-text-tokens';
 import { formatMessageTime } from './format-message-time';
 import { renderCompactionInstruction } from './render-compaction-instruction';

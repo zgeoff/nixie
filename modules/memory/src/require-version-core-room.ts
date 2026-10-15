@@ -1,4 +1,4 @@
-import type { MemoryApproval } from '@heynixie/models';
+import type { MemoryApproval } from '@heynixie/sessions';
 import type { Kysely } from 'kysely';
 import { buildVersionApproval } from './build-version-approval';
 import { readPinnedItems } from './read-pinned-items';

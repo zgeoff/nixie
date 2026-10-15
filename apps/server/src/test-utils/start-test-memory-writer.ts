@@ -15,7 +15,6 @@ import {
   writerConfigSchema,
 } from '@heynixie/memory';
 import { buildStubGate } from '@heynixie/memory/test-utils';
-import type { RunCheck } from '@heynixie/models';
 import { modelsConfigSchema } from '@heynixie/models';
 import type { RunStep, TasksContext } from '@heynixie/tasks';
 import type { ScriptedModel, TestClock } from '@heynixie/testing';
@@ -53,7 +52,7 @@ export interface TestMemoryWriter {
 export interface TestMemoryWriterOptions {
   // the store's checker; with one, the writer checks its batches through the store's own batch
   // gate, else through the stub gate while the store's checker fails closed
-  readonly check?: RunCheck;
+  readonly check?: GateContext['check'];
 
   // the writer's settings as the deployment configuration writes them, over one message a batch
   readonly writerConfig?: WriterConfigInput;
@@ -121,7 +120,7 @@ export async function startTestMemoryWriter(
 interface StoreWiring {
   readonly context: TasksContext;
   readonly clock: TestClock;
-  readonly check: RunCheck | undefined;
+  readonly check: GateContext['check'] | undefined;
 }
 
 // the store, whose checker fails closed unless the test passes one
