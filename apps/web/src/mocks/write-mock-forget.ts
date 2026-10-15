@@ -11,14 +11,18 @@ type ForgetResult =
   | { readonly status: 'not_found' }
   | { readonly status: 'reused' };
 
-// Forgets your message or a reply in the mock store as nixie's API does: it drops the text and adds
-// the record.forgotten record that names it. A retry, or a second forget of the record, answers
-// with the first time, and an ID that forgot another record is reused.
+// Forgets your message or a reply in the mock store as nixie's API does. A retry answers with the
+// first result, and an ID that forgot another record is reused. A second forget of the record keeps
+// the first record.forgotten record and its time.
 export async function writeMockForget(input: ForgetInput): Promise<ForgetResult> {
-  const earlier = findEarlierForget(input);
+  const earlier = store.forgetActions.findFirst((query) =>
+    query.where({ clientActionID: input.clientActionID }),
+  );
 
-  if (earlier !== null) {
-    return earlier;
+  if (earlier !== undefined) {
+    return earlier.sequence === input.sequence && earlier.thread === input.thread
+      ? { status: 'forgotten', forgottenAt: earlier.forgottenAt }
+      : { status: 'reused' };
   }
 
   const target = store.records.findFirst((query) =>
@@ -34,6 +38,27 @@ export async function writeMockForget(input: ForgetInput): Promise<ForgetResult>
     return { status: 'not_found' };
   }
 
+  const forgottenAt = await writeForgottenRecord(target, input);
+
+  await store.forgetActions.create({ ...input, forgottenAt });
+
+  return { status: 'forgotten', forgottenAt };
+}
+
+type ForgetTarget = NonNullable<ReturnType<typeof store.records.findFirst>>;
+
+// drops the target's text and adds the record.forgotten record that names it, once per record
+async function writeForgottenRecord(target: ForgetTarget, input: ForgetInput): Promise<Date> {
+  const earlier = store.records.findFirst((query) =>
+    query.where(
+      (record) => record.kind === 'record.forgotten' && record.forget?.sequence === input.sequence,
+    ),
+  );
+
+  if (earlier !== undefined) {
+    return earlier.recordedAt;
+  }
+
   await store.records.update(target, {
     data(draft) {
       delete draft.message;
@@ -41,32 +66,10 @@ export async function writeMockForget(input: ForgetInput): Promise<ForgetResult>
   });
 
   const forgotten = await store.records.create({
-    clientActionID: input.clientActionID,
     forget: { sequence: input.sequence },
     kind: 'record.forgotten',
     thread: input.thread,
   });
 
-  return { status: 'forgotten', forgottenAt: forgotten.recordedAt };
-}
-
-// the answer of the forget that came before, by the same client action ID or for the same record
-function findEarlierForget(input: ForgetInput): ForgetResult | null {
-  const byAction = store.records.findFirst((query) =>
-    query.where({ clientActionID: input.clientActionID, kind: 'record.forgotten' }),
-  );
-
-  if (byAction !== undefined) {
-    return byAction.forget?.sequence === input.sequence
-      ? { status: 'forgotten', forgottenAt: byAction.recordedAt }
-      : { status: 'reused' };
-  }
-
-  const byRecord = store.records.findFirst((query) =>
-    query.where(
-      (record) => record.kind === 'record.forgotten' && record.forget?.sequence === input.sequence,
-    ),
-  );
-
-  return byRecord === undefined ? null : { status: 'forgotten', forgottenAt: byRecord.recordedAt };
+  return forgotten.recordedAt;
 }
