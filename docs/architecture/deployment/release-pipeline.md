@@ -101,8 +101,11 @@ contract that changes only in step with the readers.
 - **`config.schema.json`** is the JSON Schema of `config.yaml`, which a deployment checks its
   configuration against before it rolls out. The server's configuration schema generates it, and a
   test fails when the committed file differs, so every release tag holds the schema of its own
-  build. It covers the shape of each key and leaves out the rules that span keys, such as a role
-  that points at a missing profile, which nixie refuses at start.
+  build. It describes what a release build accepts, so it refuses the test sandbox, and a test
+  checks that it agrees with the release build's own validator. It covers every rule on a single key
+  and leaves out the rules that span keys, such as a role that points at a missing profile, which
+  nixie refuses at start. Its time zones are the canonical names, so it refuses an alias that nixie
+  reads and never passes a zone that nixie refuses.
 
 The assets stage runs last because a deployment that finds `release.json` pins the images it lists,
 so every image must carry its version tag first. The release notes keep the same facts for a person,
