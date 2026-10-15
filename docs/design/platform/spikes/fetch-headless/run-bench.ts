@@ -1,12 +1,19 @@
 // Runs each read in a new container held to the fetch sandbox's limits (1 vCPU, 512 MiB, no swap),
-// one at a time, and appends each result line to the output file.
+// one at a time, and appends each result line to the output file. A container that outlives its
+// read's deadline is killed, so one stuck read never holds up the reads after it.
 //   bun run-bench.ts <output.jsonl> <full|shell>:<plain|masked>[,...] <url> [<url>...]
+import { randomUUID } from 'node:crypto';
 import { appendFile } from 'node:fs/promises';
 
 const [output = '', combosText = '', ...urls] = process.argv.slice(2);
 const combos = combosText.split(',').map((combo) => combo.split(':') as [string, string]);
 
 const limits = ['--cpus=1', '--memory=512m', '--memory-swap=512m'];
+const deadlineMs = 30_000;
+
+// the time a container may take past the read's deadline: its start, the browser's start and the
+// read's own grace
+const containerGraceMs = 30_000;
 
 for (const url of urls) {
   for (const [engine, variant] of combos) {
@@ -22,17 +29,41 @@ for (const url of urls) {
 }
 
 async function runRead(engine: string, variant: string, url: string): Promise<Record<string, unknown>> {
+  const name = `fetch-headless-${randomUUID()}`;
   const child = Bun.spawn(
-    ['docker', 'run', '--rm', ...limits, `fetch-headless:${engine}`, 'read-in-browser.ts', url, variant, '30000'],
+    [
+      'docker',
+      'run',
+      '--rm',
+      `--name=${name}`,
+      ...limits,
+      `fetch-headless:${engine}`,
+      'read-in-browser.ts',
+      url,
+      variant,
+      String(deadlineMs),
+    ],
     { stdout: 'pipe', stderr: 'pipe' },
   );
+
+  // killing the docker client leaves its container running, so the timer kills the container
+  const timeout = { killed: false };
+  const timer = setTimeout(() => {
+    timeout.killed = true;
+    Bun.spawnSync(['docker', 'kill', name], { stdout: 'ignore', stderr: 'ignore' });
+  }, deadlineMs + containerGraceMs);
 
   const [stdout, stderr, code] = await Promise.all([
     new Response(child.stdout).text(),
     new Response(child.stderr).text(),
     child.exited,
   ]);
+  clearTimeout(timer);
   const last = stdout.trim().split('\n').at(-1) ?? '';
+
+  if (timeout.killed) {
+    return { url, engine, variant, passed: false, error: `the container passed its ${deadlineMs} ms deadline` };
+  }
 
   if (code !== 0 || !last.startsWith('{')) {
     return { url, engine, variant, passed: false, error: `exit ${code}: ${stderr.trim().split('\n').at(-1) ?? ''}` };
