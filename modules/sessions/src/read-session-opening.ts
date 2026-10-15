@@ -1,8 +1,8 @@
+import { findSessionSummary } from '@heynixie/compaction';
 import type { TasksContext } from '@heynixie/tasks';
 import type { SystemMessageType } from '@heynixie/wire';
 import { renderSystemMessage } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
-import { findSessionSummary } from './find-session-summary';
 import { formatMessageTime } from './format-message-time';
 import { readRecalledThrough } from './read-recalled-through';
 import type { HistoryTurn } from './read-recent-turns';

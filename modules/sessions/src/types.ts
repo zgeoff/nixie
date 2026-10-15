@@ -1,3 +1,4 @@
+import type { CompactionSettings } from '@heynixie/compaction';
 import type { ContentSource, RecordInput } from '@heynixie/log';
 import type { ResolvedProfile } from '@heynixie/models';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
@@ -96,16 +97,6 @@ export interface ConversationMemorySettings {
   // the names the owner calls the agent by, which retrieval leaves out of the query with the
   // owner's name
   readonly agentNames: readonly string[];
-}
-
-// When nixie compacts the conversation's session, each setting tunable from the deployment
-// configuration.
-export interface CompactionSettings {
-  // the share of the profile's window at or past which a turn's end compacts the session
-  readonly threshold: number;
-
-  // the token cap of the summary the model writes, which its word target derives from
-  readonly summaryTokens: number;
 }
 
 // How your message's send time renders: the zone for a message that carries none, and the time

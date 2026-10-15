@@ -13,6 +13,7 @@
   "dependencies": {
     "@heynixie/actions": "workspace:*",
     "@heynixie/api": "workspace:*",
+    "@heynixie/compaction": "workspace:*",
     "@heynixie/connectors": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",

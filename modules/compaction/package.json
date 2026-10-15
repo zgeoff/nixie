@@ -1,0 +1,23 @@
+{
+  "name": "@heynixie/compaction",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/log": "workspace:*",
+    "@heynixie/models": "workspace:*",
+    "@heynixie/sandbox": "workspace:*",
+    "@heynixie/wire": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:"
+  }
+}

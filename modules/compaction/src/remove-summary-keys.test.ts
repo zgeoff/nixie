@@ -1,16 +1,16 @@
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
+import { startTestLog } from '@heynixie/log/test-utils';
 import { removeSummaryKeys } from './remove-summary-keys';
-import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
-  return { tasks: await startTestTasks() };
+  return { log: await startTestLog() };
 }
 
 test('it shreds every summary on the thread', async () => {
   const ctx = await setupTest();
 
-  await writeRecords(ctx.tasks.context.log, [
+  await writeRecords(ctx.log.log, [
     {
       kind: 'model.session_summarized',
       definitions: { snapshotHash: 'sha256:test' },
@@ -27,9 +27,9 @@ test('it shreds every summary on the thread', async () => {
     },
   ]);
 
-  await removeSummaryKeys(ctx.tasks.context.log, 'conversation');
+  await removeSummaryKeys(ctx.log.log, 'conversation');
 
-  const entries = await readRecords(ctx.tasks.context.log, {
+  const entries = await readRecords(ctx.log.log, {
     afterSequence: 0,
     kinds: ['model.session_summarized'],
   });
@@ -43,7 +43,7 @@ test('it shreds every summary on the thread', async () => {
 test('it never removes the key of a reply or of another thread summary', async () => {
   const ctx = await setupTest();
 
-  await writeRecords(ctx.tasks.context.log, [
+  await writeRecords(ctx.log.log, [
     {
       kind: 'model.reply',
       definitions: { snapshotHash: 'sha256:test' },
@@ -60,9 +60,9 @@ test('it never removes the key of a reply or of another thread summary', async (
     },
   ]);
 
-  await removeSummaryKeys(ctx.tasks.context.log, 'conversation');
+  await removeSummaryKeys(ctx.log.log, 'conversation');
 
-  const entries = await readRecords(ctx.tasks.context.log, { afterSequence: 0 });
+  const entries = await readRecords(ctx.log.log, { afterSequence: 0 });
 
   expect(entries.map((entry) => entry.record.erasable.status)).toStrictEqual([
     'readable',
@@ -73,7 +73,7 @@ test('it never removes the key of a reply or of another thread summary', async (
 test('it runs again over summaries whose keys are already gone', async () => {
   const ctx = await setupTest();
 
-  await writeRecords(ctx.tasks.context.log, [
+  await writeRecords(ctx.log.log, [
     {
       kind: 'model.session_summarized',
       definitions: { snapshotHash: 'sha256:test' },
@@ -83,10 +83,10 @@ test('it runs again over summaries whose keys are already gone', async () => {
     },
   ]);
 
-  await removeSummaryKeys(ctx.tasks.context.log, 'conversation');
-  await removeSummaryKeys(ctx.tasks.context.log, 'conversation');
+  await removeSummaryKeys(ctx.log.log, 'conversation');
+  await removeSummaryKeys(ctx.log.log, 'conversation');
 
-  const entries = await readRecords(ctx.tasks.context.log, { afterSequence: 0 });
+  const entries = await readRecords(ctx.log.log, { afterSequence: 0 });
 
   expect(entries.map((entry) => entry.record.erasable.status)).toStrictEqual(['shredded']);
 });

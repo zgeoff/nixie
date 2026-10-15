@@ -1,3 +1,4 @@
+import type { CompactionSettings } from '@heynixie/compaction';
 import { deriveModelSecret, toTurnProfile } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
 import type { RunStep, TasksContext } from '@heynixie/tasks';
@@ -10,7 +11,6 @@ import { runSessionCleanup } from './run-session-cleanup';
 import type { ConversationSandboxSpec } from './setup-conversation-sandbox';
 import { setupConversationSandbox } from './setup-conversation-sandbox';
 import type {
-  CompactionSettings,
   ConversationMemory,
   ConversationMemorySettings,
   ConversationRun,

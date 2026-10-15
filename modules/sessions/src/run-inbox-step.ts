@@ -1,10 +1,9 @@
+import { isCompactionDue, removeSummaryKeys } from '@heynixie/compaction';
 import type { StepResult } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
-import { isCompactionDue } from './is-compaction-due';
 import { parseSessionBoundary } from './parse-session-boundary';
 import { readCurrentInbox } from './read-current-inbox';
 import { readSessionTurn } from './read-session-turn';
-import { removeSummaryKeys } from './remove-summary-keys';
 import { runOpenedTurn } from './run-opened-turn';
 import { runResumedTurn } from './run-resumed-turn';
 import type { ConversationRun, InboxPlan, SessionStart, SessionStep } from './types';

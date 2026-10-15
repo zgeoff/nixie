@@ -14,7 +14,6 @@ export { buildStatusRegistry } from './build-status-registry';
 export { buildDefaultStatus } from './build-default-status';
 export type { RetriedTurn } from './build-retried-turn-kind';
 export { buildRetriedTurnKind } from './build-retried-turn-kind';
-export { countTextTokens } from './count-text-tokens';
 export { decodeInboxUUID } from './decode-inbox-uuid';
 export { encodeInboxUUID } from './encode-inbox-uuid';
 export { formatMessageTime } from './format-message-time';
@@ -22,7 +21,6 @@ export type { CheckerOptions } from './make-checker';
 export { makeChecker } from './make-checker';
 export { checkerOwner } from './start-checker-runner';
 export { agentConfigSchema } from './agent-config-schema';
-export { compactionConfigSchema } from './compaction-config-schema';
 export type { EventsBlock } from './read-events-block';
 export { readEventsBlock } from './read-events-block';
 export type { EventsBlockSettings } from './render-events-block';
@@ -51,7 +49,6 @@ export type {
   CheckerAnswer,
   CheckerRequest,
   CheckerVerdict,
-  CompactionSettings,
   EventKind,
   EventRegistry,
   EventSettings,

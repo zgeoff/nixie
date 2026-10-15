@@ -1,7 +1,7 @@
+import { countTextTokens } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
 import { readThreadNewestFirst } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
-import { countTextTokens } from './count-text-tokens';
 import { renderHistoryLine } from './render-history-line';
 import type { MessageTimeOptions } from './types';
 

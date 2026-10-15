@@ -1,5 +1,5 @@
+import { isCompactionDue } from '@heynixie/compaction';
 import type { StepInput, StepResult } from '@heynixie/tasks';
-import { isCompactionDue } from './is-compaction-due';
 import { parseSessionBoundary } from './parse-session-boundary';
 import { readSessionMarks } from './read-session-marks';
 import { runCompactionStep } from './run-compaction-step';

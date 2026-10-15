@@ -1,7 +1,7 @@
+import { runSessionCompaction } from '@heynixie/compaction';
 import type { StepResult } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
 import { buildCompactionRequest } from './build-compaction-request';
-import { runSessionCompaction } from './run-session-compaction';
 import type { InboxPlan, SessionStep } from './types';
 import { writeCompactionFailures } from './write-compaction-failures';
 
