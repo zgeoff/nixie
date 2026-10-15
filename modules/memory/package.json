@@ -14,6 +14,7 @@
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/models": "workspace:*",
+    "@heynixie/retry": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "kysely": "catalog:",

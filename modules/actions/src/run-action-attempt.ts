@@ -1,5 +1,6 @@
 import type { JSONObject, RecordInput } from '@heynixie/log';
 import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { planBackoffDelay } from '@heynixie/retry';
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import {
   LeaseLostError,
@@ -8,7 +9,6 @@ import {
   startLeaseRenewal,
   waitAtFaultPoint,
 } from '@heynixie/tasks';
-import { defaultRetryDelaysMs } from './default-retry-delays-ms';
 import { isJSONObject } from './is-json-object';
 import { pickOutcome } from './pick-outcome';
 import type { ActionConnector, ActionRow, ActionsTables, Outcome, ProviderResponse } from './types';
@@ -60,6 +60,13 @@ interface Attempt {
 }
 
 type SettledOutcome = Exclude<Outcome, { readonly status: 'pending' }>;
+
+// The waits between the 5 attempts of an action: 30 s, 2 min, 8 min and 30 min, each 4 times the
+// last up to 30 min. Why: the schedule rides out a rate limit or a short outage within about 40 min,
+// and an action still failing after that needs you more than another attempt.
+export const defaultRetryDelaysMs: readonly number[] = [1, 2, 3, 4].map((failures) =>
+  planBackoffDelay(failures, { firstMs: 30_000, maxMs: 1_800_000, factor: 4 }),
+);
 
 async function runAttempt(
   context: TasksContext,

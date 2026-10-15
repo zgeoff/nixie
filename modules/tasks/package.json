@@ -13,6 +13,7 @@
   "dependencies": {
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "@heynixie/retry": "workspace:*",
     "kysely": "catalog:",
     "zod": "catalog:"
   },

@@ -1,3 +1,4 @@
+import { planBackoffDelay } from '@heynixie/retry';
 import type { Clock } from '@heynixie/tasks';
 
 export interface DefinitionsProbe {
@@ -50,16 +51,16 @@ export function startDefinitionsPoll(options: DefinitionsPollOptions): Definitio
 }
 
 async function runPoll(options: DefinitionsPollOptions, signal: AbortSignal): Promise<void> {
-  // the probe token the last good seed ran for, and the wait before the next probe, which is null
-  // while the last probe and seed succeeded
-  const state: { token: string | null; retryMs: number | null } = {
+  // the probe token the last good seed ran for, and the failures in a row, which is 0 while the
+  // last probe and seed succeeded
+  const state: { token: string | null; failures: number } = {
     token: null,
-    retryMs: options.isRefusedAtStart ? planRetryDelay(options, null) : null,
+    failures: options.isRefusedAtStart ? 1 : 0,
   };
 
   while (!signal.aborted) {
     // oxlint-disable-next-line no-await-in-loop -- the poll waits between probes
-    await options.clock.sleep(state.retryMs ?? options.intervalMs, signal);
+    await options.clock.sleep(planWait(options, state.failures), signal);
 
     if (signal.aborted) {
       return;
@@ -69,8 +70,16 @@ async function runPoll(options: DefinitionsPollOptions, signal: AbortSignal): Pr
     const probed = await runProbe(options, state.token);
 
     state.token = probed.token;
-    state.retryMs = probed.isFailed ? planRetryDelay(options, state.retryMs) : null;
+    state.failures = probed.isFailed ? state.failures + 1 : 0;
   }
+}
+
+// the interval while the probes succeed; after a failure the retry delay, which doubles with each
+// failure after it, and no wait passes the interval
+function planWait(options: DefinitionsPollOptions, failures: number): number {
+  return failures === 0
+    ? options.intervalMs
+    : planBackoffDelay(failures, { firstMs: options.retryDelayMs, maxMs: options.intervalMs });
 }
 
 interface ProbeOutcome {
@@ -104,12 +113,4 @@ async function runProbe(
 
     return { token: lastToken, isFailed: true };
   }
-}
-
-// the first failure waits the retry delay, and each failure after it doubles the wait, and no wait
-// passes the interval
-function planRetryDelay(options: DefinitionsPollOptions, retryMs: number | null): number {
-  const nextMs = retryMs === null ? options.retryDelayMs : retryMs * 2;
-
-  return Math.min(nextMs, options.intervalMs);
 }

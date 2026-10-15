@@ -1,5 +1,5 @@
+import { planBackoffDelay } from '@heynixie/retry';
 import type { StepResult } from '@heynixie/tasks';
-import { planWriterBackoff } from './plan-writer-backoff';
 import type { WriterParts } from './writer-parts';
 import type { WriterRow } from './writer-types';
 
@@ -17,11 +17,11 @@ export function buildWriterFailure(
 ): Omit<StepResult, 'acknowledged'> {
   const failures = failure.row.failures + 1;
 
-  const backoff = planWriterBackoff(
-    failures,
-    parts.config.firstBackoffMs,
-    parts.config.maxBackoffMs,
-  );
+  // the writer never fails its task, so capture resumes once the cause clears
+  const backoff = planBackoffDelay(failures, {
+    firstMs: parts.config.firstBackoffMs,
+    maxMs: parts.config.maxBackoffMs,
+  });
 
   const retryAt = failure.now + backoff;
   const message = failure.error instanceof Error ? failure.error.message : String(failure.error);
