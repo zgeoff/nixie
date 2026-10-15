@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
+import { taskSchema } from './task-schema';
+import { toolCallSchema } from './tool-call-schema';
 
 // The contract is add-only once released: a later release adds procedures, optional input fields,
 // output fields and enum members, and never removes or renames one. The server validates every
@@ -22,7 +24,6 @@ const spanSchema = z.object({
   start: z.int().nonnegative(),
 });
 
-const jsonObjectSchema = z.record(z.string(), z.unknown());
 const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
 const imageFilesSchema = z.array(z.file());
 
@@ -31,26 +32,6 @@ const imageRefSchema = z.object({
   position: z.int().nonnegative(),
   sequence: sequenceSchema,
   thread: threadSchema,
-});
-
-// A failed step's record carries the error its step threw, while the record is readable, the
-// errors in a row with this one, the limit in force, and when the task tries again. The
-// conversation never fails, so its errors can pass the limit, and a client shows that it is failing.
-const taskSchema = z.object({
-  error: z.string().optional(),
-  errorLimit: z.int().positive().optional(),
-  errors: z.int().positive().optional(),
-  retryAt: z.date().optional(),
-  stepKey: z.string().optional(),
-  taskID: z.string(),
-});
-
-const toolCallSchema = z.object({
-  callID: z.string(),
-  content: jsonObjectSchema.optional(),
-  input: jsonObjectSchema.optional(),
-  outcome: z.string().optional(),
-  tool: z.string().optional(),
 });
 
 const versionRefSchema = z.object({
