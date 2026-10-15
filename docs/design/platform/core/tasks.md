@@ -207,9 +207,9 @@ entry drops the boundary from the chain that a resume loads, so the resume fails
 every try. Where the compaction kept the boundary, the resume works, but the model continues from a
 summary that the SDK wrote and that the event log never holds
 ([resume after a compaction](../spikes/sdk-resume-at/README.md#after-a-compaction)).
-[Session opening and compaction](session-opening.md) turns the SDK's auto-compaction off and clears
-the boundary when nixie's compactor commits, so the guard covers a compaction that nixie's compactor
-did not run.
+[Compaction](../../../architecture/core/compaction.md) turns the SDK's auto-compaction off and
+clears the boundary when nixie's compactor commits, so the guard covers a compaction that nixie's
+compactor did not run.
 
 The rerun gives the model the unread inbox plus the status of each proposal and action the
 interrupted step started. A repeat call matches by action hash against everything started under the

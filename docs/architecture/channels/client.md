@@ -105,7 +105,10 @@ errors in a row reached the limit at which another task would fail. The notice g
 next try, and goes once a step commits. The page reads all of it from the failed step's record,
 which holds the errors in a row, the limit and the retry time. A long step can push that record off
 the newest page, so the page read also returns the thread's newest step end, and the notice reads it
-beside the records.
+beside the records. A failed compaction gets a notice of its own, with the count of failures in a
+row, because turns go on while it fails and the conversation stops only once the context is full
+([compaction](../core/compaction.md#failure-and-overflow)). The notice goes once a summary commits
+or a new session opens.
 
 Each message stands on its own line, and every other record folds into the step it belongs to, from
 the step's start to its end. A record before a step, such as the task's creation, folds into the
@@ -116,7 +119,9 @@ memories its recalls delivered with how many of them the model rated as noise, e
 with its targets, such as the host of each page a web fetch read, how full the context stood at its
 last model call against the auto-compact window, and how long it ran. A fact shows only once its
 record exists. Each compaction in the step adds a marker under that line with the context's tokens
-before and after, so the user can compare the turns on each side of it. Opening the step shows one
+before and after, so the user can compare the turns on each side of it. A summary that closed the
+session shows as a rule across the feed with the context's size before it and the summary's own
+size, and opens to the summary's text while a forget has not erased it. Opening the step shows one
 collapsible section per source: the step with its records, the memories with each one's match score,
 the first line of its text and the model's rating with its note, the context with each compaction,
 each call with its input and its result, and a failed step's error. Each section opens on its own. A

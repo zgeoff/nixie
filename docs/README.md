@@ -58,6 +58,8 @@ below, and planned work lives in Linear.
   resume and fork, inbox records as messages
 - [Session opening](architecture/core/session-opening.md) — the slots every new session opens with,
   the status registry, the replay over the recent turns and the opening record
+- [Compaction](architecture/core/compaction.md) — the compaction step, the summary instruction,
+  failure and overflow, the summary record and forgetting
 - [Crash tests](architecture/core/crash-tests.md) — the test build, the harness link and its clock,
   the scripted model, the provider double and the oracle
 
@@ -138,8 +140,6 @@ rests on.
   reconciliation per connector, and unknown outcomes
 - [Model profiles](design/platform/core/models.md) — the profile, model roles and their defaults,
   and how nixie computes model cost
-- [Session opening and compaction](design/platform/core/session-opening.md) — the slots every new
-  session opens with, status, system messages, nixie's own compactor and the summary record
 
 ### Policy
 
@@ -405,8 +405,5 @@ left untested. The [spikes index](design/platform/spikes/README.md) describes ho
 - [Mastra Connect as a reference](design/platform/spikes/mastra-connect/) — a reading spike with
   nothing to run, on its connector model, credentials, refresh, tools and errors, with the ideas
   worth adapting to the connector designs
-- [A turn past the context window](design/platform/spikes/sdk-overflow/) — the result the SDK ends
-  an overflow with when auto-compaction is off, and a compact-and-retry from the last committed
-  boundary
 - [The model's reasoning through the SDK](design/platform/spikes/sdk-reasoning/) — empty thinking
   text under nixie's options, a summary with the summarized display, and its storage cost per turn

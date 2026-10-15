@@ -21,7 +21,7 @@ Each turn's prompt runs from the most stable part to the least, so the prompt ca
    [skill catalog](../skills.md#the-catalog).
 2. **The session:** its opening, which holds the pinned core, the status and the summary of the
    session before it, then every turn since.
-   [Session opening and compaction](../core/session-opening.md) sets the opening's slots.
+   [Session opening](../../../architecture/core/session-opening.md) sets the opening's slots.
 3. **The newest turn:** the task's inbox records, the dashboard data for the conversation, and the
    retrieved items.
 
@@ -35,8 +35,8 @@ The pinned core is built for the conversation, and
 its budget and the change note. The [pinned core spike](../spikes/sdk-pinned-core/README.md) found
 that a resumed session keeps its first system prompt unless the SDK's snapshot is off. The pinned
 core therefore lives in each session's opening, which
-[session opening and compaction](../core/session-opening.md) sets, and the change note carries an
-edit to a running session.
+[session opening](../../../architecture/core/session-opening.md) sets, and the change note carries
+an edit to a running session.
 
 ## Retrieval
 
@@ -99,8 +99,8 @@ memory is current; the state and version checks decide that.
 ## Compaction
 
 nixie compacts the conversation's session itself, and stores each summary in the event log under a
-key of its own. [Session opening and compaction](../core/session-opening.md) covers the compactor,
-the summary record and the forget that erases every summary. A summary never becomes memory, and
+key of its own. [Compaction](../../../architecture/core/compaction.md) covers the compactor, the
+summary record and the forget that erases every summary. A summary never becomes memory, and
 retrieval never searches summaries, because the model wrote the summary from an untrusted
 conversation and retrieving it would launder that text.
 

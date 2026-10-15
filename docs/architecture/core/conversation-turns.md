@@ -5,12 +5,13 @@ task: the step hands the task's unread inbox to a model loop, the loop runs on t
 long-lived sandbox, and the step commits the loop's replies and the point the loop's session
 reached. The event log is the record of the conversation, and the SDK's session transcript is a
 cache that makes the next turn cheaper. [Tasks](./tasks.md) covers steps and their commits,
-[model profiles](./model-profiles.md) covers the profile a turn runs on, and
-[tool calls](../connectors/tool-calls.md) covers the endpoint that serves the loop its tools, and
-[memory in context](../memory/context.md) covers the pinned core and the items each turn places, and
-[session opening](./session-opening.md) covers what a new session opens with. `modules/models` holds
-the host side, `guests/conversation` holds the guest, and the turn frames between them live in
-`libs/wire`.
+[model profiles](./model-profiles.md) covers the profile a turn runs on,
+[tool calls](../connectors/tool-calls.md) covers the endpoint that serves the loop its tools,
+[memory in context](../memory/context.md) covers the pinned core and the items each turn places,
+[session opening](./session-opening.md) covers what a new session opens with, and
+[compaction](./compaction.md) covers how nixie shrinks a session that grows past its threshold.
+`modules/models` holds the host side, `guests/conversation` holds the guest, and the turn frames
+between them live in `libs/wire`.
 
 ## The guest and its sandbox
 
@@ -88,23 +89,18 @@ the next step to send again.
 
 ## Compaction
 
-The history in the session only grows, and the CLI compacts it as it nears its auto-compact window.
-A turn after the prompt cache expires re-reads the whole history at the full input price, so the
-window comes from the profile's context cap, with a default for a profile that sets none. The CLI
-then compacts the session within the cap, and the next turn resumes the compacted history. nixie
-builds no compaction of its own.
+The history in the session only grows, so nixie compacts it between turns with a summary that the
+event log holds ([compaction](./compaction.md)). The guest sets every compaction control in the
+query's settings rather than leaving it at the SDK's default, so an SDK upgrade cannot change it.
+Auto-compaction, precomputed compaction and idle compaction stay off, because each would change the
+session outside a step, with a summary that the event log never holds. A step's commit records the
+session's last message as the point that [crash recovery](./leases-and-recovery.md) resumes at, so
+the session changes only inside a step that holds the task's lease.
 
-The guest sets every compaction control in the query's settings rather than leaving it at the SDK's
-default, so an SDK upgrade cannot change it. Auto-compaction stays on. Precomputed compaction and
-idle compaction stay off, because each would change the session outside a step. A step's commit
-records the session's last message as the point that [crash recovery](./leases-and-recovery.md)
-resumes at, so the session changes only inside a step that holds the task's lease.
-
-The CLI compacts between model calls inside a turn, and the guest reports each compaction with its
-trigger and its token counts before and after. The step writes one compacted record per compaction,
-with those counts, the newest recall the compaction summarized and no text. The summary the CLI
-writes stays in the session, because the model wrote it from the conversation, and nixie keeps model
-text out of its records unless a reply holds it.
+The CLI's auto-compact window sets the window that a turn reports its context against, and it comes
+from the profile's context cap, with a default for a profile that sets none. When the CLI reports a
+compaction anyway, the step writes one compacted record with its token counts and no text, and the
+next turn sends the pinned core again, because the CLI's summary may have dropped the opening.
 
 ## Opening a new session
 
