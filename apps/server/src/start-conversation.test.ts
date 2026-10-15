@@ -38,7 +38,7 @@ async function setupTest() {
 
   const memory = await startTestMemoryStore(
     context,
-    (itemID) => runners.last?.cleanupSessions(itemID) ?? Promise.resolve(),
+    (cause) => runners.last?.cleanupSessions(cause) ?? Promise.resolve(),
   );
 
   return {

@@ -1,4 +1,4 @@
-import type { APIContext } from '@heynixie/api';
+import type { APIContext, CleanupRecordSessions } from '@heynixie/api';
 import type { DefinitionsInForce, DefinitionsSource, SnapshotPolicy } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { ModelSecrets } from '@heynixie/models';
@@ -36,10 +36,17 @@ export interface MemorySlot {
   readonly set: (store: StartedMemoryStore) => void;
 }
 
+// the slot the API reads the conversation's session cleanup from, which a record forget runs, empty
+// until the conversation starts
+export interface SessionCleanupSlot {
+  readonly set: (cleanup: CleanupRecordSessions) => void;
+}
+
 // What the server holds once the health endpoint listens.
 export interface ServerBase {
   readonly apiContext: APIContext;
   readonly inForce: InForce;
+  readonly sessionCleanup: SessionCleanupSlot;
   readonly state: StartState;
   readonly tools: Tools;
   readonly port: number;
@@ -61,6 +68,7 @@ export interface ServerParts {
   readonly source: DefinitionsSource;
   readonly policy: SnapshotPolicy;
   readonly inForce: InForce;
+  readonly sessionCleanup: SessionCleanupSlot;
   readonly modelSecrets: ModelSecrets;
 
   // a runner failed, such as when another process took the writer

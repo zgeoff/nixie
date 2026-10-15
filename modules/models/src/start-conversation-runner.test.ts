@@ -681,7 +681,7 @@ test('it opens the first turn after a forget with a status that says so, and res
   });
 
   await ctx.sendMessage(runner, 'Hi.');
-  await runner.cleanupSessions('0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01');
+  await runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
   await ctx.sendMessage(runner, 'Hi again.');
   await ctx.sendMessage(runner, 'And again.');
 
@@ -855,7 +855,7 @@ test('it invalidates the session, removes the guest session state and records th
     toolNames: ['notes_read'],
   });
 
-  await runner.cleanupSessions('0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01');
+  await runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
 
   const invalidated = await ctx.readKinds('model.session_invalidated');
   const completed = await ctx.readKinds('model.session_cleanup_completed');
@@ -873,6 +873,27 @@ test('it invalidates the session, removes the guest session state and records th
   expect(completed.at(0)?.sequence).toBeGreaterThan(invalidated.at(0)?.sequence ?? Infinity);
 });
 
+test('it names the forgotten record in the cleanup records of a record forget', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await runner.cleanupSessions({ recordSequence: 12 });
+
+  const invalidated = await ctx.readKinds('model.session_invalidated');
+  const completed = await ctx.readKinds('model.session_cleanup_completed');
+
+  expect(ctx.sandboxes.purged).toHaveLength(1);
+  expect(invalidated).toMatchObject([{ thread: 'conversation', payload: { recordSequence: 12 } }]);
+  expect(completed).toMatchObject([{ thread: 'conversation', payload: { recordSequence: 12 } }]);
+});
+
 test('it rebuilds the session on the turn after a forget invalidated it, and records why', async () => {
   const ctx = await setupTest();
 
@@ -885,7 +906,7 @@ test('it rebuilds the session on the turn after a forget invalidated it, and rec
   });
 
   await ctx.sendMessage(runner, 'Hi.');
-  await runner.cleanupSessions('0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01');
+  await runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
   await ctx.sendMessage(runner, 'Hi again.');
 
   const opened = await ctx.readKinds('model.session_opened');
@@ -917,7 +938,7 @@ test('it records the invalidation each turn saw, and resumes the rebuilt session
   });
 
   await ctx.sendMessage(runner, 'Hi.');
-  await runner.cleanupSessions('0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01');
+  await runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' });
   await ctx.sendMessage(runner, 'Hi again.');
   await ctx.sendMessage(runner, 'And again.');
 
@@ -962,7 +983,9 @@ test('it aborts a running turn on a forget, and fails the step so it retries on 
 
   await Promise.all([
     ctx.runNextStep(runner),
-    started.promise.then(() => runner.cleanupSessions('0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01')),
+    started.promise.then(() =>
+      runner.cleanupSessions({ itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01' }),
+    ),
   ]);
 
   const task = await ctx.db

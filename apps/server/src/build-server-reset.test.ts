@@ -14,7 +14,7 @@ async function setupTest() {
 
   return {
     ...server,
-    context: { ...server.context, settings: defaultAPISettings },
+    context: { ...server.context, settings: defaultAPISettings, readSessionCleanup: () => null },
     work: buildCleanup(),
   };
 }

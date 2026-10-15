@@ -141,8 +141,10 @@ page holds becomes a proposal. The token check and the checker run as for any ot
 
 A forgotten item can sit in the conversation's session: in a retrieved block, in the pinned memory
 of a session's opening, or in the model's own words. The store's forget therefore runs the session
-cleanup, and completes only after the cleanup returns ([forgetting](./store.md#forgetting)). The
-cleanup runs in order:
+cleanup, and completes only after the cleanup returns ([forgetting](./store.md#forgetting)). A
+[forget of one message or reply](../channels/api.md#forgetting-a-message) runs the same cleanup,
+because the session holds the record's text too, and the cleanup's records name the item or the
+record it ran for. The cleanup runs in order:
 
 1. It aborts every turn in flight and waits for each one to end, so it never removes a transcript
    that a live CLI still writes.

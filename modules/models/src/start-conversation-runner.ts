@@ -14,6 +14,7 @@ import type {
   ConversationMemorySettings,
   ConversationRun,
   ResolvedProfile,
+  SessionCleanupCause,
 } from './types';
 
 export interface ConversationRunnerOptions {
@@ -54,7 +55,7 @@ export interface ConversationRunner {
   readonly runStep: RunStep;
 
   // the session cleanup a forget runs, which invalidates and removes the conversation's session
-  readonly cleanupSessions: (itemID: string) => Promise<void>;
+  readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
   readonly stop: () => Promise<void>;
 }
 
@@ -116,7 +117,7 @@ export async function startConversationRunner(
 
       return runConversationStep(run, input);
     },
-    cleanupSessions: (itemID) => runSessionCleanup(run, itemID),
+    cleanupSessions: (cause) => runSessionCleanup(run, cause),
     stop: () => endpoint.stop(),
   };
 }

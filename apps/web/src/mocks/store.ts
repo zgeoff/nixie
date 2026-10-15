@@ -86,10 +86,15 @@ const compactionSchema = z.object({
   trigger: z.enum(['manual', 'auto']).default('auto'),
 });
 
+// the sequence a record.forgotten record forgets
+const forgetSchema = z.object({ sequence: z.int() });
+
 const records = new Collection({
   schema: z.object({
     compaction: compactionSchema.optional(),
     context: contextSchema.optional(),
+
+    forget: forgetSchema.optional(),
     kind: z.string().default('owner_message'),
     message: messageSchema.optional(),
     rating: ratingSchema.optional(),

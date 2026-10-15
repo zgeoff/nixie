@@ -133,7 +133,7 @@ test('it runs the session cleanup and then records the forget as complete', asyn
 
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
-  expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith(item.itemID);
+  expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith({ itemID: item.itemID });
 
   expect(records.map((entry) => entry.record)).toMatchObject([
     { kind: 'memory.version_added', payload: { itemID: item.itemID, version: 1 } },

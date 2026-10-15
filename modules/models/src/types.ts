@@ -163,6 +163,10 @@ export interface MessageTimeOptions {
   readonly now: Date;
 }
 
+// What a session cleanup runs for, which its records keep: a forgotten memory item, or the sequence
+// of one forgotten record, such as your message.
+export type SessionCleanupCause = { readonly itemID: string } | { readonly recordSequence: number };
+
 // The conversation's runner as one step sees it: its sandbox, its endpoint and its profile.
 export interface ConversationRun {
   readonly context: TasksContext;

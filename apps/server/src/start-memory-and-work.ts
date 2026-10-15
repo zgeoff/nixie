@@ -1,3 +1,4 @@
+import { runPendingRecordForgets } from '@heynixie/api';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
 import type { RunStep } from '@heynixie/tasks';
 import { runWithRetry } from './run-with-retry';
@@ -8,8 +9,9 @@ import { startWork } from './start-work';
 import { startWriterTask } from './start-writer-task';
 import type { ServerParts } from './types';
 
-// Starts the memory store and hands it to the conversation, then the memory writer, the memory
-// consolidator and the runners, so no turn runs before the store is there.
+// Starts the memory store, hands the session cleanup to the API and finishes each pending record
+// forget, then starts the memory writer, the memory consolidator and the runners, so no turn runs
+// before the store is there or on a session that holds a forgotten record's text.
 export async function startMemoryAndWork(
   parts: ServerParts,
   conversation: ConversationImp,
@@ -22,6 +24,14 @@ export async function startMemoryAndWork(
   });
 
   parts.tools.memory.set(store);
+
+  // the slot fills before the pending forgets are read, so a forget that read it empty is pending
+  parts.sessionCleanup.set(conversation.cleanupSessions);
+
+  await runWithRetry(() => runPendingRecordForgets(parts.apiContext), {
+    ...retry,
+    step: 'record_forgets',
+  });
 
   const writerStep = await runWithRetry(() => startWriterTask(parts, store), {
     ...retry,

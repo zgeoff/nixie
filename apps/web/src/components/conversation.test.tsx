@@ -26,7 +26,7 @@ test('it shows the conversation the API holds', async () => {
 
   const list = await rendered.findByRole('list', { name: 'Conversation' });
 
-  expect(list).toHaveTextContent('You Is it raining?nixie Not yet.');
+  expect(list).toHaveTextContent('You Is it raining?Forgetnixie Not yet.');
 });
 
 test('it folds the records of a step into one line between the messages', async () => {
@@ -61,7 +61,11 @@ test('it folds the records of a step into one line between the messages', async 
     [...list.children].map(
       (item) => item.querySelector('summary')?.textContent ?? item.textContent,
     ),
-  ).toStrictEqual(['You Rain?', 'conversation · web fetch: weather.test · 4.2s', 'nixie Not yet.']);
+  ).toStrictEqual([
+    'You Rain?Forget',
+    'conversation · web fetch: weather.test · 4.2s',
+    'nixie Not yet.Forget',
+  ]);
 });
 
 test('it sends a message with a span for each way its text arrived', async () => {

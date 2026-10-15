@@ -35,5 +35,5 @@ test('it runs the session cleanup it was given on a forget', async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith(item.itemID);
+  expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ itemID: item.itemID });
 });

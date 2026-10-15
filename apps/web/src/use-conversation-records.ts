@@ -39,7 +39,7 @@ export function useConversationRecords(thread: string): ConversationRecords {
 
 // The page and the live stream can both hold a record, so each sequence shows once, in order. A
 // reset removed every record before its log_reset record, so a page read before the reset shows
-// none of them.
+// none of them. A forget that arrives after its message drops the message's text.
 function mergeRecords(
   page: readonly LiveRecord[],
   live: readonly LiveRecord[],
@@ -50,6 +50,19 @@ function mergeRecords(
 
   const sorted = [...bySequence.values()].toSorted((left, right) => left.sequence - right.sequence);
   const reset = sorted.findLastIndex((record) => record.kind === 'log_reset');
+  const kept = reset === -1 ? sorted : sorted.slice(reset);
 
-  return reset === -1 ? sorted : sorted.slice(reset);
+  const forgotten = new Set(
+    kept.flatMap((record) => (record.forget ? [record.forget.sequence] : [])),
+  );
+
+  return kept.map((record) =>
+    forgotten.has(record.sequence) ? toForgottenRecord(record) : record,
+  );
+}
+
+function toForgottenRecord(record: LiveRecord): LiveRecord {
+  const { message: _forgotten, ...rest } = record;
+
+  return rest;
 }

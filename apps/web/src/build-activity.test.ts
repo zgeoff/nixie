@@ -57,6 +57,21 @@ test('it keeps each message on its own and folds a step into one group', () => {
   );
 });
 
+test('it keeps a forgotten message on its own in place of folding it into a step', () => {
+  const forgotten = buildMockLogRecord({ kind: 'owner_message', sequence: 1 });
+
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 2,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  expect(buildActivity([forgotten, started]).at(0)).toStrictEqual({
+    kind: 'message',
+    record: forgotten,
+  });
+});
+
 test('it folds a record before a step into the step that follows it', () => {
   const created = buildMockLogRecord({
     kind: 'task.created',

@@ -104,6 +104,10 @@ const recordSchema = z.object({
   // Set on a model.compacted record.
   compaction: compactionSchema.optional(),
 
+  // Set on a record.forget_started or record.forgotten record: the sequence of the message or reply
+  // it forgets, which a client then shows with no text.
+  forget: z.object({ sequence: sequenceSchema }).optional(),
+
   // Set on a model.turn_ended record whose turn reported the context of its last model call.
   context: contextSchema.optional(),
 
@@ -212,6 +216,25 @@ export const contract = {
         }),
       )
       .output(z.object({ duplicate: z.boolean(), sequence: sequenceSchema })),
+
+    // Forgets one of your messages or one of nixie's replies for good: the server deletes its key,
+    // so its text reads as a gap everywhere nixie keeps it, and cleans up every live session that
+    // could hold it. Forgetting a forgotten record answers with the first forget's time.
+    forget: checkedAction
+      .errors({
+        RECORD_NOT_FOUND: {
+          message: 'No message or reply on this thread has this sequence',
+          status: 404,
+        },
+      })
+      .input(
+        z.object({
+          clientActionID: clientActionIDSchema,
+          sequence: sequenceSchema,
+          thread: threadSchema,
+        }),
+      )
+      .output(z.object({ forgottenAt: z.date() })),
   },
   memory: {
     // Reads the text of named memory versions, such as those a recall delivered, in the order

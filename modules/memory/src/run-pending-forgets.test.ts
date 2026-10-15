@@ -40,7 +40,7 @@ test('it resumes a forget that a crash cut short after the key went, and complet
   const records = await readRecords(restarted.log, { afterSequence: 0 });
 
   expect(crash).toMatchObject({ message: 'crashed at memory.forget.key_removed' });
-  expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith(item.itemID);
+  expect(ctx.cleanupSessions).toHaveBeenCalledExactlyOnceWith({ itemID: item.itemID });
 
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'memory.version_added',

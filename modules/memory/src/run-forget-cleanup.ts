@@ -15,7 +15,7 @@ export async function runForgetCleanup(parts: StoreParts, itemID: string): Promi
   }
 
   await parts.index.remove(itemID);
-  await parts.context.cleanupSessions(itemID);
+  await parts.context.cleanupSessions({ itemID });
 
   await withWriteTransaction(log.writer, async (tx) => {
     const item = await tx

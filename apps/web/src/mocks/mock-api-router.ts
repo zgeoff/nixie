@@ -78,6 +78,41 @@ export const mockAPIRouter = os.router({
 
       return { duplicate: true, sequence: earlier.sequence };
     }),
+
+    // drops the text of your message or a reply and adds the record.forgotten record that names it,
+    // as the API's forget leaves the log
+    forget: os.conversation.forget.handler(async (options) => {
+      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const input = options.input;
+
+      const target = store.records.findFirst((query) =>
+        query.where(
+          (record) =>
+            record.sequence === input.sequence &&
+            record.thread === input.thread &&
+            (record.kind === 'owner_message' || record.kind === 'model.reply'),
+        ),
+      );
+
+      if (target === undefined) {
+        throw options.errors.RECORD_NOT_FOUND();
+      }
+
+      await store.records.update(target, {
+        data(draft) {
+          delete draft.message;
+        },
+      });
+
+      const forgotten = await store.records.create({
+        forget: { sequence: input.sequence },
+        kind: 'record.forgotten',
+        thread: input.thread,
+      });
+
+      return { forgottenAt: forgotten.recordedAt };
+    }),
   },
   log: { follow: followProcedure },
   memory: {

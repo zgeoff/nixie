@@ -35,7 +35,7 @@ test('it shows how full the context stood after a turn and marks its compaction 
     [...list.children].map(
       (item) => item.querySelector('summary')?.textContent ?? item.textContent,
     ),
-  ).toStrictEqual(['conversation · no tools · 41k / 400k · 12.3s', 'nixie Here is a plan.']);
+  ).toStrictEqual(['conversation · no tools · 41k / 400k · 12.3s', 'nixie Here is a plan.Forget']);
 
   expect(marker).toBeVisible();
   expect(marker).toHaveTextContent('compacted (auto) · 384k → 42k tokens');

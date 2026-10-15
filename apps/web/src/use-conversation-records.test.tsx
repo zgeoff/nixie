@@ -33,6 +33,34 @@ test('it shows each record of the page and the live stream once, in order', asyn
   });
 });
 
+test('it drops the text of a message once a forget on the live stream names it', async () => {
+  await setupTest();
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'The shed code is 4417.' },
+  });
+
+  const hook = renderHook(() => useConversationRecords('conversation'));
+
+  await waitFor(() => {
+    expect(hook.result.current.status).toBe('ready');
+  });
+
+  await store.records.create({ forget: { sequence: message.sequence }, kind: 'record.forgotten' });
+
+  await waitFor(() => {
+    expect(hook.result.current.records).toHaveLength(2);
+  });
+
+  expect(hook.result.current.records.at(0)).toStrictEqual({
+    kind: 'owner_message',
+    recordedAt: message.recordedAt,
+    sequence: message.sequence,
+    thread: 'conversation',
+  });
+});
+
 test('it reports the conversation failed when the first read fails', async () => {
   await setupTest();
 

@@ -10,6 +10,7 @@ export function toLogRecord(record: StoredRecord): LogRecord {
   return {
     ...(record.compaction === undefined ? {} : { compaction: toLogCompaction(record.compaction) }),
     ...(record.context === undefined ? {} : { context: { ...record.context } }),
+    ...(record.forget === undefined ? {} : { forget: { ...record.forget } }),
     kind: record.kind,
     ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
     ...(record.rating === undefined ? {} : { rating: toLogRating(record.rating) }),

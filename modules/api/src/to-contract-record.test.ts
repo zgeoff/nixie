@@ -67,6 +67,24 @@ test('it keeps a forgotten message in place with no text', () => {
   });
 });
 
+test('it carries the sequence of the message or reply that a forget names', () => {
+  const record = buildMockLogRecord({
+    sequence: 12,
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    kind: 'record.forgotten',
+    thread: 'conversation',
+    payload: { recordSequence: 7 },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    forget: { sequence: 7 },
+    kind: 'record.forgotten',
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    sequence: 12,
+    thread: 'conversation',
+  });
+});
+
 test('it carries no message text for a record of another kind', () => {
   const record = buildMockLogRecord({
     sequence: 3,

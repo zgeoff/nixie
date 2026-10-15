@@ -139,9 +139,9 @@ thread.
 
 A forgotten item can sit in a live session's context, and
 [memory in context](../../../architecture/memory/context.md#forgetting-and-the-live-session) covers
-how a forget cleans up the conversation's session. The design extends the same cleanup to every task
-that runs a session, and to a forgotten record as well as a forgotten item. The forget confirmation
-shows that a request already sent to the model provider keeps the text it received.
+how a forget of an item or of one record cleans up the conversation's session. The design extends
+the same cleanup to every task that runs a session. The forget confirmation shows that a request
+already sent to the model provider keeps the text it received.
 
 ### Removing invalid transcript copies
 
