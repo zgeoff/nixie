@@ -56,6 +56,34 @@ test('it copies a compaction with its counts before and after', async () => {
   });
 });
 
+test('it copies a summary with its sizes and its text', async () => {
+  const record = await store.records.create({
+    kind: 'model.session_summarized',
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 5,
+    summary: {
+      contextSize: 165_000,
+      summaryTokens: 1200,
+      text: 'Open threads: the porch light.',
+      trigger: 'threshold',
+    },
+    thread: 'conversation',
+  });
+
+  expect(toLogRecord(record)).toStrictEqual({
+    kind: 'model.session_summarized',
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 5,
+    summary: {
+      contextSize: 165_000,
+      summaryTokens: 1200,
+      text: 'Open threads: the porch light.',
+      trigger: 'threshold',
+    },
+    thread: 'conversation',
+  });
+});
+
 test('it leaves the after count out of a compaction that has none', async () => {
   const record = await store.records.create({
     compaction: { preTokens: 384_000, trigger: 'manual' },

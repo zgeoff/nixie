@@ -61,6 +61,80 @@ test('it drops the text of a message once a forget on the live stream names it',
   });
 });
 
+test('it drops the text of a summary once a forget invalidates its session', async () => {
+  await setupTest();
+
+  await store.records.create({ kind: 'model.session_opened' });
+
+  const summary = await store.records.create({
+    kind: 'model.session_summarized',
+    summary: { summaryTokens: 900, text: 'Open threads: the gate code.', trigger: 'threshold' },
+  });
+
+  const hook = renderHook(() => useConversationRecords('conversation'));
+
+  await waitFor(() => {
+    expect(hook.result.current.records.at(-1)?.summary?.text).toBe('Open threads: the gate code.');
+  });
+
+  await store.records.create({ kind: 'model.session_invalidated' });
+
+  await waitFor(() => {
+    expect(hook.result.current.records).toHaveLength(3);
+  });
+
+  expect(hook.result.current.records.at(1)).toStrictEqual({
+    kind: 'model.session_summarized',
+    recordedAt: summary.recordedAt,
+    sequence: summary.sequence,
+    summary: { summaryTokens: 900, trigger: 'threshold' },
+    thread: 'conversation',
+  });
+});
+
+test('it drops the text of a summary that commits after a forget invalidated its session', async () => {
+  await setupTest();
+
+  await store.records.create({ kind: 'model.session_opened' });
+  await store.records.create({ kind: 'model.session_invalidated' });
+
+  await store.records.create({
+    kind: 'model.session_summarized',
+    summary: { summaryTokens: 900, text: 'Open threads: the gate code.', trigger: 'threshold' },
+  });
+
+  const hook = renderHook(() => useConversationRecords('conversation'));
+
+  await waitFor(() => {
+    expect(hook.result.current.records).toHaveLength(3);
+  });
+
+  expect(hook.result.current.records.at(-1)?.summary).toStrictEqual({
+    summaryTokens: 900,
+    trigger: 'threshold',
+  });
+});
+
+test('it keeps the text of a summary from a session that opened after the last forget', async () => {
+  await setupTest();
+
+  await store.records.create({ kind: 'model.session_invalidated' });
+  await store.records.create({ kind: 'model.session_opened' });
+
+  await store.records.create({
+    kind: 'model.session_summarized',
+    summary: { summaryTokens: 900, text: 'Open threads: the porch light.', trigger: 'threshold' },
+  });
+
+  const hook = renderHook(() => useConversationRecords('conversation'));
+
+  await waitFor(() => {
+    expect(hook.result.current.records).toHaveLength(3);
+  });
+
+  expect(hook.result.current.records.at(-1)?.summary?.text).toBe('Open threads: the porch light.');
+});
+
 test('it names the client message ID of a message a forget dropped the text of', async () => {
   await setupTest();
 

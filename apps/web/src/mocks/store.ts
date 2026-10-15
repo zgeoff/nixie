@@ -86,6 +86,14 @@ const compactionSchema = z.object({
   trigger: z.enum(['manual', 'auto']).default('auto'),
 });
 
+// a summary nixie committed, with its text while its key holds
+const summarySchema = z.object({
+  contextSize: z.int().nonnegative().optional(),
+  summaryTokens: z.int().nonnegative(),
+  text: z.string().optional(),
+  trigger: z.enum(['threshold', 'overflow']).default('threshold'),
+});
+
 // the sequence a record.forgotten record forgets
 const forgetSchema = z.object({ sequence: z.int() });
 
@@ -105,6 +113,7 @@ const records = new Collection({
 
       return counter.lastSequence;
     }),
+    summary: summarySchema.optional(),
     task: taskSchema.optional(),
     thread: z.string().default('conversation'),
     toolCall: toolCallSchema.optional(),
