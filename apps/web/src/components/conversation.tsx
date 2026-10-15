@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { css } from '../styled-system/css';
 import { useConversationRecords } from '../use-conversation-records';
 import { useOutbox } from '../use-outbox';
+import { CompactionFailureNotice } from './compaction-failure-notice';
 import { Composer } from './composer';
 import { ConversationFailureNotice } from './conversation-failure-notice';
 import { ConversationList } from './conversation-list';
@@ -38,6 +39,7 @@ export function Conversation(props: ConversationProps): ReactNode {
       </header>
       {conversation.unavailable ? <LiveUpdatesNotice /> : null}
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
+      <CompactionFailureNotice records={records} />
       <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
         <ConversationList entries={outbox.entries} onRetry={outbox.retry} records={records} />
       </ConversationScroller>

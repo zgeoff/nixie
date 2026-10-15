@@ -81,6 +81,19 @@ const compactionSchema = z.object({
   trigger: z.enum(['manual', 'auto']),
 });
 
+// A summary of the conversation's session that nixie committed: what asked for it, the context the
+// session held before it when the turn reported one, the summary's own size, and its text while its
+// key exists.
+const summarySchema = z.object({
+  contextSize: tokenCountSchema.optional(),
+  summaryTokens: tokenCountSchema,
+  text: z.string().optional(),
+  trigger: z.enum(['threshold', 'overflow']),
+});
+
+// A compaction of the conversation's session that failed, and the failures in a row it ends.
+const compactionFailureSchema = z.object({ failures: z.int().positive() });
+
 // A rating's note, named by its memory.rated record's sequence and the rated item, while the
 // item's key exists. A forgotten item's note reads as shredded, and a rating with no note as
 // missing.
@@ -103,6 +116,9 @@ const versionTextSchema = versionRefSchema.extend({
 const recordSchema = z.object({
   // Set on a model.compacted record.
   compaction: compactionSchema.optional(),
+
+  // Set on a model.compaction_failed record.
+  compactionFailure: compactionFailureSchema.optional(),
 
   // Set on a record.forget_started or record.forgotten record: the sequence of the message or reply
   // it forgets, which a client then shows with no text.
@@ -131,6 +147,9 @@ const recordSchema = z.object({
   recall: recallSchema.optional(),
   recordedAt: z.date(),
   sequence: sequenceSchema,
+
+  // Set on a model.session_summarized record.
+  summary: summarySchema.optional(),
   thread: threadSchema,
 
   // Set on a task record: the task it belongs to, and the step for a step record.

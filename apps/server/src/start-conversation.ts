@@ -1,4 +1,5 @@
 import type {
+  CompactionSettings,
   ConversationMemory,
   ConversationMemorySettings,
   ConversationRunner,
@@ -42,6 +43,9 @@ export interface ConversationOptions {
   readonly memory: () => ConversationMemory;
   readonly memorySettings?: Partial<ConversationMemorySettings>;
 
+  // when the session compacts, from the deployment configuration's compaction section
+  readonly compaction?: CompactionSettings;
+
   // the IANA zone your message renders its send time in when it carries no zone of its own
   readonly defaultZone?: string;
 
@@ -73,6 +77,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     ...(options.status === undefined ? {} : { status: options.status }),
     memory: options.memory,
     ...(options.memorySettings === undefined ? {} : { memorySettings: options.memorySettings }),
+    ...(options.compaction === undefined ? {} : { compaction: options.compaction }),
     ...(options.defaultZone === undefined ? {} : { defaultZone: options.defaultZone }),
     log: options.log,
   });

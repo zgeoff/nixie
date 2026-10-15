@@ -441,6 +441,71 @@ test('it carries a compaction whose session reported no after count without one'
   });
 });
 
+test('it carries a summary with its trigger, its sizes and its text', () => {
+  const record = buildMockLogRecord({
+    sequence: 21,
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    kind: 'model.session_summarized',
+    thread: 'conversation',
+    payload: {
+      model: 'claude-test-1',
+      profile: 'chat-direct',
+      throughSequence: 20,
+      trigger: 'threshold',
+      contextSize: 165_000,
+      summaryTokens: 1200,
+      isCut: false,
+    },
+    erasable: { status: 'readable', fields: { text: 'Open threads: the gauge report.' } },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'model.session_summarized',
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    sequence: 21,
+    summary: {
+      contextSize: 165_000,
+      summaryTokens: 1200,
+      text: 'Open threads: the gauge report.',
+      trigger: 'threshold',
+    },
+    thread: 'conversation',
+  });
+});
+
+test('it carries a summary a forget erased with no text', () => {
+  const record = buildMockLogRecord({
+    kind: 'model.session_summarized',
+    thread: 'conversation',
+    payload: { trigger: 'overflow', summaryTokens: 1200 },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(toContractRecord(record)?.summary).toStrictEqual({
+    summaryTokens: 1200,
+    trigger: 'overflow',
+  });
+});
+
+test('it carries the failures in a row of a failed compaction, and never its error', () => {
+  const record = buildMockLogRecord({
+    sequence: 22,
+    recordedAt: new Date('2026-10-10T12:00:06Z'),
+    kind: 'model.compaction_failed',
+    thread: 'conversation',
+    payload: { trigger: 'threshold', failures: 2 },
+    erasable: { status: 'readable', fields: { message: 'the summary call failed' } },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    compactionFailure: { failures: 2 },
+    kind: 'model.compaction_failed',
+    recordedAt: new Date('2026-10-10T12:00:06Z'),
+    sequence: 22,
+    thread: 'conversation',
+  });
+});
+
 test('it carries the versions a recall delivered with their scores, and no text', () => {
   const record = buildMockLogRecord({
     sequence: 11,

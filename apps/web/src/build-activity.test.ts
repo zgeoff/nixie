@@ -349,6 +349,22 @@ test('it collects each compaction of a step with the sequence of its record, in 
   ]);
 });
 
+test('it collects each summary a step committed with the sequence of its record', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
+  const summarized = buildMockLogRecord({
+    kind: 'model.session_summarized',
+    sequence: 2,
+    summary: { contextSize: 165_000, summaryTokens: 1200, trigger: 'threshold' },
+  });
+
+  expect(buildActivity([started, summarized])).toMatchObject([
+    {
+      summaries: [{ contextSize: 165_000, sequence: 2, summaryTokens: 1200, trigger: 'threshold' }],
+    },
+  ]);
+});
+
 test('it counts a recall that delivered nothing as a recall', () => {
   const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
 

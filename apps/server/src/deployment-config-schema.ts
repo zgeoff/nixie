@@ -6,7 +6,7 @@ import {
   memoryConfigSchema,
   writerConfigSchema,
 } from '@heynixie/memory';
-import { agentConfigSchema, modelsConfigSchema } from '@heynixie/models';
+import { agentConfigSchema, compactionConfigSchema, modelsConfigSchema } from '@heynixie/models';
 import { impConfigSchema } from '@heynixie/sandbox-imp';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { z } from 'zod';
@@ -21,6 +21,7 @@ export const deploymentConfigSchema = z.strictObject({
   owner: ownerConfigSchema.default(ownerConfigSchema.parse({})),
   agent: agentConfigSchema.default(agentConfigSchema.parse({})),
   models: modelsConfigSchema,
+  compaction: compactionConfigSchema.default(compactionConfigSchema.parse({})),
   imp: impConfigSchema,
   definitions: definitionsConfigSchema,
   web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
