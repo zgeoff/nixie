@@ -3,7 +3,7 @@ interface StreamedRecord {
   readonly recordedAt: Date;
 }
 
-export interface ReceivedEvent {
+interface ReceivedEvent {
   readonly kind: string;
 
   // how long after nixie recorded the record the test received it
