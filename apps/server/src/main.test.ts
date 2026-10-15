@@ -290,7 +290,9 @@ test('it completes a turn that calls a tool from the test sandbox the configurat
   const page = await ctx.client.conversation.read({ thread: 'conversation' });
 
   // the test sandbox keeps a directory per sandbox in the data directory, and imp keeps none there
-  expect(ctx.readSandboxIDs()).resolves.not.toBeEmpty();
+  const sandboxIDs = await ctx.readSandboxIDs();
+
+  expect(sandboxIDs.length).toBeGreaterThan(0);
   expect(page.records.at(-1)?.kind).toBe('task.step_committed');
 
   expect(page.records.find((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({
