@@ -61,6 +61,28 @@ test('it reads your messages and the replies after the sequence, oldest first', 
   ]);
 });
 
+test('it never reads a session summary, so a summary never becomes memory', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'model.session_summarized',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { throughSequence: 0, trigger: 'threshold', summaryTokens: 9 },
+      erasable: { text: 'Open threads: the spare key sits under the blue flowerpot.' },
+    },
+  ]);
+
+  const backlog = await readWriterBacklog(ctx.memory.log, {
+    after: 0,
+    ownerLimit: 10,
+    through: null,
+  });
+
+  expect(backlog).toStrictEqual([]);
+});
+
 test('it leaves out conversation records that are neither a message nor a reply', async () => {
   const ctx = await setupTest();
 

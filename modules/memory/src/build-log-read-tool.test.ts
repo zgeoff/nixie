@@ -1,4 +1,5 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { buildLogReadTool } from './build-log-read-tool';
 import { startTestMemory } from './test-utils';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
@@ -116,6 +117,38 @@ test('it reads one page of the entries that hold every word of a search', async 
     },
     record: { eventIDs: [String(matched)], next: String(matched) },
   });
+});
+
+test('it never returns a session summary, by search or by date', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'model.session_summarized',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { throughSequence: 0, trigger: 'threshold', summaryTokens: 9 },
+      erasable: { text: 'Open threads: the red bike has a flat tyre.' },
+    },
+  ]);
+
+  const searched = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: { query: 'bike tyre' }, toolUseID: null },
+    buildMockToolContext(),
+  );
+
+  const dated = await ctx.tool.run(
+    {
+      callID: 'call-2',
+      tool: 'log.read',
+      input: { from: '2000-01-01', to: '2100-01-01' },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(searched).toMatchObject({ status: 'ok', result: { entries: [] } });
+  expect(dated).toMatchObject({ status: 'ok', result: { entries: [] } });
 });
 
 test("it reads the calling run's own thread", async () => {
