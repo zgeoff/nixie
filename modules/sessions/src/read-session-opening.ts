@@ -1,4 +1,6 @@
 import type { TasksContext } from '@heynixie/tasks';
+import type { SystemMessageType } from '@heynixie/wire';
+import { renderSystemMessage } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
 import { findSessionSummary } from './find-session-summary';
 import { formatMessageTime } from './format-message-time';
@@ -7,8 +9,6 @@ import type { HistoryTurn } from './read-recent-turns';
 import { readRecentTurns } from './read-recent-turns';
 import { readTurnNoteRange } from './read-turn-note-range';
 import { renderSessionHistory } from './render-session-history';
-import type { SystemMessageType } from './render-system-message';
-import { renderSystemMessage } from './render-system-message';
 import type { ConversationRun, MessageTimeOptions, SessionStart, TurnNote } from './types';
 
 export interface SessionOpeningQuery {

@@ -1,9 +1,8 @@
 import type { Logger } from '@heynixie/ops';
-import type { Sandbox } from '@heynixie/sandbox';
+import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID, readSessionBoundary } from '@heynixie/tasks';
 import { parseSessionBoundary } from './parse-session-boundary';
-import type { GuestCommand } from './run-guest-turn';
 import { writeKeptSession } from './write-kept-session';
 
 export interface ReplacedSessionSpec {

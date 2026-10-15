@@ -1,8 +1,7 @@
 import { expect, test } from 'bun:test';
-import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildMockSummarizeFrame } from '@heynixie/wire/test-utils';
 import { runGuestSummary } from './run-guest-summary';
-import { buildStubSandboxes } from './test-utils/build-stub-sandboxes';
 
 function setupTest() {
   return { sandboxes: buildStubSandboxes() };

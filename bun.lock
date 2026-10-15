@@ -68,6 +68,7 @@
         "@heynixie/sessions": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
         "elysia": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",

@@ -1,6 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
+import { createBlockID } from '@heynixie/wire';
 import { z } from 'zod';
-import { createBlockID } from './create-block-id';
 
 // Renders your message as you wrote it, with each span you pasted or dropped in wrapped in a block
 // whose fresh random ID is on both tags, so a pasted closing tag cannot end it. A forgotten message

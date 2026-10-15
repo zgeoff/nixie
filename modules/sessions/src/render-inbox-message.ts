@@ -1,9 +1,9 @@
 import type { LogRecord } from '@heynixie/log';
+import type { SystemMessageType } from '@heynixie/wire';
+import { renderSystemMessage } from '@heynixie/wire';
 import { formatMessageStamp } from './format-message-stamp';
 import { formatMessageTime } from './format-message-time';
 import { renderOwnerText } from './render-owner-text';
-import type { SystemMessageType } from './render-system-message';
-import { renderSystemMessage } from './render-system-message';
 import type { MessageTimeOptions } from './types';
 
 // Renders an inbox record so the model knows when it arrived and can cite it: your message after

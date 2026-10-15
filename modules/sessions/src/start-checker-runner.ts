@@ -1,10 +1,15 @@
 import { buildModelGrant, deriveModelSecret } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
-import type { Sandbox, SandboxAdapter, SandboxLimits, SandboxSpec } from '@heynixie/sandbox';
+import type {
+  GuestCommand,
+  Sandbox,
+  SandboxAdapter,
+  SandboxLimits,
+  SandboxSpec,
+} from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
 import { makeChecker } from './make-checker';
-import type { GuestCommand } from './run-guest-turn';
 import { runSandboxCheck } from './run-sandbox-check';
 import type { RunCheck } from './types';
 

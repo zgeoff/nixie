@@ -1,5 +1,5 @@
+import type { StubGuestScript } from '@heynixie/sandbox/test-utils';
 import type { GuestFrame, HostFrame, SessionPoint } from '@heynixie/wire';
-import type { StubGuestScript } from './build-stub-sandboxes';
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 

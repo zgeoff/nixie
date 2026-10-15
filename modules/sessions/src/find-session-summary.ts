@@ -1,6 +1,6 @@
+import { readThreadNewestFirst } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { z } from 'zod';
-import { readThreadNewestFirst } from './read-thread-newest-first';
 
 // The record kind of a summary that the model wrote at the end of a session.
 const sessionSummarizedKind = 'model.session_summarized';

@@ -1,13 +1,9 @@
 import { findMessageTimeZone } from '@heynixie/connectors';
 import type { Log } from '@heynixie/log';
 import type { EventRegistry, TurnNote, TurnNoteRange } from '@heynixie/sessions';
-import {
-  formatMessageTime,
-  readEventsBlock,
-  readTurnNoteRange,
-  renderSystemMessage,
-} from '@heynixie/sessions';
+import { formatMessageTime, readEventsBlock, readTurnNoteRange } from '@heynixie/sessions';
 import type { Clock } from '@heynixie/tasks';
+import { renderSystemMessage } from '@heynixie/wire';
 
 export interface TurnNotesOptions {
   readonly log: Pick<Log, 'writer'>;

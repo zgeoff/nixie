@@ -1,4 +1,4 @@
-import type { ExecStream, Sandbox } from '@heynixie/sandbox';
+import type { ExecStream, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { GuestFrame } from '@heynixie/wire';
 import {
   decodeTurnFrame,
@@ -6,7 +6,6 @@ import {
   guestFrameSchema,
   turnFrameLimitBytes,
 } from '@heynixie/wire';
-import type { GuestCommand } from './run-guest-turn';
 
 export interface GuestPurgeSpec {
   readonly sandbox: Sandbox;

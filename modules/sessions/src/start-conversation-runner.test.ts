@@ -1,10 +1,10 @@
 import { expect, mock, test } from 'bun:test';
 import { resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
+import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
-import { buildStubSandboxes } from './test-utils/build-stub-sandboxes';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from './test-utils/read-records-by-kind';
 import { runNextStep } from './test-utils/run-next-step';

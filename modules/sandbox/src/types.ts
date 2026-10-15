@@ -88,6 +88,12 @@ export interface RuntimeReport {
   readonly reason: string | null;
 }
 
+// How a sandbox starts a guest program: its argv, and the variables it passes by name.
+export interface GuestCommand {
+  readonly argv: readonly string[];
+  readonly env: Readonly<Record<string, string>>;
+}
+
 export interface ExecSpec {
   readonly argv: readonly string[];
 

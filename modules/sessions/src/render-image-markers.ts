@@ -1,5 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
-import { createBlockID } from './create-block-id';
+import { createBlockID } from '@heynixie/wire';
 
 // Renders a marker for each image of your message, in the order sent, so the model reads each image
 // as dropped in, as it reads a dropped block of text. Each marker has a fresh random ID and the

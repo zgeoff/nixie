@@ -1,13 +1,12 @@
 import type { ContentSource, RecordInput } from '@heynixie/log';
 import type { ResolvedProfile } from '@heynixie/models';
-import type { Sandbox } from '@heynixie/sandbox';
+import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { StepInput, TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
 import type { TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
 import type { SessionGuard } from './make-session-guard';
 import type { SessionMarks } from './read-session-marks';
-import type { GuestCommand } from './run-guest-turn';
 
 // One version of a memory item, as a turn's record lists it.
 export interface MemoryRef {
