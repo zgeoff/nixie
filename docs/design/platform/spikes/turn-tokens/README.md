@@ -5,7 +5,7 @@ role, through the production guest code, and sets the
 [model cost](../../policy/budgets.md#model-cost) defaults from them. A turn's tokens come to about
 its model calls times its context: a conversation turn makes 1.6 to 2.1 model calls, and every call
 re-reads the whole session from the cache. The fixed part of the context, the Claude Code preamble
-with nixie's tools, persona and pinned core, is about 4,900 tokens. Every cache entry the Claude
+with nixie's tools, persona and pinned core, is about 5,800 tokens. Every cache entry the Claude
 Code command-line interface (CLI) wrote lived 5 minutes, so the first turn after a pause writes the
 whole context to the cache again, at about 13 times the cost of a warm turn. The conversation
 dominates every limit, and the checker, the memory writer and the consolidator add about 3% to an
@@ -46,8 +46,10 @@ count every model call a turn makes.
 called Sam, 10 pinned and 50 other memories with the words Sam said, and 12 messages with the
 retrieved items the turn places before each one. Each message renders through the production inbox
 renderer, so its stamp carries the event ID that the memory tools cite, with its time and zone. The
-scripted tools return results in the production result shapes and keep the memory state of one run,
-so a proposal that one call adds shows in the pending list that a later call reads.
+first turn opens the session with the pinned memory and the status, as a new session opens in
+production, and each turn's retrieved items go before its message. The scripted tools return results
+in the production result shapes and keep the memory state of one run, so a proposal that one call
+adds shows in the pending list that a later call reads.
 
 | Role                  | What runs                                                                                         |
 | --------------------- | ------------------------------------------------------------------------------------------------- |
@@ -55,7 +57,7 @@ so a proposal that one call adds shows in the pending list that a later call rea
 | `checker`             | The production checker prompt on the eval corpus's first 12 pairs                                 |
 | `memory-writer`       | The 24 messages of the Opus conversation in 6 batches of 4, with 20 shown items                   |
 | `memory-consolidator` | One consolidation over the 60 items with their quotes                                             |
-| `task`                | Simulated: 3 job runs, each a fresh session on the conversation's prompt and tools                |
+| `task`                | Simulated: 3 job runs, each a fresh session on the conversation's prompt and opening              |
 | `worker`              | Simulated: 3 worker runs, each a fresh session with web fetch and a one-paragraph prompt          |
 
 The `task` and `worker` roles have no built prompt or runner yet, so their rows measure the nearest
@@ -87,46 +89,47 @@ spike spent no API money.
 
 | Role                | Model           | Sessions | Calls | Input | Cache write | Cached input | Output | Total  | Largest | Cost    |
 | ------------------- | --------------- | -------- | ----- | ----- | ----------- | ------------ | ------ | ------ | ------- | ------- |
-| conversation        | Opus 5.5 medium | 12       | 2.1   | 6     | 1,032       | 21,294       | 383    | 22,716 | 62,174  | $0.0171 |
-| conversation        | Sonnet 5.5 low  | 12       | 1.6   | 5     | 1,112       | 13,493       | 229    | 14,839 | 26,133  | $0.0064 |
-| conversation        | Haiku 5.5 low   | 12       | 1.7   | 5     | 1,142       | 14,406       | 227    | 15,781 | 26,892  | $0.0004 |
-| conversation, cold  | Opus 5.5 medium | 1        | 1     | 4     | 12,480      | 3,717        | 164    | 16,365 | 16,365  | $0.0664 |
+| conversation        | Opus 5.5 medium | 12       | 2.1   | 6     | 1,254       | 24,570       | 411    | 26,242 | 55,010  | $0.0194 |
+| conversation        | Sonnet 5.5 low  | 12       | 1.6   | 5     | 1,269       | 15,701       | 260    | 17,234 | 29,879  | $0.0073 |
+| conversation        | Haiku 5.5 low   | 12       | 1.6   | 5     | 1,416       | 18,273       | 234    | 19,927 | 33,596  | $0.0005 |
+| conversation, cold  | Opus 5.5 medium | 1        | 1     | 4     | 15,168      | 3,717        | 195    | 19,084 | 19,084  | $0.0805 |
 | checker             | Sonnet 5.5 low  | 12       | 1.0   | 2     | 649         | 1,348        | 138    | 2,136  | 2,414   | $0.0031 |
 | checker             | Haiku 5.5 low   | 12       | 1.1   | 2     | 630         | 1,511        | 260    | 2,403  | 4,438   | $0.0002 |
-| memory-writer       | Haiku 5.5 low   | 6        | 1.2   | 2     | 1,818       | 2,273        | 226    | 4,319  | 7,795   | $0.0004 |
-| memory-writer       | Opus 5.5 medium | 6        | 1.7   | 3     | 2,022       | 4,093        | 390    | 6,509  | 11,811  | $0.0187 |
+| memory-writer       | Haiku 5.5 low   | 6        | 1.2   | 2     | 1,844       | 2,267        | 170    | 4,284  | 7,671   | $0.0003 |
+| memory-writer       | Opus 5.5 medium | 6        | 1.5   | 3     | 1,970       | 3,479        | 345    | 5,797  | 11,743  | $0.0175 |
 | memory-consolidator | Opus 5.5 medium | 1        | 2.0   | 4     | 7,068       | 5,409        | 1,912  | 14,393 | 14,393  | $0.0747 |
 | memory-consolidator | Haiku 5.5 low   | 1        | 2.0   | 4     | 6,923       | 5,376        | 1,514  | 13,817 | 13,817  | $0.0017 |
-| task, simulated     | Opus 5.5 medium | 3        | 3.3   | 7     | 2,940       | 17,287       | 857    | 21,090 | 31,450  | $0.0353 |
-| task, simulated     | Haiku 5.5 low   | 3        | 2.3   | 5     | 3,542       | 9,121        | 630    | 13,298 | 15,567  | $0.0008 |
+| task, simulated     | Opus 5.5 medium | 3        | 2.7   | 5     | 3,797       | 14,150       | 764    | 18,716 | 27,851  | $0.0371 |
+| task, simulated     | Haiku 5.5 low   | 3        | 2.3   | 5     | 4,515       | 10,470       | 693    | 15,683 | 18,645  | $0.0010 |
 | worker, simulated   | Opus 5.5 medium | 3        | 2.0   | 4     | 3,305       | 960          | 595    | 4,864  | 6,350   | $0.0286 |
 | worker, simulated   | Haiku 5.5 low   | 3        | 2.0   | 4     | 3,271       | 926          | 702    | 4,903  | 6,415   | $0.0008 |
 
 ### A turn costs its model calls times its context
 
 Each model call sends the whole session, and the cache serves all of it but the newest message. The
-Opus conversation's context grew from 4,876 tokens at turn 1 to 16,109 at turn 12, about 1,000
+Opus conversation's context grew from 5,840 tokens at turn 1 to 18,771 at turn 12, about 1,200
 tokens a turn, and a turn that fetched a page grew it by about 2,000. A turn's total therefore rises
-with the session and with its calls: the 1-call turn 5 counted 10,035 tokens, and the 4-call turn 11
-counted 62,174. Output stays small beside it, at about 380 tokens a turn on Opus and 230 on the
+with the session and with its calls: the 1-call turn 5 counted 10,862 tokens, and the 3-call turn 11
+counted 55,010. Output stays small beside it, at about 410 tokens a turn on Opus and 250 on the
 others.
 
 A save adds a call to the turn that makes it. Each message's stamp carries the event ID that a save
-cites, so no model read the log to find an ID, and every model saved the running days that turn 6
-states. Opus proposed a memory in 3 turns, Sonnet in 2 and Haiku in 1.
+cites, so no model declined a save for want of one, and every model saved the running days that turn
+6 states. Opus proposed a memory in 3 turns, Sonnet in 2 and Haiku in 1. Opus read the log in turns
+7, 8 and 11, and its turn 7 reply says it searched the log to check a pending proposal.
 
 The CLI compacts the session near its window, which is 200,000 tokens when the profile sets no
-context cap. At about 1,000 tokens a turn, a session runs about 190 turns between compactions, at a
+context cap. At about 1,200 tokens a turn, a session runs about 160 turns between compactions, at a
 mean context near 100,000 tokens. The mean conversation turn on Opus then counts about 210,000
 tokens, and a late one near the window about 400,000.
 
 ### A turn after a pause rewrites its context to the cache
 
-All 140 model calls in the recorded runs wrote 5-minute cache entries, and none wrote a 1-hour
-entry. The cold turn ran 400 seconds after turn 12 and wrote 12,480 tokens of its 16,201-token
-context to the cache, where the warm turn 12, one call on the same context, wrote 232. The cache
-still held the first 3,717 tokens, from an entry the spike did not trace. The cold turn cost $0.066
-against $0.0052 for turn 12. At a 100,000-token context, a cold Opus turn costs about $0.53 and a
+All 136 model calls in the recorded runs wrote 5-minute cache entries, and none wrote a 1-hour
+entry. The cold turn ran 400 seconds after turn 12 and wrote 15,168 tokens of its 18,889-token
+context to the cache, where the warm turn 12, one call on the same context, wrote 256. The cache
+still held the first 3,717 tokens, from an entry the spike did not trace. The cold turn cost $0.081
+against $0.0064 for turn 12. At a 100,000-token context, a cold Opus turn costs about $0.53 and a
 warm one about $0.05, so the share of turns that start after a pause sets most of the conversation's
 dollar cost. Tokens do not depend on it, because a cache write counts the same as a cached read.
 
@@ -135,15 +138,15 @@ dollar cost. Tokens do not depend on it, because a cache write counts the same a
 A day of 50 conversation turns in 15 bursts, at the mean context of a compaction cycle, counts about
 10,500,000 tokens and costs about $10 on Opus 5.5. A heavy day of 100 turns in 25 bursts late in a
 cycle, at about 180,000 tokens of context, counts about 38,000,000 tokens and costs about $31. The
-memory writer at 25 batches, a consolidation and 50 checks add about 300,000 tokens and under $1 on
+memory writer at 25 batches, a consolidation and 50 checks add under 300,000 tokens and under $1 on
 any model. A profile with a larger context cap scales the conversation's share with the cap, so a
 400,000-token cap doubles it. On Haiku 5.5 or Sonnet 5.5, a conversation turn makes 1.6 calls
-against 2.1 on Opus, and its tokens fall by about a quarter.
+against 2.1 on Opus, and its tokens fall by a quarter to a third.
 
 A worker run that reads a 3,000-token page on each of its 25 allowed model calls, with about 350
 tokens of output each, reaches about 81,000 tokens of context and counts about 1,030,000 tokens over
 the run, at about $0.78 on Opus. A job run that starts 2 such workers counts about 2,100,000. The
-measured worker runs and job runs stayed under 32,000 tokens and $0.05 each.
+measured worker runs and job runs stayed under 28,000 tokens and $0.05 each.
 
 ## Budget defaults
 

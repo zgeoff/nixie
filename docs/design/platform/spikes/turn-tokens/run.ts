@@ -19,6 +19,14 @@ import { renderWriterPrompt } from '../../../../../modules/memory/src/render-wri
 import { renderWriterSystemPrompt } from '../../../../../modules/memory/src/render-writer-system-prompt';
 import { encodeInboxUUID } from '../../../../../modules/models/src/encode-inbox-uuid';
 import { renderInboxMessage } from '../../../../../modules/models/src/render-inbox-message';
+import { buildModelStatus } from '../../../../../modules/models/src/build-model-status';
+import { buildStartStatus } from '../../../../../modules/models/src/build-start-status';
+import { buildStartTimeStatus } from '../../../../../modules/models/src/build-start-time-status';
+import { buildStatusRegistry } from '../../../../../modules/models/src/build-status-registry';
+import { formatMessageTime } from '../../../../../modules/models/src/format-message-time';
+import { renderPinnedMemory } from '../../../../../modules/models/src/render-pinned-memory';
+import { renderSystemMessage } from '../../../../../modules/models/src/render-system-message';
+import { buildVersionStatus } from '../../../../../apps/server/src/build-version-status';
 import { renderRetrievedItems } from '../../../../../modules/models/src/render-retrieved-items';
 import { renderSystemPrompt } from '../../../../../modules/models/src/render-system-prompt';
 import { buildCheckerEvalInput } from '../../../../../evals/test-utils/build-checker-eval-input';
@@ -73,21 +81,28 @@ console.log(`${role} ${model} ${effort}: ${sessions.length} sessions, ${proxy.ca
 // 12 turns on one session, each resuming at the last turn's boundary, as the conversation does
 async function runConversation(): Promise<readonly SessionResult[]> {
   const home = await mkdtemp(join(tmpdir(), 'turn-tokens-'));
-  const systemPrompt = renderSystemPrompt(fixtures.persona, fixtures.coreItems, lines);
+  const systemPrompt = renderSystemPrompt(fixtures.persona, lines);
   const results: SessionResult[] = [];
   let resume: { sessionID: string; messageID: string } | null = null;
 
   for (const [index, message] of fixtures.conversation.entries()) {
-    const retrieved = renderRetrievedItems(
-      message.retrieved.map((at) => fixtures.otherItems[at]!),
-      lines,
-    );
     const record = buildOwnerRecord(ownerSequence(index), fixtures.day + index * 600_000, message.text);
-    // the preamble goes before the message in the same message, as the live turn joins them
+    const times = { ...lines, now: record.recordedAt };
+    const at = formatMessageTime(times.now, null, times);
+    const retrieved = renderRetrievedItems(
+      message.retrieved.map((item) => fixtures.otherItems[item]!),
+      times,
+    );
+    // a new session opens with the pinned memory and the status, and every turn's retrieved items
+    // follow, all before the message in the same message, as the live turn joins them
+    const preamble = [
+      ...(resume === null ? await renderSessionOpening(times) : []),
+      ...(retrieved === null ? [] : [renderSystemMessage({ type: 'retrieved-memory', at, body: retrieved })]),
+    ];
     const input = [
       {
         uuid: encodeInboxUUID(record.sequence),
-        text: [...(retrieved === null ? [] : [retrieved]), renderInboxMessage(record, lines)].join('\n\n'),
+        text: [...preamble, renderInboxMessage(record, times)].join('\n\n'),
       },
     ];
     // oxlint-disable-next-line no-await-in-loop -- each turn resumes where the one before ended
@@ -118,7 +133,12 @@ async function runConversation(): Promise<readonly SessionResult[]> {
     const result = await runGuestSession('turn-13-cold', 'conversation', {
       home,
       systemPrompt,
-      input: [{ uuid: encodeInboxUUID(record.sequence), text: renderInboxMessage(record, lines) }],
+      input: [
+        {
+          uuid: encodeInboxUUID(record.sequence),
+          text: renderInboxMessage(record, { ...lines, now: record.recordedAt }),
+        },
+      ],
       resume,
     });
 
@@ -222,9 +242,10 @@ async function runConsolidator(): Promise<readonly SessionResult[]> {
   return [result.session];
 }
 
-// simulated: a job run as one fresh session on the conversation's prompt and tools
+// simulated: a job run as one fresh session on the conversation's prompt, opening and tools
 async function runTasks(): Promise<readonly SessionResult[]> {
-  const systemPrompt = renderSystemPrompt(fixtures.persona, fixtures.coreItems, lines);
+  const systemPrompt = renderSystemPrompt(fixtures.persona, lines);
+  const opening = await renderSessionOpening(lines);
   const results: SessionResult[] = [];
 
   for (const [index, job] of fixtures.jobs.entries()) {
@@ -232,7 +253,7 @@ async function runTasks(): Promise<readonly SessionResult[]> {
     const result = await runGuestSession(`job-${index + 1}`, 'conversation', {
       home: await mkdtemp(join(tmpdir(), 'turn-tokens-')),
       systemPrompt,
-      input: [buildPlainMessage(job)],
+      input: [buildPlainMessage([...opening, job].join('\n\n'))],
       resume: null,
     });
 
@@ -346,6 +367,23 @@ async function runGuestSession(
 // a conversation's records
 function ownerSequence(index: number): number {
   return 100 + index * 2;
+}
+
+// the blocks a first session opens with, as the production opening renders them: the pinned memory
+// and the status the server's registry reads; a first session has no summary and no recent turns
+async function renderSessionOpening(times: typeof lines): Promise<readonly string[]> {
+  const at = formatMessageTime(times.now, null, times);
+  const facts = { start: { kind: 'first' as const }, openedAt: times.now, times, model };
+  const status = await Promise.all(
+    buildStatusRegistry([buildStartStatus(), buildStartTimeStatus(), buildVersionStatus(), buildModelStatus()]).map(
+      (entry) => entry.read(facts),
+    ),
+  );
+
+  return [
+    renderSystemMessage({ type: 'pinned-memory', at, body: renderPinnedMemory(fixtures.coreItems, times) }),
+    renderSystemMessage({ type: 'status', at, body: status.map((line) => `- ${line.text}`).join('\n') }),
+  ];
 }
 
 // an owner's message as the log returns it, sent from Lisbon, which the production inbox renders
