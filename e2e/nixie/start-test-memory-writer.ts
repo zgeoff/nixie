@@ -1,6 +1,10 @@
 import { join } from 'node:path';
 import type { MemoryWriterRunner } from '../../apps/server/src/index';
-import { buildSandboxAdapter, startMemoryWriterRunner } from '../../apps/server/src/index';
+import {
+  buildActionQueue,
+  buildSandboxAdapter,
+  startMemoryWriterRunner,
+} from '../../apps/server/src/index';
 import type { StartedMemoryStore } from '../../modules/memory/src/index';
 import { writerConfigSchema } from '../../modules/memory/src/index';
 import { buildStubGate } from '../../modules/memory/src/test-utils/index';
@@ -46,6 +50,7 @@ export function startTestMemoryWriter(
       testRootDir: join(context.log.writer.dataDir, 'sandboxes'),
       hostEnv: {},
     }),
+    queue: buildActionQueue(context).queue,
     socketDir: join(context.log.writer.dataDir, 'tools'),
     image: 'nixie-conversation-test',
     store: options.store,
