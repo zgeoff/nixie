@@ -1,0 +1,144 @@
+{
+  "profile": "haiku-low",
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "setting": "production",
+  "thinking": null,
+  "ranAt": "2026-10-15T02:38:56.161Z",
+  "apiCalls": [
+    {
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "type": "adaptive",
+        "display": "updates"
+      },
+      "outputConfig": {
+        "effort": "low"
+      },
+      "status": 200,
+      "blocks": [
+        {
+          "type": "thinking",
+          "textBytes": 0,
+          "signatureBytes": 1900,
+          "dataBytes": 0,
+          "text": ""
+        },
+        {
+          "type": "text",
+          "textBytes": 235,
+          "signatureBytes": 0,
+          "dataBytes": 0,
+          "text": "You should take the 10:00 ferry from the north pier, since it arrives at the south pier at 10:22 and gets you onto the 10:40 bus. You would wait 18 minutes at the south pier. (The 09:25 ferry also works, but it means a 23-minute wait.)"
+        }
+      ],
+      "events": {
+        "message_start": 1,
+        "content_block_start/thinking {signature,thinking,type}": 1,
+        "ping": 1,
+        "content_block_delta/thinking_delta {estimated_tokens,thinking,type}": 3,
+        "content_block_delta/signature_delta {signature,type}": 1,
+        "content_block_stop": 2,
+        "content_block_start/text {text,type}": 1,
+        "content_block_delta/text_delta {text,type}": 19,
+        "message_delta": 1,
+        "message_stop": 1
+      },
+      "usage": {
+        "input_tokens": 497,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 480,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 387
+        }
+      }
+    }
+  ],
+  "sdkBlocks": [
+    {
+      "type": "thinking",
+      "textBytes": 0,
+      "signatureBytes": 1900,
+      "dataBytes": 0,
+      "text": ""
+    },
+    {
+      "type": "text",
+      "textBytes": 235,
+      "signatureBytes": 0,
+      "dataBytes": 0,
+      "text": "You should take the 10:00 ferry from the north pier, since it arrives at the south pier at 10:22 and gets you onto the 10:40 bus. You would wait 18 minutes at the south pier. (The 09:25 ferry also works, but it means a 23-minute wait.)"
+    }
+  ],
+  "thinkingTokenEvents": [
+    50,
+    300,
+    357
+  ],
+  "transcriptBlocks": [
+    {
+      "type": "thinking",
+      "textBytes": 0,
+      "signatureBytes": 1900,
+      "dataBytes": 0,
+      "text": ""
+    },
+    {
+      "type": "text",
+      "textBytes": 235,
+      "signatureBytes": 0,
+      "dataBytes": 0,
+      "text": "You should take the 10:00 ferry from the north pier, since it arrives at the south pier at 10:22 and gets you onto the 10:40 bus. You would wait 18 minutes at the south pier. (The 09:25 ferry also works, but it means a 23-minute wait.)"
+    }
+  ],
+  "result": {
+    "subtype": "success",
+    "isError": false,
+    "usage": {
+      "input_tokens": 497,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 480,
+      "output_tokens_details": {
+        "thinking_tokens": 387
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [],
+      "speed": "standard",
+      "fallback_credit": null
+    },
+    "modelUsage": {
+      "claude-haiku-5-5": {
+        "inputTokens": 497,
+        "outputTokens": 480,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.011588000000000001,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 387,
+        "canonicalModel": "claude-haiku-5-5",
+        "provider": "firstParty",
+        "costBasis": "unknown"
+      }
+    },
+    "text": "You should take the 10:00 ferry from the north pier, since it arrives at the south pier at 10:22 and gets you onto the 10:40 bus. You would wait 18 minutes at the south pier. (The 09:25 ferry also works, but it means a 23-minute wait.)"
+  }
+}

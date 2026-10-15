@@ -1,0 +1,184 @@
+{
+  "profile": "haiku-low",
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "setting": "summarized",
+  "thinking": {
+    "type": "adaptive",
+    "display": "summarized"
+  },
+  "ranAt": "2026-10-15T02:39:01.363Z",
+  "apiCalls": [
+    {
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+      },
+      "outputConfig": {
+        "effort": "low"
+      },
+      "status": 200,
+      "blocks": [
+        {
+          "type": "thinking",
+          "textBytes": 530,
+          "signatureBytes": 1904,
+          "dataBytes": 0,
+          "text": "I can't reach the north pier before 08:55, so I'll miss the 08:50 ferry and need the 09:25 one instead, arriving at the south pier around 09:47 after the 22-minute crossing, which should let me catch a bus departing around 10:10.\n\nChecking other options: the 10:00 ferry arrives 10:22, catching the 10:40 bus with only 18 minutes wait—better than the 09:25 option's 23-minute wait. The 10:35 ferry arrives too late for the 11:00 deadline, so the 10:00 ferry is the best choice, minimizing wait time while still making the bus.\n\n"
+        },
+        {
+          "type": "text",
+          "textBytes": 160,
+          "signatureBytes": 0,
+          "dataBytes": 0,
+          "text": "Take the 10:00 ferry from the north pier, which arrives at the south pier at 10:22 and lets you catch the 10:40 bus. You will wait 18 minutes at the south pier."
+        }
+      ],
+      "events": {
+        "message_start": 1,
+        "content_block_start/thinking {signature,thinking,type}": 1,
+        "ping": 1,
+        "content_block_delta/thinking_delta {estimated_tokens,thinking,type}": 39,
+        "content_block_delta/signature_delta {signature,type}": 1,
+        "content_block_stop": 2,
+        "content_block_start/text {text,type}": 1,
+        "content_block_delta/text_delta {text,type}": 10,
+        "message_delta": 1,
+        "message_stop": 1
+      },
+      "usage": {
+        "input_tokens": 497,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 466,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 401
+        }
+      }
+    }
+  ],
+  "sdkBlocks": [
+    {
+      "type": "thinking",
+      "textBytes": 530,
+      "signatureBytes": 1904,
+      "dataBytes": 0,
+      "text": "I can't reach the north pier before 08:55, so I'll miss the 08:50 ferry and need the 09:25 one instead, arriving at the south pier around 09:47 after the 22-minute crossing, which should let me catch a bus departing around 10:10.\n\nChecking other options: the 10:00 ferry arrives 10:22, catching the 10:40 bus with only 18 minutes wait—better than the 09:25 option's 23-minute wait. The 10:35 ferry arrives too late for the 11:00 deadline, so the 10:00 ferry is the best choice, minimizing wait time while still making the bus.\n\n"
+    },
+    {
+      "type": "text",
+      "textBytes": 160,
+      "signatureBytes": 0,
+      "dataBytes": 0,
+      "text": "Take the 10:00 ferry from the north pier, which arrives at the south pier at 10:22 and lets you catch the 10:40 bus. You will wait 18 minutes at the south pier."
+    }
+  ],
+  "thinkingTokenEvents": [
+    2,
+    10,
+    14,
+    19,
+    23,
+    27,
+    34,
+    39,
+    43,
+    48,
+    49,
+    51,
+    53,
+    54,
+    61,
+    65,
+    66,
+    67,
+    73,
+    76,
+    80,
+    81,
+    86,
+    92,
+    93,
+    99,
+    103,
+    108,
+    112,
+    114,
+    119,
+    122,
+    126,
+    133,
+    137,
+    139,
+    146,
+    147,
+    148,
+    357
+  ],
+  "transcriptBlocks": [
+    {
+      "type": "thinking",
+      "textBytes": 530,
+      "signatureBytes": 1904,
+      "dataBytes": 0,
+      "text": "I can't reach the north pier before 08:55, so I'll miss the 08:50 ferry and need the 09:25 one instead, arriving at the south pier around 09:47 after the 22-minute crossing, which should let me catch a bus departing around 10:10.\n\nChecking other options: the 10:00 ferry arrives 10:22, catching the 10:40 bus with only 18 minutes wait—better than the 09:25 option's 23-minute wait. The 10:35 ferry arrives too late for the 11:00 deadline, so the 10:00 ferry is the best choice, minimizing wait time while still making the bus.\n\n"
+    },
+    {
+      "type": "text",
+      "textBytes": 160,
+      "signatureBytes": 0,
+      "dataBytes": 0,
+      "text": "Take the 10:00 ferry from the north pier, which arrives at the south pier at 10:22 and lets you catch the 10:40 bus. You will wait 18 minutes at the south pier."
+    }
+  ],
+  "result": {
+    "subtype": "success",
+    "isError": false,
+    "usage": {
+      "input_tokens": 497,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 466,
+      "output_tokens_details": {
+        "thinking_tokens": 401
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [],
+      "speed": "standard",
+      "fallback_credit": null
+    },
+    "modelUsage": {
+      "claude-haiku-5-5": {
+        "inputTokens": 497,
+        "outputTokens": 466,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.011308,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 401,
+        "canonicalModel": "claude-haiku-5-5",
+        "provider": "firstParty",
+        "costBasis": "unknown"
+      }
+    },
+    "text": "Take the 10:00 ferry from the north pier, which arrives at the south pier at 10:22 and lets you catch the 10:40 bus. You will wait 18 minutes at the south pier."
+  }
+}

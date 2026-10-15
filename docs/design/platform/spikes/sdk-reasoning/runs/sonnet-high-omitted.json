@@ -1,0 +1,146 @@
+{
+  "profile": "sonnet-high",
+  "model": "claude-sonnet-5-5",
+  "effort": "high",
+  "setting": "omitted",
+  "thinking": {
+    "type": "adaptive",
+    "display": "omitted"
+  },
+  "ranAt": "2026-10-15T02:39:44.044Z",
+  "apiCalls": [
+    {
+      "model": "claude-sonnet-5-5",
+      "thinking": {
+        "type": "adaptive",
+        "display": "updates"
+      },
+      "outputConfig": {
+        "effort": "high"
+      },
+      "status": 200,
+      "blocks": [
+        {
+          "type": "thinking",
+          "textBytes": 0,
+          "signatureBytes": 1248,
+          "dataBytes": 0,
+          "text": ""
+        },
+        {
+          "type": "text",
+          "textBytes": 209,
+          "signatureBytes": 0,
+          "dataBytes": 0,
+          "text": "Take the 09:25 ferry, since the 08:50 leaves before you can reach the north pier at 08:55. It arrives at 09:47, so you'll wait 13 minutes at the south pier for the 10:00 bus, well ahead of your 11:00 deadline."
+        }
+      ],
+      "events": {
+        "message_start": 1,
+        "content_block_start/thinking {signature,thinking,type}": 1,
+        "ping": 1,
+        "content_block_delta/thinking_delta {estimated_tokens,thinking,type}": 2,
+        "content_block_delta/signature_delta {signature,type}": 1,
+        "content_block_stop": 2,
+        "content_block_start/text {text,type}": 1,
+        "content_block_delta/text_delta {text,type}": 16,
+        "message_delta": 1,
+        "message_stop": 1
+      },
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 531,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 531,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 261,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 170
+        }
+      }
+    }
+  ],
+  "sdkBlocks": [
+    {
+      "type": "thinking",
+      "textBytes": 0,
+      "signatureBytes": 1248,
+      "dataBytes": 0,
+      "text": ""
+    },
+    {
+      "type": "text",
+      "textBytes": 209,
+      "signatureBytes": 0,
+      "dataBytes": 0,
+      "text": "Take the 09:25 ferry, since the 08:50 leaves before you can reach the north pier at 08:55. It arrives at 09:47, so you'll wait 13 minutes at the south pier for the 10:00 bus, well ahead of your 11:00 deadline."
+    }
+  ],
+  "thinkingTokenEvents": [
+    50,
+    234
+  ],
+  "transcriptBlocks": [
+    {
+      "type": "thinking",
+      "textBytes": 0,
+      "signatureBytes": 1248,
+      "dataBytes": 0,
+      "text": ""
+    },
+    {
+      "type": "text",
+      "textBytes": 209,
+      "signatureBytes": 0,
+      "dataBytes": 0,
+      "text": "Take the 09:25 ferry, since the 08:50 leaves before you can reach the north pier at 08:55. It arrives at 09:47, so you'll wait 13 minutes at the south pier for the 10:00 bus, well ahead of your 11:00 deadline."
+    }
+  ],
+  "result": {
+    "subtype": "success",
+    "isError": false,
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 531,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 261,
+      "output_tokens_details": {
+        "thinking_tokens": 170
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 531
+      },
+      "inference_geo": "global",
+      "iterations": [],
+      "speed": "standard",
+      "fallback_credit": null
+    },
+    "modelUsage": {
+      "claude-sonnet-5-5": {
+        "inputTokens": 2,
+        "outputTokens": 261,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 531,
+        "webSearchRequests": 0,
+        "costUSD": 0.0039415000000000006,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 170,
+        "canonicalModel": "claude-sonnet-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "text": "Take the 09:25 ferry, since the 08:50 leaves before you can reach the north pier at 08:55. It arrives at 09:47, so you'll wait 13 minutes at the south pier for the 10:00 bus, well ahead of your 11:00 deadline."
+  }
+}
