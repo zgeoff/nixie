@@ -41,8 +41,9 @@ export function Composer(props: ComposerProps): ReactNode {
       onSubmit={(event) => {
         event.preventDefault();
 
-        // the removed text only labels the next edit, so it stays in the box
-        if (message.text.trim() !== '') {
+        // the removed text only labels the next edit, so it stays in the box; Enter submits past a
+        // disabled button, so the check for an image still scaling sits here too
+        if (message.text.trim() !== '' && !attached.isPending) {
           const images = attached.images.map((image) => image.file);
 
           props.onSend({ spans: message.spans, text: message.text, ...pickImages(images) });
@@ -74,7 +75,7 @@ export function Composer(props: ComposerProps): ReactNode {
           value={message.text}
         />
         <ImagePickers onPick={(files) => void attached.attach(files)} />
-        <button className={sendButton} type="submit">
+        <button className={sendButton} disabled={attached.isPending} type="submit">
           Send
         </button>
       </div>

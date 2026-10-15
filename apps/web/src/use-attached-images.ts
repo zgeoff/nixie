@@ -6,12 +6,13 @@ export interface AttachedImage {
   readonly file: File;
 }
 
-// Holds the images attached to the message you are writing, each one the copy normalizeImage made,
-// up to the most a message takes. An image that does not read, stays past the byte limit after
-// scaling, or comes past the limit on count is left out, and the notice says why.
+// Holds the scaled copies of the images attached to the message you are writing, up to the most a
+// message takes, and leaves out an image that does not read or fit, with a notice that says why.
+// The images are pending while any still scales, so a send waits rather than leave one behind.
 export function useAttachedImages(normalizeImage: (image: File) => Promise<File>) {
   const [images, setImages] = useState<readonly AttachedImage[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [scaling, setScaling] = useState(0);
 
   const attach = useCallback(
     async (files: readonly File[]) => {
@@ -21,11 +22,11 @@ export function useAttachedImages(normalizeImage: (image: File) => Promise<File>
         return;
       }
 
-      const results = await Promise.allSettled(picked.map((file) => normalizeImage(file)));
+      setScaling((current) => current + 1);
 
-      const read = results.flatMap((result) =>
-        result.status === 'fulfilled' ? [result.value] : [],
-      );
+      const read = await readScaledImages(picked, normalizeImage);
+
+      setScaling((current) => current - 1);
 
       const fitting = read.filter((file) => file.size <= imageLimits.bytes);
       const room = imageLimits.count - images.length;
@@ -54,12 +55,22 @@ export function useAttachedImages(normalizeImage: (image: File) => Promise<File>
     setNotice(null);
   }, []);
 
-  return { attach, clear, images, notice, remove };
+  return { attach, clear, images, isPending: scaling > 0, notice, remove };
 }
 
 // a HEIC photo from a phone's files can come with no type, so its name counts too
 function isImageFile(file: File): boolean {
   return file.type.startsWith('image/') || /\.hei[cf]$/iu.test(file.name);
+}
+
+// the scaled copy of each image the browser could read, in the order picked
+async function readScaledImages(
+  picked: readonly File[],
+  normalizeImage: (image: File) => Promise<File>,
+): Promise<readonly File[]> {
+  const results = await Promise.allSettled(picked.map((file) => normalizeImage(file)));
+
+  return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
 }
 
 interface AttachCounts {

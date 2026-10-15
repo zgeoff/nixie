@@ -96,6 +96,24 @@ test('it attaches an image from the photo picker, shows it, and sends the scaled
   });
 });
 
+test('it holds the send, the message and its text while an attached image still scales', async () => {
+  const user = userEvent.setup();
+  const onSend = mock<(message: ComposedMessage) => void>();
+  const scaling = Promise.withResolvers<File>();
+  const rendered = render(<Composer normalizeImage={() => scaling.promise} onSend={onSend} />);
+
+  await user.upload(
+    rendered.getByLabelText('Photos'),
+    new File([new Uint8Array([1, 2, 3])], 'balcony.png', { type: 'image/png' }),
+  );
+
+  await user.type(rendered.getByRole('textbox', { name: 'Message' }), 'Plants?{Enter}');
+
+  expect(onSend).not.toHaveBeenCalled();
+  expect(rendered.getByRole('button', { name: 'Send' })).toBeDisabled();
+  expect(rendered.getByRole('textbox', { name: 'Message' })).toHaveValue('Plants?');
+});
+
 test('it attaches a photo from the camera', async () => {
   const user = userEvent.setup();
 
