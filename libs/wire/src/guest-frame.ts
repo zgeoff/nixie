@@ -74,6 +74,17 @@ const compactedFrameSchema = z
   })
   .readonly();
 
+// the summary a summarize frame asked for: the model's text, the summary's own chain entry, where a
+// request to cut it resumes, and the call's token counts
+const summarizedFrameSchema = z
+  .object({
+    type: z.literal('summarized'),
+    boundary: sessionPointSchema,
+    text: z.string(),
+    usage: usageSchema,
+  })
+  .readonly();
+
 // the guest removed its session state and checked that it is gone
 const purgedFrameSchema = z.object({ type: z.literal('purged') }).readonly();
 
@@ -93,6 +104,7 @@ export const guestFrameSchema = z.discriminatedUnion('type', [
   readFrameSchema,
   endedFrameSchema,
   compactedFrameSchema,
+  summarizedFrameSchema,
   failedFrameSchema,
   purgedFrameSchema,
 ]);

@@ -49,7 +49,7 @@ async function setupTest() {
   };
 }
 
-test('it gives every query() nixie tools alone, no settings, skills or SDK memory, and pinned compaction', async () => {
+test('it gives every query() nixie tools alone, no settings, skills or SDK memory, and no SDK compaction', async () => {
   const ctx = await setupTest();
 
   ctx.model.addReplies(
@@ -75,7 +75,7 @@ test('it gives every query() nixie tools alone, no settings, skills or SDK memor
         disableBundledSkills: true,
         autoMemoryEnabled: false,
         autoDreamEnabled: false,
-        autoCompactEnabled: true,
+        autoCompactEnabled: false,
         autoCompactWindow: 200_000,
         precomputeCompactionEnabled: false,
         idleCompaction: false,
@@ -555,7 +555,7 @@ test('it sends the system prompt of each turn on a resumed session, not the one 
   expect(system).toInclude('Pinned: the spare key sits under the blue flowerpot.');
 });
 
-test('it reports an automatic compaction with its token counts and no summary text', async () => {
+test('it never compacts the session itself when a call reads past the profile window', async () => {
   const ctx = await setupTest();
 
   const runTurnAt = async (text: string, resume: SessionPoint | null) => {
@@ -567,41 +567,20 @@ test('it reports an automatic compaction with its token counts and no summary te
       }),
       { ...ctx.deps, toolServer: buildStubToolServer().config },
     );
-
-    const last = ctx.frames.at(-1);
-
-    if (last?.type !== 'ended') {
-      throw new Error('the turn did not end');
-    }
-
-    return last.boundary;
   };
 
-  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
-
-  const first = await runTurnAt('one', null);
-  const second = await runTurnAt('two', first);
-
-  // the tool call reports a context past the window, so the CLI compacts before its next call,
-  // and the summary request takes the second reply
   ctx.model.addReplies(
     { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'a' } }, inputTokens: 150_000 },
-    { text: 'SUMMARY: the owner said one and two.' },
     { text: 'CHERRY' },
   );
 
-  await runTurnAt('three', second);
+  await runTurnAt('three', null);
 
-  expect(ctx.frames.filter((frame) => frame.type === 'compacted')).toStrictEqual([
-    {
-      type: 'compacted',
-      trigger: 'auto',
-      preTokens: expect.toBeWithin(150_000, 160_000),
-      postTokens: expect.toBeNumber(),
-    },
+  expect(ctx.frames.filter((frame) => frame.type !== 'read')).toMatchObject([
+    { type: 'assistant', text: '' },
+    { type: 'assistant', text: 'CHERRY' },
+    { type: 'ended', context: { window: 100_000 } },
   ]);
-
-  expect(JSON.stringify(ctx.frames)).not.toInclude('SUMMARY');
 });
 
 test('it reports a session to resume that is not on the guest disk as missing', async () => {
