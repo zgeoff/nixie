@@ -38,6 +38,8 @@ export async function readOutsideVersions(
   };
 }
 
+// The versions of items no forget has begun, so a forgotten item never takes a place under the
+// events block's cap that its recall would then leave empty.
 function readVersionRows(
   log: Pick<Log, 'writer'>,
   range: TurnNoteRange,
@@ -45,11 +47,19 @@ function readVersionRows(
   return log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
-    .select(['item_id', 'change', 'origin', 'sequence', 'recorded_at'])
-    .where('sequence', '>', range.after)
-    .where('sequence', '<=', range.through)
-    .where('origin', '!=', 'conversation')
-    .orderBy('sequence')
+    .innerJoin('memory_items', 'memory_items.item_id', 'memory_versions.item_id')
+    .select([
+      'memory_versions.item_id',
+      'memory_versions.change',
+      'memory_versions.origin',
+      'memory_versions.sequence',
+      'memory_versions.recorded_at',
+    ])
+    .where('memory_versions.sequence', '>', range.after)
+    .where('memory_versions.sequence', '<=', range.through)
+    .where('memory_versions.origin', '!=', 'conversation')
+    .where('memory_items.state', 'in', ['active', 'retired'])
+    .orderBy('memory_versions.sequence')
     .execute();
 }
 

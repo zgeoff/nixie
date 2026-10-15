@@ -148,5 +148,7 @@ proposal merged and still waits.
 
 The block reads a listed item's text through a recall marked as a turn note's, and only after its
 cap, so the recall records no item the block leaves out. A rating binds to the newest recall without
-that mark, so the item list the turn's own recall gave stays the one the model rates. The recall
-leaves out an item that a forget has begun, so that item drops out of the block.
+that mark, so the item list the turn's own recall gave stays the one the model rates. Memory's kinds
+leave out an item that a forget has begun before the block applies its cap, so a forgotten item
+never takes the place of a later event. The recall checks again, because a forget can begin between
+the read and the recall.
