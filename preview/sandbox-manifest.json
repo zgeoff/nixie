@@ -1,0 +1,4 @@
+{
+  "conversation": "ghcr.io/example/nixie-conversation@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "fetch": "ghcr.io/example/nixie-fetch@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+}

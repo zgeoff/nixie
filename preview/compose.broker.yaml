@@ -1,0 +1,14 @@
+# Routes the preview's model calls through the host's credential broker, which adds the model
+# credential on the way out, so no key enters the preview. Add it on a host that runs a broker:
+#   docker compose -f compose.yaml -f compose.broker.yaml up --build --wait
+# HTTPS_PROXY names the broker's proxy, and BROKER_CA_FILE the certificate its proxy signs with.
+services:
+  nixie:
+    environment:
+      HTTPS_PROXY: ${HTTPS_PROXY:?set HTTPS_PROXY}
+      NO_PROXY: localhost,127.0.0.1,::1
+      NODE_USE_ENV_PROXY: '1'
+      SSL_CERT_FILE: /etc/nixie-preview/broker-ca.pem
+      NODE_EXTRA_CA_CERTS: /etc/nixie-preview/broker-ca.pem
+    volumes:
+      - ${BROKER_CA_FILE:?set BROKER_CA_FILE}:/etc/nixie-preview/broker-ca.pem:ro
