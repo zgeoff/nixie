@@ -1,14 +1,15 @@
 import type { StepInput } from '@heynixie/tasks';
-import { countImageBytes } from './count-image-bytes';
+import { countImages } from './count-images';
+import { isPastImageBudget } from './is-past-image-budget';
 import { readInboxMessages } from './read-inbox-messages';
-import { sessionImageBudgetBytes } from './session-image-budget-bytes';
-import type { ConversationRun } from './types';
+import { sessionImageBudget } from './session-image-budget';
+import type { ConversationRun, ImageTally } from './types';
 
 export interface SessionImages {
   readonly inbox: StepInput['inbox'];
 
-  // the image bytes, in base64, the session holds after its last turn
-  readonly imageBytes: number;
+  // the images the session holds after its last turn
+  readonly images: ImageTally;
 }
 
 // Whether the images the session holds leave no room for those of the inbox's first message, which
@@ -17,7 +18,7 @@ export async function isSessionImagesFull(
   run: Pick<ConversationRun, 'context' | 'defaultZone'>,
   session: SessionImages,
 ): Promise<boolean> {
-  if (session.imageBytes === 0) {
+  if (session.images.count === 0) {
     return false;
   }
 
@@ -25,10 +26,10 @@ export async function isSessionImagesFull(
 
   const [first] = await readInboxMessages(run.context.log, session.inbox.slice(0, 1), {
     times,
-    imageBudgetBytes: 0,
+    imageBudget: { bytes: 0, count: 0 },
   });
 
-  const bytes = first === undefined ? 0 : countImageBytes(first);
-
-  return bytes > 0 && session.imageBytes + bytes > sessionImageBudgetBytes;
+  return (
+    first !== undefined && isPastImageBudget(session.images, countImages(first), sessionImageBudget)
+  );
 }

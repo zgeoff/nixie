@@ -5,7 +5,7 @@ import { buildModelRecord } from './build-model-record';
 import { decodeInboxUUID } from './decode-inbox-uuid';
 import { isContextOverflow } from './is-context-overflow';
 import type { GuestTurn } from './run-guest-turn';
-import type { MemoryRef } from './types';
+import type { ImageTally, MemoryRef } from './types';
 
 export interface CompletedTurn {
   readonly turn: GuestTurn;
@@ -19,8 +19,8 @@ export interface CompletedTurn {
   // the last sequence the turn's memory note covered, or null when the turn had no note
   readonly notedThrough: number | null;
 
-  // the image bytes, in base64, the session holds after the turn, which every later request repeats
-  readonly imageBytes: number;
+  // the images the session holds after the turn, which every later request repeats
+  readonly images: ImageTally;
 }
 
 // The memory a turn placed, which its record lists as references and never as text.
@@ -101,7 +101,8 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
         pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
         retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
         invalidatedThrough: completed.memory.invalidatedThrough,
-        sessionImageBytes: completed.imageBytes,
+        sessionImageBytes: completed.images.bytes,
+        sessionImageCount: completed.images.count,
         ...(completed.turn.endedMark === undefined
           ? {}
           : { recalledThrough: completed.turn.endedMark }),

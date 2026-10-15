@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
-import { countImageBytes } from './count-image-bytes';
+import { countImages } from './count-images';
 
-test('it counts the base64 bytes of every image of the message', () => {
+test('it counts every image of the message and their base64 bytes', () => {
   expect(
-    countImageBytes({
+    countImages({
       uuid: '3c1f6a2e-8b4d-4e7f-9a0c-5d2b1e8f7a64',
       text: 'Two plans',
       images: [
@@ -19,11 +19,11 @@ test('it counts the base64 bytes of every image of the message', () => {
         },
       ],
     }),
-  ).toBe(12);
+  ).toStrictEqual({ bytes: 12, count: 2 });
 });
 
-test('it counts no bytes for a message with no images', () => {
+test('it counts no images for a message with none', () => {
   expect(
-    countImageBytes({ uuid: '3c1f6a2e-8b4d-4e7f-9a0c-5d2b1e8f7a64', text: 'Only words' }),
-  ).toBe(0);
+    countImages({ uuid: '3c1f6a2e-8b4d-4e7f-9a0c-5d2b1e8f7a64', text: 'Only words' }),
+  ).toStrictEqual({ bytes: 0, count: 0 });
 });

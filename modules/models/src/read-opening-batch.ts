@@ -1,24 +1,25 @@
 import type { Log } from '@heynixie/log';
 import type { StepInput } from '@heynixie/tasks';
-import { countImageBytes } from './count-image-bytes';
+import { countImages } from './count-images';
+import { mergeImageTallies } from './merge-image-tallies';
 import type { LiveImages } from './read-live-inbox';
 import type { TurnBatch } from './read-turn-batch';
 import { readTurnBatch } from './read-turn-batch';
-import { sessionImageBudgetBytes } from './session-image-budget-bytes';
-import type { MessageTimeOptions } from './types';
+import { sessionImageBudget } from './session-image-budget';
+import type { ImageTally, MessageTimeOptions } from './types';
 
 export interface OpeningBatch {
   readonly batch: TurnBatch;
 
-  // the session's image bytes after the batch, which the live messages add to
+  // the session's images after the batch, which the live messages add to
   readonly images: LiveImages;
 }
 
 interface OpeningRead {
   readonly times: MessageTimeOptions;
 
-  // the image bytes, in base64, the session holds before the turn
-  readonly imageBytes: number;
+  // the images the session holds before the turn
+  readonly images: ImageTally;
 }
 
 // Reads the batch a turn opens with, as much of the session's image budget as the session leaves.
@@ -29,13 +30,16 @@ export async function readOpeningBatch(
 ): Promise<OpeningBatch> {
   const batch = await readTurnBatch(log, inbox, {
     times: read.times,
-    imageBudgetBytes: sessionImageBudgetBytes - read.imageBytes,
+    imageBudget: {
+      bytes: sessionImageBudget.bytes - read.images.bytes,
+      count: sessionImageBudget.count - read.images.count,
+    },
   });
 
-  const opened = batch.messages.reduce((total, message) => total + countImageBytes(message), 0);
+  const spent = mergeImageTallies(
+    read.images,
+    ...batch.messages.map((message) => countImages(message)),
+  );
 
-  return {
-    batch,
-    images: { spent: read.imageBytes + opened, budget: sessionImageBudgetBytes, isCapped: false },
-  };
+  return { batch, images: { spent, budget: sessionImageBudget, isCapped: false } };
 }

@@ -22,7 +22,7 @@ export async function runResumedTurn(
 ): Promise<StepResult> {
   const isFull = await isSessionImagesFull(step.run, {
     inbox: step.input.inbox,
-    imageBytes: step.marks.imageBytes,
+    images: step.marks.images,
   });
 
   return isFull ? runRebuiltTurn(step, session, 'images') : runBoundaryTurn(step, session);

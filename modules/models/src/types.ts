@@ -180,6 +180,12 @@ export interface MessageTimeOptions {
   readonly now: Date;
 }
 
+// The images a message or a session carries to the model: their bytes in base64 and how many.
+export interface ImageTally {
+  readonly bytes: number;
+  readonly count: number;
+}
+
 // What a session cleanup runs for, which its records keep: a forgotten memory item, or the sequence
 // of one forgotten record, such as your message.
 export type SessionCleanupCause = { readonly itemID: string } | { readonly recordSequence: number };

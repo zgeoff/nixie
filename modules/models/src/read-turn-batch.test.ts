@@ -24,7 +24,7 @@ test('it takes the oldest 64 records of a longer inbox', async () => {
 
   const batch = await readTurnBatch(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
-    imageBudgetBytes: 24 * 1024 * 1024,
+    imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
   });
 
   expect(batch.records).toStrictEqual(records.slice(0, 64));
@@ -49,7 +49,7 @@ test('it leaves a record for the next turn when its images would pass 24 MiB wit
 
   const batch = await readTurnBatch(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
-    imageBudgetBytes: 24 * 1024 * 1024,
+    imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
   });
 
   expect(batch.records).toStrictEqual(records.slice(0, 1));

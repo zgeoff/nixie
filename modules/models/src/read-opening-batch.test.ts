@@ -34,14 +34,14 @@ test('it opens with the records whose images fit what the session leaves, and co
   // the session leaves room for 12 bytes, and each 6-byte image reads as 8 in base64
   const opening = await readOpeningBatch(ctx.log, inbox, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
-    imageBytes: 24 * 1024 * 1024 - 12,
+    images: { bytes: 24 * 1024 * 1024 - 12, count: 3 },
   });
 
   expect(opening.batch.records).toStrictEqual(inbox.slice(0, 1));
 
   expect(opening.images).toStrictEqual({
-    spent: 24 * 1024 * 1024 - 4,
-    budget: 24 * 1024 * 1024,
+    spent: { bytes: 24 * 1024 * 1024 - 4, count: 4 },
+    budget: { bytes: 24 * 1024 * 1024, count: 100 },
     isCapped: false,
   });
 });
@@ -68,9 +68,34 @@ test('it opens a new session with every record that fits the whole budget', asyn
 
   const opening = await readOpeningBatch(ctx.log, inbox, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
-    imageBytes: 0,
+    images: { bytes: 0, count: 0 },
   });
 
   expect(opening.batch.records).toHaveLength(2);
-  expect(opening.images.spent).toBe(8);
+  expect(opening.images.spent).toStrictEqual({ bytes: 8, count: 1 });
+});
+
+test('it opens with the records whose images fit the 100 a session holds, however small', async () => {
+  const ctx = await setupTest();
+
+  const icon = {
+    kind: 'owner_message',
+    definitions: { snapshotHash: 'sha256:test' },
+    thread: 'conversation',
+    payload: { images: [{ mediaType: 'image/png' }, { mediaType: 'image/png' }] },
+    erasable: { text: 'Two more icons.' },
+    attachments: [new Uint8Array(6).fill(1), new Uint8Array(6).fill(2)],
+  };
+
+  const inbox = await writeRecords(ctx.log, [icon, icon]);
+
+  // the session holds 97 images, so the first record's 2 bring it to 99 and the second's would
+  // bring it to 101
+  const opening = await readOpeningBatch(ctx.log, inbox, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    images: { bytes: 776, count: 97 },
+  });
+
+  expect(opening.batch.records).toStrictEqual(inbox.slice(0, 1));
+  expect(opening.images.spent).toStrictEqual({ bytes: 792, count: 99 });
 });

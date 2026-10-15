@@ -4,15 +4,17 @@ import type { TasksContext } from '@heynixie/tasks';
 import { isInboxRecord } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
-import { countImageBytes } from './count-image-bytes';
+import { countImages } from './count-images';
+import { isPastImageBudget } from './is-past-image-budget';
+import { mergeImageTallies } from './merge-image-tallies';
 import { readInboxMessages } from './read-inbox-messages';
-import type { MessageTimeOptions } from './types';
+import type { ImageTally, MessageTimeOptions } from './types';
 
-// The session's image bytes in base64, which each live message adds to, its budget, and whether a
-// message waits on that budget.
+// The session's images, which each live message adds to, its budget, and whether a message waits on
+// that budget.
 export interface LiveImages {
-  spent: number;
-  readonly budget: number;
+  spent: ImageTally;
+  readonly budget: ImageTally;
   isCapped: boolean;
 }
 
@@ -55,7 +57,7 @@ export async function* readLiveInbox(
 
       live.sent.add(entry.record.sequence);
 
-      live.images.spent += countImageBytes(message);
+      live.images.spent = mergeImageTallies(live.images.spent, countImages(message));
       yield message;
     }
   }
@@ -75,12 +77,12 @@ async function readLiveMessage(
 ): Promise<InboxMessage | null> {
   const [message] = await readInboxMessages(context.log, [record], {
     times: live.times,
-    imageBudgetBytes: 0,
+    imageBudget: { bytes: 0, count: 0 },
   });
 
   invariant(message, 'the inbox read returned no message for its one record');
 
-  const bytes = countImageBytes(message);
-
-  return bytes > 0 && live.images.spent + bytes > live.images.budget ? null : message;
+  return isPastImageBudget(live.images.spent, countImages(message), live.images.budget)
+    ? null
+    : message;
 }
