@@ -1,5 +1,6 @@
 // Reads one page with the fetcher's own readPage, at its default limits, and prints one JSON line
-// with the same measures as read-in-browser.ts, so the two costs compare on the same page.
+// with the same measures as read-in-browser.ts, so the two costs compare on the same page. A
+// binary page has no text, so its textChars is null.
 //   bun read-plain.ts <url>
 import { readFile } from 'node:fs/promises';
 import { makeAddressCheck } from '../../../../../guests/fetch/src/make-address-check';
@@ -25,7 +26,7 @@ console.log(
     totalMs,
     kind: reply.kind,
     ...(reply.kind === 'page'
-      ? { status: reply.status, blocked: reply.blocked ?? null, textChars: reply.text.length }
+      ? { status: reply.status, blocked: reply.blocked ?? null, textChars: reply.text?.length ?? null }
       : { reason: reply.reason }),
     peakMemoryMiB: peak === null ? null : Math.round(Number(peak) / 1_048_576),
   }),
