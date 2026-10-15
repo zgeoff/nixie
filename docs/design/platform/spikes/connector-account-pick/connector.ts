@@ -120,9 +120,9 @@ function getAllowedValues(): string[] {
 }
 
 function buildCallResult(args: Record<string, unknown>): { isError: boolean; text: string } {
-  const value = String(args['connection'] ?? ''),
+  const value = args['connection'],
     allowed = getAllowedValues();
-  if (!allowed.includes(value)) {
+  if (typeof value !== 'string' || !allowed.includes(value)) {
     const choices = set.connections.map((item, index) =>
       arm === 'id-only' ? `- ${allowed[index]}` : `- ${allowed[index]} (${formatConnection(item)})`,
     );

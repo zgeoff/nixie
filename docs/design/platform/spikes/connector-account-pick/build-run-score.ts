@@ -47,7 +47,8 @@ export function buildRunScore(
     lastGood = calls.findLast((call) => !call.error);
   let final: RunScore['final'] = 'none';
   if (lastGood) {
-    final = String(lastGood.args.connection ?? '') === expected ? 'right' : 'wrong';
+    const value = lastGood.args.connection;
+    final = typeof value === 'string' && value === expected ? 'right' : 'wrong';
   }
   return {
     final,
@@ -59,8 +60,13 @@ export function buildRunScore(
   };
 }
 
+// The schema takes a string, so any other value is invalid, even one that would print as an allowed
+// value, such as an array that holds one.
 function pickCallOutcome(call: Call, allowed: string[], expected: string | null): CallOutcome {
-  const value = String(call.args.connection ?? '');
+  const value = call.args.connection;
+  if (typeof value !== 'string') {
+    return 'invalid';
+  }
   if (value === expected) {
     return 'right';
   }
