@@ -26,9 +26,13 @@ export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
 
   const sweep = setInterval(() => {
     running ??= (async () => {
-      await runLapseSweep(options);
-
-      running = null;
+      try {
+        await runLapseSweep(options);
+      } catch {
+        // an onError that throws loses only its own report, and the next sweep still runs
+      } finally {
+        running = null;
+      }
     })();
   }, options.intervalMs ?? lapseSweepMs);
 
@@ -43,11 +47,19 @@ export function startLapseSweep(options: LapseSweepOptions): LapseSweep {
 
 const lapseSweepMs = 60 * 60 * 1000;
 
+// each lapse reports its own failure, so a failed proposal lapse never holds back the consolidations
 async function runLapseSweep(options: LapseSweepOptions): Promise<void> {
+  await tryRunLapse(() => options.store.proposals.lapse(), options.onError);
+  await tryRunLapse(() => options.store.consolidations.lapse(), options.onError);
+}
+
+async function tryRunLapse(
+  lapse: () => Promise<number>,
+  onError: LapseSweepOptions['onError'],
+): Promise<void> {
   try {
-    await options.store.proposals.lapse();
-    await options.store.consolidations.lapse();
+    await lapse();
   } catch (error) {
-    options.onError(error);
+    onError(error);
   }
 }
