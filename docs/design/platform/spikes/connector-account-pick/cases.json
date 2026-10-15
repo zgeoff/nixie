@@ -1,0 +1,390 @@
+{
+  "owner": "Jordan Reyes",
+  "sets": {
+    "mail-2": {
+      "tool": "mail_draft",
+      "connections": [
+        {
+          "id": "p81vxxxbo8",
+          "label": "Work",
+          "account": "jordan.reyes@harbourline.example"
+        },
+        {
+          "id": "wbzmh8v96q",
+          "label": "Personal",
+          "account": "jordan@fernway.example"
+        }
+      ]
+    },
+    "mail-4": {
+      "tool": "mail_draft",
+      "connections": [
+        {
+          "id": "lnisyqv270",
+          "label": "Work",
+          "account": "j.reyes@harbourline.example"
+        },
+        {
+          "id": "av3fv06ans",
+          "label": "Personal",
+          "account": "jordan@fernway.example"
+        },
+        {
+          "id": "pythchwz3x",
+          "label": "Allotment society",
+          "account": "secretary@eastfield-allotments.example"
+        },
+        {
+          "id": "zgj7o0bu62",
+          "label": "Lowtide",
+          "account": "bookings@lowtide-band.example"
+        }
+      ]
+    },
+    "mail-old": {
+      "tool": "mail_draft",
+      "connections": [
+        {
+          "id": "k07v2nnzqf",
+          "label": "Old work",
+          "account": "jr@quayside.example"
+        },
+        {
+          "id": "prva6ajc7u",
+          "label": "Work",
+          "account": "jordan.reyes@harbourline.example"
+        },
+        {
+          "id": "ep6y38znha",
+          "label": "Personal",
+          "account": "jordan@fernway.example"
+        }
+      ]
+    },
+    "calendar-3": {
+      "tool": "calendar_create",
+      "connections": [
+        {
+          "id": "frbz9n6xux",
+          "label": "Work",
+          "account": "jordan.reyes@harbourline.example"
+        },
+        {
+          "id": "qr81xqr3e5",
+          "label": "Family",
+          "account": "reyes.family@fernway.example"
+        },
+        {
+          "id": "y2003szqpf",
+          "label": "Climbing club",
+          "account": "jordan@cragside.example"
+        }
+      ]
+    },
+    "files-default": {
+      "tool": "files_search",
+      "connections": [
+        {
+          "id": "wtrbhgbi4t",
+          "label": "jordan.reyes@harbourline.example",
+          "account": "jordan.reyes@harbourline.example"
+        },
+        {
+          "id": "u2zukn18wc",
+          "label": "jordan@fernway.example",
+          "account": "jordan@fernway.example"
+        }
+      ]
+    },
+    "search-numbered": {
+      "tool": "web_search",
+      "connections": [
+        {
+          "id": "msapcmafqt",
+          "label": "kagi",
+          "account": null
+        },
+        {
+          "id": "p7cpd62yu7",
+          "label": "kagi 2",
+          "account": null
+        }
+      ]
+    },
+    "mail-6": {
+      "tool": "mail_draft",
+      "connections": [
+        {
+          "id": "xxz4h0yk4a",
+          "label": "Work",
+          "account": "jordan.reyes@harbourline.example"
+        },
+        {
+          "id": "dpdlxiruky",
+          "label": "Work shared",
+          "account": "team-ops@harbourline.example"
+        },
+        {
+          "id": "yzv07kwtsc",
+          "label": "Personal",
+          "account": "jordan@fernway.example"
+        },
+        {
+          "id": "nqeqv5q5st",
+          "label": "Shop",
+          "account": "hello@fernway-ceramics.example"
+        },
+        {
+          "id": "kw761z5sl2",
+          "label": "Lowtide",
+          "account": "bookings@lowtide-band.example"
+        },
+        {
+          "id": "p2q654qw4y",
+          "label": "Allotment society",
+          "account": "secretary@eastfield-allotments.example"
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "mail2-label-work",
+      "set": "mail-2",
+      "kind": "label",
+      "expect": "Work",
+      "prompt": "Draft an email from my Work account to Tamsin Okafor (tamsin@quarrybank.example) saying the slides will be ready on Thursday."
+    },
+    {
+      "id": "mail2-label-personal",
+      "set": "mail-2",
+      "kind": "label",
+      "expect": "Personal",
+      "prompt": "Using my personal email, draft a note to my neighbour Bertrand (bertrand.nowak@example.net) asking if he can feed the cat on Saturday."
+    },
+    {
+      "id": "mail2-address",
+      "set": "mail-2",
+      "kind": "address",
+      "expect": "Personal",
+      "prompt": "Draft a message from my fernway address to the dentist (reception@brightsmile.example) asking to move my appointment to next week."
+    },
+    {
+      "id": "mail2-synonym",
+      "set": "mail-2",
+      "kind": "synonym",
+      "expect": "Work",
+      "prompt": "Draft a note from my job email to the payroll provider (payroll@ledgerworks.example) asking when the October payslip goes out."
+    },
+    {
+      "id": "mail2-ask",
+      "set": "mail-2",
+      "kind": "ask",
+      "expect": null,
+      "prompt": "Draft an email to Tamsin Okafor (tamsin@quarrybank.example) to say I'm running ten minutes late."
+    },
+    {
+      "id": "mail2-distractor",
+      "set": "mail-2",
+      "kind": "distractor",
+      "expect": "Work",
+      "prompt": "Draft an email from my work account to Bertrand (bertrand.nowak@example.net) saying the Tuesday 7pm personal training slot works for me."
+    },
+    {
+      "id": "mail4-label-allotment",
+      "set": "mail-4",
+      "kind": "label",
+      "expect": "Allotment society",
+      "prompt": "Draft an email from the allotment society account to all plot holders (plots@eastfield-allotments.example) saying the water is off on Sunday."
+    },
+    {
+      "id": "mail4-synonym-band",
+      "set": "mail-4",
+      "kind": "synonym",
+      "expect": "Lowtide",
+      "prompt": "Draft a reply to the venue (events@thecopperhall.example) from the band's address confirming our soundcheck at 5pm."
+    },
+    {
+      "id": "mail4-address-partial",
+      "set": "mail-4",
+      "kind": "address",
+      "expect": "Lowtide",
+      "prompt": "Draft from bookings@ to the promoter (mo@nightjar-promotions.example) asking about the guest list for Friday."
+    },
+    {
+      "id": "mail4-synonym-work",
+      "set": "mail-4",
+      "kind": "synonym",
+      "expect": "Work",
+      "prompt": "Draft a quick email from my day-job account to my manager (dana.whitlock@harbourline.example) saying I'm off sick today."
+    },
+    {
+      "id": "mail4-ask",
+      "set": "mail-4",
+      "kind": "ask",
+      "expect": null,
+      "prompt": "Draft an email to Bertrand (bertrand.nowak@example.net) saying thanks for Saturday."
+    },
+    {
+      "id": "mail4-label-personal",
+      "set": "mail-4",
+      "kind": "label",
+      "expect": "Personal",
+      "prompt": "From my personal account, draft a note to my sister (lena.reyes@example.org) about the birthday dinner on the 2nd."
+    },
+    {
+      "id": "cal3-label-climbing",
+      "set": "calendar-3",
+      "kind": "label",
+      "expect": "Climbing club",
+      "prompt": "Add 'Bouldering session' to my Climbing club calendar on 2026-10-20 at 18:30."
+    },
+    {
+      "id": "cal3-label-family",
+      "set": "calendar-3",
+      "kind": "label",
+      "expect": "Family",
+      "prompt": "Put the parents' evening on the family calendar, 2026-10-22 at 17:00."
+    },
+    {
+      "id": "cal3-address",
+      "set": "calendar-3",
+      "kind": "address",
+      "expect": "Work",
+      "prompt": "Add a 'Quarterly planning' block at 09:00 on 2026-10-21 to the harbourline calendar."
+    },
+    {
+      "id": "cal3-ask",
+      "set": "calendar-3",
+      "kind": "ask",
+      "expect": null,
+      "prompt": "Add 'Dinner with Tamsin' on 2026-10-24 at 19:30 to my calendar."
+    },
+    {
+      "id": "cal3-distractor",
+      "set": "calendar-3",
+      "kind": "distractor",
+      "expect": "Work",
+      "prompt": "On my work calendar, add 'Family leave handover' on 2026-10-23 at 14:00."
+    },
+    {
+      "id": "files-address",
+      "set": "files-default",
+      "kind": "address",
+      "expect": "jordan.reyes@harbourline.example",
+      "prompt": "Search my harbourline Drive for the 2026 budget spreadsheet."
+    },
+    {
+      "id": "files-synonym",
+      "set": "files-default",
+      "kind": "synonym",
+      "expect": "jordan@fernway.example",
+      "prompt": "Find the boiler warranty PDF in my personal Drive. Harbourline is my employer."
+    },
+    {
+      "id": "files-ask",
+      "set": "files-default",
+      "kind": "ask",
+      "expect": null,
+      "prompt": "Search my Drive for the photos from the canal walk."
+    },
+    {
+      "id": "mailold-label-old",
+      "set": "mail-old",
+      "kind": "label",
+      "expect": "Old work",
+      "prompt": "Draft from my old work account to Hal (hal.brennan@quayside.example) asking for a copy of my P45."
+    },
+    {
+      "id": "mailold-distractor-work",
+      "set": "mail-old",
+      "kind": "distractor",
+      "expect": "Work",
+      "prompt": "Draft from my work account to the new starter (ines.varga@harbourline.example) welcoming her to the team."
+    },
+    {
+      "id": "mailold-distractor-personal",
+      "set": "mail-old",
+      "kind": "distractor",
+      "expect": "Personal",
+      "prompt": "From my personal account, draft a note to Hal Brennan (hal.brennan@example.net) saying it was good to catch up now that I've left Quayside."
+    },
+    {
+      "id": "search-numbered-2",
+      "set": "search-numbered",
+      "kind": "label",
+      "expect": "kagi 2",
+      "prompt": "Use the second Kagi key to search for 'canal boat licence renewal'."
+    },
+    {
+      "id": "search-numbered-1",
+      "set": "search-numbered",
+      "kind": "label",
+      "expect": "kagi",
+      "prompt": "Search with the first Kagi connection for 'allotment water butt'."
+    },
+    {
+      "id": "mail6-label-shared",
+      "set": "mail-6",
+      "kind": "label",
+      "expect": "Work shared",
+      "prompt": "Draft from the Work shared inbox to the cleaning contractor (accounts@sparkleworks.example) asking them to resend the October invoice."
+    },
+    {
+      "id": "mail6-near-label-work",
+      "set": "mail-6",
+      "kind": "distractor",
+      "expect": "Work",
+      "prompt": "Draft from my own work address, not the shared inbox, to Dana (dana.whitlock@harbourline.example) asking for Friday off."
+    },
+    {
+      "id": "mail6-typo",
+      "set": "mail-6",
+      "kind": "label",
+      "expect": "Personal",
+      "prompt": "Draft from my persnal acount to Lena (lena.reyes@example.org) saying the dinner is at 7."
+    },
+    {
+      "id": "mail6-uppercase",
+      "set": "mail-6",
+      "kind": "label",
+      "expect": "Lowtide",
+      "prompt": "Draft from LOWTIDE to the promoter (mo@nightjar-promotions.example) asking about Friday's guest list."
+    },
+    {
+      "id": "mail6-synonym-shop",
+      "set": "mail-6",
+      "kind": "synonym",
+      "expect": "Shop",
+      "prompt": "Draft a reply from the ceramics shop email to a customer (mira.solberg@example.com) saying her mugs ship on Monday."
+    },
+    {
+      "id": "mail6-synonym-society",
+      "set": "mail-6",
+      "kind": "synonym",
+      "expect": "Allotment society",
+      "prompt": "Draft a note from the society's account to all plot holders (plots@eastfield-allotments.example) about the AGM on 2026-11-02."
+    },
+    {
+      "id": "mail6-implied-band",
+      "set": "mail-6",
+      "kind": "implied",
+      "expect": "Lowtide",
+      "prompt": "Draft a reply to the venue (events@thecopperhall.example) confirming the band's soundcheck at 5pm on Friday."
+    },
+    {
+      "id": "mail6-implied-shop",
+      "set": "mail-6",
+      "kind": "implied",
+      "expect": "Shop",
+      "prompt": "Draft an email to the customer Mira Solberg (mira.solberg@example.com) saying her glaze order ships on Monday."
+    },
+    {
+      "id": "mail6-ask",
+      "set": "mail-6",
+      "kind": "ask",
+      "expect": null,
+      "prompt": "Draft an email to Mira (mira.solberg@example.com) saying thanks for the photos."
+    }
+  ]
+}
