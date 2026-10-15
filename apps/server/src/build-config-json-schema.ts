@@ -65,23 +65,24 @@ export function buildConfigJSONSchema(): Record<string, unknown> {
   };
 }
 
-function toStrings(value: unknown): readonly string[] {
-  return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
-}
+function getSchemaNode(schema: unknown, path: readonly string[]): Record<string, unknown> {
+  let node = schema;
 
-function getSchemaNode(
-  schema: Record<string, unknown>,
-  path: readonly string[],
-): Record<string, unknown> {
-  return path.reduce((node, key) => {
-    const child = node[key];
+  for (const key of path) {
+    invariant(isSchemaNode(node), `the config schema has no node at ${path.join('.')}`);
 
-    invariant(isSchemaNode(child), `the config schema has no node at ${path.join('.')}`);
+    node = node[key];
+  }
 
-    return child;
-  }, schema);
+  invariant(isSchemaNode(node), `the config schema has no node at ${path.join('.')}`);
+
+  return node;
 }
 
 function isSchemaNode(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toStrings(value: unknown): readonly string[] {
+  return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
 }
