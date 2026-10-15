@@ -1,4 +1,5 @@
 import { parseArgs } from 'node:util';
+import type { Logger } from '@heynixie/ops';
 import { toErrorFields } from '@heynixie/ops';
 import { buildConsolidationCommands } from './build-consolidation-commands';
 import { buildMemoryCommands } from './build-memory-commands';
@@ -66,7 +67,7 @@ async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
   });
 
   const exitCode = await Promise.race([
-    waitForStopSignal(io),
+    waitForStopSignal(io, server.log),
     waitForFailure(server.failed),
     waitForReset(server.reset),
   ]);
@@ -76,10 +77,11 @@ async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
   return exitCode;
 }
 
-async function waitForStopSignal(io: CLIIO): Promise<number> {
+// the server's logger holds the configured level, which the command's own logger predates
+async function waitForStopSignal(io: CLIIO, log: Logger): Promise<number> {
   const signal = await io.waitForSignal();
 
-  io.log('signal.received', { signal });
+  log('signal.received', { signal });
 
   return 0;
 }

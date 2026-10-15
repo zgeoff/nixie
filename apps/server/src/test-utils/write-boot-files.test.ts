@@ -25,6 +25,7 @@ test('it writes a configuration that loads, with the scripted model as the conve
     hostname: '127.0.0.1',
     port: 0,
     secretsFile: join(ctx.dir, 'secrets.yaml'),
+    logLevel: 'info',
   });
 
   expect(config.models.profiles['scripted']?.baseURL).toBe('http://127.0.0.1:4010');
@@ -64,6 +65,20 @@ test('it appends the extra lines to the configuration', async () => {
   const config = await loadDeploymentConfig(files.configPath);
 
   expect(config.tasks).toStrictEqual({ runners: 5 });
+});
+
+test('it writes the log level into the server section', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    logLevel: 'error',
+  });
+
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect(config.server.logLevel).toBe('error');
 });
 
 test('it appends the extra lines to the secrets file', async () => {

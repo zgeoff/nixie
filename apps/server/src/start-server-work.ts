@@ -55,6 +55,7 @@ export async function startServerWork(
     ready: start.ready,
     failed: failed.promise,
     reset: reset.done,
+    log: options.log,
     stop: makeStop({ cleanup: options.cleanup, work, reset }, options, start.ready),
   };
 }
