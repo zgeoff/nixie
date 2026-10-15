@@ -54,6 +54,21 @@ test('it sends each /rpc request to the API', async () => {
   expect(ctx.paths).toStrictEqual(['api POST /rpc/sessions/list']);
 });
 
+test('it answers 502 when the server behind it is down', async () => {
+  const ctx = setupTest();
+
+  // a port that nothing listens on: the probe stops on the next line
+  const probe = Bun.serve({ fetch: () => new Response(null), hostname: '127.0.0.1', port: 0 });
+
+  await probe.stop(true);
+
+  const proxy = startFrontProxy({ apiURL: `http://127.0.0.1:${probe.port}`, webURL: ctx.webURL });
+
+  const response = await fetch(`${proxy.url}/rpc/sessions/list`, { body: '{}', method: 'POST' });
+
+  expect(response.status).toBe(502);
+});
+
 test('it sends every other request to the web server with its query', async () => {
   const ctx = setupTest();
   const proxy = startFrontProxy({ apiURL: ctx.apiURL, webURL: ctx.webURL });
