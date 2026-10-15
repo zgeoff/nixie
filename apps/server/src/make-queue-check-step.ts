@@ -26,9 +26,13 @@ export function makeQueueCheckStep(options: QueueCheckStepOptions): RunStep {
   });
 
   return async (input) => {
-    if (input.inbox.some((record) => record.kind === 'task.wake')) {
+    // the newest wake's sequence keys the call, so each start queues its own action past one that a
+    // crash left unknown, and a rerun of the step on the same inbox matches the action it queued
+    const wake = input.inbox.findLast((record) => record.kind === 'task.wake');
+
+    if (wake !== undefined) {
       await runToolCall(
-        { tool: options.tool.name, input: {}, toolUseID: null },
+        { tool: options.tool.name, input: { wake: wake.sequence }, toolUseID: null },
         {
           runID: input.taskID,
           thread: input.taskID,

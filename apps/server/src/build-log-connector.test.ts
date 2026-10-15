@@ -7,7 +7,7 @@ test('it writes one log line with the action ID and the attempt, and reports suc
   const response = await buildLogConnector(log).connector.run({
     actionID: 'action-7',
     tool: 'actions.log',
-    arguments: {},
+    arguments: { wake: 12 },
     attempt: 2,
     idempotencyKey: 'action-7',
   });
@@ -20,13 +20,18 @@ test('it writes one log line with the action ID and the attempt, and reports suc
   expect(response).toStrictEqual({ kind: 'success', result: { logged: true } });
 });
 
-test('it declares a queued tool with no input, whose one write the registry accepts', () => {
+test('it declares a queued tool that takes the sequence of a wake, whose one write the registry accepts', () => {
   const connector = buildLogConnector(() => {});
 
   expect(connector.tool).toMatchObject({
     name: 'actions.log',
     execution: 'queued',
-    input: { type: 'object', properties: {}, additionalProperties: false },
+    input: {
+      type: 'object',
+      properties: { wake: { type: 'integer', minimum: 1 } },
+      required: ['wake'],
+      additionalProperties: false,
+    },
     declaration: { effects: ['write'], destinations: [], content: [] },
   });
 });
