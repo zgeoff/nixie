@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/zgeoff/nixie/compare/v0.24.0...v0.25.0) (2026-10-15)
+
+
+### Features
+
+* **geo-944:** pin the summary marker closed as the compaction rule ([#264](https://github.com/zgeoff/nixie/issues/264)) ([5f0f8c5](https://github.com/zgeoff/nixie/commit/5f0f8c5e00ee226c6d38b0f2f5fd92dc56f6b2d5))
+
 ## [0.24.0](https://github.com/zgeoff/nixie/compare/v0.23.0...v0.24.0) (2026-10-15)
 
 
