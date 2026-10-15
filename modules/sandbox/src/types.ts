@@ -1,3 +1,5 @@
+import type { CheckedTables } from '@heynixie/db';
+
 // The kinds of work that run in a sandbox, each with its own egress, grants and tool route.
 export type SandboxKind = 'conversation' | 'checker' | 'worker' | 'code_run' | 'fetch' | 'coding';
 
@@ -225,14 +227,16 @@ export interface SandboxRecorder {
 }
 
 // The projection's rows, as SQLite returns them.
-export type SandboxTables = Readonly<{
-  sandboxes: {
-    readonly sandbox_id: string;
-    readonly adapter: string;
-    readonly owner: string;
-    readonly kind: string;
-    readonly state: 'awake' | 'sleeping';
-    readonly spec: string;
-    readonly created_sequence: number;
-  };
-}>;
+export type SandboxTables = CheckedTables<
+  Readonly<{
+    sandboxes: {
+      readonly sandbox_id: string;
+      readonly adapter: string;
+      readonly owner: string;
+      readonly kind: string;
+      readonly state: 'awake' | 'sleeping';
+      readonly spec: string;
+      readonly created_sequence: number;
+    };
+  }>
+>;

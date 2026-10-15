@@ -66,6 +66,14 @@ a transaction, so the runner turns enforcement off around the migrations and eac
 every foreign key itself before it commits. A table rebuild would otherwise cascade its drop into
 the child rows.
 
+A module's table types and the migrations cannot disagree without a check failing. A generated file
+in the database library types every column the migrations build, as the SQLite driver reads it, and
+a test fails when that file differs from what the migrations build. Each module wraps its table map
+in a check against the file, so typecheck fails when the map leaves out a column, adds a column no
+migration creates, or gives a column another type or nullability. A module that reads part of
+another module's table names that table as a view, and the check lets a view leave columns out.
+After a migration, `bun run --cwd libs/db tables` rewrites the file.
+
 Before the first migration of a release, nixie writes a copy of the database into the data
 directory, named for the schema version it holds. SQLite neither syncs such a copy nor makes it
 atomic, so the copy reaches the disk under a temporary name before it takes its own, and an

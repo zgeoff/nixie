@@ -1,3 +1,4 @@
+import type { CheckedTables } from '@heynixie/db';
 import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
 import type { MemoryApproval } from '@heynixie/models';
 import type { Selectable } from 'kysely';
@@ -287,14 +288,16 @@ interface MemoryProposalMergeTable {
 }
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
-export type MemoryTables = Readonly<{
-  memory_items: MemoryItemTable;
-  memory_versions: MemoryVersionTable;
-  memory_proposals: MemoryProposalTable;
-  memory_proposal_merges: MemoryProposalMergeTable;
-  memory_notice_entries: MemoryNoticeEntryTable;
-  memory_forgotten_evidence: MemoryForgottenEvidenceTable;
-}>;
+export type MemoryTables = CheckedTables<
+  Readonly<{
+    memory_items: MemoryItemTable;
+    memory_versions: MemoryVersionTable;
+    memory_proposals: MemoryProposalTable;
+    memory_proposal_merges: MemoryProposalMergeTable;
+    memory_notice_entries: MemoryNoticeEntryTable;
+    memory_forgotten_evidence: MemoryForgottenEvidenceTable;
+  }>
+>;
 
 export type MemoryItemRow = Selectable<MemoryItemTable>;
 

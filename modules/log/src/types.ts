@@ -1,4 +1,4 @@
-import type { MigrationReport } from '@heynixie/db';
+import type { CheckedTables, MigrationReport } from '@heynixie/db';
 import type { Generated, Kysely, Selectable, Transaction } from 'kysely';
 
 // The one process that writes the database, from start until stop.
@@ -212,12 +212,14 @@ export type RecordAttachments =
   | { readonly status: 'readable'; readonly attachments: readonly Uint8Array<ArrayBuffer>[] };
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
-export type LogTables = Readonly<{
-  records: RecordTable;
-  threads: ThreadRow;
-  projection_changes: ProjectionChangeRow;
-  record_attachments: RecordAttachmentRow;
-}>;
+export type LogTables = CheckedTables<
+  Readonly<{
+    records: RecordTable;
+    threads: ThreadRow;
+    projection_changes: ProjectionChangeRow;
+    record_attachments: RecordAttachmentRow;
+  }>
+>;
 
 export type KeyStoreTables = Readonly<{
   record_keys: { readonly key_id: string; readonly wrapped: Uint8Array<ArrayBuffer> };

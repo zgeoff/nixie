@@ -1,3 +1,4 @@
+import type { CheckedTables } from '@heynixie/db';
 import type { Decision, JSONObject } from '@heynixie/log';
 import type { TaskClaim, TasksTables } from '@heynixie/tasks';
 
@@ -79,4 +80,4 @@ interface ActionTable {
 export type ActionRow = ActionTable;
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
-export type ActionsTables = TasksTables & Readonly<{ actions: ActionTable }>;
+export type ActionsTables = TasksTables & CheckedTables<Readonly<{ actions: ActionTable }>>;

@@ -1,3 +1,4 @@
+import type { CheckedTables } from '@heynixie/db';
 import type { Definitions, Log, LogRecord, RecordInput } from '@heynixie/log';
 
 // The one clock that leases, renewals, timers, retry delays and every wait read, in milliseconds
@@ -177,9 +178,12 @@ interface InboxRecordTable {
 export type TaskRow = TaskTable;
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
-export type TasksTables = Readonly<{
-  tasks: TaskTable;
-  timers: TimerTable;
-  leases: LeaseTable;
-  records: InboxRecordTable;
-}>;
+export type TasksTables = CheckedTables<
+  Readonly<{
+    tasks: TaskTable;
+    timers: TimerTable;
+    leases: LeaseTable;
+    records: InboxRecordTable;
+  }>,
+  'records'
+>;
