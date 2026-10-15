@@ -63,6 +63,48 @@ test('it renders your message with the label of the session you sent it from', (
   ).toBe('[#48213 · Mon 12 Oct, 21:31, Sydney · phone] owner: Where is the spare key?');
 });
 
+test('it renders a marker line for each image of your message and none of its bytes', () => {
+  const record = buildMockLogRecord({
+    sequence: 48_213,
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-12T10:31:05Z'),
+    payload: { images: [{ mediaType: 'image/png' }, { mediaType: 'image/webp' }] },
+    erasable: { status: 'readable', fields: { text: 'Two menu sketches.' } },
+  });
+
+  expect(
+    renderHistoryLine(
+      { record, answered: null },
+      {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-13T05:00:00Z'),
+      },
+    ),
+  ).toMatch(
+    /^\[#48213 · Mon 12 Oct, 21:31, Sydney\] owner: Two menu sketches\.\n<dropped-image id="[0-9a-f]{12}" n="1"\/>\n<dropped-image id="[0-9a-f]{12}" n="2"\/>$/u,
+  );
+});
+
+test('it renders no marker for the images of a forgotten message', () => {
+  const record = buildMockLogRecord({
+    sequence: 48_213,
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-12T10:31:05Z'),
+    payload: { images: [{ mediaType: 'image/png' }] },
+    erasable: { status: 'shredded' },
+  });
+
+  expect(
+    renderHistoryLine(
+      { record, answered: null },
+      {
+        defaultZone: 'Australia/Sydney',
+        now: new Date('2026-10-13T05:00:00Z'),
+      },
+    ),
+  ).toBe('[#48213 · Mon 12 Oct, 21:31, Sydney] owner: [a message you sent, since forgotten]');
+});
+
 test('it renders a reply as nixie with its own event ID and its time in the zone of the message it answers', () => {
   const answered = buildMockLogRecord({
     sequence: 48_213,

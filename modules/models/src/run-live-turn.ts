@@ -3,11 +3,10 @@ import { buildStepRunID } from '@heynixie/tasks';
 import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
-import { inboxBatchLimit } from './inbox-batch-limit';
 import { readLiveInbox } from './read-live-inbox';
 import { readRecalledThrough } from './read-recalled-through';
+import { readTurnBatch } from './read-turn-batch';
 import { runGuestTurn } from './run-guest-turn';
-import { toInboxMessage } from './to-inbox-message';
 import type { ConversationRun, MessageTimeOptions, TurnNote } from './types';
 
 // The session a turn runs on and what it opens with.
@@ -26,9 +25,9 @@ export interface LiveTurnPlan {
   readonly times: MessageTimeOptions;
 }
 
-// Runs one turn in the guest on the step's inbox, up to the batch limit, resuming at the session
-// point when there is one. Only a turn that took the whole inbox takes the records that land while
-// it runs, so the read cursor never meets a gap and no record reaches the model twice.
+// Runs one turn in the guest on the step's inbox, as much as readTurnBatch lets through, resuming at
+// the session point when there is one. Only a turn that took the whole inbox takes the records that
+// land while it runs, so the read cursor never meets a gap and no record reaches the model twice.
 export async function runLiveTurn(
   run: ConversationRun,
   input: StepInput,
@@ -53,13 +52,12 @@ async function runTokenTurn(
   plan.signal.throwIfAborted();
 
   const [url, note] = await Promise.all([getToolURL(run, plan.signal), readTurnNote(run)]);
+  const batch = await readTurnBatch(run.context.log, input.inbox, plan.times);
 
-  const batch = input.inbox.slice(0, inboxBatchLimit);
-
-  const sent = new Set(batch.map((record) => record.sequence));
+  const sent = new Set(batch.records.map((record) => record.sequence));
   const live = new AbortController();
 
-  const hasMore = input.inbox.length > batch.length;
+  const hasMore = input.inbox.length > batch.records.length;
 
   try {
     const turn = await runGuestTurn({
@@ -71,10 +69,7 @@ async function runTokenTurn(
         tools: { url, token: plan.token },
         resume: plan.resume,
         systemPrompt: plan.systemPrompt,
-        input: buildTurnInput(
-          batch.map((record) => toInboxMessage(record, plan.times)),
-          [...plan.preamble, note?.text ?? null],
-        ),
+        input: buildTurnInput(batch.messages, [...plan.preamble, note?.text ?? null]),
       },
       messages: hasMore
         ? []
@@ -123,5 +118,5 @@ function buildTurnInput(
     return messages;
   }
 
-  return [{ uuid: first.uuid, text: [...preamble, first.text].join('\n\n') }, ...rest];
+  return [{ ...first, text: [...preamble, first.text].join('\n\n') }, ...rest];
 }

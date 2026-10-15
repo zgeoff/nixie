@@ -2,7 +2,8 @@ import { subscribeToRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { isInboxRecord } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
-import { toInboxMessage } from './to-inbox-message';
+import invariant from 'tiny-invariant';
+import { readInboxMessages } from './read-inbox-messages';
 import type { MessageTimeOptions } from './types';
 
 export interface LiveInbox {
@@ -33,7 +34,16 @@ export async function* readLiveInbox(
   for await (const entry of entries) {
     if (isInboxRecord(entry.record) && !live.sent.has(entry.record.sequence)) {
       live.sent.add(entry.record.sequence);
-      yield toInboxMessage(entry.record, live.times);
+
+      // a live message goes alone in its own frame, so its images need no budget past their own
+      const [message] = await readInboxMessages(context.log, [entry.record], {
+        times: live.times,
+        imageBudgetBytes: 0,
+      });
+
+      // the first record always goes, whatever its images
+      invariant(message, 'the inbox read returned no message for its one record');
+      yield message;
     }
   }
 }

@@ -1,6 +1,6 @@
 import type { JSONObject, Log, LogRecord, LogTables, RecordWithChanges } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { renderOwnerText } from '@heynixie/models';
+import { renderImageMarkers, renderOwnerText } from '@heynixie/models';
 import { z } from 'zod';
 
 export interface LogPageQuery {
@@ -166,7 +166,8 @@ interface ScannedEntry {
   readonly plain: string | null;
 }
 
-// your message renders as the conversation shows it, with each paste in its own block
+// your message renders as the conversation shows it, with each paste in its own block and a marker
+// line for each image; the page never holds an image's bytes, so memory learns only your words
 function buildScannedEntry(record: LogRecord): ScannedEntry {
   const base = { sequence: record.sequence, recordedAt: record.recordedAt.getTime(), isCut: false };
   const fields = record.erasable.status === 'readable' ? record.erasable.fields : null;
@@ -176,7 +177,7 @@ function buildScannedEntry(record: LogRecord): ScannedEntry {
     const plain = parsed.success ? parsed.data.text : null;
 
     return {
-      entry: { ...base, role: 'owner', text: plain === null ? null : renderOwnerText(record) },
+      entry: { ...base, role: 'owner', text: plain === null ? null : renderOwnerEntry(record) },
       plain,
     };
   }
@@ -187,6 +188,10 @@ function buildScannedEntry(record: LogRecord): ScannedEntry {
     entry: { ...base, role: record.kind === 'model.reply' ? 'assistant' : 'tool', text },
     plain: text,
   };
+}
+
+function renderOwnerEntry(record: LogRecord): string {
+  return [renderOwnerText(record), ...renderImageMarkers(record)].join('\n');
 }
 
 function readReplyText(fields: JSONObject | null): string | null {

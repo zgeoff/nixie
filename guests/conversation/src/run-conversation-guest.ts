@@ -5,9 +5,9 @@ import {
   decodeTurnFrame,
   encodeFrame,
   encodeTurnFrame,
+  hostFrameLimitBytes,
   hostFrameSchema,
   makeFrameDecoder,
-  turnFrameLimitBytes,
 } from '@heynixie/wire';
 import type { TurnFrame } from './build-query-options';
 import { getHome } from './get-home';
@@ -85,7 +85,7 @@ async function runFirstFrame(
 async function* readHostFrames(
   input: AsyncIterable<Uint8Array> | Iterable<Uint8Array>,
 ): AsyncGenerator<HostFrame> {
-  const decode = makeFrameDecoder(turnFrameLimitBytes);
+  const decode = makeFrameDecoder(hostFrameLimitBytes);
 
   for await (const chunk of input) {
     for (const message of decode(chunk)) {
