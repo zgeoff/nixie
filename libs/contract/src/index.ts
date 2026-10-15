@@ -4,6 +4,7 @@ export { buildQueryUtils } from './build-query-utils';
 export { buildSpanState } from './build-span-state';
 export { clientHeaderName } from './client-header-name';
 export { contract } from './contract';
+export { hostContract } from './host-contract';
 export { imageLimits } from './image-limits';
 export { isTimeZone } from './is-time-zone';
 export { pickSpanSource } from './pick-span-source';
@@ -14,6 +15,7 @@ export type {
   ContractClient,
   ContractInputs,
   ContractOutputs,
+  HostContractClient,
   ImageMediaType,
   LogRecord,
   PendingInput,

@@ -4,6 +4,7 @@ import type {
   InferContractRouterOutputs,
 } from '@orpc/contract';
 import type { contract } from './contract';
+import type { hostContract } from './host-contract';
 import type { imageLimits } from './image-limits';
 
 export type ContractClient = ContractRouterClient<typeof contract>;
@@ -11,6 +12,8 @@ export type ContractClient = ContractRouterClient<typeof contract>;
 export type ContractInputs = InferContractRouterInputs<typeof contract>;
 
 export type ContractOutputs = InferContractRouterOutputs<typeof contract>;
+
+export type HostContractClient = ContractRouterClient<typeof hostContract>;
 
 export type LogRecord = ContractOutputs['conversation']['read']['records'][number];
 
