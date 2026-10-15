@@ -47,6 +47,7 @@ test('it reads your messages and the replies after the sequence, oldest first', 
       role: 'owner',
       text: 'See ⟦a recipe⟧.',
       spans: [{ start: 4, end: 14, source: 'paste' }],
+      imageMarkers: [],
       recordedAt: message.recordedAt.getTime(),
       arrivedAt: null,
     },
@@ -81,6 +82,42 @@ test('it never reads a session summary, so a summary never becomes memory', asyn
   });
 
   expect(backlog).toStrictEqual([]);
+});
+
+test('it gives a marker line for each image of your message and none of its bytes', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { images: [{ mediaType: 'image/png' }, { mediaType: 'image/jpeg' }] },
+      erasable: { text: 'I painted the fence green.' },
+      attachments: [
+        new TextEncoder().encode('Fence-image-A'),
+        new TextEncoder().encode('Fence-image-B'),
+      ],
+    },
+  ]);
+
+  const backlog = await readWriterBacklog(ctx.memory.log, {
+    after: 0,
+    ownerLimit: 10,
+    through: null,
+  });
+
+  expect(backlog).toMatchObject([
+    {
+      text: 'I painted the fence green.',
+      imageMarkers: [
+        expect.stringMatching(/^<dropped-image id="[0-9a-f]{12}" n="1"\/>$/u),
+        expect.stringMatching(/^<dropped-image id="[0-9a-f]{12}" n="2"\/>$/u),
+      ],
+    },
+  ]);
+
+  expect(JSON.stringify(backlog)).not.toInclude('Fence-image');
 });
 
 test('it leaves out conversation records that are neither a message nor a reply', async () => {

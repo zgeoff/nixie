@@ -1,5 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { renderImageMarkers } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
 import { memoryWriterTaskID } from './memory-writer-task-id';
@@ -14,6 +15,9 @@ export interface BacklogEntry {
   // null once the record's text is forgotten, so it can never be evidence
   readonly text: string | null;
   readonly spans: readonly SourceSpan[];
+
+  // a marker line for each image of your message, and never the image's bytes; a reply has none
+  readonly imageMarkers?: readonly string[];
   readonly recordedAt: number;
   readonly arrivedAt: number | null;
 }
@@ -134,6 +138,7 @@ function toBacklogEntry(
       role: 'owner',
       text: fields?.text ?? null,
       spans: fields?.spans ?? [],
+      imageMarkers: renderImageMarkers(record),
       arrivedAt: arrivals.get(record.sequence) ?? null,
     };
   }
