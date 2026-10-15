@@ -255,6 +255,7 @@ test('it marks a compaction under the collapsed line with its tokens before and 
 
   expect(marker).toBeVisible();
   expect(marker).toHaveTextContent('compacted (auto) · 384k → 42k tokens');
+  expect(rendered.queryByText('▸')).toBeNull();
 });
 
 test('it marks a summary under the collapsed line as the same closed rule as a compaction', () => {
@@ -280,7 +281,7 @@ test('it marks a summary under the collapsed line as the same closed rule as a c
   const line = rendered.getByText('summarized (threshold) · 170k → 1.5k tokens');
 
   expect(line).toBeVisible();
-  expect(line).toHaveClass(...compaction.classList);
+  expect(line.closest('summary')).toHaveClass(...compaction.classList);
   expect(rendered.getByText('Open threads: the bike fitting on Thursday.')).not.toBeVisible();
 });
 

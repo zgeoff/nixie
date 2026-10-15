@@ -20,6 +20,7 @@ test('it marks where the session closed with the summary sizes, and shows its te
 
   await user.click(rendered.getByText('summarized (threshold) · 165k → 1.2k tokens'));
 
+  expect(rendered.getByRole('note', { name: 'summary' })).toHaveAttribute('open');
   expect(rendered.getByText('Open threads: the gauge report.')).toBeVisible();
 });
 
@@ -38,6 +39,7 @@ test('it starts closed, with its sizes showing and its text hidden', () => {
 
   expect(rendered.getByRole('note', { name: 'summary' })).not.toHaveAttribute('open');
   expect(rendered.getByText('summarized (overflow) · 152k → 900 tokens')).toBeVisible();
+  expect(rendered.getByText('▸')).toHaveAttribute('aria-hidden', 'true');
 
   expect(
     rendered.getByText('Kept: the kiln schedule. Dropped: the paint swatches.'),
@@ -52,4 +54,6 @@ test('it marks a summary a forget erased with its sizes and no text', () => {
   expect(rendered.getByRole('note')).toHaveTextContent(
     'summarized (overflow) · 1.2k-token summary',
   );
+
+  expect(rendered.queryByText('▸')).toBeNull();
 });
