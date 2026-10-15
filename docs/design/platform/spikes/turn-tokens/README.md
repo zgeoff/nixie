@@ -57,7 +57,7 @@ adds shows in the pending list that a later call reads.
 | `checker`             | The production checker prompt on the eval corpus's first 12 pairs                                 |
 | `memory-writer`       | The 24 messages of the Opus conversation in 6 batches of 4, with 20 shown items                   |
 | `memory-consolidator` | One consolidation over the 60 items with their quotes                                             |
-| `task`                | Simulated: 3 job runs, each a fresh session on the conversation's prompt and opening              |
+| `task`                | Simulated: 3 job runs, each a fresh session on the conversation's prompt, opening and tools       |
 | `worker`              | Simulated: 3 worker runs, each a fresh session with web fetch and a one-paragraph prompt          |
 
 The `task` and `worker` roles have no built prompt or runner yet, so their rows measure the nearest
