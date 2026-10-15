@@ -1,5 +1,5 @@
 import type { ContractClient } from '@heynixie/contract';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { OutboxMessage } from './types';
 import { useNixieClient } from './use-nixie-client';
 import { useStoredOutbox } from './use-stored-outbox';
@@ -12,7 +12,7 @@ export interface OutboxEntry {
 // Keeps the messages this device sent until the conversation shows them. An unconfirmed message
 // stays in device storage and goes again with its first client message ID; a confirmed one stays
 // in memory until its record arrives.
-export function useOutbox() {
+export function useOutbox(forgottenClientMessageIDs: readonly string[]) {
   const client = useNixieClient().client;
   const [entries, setEntries] = useState<readonly OutboxEntry[]>([]);
   const queue = useRef<Promise<void>>(Promise.resolve());
@@ -51,7 +51,23 @@ export function useOutbox() {
     [sendEntry],
   );
 
-  useStoredOutbox({ entries, sendEntry, setEntries });
+  useStoredOutbox({ entries, forgottenClientMessageIDs, sendEntry, setEntries });
+
+  // A forgotten message goes from memory before the page paints, so its text never shows again as
+  // a sent message; the stored outbox keeps it out of storage, so a reload never sends it.
+  useLayoutEffect(() => {
+    if (forgottenClientMessageIDs.length === 0) {
+      return;
+    }
+
+    const removed = new Set(forgottenClientMessageIDs);
+
+    setEntries((current) =>
+      current.some((entry) => removed.has(entry.message.clientMessageId))
+        ? current.filter((entry) => !removed.has(entry.message.clientMessageId))
+        : current,
+    );
+  }, [forgottenClientMessageIDs]);
 
   return { add, entries, retry: sendEntry };
 }

@@ -24,7 +24,18 @@ async function setupTest() {
     }),
   );
 
-  return { sent, rendered: renderHook(() => useOutbox()) };
+  // the conversation names the messages a forget dropped, and a test names them through
+  // setForgotten, which the next render reads
+  let forgotten: readonly string[] = [];
+  const rendered = renderHook(() => useOutbox(forgotten));
+
+  return {
+    sent,
+    rendered,
+    setForgotten: (clientMessageIDs: readonly string[]) => {
+      forgotten = clientMessageIDs;
+    },
+  };
 }
 
 test("it sends a message with the browser's time zone", async () => {
@@ -90,4 +101,98 @@ test('it keeps the time zone a message was written in when its retry sends', asy
   expect(ctx.sent.mock.calls.at(-1)?.[0]).toMatchObject({
     json: { timeZone: 'America/Sao_Paulo' },
   });
+});
+
+test('it drops a forgotten message from memory and device storage', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '8c4e2b7a-1d9f-4a3e-b6c5-0e7d3f1a9b28',
+      spans: [{ end: 17, source: 'typed', start: 0 }],
+      text: 'Call the plumber.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  const stored = globalThis.localStorage.getItem('nixie.outbox');
+
+  act(() => {
+    ctx.setForgotten(['8c4e2b7a-1d9f-4a3e-b6c5-0e7d3f1a9b28']);
+    ctx.rendered.rerender();
+  });
+
+  expect(stored).toInclude('8c4e2b7a-1d9f-4a3e-b6c5-0e7d3f1a9b28');
+  expect(ctx.rendered.result.current.entries).toStrictEqual([]);
+  expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
+});
+
+test('it keeps a forgotten message out of device storage when a failed retry lands in the same render', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error()));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '4b1f8e6a-2c7d-4d9e-8a3b-6f0e2c5d9a71',
+      spans: [{ end: 13, source: 'typed', start: 0 }],
+      text: 'Feed the cat.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  const [entry] = ctx.rendered.result.current.entries;
+
+  invariant(entry, 'the outbox holds no message');
+
+  // the forget and the failed retry's status reach the outbox in one render
+  ctx.setForgotten(['4b1f8e6a-2c7d-4d9e-8a3b-6f0e2c5d9a71']);
+
+  await act(() => ctx.rendered.result.current.retry(entry.message));
+
+  expect(ctx.rendered.result.current.entries).toStrictEqual([]);
+  expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
+});
+
+test('it keeps a message that another tab left unsent', async () => {
+  const ctx = await setupTest();
+
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+        spans: [{ end: 10, source: 'typed', start: 0 }],
+        text: 'other tab',
+        thread: 'conversation',
+      },
+    ]),
+  );
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '2a6f9d3b-7c1e-4b8a-9d5f-3e0c6a2b8f17',
+      spans: [{ end: 5, source: 'typed', start: 0 }],
+      text: 'hello',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(store.records.count()).toBe(1);
+  });
+
+  expect(globalThis.localStorage.getItem('nixie.outbox')).toInclude(
+    '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+  );
 });

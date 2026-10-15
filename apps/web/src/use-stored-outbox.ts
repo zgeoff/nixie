@@ -6,6 +6,9 @@ import type { OutboxEntry } from './use-outbox';
 
 export interface StoredOutboxOptions {
   readonly entries: readonly OutboxEntry[];
+
+  // a forgotten message never goes back to storage, whatever status a stale render gives it
+  readonly forgottenClientMessageIDs: readonly string[];
   readonly sendEntry: (message: OutboxMessage) => Promise<void>;
   readonly setEntries: (entries: readonly OutboxEntry[]) => void;
 }
@@ -32,9 +35,13 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
 
   useEffect(() => {
     if (loaded) {
-      writeStoredMessages(mergeStoredMessages(readStoredMessages(), options.entries));
+      const forgotten = new Set(options.forgottenClientMessageIDs);
+
+      const merged = mergeStoredMessages(readStoredMessages(), options.entries);
+
+      writeStoredMessages(merged.filter((message) => !forgotten.has(message.clientMessageId)));
     }
-  }, [loaded, options.entries]);
+  }, [loaded, options.entries, options.forgottenClientMessageIDs]);
 }
 
 // Another tab shares the storage key, so a write keeps every stored message this outbox does not
