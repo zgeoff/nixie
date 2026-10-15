@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { createServer } from 'node:net';
+import { setImmediate as waitForTurn } from 'node:timers/promises';
 import invariant from 'tiny-invariant';
 import { startFakeForward } from './start-fake-forward';
 
@@ -256,4 +257,27 @@ test('it closes each open guest connection when the test finishes', async () => 
   });
 
   expect(socket.readyState).toBe(1);
+});
+
+test('it never listens when the test finishes before the imp is awake', async () => {
+  const ctx = await setupTest();
+
+  const awake = Promise.withResolvers<void>();
+
+  startFakeForward({
+    port: ctx.port,
+    onConnection: () => {},
+    onStop: () => {},
+    waitForAwake: () => awake.promise,
+  });
+
+  onTestFinished(async () => {
+    awake.resolve();
+
+    await waitForTurn();
+
+    expect(
+      Bun.connect({ hostname: '127.0.0.1', port: ctx.port, socket: { data: () => {} } }),
+    ).rejects.toThrow();
+  });
 });
