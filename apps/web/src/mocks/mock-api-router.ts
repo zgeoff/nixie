@@ -7,6 +7,7 @@ import { readMemoryVersion } from './read-memory-version';
 import { readRatingNote } from './read-rating-note';
 import { store } from './store';
 import { toLogRecord } from './to-log-record';
+import { writeMockForget } from './write-mock-forget';
 
 interface MockAPIContext extends ResponseHeadersPluginContext {
   // The device session's token, from the bearer header or the cookie.
@@ -79,39 +80,20 @@ export const mockAPIRouter = os.router({
       return { duplicate: true, sequence: earlier.sequence };
     }),
 
-    // drops the text of your message or a reply and adds the record.forgotten record that names it,
-    // as the API's forget leaves the log
+    // forgets your message or a reply as the API's forget leaves the log
     forget: os.conversation.forget.handler(async (options) => {
       requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      const input = options.input;
+      const result = await writeMockForget(options.input);
 
-      const target = store.records.findFirst((query) =>
-        query.where(
-          (record) =>
-            record.sequence === input.sequence &&
-            record.thread === input.thread &&
-            (record.kind === 'owner_message' || record.kind === 'model.reply'),
-        ),
-      );
-
-      if (target === undefined) {
-        throw options.errors.RECORD_NOT_FOUND();
+      if (result.status !== 'forgotten') {
+        throw {
+          not_found: options.errors.RECORD_NOT_FOUND,
+          reused: options.errors.CLIENT_ACTION_ID_REUSED,
+        }[result.status]();
       }
 
-      await store.records.update(target, {
-        data(draft) {
-          delete draft.message;
-        },
-      });
-
-      const forgotten = await store.records.create({
-        forget: { sequence: input.sequence },
-        kind: 'record.forgotten',
-        thread: input.thread,
-      });
-
-      return { forgottenAt: forgotten.recordedAt };
+      return { forgottenAt: result.forgottenAt };
     }),
   },
   log: { follow: followProcedure },

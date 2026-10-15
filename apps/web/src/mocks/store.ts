@@ -91,6 +91,8 @@ const forgetSchema = z.object({ sequence: z.int() });
 
 const records = new Collection({
   schema: z.object({
+    // the client action ID of the forget that wrote a record.forgotten record
+    clientActionID: z.uuid().optional(),
     compaction: compactionSchema.optional(),
     context: contextSchema.optional(),
 
