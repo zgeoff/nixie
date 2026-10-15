@@ -50,7 +50,7 @@ a modular monolith of workspace packages.
 The model runs one turn at a time through the Agent SDK, and nixie owns the loop around it. Every
 model loop runs in an imp: each worker in its own imp, and the conversation in a long-lived imp that
 stays awake. nixie's tools stay on the host ([0003](decisions/0003-sdk-placement.md),
-[0026](decisions/0026-where-workers-and-the-conversation-run.md)).
+[0003](decisions/0003-sdk-placement.md#workers-and-the-conversation)).
 
 You talk to the conversation, which routes work to tasks. A task is a durable side thread with its
 own context and tools, and it starts workers, each a disposable unit of work behind one tool call.
@@ -73,12 +73,12 @@ Rules in nixie's own format allow, ask or deny each tool call, in a fixed pipeli
 rule means ask ([0004](decisions/0004-rule-engine.md)). Every tool declares its effects, and 3
 effects always ask: spending money, widening rules or approvals, and raising a budget
 ([0005](decisions/0005-effects-and-taint.md)). A bounded rule can lift them, and creating one always
-asks ([0023](decisions/0023-lifting-always-ask.md)). The target is 0 prompts, and every prompt
-records its cause.
+asks ([0005](decisions/0005-effects-and-taint.md#lifting-the-always-ask-set)). The target is 0
+prompts, and every prompt records its cause.
 
 The conversation counts as untrusted, because it reads outside content within minutes. A send to a
 destination that neither you nor a rule named asks first. Taint applies to jobs and workers in
-stages ([0015](decisions/0015-taint-scope.md)).
+stages ([0005](decisions/0005-effects-and-taint.md#where-taint-applies)).
 
 An approval binds to one exact action and is used once. "Always allow" is one tap that also creates
 the rule shown on the card ([0006](decisions/0006-approval-record.md)). A consent checker confirms

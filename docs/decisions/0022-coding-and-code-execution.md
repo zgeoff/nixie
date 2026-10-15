@@ -1,6 +1,7 @@
 # 0022: Coding and code execution
 
 - Date: 2026-10-08
+- Updated: 2026-10-15
 - Status: decided
 - Design: [coding](../design/platform/connectors/coding.md),
   [tools](../design/platform/connectors/tools.md)
@@ -14,7 +15,7 @@ sandboxed work:
   data or transforming a document. A code run from the conversation or a task uses a disposable imp
   with no credential grants, and outside data reaches it through nixie's tools. Code inside a worker
   runs in the worker's own imp, which holds only the model API's grant under
-  [0026](0026-where-workers-and-the-conversation-run.md). The code environment is set by
+  [0003](0003-sdk-placement.md). The code environment is set by
   [0030](0030-connectors-and-sandbox-environments.md). Code runs ship early.
 - **Coding sessions.** Long-running work on a repo, which needs version control, package registries
   and credentials, runs through a coding adapter.
@@ -56,3 +57,9 @@ Adapters arrive in this order:
 - **No grants for any coding session.** Every version control and registry call would become a nixie
   tool, which cripples coding agents.
 - **Coding only through atc.** It leaves no route to coding without atc.
+
+## Changes
+
+- 2026-10-10: code inside a worker runs in the worker's own imp, with its one model-API grant, since
+  every model loop runs in an imp under 0003. The first version ran every code run in a fresh imp
+  with no grants.

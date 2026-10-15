@@ -1,7 +1,7 @@
 # 0012: High-risk approvals
 
 - Date: 2026-10-08
-- Updated: 2026-10-11
+- Updated: 2026-10-15
 - Status: decided
 - Research:
   [channel notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.5-notes/channels.md)
@@ -48,5 +48,7 @@ which applies with its widening check, never the client.
 
 ## Changes
 
+- 2026-10-09: retrying a payment whose outcome is unknown takes the passkey check, as the first
+  approval would.
 - 2026-10-11: an unchanged "always allow" is a tap, and only a rule wider than the card's rule takes
   the passkey check.

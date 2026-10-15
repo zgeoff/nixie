@@ -1,6 +1,7 @@
 # 0014: Search
 
 - Date: 2026-10-08
+- Updated: 2026-10-15
 - Status: decided
 - Research:
   [connector notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/connectors.md)
@@ -27,7 +28,7 @@ URL can hold text in its path.
 ## Alternatives
 
 - **URLs and dates only.** It keeps page text out of the results, and search gets much worse. The
-  conversation stays untrusted either way.
+  conversation stays untrusted either way, under 0005.
 - **A worker that reads the results for every search.** Its summary is free text too, so it adds a
   step and cleans nothing.
 - **SearXNG first.** It needs no account, and it gives less privacy than it appears to.
@@ -40,3 +41,8 @@ URL can hold text in its path.
   that flow.
 - Kagi receives your queries, and each search costs about $0.012
   ([Kagi API pricing](https://kagi.com/api/pricing)).
+
+## Changes
+
+- 2026-10-08: search results count as free text, because the conversation carries no taint flag
+  under 0005. The first version marked the conversation as tainted after a search.

@@ -1,6 +1,7 @@
 # 0001: The durable layer
 
 - Date: 2026-10-07
+- Updated: 2026-10-15
 - Status: decided
 - Design: [event log](../design/platform/core/event-log.md),
   [tasks](../design/platform/core/tasks.md)
@@ -42,3 +43,9 @@ borrows their semantics without depending on them. The database is SQLite under
 
 - nixie owns leases, durable timers, retries, wake-ups and a run viewer, with crash tests and the
   rebuild check for each. The estimate is 800 to 1,500 lines, and no prototype has tested it.
+
+## Changes
+
+- 2026-10-09: task state, proposals, the action queue and the dashboard data are tables written in
+  the same transaction as their record, with a rebuild check against the log, and the database is
+  SQLite under 0025. The first version kept the task state as rows and left the database open.

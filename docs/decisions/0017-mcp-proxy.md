@@ -47,4 +47,5 @@ system.
 
 - The platform encodes no special handling for tools that start or message other agents. Their
   effects are declared like any other, and your rules decide them.
-- Judging taint by output field waits for the per-run taint stage in [0015](0015-taint-scope.md).
+- Judging taint by output field waits for the per-run taint stage in
+  [0005](0005-effects-and-taint.md#where-taint-applies).

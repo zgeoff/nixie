@@ -2,7 +2,7 @@
 
 - Decisions: [0016](../../../decisions/0016-own-interfaces.md),
   [0007](../../../decisions/0007-grants-and-taint.md),
-  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
+  [0003](../../../decisions/0003-sdk-placement.md),
   [0030](../../../decisions/0030-connectors-and-sandbox-environments.md)
 
 The credential store holds every credential nixie uses: OAuth clients and their tokens, static

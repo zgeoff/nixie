@@ -3,10 +3,10 @@
 - Decisions: [0001](../../../decisions/0001-durable-layer.md),
   [0002](../../../decisions/0002-approvals.md),
   [0005](../../../decisions/0005-effects-and-taint.md),
-  [0015](../../../decisions/0015-taint-scope.md), [0016](../../../decisions/0016-own-interfaces.md),
+  [0016](../../../decisions/0016-own-interfaces.md),
   [0018](../../../decisions/0018-the-conversation-and-tasks.md),
   [0025](../../../decisions/0025-database-and-topology.md),
-  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
+  [0003](../../../decisions/0003-sdk-placement.md),
   [0027](../../../decisions/0027-tasks-and-actions.md)
 
 A task is durable work with its own context, such as "keep the backlog moving today", and nixie runs
@@ -113,9 +113,9 @@ a step makes checks the generation, so a runner whose lease expired cannot commi
 
 The conversation is a task that never closes, flagged as the conversation, on the same state
 machine, leases and recovery. It lives in a long-lived imp that stays awake under
-[0026](../../../decisions/0026-where-workers-and-the-conversation-run.md). Your messages land in its
-inbox by default, and a message you send while a task is open in the client goes straight to that
-task.
+[0003](../../../decisions/0003-sdk-placement.md#workers-and-the-conversation). Your messages land in
+its inbox by default, and a message you send while a task is open in the client goes straight to
+that task.
 
 The conversation receives the task board in its newest turn, after the stable part of the prompt, so
 the prompt cache holds. It routes with 2 tools: one passes a message to an existing task, and one
@@ -132,11 +132,11 @@ turn. The conversation never waits on a task.
 ## Job runs
 
 A job is a definition: a schedule or trigger, instructions, a tool list and allowed destinations,
-under [0015](../../../decisions/0015-taint-scope.md). When its trigger source starts a job run,
-nixie creates a task with the job's definition version pinned for the task's life. The job run can
-call only the tools on the job's list, and the first build treats every job run as untrusted. The
-list pins each connector tool to the connections the job may use, within the connections its creator
-may use, and a connection added later never joins the job, as the
+under [0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies). When its trigger
+source starts a job run, nixie creates a task with the job's definition version pinned for the
+task's life. The job run can call only the tools on the job's list, and the first build treats every
+job run as untrusted. The list pins each connector tool to the connections the job may use, within
+the connections its creator may use, and a connection added later never joins the job, as the
 [connection argument](../connectors/connector.md#the-connection-argument) covers.
 
 Every job run gets its trigger details in its context: when it was scheduled, when it started,
@@ -156,9 +156,9 @@ runs inside the calling step, has no conversation, and returns a result to its c
 Each worker run gets its own imp through the [sandbox adapter](../connectors/sandbox-adapter.md),
 and the whole worker runs inside it: the model loop and any code it runs. The imp's one credential
 grant is the model credential of the worker's [model profile](models.md), limited to that profile's
-host, under [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md). The worker
-reaches anything else through nixie's tools on the host, where the destination limits apply. A
-worker holds a subset of its caller's tools, so delegation only narrows. Its transcript becomes
+host, under [0003](../../../decisions/0003-sdk-placement.md#workers-and-the-conversation). The
+worker reaches anything else through nixie's tools on the host, where the destination limits apply.
+A worker holds a subset of its caller's tools, so delegation only narrows. Its transcript becomes
 records whose parent is the tool call, and nixie destroys the imp when the tool call returns.
 
 A minimal image per kind of work keeps a fresh worker's start short, as the

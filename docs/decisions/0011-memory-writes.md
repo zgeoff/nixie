@@ -1,7 +1,7 @@
 # 0011: Which memory writes skip review
 
 - Date: 2026-10-08
-- Updated: 2026-10-14
+- Updated: 2026-10-15
 - Status: decided
 - Design: [memory writes](../design/platform/memory/writes.md)
 - Research: [memory checks spike](../design/platform/spikes/memory-checks/),
@@ -31,6 +31,13 @@ whatever the rule says.
 Every other memory write is a proposal, including a write the checker rejects, is unsure about or
 cannot reach. The memory reads as text the model wrote, with your quote kept as its evidence.
 
+Dictated text never counts as evidence. A `dictated` span is text that a voice client transcribed
+from speech. A memory write whose quote touches a `dictated` span becomes a proposal, and during a
+call its card appears in the call screen under [0041](0041-approvals-during-a-voice-call.md). A
+destination token, such as an email address or a phone number, never passes the token check from
+dictated text, even if a later decision relaxes the rest of this rule. The live view counts
+proposals by review reason, and those counts are the evidence for a revisit.
+
 Retiring an item from chat, as "forget that" does under
 [0031](0031-memory-capture-context-and-removal.md), carries no new content. It needs your typed
 intent and the exact item and version, and the checker tests the request against that item. It does
@@ -43,8 +50,8 @@ you answer when you choose, singly or through the approval digest from
 
 ## Why
 
-- The conversation is always untrusted under [0015](0015-taint-scope.md), so it cannot decide which
-  writes are safe. Your own words can.
+- The conversation is always untrusted under [0005](0005-effects-and-taint.md#where-taint-applies),
+  so it cannot decide which writes are safe. Your own words can.
 - Injected content cannot place text in your message, so a quote check that nixie runs against its
   own record cannot be steered by injection.
 - A real quote does not prove that it supports the memory: a steered model could attach a real but
@@ -56,6 +63,11 @@ you answer when you choose, singly or through the approval digest from
 - In the model-eval spike, requiring an exact quote for each memory brought several models to 0
   invented entries, where a plain summary prompt invented facts on every model.
 - A memory write is reversible, unlike a send, so a wrong memory is visible and can be undone.
+- A transcript can mishear a name, a number or an address. The token check would then pass the wrong
+  value, because it matches a quote that holds the same wrong value.
+- A microphone also hears a TV, a video or another person, and a transcript cannot show who spoke,
+  so other voices would be a route for injected memories. The card shows in the call screen, so a
+  proposal from dictated text costs one tap during the call.
 - You set the risk stance for memory as you do for every other tool. An allow rule trades review for
   fewer proposals in the contexts you pick, and the token check keeps a memory that points nixie at
   a new destination in review.
@@ -72,6 +84,11 @@ you answer when you choose, singly or through the approval digest from
   a proposal, even in a context where you accept the risk.
 - **An allow rule that skips every check.** It gives the fewest proposals, and lets injected content
   plant a destination in memory with no review.
+- **Dictated text counts as evidence.** It needs no review step, and lets misheard facts and other
+  voices into memory unchecked.
+- **Dictated text counts, except for a memory with a destination token.** It stops the most harmful
+  injection, and lets misheard names and other voices through. It is the fallback if proposals from
+  dictated text become a burden.
 - **A checker that sees only the quote.** You may paste a scam email and ask about it, quote
   someone, or negate a fact. Without the whole message, the checker cannot tell.
 
@@ -86,5 +103,7 @@ you answer when you choose, singly or through the approval digest from
 
 - 2026-10-11: an allow rule of yours that names `memory.remember` lets a write apply at once, with
   the token check kept as a floor.
+- 2026-10-11: dictated text never counts as evidence, so a write that quotes it is a proposal.
 - 2026-10-14: an allow rule covers only the tool it names, so a rule on `memory.remember` never
   covers an edit through `memory.edit`.
+- 2026-10-15: record 0042, Dictated text and memory, merged into this record.

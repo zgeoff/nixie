@@ -3,8 +3,7 @@
 - Decisions: [0020](../../../decisions/0020-deployment.md),
   [0032](../../../decisions/0032-offsite-backups-and-replication.md),
   [0025](../../../decisions/0025-database-and-topology.md),
-  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
-  [0035](../../../decisions/0035-backup-sidecar.md)
+  [0003](../../../decisions/0003-sdk-placement.md)
 
 nixie runs as one container from one image, with the web client in a second container and the backup
 sidecar in a third, next to an imp host on the same machine. Its state is one SQLite database and a

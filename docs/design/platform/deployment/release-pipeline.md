@@ -1,7 +1,6 @@
 # Release pipeline
 
-- Decisions: [0020](../../../decisions/0020-deployment.md),
-  [0035](../../../decisions/0035-backup-sidecar.md)
+- Decisions: [0020](../../../decisions/0020-deployment.md)
 
 The [release pipeline](../../../architecture/deployment/release-pipeline.md) builds the
 conversation, fetch, nixie and web images from one commit, publishes them to GitHub Container

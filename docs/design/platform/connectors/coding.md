@@ -1,7 +1,7 @@
 # Running code and coding sessions
 
 - Decisions: [0022](../../../decisions/0022-coding-and-code-execution.md),
-  [0026](../../../decisions/0026-where-workers-and-the-conversation-run.md),
+  [0003](../../../decisions/0003-sdk-placement.md),
   [0030](../../../decisions/0030-connectors-and-sandbox-environments.md)
 
 nixie runs code for general work, such as processing a file or crunching data, through its code tool

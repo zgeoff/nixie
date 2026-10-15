@@ -1,16 +1,17 @@
 # 0007: Credential grants for imps that read untrusted content
 
 - Date: 2026-10-07
+- Updated: 2026-10-15
 - Status: decided
 - Research: [imp broker spike](../design/platform/spikes/imp-broker/)
 
-An imp that reads untrusted content holds one grant at most: the model API's credential, under
-[0026](0026-where-workers-and-the-conversation-run.md). That covers the conversation's imp and every
-worker's imp, since the conversation and every job run are untrusted under
-[0015](0015-taint-scope.md). A fresh imp for a code run takes no grant at all. Code in such an imp
-reaches an outside API only through one of nixie's tools on the host, where the destination limits
-from [0005](0005-effects-and-taint.md) apply. A session on a coding adapter holds broader grants
-only by your rule for the coding context, under [0022](0022-coding-and-code-execution.md).
+An imp that reads untrusted content holds one grant at most: the model API's credential, because the
+model loop runs in the imp under [0003](0003-sdk-placement.md). That covers the conversation's imp
+and every worker's imp, since the conversation and every job run are untrusted under
+[0005](0005-effects-and-taint.md). A fresh imp for a code run takes no grant at all. Code in such an
+imp reaches an outside API only through one of nixie's tools on the host, where the destination
+limits from 0005 apply. A session on a coding adapter holds broader grants only by your rule for the
+coding context, under [0022](0022-coding-and-code-execution.md).
 
 ## Why
 
@@ -31,3 +32,8 @@ reaches only your own model account, which every turn reaches anyway.
 - An API that such code needs becomes a nixie tool.
 - A method and path filter for imp's broker is a candidate imp change, because it narrows grants for
   untainted work too.
+
+## Changes
+
+- 2026-10-09: the model API's credential is the one grant such an imp may hold, because every model
+  loop moved into an imp under 0003. The first version gave such an imp no grant at all.

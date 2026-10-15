@@ -3,7 +3,7 @@
 - Decisions: [0001](../../../decisions/0001-durable-layer.md),
   [0010](../../../decisions/0010-memory-store.md),
   [0013](../../../decisions/0013-definition-versioning.md),
-  [0015](../../../decisions/0015-taint-scope.md),
+  [0005](../../../decisions/0005-effects-and-taint.md),
   [0018](../../../decisions/0018-the-conversation-and-tasks.md),
   [0025](../../../decisions/0025-database-and-topology.md),
   [0027](../../../decisions/0027-tasks-and-actions.md)
@@ -34,7 +34,8 @@ Every record carries one envelope, and its payload depends on its kind.
 | Payload           | The kind's own data, with erasable fields encrypted                         |
 
 The source of content sits on every tool result. The first build stores it without acting on it, so
-taint per job run is a later policy change under [0015](../../../decisions/0015-taint-scope.md).
+taint per job run is a later policy change under
+[0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies).
 
 The parent field keeps the delegation chain. A worker's records point at the tool call that started
 it, and a task's records point at the routing record that created the task, so the record shows that

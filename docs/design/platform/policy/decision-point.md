@@ -5,8 +5,6 @@
   [0005](../../../decisions/0005-effects-and-taint.md),
   [0006](../../../decisions/0006-approval-record.md), [0008](../../../decisions/0008-auto-mode.md),
   [0013](../../../decisions/0013-definition-versioning.md),
-  [0015](../../../decisions/0015-taint-scope.md),
-  [0023](../../../decisions/0023-lifting-always-ask.md),
   [0028](../../../decisions/0028-policy-design.md)
 
 The decision point is the one function every nixie tool calls before it acts. It takes a tool call
@@ -143,7 +141,7 @@ or your ask rule. A checker that refuses, is unsure or cannot be reached counts 
 
 The first build treats the conversation and every job run as untrusted, so the destination limits
 apply everywhere and no code computes a taint label. 3 hooks are data from the start, for the later
-stages that [0015](../../../decisions/0015-taint-scope.md) sets:
+stages that [0005](../../../decisions/0005-effects-and-taint.md#where-taint-applies) sets:
 
 - **Source of content.** Each tool declares the source of each result field: your words, your own
   data, or outside content. The record stores it on every tool result. An email body, an invite from

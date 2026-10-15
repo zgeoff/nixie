@@ -3,7 +3,7 @@
 - Decisions: [0029](../../../decisions/0029-channels-and-clients.md),
   [0002](../../../decisions/0002-approvals.md), [0006](../../../decisions/0006-approval-record.md),
   [0012](../../../decisions/0012-high-risk-approvals.md),
-  [0023](../../../decisions/0023-lifting-always-ask.md),
+  [0005](../../../decisions/0005-effects-and-taint.md),
   [0028](../../../decisions/0028-policy-design.md),
   [0041](../../../decisions/0041-approvals-during-a-voice-call.md)
 
