@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
 import { readLiveInbox } from './read-live-inbox';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
@@ -8,7 +9,9 @@ async function setupTest() {
 
   const controller = new AbortController();
 
-  onTestFinished(() => controller.abort());
+  onTestFinished(() => {
+    controller.abort();
+  });
 
   await createConversationTask(tasks.context);
 
@@ -42,7 +45,9 @@ test('it yields a message that lands during the turn and adds its images to the 
 
   const next = await live.next();
 
-  expect(next.value?.text).toEndWith('The second shelf.');
+  invariant(next.done !== true, 'the feed ended before the message');
+
+  expect(next.value.text).toEndWith('The second shelf.');
   expect(images).toStrictEqual({ spent: 16, budget: 16, isCapped: false });
 });
 
@@ -101,5 +106,7 @@ test('it yields a message with no images past a spent session budget', async () 
 
   const next = await live.next();
 
-  expect(next.value?.text).toEndWith('Which one fits?');
+  invariant(next.done !== true, 'the feed ended before the message');
+
+  expect(next.value.text).toEndWith('Which one fits?');
 });

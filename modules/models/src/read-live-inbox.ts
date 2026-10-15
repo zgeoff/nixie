@@ -45,7 +45,6 @@ export async function* readLiveInbox(
 
   for await (const entry of entries) {
     if (isInboxRecord(entry.record) && !live.sent.has(entry.record.sequence)) {
-      // oxlint-disable-next-line no-await-in-loop -- each record reads as it lands
       const message = await readLiveMessage(context, live, entry.record);
 
       if (message === null) {
@@ -62,11 +61,16 @@ export async function* readLiveInbox(
   }
 }
 
+interface LiveRead {
+  readonly times: MessageTimeOptions;
+  readonly images: Readonly<LiveImages>;
+}
+
 // the record's message, or null when its images would pass the session's image budget; a
 // one-record read returns its record whatever the budget, so the feed checks the budget itself
 async function readLiveMessage(
   context: Pick<TasksContext, 'log'>,
-  live: Pick<LiveInbox, 'times' | 'images'>,
+  live: LiveRead,
   record: LogRecord,
 ): Promise<InboxMessage | null> {
   const [message] = await readInboxMessages(context.log, [record], {
