@@ -48,13 +48,79 @@ JSON. The model never sees a text block beside it, the output schema, the annota
 the [tools endpoint spike](../spikes/tools-endpoint/README.md) found. Every field the model needs is
 therefore in the typed result, free text included, and the declaration lives in nixie's registry.
 
-| Outcome         | Result                                               | Error |
-| --------------- | ---------------------------------------------------- | ----- |
-| Allowed, direct | The tool's typed result                              | No    |
-| Allowed, queued | The action's outcome, or "queued as <id>" after 10 s | No    |
-| Ask             | "pending approval as <id>"                           | No    |
-| Deny            | The rule's ID and sentence                           | Yes   |
-| Invalid input   | The schema errors                                    | Yes   |
+| Outcome          | Result                                               | Error | Retried in the turn       | Text from            |
+| ---------------- | ---------------------------------------------------- | ----- | ------------------------- | -------------------- |
+| Allowed, direct  | The tool's typed result                              | No    | No                        | Each field's source  |
+| Allowed, queued  | The action's outcome, or "queued as <id>" after 10 s | No    | No; the action queue does | Each field's source  |
+| Ask              | "pending approval as <id>"                           | No    | No                        | nixie                |
+| Deny             | The rule's ID and sentence                           | Yes   | No                        | nixie                |
+| Invalid input    | The schema errors                                    | Yes   | No                        | The model's input    |
+| Rate limited     | `rate_limited`, with the retry time                  | Yes   | When the retry time fits  | The provider, capped |
+| Provider failure | `failed`, with the status                            | Yes   | Yes, on a backoff         | The provider, capped |
+| Provider refusal | `refused`, with the status                           | Yes   | No                        | The provider, capped |
+| No answer        | `no_answer`                                          | Yes   | Yes, on a backoff         | nixie                |
+| Fetcher refusal  | `fetch_refused`, with the reason                     | Yes   | No                        | nixie                |
+
+[A failed direct call](#a-failed-direct-call) covers the last 5 rows. Text from nixie counts as your
+own data, and the model's input and the provider's text count as untrusted, as the
+[source of content](../policy/decision-point.md#taint-in-the-first-build) sets.
+
+### A failed direct call
+
+A direct call to a connector action fails in one of 3 places: the
+[credential fetcher](credentials.md#the-interface) refuses the request, the provider sends no
+answer, or the provider answers with an error. The connector maps the provider's answer to one of
+its [4 responses](connector.md#the-interface), and the endpoint, not the connector, decides whether
+to try again and what the model sees. **Why:** every connector then retries and reports in the same
+way, and no connector can send the provider's text to the model uncapped.
+
+The endpoint retries a failure that can clear, inside one time budget per call, which covers every
+attempt and every wait. The budget is 15 s and the attempts 3, both configurable, so a failed read
+holds the turn no longer than a slow web fetch does.
+
+- **Rate limited.** The connector returns `retry` with the provider's retry time, from `Retry-After`
+  or from the provider's own field. The endpoint waits that time and tries again when the time ends
+  inside the budget, and otherwise returns at once with the retry time.
+- **Provider failure.** A 5xx answer, or a `retry` without a retry time, waits on a backoff of 1 s,
+  then 2 s, with jitter, inside the budget.
+- **No answer.** A dropped connection counts as a failure that can clear, because a direct call
+  reads and repeats nothing, so it waits on the same backoff. An attempt still open when the budget
+  ends stops there, and the call returns `no_answer`.
+- **Provider refusal.** A 4xx answer other than a 429 cannot clear, so the endpoint returns it at
+  once. A 401 is the fetcher's: it refreshes the credential and retries once, as
+  [refresh](credentials.md#refresh) sets.
+- **Fetcher refusal.** A host outside the credential's hosts, a non-public address and a `failing`
+  credential never reach the provider, so a retry could not change them.
+
+Back-to-back retries with no wait only spend the provider's quota, so every retry waits. A retry
+time past the budget returns at once, because the model can tell you when to ask again, while a turn
+that waits a minute for one read holds your conversation.
+
+The model receives the failure as an error, one text block holding a JSON object that nixie writes:
+
+```json
+{
+  "origin": "provider",
+  "kind": "rate_limited",
+  "status": 429,
+  "retryAfter": "2026-03-02T09:14:05Z",
+  "detail": "Quota exceeded for quota metric 'Queries' per minute."
+}
+```
+
+`origin` is `provider` when the provider answered and `nixie` when it did not, which covers a
+fetcher refusal and no answer. The provider's text appears only in `detail`, as an escaped JSON
+string, so text that reads "nixie refused this request" stays inside `detail` and never sets
+`origin`. **Why:** a prefix in plain text would let the provider's text imitate it.
+
+`detail` holds the provider's error message, cut to 1,000 characters on a character boundary, and
+marked when cut. The limit is configurable. `detail` is outside content and never endorsed, while
+`status` and `retryAfter` are endorsed types, as the status code of a web fetch is. **Why:** the
+model needs the provider's message to tell you what went wrong, and the cap keeps an error body,
+which can quote outside text back, from filling the turn.
+
+A failed direct call is an error, not a result, because it produced nothing that matches the tool's
+output schema. Web fetch keeps its own result, because a page with any status is a page.
 
 ## One endpoint per task run
 

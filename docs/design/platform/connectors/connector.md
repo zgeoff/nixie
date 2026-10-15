@@ -42,8 +42,8 @@ type Reconcile =
 
 type ActionResponse<Output> =
   | { kind: 'done'; result: Output }
-  | { kind: 'refused'; reason: string } // no effect
-  | { kind: 'retry'; reason: string; after?: string } // no effect, may clear
+  | { kind: 'refused'; reason: string; status?: number; detail?: string } // no effect
+  | { kind: 'retry'; reason: string; after?: string; status?: number; detail?: string } // may clear
   | { kind: 'ambiguous'; reason: string }; // the action may have happened
 ```
 
@@ -117,12 +117,17 @@ accounts it named, and adding one is a widening that you approve as a job edit. 
 connection lists its tools without the argument. A worker's subset narrows the connections in the
 same way as the tools.
 
-The connector maps each provider response to one of the 4 responses, and the
-[action queue](../core/actions.md) turns them into outcomes. Each queued action declares how the
-queue reconciles an unknown outcome: the provider's idempotency key and how long the provider keeps
-it, a read-only check and how long to wait before trusting a negative answer, or neither. `run`
-passes the action ID as the idempotency key, or writes it where the check finds it, such as a header
-on a sent email.
+The connector maps each provider response to one of the 4 responses, with the provider's status, its
+error message as `detail` and its retry time as `after`. The [action queue](../core/actions.md)
+turns a queued action's response into an outcome, and the
+[tool endpoint](tools.md#a-failed-direct-call) retries and reports a direct action's response inside
+the turn. A direct action never returns `ambiguous`, because a read has no effect to reconcile, so a
+thrown call counts as `retry`. The fetcher rejects a request it refuses with its own error, which
+the connector lets pass, so the endpoint never reads a refusal as the provider's answer. Each queued
+action declares how the queue reconciles an unknown outcome: the provider's idempotency key and how
+long the provider keeps it, a read-only check and how long to wait before trusting a negative
+answer, or neither. `run` passes the action ID as the idempotency key, or writes it where the check
+finds it, such as a header on a sent email.
 
 `ConnectorContext` gives the connector a [fetcher](credentials.md) for the connection's credential,
 limited to the hosts the connector declares, and nothing else that reaches the network. Connectors
