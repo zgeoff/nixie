@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const cli = process.env.IMP_CLI ?? 'imp',
+const cli = process.env.IMP_CLI ?? 'impz',
   api = process.env.IMP_URL ?? '',
   work = process.env.SPIKE_WORK ?? '',
   data = process.env.SPIKE_DEV_DATA ?? '',

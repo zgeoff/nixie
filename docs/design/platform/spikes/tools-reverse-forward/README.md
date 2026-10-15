@@ -37,7 +37,7 @@ directly to nixie's handler.
 
 1. Prepare an isolated checkout of imp 0.40.2 with its dependencies, release CLI, kernel and
    `imp-system.squashfs`, as the
-   [imp development guide](https://github.com/zgeoff/imp/blob/v0.40.2/docs/guides/install.md#set-up)
+   [imp development guide](https://github.com/zgeoff/impz/blob/v0.40.2/docs/guides/install.md#set-up)
    describes. Keep its data directory on a disk filesystem. Start its dev instance with
    `IMP_DEV_TAILNET=0`, a distinct container name and a port offset; import `ubuntu:24.04` as the
    image `ubuntu`.

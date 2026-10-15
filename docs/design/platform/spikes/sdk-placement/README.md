@@ -33,8 +33,8 @@ needs 3 workarounds, and its tool endpoint opens every port of the host address 
 check logs the call and denies any input that holds the marker `nixie-deny`:
 
 - `read_note` and `write_note` read and write files in a temp directory on the host.
-- `run_code` runs a shell snippet in the imp `nixie-spike-a` through `imp exec`. That imp has policy
-  `none`.
+- `run_code` runs a shell snippet in the imp `nixie-spike-a` through `impz exec`. That imp has
+  policy `none`.
 
 [`session.ts`](session.ts) runs one `query()` with `tools: []`, `allowedTools` set to the 3 nixie
 tools, `strictMcpConfig: true`, `settingSources: []` and `permissionMode: 'default'`. It prints
@@ -61,7 +61,7 @@ audit row for a refused host.
 
 1. Clone imp at the tag outside this repository, copy a built guest kernel to `kernel/out/vmlinux`
    in the clone, and run `bun install` there
-   ([imp install guide](https://github.com/zgeoff/imp/blob/v0.38.1/docs/guides/install.md#set-up)).
+   ([imp install guide](https://github.com/zgeoff/impz/blob/v0.38.1/docs/guides/install.md#set-up)).
 
 2. Start a dev instance off the private network. Put its data directory on a disk filesystem with
    more than 5.5 GiB free, never on a tmpfs: impd keeps 5 GiB in reserve (`IMP_DISK_RESERVE_GIB`).
@@ -174,7 +174,7 @@ Without that variable, the CLI also tried Datadog, and the broker refused it:
 CONNECT http-intake.logs.us5.datadoghq.com:443 -> HTTP/1.1 403 Forbidden
 ```
 
-`imp audit nixie-spike-b` lists every path the CLI sent to `api.anthropic.com` with the token. Rows
+`impz audit nixie-spike-b` lists every path the CLI sent to `api.anthropic.com` with the token. Rows
 from both runs, one row per path:
 
 ```text
@@ -276,7 +276,7 @@ called a feature-flag endpoint, a bootstrap endpoint and an event-logging endpoi
 
 - A prompt that starts with `/`. The CLI may expand it as one of the bundled slash commands.
 - An MCP endpoint that reaches the guest without a host address in the allow list, such as an imp
-  [network](https://github.com/zgeoff/imp/blob/v0.38.1/docs/architecture/networking.md#networks) or
+  [network](https://github.com/zgeoff/impz/blob/v0.38.1/docs/architecture/networking.md#networks) or
   a granted hostname. Each would avoid opening the host's other ports.
 - A long turn under the broker. The terminator serves HTTP/1.1 only, and the run never checked
   streaming past a few seconds or a token rotation mid-turn.

@@ -1,6 +1,6 @@
 # The fetch image: a minimal base with Bun and the fetcher bundled into one file. Build it into impd
-# from the repo root: imp image build . --file=guests/fetch/Dockerfile --name=<name>. impd refuses a
-# FROM that names its image with a variable, so each FROM writes out the Bun version in
+# from the repo root: impz image build . --file=guests/fetch/Dockerfile --name=<name>. impd refuses
+# a FROM that names its image with a variable, so each FROM writes out the Bun version in
 # .bun-version.
 
 FROM oven/bun:1.4.2-slim AS build

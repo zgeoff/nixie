@@ -27,36 +27,36 @@ made_run= made_sdk= made_secret= serve_pid=
 
 cleanup() {
   [ -n "$serve_pid" ] && { kill "$serve_pid" 2>/dev/null || true; }
-  [ -n "$made_sdk" ] && { imp rm "$sdk_box" >/dev/null 2>&1 || true; }
-  [ -n "$made_run" ] && { imp rm "$run_box" >/dev/null 2>&1 || true; }
-  [ -n "$made_secret" ] && { imp secret rm "$secret" >/dev/null 2>&1 || true; }
+  [ -n "$made_sdk" ] && { impz rm "$sdk_box" >/dev/null 2>&1 || true; }
+  [ -n "$made_run" ] && { impz rm "$run_box" >/dev/null 2>&1 || true; }
+  [ -n "$made_secret" ] && { impz secret rm "$secret" >/dev/null 2>&1 || true; }
 }
 trap cleanup EXIT
 
 step() { printf '\n== %s\n' "$*"; }
-in_sdk() { imp exec "$sdk_box" -- sh -c "$1"; }
+in_sdk() { impz exec "$sdk_box" -- sh -c "$1"; }
 probe() { in_sdk "curl -sS --max-time 10 -o /dev/null -w '%{http_code}\n' $1 || true"; }
 
 # One guest run, behind connect-log.ts, then the CONNECT log and the CLI's debug log copied out.
 guest_run() {
   local name=$1 flags=${2:-}
-  imp exec --require broker "$sdk_box" -- sh -c "cd /root/sdk-placement \
+  impz exec --require broker "$sdk_box" -- sh -c "cd /root/sdk-placement \
     && : > /tmp/claude-debug.log \
     && { bun connect-log.ts 7999 > /tmp/connect.log 2>&1 & echo \$! > /tmp/connect.pid; } \
     && sleep 0.5 \
     && NIXIE_CONNECT_LOG=http://127.0.0.1:7999 bun --env-file=guest.env guest.ts $flags; \
     sleep 1; kill \$(cat /tmp/connect.pid); echo '-- CONNECT log'; cat /tmp/connect.log"
-  imp cp "$sdk_box:/tmp/claude-debug.log" "$SPIKE_WORK/out/$name-debug.log" 2>/dev/null
+  impz cp "$sdk_box:/tmp/claude-debug.log" "$SPIKE_WORK/out/$name-debug.log" 2>/dev/null
 }
 
 step "imp version and pre-existing state"
-imp info | head -1
-imp ls
+impz info | head -1
+impz ls
 mkdir -p "$SPIKE_WORK/notes" "$SPIKE_WORK/out"
 export NIXIE_NOTES_DIR=$SPIKE_WORK/notes NIXIE_RUN_BOX=$run_box
 
 step "create $run_box for run_code, policy none"
-imp new "$run_box" --image ubuntu --memory 1g --policy none >/dev/null
+impz new "$run_box" --image ubuntu --memory 1g --policy none >/dev/null
 made_run=1
 
 step "Option A: the task"
@@ -67,25 +67,25 @@ step "Option A: ask for built-in tools by name"
 (cd "$here" && env -u ANTHROPIC_API_KEY bun --no-env-file host-a.ts --probe)
 
 step "Option B: create $sdk_box, install curl and Bun while the policy is open"
-imp new "$sdk_box" --image ubuntu --memory 2g >/dev/null
+impz new "$sdk_box" --image ubuntu --memory 2g >/dev/null
 made_sdk=1
 in_sdk "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates >/dev/null 2>&1"
-imp cp "$(command -v bun)" "$sdk_box:/usr/local/bin/bun"
+impz cp "$(command -v bun)" "$sdk_box:/usr/local/bin/bun"
 stage=$SPIKE_WORK/stage/sdk-placement
 mkdir -p "$stage"
 cp "$here"/package.json "$here"/bun.lock "$here"/*.ts "$stage/"
-imp cp "$stage" "$sdk_box:/root"
+impz cp "$stage" "$sdk_box:/root"
 in_sdk "cd /root/sdk-placement && bun install --frozen-lockfile >/dev/null 2>&1 && bun --version"
 
 step "Option B: policy box with the host address only, then the model grant"
-imp policy "$sdk_box" box --allow "$mcp_host/32"
+impz policy "$sdk_box" box --allow "$mcp_host/32"
 printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" \
-  | imp secret add "$secret" --kind custom --hosts api.anthropic.com --header authorization \
+  | impz secret add "$secret" --kind custom --hosts api.anthropic.com --header authorization \
     --scheme bearer >/dev/null
 made_secret=1
-imp grant "$sdk_box" "$secret"
-imp policy "$sdk_box"
-imp grants "$sdk_box"
+impz grant "$sdk_box" "$secret"
+impz policy "$sdk_box"
+impz grants "$sdk_box"
 
 step "Option B: start the host MCP server with a fresh bearer token"
 mcp_token=$(openssl rand -hex 24)
@@ -99,7 +99,7 @@ until grep -q listening "$SPIKE_WORK/serve.log"; do
   sleep 0.2
 done
 cat "$SPIKE_WORK/serve.log"
-imp cp "$SPIKE_WORK/guest.env" "$sdk_box:/root/sdk-placement/guest.env"
+impz cp "$SPIKE_WORK/guest.env" "$sdk_box:/root/sdk-placement/guest.env"
 
 step "Option B: routes from inside $sdk_box"
 in_sdk "env | grep -E '^(HTTPS_PROXY|NO_PROXY|SSL_CERT_FILE|NODE_EXTRA_CA_CERTS|NODE_USE_ENV_PROXY)=' | sort"
@@ -127,8 +127,8 @@ grep -E 'MCP server "nixie".*(rejected|failed)' "$SPIKE_WORK/out/keep-proxy-debu
 step "Option B: host MCP server log"
 cat "$SPIKE_WORK/serve.log"
 
-step "Option B: imp audit"
-imp audit "$sdk_box"
+step "Option B: impz audit"
+impz audit "$sdk_box"
 
 step "token check"
 if grep -rl 'sk-ant' "$SPIKE_WORK"; then echo "a token leaked into the files above"; else echo "clean"; fi

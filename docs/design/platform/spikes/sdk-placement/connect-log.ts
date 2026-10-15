@@ -1,5 +1,5 @@
 // Option B, guest side: a CONNECT proxy on the guest's loopback that logs each target and the
-// broker's answer, then relays to the broker named by HTTPS_PROXY, which imp exec sets.
+// broker's answer, then relays to the broker named by HTTPS_PROXY, which impz exec sets.
 // Usage: bun connect-log.ts <port>
 import type { Socket } from 'bun';
 

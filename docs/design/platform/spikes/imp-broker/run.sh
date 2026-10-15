@@ -26,9 +26,9 @@ made_box= made_api= made_auth= wrote_upstreams=
 upstreams_backup=$SPIKE_WORK/broker-test-upstreams.backup.json
 
 cleanup() {
-  [ -n "$made_box" ] && { imp rm "$box" >/dev/null 2>&1 || true; }
-  [ -n "$made_api" ] && { imp secret rm "$api" >/dev/null 2>&1 || true; }
-  [ -n "$made_auth" ] && { imp secret rm "$auth" >/dev/null 2>&1 || true; }
+  [ -n "$made_box" ] && { impz rm "$box" >/dev/null 2>&1 || true; }
+  [ -n "$made_api" ] && { impz secret rm "$api" >/dev/null 2>&1 || true; }
+  [ -n "$made_auth" ] && { impz secret rm "$auth" >/dev/null 2>&1 || true; }
   if [ -n "$wrote_upstreams" ]; then
     if [ -f "$upstreams_backup" ]; then mv "$upstreams_backup" "$upstreams"; else rm -f "$upstreams"; fi
   fi
@@ -37,7 +37,7 @@ cleanup() {
 trap cleanup EXIT
 
 step() { printf '\n== %s\n' "$*"; }
-in_box() { imp exec "$box" -- sh -c "$1"; }
+in_box() { impz exec "$box" -- sh -c "$1"; }
 
 # curl through the broker; prints the status, then the body
 broker_curl() { in_box "curl -sS --max-time 15 -w '\n%{http_code}\n' $1 || true"; }
@@ -52,8 +52,8 @@ fetch_token() {
 }
 
 step "imp version and pre-existing state"
-imp info | head -1
-imp ls
+impz info | head -1
+impz ls
 
 step "start the mock"
 mkdir -p "$SPIKE_WORK"
@@ -71,19 +71,19 @@ cp "$SPIKE_WORK/upstreams.json" "$upstreams"
 head -1 "$SPIKE_WORK/mock.log"
 
 step "create $box, install curl while open, then set policy none, secrets, grants"
-imp new "$box" --memory 1g >/dev/null
+impz new "$box" --memory 1g >/dev/null
 made_box=1
 in_box "apt-get update -qq && apt-get install -y -qq curl >/dev/null 2>&1"
-imp policy "$box" none
-fetch_token | imp secret add "$api" --kind custom --hosts api.nixie-spike.test >/dev/null
+impz policy "$box" none
+fetch_token | impz secret add "$api" --kind custom --hosts api.nixie-spike.test >/dev/null
 made_api=1
-echo "${mock_client#*:}" | imp secret add "$auth" --kind custom --hosts auth.nixie-spike.test \
+echo "${mock_client#*:}" | impz secret add "$auth" --kind custom --hosts auth.nixie-spike.test \
   --scheme basic --user nixie-spike-client >/dev/null
 made_auth=1
-imp grant "$box" "$api"
-imp grant "$box" "$auth"
-imp policy "$box"
-imp grants "$box"
+impz grant "$box" "$api"
+impz grant "$box" "$auth"
+impz policy "$box"
+impz grants "$box"
 
 step "Q3: the granted host answers through the broker under policy none"
 broker_curl https://api.nixie-spike.test/v1/resource
@@ -113,12 +113,12 @@ sleep 32
 broker_curl https://api.nixie-spike.test/v1/resource
 
 step "Q2: a host-side refresh replaces the secret; no grant changes"
-fetch_token | imp secret add "$api" --kind custom --hosts api.nixie-spike.test --replace >/dev/null
+fetch_token | impz secret add "$api" --kind custom --hosts api.nixie-spike.test --replace >/dev/null
 broker_curl https://api.nixie-spike.test/v1/resource
 
-step "Q4: imp audit"
-imp audit "$box"
-imp audit "$box" --json --limit 1
+step "Q4: impz audit"
+impz audit "$box"
+impz audit "$box" --json --limit 1
 
 step "mock log (what the upstream saw)"
 cat "$SPIKE_WORK/mock.log"

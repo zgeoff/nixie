@@ -48,7 +48,7 @@ A host runs nixie, the imp host and the backups. It needs:
 
 - **Linux on x86-64 with `/dev/kvm`,** on bare metal or a VM with nested virtualization, because imp
   boots every worker and the conversation in a microVM
-  ([imp install](https://github.com/zgeoff/imp/blob/v0.40.2/docs/guides/install.md)).
+  ([imp install](https://github.com/zgeoff/impz/blob/v0.40.2/docs/guides/install.md)).
 - **Docker Engine with Compose v2,** or a Kubernetes node.
 - **Memory for the imps.** The conversation imp stays awake, and each running worker holds an imp.
   nixie runs at most 3 workers at once by default, which the
