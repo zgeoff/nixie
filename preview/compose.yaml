@@ -51,9 +51,12 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     ports:
       - ${NIXIE_PREVIEW_BIND:-127.0.0.1}:${NIXIE_PREVIEW_PORT:-8080}:8080
+    # the origin opens once a sign-in code is printed, and up --wait waits for enrol to finish
     depends_on:
-      - nixie
-      - web
+      enrol:
+        condition: service_completed_successfully
+      web:
+        condition: service_healthy
 
 volumes:
   data:
