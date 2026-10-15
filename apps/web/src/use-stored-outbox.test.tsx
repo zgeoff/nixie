@@ -7,6 +7,7 @@ import { readOutboxImages } from './read-outbox-images';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { renderHook } from './test-utils/render-hook';
 import { useOutbox } from './use-outbox';
+import { writeOutboxImages } from './write-outbox-images';
 
 async function setupTest() {
   // every send needs a signed-in browser
@@ -66,7 +67,72 @@ test('it keeps the images of an unsent message across a reload, and sends them w
   expect(reloaded.result.current.entries[0]?.message.images).toHaveLength(2);
 });
 
-test('it keeps the images out of localStorage, which holds only the text', async () => {
+test('it keeps a stored message unsent when its images do not read back after a reload', async () => {
+  // the message's images were never written to IndexedDB, or this browser lost them
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+        imageCount: 2,
+        spans: [{ end: 16, source: 'typed', start: 0 }],
+        text: 'Two hallway rugs',
+        thread: 'conversation',
+      },
+    ]),
+  );
+
+  const ctx = await setupTest();
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  expect(store.records.count()).toBe(0);
+
+  expect(JSON.parse(globalThis.localStorage.getItem('nixie.outbox') ?? 'null')).toMatchObject([
+    { clientMessageId: '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20', imageCount: 2 },
+  ]);
+});
+
+test('it sends a stored message with its images on a retry once they read back', async () => {
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+        imageCount: 1,
+        spans: [{ end: 9, source: 'typed', start: 0 }],
+        text: 'A doormat',
+        thread: 'conversation',
+      },
+    ]),
+  );
+
+  const ctx = await setupTest();
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  const [failed] = ctx.rendered.result.current.entries;
+
+  if (failed === undefined) {
+    throw new Error('the outbox holds no entry');
+  }
+
+  await writeOutboxImages('7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20', [
+    new File([new Uint8Array([0x89, 0x50])], 'image.png', { type: 'image/png' }),
+  ]);
+
+  await act(() => ctx.rendered.result.current.retry(failed.message));
+
+  expect(
+    store.records.findFirst((query) => query.where({ kind: 'owner_message' }))?.message,
+  ).toMatchObject({ images: [{ data: 'iVA=', mediaType: 'image/png' }], text: 'A doormat' });
+});
+
+test('it keeps the images out of localStorage, which holds only the text and their count', async () => {
   const ctx = await setupTest();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error()));
@@ -90,6 +156,7 @@ test('it keeps the images out of localStorage, which holds only the text', async
   expect(stored).toStrictEqual([
     {
       clientMessageId: '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+      imageCount: 1,
       spans: [{ end: 9, source: 'typed', start: 0 }],
       text: 'A doormat',
       thread: 'conversation',

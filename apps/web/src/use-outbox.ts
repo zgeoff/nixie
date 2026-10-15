@@ -1,5 +1,6 @@
 import type { ContractClient } from '@heynixie/contract';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { loadOutboxImages } from './load-outbox-images';
 import type { OutboxMessage } from './types';
 import { useNixieClient } from './use-nixie-client';
 import { useStoredOutbox } from './use-stored-outbox';
@@ -17,7 +18,8 @@ export function useOutbox(forgottenClientMessageIDs: readonly string[]) {
   const [entries, setEntries] = useState<readonly OutboxEntry[]>([]);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
-  // Sends wait their turn, so the API writes the messages in the order you sent them.
+  // Sends wait their turn, so the API writes the messages in the order you sent them. Each send
+  // reads back first any images the page could not read when it loaded the message.
   const sendEntry = useCallback(
     (message: OutboxMessage): Promise<void> => {
       setEntries((current) => buildEntriesWithStatus(current, message, 'sending'));
@@ -27,7 +29,8 @@ export function useOutbox(forgottenClientMessageIDs: readonly string[]) {
       queue.current = (async () => {
         await previous;
 
-        const status = await trySendMessage(client, message);
+        const loaded = await loadOutboxImages(message);
+        const status = await trySendMessage(client, loaded);
 
         setEntries((current) => buildEntriesWithStatus(current, message, status));
       })();
@@ -86,6 +89,11 @@ async function trySendMessage(
   client: ContractClient,
   message: OutboxMessage,
 ): Promise<'failed' | 'sent'> {
+  // a send without the images would write the message without them under its ID for good
+  if (message.unreadImages !== undefined) {
+    return 'failed';
+  }
+
   try {
     await client.conversation.send({
       clientMessageId: message.clientMessageId,

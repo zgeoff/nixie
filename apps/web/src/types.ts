@@ -33,4 +33,8 @@ export interface OutboxMessage {
 
   // the images attached to the message, each already scaled and re-encoded on the device
   readonly images?: readonly File[] | undefined;
+
+  // how many images the device keeps for the message that it has not read back, so no send goes
+  // without them
+  readonly unreadImages?: number | undefined;
 }

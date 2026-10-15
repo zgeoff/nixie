@@ -190,9 +190,12 @@ write leaves out the forgotten message, whatever status a render in flight gives
 never sends the message again.
 
 A message's images go to IndexedDB under its client message ID, because local storage holds only
-strings and too few of them for an image. Local storage keeps the text, and a send reads the images
-back in their order before it goes. The outbox removes a message's images once no stored message
-holds its ID, so a confirmed or forgotten message leaves no image on the device.
+strings and too few of them for an image. Local storage keeps the text and the count of images, and
+a send reads the images back in their order before it goes. A send that reads back fewer images than
+the count fails without reaching the API, because the API keeps the first send under a client
+message ID, and a send without the images would lose them for good. A retry reads them again. The
+outbox removes a message's images once no stored message holds its ID, so a confirmed or forgotten
+message leaves no image on the device.
 
 ## Images
 

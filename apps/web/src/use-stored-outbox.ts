@@ -2,7 +2,7 @@ import { contract } from '@heynixie/contract';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
-import { readOutboxImages } from './read-outbox-images';
+import { loadOutboxImages } from './load-outbox-images';
 import { removeStaleOutboxImages } from './remove-stale-outbox-images';
 import type { OutboxMessage } from './types';
 import type { OutboxEntry } from './use-outbox';
@@ -60,28 +60,27 @@ interface StoredSend {
 }
 
 // Each stored message goes again in the order it was written, once its images are read back, and
-// its entry takes the images, so the page shows them while it sends.
+// its entry takes the images, so the page shows them while it sends. A message whose images do not
+// read back fails, and keeps its place in storage for a retry.
 async function sendStoredMessages(
   stored: readonly OutboxMessage[],
   send: StoredSend,
 ): Promise<void> {
   for (const message of stored) {
     // oxlint-disable-next-line no-await-in-loop -- the sends keep the order the messages were written in
-    const images = await readOutboxImages(message.clientMessageId).catch(() => []);
-
-    const withImages = images.length === 0 ? message : { ...message, images };
+    const loaded = await loadOutboxImages(message);
 
     send.written.add(message.clientMessageId);
 
     send.setEntries((current) =>
       current.map((entry) =>
         entry.message.clientMessageId === message.clientMessageId
-          ? { ...entry, message: withImages }
+          ? { ...entry, message: loaded }
           : entry,
       ),
     );
 
-    void send.sendEntry(withImages);
+    void send.sendEntry(loaded);
   }
 }
 
@@ -125,15 +124,26 @@ function mergeStoredMessages(
 }
 
 // Storage outlives a release, so a stored message that no longer fits the contract is dropped
-// rather than sent.
-const storedMessagesSchema = z.array(contract.conversation.send['~orpc'].inputSchema ?? z.never());
+// rather than sent. Each message keeps the count of the images IndexedDB holds for it.
+const storedImageCount = z.object({ imageCount: z.int().positive().optional() });
+
+const storedMessagesSchema = z.array(
+  z.intersection(contract.conversation.send['~orpc'].inputSchema ?? z.never(), storedImageCount),
+);
 
 function readStoredMessages(): readonly OutboxMessage[] {
   const stored = globalThis.localStorage.getItem(storageKey);
   const json = stored === null ? [] : parseJSON(stored);
   const parsed = storedMessagesSchema.safeParse(json);
 
-  return parsed.success ? parsed.data : [];
+  return parsed.success ? parsed.data.map((message) => toOutboxMessage(message)) : [];
+}
+
+// the images stay unread until the page reads them back from IndexedDB
+function toOutboxMessage(stored: z.infer<typeof storedMessagesSchema>[number]): OutboxMessage {
+  const { imageCount, ...message } = stored;
+
+  return imageCount === undefined ? message : { ...message, unreadImages: imageCount };
 }
 
 function parseJSON(text: string): unknown {
@@ -156,12 +166,18 @@ function writeStoredMessages(messages: readonly OutboxMessage[]): void {
   }
 }
 
-function toStoredText(message: OutboxMessage): Omit<OutboxMessage, 'images'> {
+type StoredText = Omit<OutboxMessage, 'images' | 'unreadImages'> & { readonly imageCount?: number };
+
+// an image the page has not read back yet still counts, because IndexedDB still holds it
+function toStoredText(message: OutboxMessage): StoredText {
+  const imageCount = message.images?.length ?? message.unreadImages ?? 0;
+
   return {
     clientMessageId: message.clientMessageId,
     spans: message.spans,
     text: message.text,
     thread: message.thread,
     ...(message.timeZone === undefined ? {} : { timeZone: message.timeZone }),
+    ...(imageCount === 0 ? {} : { imageCount }),
   };
 }
