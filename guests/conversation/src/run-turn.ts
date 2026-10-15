@@ -312,8 +312,8 @@ async function emitResult(
 const overflowReasons: ReadonlySet<string> = new Set(['blocking_limit', 'prompt_too_long']);
 
 // An overflow ends the turn at the CLI's `Prompt is too long` message, and the turn's boundary stays
-// before it, so a retry from the boundary forks the session before the overflow. A fresh session whose first
-// call overflows has no entry before that message, so its boundary stays on it.
+// before it, so a retry from the boundary forks the session before the overflow. A fresh session
+// whose first call overflows has no entry before that message, so its boundary stays on it.
 function pickBoundary(
   message: Extract<SDKResultMessage, { subtype: 'success' }>,
   state: TurnState,
