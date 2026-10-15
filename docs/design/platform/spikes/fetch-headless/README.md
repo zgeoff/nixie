@@ -140,11 +140,12 @@ count it.
 
 The full browser opened tunnels to Google's update, sign-in and messaging hosts on every read, with
 the policy file and every background flag set. The headless shell opened no tunnel to the update or
-messaging hosts in any read.
+messaging hosts in any read, and the full browser's direct DNS query appears under
+[egress isolation](#egress-isolation).
 
 ### Egress isolation
 
-Every probe ended at the proxy, in both engines:
+Every probe in the browser ended at the proxy, in both engines:
 
 | Probe                                         | Outcome                                     |
 | --------------------------------------------- | ------------------------------------------- |
@@ -157,8 +158,13 @@ Every probe ended at the proxy, in both engines:
 | WebRTC with a public STUN server              | no candidates gathered                      |
 | the browser started with no proxy             | `net::ERR_NAME_NOT_RESOLVED`                |
 
-A socket audit sampled every TCP and UDP socket in the container through the run. Each peer off
-loopback was an address the proxy had checked and connected to, or the name server.
+A socket audit sampled every TCP and UDP socket off loopback through the probe run, with the process
+that owned it, every 200 ms. A packet capture of everything outside loopback and TCP port 443 ran
+beside it, in a separate run of each engine. In the headless shell, every socket belonged to the
+proxy, and the only packets were the proxy's own DNS lookups. The full browser sent one DNS query
+for `google.com` straight to a public resolver over UDP, outside the proxy and the resolver rules.
+That query carries no page data, but it is traffic the proxy never checks. Both captures also held
+link-local IGMP membership reports, which the spike did not trace to a process.
 
 Two results differ from the fetcher. A plain `http://` URL reached the proxy as a plain request in
 the headless shell, which the proxy refused with a 403 that the browser showed as the page. The full
@@ -180,8 +186,10 @@ a masked user agent gives that up. That trade is a product choice that this spik
 ### 2. Cost
 
 The headless-only build is the engine to use. It is smaller, starts faster, passes in about half the
-time and with about two thirds of the memory, and opens no background connections. One browser per
-fetch fits the 1 vCPU and 512 MiB sandbox. The image grows about 4 times, to about 1 GB on disk.
+time and with about two thirds of the memory, and opens no background connections. The full
+browser's background DNS query bypasses the proxy, which rules it out on isolation alone. One
+browser per fetch fits the 1 vCPU and 512 MiB sandbox. The image grows about 4 times, to about 1 GB
+on disk.
 
 ### 3. Isolation
 
@@ -189,7 +197,9 @@ The browser keeps the fetcher's checks when every connection runs through an in-
 reuses the fetcher's hop planner. Each tunnel, every subresource and redirect included, passes the
 same address check and connects to the checked address. The network layer's public egress stays the
 first boundary. The proxy is the second, and the resolver rules make the browser unable to reach a
-host without the proxy.
+host without the proxy. Both hold for the headless shell only: the full browser sent a DNS query
+past them. A sampled socket audit can miss a socket that lives under 200 ms, so the packet capture
+is the stronger evidence.
 
 ### 4. When it runs
 

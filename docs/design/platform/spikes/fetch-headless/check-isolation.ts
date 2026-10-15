@@ -1,6 +1,7 @@
 // Tries each way a page could reach past the checking proxy, and prints one JSON line per probe:
-// what the browser saw, and what the proxy decided. A socket audit samples ss(8) through the run
-// and reports every connection that left loopback from a process other than the proxy's.
+// what the browser saw, and what the proxy decided. A socket audit samples ss(8) through the run,
+// keeps the owning process of each socket off loopback, and reports every socket that a process
+// other than the proxy's owned, and every socket it never saw an owner for.
 //   bun check-isolation.ts
 import { startBrowser } from './start-browser';
 import { startCheckingProxy } from './start-checking-proxy';
@@ -9,7 +10,8 @@ const proxy = await startCheckingProxy([]);
 const browser = await startBrowser({ variant: 'masked', proxyPort: proxy.port });
 const context = await browser.newContext();
 
-const peers = new Set<string>();
+// each socket off loopback, keyed by protocol and both endpoints, with the first owner seen
+const sockets = new Map<string, string>();
 const audit = setInterval(() => {
   void recordLeaks();
 }, 200);
@@ -62,12 +64,17 @@ await bare.close();
 clearInterval(audit);
 await recordLeaks();
 
-const resolvConf = await Bun.file('/etc/resolv.conf').text();
-const nameServers = [...resolvConf.matchAll(/^nameserver\s+(\S+)/gmu)].map((match) => match[1]);
-const explained = new Set([...proxy.tunnels.flatMap((tunnel) => tunnel.address ?? []), ...nameServers]);
-const unexplained = [...peers].filter((peer) => !explained.has(peer));
+const owners = [...sockets.values()];
 
-console.log(JSON.stringify({ probe: 'socket audit', peers: peers.size, unexplained }));
+console.log(
+  JSON.stringify({
+    probe: 'socket audit',
+    sockets: sockets.size,
+    ownedByProxy: owners.filter((owner) => owner === 'bun').length,
+    ownedByOthers: [...sockets].filter(([, owner]) => owner !== 'bun' && owner !== '').map(([key, owner]) => `${key} ${owner}`),
+    neverOwned: [...sockets].filter(([, owner]) => owner === '').map(([key]) => key),
+  }),
+);
 proxy.stop();
 process.exit(0);
 
@@ -130,17 +137,20 @@ async function collectICECandidates(): Promise<string[]> {
   return candidates;
 }
 
-// the address of every TCP or UDP peer off loopback, in any state
+// every TCP or UDP socket with a peer off loopback, in any state, and the process that owns it
 async function recordLeaks(): Promise<void> {
   const ss = Bun.spawn(['ss', '-tunapH'], { stdout: 'pipe' });
   const lines = (await new Response(ss.stdout).text()).split('\n');
 
   for (const line of lines) {
-    const peer = line.trim().split(/\s+/u)[5] ?? '';
+    const [netid = '', , , , local = '', peer = '', process = ''] = line.trim().split(/\s+/u);
     const address = peer.slice(0, peer.lastIndexOf(':')).replace(/^\[|\]$/gu, '').replace(/^::ffff:/u, '');
+    const owner = /users:\(\("([^"]+)"/u.exec(process)?.[1] ?? '';
+    const key = `${netid} ${local} ${peer}`;
 
     if (address !== '' && address !== '*' && !/^(127\.|::1$|0\.0\.0\.0)/u.test(address)) {
-      peers.add(address);
+      // a socket in TIME-WAIT has no owner, so the first owner seen while it was open wins
+      sockets.set(key, sockets.get(key) || owner);
     }
   }
 }
