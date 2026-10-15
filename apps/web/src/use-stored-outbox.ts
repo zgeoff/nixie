@@ -48,7 +48,11 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
 
       writeStoredMessages(merged);
       void writeStoredImages(merged, writtenImages.current);
-      void removeStaleOutboxImages(new Set(merged.map((message) => message.clientMessageId)));
+
+      // storage as it stands when the removal runs, which a later render or another tab may change
+      void removeStaleOutboxImages(
+        () => new Set(readStoredMessages().map((message) => message.clientMessageId)),
+      );
     }
   }, [loaded, options.entries, options.forgottenClientMessageIDs]);
 }

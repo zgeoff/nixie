@@ -1,13 +1,22 @@
 import { runOutboxImagesRequest } from './run-outbox-images-request';
 
-// Removes the images the device keeps for every message the outbox no longer holds, such as one the
-// server confirmed or one you forgot, so no image outlives its message on the device.
-export async function removeStaleOutboxImages(kept: ReadonlySet<string>): Promise<void> {
-  const keys = await runOutboxImagesRequest('readonly', (store) => store.getAllKeys());
+// Removes the images kept for every message the outbox no longer holds, so none outlives its message.
+// It reads the messages to keep inside its own transaction, which IndexedDB runs apart from other
+// tabs' writes, and a tab stores a message before its images, so a new message's images stay.
+export async function removeStaleOutboxImages(readKept: () => ReadonlySet<string>): Promise<void> {
+  await runOutboxImagesRequest('readwrite', (store) => {
+    const keys = store.getAllKeys();
 
-  const stale = keys.filter((key) => typeof key === 'string' && !kept.has(key));
+    keys.addEventListener('success', () => {
+      const kept = readKept();
 
-  await Promise.all(
-    stale.map((key) => runOutboxImagesRequest('readwrite', (store) => store.delete(key))),
-  );
+      for (const key of keys.result) {
+        if (typeof key === 'string' && !kept.has(key)) {
+          store.delete(key);
+        }
+      }
+    });
+
+    return keys;
+  });
 }
