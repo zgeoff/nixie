@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.23.0](https://github.com/zgeoff/nixie/compare/v0.22.0...v0.23.0) (2026-10-15)
+
+
+### Features
+
+* **geo-557:** forget a message or a reply from the client ([#236](https://github.com/zgeoff/nixie/issues/236)) ([c8d79d8](https://github.com/zgeoff/nixie/commit/c8d79d8e5c41822094822309b94f94069aabb68f))
+* **geo-783:** take a reason when you reject a memory proposal ([#254](https://github.com/zgeoff/nixie/issues/254)) ([3f77833](https://github.com/zgeoff/nixie/commit/3f77833b2c47961d775f15251bb39cc1901d8455))
+* **geo-914:** price 1-hour cache writes at their own profile price ([#252](https://github.com/zgeoff/nixie/issues/252)) ([206a352](https://github.com/zgeoff/nixie/commit/206a352527a74e189902908438d1949937743a0a))
+
+
+### Bug Fixes
+
+* **geo-895:** render the spike's messages as production does ([#248](https://github.com/zgeoff/nixie/issues/248)) ([413bd52](https://github.com/zgeoff/nixie/commit/413bd523b711b37b580081b69e22fd8ecde0768f))
+* **geo-918:** skip format-codemod for files that .formatignore ignores ([#249](https://github.com/zgeoff/nixie/issues/249)) ([a759ff3](https://github.com/zgeoff/nixie/commit/a759ff318abbebb06130219a762afbbbe24e302b))
+* **geo-920:** count a non-string connection as invalid ([#255](https://github.com/zgeoff/nixie/issues/255)) ([575d7fc](https://github.com/zgeoff/nixie/commit/575d7fc6eda63a728857f0c9fadcea716f15efb0))
+* **geo-921:** keep sign-in on a launch from the app icon ([#256](https://github.com/zgeoff/nixie/issues/256)) ([5a6b869](https://github.com/zgeoff/nixie/commit/5a6b8693e274a873820e79d1ab98b366e5af8848))
+* **geo-925:** drop a forgotten message from the outbox ([#253](https://github.com/zgeoff/nixie/issues/253)) ([d991c61](https://github.com/zgeoff/nixie/commit/d991c61066ca071f9f7fbcd6efd8c599001700be))
+
 ## [0.22.0](https://github.com/zgeoff/nixie/compare/v0.21.0...v0.22.0) (2026-10-15)
 
 
