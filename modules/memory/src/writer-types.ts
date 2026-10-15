@@ -1,3 +1,4 @@
+import type { CheckedTables } from '@heynixie/db';
 import type { ContentSource, JSONObject, RecordInput } from '@heynixie/log';
 import type { Selectable } from 'kysely';
 import type { QuoteEvidence, VersionRef } from './types';
@@ -139,6 +140,6 @@ interface MemoryWriterTable {
 }
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
-export type WriterTables = Readonly<{ memory_writer: MemoryWriterTable }>;
+export type WriterTables = CheckedTables<Readonly<{ memory_writer: MemoryWriterTable }>>;
 
 export type WriterRow = Selectable<MemoryWriterTable>;

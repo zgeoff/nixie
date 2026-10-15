@@ -11,3 +11,4 @@ export { SchemaTooNewError } from './schema-too-new-error';
 export { sqliteWorkerEntry } from './sqlite-worker-entry';
 export type { BuildSchema, DatabaseOptions, Migration } from './types';
 export { withTriggersDropped } from './with-triggers-dropped';
+export type { CheckedTables } from './checked-tables';

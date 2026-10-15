@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "kysely": "catalog:"

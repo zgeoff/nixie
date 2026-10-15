@@ -1,3 +1,4 @@
+import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import type { Generated } from 'kysely';
 
@@ -112,8 +113,10 @@ interface SeedRow {
 }
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
-export type DefinitionsTables = Readonly<{
-  personas: PersonaRow;
-  definition_snapshots: SnapshotRow;
-  definition_seeds: SeedRow;
-}>;
+export type DefinitionsTables = CheckedTables<
+  Readonly<{
+    personas: PersonaRow;
+    definition_snapshots: SnapshotRow;
+    definition_seeds: SeedRow;
+  }>
+>;
