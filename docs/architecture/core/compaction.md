@@ -67,9 +67,11 @@ error and the count of failures in a row, in place of the summary. When the inbo
 the same step runs the turn on the old session and tries no second compaction. The next step tries
 the compaction first again, because the session's last turn still ended past the threshold. Turns
 therefore go on while the session stays inside the window, and a turn that overflows it fails like
-any other step, so a broken compactor stops the conversation where the user sees it. The client
-shows a notice from the first failure until a summary commits, a forget invalidates the session or a
-new session opens.
+any other step, so a broken compactor stops the conversation where the user sees it. A step error
+drops what the step would commit, so a step that fails this way, or whose overflow compaction fails,
+first writes its compaction-failed records under its lease. The log therefore keeps each failure's
+error and the count in a row, and the retry counts on from it. The client shows a notice from the
+first failure until a summary commits, a forget invalidates the session or a new session opens.
 
 A turn can grow past the window on its own, such as from large tool results. The guest detects the
 overflow on the result's terminal reason, which the CLI sets when it refuses the call and the model

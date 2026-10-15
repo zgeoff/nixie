@@ -452,6 +452,112 @@ test('it fails a turn that overflows a new session, and commits nothing of it', 
   expect(ended).toStrictEqual([]);
 });
 
+test('it records a failed overflow summary, with its cause and count, before the step fails', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner();
+
+  ctx.sandboxes.setGuestScript(
+    buildStubTurnScript((turn) => ({
+      boundary: {
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      },
+      contextSize: 20_000,
+      ...(turn.resume === null ? {} : { terminalReason: 'blocking_limit' }),
+    })),
+  );
+
+  ctx.sandboxes.setSummaryScript(() => [
+    {
+      type: 'failed',
+      reason: 'error',
+      detail: 'the summary call ended with no summary: overloaded_error',
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+  await ctx.sendMessage(runner, 'Read me every page of the gauge log.');
+
+  ctx.clock.advance(60_000);
+
+  await ctx.runNextStep(runner);
+
+  const [failed, errored] = await Promise.all([
+    ctx.readKinds('model.compaction_failed'),
+    ctx.readKinds('task.step_errored'),
+  ]);
+
+  expect({ failed, errored }).toMatchObject({
+    failed: [
+      {
+        thread: 'conversation',
+        payload: { trigger: 'overflow', failures: 1, contextSize: 20_000 },
+        erasable: {
+          fields: {
+            message:
+              'the summary call failed: error: the summary call ended with no summary: overloaded_error',
+          },
+        },
+      },
+      { payload: { trigger: 'overflow', failures: 2 } },
+    ],
+    errored: [{ payload: { errors: 1 } }, { payload: { errors: 2 } }],
+  });
+});
+
+test('it keeps a failed threshold summary when the turn after it overflows and the step fails', async () => {
+  const ctx = await setupTest();
+  const runner = await ctx.startRunner();
+
+  ctx.sandboxes.setGuestScript(
+    buildStubTurnScript((turn) => ({
+      boundary: {
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      },
+      contextSize: 170_000,
+      ...(turn.resume === null ? {} : { terminalReason: 'blocking_limit' }),
+    })),
+  );
+
+  ctx.sandboxes.setSummaryScript(() => [
+    {
+      type: 'failed',
+      reason: 'error',
+      detail: 'the summary call ended with no summary: api_error',
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+  await ctx.sendMessage(runner, 'Read me every page of the gauge log.');
+
+  const failed = await ctx.readKinds('model.compaction_failed');
+  const errored = await ctx.readKinds('task.step_errored');
+
+  expect(failed).toMatchObject([
+    {
+      thread: 'conversation',
+      payload: { trigger: 'threshold', failures: 1, contextSize: 170_000 },
+      erasable: {
+        fields: {
+          message:
+            'the summary call failed: error: the summary call ended with no summary: api_error',
+        },
+      },
+    },
+  ]);
+
+  expect(errored).toMatchObject([
+    {
+      erasable: {
+        fields: {
+          message: 'the conversation turn passed the context window after a failed compaction',
+        },
+      },
+    },
+  ]);
+});
+
 test('it erases every summary on a forget, and opens the next session with no summary', async () => {
   const ctx = await setupTest();
   const runner = await ctx.startRunner();

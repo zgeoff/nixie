@@ -1,12 +1,11 @@
 import type { StepResult } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
-import { buildCompactionRequest } from './build-compaction-request';
 import { buildStepResult } from './build-step-result';
 import { isContextOverflow } from './is-context-overflow';
 import { readSessionTurn } from './read-session-turn';
 import { runOpenedTurn } from './run-opened-turn';
+import { runOverflowCompaction } from './run-overflow-compaction';
 import { runPlannedTurn } from './run-planned-turn';
-import { runSessionCompaction } from './run-session-compaction';
 import type { InboxPlan, SessionStep } from './types';
 
 export interface ResumedSession {
@@ -29,7 +28,11 @@ export async function runResumedTurn(
   const ended = resumed.completed.turn.ended.at(-1);
 
   if (ended !== undefined && resumed.completed.turn.failure === null && isContextOverflow(ended)) {
-    return runOverflowCompaction(step, session, ended.context?.size ?? null);
+    return runOverflowCompaction(step, {
+      plan: session.plan,
+      resume: session.boundary,
+      contextSize: ended.context?.size ?? null,
+    });
   }
 
   if (resumed.completed.turn.failure?.reason === 'session_missing') {
@@ -50,32 +53,4 @@ async function runLostTurn(step: SessionStep, session: ResumedSession): Promise<
     start: { kind: 'rebuild', reason: 'lost', lostSessionID: session.boundary.sessionID },
     before: session.plan.before,
   });
-}
-
-// The overflowed turn commits nothing, so its inbox stays unread for the turn on the new session.
-// A failed compaction fails the step, as the overflow would.
-async function runOverflowCompaction(
-  step: SessionStep,
-  session: ResumedSession,
-  contextSize: number | null,
-): Promise<StepResult> {
-  if (!session.plan.canCompact) {
-    throw new Error('the conversation turn passed the context window after a failed compaction');
-  }
-
-  const outcome = await runSessionCompaction(
-    step.run,
-    buildCompactionRequest(step, { resume: session.boundary, trigger: 'overflow', contextSize }),
-  );
-
-  if (!outcome.isSummarized) {
-    throw new Error('the conversation turn passed the context window, and its compaction failed');
-  }
-
-  return {
-    next: 'wait',
-    records: [...session.plan.before, outcome.record],
-    acknowledged: [],
-    sessionBoundary: null,
-  };
 }
