@@ -93,19 +93,16 @@ text out.
 Retrieval on a resumed session also leaves out each item version that the session already holds, so
 an item placed on one turn takes no slot on the next, and the next best match above the floor takes
 its place. The conversation finds those versions by replaying the thread's records from the start of
-the step that wrote its last opening, compaction or invalidation. A version counts as held when a
-recall delivered it in a step whose turn ended, before the turn's last result. A step that errored
-or stopped ran on a session that its retry starts again from the last boundary, and a recall after
-the last result reached a part of the session that the next turn never resumes. The turn's record
-keeps the newest recall it saw at that result for this reason. A compaction summarizes everything
-delivered before it, its own step's earlier recalls included, so those items match again. A recall
-later in the same step reaches the compacted session whole, so the compaction's record also keeps
-the newest recall it saw, and only the recalls through that mark match again. A first session, and a
-session rebuilt after an invalidation, holds what its step delivered. A turn that finds its session
-lost reads its context again without the exclusion, and the new session counts what that turn
-retrieved and what its opening recalled, because the step's first recall served the lost session. An
-edit makes a new version, which the session has not seen, so an edited item matches again. A recall
-that the model calls itself excludes nothing.
+the step that wrote its last opening or invalidation. A version counts as held when a recall
+delivered it in a step whose turn ended, before the turn's last result. A step that errored or
+stopped ran on a session that its retry starts again from the last boundary, and a recall after the
+last result reached a part of the session that the next turn never resumes. The turn's record keeps
+the newest recall it saw at that result for this reason. A first session, and a session rebuilt
+after an invalidation, holds what its step delivered. A turn that finds its session lost reads its
+context again without the exclusion, and the new session counts what that turn retrieved and what
+its opening recalled, because the step's first recall served the lost session. An edit makes a new
+version, which the session has not seen, so an edited item matches again. A recall that the model
+calls itself excludes nothing.
 
 The blocks before the first message keep one order: a new session's opening, the pinned-core change
 note, the retrieved items, then [the events block](../core/conversation-turns.md#the-events-block).

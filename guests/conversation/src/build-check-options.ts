@@ -3,7 +3,7 @@ import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import type { CheckRequest } from '@heynixie/wire';
 
 // Builds the options of a checker query(): no tools, no MCP server, no settings, skills or memory,
-// no saved session, and a JSON verdict as the structured output. options.env replaces the CLI's
+// no CLI compaction, no saved session, and a JSON verdict as the structured output. options.env replaces the CLI's
 // environment, so each variable goes in by name. The conversation keeps its own options apart.
 export function buildCheckOptions(
   request: CheckRequest,
@@ -24,7 +24,12 @@ export function buildCheckOptions(
     mcpServers: {},
     skills: [],
     persistSession: false,
-    settings: { disableBundledSkills: true, autoMemoryEnabled: false, autoDreamEnabled: false },
+    settings: {
+      disableBundledSkills: true,
+      autoMemoryEnabled: false,
+      autoDreamEnabled: false,
+      autoCompactEnabled: false,
+    },
     systemPrompt: request.systemPrompt,
     outputFormat: { type: 'json_schema', schema: verdictSchema },
     cwd: join(home, 'checker'),
@@ -94,6 +99,7 @@ function buildCheckEnv(
     CLAUDE_CODE_EFFORT_LEVEL: request.profile.effort,
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
+    DISABLE_COMPACT: '1',
     DISABLE_AUTOUPDATER: '1',
   };
 }

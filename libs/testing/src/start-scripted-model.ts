@@ -1,7 +1,9 @@
 // One reply the stub model gives: a text block that ends the turn, or a tool_use block that asks
 // for a tool by its name as the model sees it, such as mcp__nixie__note_read. A gate holds the
 // reply until it resolves, so a test can keep a turn running.
-export type ScriptedReply = (
+export type ScriptedReply = ScriptedMessage | ScriptedRefusal;
+
+type ScriptedMessage = (
   | { readonly text: string }
   | {
       readonly toolUse: {
@@ -15,6 +17,12 @@ export type ScriptedReply = (
   // the input tokens the reply reports, 10 by default, so a test can fill the CLI's context
   readonly inputTokens?: number;
 };
+
+// a 400 with the API's message, such as the one that refuses a prompt past the model's window
+interface ScriptedRefusal {
+  readonly refusal: string;
+  readonly gate?: Promise<void>;
+}
 
 // One request the stub model received, with its body parsed.
 export interface ScriptedModelRequest {
@@ -106,26 +114,31 @@ function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]):
   const reply = script.shift();
 
   if (reply === undefined) {
-    return {
-      response: Response.json(
-        {
-          type: 'error',
-          error: { type: 'invalid_request_error', message: 'the scripted model has no reply left' },
-        },
-        { status: 400 },
-      ),
-    };
+    return { response: renderRefusal('the scripted model has no reply left') };
   }
 
   const model = request.body.model ?? 'stub';
-
-  const response =
-    request.body.stream === true ? renderStream(reply, model) : renderWhole(reply, model);
+  const response = buildReplyResponse(reply, model, request.body.stream === true);
 
   return reply.gate === undefined ? { response } : { response, gate: reply.gate };
 }
 
-function renderWhole(reply: ScriptedReply, model: string): Response {
+function buildReplyResponse(reply: ScriptedReply, model: string, isStream: boolean): Response {
+  if ('refusal' in reply) {
+    return renderRefusal(reply.refusal);
+  }
+
+  return isStream ? renderStream(reply, model) : renderWhole(reply, model);
+}
+
+function renderRefusal(message: string): Response {
+  return Response.json(
+    { type: 'error', error: { type: 'invalid_request_error', message } },
+    { status: 400 },
+  );
+}
+
+function renderWhole(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
 
   return Response.json({
@@ -140,7 +153,7 @@ function renderWhole(reply: ScriptedReply, model: string): Response {
   });
 }
 
-function renderStream(reply: ScriptedReply, model: string): Response {
+function renderStream(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
   const isTool = 'toolUse' in reply;
 
@@ -185,7 +198,7 @@ function renderStream(reply: ScriptedReply, model: string): Response {
   );
 }
 
-function buildBlock(reply: ScriptedReply): Readonly<Record<string, unknown>> {
+function buildBlock(reply: ScriptedMessage): Readonly<Record<string, unknown>> {
   if ('toolUse' in reply) {
     return {
       type: 'tool_use',

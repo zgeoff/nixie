@@ -92,17 +92,16 @@ the next step to send again.
 ## Compaction
 
 The history in the session only grows, so nixie compacts it between turns with a summary that the
-event log holds ([compaction](./compaction.md)). The guest sets every compaction control in the
-query's settings rather than leaving it at the SDK's default, so an SDK upgrade cannot change it.
-Auto-compaction, precomputed compaction and idle compaction stay off, because each would change the
-session outside a step, with a summary that the event log never holds. A step's commit records the
-session's last message as the point that [crash recovery](./leases-and-recovery.md) resumes at, so
-the session changes only inside a step that holds the task's lease.
+event log holds ([compaction](./compaction.md)), and nixie's compactor is the only one. The guest
+sets every compaction control in the query's settings rather than leaving it at the SDK's default,
+so an SDK upgrade cannot change it. Auto-compaction, precomputed compaction and idle compaction stay
+off, and the guest's environment turns off the manual compaction command too, because each would
+change the session outside a step, with a summary that the event log never holds. A step's commit
+records the session's last message as the point that [crash recovery](./leases-and-recovery.md)
+resumes at, so the session changes only inside a step that holds the task's lease.
 
-The CLI's auto-compact window sets the window that a turn reports its context against, and it comes
-from the profile's context cap, with a default for a profile that sets none. When the CLI reports a
-compaction anyway, the step writes one compacted record with its token counts and no text, and the
-next turn sends the pinned core again, because the CLI's summary may have dropped the opening.
+A turn reports its context against the window nixie compacts within, which comes from the profile's
+context cap, with a default for a profile that sets none.
 
 ## Opening a new session
 
@@ -197,11 +196,11 @@ turn wrote no other entry. The step commits that boundary, so a retry forks the 
 overflow. One exception: a fresh session that overflows at its first model call has neither, and its
 boundary stays on the CLI's message. The usage sums every model call in the turn, so it measures
 cost and not how full the context stands. The context is therefore the last main-chain model call's
-input, cache-read and cache-write tokens, beside the auto-compact window. The step turns these into
-records on the conversation's thread: a reply record per message with text, whose text is erasable,
-and one turn-ended record with the usage, the end reason and the context. Each record holds the
-model ID and the profile's ID from the profile nixie gave the turn, never from the guest's frames
-([model profiles](./model-profiles.md#records-of-model-output)).
+input, cache-read and cache-write tokens, beside the window nixie compacts within. The step turns
+these into records on the conversation's thread: a reply record per message with text, whose text is
+erasable, and one turn-ended record with the usage, the end reason and the context. Each record
+holds the model ID and the profile's ID from the profile nixie gave the turn, never from the guest's
+frames ([model profiles](./model-profiles.md#records-of-model-output)).
 
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool

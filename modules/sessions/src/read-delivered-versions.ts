@@ -61,6 +61,8 @@ function buildSessionState(state: SessionState, record: LogRecord): SessionState
           : state.pending,
       };
     }
+
+    // a compaction the CLI ran, which a log keeps from releases before the guest turned it off
     case 'model.compacted': {
       const through = parseRecalledThrough(record.payload['recalledThrough']);
 

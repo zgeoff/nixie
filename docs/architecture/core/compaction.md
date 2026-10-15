@@ -16,8 +16,10 @@ sandbox that runs the summary call and the profile, and its caller passes the sy
 time and the user's name, so a task's model loop compacts its session through the same code as the
 conversation.
 
-The guest turns the CLI's auto-compaction off on every query, so nixie's compactor is the only way a
-session shrinks, and every summary the model sees is one the event log holds.
+The guest turns every CLI compaction off on every query, the automatic one and the manual command
+alike, so nixie's compactor is the only way a session shrinks, and every summary the model sees is
+one the event log holds. A turn that overflows the window therefore ends with the overflow, and the
+step compacts the session, as [failure and overflow](#failure-and-overflow) describes.
 
 ## The compaction step
 

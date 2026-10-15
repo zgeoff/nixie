@@ -59,28 +59,19 @@ test('it passes the broker proxy settings on by name and nothing else from the g
   expect(options.env).not.toContainKey('UNRELATED');
 });
 
-test('it caps the CLI auto-compact window at the profile context tokens', () => {
-  const options = buildQueryOptions(
-    buildMockTurnFrame({ profile: { authHeader: 'x-api-key', contextTokens: 400_000 } }),
-    {
-      env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
-      toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
-    },
-  );
+test('it turns off every CLI compaction, the automatic one and the manual one', () => {
+  const options = buildQueryOptions(buildMockTurnFrame({ profile: { authHeader: 'x-api-key' } }), {
+    env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+    toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+  });
 
-  expect(options.settings).toMatchObject({ autoCompactWindow: 400_000 });
-});
+  expect(options.settings).toMatchObject({
+    autoCompactEnabled: false,
+    precomputeCompactionEnabled: false,
+    idleCompaction: false,
+  });
 
-test('it sets a 200,000-token auto-compact window for a profile with no context tokens', () => {
-  const options = buildQueryOptions(
-    buildMockTurnFrame({ profile: { authHeader: 'x-api-key', contextTokens: null } }),
-    {
-      env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
-      toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
-    },
-  );
-
-  expect(options.settings).toMatchObject({ autoCompactWindow: 200_000 });
+  expect(options.env).toContainEntry(['DISABLE_COMPACT', '1']);
 });
 
 test('it resumes at the boundary on a fork of the session', () => {

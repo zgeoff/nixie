@@ -371,6 +371,54 @@ test('it summarizes a session past 0.8 of its window in the guest, and opens the
   ]);
 }, 30_000);
 
+test('it compacts a session whose turn overflows the window with its own summary, and the CLI never compacts it', async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  // the second turn's call is refused past the window; the CLI could only go on by compacting
+  // itself, so the next reply answers nixie's compaction instruction, and the last two answer the
+  // two messages on the new session
+  ctx.model.addReplies(
+    { text: 'The gauge reads 3.2 m.' },
+    { refusal: 'prompt is too long: 210000 tokens > 200000 maximum' },
+    { text: 'Open threads: the gauge report is due on Friday.' },
+    { text: 'It will read 3.4 m.' },
+    { text: 'No, that is a normal tide.' },
+  );
+
+  await sendTestMessage(ctx.context, runner.runStep, 'What does the tide gauge read?');
+
+  // the overflowed step compacts and leaves its message unread; the next one opens the new session
+  await sendTestMessage(ctx.context, runner.runStep, 'And tomorrow?');
+  await sendTestMessage(ctx.context, runner.runStep, 'Is that high?');
+
+  const records = await ctx.readRecords();
+
+  expect(records.filter((record) => record.kind === 'model.session_summarized')).toMatchObject([
+    {
+      payload: { trigger: 'overflow' },
+      erasable: { fields: { text: 'Open threads: the gauge report is due on Friday.' } },
+    },
+  ]);
+
+  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toSatisfy(
+    (messages: string) =>
+      messages.includes('Open threads: the gauge report is due on Friday.') &&
+      messages.includes('And tomorrow?') &&
+      !messages.includes('The gauge reads 3.2 m.'),
+  );
+
+  expect(records.filter((record) => record.kind === 'model.reply')).toMatchObject([
+    { erasable: { fields: { text: 'The gauge reads 3.2 m.' } } },
+    { erasable: { fields: { text: 'It will read 3.4 m.' } } },
+    { erasable: { fields: { text: 'No, that is a normal tide.' } } },
+  ]);
+}, 30_000);
+
 test('it erases the summary when you forget a memory item, and opens the next session with no summary', async () => {
   const ctx = await setupTest();
 

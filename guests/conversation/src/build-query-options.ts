@@ -1,7 +1,6 @@
 // oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's MCP config has no readonly form
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
-import { getCompactWindow } from './get-compact-window';
 import { getConfigDir } from './get-config-dir';
 import { getHome } from './get-home';
 import { getWorkDir } from './get-work-dir';
@@ -21,7 +20,7 @@ export interface QueryContext {
 }
 
 // Builds the options of every query(): nixie's tools alone, or none and one model call for a
-// summary, a system prompt rendered fresh on every request, and every SDK compaction off. options.env
+// summary, a system prompt rendered fresh on every request, and every CLI compaction off. options.env
 // replaces the CLI's environment, so each variable goes in by name.
 export function buildQueryOptions(
   turn: TurnFrame | SummarizeFrame,
@@ -43,8 +42,6 @@ export function buildQueryOptions(
       autoMemoryEnabled: false,
       autoDreamEnabled: false,
       autoCompactEnabled: false,
-
-      autoCompactWindow: getCompactWindow(turn.profile),
       precomputeCompactionEnabled: false,
       idleCompaction: false,
     },
@@ -122,6 +119,9 @@ function buildQueryEnv(
     // keeps the CLI to the model API's host, the one host its grant covers
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
+
+    // turns off the automatic compaction and the manual /compact alike
+    DISABLE_COMPACT: '1',
     DISABLE_AUTOUPDATER: '1',
   };
 }

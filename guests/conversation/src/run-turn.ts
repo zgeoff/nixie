@@ -144,10 +144,6 @@ function emitSystem(
     return emitInit(message, deps);
   }
 
-  if (message.subtype === 'compact_boundary') {
-    return emitCompacted(message, deps);
-  }
-
   return emitCommandRead(message, deps, state);
 }
 
@@ -167,23 +163,6 @@ async function emitInit(message: InitMessage, deps: TurnDependencies): Promise<M
   });
 
   return 'stop';
-}
-
-type CompactBoundaryMessage = Extract<SDKMessage, { type: 'system'; subtype: 'compact_boundary' }>;
-
-// the host records each compaction's token counts; the summary text never leaves the guest
-async function emitCompacted(
-  message: CompactBoundaryMessage,
-  deps: TurnDependencies,
-): Promise<MessageOutcome> {
-  await deps.emit({
-    type: 'compacted',
-    trigger: message.compact_metadata.trigger,
-    preTokens: message.compact_metadata.pre_tokens,
-    postTokens: message.compact_metadata.post_tokens ?? null,
-  });
-
-  return 'continue';
 }
 
 type AssistantMessage = Extract<SDKMessage, { type: 'assistant' }>;
