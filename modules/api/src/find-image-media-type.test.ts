@@ -1,0 +1,23 @@
+import { expect, test } from 'bun:test';
+import type { ImageMediaType } from '@heynixie/contract';
+import { findImageMediaType } from './find-image-media-type';
+
+test.each<[string, number[], ImageMediaType]>([
+  ['a JPEG', [0xff, 0xd8, 0xff, 0xe0, 0, 0x10], 'image/jpeg'],
+  ['a PNG', [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0], 'image/png'],
+  ['a GIF87a', [0x47, 0x49, 0x46, 0x38, 0x37, 0x61, 1], 'image/gif'],
+  ['a GIF89a', [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1], 'image/gif'],
+  ['a WebP', [0x52, 0x49, 0x46, 0x46, 4, 0, 0, 0, 0x57, 0x45, 0x42, 0x50], 'image/webp'],
+])('it finds %s from its leading bytes', (_label, bytes, mediaType) => {
+  expect(findImageMediaType(new Uint8Array(bytes))).toBe(mediaType);
+});
+
+test.each([
+  ['a HEIC file', [0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63]],
+  ['a RIFF file that is not WebP', [0x52, 0x49, 0x46, 0x46, 4, 0, 0, 0, 0x57, 0x41, 0x56, 0x45]],
+  ['text', [0x68, 0x65, 0x6c, 0x6c, 0x6f]],
+  ['a PNG signature cut short', [0x89, 0x50, 0x4e, 0x47]],
+  ['no bytes', []],
+])('it finds no type for %s', (_label, bytes) => {
+  expect(findImageMediaType(new Uint8Array(bytes))).toBeNull();
+});

@@ -20,6 +20,7 @@ pathIgnorePatterns = ["docs/design/**"]
 # registers the jest-extended matchers for `bun test`
 preload = [
   "./libs/testing/src/define-test-build.ts",
+  "./libs/testing/src/keep-native-form-data.ts",
   "@zgeoff/bun-test-extended",
   "@zgeoff/bun-test-react",
   "./apps/web/src/mocks/test-preload.ts",

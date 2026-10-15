@@ -8,7 +8,7 @@ import invariant from 'tiny-invariant';
 import { findClientAction } from './find-client-action';
 import { isLiveIdentity } from './is-live-identity';
 import { normalizeSpans } from './normalize-spans';
-import type { APIContext, APITables, Identity } from './types';
+import type { APIContext, APITables, Identity, OwnerImage } from './types';
 import { writeClientAction } from './write-client-action';
 
 interface OwnerMessageInput {
@@ -17,6 +17,9 @@ interface OwnerMessageInput {
   readonly text: string;
   readonly spans: readonly Span[];
   readonly timeZone?: string | undefined;
+
+  // the images readOwnerImages checked, in the order sent
+  readonly images?: readonly OwnerImage[] | undefined;
 }
 
 type OwnerMessageResult =
@@ -25,9 +28,9 @@ type OwnerMessageResult =
   | { readonly status: 'reused' }
   | { readonly status: 'unauthorized' };
 
-// Writes your message once per client message ID into the inbox of the task its thread names, with
-// the text, its spans and the label of the session it came from encrypted together. A retry answers with the first sequence, and the same ID
-// with another thread or text is refused; once the text is forgotten, only the thread is compared.
+// Writes your message once per client message ID into its thread's task inbox, with the text, spans
+// and session label encrypted together and each image sealed under the same key. checkRetry says
+// which retry answers with the first sequence and which is refused.
 export async function writeOwnerMessage(
   context: APIContext,
   caller: Identity,
@@ -102,8 +105,10 @@ async function writeMessage(
         identityID: pending.caller.identityID,
         spans: spans.labelled,
         ...pickTimeZone(input.timeZone),
+        ...pickImageTypes(input.images ?? []),
       },
       erasable: { text: input.text, spans: spans.spans.map(toSpanJSON), sessionLabel },
+      attachments: (input.images ?? []).map((image) => image.bytes),
     },
   ]);
 
@@ -144,12 +149,20 @@ function pickTimeZone(zone: string | undefined): { readonly timeZone?: string } 
   return zone !== undefined && isTimeZone(zone) ? { timeZone: zone } : {};
 }
 
+// The payload names each image's type, which a reader needs without a key; the bytes are sealed.
+// A message with no images names none.
+function pickImageTypes(images: readonly OwnerImage[]): { readonly images?: JSONObject[] } {
+  return images.length === 0
+    ? {}
+    : { images: images.map((image) => ({ mediaType: image.mediaType })) };
+}
+
 function toSpanJSON(span: Span): JSONObject {
   return { start: span.start, end: span.end, source: span.source };
 }
 
 // nixie keeps no hash of a message's text, which would outlive a forget of the text, so a retry is
-// compared with the first record itself
+// compared with the first record itself: its thread, its image count, and its text until forgotten
 async function checkRetry(
   context: APIContext,
   input: OwnerMessageInput,
@@ -160,6 +173,12 @@ async function checkRetry(
   const record = entry?.record;
 
   if (record?.sequence !== sequence || record.thread !== input.thread) {
+    return { status: 'reused' };
+  }
+
+  const images = record.payload['images'];
+
+  if ((Array.isArray(images) ? images.length : 0) !== (input.images?.length ?? 0)) {
     return { status: 'reused' };
   }
 

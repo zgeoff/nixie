@@ -1,5 +1,11 @@
 import { expect, mock, test } from 'bun:test';
-import { readRecords, runProjectionRebuild, writeRecords } from '@heynixie/log';
+import type { LogTables } from '@heynixie/log';
+import {
+  readRecordAttachments,
+  readRecords,
+  runProjectionRebuild,
+  writeRecords,
+} from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readThreadPage } from './read-thread-page';
 import { createDeviceSession } from './test-utils/create-device-session';
@@ -59,6 +65,57 @@ test('it forgets your message, so its text reads as a gap in the thread and afte
 
   expect(live?.records.find((record) => record.sequence === sent.sequence)).toStrictEqual(gap);
   expect(rebuilt?.records.find((record) => record.sequence === sent.sequence)).toStrictEqual(gap);
+});
+
+test('it forgets the images of your message, whose sealed bytes then decrypt in no copy of the database', async () => {
+  const ctx = await setupTest();
+
+  const sent = await writeOwnerMessage(ctx.context, ctx.laptop.caller, {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'Two drafts of the porch sign.',
+    spans: [],
+    images: [
+      { mediaType: 'image/png', bytes: new TextEncoder().encode('Porch-image-A') },
+      { mediaType: 'image/jpeg', bytes: new TextEncoder().encode('Porch-image-B') },
+    ],
+  });
+
+  invariant(sent.status === 'written');
+
+  const before = await readRecordAttachments(ctx.context.log, [sent.sequence]);
+
+  await writeRecordForget(ctx.context, ctx.laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: sent.sequence,
+  });
+
+  const after = await readRecordAttachments(ctx.context.log, [sent.sequence]);
+
+  // the rows a backup of nixie.db keeps, which hold only ciphertext under the deleted key
+  const sealed = await ctx.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('record_attachments')
+    .select('sealed')
+    .where('sequence', '=', sent.sequence)
+    .orderBy('position')
+    .execute();
+
+  expect(before.get(sent.sequence)).toStrictEqual({
+    status: 'readable',
+    attachments: [
+      new TextEncoder().encode('Porch-image-A'),
+      new TextEncoder().encode('Porch-image-B'),
+    ],
+  });
+
+  expect(after.get(sent.sequence)).toStrictEqual({ status: 'shredded' });
+
+  expect(sealed.map((row) => new TextDecoder().decode(row.sealed))).toStrictEqual([
+    expect.not.stringContaining('Porch-image-'),
+    expect.not.stringContaining('Porch-image-'),
+  ]);
 });
 
 test("it forgets a reply of the conversation's model", async () => {

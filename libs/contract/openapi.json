@@ -142,6 +142,26 @@
                                 "type": "string",
                                 "format": "uuid"
                               },
+                              "images": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mediaType": {
+                                      "enum": [
+                                        "image/jpeg",
+                                        "image/png",
+                                        "image/webp",
+                                        "image/gif"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "mediaType"
+                                  ]
+                                }
+                              },
                               "spans": {
                                 "type": "array",
                                 "items": {
@@ -472,6 +492,26 @@
                                 "clientMessageId": {
                                   "type": "string",
                                   "format": "uuid"
+                                },
+                                "images": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "mediaType": {
+                                        "enum": [
+                                          "image/jpeg",
+                                          "image/png",
+                                          "image/webp",
+                                          "image/gif"
+                                        ],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "mediaType"
+                                    ]
+                                  }
                                 },
                                 "spans": {
                                   "type": "array",
@@ -867,6 +907,85 @@
                     "type": "string",
                     "format": "uuid"
                   },
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "contentMediaType": "*/*"
+                    }
+                  },
+                  "spans": {
+                    "type": "array",
+                    "maxItems": 100000,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "end": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "source": {
+                          "enum": [
+                            "typed",
+                            "pasted",
+                            "dropped",
+                            "unknown"
+                          ],
+                          "type": "string"
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "end",
+                        "source",
+                        "start"
+                      ]
+                    }
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100000
+                  },
+                  "thread": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "clientMessageId",
+                  "spans",
+                  "text",
+                  "thread"
+                ]
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "clientMessageId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "contentMediaType": "*/*"
+                    }
+                  },
                   "spans": {
                     "type": "array",
                     "maxItems": 100000,
@@ -1092,6 +1211,265 @@
                         "message": {
                           "type": "string",
                           "default": "The client action ID belongs to a different action"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "422",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "IMAGE_REFUSED"
+                        },
+                        "status": {
+                          "const": 422
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "An image is too large, of a type nixie does not take, or one too many"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "position": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "reason": {
+                              "enum": [
+                                "too_many",
+                                "too_large",
+                                "unsupported_type"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "position",
+                            "reason"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conversation/readImage": {
+      "post": {
+        "operationId": "conversation.readImage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "sequence": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "thread": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "position",
+                  "sequence",
+                  "thread"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "contentMediaType": "*/*"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "IMAGE_NOT_FOUND"
+                        },
+                        "status": {
+                          "const": 404
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "No readable image of a message has this position"
                         },
                         "data": {}
                       },
@@ -1973,6 +2351,26 @@
                                       "type": "string",
                                       "format": "uuid"
                                     },
+                                    "images": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "mediaType": {
+                                            "enum": [
+                                              "image/jpeg",
+                                              "image/png",
+                                              "image/webp",
+                                              "image/gif"
+                                            ],
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "mediaType"
+                                        ]
+                                      }
+                                    },
                                     "spans": {
                                       "type": "array",
                                       "items": {
@@ -2465,6 +2863,26 @@
                                     "clientMessageId": {
                                       "type": "string",
                                       "format": "uuid"
+                                    },
+                                    "images": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "mediaType": {
+                                            "enum": [
+                                              "image/jpeg",
+                                              "image/png",
+                                              "image/webp",
+                                              "image/gif"
+                                            ],
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "mediaType"
+                                        ]
+                                      }
                                     },
                                     "spans": {
                                       "type": "array",

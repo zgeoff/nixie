@@ -1,3 +1,4 @@
+import type { ImageMediaType } from '@heynixie/contract';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 
@@ -14,6 +15,12 @@ export interface APISettings {
 
   // the least time between 2 writes of a session's last seen time
   readonly lastSeenIntervalMs: number;
+}
+
+// One image of your message, with the type its bytes hold, which readOwnerImages checked.
+export interface OwnerImage {
+  readonly mediaType: ImageMediaType;
+  readonly bytes: Uint8Array<ArrayBuffer>;
 }
 
 // the sequence of the record a forget removed, which the session cleanup's records name

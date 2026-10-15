@@ -328,6 +328,223 @@ test('#conversation.send refuses a thread no task has', async () => {
   expect(result.error).toMatchObject({ code: 'THREAD_NOT_FOUND' });
 });
 
+test('#conversation.send stores 2 images, which the thread lists and conversation.readImage returns', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const sent = await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'Which logo reads better?',
+    spans: [{ start: 0, end: 24, source: 'typed' }],
+    images: [
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1])], 'a.png', {
+        type: 'image/png',
+      }),
+      new File(
+        [new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50])],
+        'b',
+        {
+          type: 'image/webp',
+        },
+      ),
+    ],
+  });
+
+  const page = await laptopClient.conversation.read({ thread: 'conversation' });
+
+  const second = await laptopClient.conversation.readImage({
+    thread: 'conversation',
+    sequence: sent.sequence,
+    position: 1,
+  });
+
+  expect(page.records.find((record) => record.sequence === sent.sequence)?.message).toStrictEqual({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    images: [{ mediaType: 'image/png' }, { mediaType: 'image/webp' }],
+    spans: [{ start: 0, end: 24, source: 'typed' }],
+    text: 'Which logo reads better?',
+  });
+
+  // Bun's multipart parser drops a part's type, so the page's record carries each image's type
+  const bytes = await second.bytes();
+
+  expect(bytes).toStrictEqual(
+    new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]),
+  );
+});
+
+test('#conversation.send refuses an image larger than 5 MB with a typed error', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const small = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'small.jpg');
+  const big = new File([new Uint8Array(5 * 1024 * 1024 + 1).fill(0xff)], 'big.jpg');
+
+  const result = await safe(
+    laptopClient.conversation.send({
+      clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+      thread: 'conversation',
+      text: 'Two photos of the garden.',
+      spans: [],
+      images: [small, big],
+    }),
+  );
+
+  const records = await ctx.db.selectFrom('records').select('kind').execute();
+
+  expect(result.error).toMatchObject({
+    code: 'IMAGE_REFUSED',
+    status: 422,
+    data: { reason: 'too_large', position: 1 },
+  });
+
+  expect(records.map((record) => record.kind)).not.toContain('owner_message');
+});
+
+test('#conversation.send refuses an image whose bytes are not a type it takes with a typed error', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  // a HEIC file's leading box, sent under a type it is not
+  const heic = new File(
+    [new Uint8Array([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63])],
+    'hike.jpg',
+    { type: 'image/jpeg' },
+  );
+
+  const result = await safe(
+    laptopClient.conversation.send({
+      clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+      thread: 'conversation',
+      text: 'A photo from the hike.',
+      spans: [],
+      images: [heic],
+    }),
+  );
+
+  expect(result.error).toMatchObject({
+    code: 'IMAGE_REFUSED',
+    data: { reason: 'unsupported_type', position: 0 },
+  });
+});
+
+test('#conversation.send refuses more than 4 images with a typed error', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const result = await safe(
+    laptopClient.conversation.send({
+      clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+      thread: 'conversation',
+      text: 'Five room layouts.',
+      spans: [],
+      images: Array.from(
+        { length: 5 },
+        (_, index) =>
+          new File([new Uint8Array([0xff, 0xd8, 0xff, index])], `room-${index}.jpg`, {
+            type: 'image/jpeg',
+          }),
+      ),
+    }),
+  );
+
+  expect(result.error).toMatchObject({
+    code: 'IMAGE_REFUSED',
+    data: { reason: 'too_many', position: null },
+  });
+});
+
+test('#conversation.send refuses a client message ID that came with another number of images', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The new tiles.',
+    spans: [],
+    images: [new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'tiles.jpg')],
+  });
+
+  const result = await safe(
+    laptopClient.conversation.send({
+      clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+      thread: 'conversation',
+      text: 'The new tiles.',
+      spans: [],
+    }),
+  );
+
+  expect(result.error).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+});
+
+test('#conversation.readImage refuses an image of a forgotten message', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const sent = await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The new tiles.',
+    spans: [],
+    images: [new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'tiles.jpg')],
+  });
+
+  await laptopClient.conversation.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    sequence: sent.sequence,
+    thread: 'conversation',
+  });
+
+  const result = await safe(
+    laptopClient.conversation.readImage({
+      thread: 'conversation',
+      sequence: sent.sequence,
+      position: 0,
+    }),
+  );
+
+  expect(result.error).toMatchObject({ code: 'IMAGE_NOT_FOUND', status: 404 });
+});
+
+test('#conversation.readImage refuses a position past the images of the message', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const sent = await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The new tiles.',
+    spans: [],
+    images: [new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'tiles.jpg')],
+  });
+
+  const result = await safe(
+    laptopClient.conversation.readImage({
+      thread: 'conversation',
+      sequence: sent.sequence,
+      position: 1,
+    }),
+  );
+
+  expect(result.error).toMatchObject({ code: 'IMAGE_NOT_FOUND' });
+});
+
 test('#conversation.send from a revoked session writes only a refusal record', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
