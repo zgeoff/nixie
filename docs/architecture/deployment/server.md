@@ -169,6 +169,14 @@ server over a Unix control socket in the data directory, in a folder only nixie'
 Starting the server removes a stale socket file first, because the writer lock proves that no other
 server runs.
 
+The socket serves the host contract, a typed oRPC contract of its own beside the one
+[the API](../channels/api.md) serves. Each host command calls one of its procedures through an RPC
+client, and the contract checks every input before a procedure runs. The host contract stays out of
+the API's OpenAPI document, because no device reaches the socket. A refusal keeps the code the part
+behind the procedure threw, such as a memory store's stale version, so the command prints the status
+and the reason. Any other failure answers 500 with its reason, because only nixie's user reaches the
+socket.
+
 The session host commands list the live device sessions and set the label of one, which writes the
 label record [the API](../channels/api.md#device-sessions) describes. A label is one line of text,
 because each message renders it beside the send time.
