@@ -16,6 +16,7 @@ export type {
   ContractInputs,
   ContractOutputs,
   HostContractClient,
+  HostContractInputs,
   ImageMediaType,
   LogRecord,
   PendingInput,

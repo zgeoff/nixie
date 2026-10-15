@@ -15,6 +15,8 @@ export type ContractOutputs = InferContractRouterOutputs<typeof contract>;
 
 export type HostContractClient = ContractRouterClient<typeof hostContract>;
 
+export type HostContractInputs = InferContractRouterInputs<typeof hostContract>;
+
 export type LogRecord = ContractOutputs['conversation']['read']['records'][number];
 
 export type Span = ContractInputs['conversation']['send']['spans'][number];

@@ -15,7 +15,7 @@ interface HostAnswer {
   readonly actionHash: string;
 }
 
-export interface HostApproval extends HostAnswer {
+interface HostApproval extends HostAnswer {
   readonly proposalID: string;
 
   // an approval's answer to a close match: a revision of that item, or a new item anyway
@@ -26,14 +26,14 @@ export interface HostApproval extends HostAnswer {
   readonly editedText?: string;
 }
 
-export interface HostRejection extends HostAnswer {
+interface HostRejection extends HostAnswer {
   readonly proposalID: string;
 
   // the reason the conversation reads in its next turn
   readonly reason?: string;
 }
 
-export interface HostChangeAnswer extends HostAnswer {
+interface HostChangeAnswer extends HostAnswer {
   readonly changeID: string;
 }
 

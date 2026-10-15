@@ -15,6 +15,7 @@
     "@heynixie/api": "workspace:*",
     "@heynixie/compaction": "workspace:*",
     "@heynixie/connectors": "workspace:*",
+    "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",
     "@heynixie/log": "workspace:*",
@@ -30,15 +31,14 @@
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "@heynixie/wire": "workspace:*",
+    "@orpc/client": "catalog:",
     "elysia": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:",
-    "@heynixie/contract": "workspace:*",
     "@heynixie/testing": "workspace:*",
-    "@orpc/client": "catalog:",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "release-please": "17.11.2"

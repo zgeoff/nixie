@@ -2,6 +2,8 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { makeHostResponder } from '@heynixie/api';
+import { startTestAPI } from '@heynixie/api/test-utils';
 import { runCLI } from './run-cli';
 import { startControlSocket } from './start-control-socket';
 import { writeBootFiles } from './test-utils/write-boot-files';
@@ -64,19 +66,20 @@ test('it refuses a reset without --yes, and says backups still hold the old data
 
 test('it prints what the server reset, and that backups still hold the old data', async () => {
   const ctx = await setupTest();
+  const api = await startTestAPI();
 
   const socket = await startControlSocket({
     path: ctx.socketPath,
-    createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readMemory: () => null,
-    readSessions: () => Promise.reject(new Error('unused')),
-    runReset: () =>
-      Promise.resolve({
-        resetAt: new Date('2026-10-14T09:30:00.000Z'),
-        lastSequence: 412,
-        keptSessions: 2,
-      }),
-    updateSessionLabel: () => Promise.reject(new Error('unused')),
+    respond: makeHostResponder({
+      context: api.context,
+      readMemory: () => null,
+      runReset: () =>
+        Promise.resolve({
+          resetAt: new Date('2026-10-14T09:30:00.000Z'),
+          lastSequence: 412,
+          keptSessions: 2,
+        }),
+    }),
   });
 
   onTestFinished(() => socket.stop());
@@ -101,14 +104,15 @@ test('it prints what the server reset, and that backups still hold the old data'
 
 test('it exits 1 when the server fails the reset', async () => {
   const ctx = await setupTest();
+  const api = await startTestAPI();
 
   const socket = await startControlSocket({
     path: ctx.socketPath,
-    createEnrolmentCode: () => Promise.reject(new Error('unused')),
-    readMemory: () => null,
-    readSessions: () => Promise.reject(new Error('unused')),
-    runReset: () => Promise.reject(new Error('the runtime refused the destroy')),
-    updateSessionLabel: () => Promise.reject(new Error('unused')),
+    respond: makeHostResponder({
+      context: api.context,
+      readMemory: () => null,
+      runReset: () => Promise.reject(new Error('the runtime refused the destroy')),
+    }),
   });
 
   onTestFinished(() => socket.stop());

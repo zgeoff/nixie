@@ -1,5 +1,5 @@
 import { resolveSocketPath } from './resolve-socket-path';
-import { sendResetRequest } from './send-reset-request';
+import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
 // reset removes every record and keeps the live device sessions, under 0046
@@ -33,7 +33,7 @@ async function runReset(flags: CLIFlags, io: CLIIO): Promise<number> {
   }
 
   const socketPath = await resolveSocketPath(flags.config);
-  const reset = await sendResetRequest(socketPath);
+  const reset = await sendHostRequest(socketPath, 'reset', (client) => client.reset());
 
   io.print(
     [

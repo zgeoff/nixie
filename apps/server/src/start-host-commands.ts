@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { APIContext } from '@heynixie/api';
-import { createEnrolmentCode, readSessions, updateSessionLabel } from '@heynixie/api';
+import { makeHostResponder } from '@heynixie/api';
 import type { ServerReset } from './run-server-reset';
 import { startControlSocket } from './start-control-socket';
 import type { Cleanup, MemorySlot } from './types';
@@ -20,11 +20,11 @@ export async function startHostCommands(
 ): Promise<void> {
   const control = await startControlSocket({
     path: join(options.dataDir, 'run', 'control.sock'),
-    createEnrolmentCode: () => createEnrolmentCode(options.apiContext),
-    readMemory: () => options.memory.read(),
-    readSessions: () => readSessions(options.apiContext, null),
-    updateSessionLabel: (input) => updateSessionLabel(options.apiContext, input),
-    runReset: options.runReset,
+    respond: makeHostResponder({
+      context: options.apiContext,
+      readMemory: () => options.memory.read(),
+      runReset: options.runReset,
+    }),
   });
 
   await cleanup.defer(() => control.stop());

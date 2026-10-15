@@ -1,6 +1,6 @@
+import type { HostContractInputs } from '@heynixie/contract';
 import { resolveSocketPath } from './resolve-socket-path';
-import type { MemoryRequest } from './send-memory-request';
-import { sendMemoryRequest } from './send-memory-request';
+import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
 // The memory host commands: they list the pending memory proposals as JSON or answer one under
@@ -21,7 +21,10 @@ export function buildMemoryCommands(): readonly (readonly [string, Command])[] {
 
 async function runMemoryPending(configPath: string, io: CLIIO): Promise<number> {
   const socketPath = await resolveSocketPath(configPath);
-  const pending = await sendMemoryRequest(socketPath, { command: 'pending' });
+
+  const pending = await sendHostRequest(socketPath, 'memory pending', (client) =>
+    client.memory.proposals.list(),
+  );
 
   io.print(JSON.stringify(pending));
 
@@ -45,7 +48,12 @@ function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
     }
 
     const socketPath = await resolveSocketPath(flags.config);
-    const answer = await sendMemoryRequest(socketPath, request);
+
+    const answer = await sendHostRequest<unknown>(socketPath, `memory ${command}`, (client) =>
+      request.command === 'reject'
+        ? client.memory.proposals.reject(request.answer)
+        : client.memory.proposals.approve(request.answer),
+    );
 
     io.print(JSON.stringify(answer));
 
@@ -53,13 +61,24 @@ function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
   };
 }
 
+// An answer's request: an approval or a rejection, each with the input its procedure takes.
+type AnswerRequest =
+  | {
+      readonly command: 'approve';
+      readonly answer: HostContractInputs['memory']['proposals']['approve'];
+    }
+  | {
+      readonly command: 'reject';
+      readonly answer: HostContractInputs['memory']['proposals']['reject'];
+    };
+
 // the request an answer sends, or null when its arguments are malformed; only an approval takes
 // --revise, --as-new or --text, and only a rejection takes --reason
 function buildAnswerRequest(
   command: 'approve' | 'reject',
   proposalID: string | undefined,
   flags: CLIFlags,
-): MemoryRequest | null {
+): AnswerRequest | null {
   const revisionOf = flags.revise === undefined ? undefined : parseVersionTarget(flags.revise);
 
   if (proposalID === undefined || flags.hash === undefined || revisionOf === null) {
@@ -70,25 +89,27 @@ function buildAnswerRequest(
     return flags.text === undefined
       ? {
           command,
-          proposalID,
-          actionHash: flags.hash,
-          ...(flags.reason === undefined ? {} : { reason: flags.reason }),
+          answer: {
+            proposalID,
+            actionHash: flags.hash,
+            ...(flags.reason === undefined ? {} : { reason: flags.reason }),
+          },
         }
       : null;
   }
 
-  if (flags.reason !== undefined) {
-    return null;
-  }
-
-  return {
-    command,
-    proposalID,
-    actionHash: flags.hash,
-    ...(revisionOf === undefined ? {} : { revisionOf }),
-    ...(flags['as-new'] ? { ignoreCloseMatch: true } : {}),
-    ...(flags.text === undefined ? {} : { editedText: flags.text }),
-  };
+  return flags.reason === undefined
+    ? {
+        command,
+        answer: {
+          proposalID,
+          actionHash: flags.hash,
+          ...(revisionOf === undefined ? {} : { revisionOf }),
+          ...(flags['as-new'] ? { ignoreCloseMatch: true } : {}),
+          ...(flags.text === undefined ? {} : { editedText: flags.text }),
+        },
+      }
+    : null;
 }
 
 // prints an item with its state and every version, oldest first
@@ -106,7 +127,10 @@ async function runMemoryShow(
   }
 
   const socketPath = await resolveSocketPath(configPath);
-  const history = await sendMemoryRequest(socketPath, { command: 'show', itemID });
+
+  const history = await sendHostRequest(socketPath, 'memory show', (client) =>
+    client.memory.items.read({ itemID }),
+  );
 
   io.print(JSON.stringify(history));
 
@@ -125,7 +149,12 @@ async function runMemoryEdit(flags: CLIFlags, io: CLIIO, args: readonly string[]
   }
 
   const socketPath = await resolveSocketPath(flags.config);
-  const ref = await sendMemoryRequest(socketPath, { command: 'edit', target, text: flags.text });
+
+  const text = flags.text;
+
+  const ref = await sendHostRequest(socketPath, 'memory edit', (client) =>
+    client.memory.items.edit({ ...target, text }),
+  );
 
   io.print(JSON.stringify(ref));
 
@@ -145,7 +174,10 @@ function makeMemoryVersionChange(command: 'retire' | 'restore'): Command {
     }
 
     const socketPath = await resolveSocketPath(flags.config);
-    const ref = await sendMemoryRequest(socketPath, { command, target });
+
+    const ref = await sendHostRequest(socketPath, `memory ${command}`, (client) =>
+      client.memory.items[command](target),
+    );
 
     io.print(JSON.stringify(ref));
 
@@ -165,7 +197,10 @@ function makeMemoryPin(isPinned: boolean): Command {
     }
 
     const socketPath = await resolveSocketPath(flags.config);
-    const pinned = await sendMemoryRequest(socketPath, { command: 'pin', itemID, isPinned });
+
+    const pinned = await sendHostRequest(socketPath, 'memory pin', (client) =>
+      client.memory.items.pin({ itemID, isPinned }),
+    );
 
     io.print(JSON.stringify(pinned));
 
