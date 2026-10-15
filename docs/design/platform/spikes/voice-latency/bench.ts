@@ -354,12 +354,28 @@ for (let trial = 0; trial < bargeIns; trial++) {
     heard = await listenToCaller(line.audio, line.speechEndSample, stt.start(), endVad),
     speaker = startReply(tts);
   sendPrompt(stream, heard.transcript);
-  let resultSeen = false;
+  let resultSeen = false,
+    turnError: unknown;
   const turn = readTurn(speaker.addText).then((result) => {
     resultSeen = true;
     return result;
   });
+  turn.catch((error: unknown) => {
+    turnError = error;
+  });
+  // Waits for the first sentence's audio. A reply that ends without a sentence break flushes its
+  // text once the result is in, so a one-sentence reply still plays.
   while (speaker.reply.sentences.length === 0) {
+    if (turnError !== undefined) {
+      throw turnError;
+    }
+    if (resultSeen) {
+      await speaker.finish();
+      if (speaker.reply.sentences.length === 0) {
+        throw new Error('the reply held no text');
+      }
+      break;
+    }
     await Bun.sleep(5);
   }
   const playStartAt = speaker.reply.sentences[0]?.readyAt ?? performance.now(),
