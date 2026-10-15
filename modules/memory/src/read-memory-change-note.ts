@@ -159,8 +159,8 @@ function collectLatestVersions(versions: readonly NotedVersion[]): readonly Note
   return [...latest.values()];
 }
 
-// The items' current text, through recall, which records what it delivered and leaves out an item
-// that a forget has begun.
+// The items' current text, through recall, which records what it delivered as a turn note's and
+// leaves out an item that a forget has begun.
 async function readNotedChanges(
   store: Pick<MemoryStore, 'recall'>,
   versions: readonly NotedVersion[],
@@ -174,6 +174,7 @@ async function readNotedChanges(
     includeRetired: true,
     limit: versions.length,
     thread: conversationTaskID,
+    isTurnNote: true,
   });
 
   const texts = new Map(result.items.map((item) => [item.itemID, item]));

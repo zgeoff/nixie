@@ -203,7 +203,7 @@ interface RecallRecord {
 
 // The record holds references and no text, so a later forget leaves no readable copy of what the
 // recall delivered. A query's record gives each item its match score, so retrieval can be tuned
-// from what each turn was given.
+// from what each turn was given. A turn note's record says so, so a rating binds past it.
 async function writeRecallRecord(parts: StoreParts, recall: RecallRecord): Promise<void> {
   const log = parts.context.log;
   const request = recall.request;
@@ -224,6 +224,7 @@ async function writeRecallRecord(parts: StoreParts, recall: RecallRecord): Promi
                 : { itemID: item.itemID, version: version.version, score },
             );
           }),
+          ...(request.isTurnNote === true ? { isTurnNote: true } : {}),
         },
       },
     ]),

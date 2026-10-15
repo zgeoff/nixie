@@ -263,7 +263,7 @@ test('it names who made a proposal from outside the conversation, without its re
   ).toStrictEqual([`Avery rejected a memory proposal from a task ${proposal.proposalID}.`]);
 });
 
-test('it records the approved text it quotes as recalled into the conversation', async () => {
+test('it records the approved text it quotes as recalled into the conversation for a turn note', async () => {
   const ctx = await setupTest();
   const proposal = await createProposal(ctx.memory.store, { text: 'Avery has two cats.' });
 
@@ -287,7 +287,7 @@ test('it records the approved text it quotes as recalled into the conversation',
   expect(approval.status).toBe('applied');
 
   expect(recalls.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
-    ['conversation', { items: [{ itemID: proposal.itemID, version: 1 }] }],
+    ['conversation', { items: [{ itemID: proposal.itemID, version: 1 }], isTurnNote: true }],
   ]);
 });
 
@@ -324,7 +324,7 @@ test('it records only the approved version it quotes, never the rest of the item
   expect(note).toEndWith(': "Avery has three cats."');
 
   expect(recalls.map((entry) => entry.record.payload)).toStrictEqual([
-    { items: [{ itemID: item.itemID, version: 2 }] },
+    { items: [{ itemID: item.itemID, version: 2 }], isTurnNote: true },
   ]);
 });
 
@@ -356,7 +356,10 @@ test('it leaves an approval unquoted once its item changed again, and records no
   });
 
   expect(note).toEndWith(` · Avery approved your memory proposal ${proposal.proposalID}.`);
-  expect(recalls.map((entry) => entry.record.payload)).toStrictEqual([{ items: [] }]);
+
+  expect(recalls.map((entry) => entry.record.payload)).toStrictEqual([
+    { items: [], isTurnNote: true },
+  ]);
 });
 
 test('it reads only the answers inside the range, and leaves out a pending proposal', async () => {
