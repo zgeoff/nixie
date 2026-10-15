@@ -1,11 +1,8 @@
-// oxlint-disable import/max-dependencies -- the local and imp fetch sandbox tests share this setup
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { logProjections, startWriter } from '@heynixie/log';
-import { buildSandboxRecorder, buildSandboxSpec, sandboxesProjection } from '@heynixie/sandbox';
+import { buildSandboxSpec } from '@heynixie/sandbox';
 import { buildImpPort, buildImpSandboxAdapter, parseImpConfig } from '@heynixie/sandbox-imp';
+import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { buildSandboxAdapter } from './build-sandbox-adapter';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
 import { buildConnectProbe } from './test-utils/build-connect-probe';
@@ -29,30 +26,16 @@ const hasImpHost =
   impEnv.IMP_HOST_ADDRESSES !== undefined &&
   fetchImage !== '';
 
+// The stack's disposal registers before the recorder's, and onTestFinished runs first in, first
+// out, so a sandbox that a test registers on it is destroyed while the recorder's writer still runs.
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
 
-  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-web-fetch-'));
+  const testRecorder = await setupTestRecorder();
 
-  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
-
-  const writer = await startWriter({ dataDir });
-
-  stack.defer(() => writer.stop());
-
-  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
-    'wrapKey',
-    'unwrapKey',
-  ]);
-
-  const recorder = buildSandboxRecorder({
-    log: { writer, deploymentKey, projections: [...logProjections, sandboxesProjection] },
-    definitions: () => ({ snapshotHash: 'sha256:test' }),
-  });
-
-  return { dataDir, recorder, stack };
+  return { dataDir: testRecorder.log.writer.dataDir, recorder: testRecorder.recorder, stack };
 }
 
 test("it fetches through a new fetcher process in a test build's fetch sandbox", async () => {
