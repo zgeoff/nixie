@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.27.0](https://github.com/zgeoff/nixie/compare/v0.26.0...v0.27.0) (2026-10-15)
+
+
+### Features
+
+* **geo-953:** show a tiny arrow on a summary marker that opens ([#267](https://github.com/zgeoff/nixie/issues/267)) ([2feb6f6](https://github.com/zgeoff/nixie/commit/2feb6f635e9987c40b4a44501d998d51b89f289a))
+
+
+### Bug Fixes
+
+* **geo-950:** cap a session's image count beside its image bytes ([#268](https://github.com/zgeoff/nixie/issues/268)) ([ea38551](https://github.com/zgeoff/nixie/commit/ea38551b7b7ca1255edc74f8c8bf150f9d7033fb))
+
 ## [0.26.0](https://github.com/zgeoff/nixie/compare/v0.25.0...v0.26.0) (2026-10-15)
 
 
