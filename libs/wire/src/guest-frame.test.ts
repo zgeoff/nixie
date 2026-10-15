@@ -89,3 +89,40 @@ test('it refuses an ended frame whose error mark is not a boolean', () => {
     path: ['isError'],
   });
 });
+
+test('it accepts an ended frame with the reason the SDK gave for its end', () => {
+  const frame: GuestFrame = {
+    type: 'ended',
+    boundary: {
+      sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+    },
+    subtype: 'success',
+    stopReason: 'stop_sequence',
+    isError: true,
+    terminalReason: 'prompt_too_long',
+    turns: 1,
+    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+  };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it refuses an ended frame whose end reason is not a string', () => {
+  const frame = {
+    type: 'ended',
+    boundary: {
+      sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+    },
+    subtype: 'success',
+    stopReason: 'stop_sequence',
+    terminalReason: 413,
+    turns: 1,
+    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+  };
+
+  expect(guestFrameSchema.safeParse(frame).error?.issues).toPartiallyContain({
+    path: ['terminalReason'],
+  });
+});

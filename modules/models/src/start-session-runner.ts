@@ -5,6 +5,7 @@ import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildModelGrant } from './build-model-grant';
 import { deriveModelSecret } from './derive-model-secret';
+import { isContextOverflow } from './is-context-overflow';
 import type { GuestCommand } from './run-guest-turn';
 import { runGuestTurn } from './run-guest-turn';
 import type { ResolvedProfile } from './types';
@@ -119,12 +120,23 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
     );
   }
 
-  // a session the model API's error ended has no result the writer can trust
-  if (turn.ended.some((frame) => frame.isError === true)) {
-    throw new Error(`the ${run.taskID} session ended at a model API error`);
-  }
+  requireTrustedEnd(run.taskID, turn.ended);
 
   return countSessionUsage(turn.ended);
+}
+
+type EndedFrame = Awaited<ReturnType<typeof runGuestTurn>>['ended'][number];
+
+// a session a model API error ended has no result the writer can trust, and the error names an
+// overflow apart from any other model API error
+function requireTrustedEnd(taskID: string, ended: readonly EndedFrame[]): void {
+  if (ended.some((frame) => isContextOverflow(frame))) {
+    throw new Error(`the ${taskID} session's context passed its window`);
+  }
+
+  if (ended.some((frame) => frame.isError === true)) {
+    throw new Error(`the ${taskID} session ended at a model API error`);
+  }
 }
 
 // the sandbox's owner is the system task, which never finishes, so the sandbox outlives each
@@ -151,8 +163,6 @@ async function setupSessionSandbox(
 
   return kept ?? options.sandboxes.create(spec);
 }
-
-type EndedFrame = Awaited<ReturnType<typeof runGuestTurn>>['ended'][number];
 
 // the token counts over every model call the session made
 function countSessionUsage(ended: readonly EndedFrame[]): SessionUsage {

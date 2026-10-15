@@ -144,6 +144,7 @@ test('it throws when a model turn of the session ended at a model API error', as
       subtype: 'success',
       stopReason: 'stop_sequence',
       isError: true,
+      terminalReason: 'api_error',
       turns: 1,
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
@@ -156,6 +157,66 @@ test('it throws when a model turn of the session ended at a model API error', as
       signal: new AbortController().signal,
     }),
   ).rejects.toThrowWithMessage(Error, 'the memory-writer session ended at a model API error');
+});
+
+test('it throws an overflow apart from an API error when the session ends at prompt_too_long', async () => {
+  const ctx = await setupTest();
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'stop_sequence',
+      isError: true,
+      terminalReason: 'prompt_too_long',
+      turns: 1,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  expect(
+    runner.runSession({
+      systemPrompt: 'You write memory.',
+      prompt: 'Read the batch.',
+      signal: new AbortController().signal,
+    }),
+  ).rejects.toThrowWithMessage(Error, "the memory-writer session's context passed its window");
+});
+
+test('it throws an overflow apart from an API error when the session ends at blocking_limit', async () => {
+  const ctx = await setupTest();
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'stop_sequence',
+      isError: true,
+      terminalReason: 'blocking_limit',
+      turns: 1,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  expect(
+    runner.runSession({
+      systemPrompt: 'You write memory.',
+      prompt: 'Read the batch.',
+      signal: new AbortController().signal,
+    }),
+  ).rejects.toThrowWithMessage(Error, "the memory-writer session's context passed its window");
 });
 
 test('it opens the tool run for the system task on the profile model', async () => {

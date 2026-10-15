@@ -174,13 +174,16 @@ outside any element, after its stamp, because it holds the user's own words.
 ## Records of a turn
 
 The guest reports each assistant message with its text and the tools it asked for, and ends with the
-boundary, the stop reason, the count of model calls, the token usage and the context. The usage sums
-every model call in the turn, so it measures cost and not how full the context stands. The context
-is therefore the last main-chain model call's input, cache-read and cache-write tokens, beside the
-auto-compact window. The step turns these into records on the conversation's thread: a reply record
-per message with text, whose text is erasable, and one turn-ended record with the usage and the
-context. Each record holds the model ID and the profile's ID from the profile nixie gave the turn,
-never from the guest's frames ([model profiles](./model-profiles.md#records-of-model-output)).
+boundary, the stop reason, the SDK's reason for the end, the count of model calls, the token usage
+and the context. The SDK gives a context past its window an end reason of its own, apart from every
+other model API error, so the host tells an overflow from a refused request on that reason alone.
+The usage sums every model call in the turn, so it measures cost and not how full the context
+stands. The context is therefore the last main-chain model call's input, cache-read and cache-write
+tokens, beside the auto-compact window. The step turns these into records on the conversation's
+thread: a reply record per message with text, whose text is erasable, and one turn-ended record with
+the usage, the end reason and the context. Each record holds the model ID and the profile's ID from
+the profile nixie gave the turn, never from the guest's frames
+([model profiles](./model-profiles.md#records-of-model-output)).
 
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
