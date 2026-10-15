@@ -18,17 +18,20 @@ The stages run in order, and the first that decides returns:
 | ----------- | ------------------------------------------------------------ | ------------- |
 | 1. Registry | The registry holds no declaration for the tool, or no effect | Deny          |
 | 2. Scope    | The tool is missing from the caller's tool list              | Deny          |
-| 3. Fixed    | Always: the fixed read-only rule decides every call it sees  | Allow or deny |
+| 3. Fixed    | Always: the read-only rule decides every call it sees        | Allow or deny |
 
 The caller's tool list is the run's own: the job's list for a job run, and the subset its caller
 passed for a worker. A tool that the registry knows but the run was not given is therefore denied,
 even though the model can name it.
 
-One fixed rule written in code stands in for the deny, ask and allow stages of the full pipeline. It
-allows a call whose effects are only reads, fetches or notes, and denies every other call. The
-decision point therefore never asks the user anything: a call that would ask has nowhere to wait,
-and the [approvals design](../../design/platform/policy/approvals.md) covers that wait. A tool that
-sends, writes or spends is denied, whatever its arguments.
+Fixed rules written in code stand in for the deny, ask and allow stages of the full pipeline. The
+last of them, the read-only rule, allows a call whose effects are only reads, fetches or notes, and
+denies every other call. The decision point therefore never asks the user anything: a call that
+would ask has nowhere to wait, and the [approvals design](../../design/platform/policy/approvals.md)
+covers that wait. A tool that sends, writes or spends is denied, whatever its arguments. One
+exception: the queue check rule, tried before the read-only rule, allows the log-only connector's
+tool, which writes one line to the server log, so the
+[queue check](../core/actions.md#the-queue-check) reaches the action queue on every start.
 
 A deny carries a sentence, which the model receives as the tool's result. A rule's deny gives the
 rule's ID and sentence. A registry or scope deny gives a sentence with the tool's name, which the
@@ -50,6 +53,6 @@ them, and a replay must read the declarations that decided.
 
 ## The test rule
 
-A test build adds one rule before the read-only rule. It allows the crash tests' send tool and
-covers no other call. The bundler drops the test rule from the release bundle, so a release holds
-only the read-only rule and no test can widen it.
+A test build adds one rule before the others. It allows the crash tests' send tool and covers no
+other call. The bundler drops the test rule from the release bundle, so a release holds only the
+queue check rule and the read-only rule, and no test can widen them.

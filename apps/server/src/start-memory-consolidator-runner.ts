@@ -36,6 +36,10 @@ export interface MemoryConsolidatorRunnerOptions {
   // your name, which the consolidator's rules call you by, or null to call you "the owner"
   readonly ownerName: string | null;
   readonly onError: (error: unknown) => void;
+
+  // the action queue the server's tool endpoints share, which none of the consolidator's tools reaches,
+  // since each runs direct
+  readonly queue: ActionQueue;
 }
 
 export interface MemoryConsolidatorRunner extends MemoryConsolidator {
@@ -119,12 +123,6 @@ function resolveConsolidatorProfile(options: MemoryConsolidatorRunnerOptions): R
   return resolved;
 }
 
-// The consolidator's tools stage a diff and run direct, so none reaches a queue.
-const refusingQueue: ActionQueue = {
-  enqueue: () => Promise.reject(new Error('no memory consolidator tool runs queued')),
-  waitForOutcome: () => Promise.resolve(null),
-};
-
 // the consolidator's own tool endpoint, on the run socket the sandbox adapter resolves for its task
 function startConsolidatorEndpoint(
   options: MemoryConsolidatorRunnerOptions,
@@ -140,6 +138,6 @@ function startConsolidatorEndpoint(
     }),
     log: options.context.log,
     definitions: options.context.definitions,
-    queue: refusingQueue,
+    queue: options.queue,
   });
 }

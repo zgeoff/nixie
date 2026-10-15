@@ -46,8 +46,9 @@ A tool with effects outside nixie, such as a send or a write, never runs inside 
 becomes an action whose ID is also the idempotency key the connector sends to its provider, and a
 pool of action runners attempts it apart from the task runners ([actions](./core/actions.md)). The
 turn waits a bounded time for the outcome. The outcome reaches the task's inbox either way, so the
-task's next step reads it. The read-only rule denies every such call in a release build, so the
-queue carries only the crash tests' send tool in a test build.
+task's next step reads it. The read-only rule denies every such call from a model, so the queue
+carries the action that the queue check queues at each start, and the crash tests' send tool in a
+test build.
 
 ## The client path
 

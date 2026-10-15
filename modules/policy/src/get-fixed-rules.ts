@@ -1,3 +1,4 @@
+import { slice1QueueCheckRule } from './slice1-queue-check-rule';
 import { slice1ReadOnlyRule } from './slice1-read-only-rule';
 import { testAllowSendRule } from './test-allow-send-rule';
 import type { FixedRule } from './types';
@@ -6,5 +7,7 @@ import type { FixedRule } from './types';
 // covers. The release bundle defines NIXIE_TEST_BUILD as false and drops the test rule with its
 // import.
 export function getFixedRules(): readonly FixedRule[] {
-  return NIXIE_TEST_BUILD ? [testAllowSendRule, slice1ReadOnlyRule] : [slice1ReadOnlyRule];
+  return NIXIE_TEST_BUILD
+    ? [testAllowSendRule, slice1QueueCheckRule, slice1ReadOnlyRule]
+    : [slice1QueueCheckRule, slice1ReadOnlyRule];
 }

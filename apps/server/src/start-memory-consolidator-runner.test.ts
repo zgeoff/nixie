@@ -4,6 +4,7 @@ import { createMemoryItem } from '@heynixie/memory/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import type { ScriptedReply } from '@heynixie/testing';
 import { buildTestClock, startScriptedModel } from '@heynixie/testing';
+import { buildActionQueue } from './build-action-queue';
 import { startMemoryConsolidatorRunner } from './start-memory-consolidator-runner';
 import { runTaskSteps } from './test-utils/run-task-steps';
 import { startTestMemoryStore } from './test-utils/start-test-memory-store';
@@ -27,6 +28,7 @@ async function setupTest() {
     models: buildModelsConfig(model.url),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: server.sandboxes,
+    queue: buildActionQueue(context).queue,
     socketDir: `${server.dataDir}/tools`,
     image: 'nixie-conversation-0123456789ab',
     store,

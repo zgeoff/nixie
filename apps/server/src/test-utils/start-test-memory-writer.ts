@@ -172,6 +172,12 @@ async function startTestWriterRunner(
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: server.sandboxes,
+
+    // the writer's tools run direct, so nothing reaches the queue
+    queue: {
+      enqueue: () => Promise.reject(new Error('no memory writer tool runs queued')),
+      waitForOutcome: () => Promise.resolve(null),
+    },
     socketDir: wiring.socketDir,
     image: 'nixie-conversation-0123456789ab',
     store: wiring.store,

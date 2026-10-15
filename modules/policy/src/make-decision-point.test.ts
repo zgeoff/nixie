@@ -112,7 +112,41 @@ test('it allows test.send through test.allow-send in a test build', () => {
   });
 });
 
-test('it denies test.send with slice1.read-only in the release bundle, which holds no test rule', async () => {
+test('it allows actions.log through slice1.queue-check', () => {
+  const decide = makeDecisionPoint({
+    findDeclaration: () => ({
+      effects: ['write'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: {},
+    }),
+  });
+
+  expect(decide({ tool: 'actions.log', toolList: ['actions.log'] })).toStrictEqual({
+    decision: { outcome: 'allow', stage: 3, rule: { id: 'slice1.queue-check', revision: 1 } },
+    sentence: null,
+  });
+});
+
+test('it denies actions.log at the scope stage to a run whose tool list lacks it', () => {
+  const decide = makeDecisionPoint({
+    findDeclaration: () => ({
+      effects: ['write'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: {},
+    }),
+  });
+
+  expect(decide({ tool: 'actions.log', toolList: ['web_fetch'] })).toStrictEqual({
+    decision: { outcome: 'deny', stage: 2, rule: null },
+    sentence: "The tool actions.log is not on this run's tool list.",
+  });
+});
+
+test('it denies test.send with slice1.read-only and allows actions.log in the release bundle, which holds no test rule', async () => {
   const outdir = await mkdtemp(join(tmpdir(), 'nixie-policy-bundle-'));
 
   onTestFinished(() => rm(outdir, { recursive: true, force: true }));
@@ -131,7 +165,9 @@ test('it denies test.send with slice1.read-only in the release bundle, which hol
       "import { makeDecisionPoint } from './policy.js';",
       'const declaration = { effects: ["send"], destinations: [], amount: null, content: [], results: {} };',
       'const decide = makeDecisionPoint({ findDeclaration: () => declaration });',
-      'console.log(JSON.stringify(decide({ tool: "test.send", toolList: ["test.send"] }).decision));',
+      'const send = decide({ tool: "test.send", toolList: ["test.send"] }).decision;',
+      'const log = decide({ tool: "actions.log", toolList: ["actions.log"] }).decision;',
+      'console.log(JSON.stringify([send, log]));',
     ].join('\n'),
   );
 
@@ -141,11 +177,10 @@ test('it denies test.send with slice1.read-only in the release bundle, which hol
 
   expect(result.success).toBeTrue();
 
-  expect(JSON.parse(decided.stdout.toString())).toStrictEqual({
-    outcome: 'deny',
-    stage: 3,
-    rule: { id: 'slice1.read-only', revision: 1 },
-  });
+  expect(JSON.parse(decided.stdout.toString())).toStrictEqual([
+    { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
+    { outcome: 'allow', stage: 3, rule: { id: 'slice1.queue-check', revision: 1 } },
+  ]);
 
   expect(bundle).not.toInclude('test.allow-send');
 });

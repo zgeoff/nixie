@@ -4,6 +4,7 @@
 - Status: decided
 - Design: [channel approvals](../design/platform/channels/approvals.md),
   [proposals and approvals](../design/platform/policy/approvals.md)
+- Open questions: [voice calls](../design/platform/channels/voice.md#open-questions)
 
 During a voice call, a proposal's card appears in the call screen of the device that carries the
 call. The turn speaks a fixed template line, such as "It's on your screen", to announce it. A spoken

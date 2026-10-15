@@ -10,6 +10,10 @@ import type { ToolsOptions } from './start-tools';
 
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
+
+  // the queue an allowed queued call goes to, which no conversation tool reaches while each runs
+  // direct
+  readonly queue: ActionQueue;
   readonly readStore: () => MemoryToolStore | null;
 }
 
@@ -19,8 +23,8 @@ export interface ConversationEndpoint {
 }
 
 // Starts the tool endpoint over the conversation's tools, the web fetch tool, the time tool, the log
-// reader and the memory tools, and stops it on cleanup. The registry is fixed here, so the memory tools reach the store through
-// readStore.
+// reader and the memory tools, and stops it on cleanup. The registry is fixed here, so the memory
+// tools reach the store through readStore.
 export async function startConversationEndpoint(
   options: ToolsOptions,
   tools: ConversationEndpointTools,
@@ -54,18 +58,10 @@ export async function startConversationEndpoint(
     }),
     log: options.context.log,
     definitions: options.context.definitions,
-    queue: refusingQueue,
+    queue: tools.queue,
   });
 
   await options.cleanup.defer(() => endpoint.stop());
 
   return { endpoint, definitions };
 }
-
-// No tool in a slice 1 release runs queued: the memory, log and time tools declare note and read and run
-// direct, and the read-only rule denies every call with an effect outside nixie before it reaches
-// the queue.
-const refusingQueue: ActionQueue = {
-  enqueue: () => Promise.reject(new Error('no tool in this build runs queued')),
-  waitForOutcome: () => Promise.resolve(null),
-};
