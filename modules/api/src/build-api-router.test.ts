@@ -379,7 +379,7 @@ test('#conversation.forget forgets a message, which the thread then shows with n
 
   const page = await laptopClient.conversation.read({ thread: 'conversation' });
 
-  expect(result).toStrictEqual({ forgottenAt: expect.any(Date) });
+  expect(result).toStrictEqual({ forgottenAt: expect.toBeValidDate() });
 
   expect(page.records.filter((record) => record.sequence >= sent.sequence)).toMatchObject([
     { kind: 'owner_message', sequence: sent.sequence },

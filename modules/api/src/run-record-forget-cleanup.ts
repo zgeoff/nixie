@@ -43,7 +43,10 @@ async function removeForgottenKey(context: APIContext, recordSequence: number): 
     .executeTakeFirst();
 
   // record.forget_started names a message or a reply that its transaction found on a thread
-  invariant(target?.thread, `the forgotten record ${String(recordSequence)} has no thread`);
+  invariant(
+    target !== undefined && target.thread !== null,
+    `the forgotten record ${String(recordSequence)} has no thread`,
+  );
 
   if (target.key_id !== null) {
     await removeRecordKey(context.log, target.key_id);

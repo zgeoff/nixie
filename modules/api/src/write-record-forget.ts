@@ -37,7 +37,7 @@ export async function writeRecordForget(
     ]);
 
     const inputHash = buildInputHash({ thread: input.thread, sequence: input.sequence });
-    const settled = pickSettledForget({ live, earlier, inputHash });
+    const settled = pickSettledForget({ live, earlier, inputHash, callerID: caller.identityID });
 
     if (settled !== null) {
       return settled;
@@ -72,10 +72,11 @@ interface ForgetState {
   readonly live: boolean;
   readonly earlier: ClientAction | null;
   readonly inputHash: string;
+  readonly callerID: string;
 }
 
 // the answer a call gets without a write: refused for a caller no longer live, and for an ID that
-// came before, its first result or a refusal as reused
+// came before, its first result for the same caller and input, or a refusal as reused
 function pickSettledForget(state: ForgetState): RecordForgetResult | null {
   if (!state.live) {
     return { status: 'unauthorized' };
@@ -86,6 +87,7 @@ function pickSettledForget(state: ForgetState): RecordForgetResult | null {
   }
 
   return state.earlier.procedure === 'conversation.forget' &&
+    state.earlier.identityID === state.callerID &&
     state.earlier.inputHash === state.inputHash
     ? { status: 'forgotten', forgottenAt: Number(state.earlier.result['forgottenAt']) }
     : { status: 'reused' };

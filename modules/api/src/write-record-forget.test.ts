@@ -52,7 +52,7 @@ test('it forgets your message, so its text reads as a gap in the thread and afte
 
   const gap = {
     kind: 'owner_message',
-    recordedAt: expect.any(Date),
+    recordedAt: expect.toBeValidDate(),
     sequence: sent.sequence,
     thread: 'conversation',
   };
@@ -253,6 +253,34 @@ test('it refuses a client action ID that came before for another record', async 
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
     thread: 'conversation',
     sequence: other.sequence,
+  });
+
+  expect(result).toStrictEqual({ status: 'reused' });
+});
+
+test("it refuses another device's retry of the action", async () => {
+  const ctx = await setupTest();
+  const phone = await createDeviceSession(ctx.context, 'phone');
+
+  const sent = await writeOwnerMessage(ctx.context, ctx.laptop.caller, {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The locker code is 2291.',
+    spans: [],
+  });
+
+  invariant(sent.status === 'written');
+
+  await writeRecordForget(ctx.context, ctx.laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: sent.sequence,
+  });
+
+  const result = await writeRecordForget(ctx.context, phone.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: sent.sequence,
   });
 
   expect(result).toStrictEqual({ status: 'reused' });

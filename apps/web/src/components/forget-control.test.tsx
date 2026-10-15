@@ -40,7 +40,7 @@ test('it forgets the message only once you confirm', async () => {
   expect(asked?.message?.text).toBe('The shed code is 4417.');
 
   expect(store.records.findFirst((query) => query.where({ sequence: stored.sequence }))).toSatisfy(
-    (record: typeof stored | undefined) => record !== undefined && record.message === undefined,
+    (record: unknown) => typeof record === 'object' && record !== null && !('message' in record),
   );
 });
 

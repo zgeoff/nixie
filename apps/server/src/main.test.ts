@@ -579,7 +579,9 @@ test('it runs the turn after you forget a message the live session holds on a re
     'Noted-reply-2KC',
   );
 
-  const message = before.find((record) => record.message?.text.startsWith('Lilac-message-5JX'));
+  const message = before.find(
+    (record) => record.message?.text.startsWith('Lilac-message-5JX') === true,
+  );
 
   invariant(message);
 
@@ -628,7 +630,9 @@ test('it keeps the text of a forgotten message in no data file', async () => {
     'Noted-reply-2KC',
   );
 
-  const message = records.find((record) => record.message?.text.startsWith('Lilac-message-5JX'));
+  const message = records.find(
+    (record) => record.message?.text.startsWith('Lilac-message-5JX') === true,
+  );
 
   invariant(message);
 
