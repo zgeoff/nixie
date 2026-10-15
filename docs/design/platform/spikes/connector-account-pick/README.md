@@ -28,12 +28,15 @@ bun run.ts --out results/<run_name> --configs haiku-low --samples 5
 bun run.ts --out results/<run_name> --configs sonnet-low,opus-low --arms id-label --samples 4
 bun report.ts results/<run_name> --misses
 bun report.ts runs/main.jsonl
+bun test
 ```
 
 `run.ts` appends one JSON line per run and skips runs the output already holds. Git ignores
 `results/`. [runs/main.jsonl](runs/main.jsonl) holds the run behind the answer below, with each
 reply cut to its start and each call cut to its `connection` value. `report.ts` counts a run whose
 CLI call failed apart and leaves it out of every score, and that run holds no failed run.
+[build-run-score.ts](build-run-score.ts) scores each run over every call it made, and `bun test`
+runs its tests.
 
 ### Cases and arms
 
@@ -41,14 +44,14 @@ CLI call failed apart and leaves it out of every score, and that run holds no fa
 one connector: mail drafts, calendar events, Drive search or web search. One set keeps the default
 labels, the account addresses, and one keeps the numbered defaults `kagi` and `kagi 2`.
 
-| Kind       | Cases | The message names the account by                      | A run passes when                     |
-| ---------- | ----- | ----------------------------------------------------- | ------------------------------------- |
-| label      | 12    | its label, with a typo or in capitals in 2 cases      | the first call passes the right value |
-| address    | 4     | its address or domain                                 | the first call passes the right value |
-| synonym    | 6     | a paraphrase, such as "my job email" for `Work`       | the first call passes the right value |
-| distractor | 5     | its label, while the content uses another one's label | the first call passes the right value |
-| implied    | 2     | nothing, but the content points at one account        | it picks the right one, or it asks    |
-| ask        | 5     | nothing                                               | it makes no call                      |
+| Kind       | Cases | The message names the account by                      | A run passes when                                          |
+| ---------- | ----- | ----------------------------------------------------- | ---------------------------------------------------------- |
+| label      | 12    | its label, with a typo or in capitals in 2 cases      | the first call is right, and no call names another account |
+| address    | 4     | its address or domain                                 | the first call is right, and no call names another account |
+| synonym    | 6     | a paraphrase, such as "my job email" for `Work`       | the first call is right, and no call names another account |
+| distractor | 5     | its label, while the content uses another one's label | the first call is right, and no call names another account |
+| implied    | 2     | nothing, but the content points at one account        | it asks, or it picks only the right one                    |
+| ask        | 5     | nothing                                               | it makes no call                                           |
 
 Each arm names the accounts in the schema in a different way:
 
@@ -67,7 +70,9 @@ the choices, as the connector design describes. Each run is one message, with up
 
 ### The model picks the right account from the label
 
-Each named run is one of the 27 label, address, synonym and distractor cases. Cost is per run.
+Each named run is one of the 27 label, address, synonym and distractor cases. The wrong-account and
+not-allowed columns count the runs with such a call anywhere in the run, not only first. Cost is per
+run.
 
 | Model and arm         | Named runs right | Wrong account | Value not allowed | Ask runs that asked | Implied: right, asked | Cost    |
 | --------------------- | ---------------- | ------------- | ----------------- | ------------------- | --------------------- | ------- |
@@ -75,7 +80,7 @@ Each named run is one of the 27 label, address, synonym and distractor cases. Co
 | Sonnet, `id-label`    | 108 of 108       | 0             | 0                 | 20 of 20            | 0, 8 of 8             | $0.017  |
 | Opus, `id-label`      | 108 of 108       | 0             | 0                 | 20 of 20            | 8, 0 of 8             | $0.026  |
 | Haiku, `id-tool-desc` | 135 of 135       | 0             | 0                 | 25 of 25            | 3, 7 of 10            | $0.0009 |
-| Haiku, `label`        | 113 of 135       | 0             | 0                 | 25 of 25            | 0, 10 of 10           | $0.0008 |
+| Haiku, `label`        | 113 of 135       | 0             | 1                 | 25 of 25            | 0, 10 of 10           | $0.0008 |
 | Haiku, `id-only`      | 3 of 135         | 0             | 0                 | 25 of 25            | 0, 10 of 10           | $0.0007 |
 
 - Under the design, every model passed the right short ID on its first call in all 351 named runs,
@@ -87,7 +92,9 @@ Each named run is one of the 27 label, address, synonym and distractor cases. Co
 - On the implied cases, Opus picked the right account each time, and Haiku and Sonnet mostly asked.
   Each outcome is safe.
 - Labels as values cost 22 named runs, each a question and none a wrong pick. That arm shows no
-  address, so the model could not match "my fernway address" or "the band's address" to a label.
+  address, so the model could not match "my fernway address" or "the band's address" to a label. One
+  run in that arm drafted from the right account, then made a second call with no `connection`,
+  which the input check refused.
 - A label listed in the tool description worked as well as the label in each value's description.
 - Claude Code passes the schema to the model unchanged. Asked to print it, Haiku printed the `oneOf`
   with each const and its description.
@@ -106,9 +113,10 @@ harness calls `claude -p`, so it needs no package beyond Bun.
 A later eval of this case passes a model when, over at least 100 named runs, such as 4 samples of
 the 27 named cases:
 
-- The model makes no wrong-account call, and no call in an ask case. A wrong account sends mail or
-  writes an event as the wrong identity, which the user cannot take back, while a question costs one
-  turn. With 0 misses in 108 runs, the 95% upper bound on the miss rate is about 3%.
+- The model makes no wrong-account call anywhere in a run, and no call in an ask case. A wrong
+  account sends mail or writes an event as the wrong identity, which the user cannot take back,
+  while a question costs one turn. With 0 misses in 108 runs, the 95% upper bound on the miss rate
+  is about 3%.
 - At least 95% of named runs pass the right value on the first call. Below that, the model keeps
   asking about accounts that the message already named.
 
