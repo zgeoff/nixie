@@ -1,9 +1,9 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { waitFor } from '@testing-library/react';
 import { store } from './mocks/store';
 import { buildWebOnce } from './test-utils/build-web-once';
+import { startBuiltWeb } from './test-utils/start-built-web';
 import { startStubAPI } from './test-utils/start-stub-api';
 
 async function setupTest() {
@@ -11,35 +11,10 @@ async function setupTest() {
   const serverPath = await buildWebOnce();
 
   const api = startStubAPI();
-  const portProbe = Bun.serve({ fetch: () => new Response(), hostname: '127.0.0.1', port: 0 });
-  const port = portProbe.port;
 
-  await portProbe.stop(true);
+  const web = await startBuiltWeb(api.url);
 
-  const child = Bun.spawn(['bun', serverPath], {
-    env: { ...process.env, NIXIE_API_URL: api.url, NODE_ENV: 'production', PORT: String(port) },
-    stderr: 'inherit',
-    stdout: 'ignore',
-  });
-
-  onTestFinished(async () => {
-    child.kill();
-
-    await child.exited;
-  });
-
-  const url = `http://127.0.0.1:${port}`;
-
-  await waitFor(
-    async () => {
-      const live = await fetch(`${url}/health/live`);
-
-      expect(live.status).toBe(200);
-    },
-    { timeout: 10_000 },
-  );
-
-  return { api, serverPath, url };
+  return { api, serverPath, url: web.url };
 }
 
 test('it renders the conversation with the device session from the browser cookie', async () => {
@@ -88,11 +63,7 @@ test('it keeps no session from one request to the next', async () => {
   const session = await store.sessions.create({});
 
   await fetch(`${ctx.url}/`, { headers: { cookie: `nixie_session=${session.token}` } });
-
-  const response = await fetch(`${ctx.url}/`);
-  const html = await response.text();
-
-  expect(html).toInclude('Enrol this browser');
+  await fetch(`${ctx.url}/`);
 
   expect(ctx.api.requests.at(-1)).toStrictEqual({
     authorization: null,
@@ -101,9 +72,11 @@ test('it keeps no session from one request to the next', async () => {
   });
 }, 120_000);
 
-test('it renders the enrolment form for a revoked session', async () => {
+test('it leaves a refused session for the browser to check before it shows the enrolment form', async () => {
   const ctx = await setupTest();
   const session = await store.sessions.create({ revokedAt: new Date() });
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is it raining?' } });
 
   const response = await fetch(`${ctx.url}/`, {
     headers: { cookie: `nixie_session=${session.token}` },
@@ -111,7 +84,8 @@ test('it renders the enrolment form for a revoked session', async () => {
 
   const html = await response.text();
 
-  expect(html).toInclude('Enrol this browser');
+  expect(html).not.toInclude('Enrol this browser');
+  expect(html).not.toInclude('Is it raining?');
 }, 120_000);
 
 test('it answers ready once it reaches the API', async () => {

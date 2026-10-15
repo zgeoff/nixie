@@ -1,5 +1,5 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { contract, sessionCookieName } from '@heynixie/contract';
+import { contract, renderSessionCookie } from '@heynixie/contract';
 import { implement, withEventMeta } from '@orpc/server';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 import type { ReadonlyDeep } from '../types';
@@ -142,10 +142,7 @@ export const mockAPIRouter = os.router({
         return { sessionID: session.sessionID, token: session.token };
       }
 
-      options.context.resHeaders?.append(
-        'set-cookie',
-        `${sessionCookieName}=${session.token}; Path=/; HttpOnly; Secure; SameSite=Strict`,
-      );
+      options.context.resHeaders?.append('set-cookie', renderSessionCookie(session.token));
 
       return { sessionID: session.sessionID };
     }),
