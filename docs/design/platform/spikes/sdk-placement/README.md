@@ -62,6 +62,11 @@ audit row for a refused host.
 1. Clone imp at the tag outside this repository, copy a built guest kernel to `kernel/out/vmlinux`
    in the clone, and run `bun install` there
    ([imp install guide](https://github.com/zgeoff/impz/blob/v0.38.1/docs/guides/install.md#set-up)).
+   The tag's CLI is `scripts/imp`; link it onto your `PATH` as `impz`, the name the spike calls.
+
+   ```bash
+   ln -s <imp_clone>/scripts/imp <bin_dir>/impz
+   ```
 
 2. Start a dev instance off the private network. Put its data directory on a disk filesystem with
    more than 5.5 GiB free, never on a tmpfs: impd keeps 5 GiB in reserve (`IMP_DISK_RESERVE_GIB`).

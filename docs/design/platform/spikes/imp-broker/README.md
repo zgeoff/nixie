@@ -44,10 +44,12 @@ on exit.
 1. Clone imp at the tag outside this repository, and copy a built guest kernel to
    `kernel/out/vmlinux` in the clone
    ([imp install guide](https://github.com/zgeoff/impz/blob/v0.38.1/docs/guides/install.md#set-up)).
+   The tag's CLI is `scripts/imp`; link it onto your `PATH` as `impz`, the name `run.sh` calls.
 
    ```bash
    git clone --branch v0.38.1 --depth 1 https://github.com/zgeoff/impz <imp_clone>
    cd <imp_clone> && bun install
+   ln -s <imp_clone>/scripts/imp <bin_dir>/impz
    ```
 
 2. Start a dev instance with its own name, ports and data directory, off the private network:
