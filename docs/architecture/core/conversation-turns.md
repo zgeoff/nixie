@@ -153,12 +153,15 @@ Images the user sends with a message reach the model as image input, read as dro
 text. The inbox message holds the text first, then for each image a `<dropped-image id="…" n="…"/>`
 marker with its own random ID and the image's number, then the image block. The host reads each
 image's bytes from the [attachments](./erasable-fields.md#keys) and writes them to the guest in the
-message frame, so a frame from the host has a larger size limit than a frame from the guest. A turn
-caps the image bytes it opens with, and always takes its first message, so a record past the cap
-waits for the next step instead of making a request the Messages API refuses. A rebuilt session's
-history and every other render of the message show only the markers, never the bytes, so an image
-reaches the model once, in the turn it was sent. The pasted-text rule in the system prompt names the
-images too: the model treats an image's content, its text included, as it treats dropped text.
+message frame, so a frame from the host has a larger size limit than a frame from the guest. The SDK
+repeats every image a session took in each later request, so a session caps the image bytes it
+holds, and each turn end records what its session holds. A message whose images would pass the cap
+waits for the next step, whether it opens a turn's batch or lands while the turn runs, and that step
+opens a rebuilt session for it, so no request passes the size the Messages API accepts. The first
+message of a new session always goes. A rebuilt session's history and every other render of the
+message show only the markers, never the bytes, so an image reaches the model once, in the turn it
+was sent. The pasted-text rule in the system prompt names the images too: the model treats an
+image's content, its text included, as it treats dropped text.
 
 ## System messages
 

@@ -1,15 +1,15 @@
 # Session opening
 
 Every new session of the conversation opens from one builder, with the same slots in the same order,
-whatever started it: the first session, a compaction, or a rebuild after the guest lost the session
-or a forget invalidated it. The system prompt holds only what nixie's definitions set, and
-everything that changes with the user's data goes in the session's first user message. That message
-stays in the session's transcript for the session's life, so the cached prefix holds from turn to
-turn, and a change during the session reaches the model as a note before the next message.
-[Conversation turns](./conversation-turns.md) covers the turn, the fork on each resume and when a
-turn opens a new session, [memory in context](../memory/context.md) covers the pinned core and
-retrieval, and [compaction](./compaction.md) covers the step that writes the summary a session opens
-with.
+whatever started it: the first session, a compaction, or a rebuild after the guest lost the session,
+a forget invalidated it, or its images left no room for the next message's. The system prompt holds
+only what nixie's definitions set, and everything that changes with the user's data goes in the
+session's first user message. That message stays in the session's transcript for the session's life,
+so the cached prefix holds from turn to turn, and a change during the session reaches the model as a
+note before the next message. [Conversation turns](./conversation-turns.md) covers the turn, the
+fork on each resume and when a turn opens a new session, [memory in context](../memory/context.md)
+covers the pinned core and retrieval, and [compaction](./compaction.md) covers the step that writes
+the summary a session opens with.
 
 ## The slots
 
@@ -43,10 +43,10 @@ pinned core again, as a pinned-memory system message before its other blocks.
 The builder reads the newest summary that is still readable, then the thread's messages and replies
 after the sequence that summary covers, newest back to the rebuild budget. That one read gives every
 start its slots. The first session finds no summary and no turns, so it opens with the pinned memory
-and the status alone. A rebuild after a lost session finds the turns after the newest summary. A
-forget erases every summary, so a rebuild after a forget finds none and reads turns back to the
-budget. A session that opens after a compaction finds a summary that covers every turn, so its slot
-5 is empty.
+and the status alone. A rebuild after a lost or a full session finds the turns after the newest
+summary. A forget erases every summary, so a rebuild after a forget finds none and reads turns back
+to the budget. A session that opens after a compaction finds a summary that covers every turn, so
+its slot 5 is empty.
 
 The summary record keeps its text in erasable fields and the last sequence it covers in its payload.
 The builder passes over a summary whose key is gone to the next one that is still readable, so a

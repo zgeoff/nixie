@@ -28,6 +28,9 @@ export interface SessionMarks {
 
   // the compactions that failed in a row since the last summary or opening
   readonly compactionFailures: number;
+
+  // the image bytes, in base64, the session held after the last turn, or 0 before any turn
+  readonly imageBytes: number;
 }
 
 export interface TurnContextSize {
@@ -67,6 +70,7 @@ export async function readSessionMarks(
     lastContext: turn === undefined ? null : parseContext(turn),
     isSummarized: summarizedThrough > openedThrough,
     compactionFailures: countFailures(failed.at(0), Math.max(openedThrough, summarizedThrough)),
+    imageBytes: turn === undefined ? 0 : parseImageBytes(turn),
   };
 }
 
@@ -108,6 +112,13 @@ function parseContext(turn: LogRecord): TurnContextSize | null {
   return parsed.success
     ? { size: parsed.data.contextSize, window: parsed.data.contextWindow }
     : null;
+}
+
+// a turn recorded before turns kept their session's image bytes ran on a session with no images
+function parseImageBytes(turn: LogRecord): number {
+  const parsed = z.int().nonnegative().safeParse(turn.payload['sessionImageBytes']);
+
+  return parsed.success ? parsed.data : 0;
 }
 
 const failuresSchema = z.object({ failures: z.int().positive() });

@@ -249,13 +249,13 @@ export interface TurnNote {
 }
 
 // How a new session starts: the first session, the one after a compaction, or a rebuild in place of
-// a lost or invalidated one.
+// a lost or invalidated one, or of one whose images leave no room for your next message's.
 export type SessionStart =
   | { readonly kind: 'first' }
   | { readonly kind: 'compaction' }
   | {
       readonly kind: 'rebuild';
-      readonly reason: 'lost' | 'forget';
+      readonly reason: 'lost' | 'forget' | 'images';
       readonly lostSessionID: string | null;
     };
 

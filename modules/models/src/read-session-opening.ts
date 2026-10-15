@@ -45,7 +45,7 @@ export interface SessionOpening {
 // the recent turns, and each status value by its entry's name.
 export interface OpeningRecord {
   readonly kind: SessionStart['kind'];
-  readonly reason: 'lost' | 'forget' | null;
+  readonly reason: 'lost' | 'forget' | 'images' | null;
   readonly lostSessionID: string | null;
   readonly summarySequence: number | null;
   readonly recentRecords: number;

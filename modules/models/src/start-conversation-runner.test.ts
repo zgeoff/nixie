@@ -635,6 +635,111 @@ test('it records the opening and the session it replaced when the guest has lost
   ]);
 });
 
+test('it rebuilds the session when your next images would pass the images the session can hold', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    {
+      type: 'ended',
+      boundary: {
+        sessionID: '5e2a9c71-4b0d-4f6e-8a3b-2d7c1e9f0a11',
+        messageID: crypto.randomUUID(),
+      },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  // 10 MiB reads as about 14 MiB in base64, so a session holds one such photo and not two
+  const photo = {
+    kind: 'owner_message',
+    definitions: { snapshotHash: 'sha256:test' },
+    thread: 'conversation',
+    payload: { images: [{ mediaType: 'image/jpeg' }] },
+    erasable: { text: 'The garden bed.' },
+    attachments: [new Uint8Array(10 * 1024 * 1024).fill(7)],
+  };
+
+  await writeInboxRecords(ctx.context, [photo, photo]);
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const records = await ctx.readKinds('model.session_opened');
+
+  expect(records).toMatchObject([
+    { payload: { kind: 'first' } },
+    {
+      payload: {
+        kind: 'rebuild',
+        reason: 'images',
+        lostSessionID: '5e2a9c71-4b0d-4f6e-8a3b-2d7c1e9f0a11',
+        status: { start: 'rebuild:images' },
+      },
+    },
+  ]);
+}, 60_000);
+
+test('it resumes the session for a photo while the images it holds leave room', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    {
+      type: 'ended',
+      boundary: {
+        sessionID: '5e2a9c71-4b0d-4f6e-8a3b-2d7c1e9f0a11',
+        messageID: crypto.randomUUID(),
+      },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  // 5 MiB reads as about 7 MiB in base64, so a session holds both photos
+  const photo = {
+    kind: 'owner_message',
+    definitions: { snapshotHash: 'sha256:test' },
+    thread: 'conversation',
+    payload: { images: [{ mediaType: 'image/jpeg' }] },
+    erasable: { text: 'The garden bed.' },
+    attachments: [new Uint8Array(5 * 1024 * 1024).fill(7)],
+  };
+
+  await writeInboxRecords(ctx.context, [photo]);
+
+  await ctx.runNextStep(runner);
+
+  await writeInboxRecords(ctx.context, [photo]);
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.sandboxes.turns.at(-1)?.resume?.sessionID).toBe(
+    '5e2a9c71-4b0d-4f6e-8a3b-2d7c1e9f0a11',
+  );
+}, 60_000);
+
 test('it opens the first turn on a fresh session with the pinned memory and the status, and records the opening', async () => {
   const ctx = await setupTest();
 

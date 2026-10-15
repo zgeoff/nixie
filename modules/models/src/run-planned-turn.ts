@@ -16,6 +16,9 @@ export interface SessionTurn {
   // the newest session invalidation the step saw before the turn ran
   readonly invalidatedThrough: number;
 
+  // the image bytes, in base64, the session holds before the turn: 0 for a new session
+  readonly imageBytes: number;
+
   // aborts when the step's lease is lost or a forget invalidates the session
   readonly signal: AbortSignal;
 }
@@ -47,6 +50,7 @@ export async function runPlannedTurn(
     preamble: [...(opening?.blocks ?? []), ...turn.context.preamble],
     signal: turn.signal,
     times,
+    imageBytes: turn.imageBytes,
   });
 
   turn.signal.throwIfAborted();

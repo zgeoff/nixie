@@ -1,6 +1,7 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecordAttachments } from '@heynixie/log';
 import type { InboxMessage } from '@heynixie/wire';
+import { countImageBytes } from './count-image-bytes';
 import { toInboxMessage } from './to-inbox-message';
 import type { MessageTimeOptions } from './types';
 
@@ -13,8 +14,8 @@ export interface InboxRead {
 }
 
 // Reads the inbox records a turn takes as the guest passes them to the model, oldest first, each
-// with its images. It stops before the record whose images would pass the budget, so the messages
-// it returns are for the first records only, and the rest wait for the next turn.
+// with its images. It stops before the record whose images would pass the budget, and the rest wait
+// for the next turn; a message with no images passes a budget already spent.
 export async function readInboxMessages(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   records: readonly LogRecord[],
@@ -29,7 +30,7 @@ export async function readInboxMessages(
 
     const bytes = countImageBytes(message);
 
-    if (messages.length > 0 && spent.bytes + bytes > read.imageBudgetBytes) {
+    if (messages.length > 0 && bytes > 0 && spent.bytes + bytes > read.imageBudgetBytes) {
       return messages;
     }
 
@@ -56,8 +57,4 @@ async function readInboxMessage(
   const bytes = read?.status === 'readable' ? read.attachments : [];
 
   return toInboxMessage(record, times, bytes);
-}
-
-function countImageBytes(message: InboxMessage): number {
-  return (message.images ?? []).reduce((total, image) => total + image.data.length, 0);
 }

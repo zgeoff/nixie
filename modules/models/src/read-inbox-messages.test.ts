@@ -80,6 +80,37 @@ test('it stops before the record whose images would pass the budget', async () =
   ]);
 });
 
+test('it reads a record with no images past a budget the images before it spent', async () => {
+  const ctx = await setupTest();
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'The first plan.' },
+      attachments: [new Uint8Array(6).fill(1)],
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'What do you think?' },
+    },
+  ]);
+
+  const messages = await readInboxMessages(ctx.log, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    imageBudgetBytes: 4,
+  });
+
+  expect(messages.map((message) => message.text)).toStrictEqual([
+    expect.toEndWith('The first plan.'),
+    expect.toEndWith('What do you think?'),
+  ]);
+});
+
 test('it reads the first record whatever its images, so a large message still reaches the model', async () => {
   const ctx = await setupTest();
 
