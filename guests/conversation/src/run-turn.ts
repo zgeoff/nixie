@@ -24,6 +24,7 @@ export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<
   const state: TurnState = {
     pending: new Set(),
     boundary: null,
+    committed: turn.resume,
     contextSize: null,
     compactWindow: getCompactWindow(turn.profile),
     toolsReady: Promise.withResolvers(),
@@ -93,6 +94,10 @@ async function drainSession(
 interface TurnState extends TurnInputState {
   // the session's last chain entry so far
   boundary: SessionPoint | null;
+
+  // the last chain entry that is not the CLI's own message for an API error, or the turn's resume
+  // point before the turn writes one
+  committed: SessionPoint | null;
 
   // the tokens the last main-chain model call read, or null before one reports its usage
   contextSize: number | null;
@@ -197,6 +202,7 @@ async function emitAssistant(
 
   // the CLI's own message for an API error carries no usage from the model
   if (message.error === undefined) {
+    state.committed = state.boundary;
     state.contextSize = countContextTokens(message.message.usage);
   }
 
@@ -228,6 +234,7 @@ function updateUserBoundary(
 
   if (message.parent_tool_use_id === null && messageID !== undefined && sessionID !== undefined) {
     state.boundary = { sessionID, messageID };
+    state.committed = state.boundary;
   }
 }
 
@@ -287,15 +294,34 @@ async function emitResult(
     return 'stop';
   }
 
-  if (state.boundary === null) {
+  const boundary = pickBoundary(message, state);
+
+  if (boundary === null) {
     await deps.emit({ type: 'failed', reason: 'error', detail: 'the turn wrote no chain entry' });
 
     return 'stop';
   }
 
-  await deps.emit(buildEnded(message, state.boundary, state));
+  await deps.emit(buildEnded(message, boundary, state));
 
   return 'result';
+}
+
+// the SDK's reasons for a turn whose context passed the window: blocking_limit when the CLI refused
+// the next call itself, and prompt_too_long when the model API refused it
+const overflowReasons: ReadonlySet<string> = new Set(['blocking_limit', 'prompt_too_long']);
+
+// An overflow ends the turn at the CLI's `Prompt is too long` message, and the turn's boundary stays
+// before it, so a retry from the boundary forks the session before the overflow. A fresh session
+// whose first call overflows has no entry before that message, so its boundary stays on it.
+function pickBoundary(
+  message: Extract<SDKResultMessage, { subtype: 'success' }>,
+  state: TurnState,
+): SessionPoint | null {
+  const isOverflow =
+    message.terminal_reason !== undefined && overflowReasons.has(message.terminal_reason);
+
+  return isOverflow ? (state.committed ?? state.boundary) : state.boundary;
 }
 
 function buildEnded(
