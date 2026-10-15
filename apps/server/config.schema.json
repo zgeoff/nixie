@@ -234,6 +234,23 @@
       },
       "additionalProperties": false
     },
+    "sandbox": {
+      "default": {
+        "adapter": "imp"
+      },
+      "type": "object",
+      "properties": {
+        "adapter": {
+          "default": "imp",
+          "type": "string",
+          "enum": [
+            "imp",
+            "test"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "imp": {
       "type": "object",
       "properties": {
@@ -536,7 +553,6 @@
   },
   "required": [
     "models",
-    "imp",
     "definitions"
   ],
   "additionalProperties": false,

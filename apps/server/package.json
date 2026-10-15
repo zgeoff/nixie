@@ -8,7 +8,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "config-schema": "bun src/run-config-json-schema.ts"
+    "config-schema": "bun --define NIXIE_TEST_BUILD=false src/run-config-json-schema.ts"
   },
   "dependencies": {
     "@heynixie/actions": "workspace:*",
