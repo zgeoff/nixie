@@ -30,11 +30,7 @@ import { createTestStep } from './test-utils/create-test-step';
 // check's step behind the action queue's step tracking, a recorder of the connector's log lines,
 // and the wakes, steps and attempts the tests drive
 async function setupTest() {
-  const stack = new AsyncDisposableStack();
-
-  onTestFinished(() => stack.disposeAsync());
-
-  const writer = await startTestWriter(stack);
+  const writer = await startTestWriter();
 
   const clock = buildTestClock(1_000_000);
 
@@ -83,14 +79,17 @@ async function setupTest() {
 
 const stepRetry = { maxStepErrors: 3, retryDelayMs: 30_000, maxRetryDelayMs: 300_000 };
 
-async function startTestWriter(stack: AsyncDisposableStack): Promise<Writer> {
+// starts a writer on a fresh data directory, and stops it and removes the directory when the test
+// finishes
+async function startTestWriter(): Promise<Writer> {
   const dataDir = await mkdtemp(`${tmpdir()}/nixie-queue-check-`);
-
-  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
-
   const writer = await startWriter({ dataDir });
 
-  stack.defer(() => writer.stop());
+  onTestFinished(async () => {
+    await writer.stop();
+
+    await rm(dataDir, { recursive: true, force: true });
+  });
 
   return writer;
 }
