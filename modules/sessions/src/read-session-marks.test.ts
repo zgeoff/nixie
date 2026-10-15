@@ -222,6 +222,50 @@ test('it reads that a session opened with an opening record', async () => {
   expect(marks.hasOpening).toBe(true);
 });
 
+test('it reads a session that an older CLI compacted after its opening as lacking its opening', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    {
+      kind: 'model.compacted',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { trigger: 'auto', preTokens: 180_000, postTokens: 24_000 },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.hasOpening).toBe(false);
+});
+
+test('it reads a session that opened after an older CLI compaction as holding its opening', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.compacted',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { trigger: 'auto', preTokens: 180_000, postTokens: 24_000 },
+    },
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.hasOpening).toBe(true);
+});
+
 test('it reads the pinned core the last turn ran with', async () => {
   const ctx = await setupTest();
 
