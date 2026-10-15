@@ -3,6 +3,7 @@ export { createDatabaseCopy } from './create-database-copy';
 export { createShortID } from './create-short-id';
 export { DatabaseError } from './database-error';
 export { nixieSchema } from './nixie-schema';
+export type { MigrationSummary } from './build-migration-summary';
 export type { MigrationReport, RunMigrationsOptions } from './run-migrations';
 export { removeTableRows } from './remove-table-rows';
 export { runMigrations } from './run-migrations';

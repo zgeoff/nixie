@@ -7,7 +7,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "config-schema": "bun --define NIXIE_TEST_BUILD=false src/run-config-json-schema.ts"
   },
   "dependencies": {
     "@heynixie/actions": "workspace:*",
@@ -34,6 +35,9 @@
     "@faker-js/faker": "catalog:",
     "@heynixie/contract": "workspace:*",
     "@heynixie/testing": "workspace:*",
-    "@orpc/client": "catalog:"
+    "@orpc/client": "catalog:",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "release-please": "17.11.2"
   }
 }

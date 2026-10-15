@@ -20,7 +20,8 @@ the server composes from one section schema per module or adapter. Each section 
 package that reads it, so a module adds a key by changing its own schema. Every object in the schema
 is strict, so nixie refuses to start on an unknown key as it does on an invalid value, and the error
 it logs holds the path of the key. A typo therefore stops the start instead of leaving a default in
-force.
+force. Each release publishes the schema as JSON Schema, which
+[the release contract](release-pipeline.md#the-release-contract) covers.
 
 Secrets never appear in the configuration. The configuration holds the path of the secrets file, a
 sops file that nixie decrypts at start by running sops in a child process and reading its JSON from

@@ -1,0 +1,561 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "server": {
+      "type": "object",
+      "properties": {
+        "data_dir": {
+          "default": "/data",
+          "type": "string",
+          "minLength": 1
+        },
+        "hostname": {
+          "default": "0.0.0.0",
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "default": 8080,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "secrets_file": {
+          "default": "/etc/nixie/secrets.yaml",
+          "type": "string",
+          "minLength": 1
+        },
+        "log_level": {
+          "default": "info",
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "owner": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pronouns": {
+          "default": {
+            "they": "they",
+            "their": "their"
+          },
+          "type": "object",
+          "properties": {
+            "they": {
+              "type": "string",
+              "minLength": 1
+            },
+            "their": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "they",
+            "their"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "models": {
+      "type": "object",
+      "properties": {
+        "profiles": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "base_url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "credential": {
+                "type": "string",
+                "pattern": "^deployment:[\\w-]+$"
+              },
+              "auth_header": {
+                "type": "string",
+                "enum": [
+                  "bearer",
+                  "x-api-key"
+                ]
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "effort": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              },
+              "provider_pin": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context_tokens": {
+                "type": "integer",
+                "minimum": 100000,
+                "maximum": 1000000
+              },
+              "prices": {
+                "type": "object",
+                "properties": {
+                  "input": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "cache_write": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "cache_write_1h": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "cached_input": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "output": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "input",
+                  "cache_write",
+                  "cache_write_1h",
+                  "cached_input",
+                  "output"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "base_url",
+              "credential",
+              "auth_header",
+              "model",
+              "effort"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "roles": {
+          "type": "object",
+          "properties": {
+            "conversation": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "task": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "worker": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "checker": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "memory-writer": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "memory-consolidator": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "profiles",
+        "roles"
+      ],
+      "additionalProperties": false
+    },
+    "compaction": {
+      "type": "object",
+      "properties": {
+        "threshold": {
+          "default": 0.8,
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "summary_tokens": {
+          "default": 2000,
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "sandbox": {
+      "default": {
+        "adapter": "imp"
+      },
+      "type": "object",
+      "properties": {
+        "adapter": {
+          "default": "imp",
+          "type": "string",
+          "enum": [
+            "imp",
+            "test"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "imp": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "host_addresses": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?:\\d{1,3}(?:\\.\\d{1,3}){3}(?:\\/\\d{1,2})?|[\\da-f:]*:[\\da-f:.]*(?:\\/\\d{1,3})?)$"
+          }
+        },
+        "egress_deny": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?:\\d{1,3}(?:\\.\\d{1,3}){3}(?:\\/\\d{1,2})?|[\\da-f:]*:[\\da-f:.]*(?:\\/\\d{1,3})?)$"
+          }
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "definitions": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "path"
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "kind",
+                "path"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "probe_interval_ms": {
+          "default": 300000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "web_fetch": {
+      "type": "object",
+      "properties": {
+        "body_bytes": {
+          "default": 2097152,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "timeout_ms": {
+          "default": 15000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "redirects": {
+          "default": 5,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "text_bytes": {
+          "default": 262144,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "fetches_per_sandbox": {
+          "default": 50,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "time": {
+      "default": {
+        "default_zone": "Australia/Sydney"
+      },
+      "type": "object",
+      "properties": {
+        "default_zone": {
+          "default": "Australia/Sydney",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tasks": {
+      "type": "object",
+      "properties": {
+        "runners": {
+          "default": 3,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "actions": {
+      "type": "object",
+      "properties": {
+        "runners": {
+          "default": 4,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "memory_writer": {
+      "type": "object",
+      "properties": {
+        "batch_messages": {
+          "default": 4,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "batch_tokens": {
+          "default": 12000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "idle_minutes": {
+          "default": 5,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_age_minutes": {
+          "default": 20,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "batches_per_hour": {
+          "default": 300,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "item_list_tokens": {
+          "default": 8000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "top_items": {
+          "default": 20,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "proposal_cap": {
+          "default": 10,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "first_backoff_seconds": {
+          "default": 30,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_backoff_minutes": {
+          "default": 60,
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "memory": {
+      "type": "object",
+      "properties": {
+        "evidence_window": {
+          "default": 20,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "proposal_lapse_days": {
+          "default": 14,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "proposal_cap": {
+          "default": 10,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "close_match_score": {
+          "default": 0.6,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "checker_timeout_ms": {
+          "default": 20000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pinned_core_tokens": {
+          "default": 2000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "retrieval_items": {
+          "default": 5,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "retrieval_min_score": {
+          "default": 0.25,
+          "type": "number",
+          "minimum": 0
+        },
+        "rebuild_tokens": {
+          "default": 30000,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "memory_consolidation": {
+      "type": "object",
+      "properties": {
+        "period_days": {
+          "default": 7,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_changes": {
+          "default": 30,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 30
+        },
+        "item_list_tokens": {
+          "default": 24000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "top_items": {
+          "default": 20,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "lapse_days": {
+          "default": 7,
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "retry_minutes": {
+          "default": 60,
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "models",
+    "definitions"
+  ],
+  "additionalProperties": false,
+  "title": "nixie deployment configuration",
+  "description": "The config.yaml that nixie reads once at start, /etc/nixie/config.yaml by default"
+}

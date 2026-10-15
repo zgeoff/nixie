@@ -34,8 +34,9 @@ step, and no release pull request opens.
    gh run watch "$(gh run list --repo <owner>/nixie --workflow release.yml --commit <merge_commit> --json databaseId --jq '.[0].databaseId')" --repo <owner>/nixie
    ```
 
-   Expect every job to pass, ending with `tag`, and the GitHub release to list the migrations and
-   the 4 image digests.
+   Expect every job to pass, ending with `assets`. Expect the GitHub release to list the migrations,
+   the config schema result and the 4 image digests, and to hold the assets `release.json` and
+   `config.schema.json`.
 
 ## Make a new sandbox image public
 

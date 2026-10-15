@@ -1,8 +1,9 @@
 # Cuts a nixie release. On every push to main, release-please opens or updates the release pull
 # request, and merging it creates the v<version> tag and the GitHub release. The release commit then
 # goes through one stage per job, each after the one before succeeds: the sandbox images, the nixie
-# image with their digests, the web image, the migrations in the release notes, a pull of each
-# sandbox image with no credentials, and the version tag on every image.
+# image with their digests, the web image, the migrations and the config schema in the release
+# notes, a pull of each sandbox image with no credentials, the version tag on every image, and the
+# release.json and config.schema.json assets.
 #
 # A manual run on a release tag rebuilds that release from its commit. Re-running the failed
 # jobs of a run resumes from the stage that failed with the same digests.
@@ -208,6 +209,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      migrations: ${{ steps.notes.outputs.migrations }}
+      config-schema: ${{ steps.notes.outputs.config-schema }}
     steps:
       - name: Checkout the release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -224,7 +228,10 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Append the migrations and the images to the release notes
+      # the config schema check compares with the last release's committed schema, and a release
+      # before the first one that commits it has none
+      - name: Append the migrations, the config schema and the images to the release notes
+        id: notes
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -237,14 +244,28 @@ jobs:
         run: |
           body="$RUNNER_TEMP/body.md"
           gh release view "$TAG" --json body --jq .body > "$body"
+          migrations="$RUNNER_TEMP/migrations.json"
+          config_schema="$RUNNER_TEMP/config-schema.json"
           last=$(git describe --tags --abbrev=0 --match 'v*' "$SHA^" 2> /dev/null || true)
           if [[ -n $last ]]; then
             .github/scripts/read-released-schema.sh "$last" "$RUNNER_TEMP/released.json"
             bun libs/db/src/run-migration-check.ts --released "$RUNNER_TEMP/released.json" \
-              --last-tag "$last" --release-body "$body"
+              --last-tag "$last" --release-body "$body" --summary "$migrations"
           else
-            bun libs/db/src/run-migration-check.ts --release-body "$body"
+            bun libs/db/src/run-migration-check.ts --release-body "$body" --summary "$migrations"
           fi
+          released_config="$RUNNER_TEMP/released-config.schema.json"
+          if [[ -n $last ]] && git show "$last:apps/server/config.schema.json" > "$released_config" 2> /dev/null; then
+            bun apps/server/src/run-config-schema-check.ts --released "$released_config" \
+              --last-tag "$last" --release-body "$body" --summary "$config_schema"
+          else
+            bun apps/server/src/run-config-schema-check.ts --release-body "$body" \
+              --summary "$config_schema"
+          fi
+          {
+            echo "migrations=$(jq -c . "$migrations")"
+            echo "config-schema=$(jq -c . "$config_schema")"
+          } >> "$GITHUB_OUTPUT"
           {
             echo
             echo '## Images'
@@ -300,3 +321,54 @@ jobs:
           NIXIE: ${{ needs.nixie.outputs.ref }}
           WEB: ${{ needs.web.outputs.ref }}
         run: .github/scripts/tag-images.sh "$VERSION" "$CONVERSATION" "$FETCH" "$WEB" "$NIXIE"
+
+  # last, so a reader that finds release.json finds every image under its version tag
+  assets:
+    needs: [resolve, notes, tag, conversation, fetch, nixie, web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      # a re-run replaces the assets of an earlier attempt, so it publishes the same files
+      - name: Publish release.json and the config schema
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+          CONVERSATION: ${{ needs.conversation.outputs.ref }}
+          FETCH: ${{ needs.fetch.outputs.ref }}
+          NIXIE: ${{ needs.nixie.outputs.ref }}
+          WEB: ${{ needs.web.outputs.ref }}
+          MIGRATIONS: ${{ needs.notes.outputs.migrations }}
+          CONFIG_SCHEMA: ${{ needs.notes.outputs.config-schema }}
+        run: |
+          printf '%s\n' "$MIGRATIONS" > "$RUNNER_TEMP/migrations.json"
+          printf '%s\n' "$CONFIG_SCHEMA" > "$RUNNER_TEMP/config-schema.json"
+          bun apps/server/src/run-release-manifest.ts --version "$VERSION" --commit "$SHA" \
+            --server "$NIXIE" --web "$WEB" --conversation "$CONVERSATION" --fetch "$FETCH" \
+            --migrations "$RUNNER_TEMP/migrations.json" \
+            --config-schema "$RUNNER_TEMP/config-schema.json" --out "$RUNNER_TEMP/release.json"
+          .github/scripts/publish-release-assets.sh "$TAG" "$RUNNER_TEMP/release.json"
+          {
+            echo '## release.json'
+            echo
+            echo '```json'
+            cat "$RUNNER_TEMP/release.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
