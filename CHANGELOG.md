@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.22.0](https://github.com/zgeoff/nixie/compare/v0.21.0...v0.22.0) (2026-10-15)
+
+
+### Features
+
+* **geo-511:** add log levels and a configured threshold ([#242](https://github.com/zgeoff/nixie/issues/242)) ([9365e85](https://github.com/zgeoff/nixie/commit/9365e85b9d4a635d466cc8fb16426c1135950b0e))
+* **geo-785:** list memory changes in the events block ([#243](https://github.com/zgeoff/nixie/issues/243)) ([b746a1b](https://github.com/zgeoff/nixie/commit/b746a1b9074c006b7f3286e884a17771c2fa9c6a))
+* **geo-866:** report the account name in the connector health check ([#234](https://github.com/zgeoff/nixie/issues/234)) ([11e3a7c](https://github.com/zgeoff/nixie/commit/11e3a7ceaf7247773f439e134cf43e5bc86d702d))
+* **geo-883:** pass the result's terminal reason to the host ([#233](https://github.com/zgeoff/nixie/issues/233)) ([f6f1873](https://github.com/zgeoff/nixie/commit/f6f187314102badcde7b53c513271696a9bd278b))
+
+
+### Bug Fixes
+
+* **geo-831:** run the consolidator on a list cut at its budget ([#241](https://github.com/zgeoff/nixie/issues/241)) ([6aa3bbd](https://github.com/zgeoff/nixie/commit/6aa3bbd264e50a1aa827b283774646af2cc65814))
+* **geo-864:** end a waiting fake forward when its test finishes ([#244](https://github.com/zgeoff/nixie/issues/244)) ([b026a21](https://github.com/zgeoff/nixie/commit/b026a216355d9fb74f529e61e4b1f96d49de5c39))
+* **geo-878:** bind ratings past a turn note's recall ([#232](https://github.com/zgeoff/nixie/issues/232)) ([70a853e](https://github.com/zgeoff/nixie/commit/70a853e12132fecaac8063bb78cbe4ca2d7d3a79))
+* **geo-884:** keep the turn boundary off the cli's overflow message ([#238](https://github.com/zgeoff/nixie/issues/238)) ([b7b5811](https://github.com/zgeoff/nixie/commit/b7b58117df1d54f1ee46a5d0922e5bb3c0394e8c))
+* **geo-885:** refuse a context cap past the cli's assumed window ([#230](https://github.com/zgeoff/nixie/issues/230)) ([ff1e45e](https://github.com/zgeoff/nixie/commit/ff1e45eda648a50e3273adcd6d88e0189ad2b53e))
+
 ## [0.21.0](https://github.com/zgeoff/nixie/compare/v0.20.0...v0.21.0) (2026-10-14)
 
 
