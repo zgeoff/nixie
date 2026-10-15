@@ -1,4 +1,4 @@
-import type { MemoryApproval } from '@heynixie/models';
+import type { MemoryApproval } from '@heynixie/sessions';
 import type { ReviewReason } from './gate-types';
 
 // The memory proposal a version came from, as its row holds it.

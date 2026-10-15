@@ -1,20 +1,19 @@
+import { deriveModelSecret, toTurnProfile } from '@heynixie/models';
+import type { ResolvedProfile } from '@heynixie/models';
 import type { RunStep, TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import { buildDefaultStatus } from './build-default-status';
-import { deriveModelSecret } from './derive-model-secret';
 import { makeSessionGuard } from './make-session-guard';
 import { runConversationStep } from './run-conversation-step';
 import { runSessionCleanup } from './run-session-cleanup';
 import type { ConversationSandboxSpec } from './setup-conversation-sandbox';
 import { setupConversationSandbox } from './setup-conversation-sandbox';
-import { toTurnProfile } from './to-turn-profile';
 import type {
   CompactionSettings,
   ConversationMemory,
   ConversationMemorySettings,
   ConversationRun,
-  ResolvedProfile,
   SessionCleanupCause,
 } from './types';
 

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { resolveRoleProfile } from './resolve-role-profile';
+import { resolveRoleProfile } from '@heynixie/models';
+import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { startSessionRunner } from './start-session-runner';
-import { buildMockModelsConfig } from './test-utils/build-mock-models-config';
 import { buildStubSandboxes } from './test-utils/build-stub-sandboxes';
 import { buildStubToolEndpoint } from './test-utils/build-stub-tool-endpoint';
 import { startTestTasks } from './test-utils/start-test-tasks';

@@ -1,14 +1,13 @@
+import { buildModelGrant, deriveModelSecret } from '@heynixie/models';
+import type { ResolvedProfile } from '@heynixie/models';
 import type { Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
-import { buildModelGrant } from './build-model-grant';
-import { deriveModelSecret } from './derive-model-secret';
 import { isContextOverflow } from './is-context-overflow';
 import type { GuestCommand } from './run-guest-turn';
 import { runGuestTurn } from './run-guest-turn';
-import type { ResolvedProfile } from './types';
 
 export interface SessionRunnerOptions {
   readonly context: TasksContext;

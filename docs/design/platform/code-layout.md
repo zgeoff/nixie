@@ -111,6 +111,7 @@ Each package covers one design area. Its first slice creates it, and later slice
 | `tasks`       | [Tasks](core/tasks.md), leases, the inbox, waits, timers, the runner                 | 1           |
 | `actions`     | [The action queue](core/actions.md), attempts, outcomes, retries                     | 1           |
 | `models`      | [Model profiles](core/models.md), roles and cost                                     | 1           |
+| `sessions`    | The model loop's sessions: the runner, the opening and the resume                    | 1           |
 | `policy`      | [The decision point](policy/decision-point.md), rules, approvals, budgets            | 1           |
 | `api`         | The oRPC router, device sessions, the live stream, paste spans                       | 1           |
 | `sandbox`     | The [sandbox adapter](connectors/sandbox-adapter.md) interface and sandboxes by kind | 1           |

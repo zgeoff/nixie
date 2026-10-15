@@ -6,9 +6,9 @@ import {
   memoryConfigSchema,
   writerConfigSchema,
 } from '@heynixie/memory';
-import { agentConfigSchema, compactionConfigSchema, modelsConfigSchema } from '@heynixie/models';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { z } from 'zod';
+import { modelSections } from './model-sections';
 import { ownerConfigSchema } from './owner-config-schema';
 import { sandboxSections } from './sandbox-sections';
 import { serverConfigSchema } from './server-config-schema';
@@ -20,9 +20,7 @@ export const deploymentConfigSchema = z
   .strictObject({
     server: serverConfigSchema.default(serverConfigSchema.parse({})),
     owner: ownerConfigSchema.default(ownerConfigSchema.parse({})),
-    agent: agentConfigSchema.default(agentConfigSchema.parse({})),
-    models: modelsConfigSchema,
-    compaction: compactionConfigSchema.default(compactionConfigSchema.parse({})),
+    ...modelSections,
     ...sandboxSections,
     definitions: definitionsConfigSchema,
     web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),

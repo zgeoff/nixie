@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { runCheckQuery } from '@heynixie/conversation';
 import { renderMemoryCheckerPrompt } from '@heynixie/memory';
-import { makeChecker } from '@heynixie/models';
+import { makeChecker } from '@heynixie/sessions';
 import { buildCheckerEvalInput } from '../test-utils/build-checker-eval-input';
 import type { CheckerSample } from '../test-utils/load-checker-corpus';
 import { loadCheckerCorpus } from '../test-utils/load-checker-corpus';

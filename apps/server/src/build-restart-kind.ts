@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import type { EventKind } from '@heynixie/models';
+import type { EventKind } from '@heynixie/sessions';
 import { z } from 'zod';
 import type { StartChanges } from './write-start-record';
 

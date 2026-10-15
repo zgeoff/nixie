@@ -1,4 +1,4 @@
-import type { CheckerAnswer } from '@heynixie/models';
+import type { CheckerAnswer } from '@heynixie/sessions';
 import type { ReviewReason } from './gate-types';
 
 // The review reason for a checker answer that is not asserted. A timeout or an error means the

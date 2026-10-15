@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeRecords } from '@heynixie/log';
-import { buildEventRegistry, readEventsNote } from '@heynixie/models';
+import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
 import { buildRestartKind } from './build-restart-kind';
 import { startTestLog } from './test-utils/start-test-log';
 import { writeStartRecord } from './write-start-record';

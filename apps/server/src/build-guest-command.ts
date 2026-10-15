@@ -1,6 +1,6 @@
 import { join } from 'node:path';
-import type { GuestCommand } from '@heynixie/models';
 import type { SandboxAdapter } from '@heynixie/sandbox';
+import type { GuestCommand } from '@heynixie/sessions';
 import { isTestSandbox } from './is-test-sandbox';
 
 // The conversation image runs its guest from /app as the user nixie, for the conversation and each

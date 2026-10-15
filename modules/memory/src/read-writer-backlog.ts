@@ -1,6 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { renderImageMarkers } from '@heynixie/models';
+import { renderImageMarkers } from '@heynixie/sessions';
 import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
 import { memoryWriterTaskID } from './memory-writer-task-id';

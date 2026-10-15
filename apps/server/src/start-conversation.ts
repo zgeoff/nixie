@@ -1,19 +1,15 @@
+import type { ModelSecrets, ModelsConfig } from '@heynixie/models';
+import { resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
+import type { Logger } from '@heynixie/ops';
+import type { SandboxAdapter } from '@heynixie/sandbox';
 import type {
   CompactionSettings,
   ConversationMemory,
   ConversationMemorySettings,
   ConversationRunner,
   ConversationRunnerOptions,
-  ModelSecrets,
-  ModelsConfig,
-} from '@heynixie/models';
-import {
-  resolveModelCredentials,
-  resolveRoleProfile,
-  startConversationRunner,
-} from '@heynixie/models';
-import type { Logger } from '@heynixie/ops';
-import type { SandboxAdapter } from '@heynixie/sandbox';
+} from '@heynixie/sessions';
+import { startConversationRunner } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
 import invariant from 'tiny-invariant';

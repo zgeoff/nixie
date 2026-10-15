@@ -1,7 +1,7 @@
 import { writeUnknownOutcomes } from '@heynixie/actions';
 import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
-import { checkerOwner } from '@heynixie/models';
 import { removeStaleSandboxes } from '@heynixie/sandbox';
+import { checkerOwner } from '@heynixie/sessions';
 import { conversationTaskID, runRecovery } from '@heynixie/tasks';
 import type { ServerParts } from './types';
 

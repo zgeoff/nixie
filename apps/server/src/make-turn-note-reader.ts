@@ -6,8 +6,8 @@ import {
   buildProposalAnswerKind,
   buildProposalMergeKind,
 } from '@heynixie/memory';
-import type { TurnNote, TurnNoteRange } from '@heynixie/models';
-import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/models';
+import type { TurnNote, TurnNoteRange } from '@heynixie/sessions';
+import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/sessions';
 import type { Clock } from '@heynixie/tasks';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';

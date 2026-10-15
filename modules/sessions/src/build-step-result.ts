@@ -1,7 +1,7 @@
 import type { JSONObject, RecordInput } from '@heynixie/log';
+import type { ModelRecordSource } from '@heynixie/models';
+import { buildModelRecord } from '@heynixie/models';
 import type { StepResult } from '@heynixie/tasks';
-import type { ModelRecordSource } from './build-model-record';
-import { buildModelRecord } from './build-model-record';
 import { decodeInboxUUID } from './decode-inbox-uuid';
 import { isContextOverflow } from './is-context-overflow';
 import type { GuestTurn } from './run-guest-turn';

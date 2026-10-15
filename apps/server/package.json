@@ -25,6 +25,7 @@
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/sandbox-imp": "workspace:*",
     "@heynixie/sandbox-process": "workspace:*",
+    "@heynixie/sessions": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "elysia": "catalog:",

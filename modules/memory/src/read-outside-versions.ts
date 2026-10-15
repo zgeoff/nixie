@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import type { TurnNoteRange } from '@heynixie/models';
+import type { TurnNoteRange } from '@heynixie/sessions';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import type { MemoryChange, MemoryOrigin, MemoryTables } from './types';
 import type { WriterTables } from './writer-types';

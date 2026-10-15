@@ -5,8 +5,9 @@
   // the shared oxlint config loads this plugin, which knip cannot see through
   "ignoreDependencies": ["@stylistic/eslint-plugin"],
   "workspaces": {
-    // a crash test spawns the test build of nixie by its path, so no import reaches it
-    ".": { "entry": ["e2e/nixie/main.ts"] },
+    // a crash test spawns the test build of nixie by its path, and a codemod in scripts ran once
+    // by its path and stays as the record of a mechanical change, so no import reaches either
+    ".": { "entry": ["e2e/nixie/main.ts", "scripts/*.ts"] },
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
     "libs/testing": { "entry": ["src/test-utils/run-stub-*.ts"] },
