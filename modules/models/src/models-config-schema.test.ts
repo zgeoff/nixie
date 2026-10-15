@@ -99,7 +99,9 @@ test.each([
   ['claude-haiku-5-5', 200_000],
   ['claude-sonnet-5-5', 1_000_000],
   ['claude-haiku-5-5[1m]', 1_000_000],
-])('it reads %s with a context cap of %d, at the window the CLI assumes', (model, cap) => {
+  ['anthropic/claude-sonnet-5-5', 400_000],
+  ['claude-mythos-preview', 1_000_000],
+])('it reads %s with a context cap of %d, within the window the CLI assumes', (model, cap) => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
