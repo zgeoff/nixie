@@ -30,14 +30,14 @@ reason. An unknown action stays unknown, because nothing reconciles it with the 
 
 The queue takes only a call that the [decision point](../policy/decision-point.md) allowed, under
 the claim of the step that made it. The decision point's read-only rule denies every call with an
-outside effect in a release build, so the only allowed call that reaches the queue is the crash
-tests' send tool, in a test build. The queue's transaction checks that step's lease first, so a
-runner that lost its lease queues nothing. A guest can outlive its step's lease, so the queue also
-refuses a call whose step run identity is not the task's current claim. Without that check, a call
-from the guest of a step that lost its lease would queue under the claim of the runner that took the
-task over and pass its lease check. Each action gets a random ID, which is both its queue key and
-the idempotency key the connector sends to the provider. The call's arguments sit in the record's
-erasable fields, and the decision sits on its envelope.
+outside effect, so in a release build the only call that reaches the queue comes from the queue
+check, and a test build adds the crash tests' send tool. The queue's transaction checks that step's
+lease first, so a runner that lost its lease queues nothing. A guest can outlive its step's lease,
+so the queue also refuses a call whose step run identity is not the task's current claim. Without
+that check, a call from the guest of a step that lost its lease would queue under the claim of the
+runner that took the task over and pass its lease check. Each action gets a random ID, which is both
+its queue key and the idempotency key the connector sends to the provider. The call's arguments sit
+in the record's erasable fields, and the decision sits on its envelope.
 
 A step that crashed is run again from its start, and the rerun makes the same tool calls. Each call
 arrives with an action hash that its caller builds from the call, and the queue compares calls by
@@ -93,3 +93,13 @@ model has no tool that retries an action or sets an outcome, so only the queue s
 
 Action attempts run in a runner pool of their own, apart from the task runners, so a send goes out
 while every task runner is busy with a long turn.
+
+## The queue check
+
+Each start of nixie runs one action end to end against a real connector, so a deploy proves the
+queue before any feature depends on it. The queue check is a system task that each start wakes. Its
+step calls the log-only connector's tool through the decision point and the queue, as a model's call
+would go, and reads the outcome when it lands in the inbox. The log-only connector takes no input
+and writes one line to the server log with the action ID and the attempt, so no text the model or
+the user chose reaches the log. Only the queue check's tool list holds that tool, so the scope stage
+denies it to every other run.

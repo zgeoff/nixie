@@ -699,6 +699,26 @@ test('it starts the memory writer with the batch gate, its catch-up from the fir
   expect(ctx.readOutput()).not.toInclude('memory_writer.off');
 }, 60_000);
 
+test('it queues one action for the log-only connector at start, which the action runners log', async () => {
+  const nixie = await startTestNixie();
+
+  const readLogged = () =>
+    nixie
+      .readOutput()
+      .split('\n')
+      .filter((line) => line.includes('"event":"action.logged"'))
+      .map((line) =>
+        z
+          .object({ event: z.string(), actionID: z.uuid(), attempt: z.number() })
+          .loose()
+          .parse(JSON.parse(line)),
+      );
+
+  await waitForCondition(() => readLogged().length > 0);
+
+  expect(readLogged()).toMatchObject([{ event: 'action.logged', attempt: 1 }]);
+}, 60_000);
+
 test('it answers liveness per part', async () => {
   const ctx = await setupTest();
   const live = await fetch(`${ctx.url}/health/live`);

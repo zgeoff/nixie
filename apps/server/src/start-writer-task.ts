@@ -16,6 +16,7 @@ export async function startWriterTask(
     models: parts.config.models,
     secrets: parts.modelSecrets,
     sandboxes: parts.tools.adapter,
+    queue: parts.tools.actions.queue,
     socketDir: join(parts.config.server.dataDir, 'run', 'tools'),
     image: parts.images.conversation.name,
     store,

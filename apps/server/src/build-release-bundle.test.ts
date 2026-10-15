@@ -25,11 +25,7 @@ test('it builds a test bundle with every test-build ID the server reaches', asyn
   const ctx = await setupTest();
   const bundle = await buildReleaseBundle(ctx.outdir, true);
 
-  // no slice 1 server path queues an action until the crash tests wire their send tool, so the
-  // bundler drops the queue's fault points from the server; create-allowed-action.test.ts covers them
-  expect(bundle.testBuildIDs).toStrictEqual(
-    testBuildIDs.filter((id) => !id.startsWith('queue.commit.')),
-  );
+  expect(bundle.testBuildIDs).toStrictEqual(testBuildIDs);
 }, 60_000);
 
 test('it builds a release bundle that answers live, and not ready while impd does not answer', async () => {

@@ -1,41 +1,40 @@
 import { join } from 'node:path';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import type { SandboxAdapter } from '@heynixie/sandbox';
-import type { TasksContext } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
+import type { Actions } from './build-actions';
+import { buildActions } from './build-actions';
 import type { SandboxAdapterOptions } from './build-sandbox-adapter';
 import { buildSandboxAdapter } from './build-sandbox-adapter';
-import type { DeploymentConfig } from './deployment-config-schema';
-import type { SandboxImages } from './load-sandbox-manifest';
 import { startConversationEndpoint } from './start-conversation-endpoint';
 import { startWebFetch } from './start-web-fetch';
 import type { WebFetch } from './start-web-fetch';
-import type { Cleanup, MemorySlot } from './types';
+import type { MemorySlot, ServerParts } from './types';
 
 // The sandbox adapter, the web fetch tool on its fetch sandbox, the conversation's tool
-// definitions, and the endpoint that serves them. The memory tools reach the store through the
-// slot, which the start sequence fills once the store starts.
+// definitions, the endpoint that serves them, and the action queue. The memory tools reach the
+// store through the slot, which the start sequence fills once the store starts.
 export interface Tools {
   readonly adapter: SandboxAdapter;
   readonly endpoint: ToolEndpoint;
   readonly webFetch: WebFetch;
 
-  // the web fetch tool, the time tool and the 4 memory tools
+  // the web fetch tool, the time tool, the log reader and the memory tools
   readonly definitions: readonly ToolDefinition[];
   readonly memory: MemorySlot;
+  readonly actions: Actions;
 }
 
-export interface ToolsOptions {
-  readonly config: DeploymentConfig;
-  readonly images: SandboxImages;
-  readonly context: TasksContext;
+export interface ToolsOptions extends Pick<
+  ServerParts,
+  'config' | 'images' | 'context' | 'cleanup' | 'log'
+> {
   readonly sandbox: SandboxAdapterOptions['sandbox'];
-  readonly cleanup: Cleanup;
 }
 
-// Starts the sandbox adapter, the web fetch tool on its fetch sandbox, and the tool endpoint that
-// serves the conversation's tools. The adapter resolves a sandbox's endpoint when its guest connects,
-// after the endpoint exists.
+// Starts the sandbox adapter, the web fetch tool on its fetch sandbox, the action queue, and the
+// tool endpoint that serves the conversation's tools. The adapter resolves a sandbox's endpoint when
+// its guest connects, after the endpoint exists.
 export async function startTools(options: ToolsOptions): Promise<Tools> {
   const holder: { endpoint: ToolEndpoint | null } = { endpoint: null };
   const slot: { store: ReturnType<MemorySlot['read']> } = { store: null };
@@ -68,8 +67,11 @@ export async function startTools(options: ToolsOptions): Promise<Tools> {
 
   await options.cleanup.defer(() => webFetch.stop());
 
+  const actions = buildActions(options.context, options.log);
+
   const served = await startConversationEndpoint(options, {
     webFetch: webFetch.tool,
+    queue: actions.queue,
     readStore: () => slot.store,
   });
 
@@ -80,6 +82,7 @@ export async function startTools(options: ToolsOptions): Promise<Tools> {
     endpoint: served.endpoint,
     webFetch,
     definitions: served.definitions,
+    actions,
     memory: {
       read: () => slot.store,
       set: (store) => {

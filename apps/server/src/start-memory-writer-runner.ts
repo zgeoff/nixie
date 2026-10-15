@@ -37,6 +37,10 @@ export interface MemoryWriterRunnerOptions {
   // your configured name, which the writer's memories use, or null for "the owner"
   readonly ownerName: string | null;
   readonly onError: (error: unknown) => void;
+
+  // the action queue the server's tool endpoints share, which none of the writer's tools reaches,
+  // since each runs direct
+  readonly queue: ActionQueue;
 }
 
 export interface MemoryWriterRunner extends MemoryWriter {
@@ -126,12 +130,6 @@ function resolveWriterProfile(options: MemoryWriterRunnerOptions): ResolvedProfi
   return resolved;
 }
 
-// The writer's tools stage changes and run direct, so none reaches a queue.
-const refusingQueue: ActionQueue = {
-  enqueue: () => Promise.reject(new Error('no memory writer tool runs queued')),
-  waitForOutcome: () => Promise.resolve(null),
-};
-
 // the writer's own tool endpoint, on the run socket the sandbox adapter resolves for its task
 function startWriterEndpoint(
   options: MemoryWriterRunnerOptions,
@@ -147,6 +145,6 @@ function startWriterEndpoint(
     }),
     log: options.context.log,
     definitions: options.context.definitions,
-    queue: refusingQueue,
+    queue: options.queue,
   });
 }
