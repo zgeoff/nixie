@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.24.0](https://github.com/zgeoff/nixie/compare/v0.23.0...v0.24.0) (2026-10-15)
+
+
+### Features
+
+* **geo-873:** compact the conversation with nixie's own summary ([#258](https://github.com/zgeoff/nixie/issues/258)) ([accd7ba](https://github.com/zgeoff/nixie/commit/accd7ba7affb93ff00af2c7cd4a6bf0972c95923))
+
+
+### Bug Fixes
+
+* **geo-932:** correct the headless pass counts and bound each read ([#262](https://github.com/zgeoff/nixie/issues/262)) ([e399bac](https://github.com/zgeoff/nixie/commit/e399bacc845f5795bb6524aa589fb7e327d785fe))
+* **geo-935:** keep a failed overflow summary in the log ([#263](https://github.com/zgeoff/nixie/issues/263)) ([7d56b08](https://github.com/zgeoff/nixie/commit/7d56b08b168dbbc92cd50bfecab022ada16de900))
+
 ## [0.23.0](https://github.com/zgeoff/nixie/compare/v0.22.0...v0.23.0) (2026-10-15)
 
 
