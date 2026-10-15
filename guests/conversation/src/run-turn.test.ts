@@ -322,6 +322,85 @@ test('it ends the turn with the overflow reason when the model API refuses a pro
   });
 });
 
+test('it ends an overflowed turn at its last chain entry before the overflow message', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_read', input: { name: 'garden' } } },
+    { refusal: 'prompt is too long: 210000 tokens > 200000 maximum' },
+  );
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Read the garden note.' }],
+    }),
+    ctx.deps,
+  );
+
+  const ended = ctx.frames.at(-1);
+
+  if (ended?.type !== 'ended') {
+    throw new Error('the turn did not end');
+  }
+
+  const files = await readdir(join(ctx.home, '.claude', 'projects'), { recursive: true });
+
+  const transcript = await Bun.file(
+    join(
+      ctx.home,
+      '.claude',
+      'projects',
+      files.find((path) => path.endsWith(`${ended.boundary.sessionID}.jsonl`)) ?? '',
+    ),
+  ).text();
+
+  expect(ended.terminalReason).toBe('prompt_too_long');
+
+  // the CLI's transcript holds the overflow message after the tool result, and the boundary skips it
+  expect(
+    transcript
+      .split('\n')
+      .filter((line) => line !== '')
+      .map((line) => JSON.parse(line) as { uuid?: string })
+      .find((entry) => entry.uuid === ended.boundary.messageID),
+  ).toMatchObject({ type: 'user', message: { content: [{ type: 'tool_result' }] } });
+});
+
+test('it ends an overflowed turn at its resume point when the overflow is its first chain entry', async () => {
+  const ctx = await setupTest();
+
+  const runTurnAt = async (text: string, resume: SessionPoint | null) => {
+    await runTurn(
+      buildMockTurnFrame({
+        profile: { baseURL: ctx.model.url },
+        resume,
+        input: [{ uuid: crypto.randomUUID(), text }],
+      }),
+      { ...ctx.deps, toolServer: buildStubToolServer().config },
+    );
+
+    const last = ctx.frames.at(-1);
+
+    if (last?.type !== 'ended') {
+      throw new Error('the turn did not end');
+    }
+
+    return last;
+  };
+
+  ctx.model.addReplies(
+    { text: 'APPLE' },
+    { refusal: 'prompt is too long: 210000 tokens > 200000 maximum' },
+  );
+
+  const first = await runTurnAt('one', null);
+  const overflowed = await runTurnAt('two', first.boundary);
+
+  expect(overflowed.terminalReason).toBe('prompt_too_long');
+  expect(overflowed.boundary).toStrictEqual(first.boundary);
+});
+
 test('it passes a message into the running turn at the next tool boundary and reports it read', async () => {
   const ctx = await setupTest();
 
