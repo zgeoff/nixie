@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { claimTask, tasksProjections, writeStepCommit } from '@heynixie/tasks';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import type { ConsolidationConfigInput } from './consolidation-config-schema';
 import { consolidationConfigSchema } from './consolidation-config-schema';
 import { startMemoryConsolidator } from './start-memory-consolidator';
 import type { StubConsolidatorSession } from './test-utils/build-stub-consolidator-session';
@@ -26,13 +27,13 @@ async function setupTest() {
     errors,
 
     // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the stub session holds bun mocks
-    runStep: async (session: StubConsolidatorSession) => {
+    runStep: async (session: StubConsolidatorSession, config: ConsolidationConfigInput = {}) => {
       const consolidator = await startMemoryConsolidator({
         context,
         store: memory.store,
         staging: session.staging,
         model: session.model,
-        config: consolidationConfigSchema.parse({}),
+        config: consolidationConfigSchema.parse(config),
         getPersona: () => 'You are Nix, a warm and brief assistant.',
         ownerName: null,
         onError: (error) => {
@@ -231,6 +232,49 @@ test('it records a run with no session when fewer than 2 items are active', asyn
   ]);
 
   expect(result.timers).toStrictEqual([{ dueAt: Date.parse('2026-10-19T09:00:00Z') }]);
+});
+
+test('it records a run with no session when the complete list holds no item', async () => {
+  const ctx = await setupTest();
+
+  const session = buildStubConsolidatorSession([]);
+
+  const result = await ctx.runStep(session);
+
+  expect(session.model.runSession).not.toHaveBeenCalled();
+
+  expect(result.records).toMatchObject([
+    {
+      kind: 'memory.consolidation_proposed',
+      payload: { model: null, shownItems: 0, changes: [] },
+    },
+  ]);
+});
+
+test('it runs the session on a list cut at the budget, even when the cut list holds 1 item', async () => {
+  const ctx = await setupTest();
+  const bees = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees on the roof' });
+
+  await createMemoryItem(ctx.memory.store, { text: 'Sings in a choir' });
+  await createMemoryItem(ctx.memory.store, { text: 'Grows tomatoes on the balcony' });
+
+  const shortIDs = await ctx.memory.store.readShortIDs([bees.itemID]);
+
+  const session = buildStubConsolidatorSession([]);
+
+  // 'Keeps bees on the roof' takes 6 tokens and 24 of overhead, so 40 fits it and no second item
+  await ctx.runStep(session, { item_list_tokens: 40 });
+
+  expect(session.model.runSession).toHaveBeenCalledExactlyOnceWith({
+    systemPrompt: expect.toStartWith('You are Nix, a warm and brief assistant.'),
+    prompt: expect.toSatisfy((prompt: string) =>
+      new RegExp(
+        `^Current memory items \\(not the complete list; find others with memory\\.recall\\):\\n- ${shortIDs.get(bees.itemID) ?? 'missing'} \\(\\d{4}-\\d{2}-\\d{2}\\): Keeps bees on the roof$`,
+        'u',
+      ).test(prompt),
+    ),
+    signal: expect.toSatisfy((signal: unknown) => signal instanceof AbortSignal),
+  });
 });
 
 test('it waits a whole period after the last run before it runs again', async () => {
