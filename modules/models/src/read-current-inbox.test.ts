@@ -37,7 +37,7 @@ test('it reads a message whose key a forget deleted after the first read as forg
     .where('sequence', '=', message.sequence)
     .executeTakeFirstOrThrow();
 
-  invariant(row.key_id);
+  invariant(row.key_id !== null);
 
   await removeRecordKey(ctx.context.log, row.key_id);
 
