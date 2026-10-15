@@ -24,6 +24,18 @@ that names a profile the file does not define.
 The server reads the file once, at start. Every part then runs on one version of the settings, and a
 change reaches nixie at its next start.
 
+## The context cap
+
+A profile's context cap sets the window the Claude CLI compacts within
+([compaction](./conversation-turns.md#compaction)). With auto-compaction off, the CLI ignores the
+cap and refuses a call only against the window it assumes for the model, so a cap larger than that
+window would let a turn grow past the cap. The schema therefore refuses a profile whose cap is
+larger than the window the CLI assumes for its model, and its error message gives the cap and the
+window. The CLI assumes a window of a million tokens for a model ID with the `[1m]` tag or a model
+its bundled catalog marks as native to that window, and a smaller one for every other model. The
+models module keeps a copy of that rule, read from the CLI that the pinned Agent SDK ships. A model
+the copy misses gets the smaller window, so the check refuses such a profile rather than passing it.
+
 ## Credentials
 
 A profile holds a reference to its credential, never the credential. A reference reads

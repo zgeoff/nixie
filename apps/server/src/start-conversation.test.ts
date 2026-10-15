@@ -111,6 +111,29 @@ test('it runs each turn in the conversation guest on the role profile and resume
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
 }, 30_000);
 
+test('it opens a session and runs a turn on a profile whose context cap is at the window the CLI assumes', async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab', contextTokens: 200_000 }),
+    createConversationTask(ctx.context),
+  ]);
+
+  ctx.model.addReplies({ text: 'PLUM' });
+
+  await sendTestMessage(ctx.context, runner.runStep, 'Name a fruit.');
+
+  const records = await ctx.readRecords();
+
+  expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
+    { payload: { kind: 'first' } },
+  ]);
+
+  expect(records.filter((record) => record.kind === 'model.reply')).toMatchObject([
+    { payload: { model: 'claude-test-1' }, erasable: { fields: { text: 'PLUM' } } },
+  ]);
+}, 30_000);
+
 test('it opens a new session with a pinned item and the line that says where it came from in the first message, and leaves it out of the system prompt', async () => {
   const ctx = await setupTest();
 
