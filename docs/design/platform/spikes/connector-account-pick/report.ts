@@ -33,6 +33,7 @@ interface Row {
   durationMs: number;
   error?: string;
   reply: string;
+  sample: number;
 }
 
 interface Score {
@@ -63,10 +64,12 @@ const input = process.argv[2] ?? '',
     cases: Case[];
     sets: Record<string, { connections: Connection[] }>;
   },
-  rows = readFileSync(input.endsWith('.jsonl') ? input : join(input, 'results.jsonl'), 'utf8')
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as Row),
+  rows = collectLatestRows(
+    readFileSync(input.endsWith('.jsonl') ? input : join(input, 'results.jsonl'), 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Row),
+  ),
   tallies = new Map<string, Tally>(),
   kinds = new Map<string, { right: number; runs: number }>();
 
@@ -107,6 +110,15 @@ for (const row of rows) {
 }
 
 printTable();
+
+// Keeps the last row for each run, so a run that failed and ran again counts once.
+function collectLatestRows(all: Row[]): Row[] {
+  const latest = new Map<string, Row>();
+  for (const row of all) {
+    latest.set([row.config, row.arm, row.case, row.sample].join('|'), row);
+  }
+  return [...latest.values()];
+}
 
 function buildTally(): Tally {
   return {

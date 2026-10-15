@@ -2,7 +2,8 @@
 // connector tool whose `connection` argument names the accounts in the way that the arm picks.
 // Usage: bun run.ts --out results/<name> [--configs a,b] [--arms a,b]
 //   [--samples n] [--jobs n]
-// It appends one JSON line per run to <out>/results.jsonl and skips runs the file already holds.
+// It appends one JSON line per run to <out>/results.jsonl, skips runs the file already holds, and
+// runs a failed run again.
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import {
@@ -78,10 +79,18 @@ function collectDoneKeys(): Set<string> {
     readFileSync(resultsPath, 'utf8')
       .split('\n')
       .filter(Boolean)
-      .map((line) => {
-        const row = JSON.parse(line) as { arm: string; case: string; config: string; sample: number };
-        return [row.config, row.arm, row.case, row.sample].join('|');
-      }),
+      .map(
+        (line) =>
+          JSON.parse(line) as {
+            arm: string;
+            case: string;
+            config: string;
+            error?: string;
+            sample: number;
+          },
+      )
+      .filter((row) => row.error === undefined)
+      .map((row) => [row.config, row.arm, row.case, row.sample].join('|')),
   );
 }
 
