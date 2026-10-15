@@ -31,6 +31,7 @@ interface CredentialSpec {
   backend: string; // such as 'database', 'deployment' or 'imp'
   label: string; // such as 'Google, personal'
   hosts: string[]; // where the credential may go
+  header?: string; // static only: the header the value goes in, 'Authorization' by default
   expiresAt?: string;
 }
 ```
@@ -43,6 +44,27 @@ service on a private network passes only when the credential's configuration pai
 allowed address range, the hop goes to that host, and the resolved address falls in that range.
 **Why:** a connector that follows a link from an email must never carry your token to the address
 the link names.
+
+The fetcher alone sets a request's credential, so it refuses a request that arrives with one of
+these headers set, compared without regard to case, and sends nothing:
+
+- **`Authorization`.** The fetcher writes an OAuth token here, and a static credential by default. A
+  value from the connector can hold another account's credential.
+- **`Proxy-Authorization`.** No credential that nixie holds is a proxy credential, so a value from
+  the connector is a secret the store never issued.
+- **`Cookie`.** No credential kind is a cookie, and the fetcher keeps no cookie jar, so a cookie
+  from the connector carries a session that nixie never started.
+- **The static credential's header,** the one set in its spec, such as `X-Api-Key`. A value from the
+  connector there competes with the value the fetcher adds.
+
+The fetcher also refuses a URL that holds a user name or a password, because the HTTP client turns
+it into an `Authorization` header. A refusal is the fetcher's own error, which the connector lets
+pass, as [connectors](connector.md#the-interface) defines. **Why:** a connector that builds one of
+these headers from a tool argument or from outside content, such as a token pasted into an email,
+sends your request to an allowed host under another account, so a Drive upload lands in that
+account. The fetcher refuses the request rather than replace the header, because a replacement
+covers only the header the credential uses and hides the connector's fault, while a refusal fails
+the connector's tests the first time it sets one.
 
 A record that mentions a credential holds its reference and a fingerprint, the first 8 hex digits of
 a SHA-256 of the value, so the live view shows a rotation without the value.
