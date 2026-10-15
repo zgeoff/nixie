@@ -98,13 +98,12 @@ test('it sends the instruction after the session history, with no tools, and wri
   );
 
   expect(request?.body?.tools ?? []).toStrictEqual([]);
+  expect(ctx.io.frames).toHaveLength(1);
 
-  expect(ctx.io.frames).toMatchObject([
-    {
-      type: 'summarized',
-      boundary: { sessionID: expect.not.stringMatching(ctx.boundary.sessionID) },
-    },
-  ]);
+  expect(ctx.io.frames).toSatisfyAll(
+    (frame: GuestFrame) =>
+      frame.type === 'summarized' && frame.boundary.sessionID !== ctx.boundary.sessionID,
+  );
 });
 
 test('it reports a failed call as a failure and never as a summary', async () => {

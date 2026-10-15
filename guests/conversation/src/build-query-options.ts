@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's MCP config has no readonly form
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
 import { getCompactWindow } from './get-compact-window';
@@ -22,7 +23,6 @@ export interface QueryContext {
 // Builds the options of every query(): nixie's tools alone, or none and one model call for a
 // summary, a system prompt rendered fresh on every request, and every SDK compaction off. options.env
 // replaces the CLI's environment, so each variable goes in by name.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the SDK's MCP config has no readonly form
 export function buildQueryOptions(
   turn: TurnFrame | SummarizeFrame,
   context: QueryContext,

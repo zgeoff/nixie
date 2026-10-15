@@ -61,7 +61,7 @@ test('it fails with the guest failure when the guest reports no summary', async 
   );
 });
 
-test('it fails with the abort reason and starts no guest when the signal has aborted', async () => {
+test('it fails with the abort reason and sends no summary frame when the signal aborted while the guest started', async () => {
   const ctx = setupTest();
 
   const sandbox = await ctx.sandboxes.adapter.create(

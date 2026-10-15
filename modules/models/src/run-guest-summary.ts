@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
 import type { ExecStream, Sandbox } from '@heynixie/sandbox';
 import type { GuestFrame, HostFrame } from '@heynixie/wire';
 import {
@@ -24,54 +25,60 @@ export interface GuestSummarySpec {
 // Runs the conversation guest once for one summary call and returns the summary. A guest that
 // reports a failure, or exits without a summary, throws with what it reported.
 export async function runGuestSummary(spec: GuestSummarySpec): Promise<GuestSummary> {
-  spec.signal.throwIfAborted();
-
   const stream = await spec.sandbox.spawn({
     argv: spec.command.argv,
     env: spec.command.env,
     maxMessageBytes: turnFrameLimitBytes,
   });
 
-  const stopStream = () => {
-    void stream.stop();
-  };
-
-  spec.signal.addEventListener('abort', stopStream, { once: true });
+  const unsubscribe = subscribeToAbort(spec.signal, stream);
 
   try {
+    // a signal that aborted while the guest started never fires its listener
+    spec.signal.throwIfAborted();
+
     const frames = await collectSummaryFrames(stream, spec.frame);
 
     spec.signal.throwIfAborted();
 
     return await requireSummary(stream, frames);
+  } catch (error) {
+    await stream.stop();
+
+    throw error;
   } finally {
-    spec.signal.removeEventListener('abort', stopStream);
+    unsubscribe();
   }
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
+// stops the guest when the signal aborts, until the returned function detaches it
+function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
+  const stopStream = () => {
+    void stream.stop();
+  };
+
+  signal.addEventListener('abort', stopStream, { once: true });
+
+  return () => {
+    signal.removeEventListener('abort', stopStream);
+  };
+}
+
 async function collectSummaryFrames(
   stream: ExecStream,
   frame: SummarizeFrame,
 ): Promise<readonly GuestFrame[]> {
   const frames: GuestFrame[] = [];
 
-  try {
-    await stream.send(encodeTurnFrame(frame));
+  await stream.send(encodeTurnFrame(frame));
 
-    for await (const message of stream.messages) {
-      frames.push(decodeTurnFrame(guestFrameSchema, message));
-    }
-  } catch (error) {
-    await stream.stop();
-
-    throw error;
+  for await (const message of stream.messages) {
+    frames.push(decodeTurnFrame(guestFrameSchema, message));
   }
 
   return frames;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
 async function requireSummary(
   stream: ExecStream,
   frames: readonly GuestFrame[],
