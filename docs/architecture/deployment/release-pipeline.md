@@ -123,7 +123,9 @@ Every pull request rehearses the image stages against a registry that lives only
 builds all 4 images, writes the sandbox manifest, checks that the nixie image carries it, pulls the
 sandbox images with no credentials, and tags every image twice to prove the tag stage keeps each
 digest and repeats safely. It then builds `release.json` from those digests, as the assets stage
-does, and checks that each image it names resolves its tag to its digest. A broken Dockerfile or
+does, and checks that each image it names resolves its tag to its digest. It runs the upload script
+against a stand-in for the GitHub CLI, which proves the schema goes up before `release.json` and
+that a failed schema upload stops the run before `release.json` goes out. A broken Dockerfile or
 release script therefore fails the pull request, never a release.
 
 ## Attestations

@@ -125,8 +125,9 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
 
       # the release's assets stage on the rehearsal digests, with the summaries the notes stage
-      # writes; every image that release.json names must resolve its tag to its digest
-      - name: Build release.json, and check each image it names
+      # writes: every image that release.json names must resolve its tag to its digest, and the
+      # upload script runs against a stand-in for gh
+      - name: Build release.json, check each image it names, and rehearse its upload
         env:
           CONVERSATION:
             ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
@@ -149,6 +150,7 @@ jobs:
             fi
             echo "$ref resolves"
           done
+          .github/scripts/check-publish-release-assets.sh "$RUNNER_TEMP/release.json"
           {
             echo '## release.json'
             echo
