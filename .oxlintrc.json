@@ -141,8 +141,10 @@
                   "File",
                   "Headers",
                   "InputEvent",
+                  "ReadonlySet",
                   "Request",
-                  "Response"
+                  "Response",
+                  "Uint8Array"
                 ]
               },
               { "from": "package", "package": "bun-types", "name": ["Blob", "File", "WebView"] },

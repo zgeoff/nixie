@@ -333,17 +333,19 @@ test('it shows a marker line for each image of your message and none of its byte
     limit: 20,
   });
 
-  expect(page.entries).toMatchObject([
+  expect(page.entries).toStrictEqual([
     {
       sequence: record.sequence,
       role: 'owner',
       recordedAt: expect.toBeNumber(),
-      text: expect.stringMatching(
-        /^The two kitchen plans\n<dropped-image id="[0-9a-f]{12}" n="1"\/>\n<dropped-image id="[0-9a-f]{12}" n="2"\/>$/u,
-      ),
+      text: expect.toBeString(),
       isCut: false,
     },
   ]);
+
+  expect(page.entries.at(0)?.text).toMatch(
+    /^The two kitchen plans\n<dropped-image id="[0-9a-f]{12}" n="1"\/>\n<dropped-image id="[0-9a-f]{12}" n="2"\/>$/u,
+  );
 });
 
 test('it puts each pasted span of your message in a block', async () => {

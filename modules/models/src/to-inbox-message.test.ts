@@ -17,22 +17,18 @@ test('it passes each image of your message in base64 after its marker, and leave
     [new Uint8Array([0x89, 0x50, 0x4e, 0x47]), new Uint8Array([0xff, 0xd8, 0xff, 0xe0])],
   );
 
-  expect(message).toMatchObject({
+  expect(message).toStrictEqual({
     uuid: expect.toBeString(),
     text: '[#48213 · Mon 12 Oct, 21:31, Sydney] Which poster?',
     images: [
-      {
-        marker: expect.stringMatching(/^<dropped-image id="[0-9a-f]{12}" n="1"\/>$/u),
-        mediaType: 'image/png',
-        data: 'iVBORw==',
-      },
-      {
-        marker: expect.stringMatching(/^<dropped-image id="[0-9a-f]{12}" n="2"\/>$/u),
-        mediaType: 'image/jpeg',
-        data: '/9j/4A==',
-      },
+      { marker: expect.toBeString(), mediaType: 'image/png', data: 'iVBORw==' },
+      { marker: expect.toBeString(), mediaType: 'image/jpeg', data: '/9j/4A==' },
     ],
   });
+
+  expect(message.images?.map((image) => image.marker).join('\n')).toMatch(
+    /^<dropped-image id="[0-9a-f]{12}" n="1"\/>\n<dropped-image id="[0-9a-f]{12}" n="2"\/>$/u,
+  );
 });
 
 test('it passes a message with no images as its text alone', () => {

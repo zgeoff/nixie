@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { loadOutboxImages } from './load-outbox-images';
 import { removeStaleOutboxImages } from './remove-stale-outbox-images';
-import type { OutboxMessage } from './types';
+import type { OutboxMessage, ReadonlyDeep } from './types';
 import type { OutboxEntry } from './use-outbox';
 import { writeOutboxImages } from './write-outbox-images';
 
@@ -64,6 +64,8 @@ interface StoredSend {
 // read back fails, and keeps its place in storage for a retry.
 async function sendStoredMessages(
   stored: readonly OutboxMessage[],
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- it records each sent message in the written set
   send: StoredSend,
 ): Promise<void> {
   for (const message of stored) {
@@ -87,6 +89,8 @@ async function sendStoredMessages(
 // IndexedDB keeps a copy of each unconfirmed message's images until the message leaves storage
 async function writeStoredImages(
   messages: readonly OutboxMessage[],
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- it records each message whose images it writes
   written: Set<string>,
 ): Promise<void> {
   const unwritten = messages.filter(
@@ -140,7 +144,9 @@ function readStoredMessages(): readonly OutboxMessage[] {
 }
 
 // the images stay unread until the page reads them back from IndexedDB
-function toOutboxMessage(stored: z.infer<typeof storedMessagesSchema>[number]): OutboxMessage {
+function toOutboxMessage(
+  stored: ReadonlyDeep<z.infer<typeof storedMessagesSchema>[number]>,
+): OutboxMessage {
   const { imageCount, ...message } = stored;
 
   return imageCount === undefined ? message : { ...message, unreadImages: imageCount };
