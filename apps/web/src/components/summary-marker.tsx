@@ -9,9 +9,8 @@ export interface SummaryMarkerProps {
 }
 
 // A rule across the feed where nixie closed the session with a summary, with its sizes. It starts
-// closed, as the same rule as a compaction marker, and opening it shows the summary the next
-// session opened with, while a forget has not erased it. A tiny arrow shows that it opens: it
-// points right while closed and down while open, and a marker with no text to open has none.
+// closed, as a compaction marker's rule with a tiny arrow, and opening it shows the summary the
+// next session opened with, while a forget has not erased it.
 export function SummaryMarker(props: SummaryMarkerProps): ReactNode {
   const line = formatSummary(props.summary);
 

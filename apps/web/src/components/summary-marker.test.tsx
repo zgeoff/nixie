@@ -24,7 +24,7 @@ test('it marks where the session closed with the summary sizes, and shows its te
   expect(rendered.getByText('Open threads: the gauge report.')).toBeVisible();
 });
 
-test('it starts closed, with its sizes showing and its text hidden', () => {
+test('it starts closed, with its arrow and sizes showing and its text hidden', () => {
   const rendered = render(
     <SummaryMarker
       summary={{
@@ -46,7 +46,7 @@ test('it starts closed, with its sizes showing and its text hidden', () => {
   ).not.toBeVisible();
 });
 
-test('it marks a summary a forget erased with its sizes and no text', () => {
+test('it marks a summary a forget erased with its sizes, and no text or arrow', () => {
   const rendered = render(
     <SummaryMarker summary={{ sequence: 21, summaryTokens: 1200, trigger: 'overflow' }} />,
   );
