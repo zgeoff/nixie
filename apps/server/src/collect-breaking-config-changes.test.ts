@@ -188,6 +188,16 @@ test.each([
     expected: ['(root): drops prefixItems'],
   },
   {
+    label: 'a dropped key that the current extra-key schema covers',
+    released: {
+      type: 'object',
+      properties: { port: { type: 'integer' } },
+      additionalProperties: { type: 'string' },
+    },
+    current: { type: 'object', properties: {}, additionalProperties: { type: 'string' } },
+    expected: ['port: is no longer accepted'],
+  },
+  {
     label: 'a dropped patternProperties',
     released: {
       type: 'object',
