@@ -63,9 +63,6 @@ test('it renders the conversation signed in when a link from another site opens 
   }).then((response) => response.status)`);
 
   await ctx.view.navigate(ctx.elsewhereURL);
-
-  const callsBeforeLaunch = ctx.api.requests.length;
-
   await ctx.view.click('#open');
 
   await waitFor(
@@ -81,12 +78,11 @@ test('it renders the conversation signed in when a link from another site opens 
     query.where({ deviceName: 'kitchen tablet' }),
   );
 
-  // the server render is the launch's first call, and it carried the session from the cookie
-  expect(ctx.api.requests.at(callsBeforeLaunch)).toStrictEqual({
-    authorization: `Bearer ${session?.token}`,
-    cookie: null,
-    path: '/rpc/conversation/read',
-  });
+  // only a server render sends a bearer token, and only the launch's render had a session to
+  // forward, so this holds whatever order the earlier page's calls arrive in
+  expect(ctx.api.requests.filter((request) => request.authorization !== null)).toStrictEqual([
+    { authorization: `Bearer ${session?.token}`, cookie: null, path: '/rpc/conversation/read' },
+  ]);
 }, 120_000);
 
 test('it checks again in the browser when the server render gets no cookie that the browser holds', async () => {
