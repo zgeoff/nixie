@@ -13,7 +13,7 @@ export interface StoredOutboxOptions {
 export interface StoredOutbox {
   // drops stored messages by client message ID, which the outbox's own writes would keep as
   // another tab's once the outbox no longer holds them
-  readonly remove: (clientMessageIDs: ReadonlySet<string>) => void;
+  readonly remove: (clientMessageIDs: readonly string[]) => void;
 }
 
 const storageKey = 'nixie.outbox';
@@ -47,9 +47,11 @@ export function useStoredOutbox(options: StoredOutboxOptions): StoredOutbox {
 
 const storedOutbox: StoredOutbox = { remove: removeStoredMessages };
 
-function removeStoredMessages(clientMessageIDs: ReadonlySet<string>): void {
+function removeStoredMessages(clientMessageIDs: readonly string[]): void {
+  const removed = new Set(clientMessageIDs);
+
   const stored = readStoredMessages();
-  const kept = stored.filter((message) => !clientMessageIDs.has(message.clientMessageId));
+  const kept = stored.filter((message) => !removed.has(message.clientMessageId));
 
   if (kept.length !== stored.length) {
     writeStoredMessages(kept);

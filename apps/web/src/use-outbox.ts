@@ -62,7 +62,7 @@ export function useOutbox(forgottenClientMessageIDs: readonly string[]) {
 
     const removed = new Set(forgottenClientMessageIDs);
 
-    stored.remove(removed);
+    stored.remove(forgottenClientMessageIDs);
 
     setEntries((current) =>
       current.some((entry) => removed.has(entry.message.clientMessageId))
