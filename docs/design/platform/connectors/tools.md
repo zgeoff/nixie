@@ -78,12 +78,12 @@ The endpoint retries a failure that can clear, inside one time budget per call, 
 attempt and every wait. The budget is 15 s and the attempts 3, both configurable, so a failed read
 holds the turn no longer than a slow web fetch does.
 
-- **Rate limited.** The connector returns `retry` for a rate limit in whatever form the provider
-  sends it, such as a 429 or Gmail's 403 with `rateLimitExceeded`, with the provider's retry time
-  from `Retry-After` or from the provider's own field. The endpoint waits that time and tries again
-  when the time ends inside the budget, and otherwise returns at once with the retry time.
-- **Provider failure.** A `retry` without a retry time, such as for a 5xx answer, waits on a backoff
-  of 1 s, then 2 s, with jitter, inside the budget.
+- **Rate limited.** A `retry` that carries the provider's retry time, from `Retry-After` or from the
+  provider's own field. The endpoint waits that time and tries again when the time ends inside the
+  budget, and otherwise returns at once with the retry time.
+- **Provider failure.** A `retry` without a retry time, such as for a 5xx answer or for Gmail's 403
+  with `rateLimitExceeded`, which gives no time. The endpoint waits on a backoff of 1 s, then 2 s,
+  with jitter, inside the budget.
 - **No answer.** A dropped connection counts as a failure that can clear, because a direct call
   reads and repeats nothing, so it waits on the same backoff. An attempt still open when the budget
   ends stops there, and the call returns `no_answer`.
@@ -93,9 +93,9 @@ holds the turn no longer than a slow web fetch does.
 - **Fetcher refusal.** A host outside the credential's hosts, a non-public address and a `failing`
   credential never reach the provider, so a retry could not change them.
 
-The endpoint acts on the connector's response, never on the status code alone, because providers
-differ in which codes can clear. It names the error `rate_limited` when the last `retry` carried a
-retry time or a 429, and `failed` for any other `retry`.
+The endpoint picks the row from the connector's response, never from the status code, because
+providers differ in which codes can clear. The connector returns `retry` for every answer that can
+clear, a 403 rate limit included, and `refused` for the rest.
 
 Back-to-back retries with no wait only spend the provider's quota, so every retry waits. A retry
 time past the budget returns at once, because the model can tell you when to ask again, while a turn
