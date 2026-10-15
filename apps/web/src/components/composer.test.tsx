@@ -212,6 +212,67 @@ test('it takes no more than 4 images and says why it left the rest out', async (
   expect(rendered.getAllByRole('img', { name: /^Attached image/u })).toHaveLength(4);
 });
 
+test('it scales no more of a large selection than the free slots take', async () => {
+  const user = userEvent.setup();
+
+  const scaled = new File([new Uint8Array([0x89, 0x50])], 'image.png', { type: 'image/png' });
+
+  const normalizeImage = mock<(image: File) => Promise<File>>(() => Promise.resolve(scaled));
+
+  const rendered = render(
+    <Composer
+      normalizeImage={normalizeImage}
+      onSend={mock<(message: ComposedMessage) => void>()}
+    />,
+  );
+
+  await user.upload(
+    rendered.getByLabelText('Photos'),
+    Array.from(
+      { length: 9 },
+      (_, index) => new File([new Uint8Array([index])], `room-${index}.png`, { type: 'image/png' }),
+    ),
+  );
+
+  await rendered.findByRole('status');
+
+  expect(normalizeImage.mock.calls.map((call) => call[0].name)).toStrictEqual([
+    'room-0.png',
+    'room-1.png',
+    'room-2.png',
+    'room-3.png',
+  ]);
+});
+
+test('it scales the next photo in place of one the browser cannot read', async () => {
+  const user = userEvent.setup();
+
+  const scaled = new File([new Uint8Array([0x89, 0x50])], 'image.png', { type: 'image/png' });
+
+  const rendered = render(
+    <Composer
+      normalizeImage={(image) =>
+        image.name === 'beach.heic'
+          ? Promise.reject(new Error('no HEIC decoder'))
+          : Promise.resolve(scaled)
+      }
+      onSend={mock<(message: ComposedMessage) => void>()}
+    />,
+  );
+
+  await user.upload(rendered.getByLabelText('Photos'), [
+    new File([new Uint8Array([1])], 'beach.heic', { type: 'image/heic' }),
+    ...Array.from(
+      { length: 4 },
+      (_, index) => new File([new Uint8Array([index])], `room-${index}.png`, { type: 'image/png' }),
+    ),
+  ]);
+
+  await rendered.findByRole('status');
+
+  expect(rendered.getAllByRole('img', { name: /^Attached image/u })).toHaveLength(4);
+});
+
 test('it leaves out an image the browser cannot read and says so', async () => {
   const user = userEvent.setup();
 

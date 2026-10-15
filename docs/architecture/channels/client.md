@@ -206,7 +206,9 @@ again, as PNG for a PNG, GIF or WebP and as JPEG for anything else. Encoding aga
 data, a photo's location included, and the device keeps only the scaled copy. A HEIC photo converts
 only where the browser decodes HEIC, as Safari does; elsewhere the composer leaves the image out and
 says so. The composer refuses an image past the contract's count, and one still past its size once
-scaled, with a notice in place of an error from the API.
+scaled, with a notice in place of an error from the API. It scales the picked images one at a time
+and stops once the free slots hold images that read and fit, so a large selection never decodes
+every photo at full size before Send works again.
 
 The composer shows each attached image as a thumbnail with a control that removes it, and the outbox
 shows the same thumbnails while a message waits. The thread reads each image of a sent message

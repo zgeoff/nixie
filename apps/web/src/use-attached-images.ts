@@ -24,23 +24,21 @@ export function useAttachedImages(normalizeImage: (image: File) => Promise<File>
 
       setScaling((current) => current + 1);
 
-      const read = await readScaledImages(picked, normalizeImage);
+      const scaled = await readScaledImages(picked, {
+        normalizeImage,
+        room: imageLimits.count - images.length,
+      });
 
       setScaling((current) => current - 1);
 
-      const fitting = read.filter((file) => file.size <= imageLimits.bytes);
-      const room = imageLimits.count - images.length;
-
       setImages((current) => [
         ...current,
-        ...fitting
+        ...scaled.files
           .slice(0, imageLimits.count - current.length)
           .map((file) => ({ id: crypto.randomUUID(), file })),
       ]);
 
-      setNotice(
-        pickNotice({ picked: picked.length, read: read.length, fitting: fitting.length, room }),
-      );
+      setNotice(pickNotice(scaled));
     },
     [images.length, normalizeImage],
   );
@@ -63,33 +61,78 @@ function isImageFile(file: File): boolean {
   return file.type.startsWith('image/') || /\.hei[cf]$/iu.test(file.name);
 }
 
-// the scaled copy of each image the browser could read, in the order picked
-async function readScaledImages(
-  picked: readonly File[],
-  normalizeImage: (image: File) => Promise<File>,
-): Promise<readonly File[]> {
-  const results = await Promise.allSettled(picked.map((file) => normalizeImage(file)));
+interface ScaleOptions {
+  readonly normalizeImage: (image: File) => Promise<File>;
 
-  return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
-}
-
-interface AttachCounts {
-  readonly picked: number;
-  readonly read: number;
-  readonly fitting: number;
+  // the free slots in the message
   readonly room: number;
 }
 
-function pickNotice(counts: AttachCounts): string | null {
-  if (counts.read < counts.picked) {
+// The scaled copies that read and fit, in the order picked, with the count of each image left out.
+interface ScaledImages {
+  readonly files: readonly File[];
+  readonly unread: number;
+  readonly over: number;
+
+  // the images never scaled, because the free slots held images that read and fit before them
+  readonly unscaled: number;
+}
+
+// scales one image at a time, so a large selection decodes no more photos than the free slots take
+async function readScaledImages(
+  picked: readonly File[],
+  options: ScaleOptions,
+): Promise<ScaledImages> {
+  const scaled: ScaledTally & { tried: number } = { files: [], unread: 0, over: 0, tried: 0 };
+
+  for (const file of picked) {
+    if (scaled.files.length >= options.room) {
+      break;
+    }
+
+    scaled.tried += 1;
+
+    // oxlint-disable-next-line no-await-in-loop -- the next image scales only while a slot is free
+    const read = await options.normalizeImage(file).catch(() => null);
+
+    updateScaledTally(scaled, read);
+  }
+
+  return {
+    files: scaled.files,
+    unread: scaled.unread,
+    over: scaled.over,
+    unscaled: picked.length - scaled.tried,
+  };
+}
+
+interface ScaledTally {
+  readonly files: File[];
+  unread: number;
+  over: number;
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the scan's own tally, which this fills in
+function updateScaledTally(scaled: ScaledTally, read: File | null) {
+  if (read === null) {
+    scaled.unread += 1;
+  } else if (read.size > imageLimits.bytes) {
+    scaled.over += 1;
+  } else {
+    scaled.files.push(read);
+  }
+}
+
+function pickNotice(scaled: ScaledImages): string | null {
+  if (scaled.unread > 0) {
     return 'This browser could not read an image, so it was left out.';
   }
 
-  if (counts.fitting < counts.read) {
+  if (scaled.over > 0) {
     return 'An image was still over 5 MB once scaled, so it was left out.';
   }
 
-  if (counts.fitting > counts.room) {
+  if (scaled.unscaled > 0) {
     return `A message takes up to ${imageLimits.count} images.`;
   }
 
