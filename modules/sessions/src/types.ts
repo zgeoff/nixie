@@ -4,7 +4,7 @@ import type { ResolvedProfile } from '@heynixie/models';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { StepInput, TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
-import type { TurnProfile } from '@heynixie/wire';
+import type { SessionPoint, TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
 import type { SessionGuard } from './make-session-guard';
 import type { SessionMarks } from './read-session-marks';
@@ -153,13 +153,47 @@ export interface ConversationRun {
   readonly session: SessionGuard;
 }
 
+// Where the session stands when a step begins: fresh, summarized after its last opening, resumable
+// or due for compaction at its boundary, invalidated by a forget, or lost because its boundary
+// opened before sessions kept their opening.
+export type SessionState =
+  | 'fresh'
+  | 'summarized'
+  | 'resumable'
+  | 'compaction-due'
+  | 'invalidated'
+  | 'lost';
+
+// a state whose session resumes at its boundary
+type LiveSessionState = Extract<SessionState, 'resumable' | 'compaction-due'>;
+
+// what a step does to the session: opens a new one, resumes the one at the boundary, or compacts it
+export type SessionEvent = 'open' | 'resume' | 'compact';
+
+// a live session's state, with the boundary it resumes at
+export interface LiveSessionPosition {
+  readonly state: LiveSessionState;
+  readonly boundary: SessionPoint;
+}
+
+// Where the session stands when a step begins: its state, and the boundary the last step committed.
+// Only a live session is sure to hold a boundary.
+export type SessionPosition =
+  | LiveSessionPosition
+  | {
+      readonly state: Exclude<SessionState, LiveSessionState>;
+      readonly boundary: SessionPoint | null;
+    };
+
 // One step of the conversation as its parts see it: the run, the step's input, the session marks it
-// read, and the signal that stops it when the lease is lost or a forget invalidates the session.
+// read and the session position they give, and the signal that stops it when the lease is lost or a
+// forget invalidates the session.
 export interface SessionStep {
   readonly run: ConversationRun;
   readonly input: StepInput;
   readonly signal: AbortSignal;
   readonly marks: SessionMarks;
+  readonly position: SessionPosition;
 }
 
 // What a step that takes the inbox may do: compact when its turn overflows or ends past the
