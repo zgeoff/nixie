@@ -1,4 +1,5 @@
 import { expect, onTestFinished, spyOn, test } from 'bun:test';
+import { Socket } from 'node:net';
 import { checkIsolationTargets } from './check-isolation-targets';
 
 function startListener(hostname: string) {
@@ -61,7 +62,7 @@ test('it reports a live IPv4 listener beside the sandbox outcome', async () => {
   const lines = await checkIsolationTargets(
     [['127.0.0.1', listener.port]],
     () => Promise.resolve('failed ECONNREFUSED'),
-    ipv4Only,
+    { interfaces: ipv4Only },
   );
 
   expect(lines).toStrictEqual([
@@ -78,7 +79,7 @@ test('it reports a failed listener for a port where nothing listens', async () =
   const lines = await checkIsolationTargets(
     [['127.0.0.1', port]],
     () => Promise.resolve('failed ECONNREFUSED'),
-    dualStack,
+    { interfaces: dualStack },
   );
 
   expect(lines).toStrictEqual([
@@ -92,7 +93,7 @@ test('it reports a live IPv6 listener from a machine with routable IPv6', async 
   const lines = await checkIsolationTargets(
     [['::1', listener.port]],
     () => Promise.resolve('failed timeout'),
-    dualStack,
+    { interfaces: dualStack },
   );
 
   expect(lines).toStrictEqual([`::1:${listener.port} listener connected; sandbox failed timeout`]);
@@ -114,7 +115,7 @@ test('it prints an IPv6 target as unprovable from a machine with only link-local
       ['::1', ipv6.port],
     ],
     () => Promise.resolve('failed ECONNREFUSED'),
-    ipv4Only,
+    { interfaces: ipv4Only },
   );
 
   const unprovable = `::1:${ipv6.port} listener unprovable from the runner, which has no routable IPv6 address; sandbox failed ECONNREFUSED`;
@@ -125,4 +126,21 @@ test('it prints an IPv6 target as unprovable from a machine with only link-local
   ]);
 
   expect(warn.mock.calls).toStrictEqual([[`no listener proof: ${unprovable}`]]);
+});
+
+test('it reports a listener timeout and closes the socket once the deadline passes', async () => {
+  const socket = new Socket();
+
+  onTestFinished(() => {
+    socket.destroy();
+  });
+
+  const lines = await checkIsolationTargets(
+    [['192.0.2.7', 8443]],
+    () => Promise.resolve('failed timeout'),
+    { interfaces: dualStack, deadlineMs: 50, openSocket: () => socket },
+  );
+
+  expect(lines).toStrictEqual(['192.0.2.7:8443 listener failed timeout; sandbox failed timeout']);
+  expect(socket.destroyed).toBe(true);
 });
