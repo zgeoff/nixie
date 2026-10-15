@@ -359,11 +359,11 @@ test('it ends an overflowed turn at its last chain entry before the overflow mes
 
   // the CLI's transcript holds the overflow message after the tool result, and the boundary skips it
   expect(
-    transcript
-      .split('\n')
-      .filter((line) => line !== '')
-      .map((line) => JSON.parse(line) as { uuid?: string })
-      .find((entry) => entry.uuid === ended.boundary.messageID),
+    JSON.parse(
+      transcript
+        .split('\n')
+        .find((line) => line.includes(`"uuid":"${ended.boundary.messageID}"`)) ?? 'null',
+    ),
   ).toMatchObject({ type: 'user', message: { content: [{ type: 'tool_result' }] } });
 });
 
