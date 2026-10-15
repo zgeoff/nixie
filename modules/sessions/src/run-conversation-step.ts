@@ -1,6 +1,8 @@
-import { isCompactionDue } from '@heynixie/compaction';
 import type { StepInput, StepResult } from '@heynixie/tasks';
+import { canSessionTake } from './can-session-take';
+import { isSessionLive } from './is-session-live';
 import { parseSessionBoundary } from './parse-session-boundary';
+import { pickSessionPosition } from './pick-session-position';
 import { readSessionMarks } from './read-session-marks';
 import { runCompactionStep } from './run-compaction-step';
 import { runInboxStep } from './run-inbox-step';
@@ -14,12 +16,16 @@ export function runConversationStep(run: ConversationRun, input: StepInput): Pro
 
     const marks = await readSessionMarks(run.context, input.taskID);
 
-    const boundary = parseSessionBoundary(input.sessionBoundary);
-    const step = { run, input, signal, marks };
-    const isResumable = boundary !== null && !marks.isInvalidated && marks.hasOpening;
+    const position = pickSessionPosition({
+      marks,
+      boundary: parseSessionBoundary(input.sessionBoundary),
+      threshold: run.compaction.threshold,
+    });
 
-    if (isResumable && isCompactionDue(marks.lastContext, run.compaction.threshold)) {
-      return runCompactionStep(step, boundary);
+    const step = { run, input, signal, marks, position };
+
+    if (isSessionLive(position) && canSessionTake(position.state, 'compact')) {
+      return runCompactionStep(step, position.boundary);
     }
 
     if (input.inbox.length === 0) {

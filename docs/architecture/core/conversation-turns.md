@@ -116,6 +116,10 @@ the turn again on a new session. A session from before opening records holds the
 its old system prompt, and an older guest's CLI compaction dropped the opening from its session's
 transcript, so the step opens a new session in place of either.
 
+Each step reads the session's state from the log once, before it acts, and one transition table
+gives the events each state allows: open, resume or compact. Both step paths ask the table, so the
+resume rule has one copy.
+
 Every new session opens from one builder, with the pinned memory, the status, the newest summary and
 the recent turns before the turn's own blocks, and the step writes a session-opened record in the
 turn's commit ([session opening](./session-opening.md)). A turn that resumes its session carries no
