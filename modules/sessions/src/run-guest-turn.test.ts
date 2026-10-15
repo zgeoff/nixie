@@ -29,43 +29,8 @@ test('it collects the frames the guest sent for the turn', async () => {
     ],
     read: ['6e697869-0000-8000-8000-000000000002'],
     ended: [expect.objectContaining({ type: 'ended', subtype: 'success' })],
-    compactions: [],
     failure: null,
   });
-});
-
-test('it collects each compaction that came before the last result, and drops one after it', async () => {
-  const ctx = setupTest();
-
-  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
-
-  const replyID = '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01';
-
-  ctx.stub.setGuestScript(() => [
-    { type: 'compacted', trigger: 'auto', preTokens: 150_000, postTokens: 400 },
-    { type: 'assistant', messageID: replyID, text: 'Hello.', toolUses: [] },
-    {
-      type: 'ended',
-      boundary: { sessionID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f', messageID: replyID },
-      subtype: 'success',
-      stopReason: 'end_turn',
-      turns: 1,
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-    { type: 'compacted', trigger: 'auto', preTokens: 160_000, postTokens: null },
-  ]);
-
-  const turn = await runGuestTurn({
-    sandbox,
-    command: { argv: ['guest'], env: {} },
-    turn: buildMockTurnFrame(),
-    messages: [],
-    signal: new AbortController().signal,
-  });
-
-  expect(turn.compactions).toStrictEqual([
-    { type: 'compacted', trigger: 'auto', preTokens: 150_000, postTokens: 400 },
-  ]);
 });
 
 test('it drops the reads and replies a guest sent after its last result when it dies before the next', async () => {
@@ -104,24 +69,19 @@ test('it drops the reads and replies a guest sent after its last result when it 
     assistants: [{ type: 'assistant', messageID: replyID, text: 'Hello.', toolUses: [] }],
     read: ['6e697869-0000-8000-8000-000000000002'],
     ended: [expect.objectContaining({ type: 'ended', turns: 1 })],
-    compactions: [],
     failure: null,
   });
 });
 
-test('it reports the mark it read at each compaction and at the last result, before a guest that died sent more', async () => {
+test('it reports the mark it read at the last result, before a guest that died sent more', async () => {
   const ctx = setupTest();
 
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
   const replyID = '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01';
-
-  const readRecallMark = mock(() => Promise.resolve(0))
-    .mockResolvedValueOnce(17)
-    .mockResolvedValueOnce(42);
+  const readRecallMark = mock(() => Promise.resolve(0)).mockResolvedValueOnce(42);
 
   ctx.stub.setGuestScript(() => [
-    { type: 'compacted', trigger: 'auto', preTokens: 150_000, postTokens: 400 },
     { type: 'assistant', messageID: replyID, text: 'Hello.', toolUses: [] },
     {
       type: 'ended',
@@ -143,12 +103,8 @@ test('it reports the mark it read at each compaction and at the last result, bef
     readRecallMark,
   });
 
-  expect(turn.compactions).toStrictEqual([
-    { type: 'compacted', trigger: 'auto', preTokens: 150_000, postTokens: 400, mark: 17 },
-  ]);
-
   expect(turn.endedMark).toBe(42);
-  expect(readRecallMark).toHaveBeenCalledTimes(2);
+  expect(readRecallMark).toHaveBeenCalledOnce();
 });
 
 test('it passes each live message into the running turn', async () => {

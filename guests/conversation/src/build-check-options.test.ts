@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildCheckOptions } from './build-check-options';
 
-test('it gives a checker query no tools, no MCP server, no settings and no saved session', () => {
+test('it gives a checker query no tools, no MCP server, no settings, no CLI compaction and no saved session', () => {
   const options = buildCheckOptions(
     {
       profile: {
@@ -26,7 +26,12 @@ test('it gives a checker query no tools, no MCP server, no settings and no saved
     mcpServers: {},
     skills: [],
     persistSession: false,
-    settings: { disableBundledSkills: true, autoMemoryEnabled: false, autoDreamEnabled: false },
+    settings: {
+      disableBundledSkills: true,
+      autoMemoryEnabled: false,
+      autoDreamEnabled: false,
+      autoCompactEnabled: false,
+    },
     systemPrompt: 'You check one candidate memory.',
     outputFormat: {
       type: 'json_schema',
@@ -71,6 +76,7 @@ test('it gives a checker query the profile and the auth placeholder, and no othe
     CLAUDE_CODE_EFFORT_LEVEL: 'low',
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
+    DISABLE_COMPACT: '1',
     DISABLE_AUTOUPDATER: '1',
   });
 });

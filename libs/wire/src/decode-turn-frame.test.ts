@@ -73,36 +73,15 @@ test('it refuses a turn frame with an empty inbox', () => {
   expect(result.error?.issues).toPartiallyContain({ path: ['input'] });
 });
 
-test('it decodes a compaction the guest reported, with its token counts', () => {
-  const message = encoder.encode(
-    JSON.stringify({ type: 'compacted', trigger: 'auto', preTokens: 104_000, postTokens: 3200 }),
-  );
-
-  expect(decodeTurnFrame(guestFrameSchema, message)).toStrictEqual({
-    type: 'compacted',
-    trigger: 'auto',
-    preTokens: 104_000,
-    postTokens: 3200,
-  });
-});
-
-test('it drops any summary text a compaction frame carries', () => {
+test('it refuses a frame that reports a CLI compaction, which no guest sends', () => {
   const result = guestFrameSchema.safeParse({
     type: 'compacted',
     trigger: 'auto',
     preTokens: 104_000,
     postTokens: 3200,
-    summary: 'The owner planned a trip.',
   });
 
-  expect(result.success).toBe(true);
-
-  expect(result.data).toStrictEqual({
-    type: 'compacted',
-    trigger: 'auto',
-    preTokens: 104_000,
-    postTokens: 3200,
-  });
+  expect(result.error?.issues).toPartiallyContain({ path: ['type'] });
 });
 
 test('it decodes a message frame whose message carries images', () => {

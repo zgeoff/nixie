@@ -34,9 +34,9 @@ pin therefore leaves the system prompt and the cached prefix of the whole histor
 pin, an edit or an unpin during the session arrives as the pinned-core change note, which overrides
 the opening's copy of the item, and the next session opens with the new core.
 
-The CLI's own compaction, which the guest keeps off, would summarize the first message away with the
-rest of the history. When the CLI reports one anyway, the turn after it therefore sends the whole
-pinned core again, as a pinned-memory system message before its other blocks.
+The CLI's own compaction would summarize the first message away with the rest of the history, so the
+guest turns every CLI compaction off. A session therefore keeps its opening until nixie's compactor
+closes it, and the session after it opens with the whole pinned core again.
 
 ## One path for every start
 

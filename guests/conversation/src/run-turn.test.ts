@@ -49,7 +49,7 @@ async function setupTest() {
   };
 }
 
-test('it gives every query() nixie tools alone, no settings, skills or SDK memory, and no SDK compaction', async () => {
+test('it gives every query() nixie tools alone, no settings, skills or SDK memory, and no CLI compaction', async () => {
   const ctx = await setupTest();
 
   ctx.model.addReplies(
@@ -76,7 +76,6 @@ test('it gives every query() nixie tools alone, no settings, skills or SDK memor
         autoMemoryEnabled: false,
         autoDreamEnabled: false,
         autoCompactEnabled: false,
-        autoCompactWindow: 200_000,
         precomputeCompactionEnabled: false,
         idleCompaction: false,
       },
@@ -113,6 +112,7 @@ test('it gives every query() the profile base URL, model and effort in its env',
       CLAUDE_CODE_EFFORT_LEVEL: 'low',
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
       CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
+      DISABLE_COMPACT: '1',
       DISABLE_AUTOUPDATER: '1',
     },
   ]);

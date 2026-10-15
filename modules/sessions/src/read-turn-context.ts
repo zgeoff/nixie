@@ -24,9 +24,6 @@ export interface TurnContextQuery {
 
   // whether the turn runs on a new session, which holds no item yet
   readonly isNewSession: boolean;
-
-  // whether the SDK compacted the resumed session, so the turn sends the whole core again
-  readonly isCompacted: boolean;
 }
 
 // What memory adds to one turn: the system prompt, the pinned core that a new session opens with,
@@ -37,7 +34,7 @@ export interface TurnContext {
   // the body of a new session's pinned-memory message, which a resumed session never reads
   readonly pinnedMemory: string;
 
-  // the core after a compaction, its change note and the retrieved items, each as a system message
+  // the pinned core's change note and the retrieved items, each as a system message
   readonly preamble: readonly string[];
   readonly pinnedCore: readonly MemoryRef[];
   readonly retrieved: readonly MemoryRef[];
@@ -69,13 +66,10 @@ export async function readTurnContext(
 
   const changes = await readCoreChanges(memory, query, { core, lines });
 
-  const recap = query.isCompacted ? pinnedMemory : null;
-
   return {
     systemPrompt: renderSystemPrompt(run.getSystemPrompt(), lines),
     pinnedMemory,
     preamble: [
-      renderPreambleMessage('pinned-memory', at, recap),
       renderPreambleMessage('pinned-memory-changes', at, changes),
       renderPreambleMessage('retrieved-memory', at, renderRetrievedItems(retrieved, lines)),
     ].filter((block) => block !== null),

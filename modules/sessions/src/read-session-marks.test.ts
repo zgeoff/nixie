@@ -15,7 +15,6 @@ test('it reads no earlier core and no invalidation before the first turn', async
     previousCore: null,
     isInvalidated: false,
     invalidatedThrough: 0,
-    isCompacted: false,
     hasOpening: false,
     lastContext: null,
     isSummarized: false,
@@ -223,12 +222,12 @@ test('it reads that a session opened with an opening record', async () => {
   expect(marks.hasOpening).toBe(true);
 });
 
-test('it reads the session as compacted when the SDK compacted it during the last turn', async () => {
+test('it reads a session that an older CLI compacted after its opening as lacking its opening', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.tasks.context.log, [
     {
-      kind: 'model.turn_ended',
+      kind: 'model.session_opened',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
     },
@@ -236,20 +235,16 @@ test('it reads the session as compacted when the SDK compacted it during the las
       kind: 'model.compacted',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
-    },
-    {
-      kind: 'model.turn_ended',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
+      payload: { trigger: 'auto', preTokens: 180_000, postTokens: 24_000 },
     },
   ]);
 
   const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
 
-  expect(marks.isCompacted).toBe(true);
+  expect(marks.hasOpening).toBe(false);
 });
 
-test('it reads the session as not compacted once a turn after the compaction ended', async () => {
+test('it reads a session that opened after an older CLI compaction as holding its opening', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.tasks.context.log, [
@@ -257,14 +252,10 @@ test('it reads the session as not compacted once a turn after the compaction end
       kind: 'model.compacted',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
+      payload: { trigger: 'auto', preTokens: 180_000, postTokens: 24_000 },
     },
     {
-      kind: 'model.turn_ended',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-    },
-    {
-      kind: 'model.turn_ended',
+      kind: 'model.session_opened',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
     },
@@ -272,7 +263,7 @@ test('it reads the session as not compacted once a turn after the compaction end
 
   const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
 
-  expect(marks.isCompacted).toBe(false);
+  expect(marks.hasOpening).toBe(true);
 });
 
 test('it reads the pinned core the last turn ran with', async () => {

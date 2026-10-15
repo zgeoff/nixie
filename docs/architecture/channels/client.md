@@ -120,10 +120,10 @@ a step: a step's end with no start before it closes the records before it as one
 status its end records. A step shows as one collapsed line of short facts: its task, how many
 memories its recalls delivered with how many of them the model rated as noise, each tool it called
 with its targets, such as the host of each page a web fetch read, how full the context stood at its
-last model call against the auto-compact window, and how long it ran. A fact shows only once its
-record exists. Each compaction in the step adds a marker under that line with the context's tokens
-before and after, so the user can compare the turns on each side of it. A summary that closed the
-session shows as a rule across the feed with the context's size before it and the summary's own
+last model call against the window nixie compacts within, and how long it ran. A fact shows only
+once its record exists. Each compaction in the step adds a marker under that line with the context's
+tokens before and after, so the user can compare the turns on each side of it. A summary that closed
+the session shows as a rule across the feed with the context's size before it and the summary's own
 size, and opens to the summary's text while a forget has not erased it. Opening the step shows one
 collapsible section per source: the step with its records, the memories with each one's match score,
 the first line of its text and the model's rating with its note, the context with each compaction,

@@ -63,17 +63,6 @@ const endedFrameSchema = z
   })
   .readonly();
 
-// the SDK compacted the session: what started it, and the context's tokens before and after, with
-// no summary text
-const compactedFrameSchema = z
-  .object({
-    type: z.literal('compacted'),
-    trigger: z.enum(['manual', 'auto']),
-    preTokens: tokenCountSchema,
-    postTokens: tokenCountSchema.nullable(),
-  })
-  .readonly();
-
 // the summary a summarize frame asked for: the model's text, the summary's own chain entry, where a
 // request to cut it resumes, and the call's token counts
 const summarizedFrameSchema = z
@@ -103,7 +92,6 @@ export const guestFrameSchema = z.discriminatedUnion('type', [
   assistantFrameSchema,
   readFrameSchema,
   endedFrameSchema,
-  compactedFrameSchema,
   summarizedFrameSchema,
   failedFrameSchema,
   purgedFrameSchema,

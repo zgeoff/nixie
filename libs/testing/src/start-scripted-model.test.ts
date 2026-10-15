@@ -107,6 +107,29 @@ test('it refuses a request past the end of its script with a 400', async () => {
   expect(response.status).toBe(400);
 });
 
+test('it answers a scripted refusal with a 400 that carries the API error message', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({ refusal: 'prompt is too long: 210000 tokens > 200000 maximum' });
+
+  const response = await fetch(`${ctx.model.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  const body: unknown = await response.json();
+
+  expect(response.status).toBe(400);
+
+  expect(body).toStrictEqual({
+    type: 'error',
+    error: {
+      type: 'invalid_request_error',
+      message: 'prompt is too long: 210000 tokens > 200000 maximum',
+    },
+  });
+});
+
 test('it records every request with its path, headers and body', async () => {
   const ctx = setupTest();
 

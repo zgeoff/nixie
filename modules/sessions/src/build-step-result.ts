@@ -72,8 +72,7 @@ export function buildStepResult(
   };
 }
 
-// a record per reply with text, one per compaction with its token counts, the newest recall it
-// summarized and no summary, and one for the turn's end with the memory it placed
+// a record per reply with text, and one for the turn's end with the memory it placed
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the rule reads a ReadonlySet's methods as mutable
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
   return [
@@ -85,16 +84,6 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
           text: assistant.text,
         }),
       ),
-    ...completed.turn.compactions.map((compaction) =>
-      buildModelRecord(source, 'model.compacted', {
-        payload: {
-          trigger: compaction.trigger,
-          preTokens: compaction.preTokens,
-          postTokens: compaction.postTokens,
-          ...(compaction.mark === undefined ? {} : { recalledThrough: compaction.mark }),
-        },
-      }),
-    ),
     buildModelRecord(source, 'model.turn_ended', {
       payload: {
         ...buildTurnSummary(completed.turn),
@@ -115,7 +104,7 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
 type EndedFrame = GuestTurn['ended'][number];
 
 // The turn's model turns and token counts over every result, the SDK's reason for the last end, and
-// the context the last reported model call read with the window the CLI compacts within. The counts
+// the context the last reported model call read with the window nixie compacts within. The counts
 // are totals; the context size is the one figure that shows how full the context stands.
 function buildTurnSummary(turn: GuestTurn): JSONObject {
   const buildTotal = (pick: (frame: EndedFrame) => number) =>

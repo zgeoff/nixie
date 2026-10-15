@@ -16,10 +16,8 @@ export interface SessionMarks {
   // the newest session_invalidated record's sequence, or 0, which the turn_ended record keeps
   readonly invalidatedThrough: number;
 
-  // whether the SDK compacted the session during the last turn, which can drop the opening's core
-  readonly isCompacted: boolean;
-
-  // whether any session opened with an opening record; one from before them lacks the pinned core
+  // Whether the newest session holds its opening record. A session from before opening records
+  // lacks the pinned core, and so does one whose transcript an older guest's CLI compacted.
   readonly hasOpening: boolean;
 
   // the context the last turn ended with and its window, or null when it reported none
@@ -42,16 +40,18 @@ export async function readSessionMarks(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
 ): Promise<SessionMarks> {
-  const [invalidated, compacted, lastTurns, opened, summarized, failed] = await Promise.all([
+  const [invalidated, lastTurns, opened, summarized, failed, cliCompacted] = await Promise.all([
     readNewest(context, { thread: taskID, kinds: ['model.session_invalidated'], limit: 1 }),
-    readNewest(context, { thread: taskID, kinds: ['model.compacted'], limit: 1 }),
-    readNewest(context, { thread: taskID, kinds: ['model.turn_ended'], limit: 2 }),
+    readNewest(context, { thread: taskID, kinds: ['model.turn_ended'], limit: 1 }),
     readNewest(context, { thread: taskID, kinds: ['model.session_opened'], limit: 1 }),
     readNewest(context, { thread: taskID, kinds: ['model.session_summarized'], limit: 1 }),
     readNewest(context, { thread: taskID, kinds: ['model.compaction_failed'], limit: 1 }),
+
+    // an older guest's CLI wrote these when it compacted a session's transcript
+    readNewest(context, { thread: taskID, kinds: ['model.compacted'], limit: 1 }),
   ]);
 
-  const [turn, turnBefore] = lastTurns;
+  const [turn] = lastTurns;
   const invalidatedThrough = invalidated.at(0)?.sequence ?? 0;
   const openedThrough = opened.at(0)?.sequence ?? 0;
   const summarizedThrough = summarized.at(0)?.sequence ?? 0;
@@ -61,9 +61,7 @@ export async function readSessionMarks(
     isInvalidated: invalidatedThrough > (turn === undefined ? 0 : parseTurnThrough(turn)),
     invalidatedThrough,
 
-    // a step commits its compactions before its turn's end
-    isCompacted: (compacted.at(0)?.sequence ?? 0) > (turnBefore?.sequence ?? 0),
-    hasOpening: opened.length > 0,
+    hasOpening: openedThrough > (cliCompacted.at(0)?.sequence ?? 0),
     lastContext: turn === undefined ? null : parseContext(turn),
     isSummarized: summarizedThrough > openedThrough,
     compactionFailures: countFailures(failed.at(0), Math.max(openedThrough, summarizedThrough)),
