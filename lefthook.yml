@@ -13,8 +13,18 @@ pre-commit:
       glob: '*.{js,mjs,cjs,ts,mts,cts,json,jsonc,md,yml,yaml}'
       run: node_modules/.bin/oxfmt --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
+    # the exclude mirrors .formatignore: the tool exits 2 when every file
+    # it is given is ignored, so ignored files must not reach it
     - name: format-codemod
       glob: '*.{ts,tsx}'
+      exclude:
+        - '.claude/hooks/skill-gate/**'
+        - 'apps/web/src/routeTree.gen.ts'
+        - 'apps/web/src/styled-system/**'
+        - 'docs/design/**/spikes/**'
+        - '**/dist/**'
+        - '**/coverage/**'
+        - '.worktrees/**'
       run: node_modules/.bin/format-codemod --quiet {staged_files}
       stage_fixed: true
     # last so it scans what the fixers above re-staged; needs the gitleaks

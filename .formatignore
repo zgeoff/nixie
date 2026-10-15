@@ -1,3 +1,5 @@
+# lefthook.yml repeats these globs in the format-codemod exclude; change both
+
 # verbatim copies that repo-sync delivers from zgeoff/tools; edit them there
 .claude/hooks/skill-gate/**
 
