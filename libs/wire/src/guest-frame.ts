@@ -47,8 +47,8 @@ const contextSchema = z
   .readonly();
 
 // a model turn ended at a result; boundary is the session's last chain entry, where the next turn
-// resumes, isError marks a result the model API's error ended, such as a refused request, and
-// context is absent when no main-chain call reported its usage
+// resumes, isError marks a result a model API error ended, terminalReason is the SDK's reason for
+// the end, and context is absent when no main-chain call reported its usage
 const endedFrameSchema = z
   .object({
     type: z.literal('ended'),
@@ -56,6 +56,7 @@ const endedFrameSchema = z
     subtype: z.string(),
     stopReason: z.string().nullable(),
     isError: z.boolean().optional(),
+    terminalReason: z.string().optional(),
     turns: z.int().nonnegative(),
     usage: usageSchema,
     context: contextSchema.optional(),

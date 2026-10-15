@@ -236,6 +236,7 @@ test('it reports each inbox message the model read, then the turn end at the las
       subtype: 'success',
       stopReason: 'end_turn',
       isError: false,
+      terminalReason: 'completed',
       turns: 2,
       usage: { inputTokens: 20, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 },
       context: { size: 10, window: 200_000 },
@@ -299,10 +300,26 @@ test('it marks the turn end as an error when the model API refuses the request',
       subtype: 'success',
       stopReason: 'stop_sequence',
       isError: true,
+      terminalReason: 'api_error',
       turns: 1,
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
   ]);
+});
+
+test('it ends the turn with the overflow reason when the model API refuses a prompt past its window', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ refusal: 'prompt is too long: 210000 tokens > 200000 maximum' });
+
+  await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), ctx.deps);
+
+  expect(ctx.frames.at(-1)).toMatchObject({
+    type: 'ended',
+    subtype: 'success',
+    isError: true,
+    terminalReason: 'prompt_too_long',
+  });
 });
 
 test('it passes a message into the running turn at the next tool boundary and reports it read', async () => {

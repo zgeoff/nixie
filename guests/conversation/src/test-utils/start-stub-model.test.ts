@@ -155,6 +155,38 @@ test('it refuses a request past the end of its script with a 400', async () => {
   expect(response.status).toBe(400);
 });
 
+test('it refuses a request with the scripted refusal and answers the next with its reply', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies(
+    { refusal: 'prompt is too long: 210000 tokens > 200000 maximum' },
+    { text: 'ok' },
+  );
+
+  const sendRequest = () =>
+    fetch(`${ctx.stub.url}/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-a', messages: [] }),
+    });
+
+  const refused = await sendRequest();
+  const refusal = await refused.json();
+  const answered = await sendRequest();
+  const answer = await answered.json();
+
+  expect(refused.status).toBe(400);
+
+  expect(refusal).toStrictEqual({
+    type: 'error',
+    error: {
+      type: 'invalid_request_error',
+      message: 'prompt is too long: 210000 tokens > 200000 maximum',
+    },
+  });
+
+  expect(answer).toMatchObject({ content: [{ type: 'text', text: 'ok' }] });
+});
+
 test('it records every request with its path, headers and body', async () => {
   const ctx = setupTest();
 

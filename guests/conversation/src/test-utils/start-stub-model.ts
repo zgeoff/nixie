@@ -1,7 +1,13 @@
-// One reply the stub model gives: a text block that ends the turn, or a tool_use block that asks
-// for a tool by its name as the model sees it, such as mcp__nixie__note_read. The usage defaults to
-// 10 input tokens and no cache tokens, and a test sets more to fill the context the CLI counts.
-type ScriptedReply = (
+// One reply the stub model gives: a text block, a tool_use block by the name the model sees, such
+// as mcp__nixie__note_read, or a 400 with the API's refusal message. The usage defaults to 10 input
+// tokens and no cache tokens, and a test sets more to fill the context the CLI counts.
+type ScriptedReply =
+  | ScriptedMessage
+  | {
+      readonly refusal: string;
+    };
+
+type ScriptedMessage = (
   | { readonly text: string }
   | {
       readonly toolUse: {
@@ -93,16 +99,10 @@ function renderResponse(request: StubModelRequest, script: ScriptedReply[]): Res
     return new Response('not found', { status: 404 });
   }
 
-  const reply = script.shift();
+  const reply = script.shift() ?? { refusal: 'the stub model has no reply left' };
 
-  if (reply === undefined) {
-    return Response.json(
-      {
-        type: 'error',
-        error: { type: 'invalid_request_error', message: 'the stub model has no reply left' },
-      },
-      { status: 400 },
-    );
+  if ('refusal' in reply) {
+    return renderRefusal(reply.refusal);
   }
 
   const model = request.body.model ?? 'stub';
@@ -110,7 +110,14 @@ function renderResponse(request: StubModelRequest, script: ScriptedReply[]): Res
   return request.body.stream === true ? renderStream(reply, model) : renderWhole(reply, model);
 }
 
-function renderWhole(reply: ScriptedReply, model: string): Response {
+function renderRefusal(message: string): Response {
+  return Response.json(
+    { type: 'error', error: { type: 'invalid_request_error', message } },
+    { status: 400 },
+  );
+}
+
+function renderWhole(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
 
   return Response.json({
@@ -125,7 +132,7 @@ function renderWhole(reply: ScriptedReply, model: string): Response {
   });
 }
 
-function buildUsage(reply: ScriptedReply, outputTokens: number): Record<string, number> {
+function buildUsage(reply: ScriptedMessage, outputTokens: number): Record<string, number> {
   return {
     input_tokens: reply.inputTokens ?? 10,
     ...(reply.cacheReadTokens === undefined
@@ -138,7 +145,7 @@ function buildUsage(reply: ScriptedReply, outputTokens: number): Record<string, 
   };
 }
 
-function renderStream(reply: ScriptedReply, model: string): Response {
+function renderStream(reply: ScriptedMessage, model: string): Response {
   const block = buildBlock(reply);
   const isTool = 'toolUse' in reply;
 
@@ -183,7 +190,7 @@ function renderStream(reply: ScriptedReply, model: string): Response {
   );
 }
 
-function buildBlock(reply: ScriptedReply): Readonly<Record<string, unknown>> {
+function buildBlock(reply: ScriptedMessage): Readonly<Record<string, unknown>> {
   if ('toolUse' in reply) {
     return {
       type: 'tool_use',

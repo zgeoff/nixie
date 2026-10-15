@@ -309,6 +309,7 @@ function buildEnded(
     subtype: message.subtype,
     stopReason: message.stop_reason,
     isError: message.is_error,
+    ...(message.terminal_reason === undefined ? {} : { terminalReason: message.terminal_reason }),
     turns: message.num_turns,
     usage: {
       inputTokens: message.usage.input_tokens,

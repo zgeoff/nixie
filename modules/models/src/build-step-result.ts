@@ -102,17 +102,19 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
 
 type EndedFrame = GuestTurn['ended'][number];
 
-// The turn's model turns and token counts, over every result the guest reported, and the context
-// the last reported model call read with the window the CLI compacts within. The counts are totals;
-// the context size is the one figure that shows how full the context stands.
+// The turn's model turns and token counts over every result, the SDK's reason for the last end, and
+// the context the last reported model call read with the window the CLI compacts within. The counts
+// are totals; the context size is the one figure that shows how full the context stands.
 function buildTurnSummary(turn: GuestTurn): JSONObject {
   const buildTotal = (pick: (frame: EndedFrame) => number) =>
     turn.ended.reduce((total, frame) => total + pick(frame), 0);
 
   const context = turn.ended.findLast((frame) => frame.context !== undefined)?.context;
+  const terminalReason = turn.ended.at(-1)?.terminalReason;
 
   return {
     stopReason: turn.ended.at(-1)?.stopReason ?? null,
+    ...(terminalReason === undefined ? {} : { terminalReason }),
     turns: buildTotal((frame) => frame.turns),
     inputTokens: buildTotal((frame) => frame.usage.inputTokens),
     outputTokens: buildTotal((frame) => frame.usage.outputTokens),

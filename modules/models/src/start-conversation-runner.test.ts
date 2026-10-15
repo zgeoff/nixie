@@ -346,6 +346,55 @@ test('it records no context on a turn end whose model calls reported none', asyn
   ).toStrictEqual([false]);
 });
 
+test('it records the reason each turn ended on its turn end, an overflow apart from an API error', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'stop_sequence',
+      isError: true,
+      terminalReason: 'prompt_too_long',
+      turns: 1,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      subtype: 'success',
+      stopReason: 'stop_sequence',
+      isError: true,
+      terminalReason: 'api_error',
+      turns: 1,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'Are you there?');
+
+  const records = await ctx.readKinds('model.turn_ended');
+
+  expect(records.map((record) => record.payload['terminalReason'])).toStrictEqual([
+    'prompt_too_long',
+    'api_error',
+  ]);
+});
+
 test('it commits the session boundary and resumes the next turn at it', async () => {
   const ctx = await setupTest();
 
