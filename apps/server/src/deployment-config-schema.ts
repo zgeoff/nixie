@@ -7,30 +7,40 @@ import {
   writerConfigSchema,
 } from '@heynixie/memory';
 import { agentConfigSchema, compactionConfigSchema, modelsConfigSchema } from '@heynixie/models';
-import { impConfigSchema } from '@heynixie/sandbox-imp';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { z } from 'zod';
 import { ownerConfigSchema } from './owner-config-schema';
+import { sandboxSections } from './sandbox-sections';
 import { serverConfigSchema } from './server-config-schema';
 
 // The deployment configuration, composed from one schema per module for the section it reads.
-// Every object refuses an unknown key, so a typo never passes as a default, and a later slice adds
-// its section here. No section holds a secret: secrets stay in the encrypted secrets file.
-export const deploymentConfigSchema = z.strictObject({
-  server: serverConfigSchema.default(serverConfigSchema.parse({})),
-  owner: ownerConfigSchema.default(ownerConfigSchema.parse({})),
-  agent: agentConfigSchema.default(agentConfigSchema.parse({})),
-  models: modelsConfigSchema,
-  compaction: compactionConfigSchema.default(compactionConfigSchema.parse({})),
-  imp: impConfigSchema,
-  definitions: definitionsConfigSchema,
-  web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
-  time: timeConfigSchema.default(timeConfigSchema.parse({})),
-  tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
-  actions: actionsConfigSchema.default(actionsConfigSchema.parse({})),
-  memory_writer: writerConfigSchema.default(writerConfigSchema.parse({})),
-  memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
-  memory_consolidation: consolidationConfigSchema.default(consolidationConfigSchema.parse({})),
-});
+// Every object refuses an unknown key, so a typo never passes as a default, and no section holds a
+// secret. The imp section is required unless the sandbox section selects the test sandbox.
+export const deploymentConfigSchema = z
+  .strictObject({
+    server: serverConfigSchema.default(serverConfigSchema.parse({})),
+    owner: ownerConfigSchema.default(ownerConfigSchema.parse({})),
+    agent: agentConfigSchema.default(agentConfigSchema.parse({})),
+    models: modelsConfigSchema,
+    compaction: compactionConfigSchema.default(compactionConfigSchema.parse({})),
+    ...sandboxSections,
+    definitions: definitionsConfigSchema,
+    web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
+    time: timeConfigSchema.default(timeConfigSchema.parse({})),
+    tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
+    actions: actionsConfigSchema.default(actionsConfigSchema.parse({})),
+    memory_writer: writerConfigSchema.default(writerConfigSchema.parse({})),
+    memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
+    memory_consolidation: consolidationConfigSchema.default(consolidationConfigSchema.parse({})),
+  })
+  .superRefine((config, issues) => {
+    if (config.sandbox.adapter === 'imp' && config.imp === undefined) {
+      issues.addIssue({
+        code: 'custom',
+        path: ['imp'],
+        message: 'the imp section is unset, and the imp sandbox adapter needs it',
+      });
+    }
+  });
 
 export type DeploymentConfig = z.infer<typeof deploymentConfigSchema>;

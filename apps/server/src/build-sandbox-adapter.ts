@@ -1,34 +1,44 @@
 import type { SandboxAdapter, SandboxRecorder, ToolTargetResolver } from '@heynixie/sandbox';
-import type { ImpSection } from '@heynixie/sandbox-imp';
 import { buildImpPort, buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
 import { buildProcessSandboxAdapter } from '@heynixie/sandbox-process';
+import type { SandboxSettings } from './resolve-sandbox-settings';
 
 export interface SandboxAdapterOptions {
   readonly recorder: SandboxRecorder;
   readonly toolTarget: ToolTargetResolver;
 
-  // impd's URL and public egress ranges from the configuration, and its token from the secrets
-  readonly imp: ImpSection & { readonly token: string };
+  // the adapter the configuration selects, with impd's section and token for imp
+  readonly sandbox: SandboxSettings;
 
-  // where a test build's process double keeps each sandbox's directory
+  // where the test sandbox keeps each sandbox's directory
   readonly testRootDir: string;
+
+  // nixie's own environment, whose credential broker variables the test sandbox passes to a guest
+  // with a grant
+  readonly hostEnv: Readonly<Record<string, string | undefined>>;
 }
 
-// Builds the sandbox adapter: the process double in a test build, and imp otherwise. The release
-// bundle defines NIXIE_TEST_BUILD as false, so it holds no part of the double.
+// Builds the sandbox adapter the configuration selects: imp, or the test sandbox, the process double
+// that is no security boundary. The release bundle defines NIXIE_TEST_BUILD as false, so it holds
+// no part of the double, and the configuration's schema refuses the test sandbox in a release.
 export function buildSandboxAdapter(options: SandboxAdapterOptions): SandboxAdapter {
-  if (NIXIE_TEST_BUILD) {
-    return buildProcessSandboxAdapter({
-      recorder: options.recorder,
-      rootDir: options.testRootDir,
-      toolTarget: options.toolTarget,
-    });
+  if (options.sandbox.adapter === 'test') {
+    if (NIXIE_TEST_BUILD) {
+      return buildProcessSandboxAdapter({
+        recorder: options.recorder,
+        rootDir: options.testRootDir,
+        toolTarget: options.toolTarget,
+        hostEnv: options.hostEnv,
+      });
+    }
+
+    throw new Error('a release build holds no test sandbox');
   }
 
   return buildImpSandboxAdapter({
-    port: buildImpPort({ url: options.imp.url, token: options.imp.token }),
+    port: buildImpPort({ url: options.sandbox.imp.url, token: options.sandbox.imp.token }),
     recorder: options.recorder,
-    config: { publicEgress: options.imp.publicEgress },
+    config: { publicEgress: options.sandbox.imp.publicEgress },
     toolTarget: options.toolTarget,
   });
 }

@@ -81,6 +81,28 @@ test('it writes the log level into the server section', async () => {
   expect(config.server.logLevel).toBe('error');
 });
 
+test('it selects the test sandbox when no adapter is named', async () => {
+  const ctx = await setupTest();
+  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', { config: [], secrets: [] });
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect(config.sandbox).toStrictEqual({ adapter: 'test' });
+});
+
+test('it selects the adapter it names', async () => {
+  const ctx = await setupTest();
+
+  const files = await writeBootFiles(ctx.dir, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    sandboxAdapter: 'imp',
+  });
+
+  const config = await loadDeploymentConfig(files.configPath);
+
+  expect(config.sandbox).toStrictEqual({ adapter: 'imp' });
+});
+
 test('it appends the extra lines to the secrets file', async () => {
   const ctx = await setupTest();
 

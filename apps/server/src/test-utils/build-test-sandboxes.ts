@@ -26,8 +26,9 @@ export function buildTestSandboxes(options: TestSandboxesOptions): TestSandboxes
   const adapter = buildSandboxAdapter({
     recorder: buildSandboxRecorder({ log: options.log, definitions: options.definitions }),
     toolTarget: options.toolTarget,
-    imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
+    sandbox: { adapter: 'test' },
     testRootDir: options.rootDir,
+    hostEnv: {},
   });
 
   const retired = new Set<string>();

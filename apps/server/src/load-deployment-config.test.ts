@@ -48,6 +48,7 @@ test('it reads every section, with the default of each setting the file leaves o
     owner: { name: null, pronouns: { they: 'they', their: 'their' } },
     agent: { names: [] },
     compaction: { threshold: 0.8, summaryTokens: 2000 },
+    sandbox: { adapter: 'imp' },
     imp: {
       url: 'http://127.0.0.1:7070',
       publicEgress: { hostAddresses: ['192.0.2.10/32'], egressDeny: [] },
@@ -214,6 +215,61 @@ test('it refuses to start with the conversation role unset', async () => {
 
   expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
     `nixie refuses the deployment configuration in ${ctx.path}:\nmodels.roles.conversation: the conversation role is unset, and nixie needs it to start`,
+  );
+});
+
+test('it reads the test sandbox with no imp section', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '  roles:',
+      '    conversation: chat-direct',
+      'sandbox:',
+      '  adapter: test',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+    ].join('\n'),
+  );
+
+  const config = await loadDeploymentConfig(ctx.path);
+
+  expect(config.sandbox).toStrictEqual({ adapter: 'test' });
+  expect(config.imp).toBeUndefined();
+});
+
+test('it refuses to start the imp adapter with the imp section unset', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    ctx.path,
+    [
+      'models:',
+      '  profiles:',
+      '    chat-direct:',
+      '      base_url: https://api.anthropic.com',
+      '      credential: deployment:anthropic',
+      '      auth_header: x-api-key',
+      '      model: claude-test-1',
+      '      effort: medium',
+      '  roles:',
+      '    conversation: chat-direct',
+      'definitions:',
+      '  source: { kind: path, path: /etc/nixie/definitions }',
+    ].join('\n'),
+  );
+
+  expect(loadDeploymentConfig(ctx.path)).rejects.toThrow(
+    `nixie refuses the deployment configuration in ${ctx.path}:\nimp: the imp section is unset, and the imp sandbox adapter needs it`,
   );
 });
 

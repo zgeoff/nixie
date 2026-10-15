@@ -18,7 +18,7 @@ async function setupTest() {
   return { stack, ...server };
 }
 
-test('it wires the process double in a test build', async () => {
+test('it wires the test sandbox, the process double, when the configuration selects it', async () => {
   const ctx = await setupTest();
 
   const adapter = buildSandboxAdapter({
@@ -27,11 +27,55 @@ test('it wires the process double in a test build', async () => {
       definitions: ctx.context.definitions,
     }),
     toolTarget: ctx.endpoint.getToolTarget,
-    imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
+    sandbox: { adapter: 'test' },
     testRootDir: join(ctx.dataDir, 'sandboxes'),
+    hostEnv: {},
   });
 
   expect(adapter).toMatchObject({ id: 'process', boundary: 'process' });
+});
+
+test('it wires the imp adapter in a test build when the configuration selects imp', async () => {
+  const ctx = await setupTest();
+
+  const adapter = buildSandboxAdapter({
+    recorder: buildSandboxRecorder({
+      log: ctx.context.log,
+      definitions: ctx.context.definitions,
+    }),
+    toolTarget: ctx.endpoint.getToolTarget,
+    sandbox: {
+      adapter: 'imp',
+      imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
+    },
+    testRootDir: join(ctx.dataDir, 'sandboxes'),
+    hostEnv: {},
+  });
+
+  expect(adapter).toMatchObject({ id: 'imp', boundary: 'microvm' });
+});
+
+test('it refuses the test sandbox in a release build', async () => {
+  const ctx = await setupTest();
+
+  Object.assign(globalThis, { NIXIE_TEST_BUILD: false });
+
+  onTestFinished(() => {
+    Object.assign(globalThis, { NIXIE_TEST_BUILD: true });
+  });
+
+  expect(() =>
+    buildSandboxAdapter({
+      recorder: buildSandboxRecorder({
+        log: ctx.context.log,
+        definitions: ctx.context.definitions,
+      }),
+      toolTarget: ctx.endpoint.getToolTarget,
+      sandbox: { adapter: 'test' },
+      testRootDir: join(ctx.dataDir, 'sandboxes'),
+      hostEnv: {},
+    }),
+  ).toThrowWithMessage(Error, 'a release build holds no test sandbox');
 });
 
 test('it bundles the imp adapter and no part of the process double in a release build', async () => {

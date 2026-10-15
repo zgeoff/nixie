@@ -11,6 +11,7 @@ import { createSandboxID, requireSandboxSpec, stopGraceMs } from '@heynixie/sand
 import { buildProcessSandbox } from './build-process-sandbox';
 import type { ProcessState } from './build-process-state';
 import { buildProcessState } from './build-process-state';
+import { pickBrokerEnv } from './pick-broker-env';
 
 export interface ProcessSandboxOptions {
   readonly recorder: SandboxRecorder;
@@ -19,13 +20,19 @@ export interface ProcessSandboxOptions {
   readonly rootDir: string;
   readonly toolTarget: ToolTargetResolver;
   readonly killGraceMs?: number;
+
+  // the host's environment, whose credential broker variables a guest with a grant gets, so the
+  // host's broker injects the credential that the guest holds a placeholder for
+  readonly hostEnv?: Readonly<Record<string, string | undefined>>;
 }
 
-// The sandbox double for a test build: each guest runs as a local child process with no isolation,
-// and reaches nixie's tools over a loopback relay. It records and refuses as a real adapter does,
-// but enforces no egress and injects no grant, passing each grant's placeholders alone.
+// The test sandbox, a test-build double that runs each guest as a local process. It is NOT a
+// security boundary: a guest reads whatever nixie's user can and reaches any network the host does.
+// It records and refuses as imp does, but passes each grant's placeholders instead of injecting it.
 export function buildProcessSandboxAdapter(options: ProcessSandboxOptions): SandboxAdapter {
   const live = new Map<string, ProcessState>();
+
+  const brokerEnv = pickBrokerEnv(options.hostEnv ?? {});
 
   const removeSandbox = async (id: string): Promise<void> => {
     await live.get(id)?.stop();
@@ -44,6 +51,7 @@ export function buildProcessSandboxAdapter(options: ProcessSandboxOptions): Sand
       recorder: options.recorder,
       toolTarget: options.toolTarget,
       killGraceMs: options.killGraceMs ?? stopGraceMs,
+      brokerEnv,
       id,
       spec,
       fsRoot: join(options.rootDir, id, 'fs'),

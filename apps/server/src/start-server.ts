@@ -1,15 +1,12 @@
 import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/ops';
-import { makeThresholdLogger } from '@heynixie/ops';
 import { buildCleanup } from './build-cleanup';
 import type { DeploymentConfig } from './deployment-config-schema';
-import { loadDeploymentConfig } from './load-deployment-config';
 import type { SandboxImages } from './load-sandbox-manifest';
-import { loadSandboxManifest } from './load-sandbox-manifest';
 import type { Secrets } from './load-secrets';
-import { loadSecrets } from './load-secrets';
-import { resolveOwnerConfig } from './resolve-owner-config';
+import { loadServerInputs } from './load-server-inputs';
+import type { SandboxSettings } from './resolve-sandbox-settings';
 import { startServerParts } from './start-server-parts';
 import type { Cleanup } from './types';
 
@@ -49,6 +46,9 @@ export interface ServerPartsOptions extends ServerOptions {
   readonly config: DeploymentConfig;
   readonly secrets: Secrets;
   readonly images: SandboxImages;
+
+  // the sandbox adapter the configuration selects, with impd's section and token for imp
+  readonly sandbox: SandboxSettings;
   readonly writer: Writer;
   readonly cleanup: Cleanup;
 }
@@ -70,24 +70,6 @@ export async function startServer(options: ServerOptions): Promise<Server> {
 
     throw error;
   }
-}
-
-type ServerInputs = Pick<ServerPartsOptions, 'config' | 'secrets' | 'images' | 'log'>;
-
-// From the configuration on, the server logs only the events at the configured level or above it.
-async function loadServerInputs(options: ServerOptions): Promise<ServerInputs> {
-  const loaded = await loadDeploymentConfig(options.configPath);
-
-  const secrets = await loadSecrets({
-    path: loaded.server.secretsFile,
-    sopsArgv: options.sopsArgv,
-  });
-
-  const config = { ...loaded, owner: resolveOwnerConfig(loaded.owner, secrets.settings) };
-
-  const images = await loadSandboxManifest(options.manifestPath);
-
-  return { config, secrets, images, log: makeThresholdLogger(options.log, loaded.server.logLevel) };
 }
 
 async function startLoggedWriter(dataDir: string, log: Logger, cleanup: Cleanup): Promise<Writer> {

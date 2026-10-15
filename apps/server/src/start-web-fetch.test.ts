@@ -60,8 +60,9 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox",
   const adapter = buildSandboxAdapter({
     recorder: ctx.recorder,
     toolTarget: () => ({ path: '/nonexistent.sock' }),
-    imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
+    sandbox: { adapter: 'test' },
     testRootDir: ctx.dataDir,
+    hostEnv: {},
   });
 
   const webFetch = startWebFetch({

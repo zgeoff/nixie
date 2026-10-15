@@ -19,7 +19,7 @@ export async function startServerParts(options: ServerPartsOptions): Promise<Ser
   const tools = await startTools({
     ...options,
     context: base.apiContext,
-    impdToken: options.secrets.impdToken,
+    sandbox: options.sandbox,
   });
 
   const gate = buildAPIGate();

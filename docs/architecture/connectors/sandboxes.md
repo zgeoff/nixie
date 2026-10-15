@@ -7,10 +7,10 @@ tool route from the kind, so a caller that builds its spec there names only the 
 reaches sandboxes through its own sandbox interface, under
 [0016](../../decisions/0016-own-interfaces.md). `modules/sandbox` holds the interface, the kinds and
 the lifecycle records. `adapters/sandbox-imp` runs each sandbox as an imp microVM and is the one
-package that imports imp's client, and `adapters/sandbox-process` is a test-build double that runs
-each guest as a local process. [Tool calls](./tool-calls.md) covers the endpoint a sandbox's tool
-route reaches. [Web fetch](./web-fetch.md) covers the fetch sandbox's lifetime and the fetcher that
-runs in it.
+package that imports imp's client, and `adapters/sandbox-process` holds the test sandbox, a
+test-build double that runs each guest as a local process. [Tool calls](./tool-calls.md) covers the
+endpoint a sandbox's tool route reaches. [Web fetch](./web-fetch.md) covers the fetch sandbox's
+lifetime and the fetcher that runs in it.
 
 ## Kinds of work
 
@@ -117,15 +117,26 @@ Both forms pass the environment by name, with each grant's placeholders added. A
 once, and the guest's agent kills the command's whole cgroup after a grace period, so no descendant
 outlives it.
 
-## The process double
+## The test sandbox
 
-The process double runs each guest as a local child process with no isolation. It writes the same
-records and refuses the same specs as the imp adapter, but enforces no egress and injects no grant.
-Each sandbox gets a directory of its own that stands in for the guest's filesystem, each command
-leads its own process group so a stop kills the group, and the tool route is a relay on a free
-loopback port. A member that leaves its process group escapes the kill, which imp's cgroup catches.
-The double refuses a command on a sleeping sandbox, where imp would wake it, so a test that forgets
-a wake fails instead of hanging.
+The test sandbox runs each guest as a local child process with no isolation, so it is not a security
+boundary: a guest reads and writes whatever nixie's user can, and reaches any network the host
+reaches. It writes the same records and refuses the same specs as the imp adapter, but enforces no
+egress and injects no grant. Each sandbox gets a directory of its own that stands in for the guest's
+filesystem, each command leads its own process group so a stop kills the group, and the tool route
+is a relay on a free loopback port. A member that leaves its process group escapes the kill, which
+imp's cgroup catches. The test sandbox refuses a command on a sleeping sandbox, where imp would wake
+it, so a test that forgets a wake fails instead of hanging.
 
-The server uses the process double only in a test build, and the bundler drops the double and its
-imports from the release bundle, so a release can never run a guest without isolation.
+A guest runs the source of its package from the workspace with nixie's own Bun, in place of its
+image. A guest with a grant gets the grant's placeholders and the credential broker's variables from
+nixie's own environment: its proxy, its bypass list and the certificate its proxy signs with. On a
+host whose broker injects the credential for the grant's host, such as an imp that runs a preview,
+the guest's model calls therefore reach the model's API through that broker, and neither nixie nor
+the guest holds the key.
+
+The configuration's sandbox section selects the adapter, imp unless it names the test sandbox, and a
+test sandbox needs no imp section and no impd token. Only a test build holds the test sandbox. The
+release build's configuration schema refuses it, the bundler drops it and its imports from the
+release bundle, and the release build fails when the bundle holds it, so a release can never run a
+guest without isolation.

@@ -201,12 +201,12 @@ where the item shows and not what it says.
 ## The image and the release bundle
 
 The release build bundles the server into a single script with the test-build flag set false, so the
-bundler drops every branch behind it with its imports. The process sandbox double, the crash tests'
-fault points and the test policy rule therefore never ship
+bundler drops every branch behind it with its imports. The test sandbox, the crash tests' fault
+points and the test policy rule therefore never ship
 ([the decision point](../policy/decision-point.md)). The SQLite worker is a second entry point of
 the bundle, because the bundler does not follow a worker's file URL. The release build fails when
-the bundle holds a fault point ID or the test rule's ID, and a test proves that a test build holds
-them, so the check cannot pass by matching nothing.
+the bundle holds a fault point ID, the test rule's ID or a text that only the test sandbox holds,
+and a test proves that a test build holds them, so the check cannot pass by matching nothing.
 
 The nixie image builds in two stages. The build stage runs the release build and downloads each
 pinned binary, sops among them, and checks each against its pinned checksum. The runtime stage holds

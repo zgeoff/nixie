@@ -87,7 +87,7 @@ async function startConsolidatorParts(
     taskID: memoryConsolidatorTaskID,
     image: options.image,
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
-    command: buildGuestCommand(),
+    command: buildGuestCommand(options.sandboxes),
   });
 
   defer(() => runner.stop());

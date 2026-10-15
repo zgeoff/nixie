@@ -14,13 +14,11 @@ async function setupTest() {
   return { outdir: join(dir, 'out') };
 }
 
-test('it builds a release bundle with no fault point, no test rule and no process double', async () => {
+test('it builds a release bundle with no fault point, no test rule and no test sandbox', async () => {
   const ctx = await setupTest();
   const bundle = await buildReleaseBundle(ctx.outdir);
-  const text = await Bun.file(join(ctx.outdir, 'main.js')).text();
 
   expect(bundle.testBuildIDs).toStrictEqual([]);
-  expect(text).not.toInclude('the tool relay has no TCP address');
 }, 60_000);
 
 test('it builds a test bundle with every test-build ID the server reaches', async () => {

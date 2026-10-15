@@ -18,6 +18,10 @@ export interface ProcessSandboxContext {
   readonly recorder: SandboxRecorder;
   readonly toolTarget: ToolTargetResolver;
   readonly killGraceMs: number;
+
+  // the host's broker variables, which only a guest with a grant gets, as imp sets them only in an
+  // imp with a grant
+  readonly brokerEnv: Readonly<Record<string, string>>;
   readonly id: string;
   readonly spec: SandboxSpec;
 
@@ -83,13 +87,15 @@ function tryStartGuestProcess(ctx: ProcessSandboxContext, command: RunSpec): Pro
     return new Error(`sandbox ${ctx.id} is asleep`);
   }
 
+  const env = ctx.spec.grants.length === 0 ? command.env : { ...ctx.brokerEnv, ...command.env };
+
   const group = startProcessGroup({
     argv: command.argv,
     cwd: resolveGuestPath(ctx.fsRoot, command.cwd ?? '/'),
     env: {
       PATH: process.env['PATH'] ?? '/usr/bin:/bin',
       HOME: ctx.fsRoot,
-      ...mergeExecEnv(ctx.spec, command.env),
+      ...mergeExecEnv(ctx.spec, env),
     },
     killGraceMs: ctx.killGraceMs,
   });

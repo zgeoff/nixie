@@ -3,11 +3,12 @@ import { buildSandboxRecorder } from '@heynixie/sandbox';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
+import type { SandboxAdapterOptions } from './build-sandbox-adapter';
 import { buildSandboxAdapter } from './build-sandbox-adapter';
 import type { DeploymentConfig } from './deployment-config-schema';
 import type { SandboxImages } from './load-sandbox-manifest';
 import { startConversationEndpoint } from './start-conversation-endpoint';
-import { fetchImageArgv, startWebFetch } from './start-web-fetch';
+import { startWebFetch } from './start-web-fetch';
 import type { WebFetch } from './start-web-fetch';
 import type { Cleanup, MemorySlot } from './types';
 
@@ -28,7 +29,7 @@ export interface ToolsOptions {
   readonly config: DeploymentConfig;
   readonly images: SandboxImages;
   readonly context: TasksContext;
-  readonly impdToken: string;
+  readonly sandbox: SandboxAdapterOptions['sandbox'];
   readonly cleanup: Cleanup;
 }
 
@@ -51,18 +52,17 @@ export async function startTools(options: ToolsOptions): Promise<Tools> {
 
       return holder.endpoint.getToolTarget(sandbox);
     },
-    imp: { ...options.config.imp, token: options.impdToken },
+    sandbox: options.sandbox,
     testRootDir: join(options.config.server.dataDir, 'sandboxes'),
+    hostEnv: process.env,
   });
+
+  const publicEgress = options.sandbox.adapter === 'imp' ? options.sandbox.imp.publicEgress : null;
 
   const webFetch = startWebFetch({
     adapter,
     image: options.images.fetch.name,
-    argv: fetchImageArgv,
-    deniedRanges: [
-      ...(options.config.imp.publicEgress?.hostAddresses ?? []),
-      ...(options.config.imp.publicEgress?.egressDeny ?? []),
-    ],
+    deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
     config: options.config.web_fetch,
   });
 

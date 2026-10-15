@@ -32,9 +32,10 @@ export function startTestConversation(
       recorder: buildSandboxRecorder({ log: context.log, definitions: context.definitions }),
       toolTarget: tools.endpoint.getToolTarget,
 
-      // a test build runs the process double, which never reaches impd
-      imp: { url: 'http://127.0.0.1:1', publicEgress: null, token: '' },
+      // the test sandbox, the process double, which never reaches impd
+      sandbox: { adapter: 'test' },
       testRootDir: join(context.log.writer.dataDir, 'sandboxes'),
+      hostEnv: {},
     }),
     tools: tools.endpoint,
     toolNames: tools.toolNames,
