@@ -1,0 +1,5 @@
+# The spike image takes only the fetcher sources and the spike itself.
+*
+!guests/fetch/src
+!docs/design/platform/spikes/fetch-headless
+docs/design/platform/spikes/fetch-headless/node_modules
