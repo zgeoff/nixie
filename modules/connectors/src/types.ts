@@ -33,11 +33,25 @@ export interface ConnectorAction {
   readonly run: (call: ActionCall) => Promise<ActionResponse>;
 }
 
+// What a connector's check found on one connection.
+export interface HealthReport {
+  // the provider scopes the connection's credential holds
+  readonly grantedScopes: readonly string[];
+
+  // the account the credential reaches as the provider names it, such as an email address, or null
+  // when the provider names none
+  readonly accountName: string | null;
+}
+
 // nixie's code for one outside service. The OAuth and static credentials arrive with the credential
-// store, and setup steps, polls and the health check with the connectors that need them.
+// store, and with it the check's fetcher for the connection's credential. Setup steps and polls
+// arrive with the connectors that need them.
 export interface Connector {
   // such as 'google'
   readonly id: string;
   readonly auth: { readonly kind: 'none' };
   readonly actions: readonly ConnectorAction[];
+
+  // makes one read call per scope, and runs when a connection is set up
+  readonly check: () => Promise<HealthReport>;
 }
