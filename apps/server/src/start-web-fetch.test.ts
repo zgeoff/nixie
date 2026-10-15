@@ -10,6 +10,7 @@ import { buildSandboxAdapter } from './build-sandbox-adapter';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
 import { buildConnectProbe } from './test-utils/build-connect-probe';
 import { checkIsolationTargets } from './test-utils/check-isolation-targets';
+import { isClearIsolationLine } from './test-utils/is-clear-isolation-line';
 
 // The imp tests run against a real impd on a host with /dev/kvm, with the fetch image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on.
@@ -220,22 +221,28 @@ test.skipIf(!hasImpHost)(
     // nothing about reach; the test host resolves it, and the guest probes each address
     const impdAddresses = await Bun.dns.lookup(impd.hostname);
 
-    const targets: readonly (readonly [string, number])[] = [
-      ...impdAddresses.map((entry) => [entry.address, impdPort] as const),
-      ...(config.publicEgress?.hostAddresses ?? []).map(
-        (range) => [range.split('/')[0] ?? '', impdPort] as const,
-      ),
-    ];
+    // impd listens on its own addresses, so each needs a live listener; a host address may have
+    // nothing on impd's port, and a refusal there prints it as unprovable instead of failing
+    const lines = await checkIsolationTargets(
+      [
+        ...impdAddresses.map(
+          (entry) => ({ host: entry.address, port: impdPort, listener: 'required' }) as const,
+        ),
+        ...(config.publicEgress?.hostAddresses ?? []).map(
+          (range) =>
+            ({ host: range.split('/')[0] ?? '', port: impdPort, listener: 'optional' }) as const,
+        ),
+      ],
+      async (host, port) => {
+        const result = await sandbox.exec(
+          buildConnectProbe(fetchImageArgv[0] ?? 'bun', host, port),
+        );
 
-    const lines = await checkIsolationTargets(targets, async (host, port) => {
-      const result = await sandbox.exec(buildConnectProbe(fetchImageArgv[0] ?? 'bun', host, port));
-
-      return new TextDecoder().decode(result.stdout.bytes).trim();
-    });
-
-    expect(lines).toSatisfyAll((line: string) =>
-      /:\d+ listener (?:connected|unprovable from the runner, .+); sandbox failed /u.test(line),
+        return new TextDecoder().decode(result.stdout.bytes).trim();
+      },
     );
+
+    expect(lines).toSatisfyAll(isClearIsolationLine);
   },
   120_000,
 );

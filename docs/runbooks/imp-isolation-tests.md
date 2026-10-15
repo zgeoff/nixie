@@ -53,10 +53,13 @@ connections skip the fetcher's own address check, so only the network layer deci
 skip unless the variables below are set.
 
 A target with no listener refuses every connection, so a sandbox's failed connection to it shows
-nothing about isolation. The machine that runs the tests therefore connects to each target first,
-and the test fails when one of them refuses that machine. A machine with no routable IPv6 address
-cannot reach an IPv6 target, so the test prints each such target as unprovable instead of failing on
-it. Run the tests from a machine with IPv6 to prove the IPv6 targets too.
+nothing about isolation. The machine that runs the tests therefore connects to each target first.
+The test fails when an impd address refuses that machine, because impd listens there. A host address
+may have nothing on impd's port, so the test prints a host address that refuses that machine as
+unprovable instead of failing on it. A target that drops the connection fails the test either way,
+because a drop shows nothing about whether a listener exists. A machine with no routable IPv6
+address cannot reach an IPv6 target, so the test prints each such target as unprovable instead of
+failing on it. Run the tests from a machine with IPv6 to prove the IPv6 targets too.
 
 1. Build the fetch image into impd, with the repo root as the build folder:
 

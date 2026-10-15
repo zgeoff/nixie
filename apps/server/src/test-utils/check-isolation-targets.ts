@@ -5,7 +5,13 @@ import type { NetworkInterfaceInfo } from 'node:os';
 import { networkInterfaces } from 'node:os';
 import { hasRoutableIPv6 } from './has-routable-ipv6';
 
-type IsolationTarget = readonly [host: string, port: number];
+// A target whose listener is optional may have nothing on its port, such as a host address where
+// impd does not listen; a refusal there leaves the target unprovable instead of failed.
+interface IsolationTarget {
+  host: string;
+  port: number;
+  listener: 'required' | 'optional';
+}
 
 interface ListenerCheckOptions {
   interfaces: Readonly<Record<string, readonly Readonly<NetworkInterfaceInfo>[] | undefined>>;
@@ -14,10 +20,10 @@ interface ListenerCheckOptions {
 }
 
 // A sandbox's failed connection proves isolation only when its target has a live listener, so this
-// machine, the trusted vantage point, connects to each target too, and prints each IPv6 target it
-// cannot reach for want of routable IPv6. Each line is `<target> listener <x>; sandbox <y>`.
+// machine, the trusted vantage point, connects to each target too, and prints each target it cannot
+// prove. Each line is `<target> listener <x>; sandbox <y>`.
 export async function checkIsolationTargets(
-  targets: readonly IsolationTarget[],
+  targets: readonly Readonly<IsolationTarget>[],
   probeFromSandbox: (host: string, port: number) => Promise<string>,
   overrides: Readonly<Partial<ListenerCheckOptions>> = {},
 ): Promise<string[]> {
@@ -31,13 +37,13 @@ export async function checkIsolationTargets(
   const hasIPv6 = hasRoutableIPv6(options.interfaces);
 
   const lines = await Promise.all(
-    targets.map(async ([host, port]) => {
+    targets.map(async (target) => {
       const [listener, sandbox] = await Promise.all([
-        checkListener([host, port], hasIPv6, options),
-        probeFromSandbox(host, port),
+        checkListener(target, hasIPv6, options),
+        probeFromSandbox(target.host, target.port),
       ]);
 
-      return `${host}:${port} listener ${listener}; sandbox ${sandbox}`;
+      return `${target.host}:${target.port} listener ${listener}; sandbox ${sandbox}`;
     }),
   );
 
@@ -48,25 +54,43 @@ export async function checkIsolationTargets(
   return lines;
 }
 
-// the socket closes on every outcome, so a target that drops packets leaves no connection retrying
-// after its deadline
+// only a refusal shows that nothing listens, so a timeout fails an optional target too
 async function checkListener(
-  [host, port]: IsolationTarget,
+  target: Readonly<IsolationTarget>,
   hasIPv6: boolean,
   options: Readonly<ListenerCheckOptions>,
 ): Promise<string> {
-  if (isIPv6(host) && !hasIPv6) {
+  if (isIPv6(target.host) && !hasIPv6) {
     return 'unprovable from the runner, which has no routable IPv6 address';
   }
 
-  const socket = options.openSocket(host, port);
+  const failure = await tryCheckConnection(target, options);
+
+  if (failure === null) {
+    return 'connected';
+  }
+
+  if (target.listener === 'optional' && failure === 'ECONNREFUSED') {
+    return 'unprovable from the runner, which finds no listener on the port';
+  }
+
+  return `failed ${failure}`;
+}
+
+// the socket closes on every outcome, so a target that drops packets leaves no connection retrying
+// after its deadline
+async function tryCheckConnection(
+  target: Readonly<IsolationTarget>,
+  options: Readonly<ListenerCheckOptions>,
+): Promise<string | null> {
+  const socket = options.openSocket(target.host, target.port);
 
   try {
     await once(socket, 'connect', { signal: AbortSignal.timeout(options.deadlineMs) });
 
-    return 'connected';
+    return null;
   } catch (error) {
-    return `failed ${getFailureReason(error)}`;
+    return getFailureReason(error);
   } finally {
     socket.destroy();
   }
