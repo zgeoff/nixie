@@ -24,7 +24,6 @@ async function setupTest() {
 
 test('it reports ready while the database answers', async () => {
   const ctx = await setupTest();
-
   const report = await checkDatabase(ctx.writer.db);
 
   expect(report).toStrictEqual({ isReady: true, reason: null });

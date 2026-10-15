@@ -15,14 +15,17 @@ export function buildSessionProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
       const result = await writeIssuedCode(context, caller, options.input.clientActionID);
 
       if (result.status === 'reused') {
         throw options.errors.CLIENT_ACTION_ID_REUSED();
       }
+
       if (result.status === 'unauthorized') {
         throw options.errors.UNAUTHORIZED();
       }
+
       return { code: result.code, expiresAt: new Date(result.expiresAt) };
     }),
 
@@ -32,6 +35,7 @@ export function buildSessionProcedures(context: APIContext) {
         options.context.sessionToken,
         options.errors.UNAUTHORIZED,
       );
+
       const sessions = await readSessions(context, caller);
 
       return { sessions: [...sessions] };

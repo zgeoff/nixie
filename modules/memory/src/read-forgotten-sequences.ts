@@ -10,6 +10,7 @@ export async function readForgottenSequences(
   if (sequences.length === 0) {
     return new Set();
   }
+
   const rows = await db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_forgotten_evidence')

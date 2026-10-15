@@ -27,6 +27,7 @@ export async function startTestTools(
   const testSend = buildTestSendTool();
   const registry = buildToolRegistry([testSend]);
   const bridge = buildActionQueue(context);
+
   const endpoint = await startToolEndpoint({
     socketDir: join(context.log.writer.dataDir, 'tools'),
     registry,

@@ -39,6 +39,7 @@ async function* readInbox(
     state.pending.add(message.uuid);
     yield buildUserMessage(message);
   }
+
   const iterator = readMessages(messages);
 
   for (;;) {
@@ -48,6 +49,7 @@ async function* readInbox(
     if (next === null || next.done === true) {
       return;
     }
+
     state.pending.add(next.value.uuid);
     yield buildUserMessage(next.value);
   }
@@ -69,6 +71,7 @@ async function readNextMessage(
     const failure = error instanceof Error ? error : new Error(String(error));
 
     state.inputFailed.resolve(failure);
+
     return null;
   }
 }

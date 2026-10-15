@@ -29,13 +29,16 @@ function buildDriver(path: string, options: DatabaseOptions): Driver {
       const worker = startSqliteWorker();
 
       state.worker = worker;
+
       await worker.send({ kind: 'open', path, options });
+
       state.connection = buildConnection(worker);
     },
     acquireConnection() {
       if (state.connection === null) {
         return Promise.reject(new Error('the SQLite worker dialect is not initialised'));
       }
+
       return Promise.resolve(state.connection);
     },
     beginTransaction: runBegin,
@@ -44,6 +47,7 @@ function buildDriver(path: string, options: DatabaseOptions): Driver {
     releaseConnection: () => Promise.resolve(),
     async destroy() {
       await state.worker?.stop();
+
       state.worker = null;
       state.connection = null;
     },
@@ -71,14 +75,17 @@ function startSqliteWorker(): SqliteWorker {
     const request = pending.get(event.data.id);
 
     pending.delete(event.data.id);
+
     applyResponse(request, event.data);
   });
+
   worker.addEventListener('error', (event: ErrorEvent) => {
     const error = new Error(`the SQLite worker failed: ${event.message}`);
 
     for (const request of pending.values()) {
       request.reject(error);
     }
+
     pending.clear();
   });
 
@@ -88,6 +95,7 @@ function startSqliteWorker(): SqliteWorker {
         promise = Promise.withResolvers<WorkerQueryResult>();
 
       ids.next += 1;
+
       pending.set(id, promise);
 
       // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a Worker takes no origin
@@ -97,6 +105,7 @@ function startSqliteWorker(): SqliteWorker {
     },
     async stop() {
       await this.send({ kind: 'close' });
+
       worker.terminate();
     },
   };
@@ -106,6 +115,7 @@ function applyResponse(request: PendingRequest | undefined, response: WorkerResp
   if (request === undefined) {
     return;
   }
+
   if (response.ok) {
     request.resolve(response.result);
   } else {
@@ -159,6 +169,7 @@ async function runBegin(
   if (settings.isolationLevel !== undefined || settings.accessMode !== undefined) {
     throw new Error('SQLite transactions take no isolation level or access mode');
   }
+
   await runStatement(connection, 'begin immediate');
 }
 

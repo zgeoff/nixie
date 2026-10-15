@@ -60,6 +60,7 @@ test('it moves a finished task to done', async () => {
 test('it keeps a task ready when input it did not read is still in its inbox', async () => {
   const ctx = await setupTest();
   const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
   const [message] = await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',
@@ -86,6 +87,7 @@ test('it keeps a task ready when input it did not read is still in its inbox', a
 test('it moves the read cursor over the contiguous run of acknowledged inbox records', async () => {
   const ctx = await setupTest();
   const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
   const [first, , third] = await writeInboxRecords(
     ctx.context,
     ['first', 'second', 'third'].map((text) => ({
@@ -225,6 +227,7 @@ test('it commits a step key once, and a second commit changes nothing', async ()
     StepAlreadyCommittedError,
     `step ${claim.stepKey} has already committed`,
   );
+
   expect(commits).toStrictEqual([{ step_key: claim.stepKey }]);
 });
 
@@ -253,6 +256,7 @@ test('it commits nothing once another runner claimed the task', async () => {
   const claim = await createTestClaim(ctx.context, 'tidy the inbox');
 
   ctx.clock.advance(60_000);
+
   await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   const commit = writeStepCommit(ctx.context, claim, {
@@ -308,17 +312,20 @@ test('it refuses a timer that is due at no time', async () => {
     Error,
     "a step's timer is due at NaN, which is no time",
   );
+
   expect(task.committed_steps).toBe(0);
 });
 
 test('it reaches step.commit.before and step.commit.after around the commit', async () => {
   const ctx = await setupTest();
   const claim = await createTestClaim(ctx.context, 'tidy the inbox');
+
   const reached: FaultPointID[] = [];
 
   setFaultPointHandler((id) => {
     reached.push(id);
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });

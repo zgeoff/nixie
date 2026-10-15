@@ -19,12 +19,14 @@ test('it renders the recent turns in order after a heading, each line with its e
     payload: { timeZone: 'Australia/Sydney' },
     erasable: { status: 'readable', fields: { text: 'Goodnight.' } },
   });
+
   const reply = buildMockLogRecord({
     sequence: 48_214,
     kind: 'model.reply',
     recordedAt: new Date('2026-10-12T11:40:30Z'),
     erasable: { status: 'readable', fields: { text: 'Sleep well.' } },
   });
+
   const goodMorning = buildMockLogRecord({
     sequence: 48_215,
     kind: 'owner_message',

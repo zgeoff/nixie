@@ -13,28 +13,35 @@ async function setupTest() {
   await nixie.waitForLogEvent('ready');
   await nixie.sendStopSignal();
   await nixie.waitForExit();
+
   await rm(nixie.dataDir, { recursive: true });
   await mkdir(nixie.dataDir);
+
   return nixie;
 }
 
 test('it seeds the first definitions within seconds of a checkout that lands after a fresh start', async () => {
   const ctx = await setupTest();
+
   const definitionsDir = join(ctx.dir, 'definitions');
 
   await rename(definitionsDir, join(ctx.dir, 'checkout'));
+
   const again = ctx.startAgain();
+
   const listening = await again.waitForLogEvent('http.listening');
 
   await again.waitForLogEvent('start.retry');
+
   await rename(join(ctx.dir, 'checkout'), definitionsDir);
+
   const landedAt = Date.now();
 
   await waitForCondition(
     async () => {
       const ready = await fetch(`http://127.0.0.1:${String(listening['port'])}/health/ready`);
-
       const body: unknown = await ready.json();
+
       const definitions = z.object({ isReady: z.boolean() });
       const report = z.object({ parts: z.object({ definitions }) }).parse(body);
 

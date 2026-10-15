@@ -48,6 +48,7 @@ function startBodyWatch(body: Bytes, idleMs: number, startTimer: StartTimer): By
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream controller has no readonly form
   const resetIdleTimer = (controller: TransformStreamDefaultController<Uint8Array>): void => {
     watch.stopTimer();
+
     watch.stopTimer = startTimer(() => {
       controller.error(new Error(`the event stream sent nothing for ${idleMs} ms`));
     }, idleMs);
@@ -61,6 +62,7 @@ function startBodyWatch(body: Bytes, idleMs: number, startTimer: StartTimer): By
       start: resetIdleTimer,
       transform: (chunk, controller) => {
         resetIdleTimer(controller);
+
         controller.enqueue(chunk);
       },
     }),

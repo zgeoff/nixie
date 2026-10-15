@@ -9,6 +9,7 @@ test('it builds a default message frame', () => {
     type: 'message',
     message: { uuid: expect.toBeString(), text: expect.toBeString() },
   });
+
   expect(hostFrameSchema.parse(frame)).toStrictEqual(frame);
 });
 

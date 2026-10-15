@@ -7,6 +7,7 @@ import type { ResolvedProfile } from './types';
 // a sandbox granted the old one keeps working until it is replaced.
 export function deriveModelSecret(resolved: ResolvedProfile): SecretSpec {
   const host = new URL(resolved.profile.baseURL).hostname;
+
   const digest = createHash('sha256')
     .update(`${resolved.profile.authHeader}\n${host}\n${resolved.credential}`)
     .digest('hex')

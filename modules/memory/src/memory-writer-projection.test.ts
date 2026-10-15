@@ -184,6 +184,7 @@ test('it marks the catch-up ended at the sequence of the publish that ends it', 
       },
     },
   ]);
+
   const row = await readWriterRow(ctx.memory.log);
 
   expect(row.caught_up_sequence).toBe(published?.sequence ?? -1);
@@ -207,6 +208,7 @@ test('it records a failure with its backoff, its code and its record', async () 
       erasable: { message: 'the model timed out' },
     },
   ]);
+
   const row = await readWriterRow(ctx.memory.log);
 
   expect(row).toMatchObject({

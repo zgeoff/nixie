@@ -30,7 +30,9 @@ export async function startConversationEndpoint(
     findTimeZone: () => findMessageTimeZone(options.context.log),
     defaultZone: options.config.time.default_zone,
   });
+
   const logRead = buildLogReadTool(options.context.log);
+
   const definitions = buildConversationTools(
     { webFetch: tools.webFetch, time, logRead },
     {
@@ -41,7 +43,9 @@ export async function startConversationEndpoint(
       defaultZone: options.config.time.default_zone,
     },
   );
+
   const registry = buildToolRegistry(definitions);
+
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),
     registry,
@@ -54,6 +58,7 @@ export async function startConversationEndpoint(
   });
 
   await options.cleanup.defer(() => endpoint.stop());
+
   return { endpoint, definitions };
 }
 

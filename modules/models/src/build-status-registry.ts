@@ -38,5 +38,6 @@ export function buildStatusRegistry(entries: readonly StatusEntry[]): StatusRegi
   if (repeated !== undefined) {
     throw new Error(`the status has two entries named ${repeated}`);
   }
+
   return entries;
 }

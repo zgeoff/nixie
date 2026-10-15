@@ -14,13 +14,17 @@ export function buildEnrolProcedure(context: APIContext) {
     if (result.status === 'invalid') {
       throw options.errors.ENROLMENT_CODE_INVALID();
     }
+
     if (result.status === 'reused') {
       throw options.errors.CLIENT_ACTION_ID_REUSED();
     }
+
     if (options.input.tokenDelivery === 'bearer') {
       return { sessionID: result.sessionID, token: result.token };
     }
+
     options.context.resHeaders?.append('set-cookie', renderSessionCookie(result.token));
+
     return { sessionID: result.sessionID };
   });
 }

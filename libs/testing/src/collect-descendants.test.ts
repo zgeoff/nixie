@@ -13,6 +13,7 @@ test('it collects the children of a process and their children', async () => {
   onTestFinished(() => {
     stopProcesses([child.pid]);
   });
+
   await waitForCondition(() => collectDescendants(child.pid).length > 0);
 
   const [grandchild] = collectDescendants(child.pid);

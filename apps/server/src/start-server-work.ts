@@ -17,6 +17,7 @@ export async function startServerWork(
   const failed = Promise.withResolvers<unknown>();
   const work = buildCleanup();
   const start: { ready: Promise<void> } = { ready: Promise.resolve() };
+
   const reset = buildServerReset({
     context: base.apiContext,
     adapter: base.tools.adapter,
@@ -36,7 +37,9 @@ export async function startServerWork(
     },
     options.cleanup,
   );
+
   await options.cleanup.defer(() => work.stop());
+
   start.ready = startInBackground({
     ...options,
     ...base,
@@ -46,6 +49,7 @@ export async function startServerWork(
     modelSecrets: options.secrets.models,
     onFailure: failed.resolve,
   });
+
   return {
     port: base.port,
     ready: start.ready,
@@ -61,6 +65,7 @@ function startInBackground(parts: ServerParts): Promise<void> {
   const ready = runStartSequence(parts);
 
   void waitForStartFailure(ready, parts);
+
   return ready;
 }
 
@@ -88,9 +93,12 @@ function makeStop(stops: Stops, options: ServerPartsOptions, ready: Promise<void
     options.log('stopping');
     stops.cleanup.abort();
     stops.work.abort();
+
     await waitForSettled(ready);
+
     await stops.reset.waitForSettled();
     await stops.cleanup.stop();
+
     options.log('stopped');
   };
 }

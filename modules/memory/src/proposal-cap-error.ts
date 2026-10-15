@@ -2,6 +2,7 @@
 // injected instruction cannot flood the review queue. The write is dropped, and the model reads why.
 export class ProposalCapError extends Error {
   override readonly name = 'ProposalCapError';
+
   readonly code = 'PROPOSAL_CAP';
 
   constructor(cap: number) {

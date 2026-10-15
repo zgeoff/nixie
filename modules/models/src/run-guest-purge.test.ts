@@ -9,6 +9,7 @@ function setupTest() {
 
 test('it completes once the guest reports its session state gone', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.sandboxes.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation' }),
   );
@@ -20,6 +21,7 @@ test('it completes once the guest reports its session state gone', async () => {
 
 test('it fails with the guest failure when the guest exits without removing its session state', async () => {
   const ctx = setupTest();
+
   const sandbox = await ctx.sandboxes.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation' }),
   );

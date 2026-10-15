@@ -32,12 +32,15 @@ export async function readWriterStatus(
   const db = log.writer.db.$extendTables<
     WriterTables & { records: { sequence: number; thread: string | null; kind: string } }
   >();
+
   const row = await db
     .selectFrom('memory_writer')
     .selectAll()
     .where('writer_id', '=', memoryWriterTaskID)
     .executeTakeFirst();
+
   const cursor = row?.cursor ?? 0;
+
   const backlog = await db
     .selectFrom('records')
     .select((eb) => eb.fn.countAll<number>().as('count'))
@@ -69,6 +72,7 @@ async function readLastError(
   ) {
     return null;
   }
+
   return {
     code: row.last_error_code,
     message: await readErrorMessage(log, row.last_error_sequence),
@@ -81,6 +85,7 @@ async function readErrorMessage(
   sequence: number,
 ): Promise<string | null> {
   const [entry] = await readRecords(log, { afterSequence: sequence - 1, limit: 1 });
+
   const erasable = entry?.record.erasable;
   const message = erasable?.status === 'readable' ? erasable.fields['message'] : undefined;
 

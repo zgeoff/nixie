@@ -79,6 +79,7 @@ function buildStreamCallbacks(state: StreamState): StreamCallbacks {
   return {
     onAvailability: (isAvailable) => {
       state.setUnavailable(!isAvailable);
+
       if (isAvailable && reset.isPending) {
         reset.isPending = false;
         void state.invalidateQueries();
@@ -87,10 +88,13 @@ function buildStreamCallbacks(state: StreamState): StreamCallbacks {
     onRecord: (record) => {
       if (record.kind === 'log_reset') {
         reset.isPending = true;
+
         state.setRecords([record]);
         void state.invalidateQueries();
+
         return;
       }
+
       state.setRecords((current) => [...current, record]);
     },
   };

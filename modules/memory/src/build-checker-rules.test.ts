@@ -24,5 +24,6 @@ test('it gives the content checker another hash when the owner name changes', ()
 
   invariant(named);
   invariant(unnamed);
+
   expect(named.prompt).not.toBe(unnamed.prompt);
 });

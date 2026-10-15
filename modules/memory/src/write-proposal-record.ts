@@ -26,16 +26,19 @@ export async function writeProposalRecord(
   pending: PendingProposal,
 ): Promise<void> {
   const plan = pending.plan;
+
   const made = await tx
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .select((eb) => eb.fn.countAll<number>().as('count'))
     .where('cap_group', '=', plan.group.capGroup)
     .executeTakeFirstOrThrow();
+
   const limits = parts.context.gate.limits;
 
   if (made.count >= limits.proposalCap) {
     throw new ProposalCapError(limits.proposalCap);
   }
+
   await writeRecordsInTransaction(tx, parts.context.log, [buildProposalRecord(parts, pending)]);
 }

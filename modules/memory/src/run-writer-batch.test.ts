@@ -15,9 +15,12 @@ import { writerConfigSchema } from './writer-config-schema';
 // another, so each write the gate reaches waits for review. Each test supplies the session.
 async function setupTest(options: TestMemoryOptions = {}) {
   const memory = await startTestMemory(options);
+
   const clock = buildTestClock(1_000_000);
   const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
+
   const lease = await claimWriterLease(context);
+
   const parts = {
     context,
     store: memory.store,
@@ -27,6 +30,7 @@ async function setupTest(options: TestMemoryOptions = {}) {
     getPersona: () => '',
     ownerName: null,
   };
+
   const input = {
     taskID: 'memory-writer',
     stepKey: 'step-1',
@@ -41,10 +45,12 @@ async function setupTest(options: TestMemoryOptions = {}) {
 
 test('it publishes no proposal for an edit whose item moved on after the gate, and leaves the batch to run again', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
 
   registerFaultPointAction('writer.batch.gated', () =>
@@ -74,6 +80,7 @@ test('it publishes no proposal for an edit whose item moved on after the gate, a
     },
     { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
+
   const [pending, after] = await Promise.all([
     ctx.memory.store.proposals.listPending(),
     readWriterRow(ctx.memory.log),
@@ -86,11 +93,14 @@ test('it publishes no proposal for an edit whose item moved on after the gate, a
 
 test('it extracts the batch again after a moved-on edit, and proposes the edit against the version now current', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
+
   const parts = {
     ...ctx.parts,
     ...buildStubWriterSession({
@@ -115,6 +125,7 @@ test('it extracts the batch again after a moved-on edit, and proposes the edit a
       },
     }),
   );
+
   await runWriterBatch(parts, {
     input: ctx.input,
     row: await readWriterRow(ctx.memory.log),
@@ -126,9 +137,11 @@ test('it extracts the batch again after a moved-on edit, and proposes the edit a
     row: await readWriterRow(ctx.memory.log),
     now: ctx.clock.now(),
   });
+
   const pending = await ctx.memory.store.proposals.listPending();
 
   expect(parts.model.runSession).toHaveBeenCalledTimes(2);
+
   expect(pending).toMatchObject([
     { operation: 'remember', itemID: item.itemID, targetVersion: 2, text: 'Lives on 9 Oak Lane' },
   ]);
@@ -136,11 +149,14 @@ test('it extracts the batch again after a moved-on edit, and proposes the edit a
 
 test('it never runs the checker on an edit whose item moved on during extraction, and leaves the batch to run again', async () => {
   const check = mock(() => Promise.reject(new Error('the checker must not run')));
+
   const ctx = await setupTest({ gate: { check } });
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I moved to 9 Oak Lane.']);
 
   registerFaultPointAction('writer.batch.extracted', () =>
@@ -170,6 +186,7 @@ test('it never runs the checker on an edit whose item moved on during extraction
     },
     { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
+
   const pending = await ctx.memory.store.proposals.listPending();
 
   expect(result).toStrictEqual({ next: 'continue', timers: [] });

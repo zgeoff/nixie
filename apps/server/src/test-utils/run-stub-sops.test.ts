@@ -26,6 +26,7 @@ test('it prints the file’s YAML as JSON, as sops decrypt does', async () => {
   ]);
 
   expect(child.exitCode).toBe(0);
+
   expect(JSON.parse(child.stdout.toString())).toStrictEqual({
     impd_token: 'a',
     model_credentials: { x: 'b' },

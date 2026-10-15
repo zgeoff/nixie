@@ -19,6 +19,7 @@ export async function runOpenedTurn(
 
   // a turn on a new session always reads its opening
   invariant(opened.opening, 'a new session ran with no opening');
+
   return buildStepResult(
     source,
     {

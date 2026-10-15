@@ -14,9 +14,11 @@ export async function startKeyStore(dataDir: string): Promise<Kysely<unknown>> {
       key_id text primary key,
       wrapped blob not null
     ) strict`.execute(keys);
+
     return keys;
   } catch (error) {
     await keys.destroy();
+
     throw error;
   }
 }

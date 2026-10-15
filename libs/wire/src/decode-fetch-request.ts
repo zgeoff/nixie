@@ -11,9 +11,11 @@ export function decodeFetchRequest(bytes: Uint8Array): FetchRequest {
   if (typeof request['url'] !== 'string') {
     throw new TypeError('a fetch request needs a url string');
   }
+
   if (!isStringList(deniedRanges)) {
     throw new TypeError('a fetch request needs deniedRanges, a list of strings');
   }
+
   return { url: request['url'], limits: decodeLimits(limits), deniedRanges };
 }
 
@@ -23,6 +25,7 @@ function decodeLimits(value: unknown): FetchLimits {
   if (typeof value !== 'object' || value === null) {
     throw new TypeError('a fetch request needs limits');
   }
+
   const limits: ReadonlyMap<string, unknown> = new Map(Object.entries(value));
 
   for (const name of limitNames) {
@@ -32,6 +35,7 @@ function decodeLimits(value: unknown): FetchLimits {
       throw new TypeError(`a fetch request needs limits.${name}, a whole number of 0 or more`);
     }
   }
+
   return {
     bodyBytes: Number(limits.get('bodyBytes')),
     timeoutMs: Number(limits.get('timeoutMs')),

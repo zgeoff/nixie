@@ -6,6 +6,7 @@ export function renderShownText(text: string, spans: readonly SourceSpan[]): str
   if (spans.length === 0) {
     return text;
   }
+
   return spans
     .toSorted((left, right) => left.start - right.start)
     .map((span) => {

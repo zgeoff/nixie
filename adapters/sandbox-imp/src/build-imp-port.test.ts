@@ -15,6 +15,7 @@ const hasImpHost =
   process.env['NIXIE_IMP_TEST_URL'] !== undefined &&
   process.env['NIXIE_IMP_TEST_TOKEN'] !== undefined &&
   (process.env['NIXIE_IMP_TEST_IMAGE'] ?? '') !== '';
+
 const hasHostAddresses = hasImpHost && process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'] !== undefined;
 
 // The imp adapter on the real port, with a model-host secret that this test adds. impdURLs holds a
@@ -31,8 +32,10 @@ async function setupTest() {
     IMP_TOKEN: process.env['NIXIE_IMP_TEST_TOKEN'],
     IMP_HOST_ADDRESSES: process.env['NIXIE_IMP_TEST_HOST_ADDRESSES'],
   });
+
   const client = createImpClient({ url: config.url, token: config.token });
   const secret = `nixie-test-${crypto.randomUUID().slice(0, 8)}`;
+
   const isolation = await setupIsolationAdapter({
     port: buildImpPort(config),
     removeSecret: async (name) => {
@@ -41,7 +44,9 @@ async function setupTest() {
     publicEgress: config.publicEgress,
     secret,
   });
+
   const impd = new URL(config.url);
+
   const impdURLs = await resolveProbeURLs(
     impd.hostname.replaceAll(/^\[|\]$/gu, ''),
     Number(impd.port || (impd.protocol === 'https:' ? 443 : 80)),
@@ -186,6 +191,7 @@ test.skipIf(!hasImpHost)(
   'it lets a conversation imp reach the tool endpoint through the reverse forward',
   async () => {
     const ctx = await setupTest();
+
     const sandbox = await ctx.createSandbox(
       buildMockSandboxSpec({
         kind: 'conversation',
@@ -194,11 +200,13 @@ test.skipIf(!hasImpHost)(
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
       }),
     );
+
     const route = await sandbox.toolRoute();
 
     invariant(route);
 
     const token = crypto.randomUUID();
+
     const result = await sandbox.exec({
       argv: ['sh', '-c', `curl -sS -m 10 -H "Authorization: Bearer ${token}" "${route.url}/mcp"`],
     });
@@ -215,6 +223,7 @@ test.skipIf(!hasImpHost)(
   'it lets a conversation imp reach the model host through the broker',
   async () => {
     const ctx = await setupTest();
+
     const sandbox = await ctx.createSandbox(
       buildMockSandboxSpec({
         kind: 'conversation',
@@ -237,6 +246,7 @@ test.skipIf(!hasImpHost)(
   'it refuses a conversation imp any other host through the broker',
   async () => {
     const ctx = await setupTest();
+
     const sandbox = await ctx.createSandbox(
       buildMockSandboxSpec({
         kind: 'conversation',
@@ -258,6 +268,7 @@ test.skipIf(!hasImpHost)(
   'it refuses a conversation imp every direct connection, while its tool route answers',
   async () => {
     const ctx = await setupTest();
+
     const sandbox = await ctx.createSandbox(
       buildMockSandboxSpec({
         kind: 'conversation',
@@ -266,19 +277,23 @@ test.skipIf(!hasImpHost)(
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
       }),
     );
+
     const route = await sandbox.toolRoute();
 
     invariant(route);
 
     // the model host's name resolves on this machine, so the guest probes its addresses
     const modelHost = await resolveProbeURLs('api.anthropic.com', 443);
+
     const targets = [
       'http://1.1.1.1:443/',
       'http://169.254.169.254:80/',
       'http://100.100.100.100:80/',
       ...modelHost,
     ];
+
     const control = await runProbe(sandbox, `${route.url}/mcp`, { viaBroker: false });
+
     const outcomes = await Promise.all(
       targets.map(async (url) => `${url} ${await runProbe(sandbox, url, { viaBroker: false })}`),
     );
@@ -293,6 +308,7 @@ test.skipIf(!hasImpHost)(
   'it refuses a conversation imp a direct connection to impd, by each address and through the gateway',
   async () => {
     const ctx = await setupTest();
+
     const sandbox = await ctx.createSandbox(
       buildMockSandboxSpec({
         kind: 'conversation',
@@ -301,16 +317,19 @@ test.skipIf(!hasImpHost)(
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
       }),
     );
+
     const route = await sandbox.toolRoute();
 
     invariant(route);
 
     const control = await runProbe(sandbox, `${route.url}/mcp`, { viaBroker: false });
+
     const byAddress = await Promise.all(
       ctx.impdURLs.map(
         async (url) => `${url} ${await runProbe(sandbox, url, { viaBroker: false })}`,
       ),
     );
+
     const byGateway = await sandbox.exec({
       argv: [
         'sh',
@@ -320,9 +339,11 @@ test.skipIf(!hasImpHost)(
     });
 
     expect(control).toBe('status=200 exit=0');
+
     expect(byAddress).toSatisfyAll((outcome: string) =>
       / status=000 exit=(?:7|28)$/u.test(outcome),
     );
+
     expect(new TextDecoder().decode(byGateway.stdout.bytes).trim()).toMatch(
       /^status=000 exit=(?:7|28)$/u,
     );
@@ -334,6 +355,7 @@ test.skipIf(!hasImpHost)(
   'it reopens the tool route of a conversation imp after a sleep and a wake',
   async () => {
     const ctx = await setupTest();
+
     const sandbox = await ctx.createSandbox(
       buildMockSandboxSpec({
         kind: 'conversation',
@@ -344,6 +366,7 @@ test.skipIf(!hasImpHost)(
     );
 
     invariant(sandbox.suspension.kind === 'memory');
+
     await sandbox.suspension.sleep();
     await sandbox.suspension.wake();
 
@@ -362,6 +385,7 @@ test.skipIf(!hasHostAddresses)(
   'it lets a public imp reach the internet and never a host address or impd',
   async () => {
     const ctx = await setupTest();
+
     const sandbox = await ctx.createSandbox(
       buildMockSandboxSpec({
         kind: 'fetch',
@@ -377,7 +401,9 @@ test.skipIf(!hasHostAddresses)(
     const hostURLs = await Promise.all(
       ctx.hostAddresses.map((range) => resolveProbeURLs(range.replace(/\/\d+$/u, ''), 80)),
     );
+
     const internet = await runProbe(sandbox, 'https://1.1.1.1/', { viaBroker: false });
+
     const outcomes = await Promise.all(
       [...hostURLs.flat(), ...ctx.impdURLs].map(
         async (url) => `${url} ${await runProbe(sandbox, url, { viaBroker: false })}`,

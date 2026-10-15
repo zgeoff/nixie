@@ -16,6 +16,7 @@ export async function runStartSequence(parts: ServerParts): Promise<void> {
   if (parts.inForce.read() === null) {
     await runWithRetry(() => requireSeeded(parts), { ...retry, step: 'first_seed' });
   }
+
   await runWithRetry(() => runRecoverySteps(parts), { ...retry, step: 'recovery' });
   await runWithRetry(() => registerSandboxImages(parts), { ...retry, step: 'add_images' });
 
@@ -28,6 +29,7 @@ export async function runStartSequence(parts: ServerParts): Promise<void> {
         if (store === null) {
           throw new Error('a turn ran before the memory store started');
         }
+
         return store;
       }),
     { ...retry, step: 'conversation_imp' },

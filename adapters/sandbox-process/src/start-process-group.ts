@@ -25,6 +25,7 @@ export function startProcessGroup(options: ProcessGroupOptions): ProcessGroup {
     stderr: 'pipe',
     detached: true,
   });
+
   const stop = makeGroupStop(child.pid, options.killGraceMs);
 
   return {
@@ -66,7 +67,9 @@ function makeGroupStop(pid: number, killGraceMs: number): GroupStop {
       if (state.deadline !== null) {
         return;
       }
+
       sendGroupSignal(pid, 'SIGTERM');
+
       state.deadline = stopGroupAfter(pid, killGraceMs);
     },
     deadline: () => state.deadline,
@@ -75,6 +78,7 @@ function makeGroupStop(pid: number, killGraceMs: number): GroupStop {
 
 async function stopGroupAfter(pid: number, killGraceMs: number): Promise<void> {
   await Bun.sleep(killGraceMs);
+
   sendGroupSignal(pid, 'SIGKILL');
 }
 
@@ -93,6 +97,7 @@ async function waitForProcessExit(leader: Leader, stop: GroupStop): Promise<Exec
   if (deadline !== null) {
     await waitForGroupExit(leader.pid, deadline);
   }
+
   return leader.readExit();
 }
 
@@ -107,13 +112,17 @@ const reapGraceMs = 5000;
 
 async function waitForGroupExit(pid: number, deadline: Promise<void>): Promise<void> {
   const limit = { isReached: false };
+
   const waitForReapLimit = async (): Promise<void> => {
     await deadline;
+
     await Bun.sleep(reapGraceMs);
+
     limit.isReached = true;
   };
 
   void waitForReapLimit();
+
   while (hasGroup(pid) && !limit.isReached) {
     // oxlint-disable-next-line no-await-in-loop -- polls the group until it is gone
     await Bun.sleep(20);
@@ -123,6 +132,7 @@ async function waitForGroupExit(pid: number, deadline: Promise<void>): Promise<v
 function hasGroup(pid: number): boolean {
   try {
     process.kill(-pid, 0);
+
     return true;
   } catch {
     return false;

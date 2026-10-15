@@ -15,6 +15,7 @@ test('it commits the records with the rows the caller writes in the same transac
 
   const records = await withWriteTransaction(ctx.writer, async (tx) => {
     await sql`insert into notes (title) values ('seeded')`.execute(tx);
+
     return writeRecordsInTransaction(tx, ctx.log, [
       { kind: 'note_written', definitions: { snapshotHash: 'sha256:aa11' } },
     ]);
@@ -37,6 +38,7 @@ test('it rolls the records back when the caller fails after writing them', async
     await writeRecordsInTransaction(tx, ctx.log, [
       { kind: 'note_written', definitions: { snapshotHash: 'sha256:aa11' } },
     ]);
+
     await sql`insert into notes (title) values (null)`.execute(tx);
   });
 

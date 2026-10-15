@@ -26,5 +26,6 @@ export async function sendSessionRequest(
       `nixie answered the session ${request.command} request with ${response.status}: ${reason}`,
     );
   }
+
   return response.json();
 }

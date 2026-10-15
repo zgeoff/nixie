@@ -3,6 +3,7 @@ import { createConsolidationStaging } from './create-consolidation-staging';
 
 test('it binds a merge to the versions the session read and takes the least trusted source', () => {
   const staging = createConsolidationStaging();
+
   const run = staging.open(
     new Map([
       [
@@ -54,6 +55,7 @@ test('it binds a merge to the versions the session read and takes the least trus
 
 test('it binds a retirement to the version the session read and keeps its item source', () => {
   const staging = createConsolidationStaging();
+
   const run = staging.open(
     new Map([
       [
@@ -84,6 +86,7 @@ test('it binds a retirement to the version the session read and keeps its item s
 
 test('it puts a pinned input first in a merge, so the merged item stays pinned', () => {
   const staging = createConsolidationStaging();
+
   const run = staging.open(
     new Map([
       [
@@ -140,6 +143,7 @@ test('it binds a change to the version a recall showed the session', () => {
     source: 'owner',
     isPinned: false,
   });
+
   staging.stage([
     {
       kind: 'rewrite',
@@ -158,13 +162,13 @@ test('it binds a change to the version a recall showed the session', () => {
       source: 'owner',
     },
   ]);
+
   expect(run.readShownItemIDs()).toHaveLength(1);
 });
 
 test('it stages an empty diff when nothing needs tidying', () => {
   const staging = createConsolidationStaging();
   const run = staging.open(new Map(), 30);
-
   const result = staging.stage([]);
 
   expect(result).toStrictEqual({ status: 'staged', changes: 0 });
@@ -246,6 +250,7 @@ test('it refuses a diff over the most changes a run allows', () => {
 
 test('it takes the short ID the session read, and binds the change to the item it names', () => {
   const staging = createConsolidationStaging();
+
   const run = staging.open(
     new Map([
       [
@@ -287,6 +292,7 @@ test('it refuses a diff that names one item in 2 changes, by its short ID and it
 
 test('it refuses a change to an item the session was never shown, and stages nothing', () => {
   const staging = createConsolidationStaging();
+
   const run = staging.open(
     new Map([
       [
@@ -306,6 +312,7 @@ test('it refuses a change to an item the session was never shown, and stages not
     status: 'refused',
     reason: 'change 2: item item-7 is not one you were shown; find it with memory.recall first',
   });
+
   expect(run.close()).toBeNull();
 });
 
@@ -447,6 +454,7 @@ test('it refuses new text that brings in a destination none of its items holds',
 
 test('it keeps a destination that one of the merged items holds', () => {
   const staging = createConsolidationStaging();
+
   const run = staging.open(
     new Map([
       [

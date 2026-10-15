@@ -39,6 +39,7 @@ export function buildServerReset(options: ServerResetControlOptions): ServerRese
   return {
     run: () => {
       pending.reset ??= runLoggedReset(options, done.resolve);
+
       return pending.reset;
     },
     done: done.promise,
@@ -53,6 +54,7 @@ async function runLoggedReset(
   onDone: () => void,
 ): Promise<ServerReset> {
   options.log('reset.started');
+
   try {
     const reset = await runStoppedReset(options);
 
@@ -60,7 +62,9 @@ async function runLoggedReset(
       lastSequence: reset.lastSequence,
       keptSessions: reset.keptSessions,
     });
+
     onDone();
+
     return reset;
   } catch (error) {
     options.log('reset.failed', toErrorFields(error));
@@ -72,7 +76,9 @@ async function runLoggedReset(
 // the start sequence ends at its next step before the reset stops the parts it started
 async function runStoppedReset(options: ServerResetControlOptions): Promise<ServerReset> {
   options.work.abort();
+
   await waitForSettled(options.readStart());
+
   return runServerReset({
     ...options,
     stopWork: async () => {

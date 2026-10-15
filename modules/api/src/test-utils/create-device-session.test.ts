@@ -9,9 +9,7 @@ function setupTest() {
 
 test('it creates a session whose token resolves to its row', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
-
   const result = await verifySessionToken(ctx.context, session.token);
 
   expect(result).toStrictEqual({
@@ -25,7 +23,6 @@ test('it creates a session whose token resolves to its row', async () => {
 
 test('it returns the identity its token resolves to as the caller', async () => {
   const ctx = await setupTest();
-
   const session = await createDeviceSession(ctx.context, 'laptop');
 
   expect(session.caller).toStrictEqual({
@@ -39,7 +36,6 @@ test('it returns the identity its token resolves to as the caller', async () => 
 
 test('it creates a separate session on each call', async () => {
   const ctx = await setupTest();
-
   const first = await createDeviceSession(ctx.context, 'laptop');
   const second = await createDeviceSession(ctx.context, 'laptop');
 

@@ -20,7 +20,9 @@ export interface FakeForwardOptions {
 // close at a lost stop, as when the imp's VM stops, and when the test finishes.
 export function startFakeForward(options: FakeForwardOptions): SleepingForward {
   const ending = buildEnding();
+
   const sockets = new Set<Socket>();
+
   const server = createServer((socket) => {
     startGuestRelay(options, sockets, socket);
   });
@@ -28,6 +30,7 @@ export function startFakeForward(options: FakeForwardOptions): SleepingForward {
   server.once('error', ending.listening.reject);
   void startListener(options, server, ending);
   onTestFinished(() => stopForward(server, sockets));
+
   return {
     listening: ending.listening.promise,
     ended: ending.ended.promise,
@@ -57,12 +60,14 @@ function buildEnding(): Ending {
   let isEnded = false;
 
   void waitForSettled(listening.promise);
+
   return {
     listening,
     ended,
     isEnded: () => isEnded,
     stopAs: (kind) => {
       isEnded = true;
+
       listening.reject(new Error(`the forward ended as ${kind} before it listened`));
       ended.resolve({ kind });
     },
@@ -83,15 +88,19 @@ function startGuestRelay(options: FakeForwardOptions, sockets: Set<Socket>, sock
 
   // a guest that resets its connection raises an error, which the close then reports as lost
   socket.on('error', () => {});
+
   socket.once('close', () => {
     sockets.delete(socket);
   });
+
   options.onConnection((handlers) => {
     socket.on('data', (chunk: Uint8Array) => void handlers.onData(chunk));
     socket.once('end', handlers.onEof);
+
     socket.once('close', (hadError) => {
       handlers.onClose(hadError);
     });
+
     return {
       send: (data) => socket.write(data),
       waitForRoom: async () => {
@@ -116,6 +125,7 @@ async function startListener(
   ending: Ending,
 ): Promise<void> {
   await options.waitForAwake?.();
+
   if (!ending.isEnded()) {
     server.listen(options.port, '127.0.0.1', () => {
       ending.listening.resolve(options.port);
@@ -129,8 +139,10 @@ async function stopForward(server: Server, sockets: ReadonlySet<Socket>): Promis
   for (const socket of sockets) {
     socket.destroy();
   }
+
   if (server.listening) {
     server.close();
+
     await once(server, 'close');
   }
 }

@@ -43,6 +43,7 @@ test('it waits twice as long after each failed attempt in a row', async () => {
 
   // every attempt fails, as one behind a content blocker does
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error()));
+
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
@@ -64,12 +65,14 @@ test('it waits twice as long after each failed attempt in a row', async () => {
 
 test('it waits the shortest time again after a failure that follows a connection', async () => {
   const ctx = await setupTest();
+
   const onRecord = mock<() => void>();
 
   await store.records.create({ kind: 'tool_called' });
 
   // the first attempt fails and the second connects
   server.use(http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }));
+
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
@@ -79,7 +82,9 @@ test('it waits the shortest time again after a failure that follows a connection
     startTimer: ctx.timer.startTimer,
     thread: 'conversation',
   });
+
   await ctx.timer.advanceToNext();
+
   await waitFor(() => {
     expect(onRecord).toHaveBeenCalledOnce();
   });
@@ -100,6 +105,7 @@ test('it backs off from a revoked session, as from a stream that never opens', a
       draft.revokedAt = new Date();
     },
   });
+
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
@@ -131,6 +137,7 @@ test('it backs off from a stream that opens and then ends with UNAUTHORIZED', as
         ),
     ),
   );
+
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
@@ -157,6 +164,7 @@ test('it follows the log again at once when the browser comes back online during
       http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
     ),
   );
+
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
@@ -172,6 +180,7 @@ test('it follows the log again at once when the browser comes back online during
     // oxlint-disable-next-line no-await-in-loop -- each pause starts after the failure before it
     await ctx.timer.advanceToNext();
   }
+
   await waitFor(() => {
     expect(ctx.timer.countPending()).toBe(1);
   });
@@ -182,6 +191,7 @@ test('it follows the log again at once when the browser comes back online during
   await waitFor(() => {
     expect(ctx.follows).toHaveBeenCalledOnce();
   });
+
   expect(ctx.timer.countPending()).toBe(0);
 });
 
@@ -194,6 +204,7 @@ test('it follows the log again at once when the page becomes visible during the 
       http.post('*/rpc/records/follow', () => HttpResponse.error(), { once: true }),
     ),
   );
+
   void subscribeToLiveRecords({
     afterSequence: 0,
     client: ctx.client,
@@ -209,6 +220,7 @@ test('it follows the log again at once when the page becomes visible during the 
     // oxlint-disable-next-line no-await-in-loop -- each pause starts after the failure before it
     await ctx.timer.advanceToNext();
   }
+
   await waitFor(() => {
     expect(ctx.timer.countPending()).toBe(1);
   });
@@ -219,5 +231,6 @@ test('it follows the log again at once when the page becomes visible during the 
   await waitFor(() => {
     expect(ctx.follows).toHaveBeenCalledOnce();
   });
+
   expect(ctx.timer.countPending()).toBe(0);
 });

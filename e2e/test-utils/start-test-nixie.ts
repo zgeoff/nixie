@@ -78,6 +78,7 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
 
   const doubles = startDoubles(stack);
   const deploymentKey = randomBytes(32).toString('base64');
+
   const crashHarness = startNixieHarness(stack, {
     NIXIE_DATA_DIR: dataDir,
     NIXIE_TEST_DEPLOYMENT_KEY: deploymentKey,
@@ -87,6 +88,7 @@ export async function startTestNixie(options: TestNixieOptions = {}): Promise<Te
       ? { NIXIE_TEST_WRITER_MODEL_URL: doubles.writerModel.url }
       : {}),
   });
+
   const reader = startLogReader(dataDir, stack);
   const recovery = startRecoveryReads(crashHarness, reader.readRows);
 
@@ -113,6 +115,7 @@ function startNixieHarness(stack: AsyncDisposableStack, env: NixieEnv): CrashHar
 
   // the disposals run in reverse, so every nixie dies before its data directory goes
   stack.defer(() => harness.stop());
+
   return harness;
 }
 
@@ -133,6 +136,7 @@ function startRecoveryReads(
         void readRecoveredState(nixie, readRows, (state) => {
           states.push(state);
         });
+
         return nixie;
       },
     },
@@ -152,7 +156,9 @@ async function readRecoveredState(
   if (arrival === null) {
     return;
   }
+
   onState({ leases: await readRows('leases'), tasks: await readRows('tasks') });
+
   nixie.release(arrival);
 }
 
@@ -174,6 +180,7 @@ function startDoubles(stack: AsyncDisposableStack): TestDoubles {
   const provider = startProviderDouble();
 
   stack.defer(() => provider.stop());
+
   return { model, writerModel, provider };
 }
 
@@ -183,12 +190,15 @@ type LogReader = Pick<TestNixie, 'readRecords' | 'readRows'>;
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the test's own cleanup
 function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader {
   const reader: { db: Database | null } = { db: null };
+
   const getReader = (): Database => {
     reader.db ??= startDatabase(join(dataDir, 'nixie.db'));
+
     return reader.db;
   };
 
   stack.defer(() => reader.db?.destroy());
+
   return {
     readRecords: async () => {
       const rows = await getReader()
@@ -217,6 +227,7 @@ type Database = ReturnType<typeof startDatabase>;
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 type ReaderTables = Readonly<{ records: RecordRow }>;
+
 type AnyTables = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
 
 interface RecordRow {

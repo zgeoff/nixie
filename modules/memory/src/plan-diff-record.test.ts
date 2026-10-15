@@ -6,6 +6,7 @@ import { startTestMemory } from './test-utils/start-test-memory';
 
 test('it plans the diff with only the keys that a release before reads, and the summary as a record of its own', async () => {
   const memory = await startTestMemory();
+
   const [item, other] = await Promise.all([
     createMemoryItem(memory.store, { text: 'Keeps bees' }),
     createMemoryItem(memory.store, { text: 'Keeps no pets' }),
@@ -20,6 +21,7 @@ test('it plans the diff with only the keys that a release before reads, and the 
     lapseMs: 60_000,
     definitions: { snapshotHash: 'sha256:test' },
   });
+
   const [proposed, summarized] = records;
   const changes = z.array(z.record(z.string(), z.json())).parse(proposed?.payload?.['changes']);
 
@@ -32,13 +34,16 @@ test('it plans the diff with only the keys that a release before reads, and the 
     'model',
     'shownItems',
   ]);
+
   expect(changes.map((change) => Object.keys(change).toSorted())).toStrictEqual([
     ['actionHash', 'changeID', 'inputs', 'itemID', 'kind', 'lapseAt', 'sealed', 'source'],
   ]);
+
   expect(records.map((record) => record.kind)).toStrictEqual([
     'memory.consolidation_proposed',
     'memory.consolidation_summarized',
   ]);
+
   expect(summarized?.payload?.['diffID']).toBe(proposed?.payload?.['diffID']);
 });
 
@@ -61,6 +66,7 @@ test('it plans no summary record when the session left no summary', async () => 
 
 test('it drops the summary when an item the session was shown lost its key since the read', async () => {
   const memory = await startTestMemory();
+
   const [kept, forgotten] = await Promise.all([
     createMemoryItem(memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(memory.store, { text: 'Drinks coffee black' }),

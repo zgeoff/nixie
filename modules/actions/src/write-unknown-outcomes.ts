@@ -31,6 +31,7 @@ export async function writeUnknownOutcomes(context: TasksContext): Promise<void>
         },
       })),
     );
+
     return open;
   });
 

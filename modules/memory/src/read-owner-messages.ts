@@ -24,14 +24,17 @@ export async function readOwnerMessages(
     .orderBy('sequence', 'desc')
     .limit(query.limit)
     .execute();
+
   const messages = await Promise.all(
     rows.map(async (row) => {
       const [entry] = await readRecords(log, { afterSequence: row.sequence - 1, limit: 1 });
+
       const erasable = entry?.record.erasable;
 
       if (erasable?.status !== 'readable') {
         return null;
       }
+
       const fields = messageFields.parse(erasable.fields);
 
       return { sequence: row.sequence, text: fields.text, spans: fields.spans };
@@ -42,7 +45,5 @@ export async function readOwnerMessages(
 }
 
 const spanSource = z.enum(['typed', 'pasted', 'dropped', 'unknown']);
-
 const messageSpan = z.object({ start: z.int(), end: z.int(), source: spanSource });
-
 const messageFields = z.object({ text: z.string(), spans: z.array(messageSpan) });

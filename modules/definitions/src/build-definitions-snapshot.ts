@@ -14,10 +14,12 @@ export interface DefinitionsSnapshotInput {
 export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): DefinitionsSnapshot {
   const persona = normalizeInstructions(input.persona);
   const personaVersion = buildSHA256(persona);
+
   const policy = {
     rules: sortUniqueBy(input.policy.rules, 'id', (rule) => rule.id),
     tools: sortUniqueBy(input.policy.tools.map(buildToolForm), 'name', (tool) => tool.name),
   };
+
   const policyHash = buildSHA256(toCanonicalJSON(policy));
   const form = toCanonicalJSON({ jobs: [], persona: personaVersion, policy });
 
@@ -42,8 +44,10 @@ function sortUniqueBy<T>(
     if (byKey.has(key)) {
       throw new Error(`the policy holds 2 entries with ${field} ${key}`);
     }
+
     byKey.set(key, item);
   }
+
   return [...byKey.entries()]
     .toSorted(([left], [right]) => (left < right ? -1 : 1))
     .map(([, item]) => item);

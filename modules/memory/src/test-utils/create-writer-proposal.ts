@@ -28,6 +28,7 @@ export async function createWriterProposal(
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
+
   const lease = await claimWriterLease(context);
   const planned = await writePlannedBatch(memory.log, [request.message]);
 
@@ -61,9 +62,12 @@ export async function createWriterProposal(
       now: context.clock.now(),
     },
   );
+
   const pending = await memory.store.proposals.listPending();
+
   const proposal = pending.findLast((entry) => entry.origin === 'memory_writer');
 
   invariant(proposal, 'the batch made no pending proposal');
+
   return proposal;
 }

@@ -8,10 +8,12 @@ async function setupTest() {
 
 test('it reads the text of each named version in the order named', async () => {
   const ctx = await setupTest();
+
   const first = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const second = await ctx.memory.store.remember({
     text: 'Allergic to hazelnuts',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -33,6 +35,7 @@ test('it reads the text of each named version in the order named', async () => {
 
 test('it reads a version of a forgotten item as shredded', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -50,10 +53,12 @@ test('it reads a version of a forgotten item as shredded', async () => {
 
 test('it reads a version whose key fails to unwrap as unreadable', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const otherKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
     'unwrapKey',
@@ -68,6 +73,7 @@ test('it reads a version whose key fails to unwrap as unreadable', async () => {
 
 test('it reads a version that never existed as missing', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

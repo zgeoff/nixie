@@ -34,12 +34,15 @@ export interface ImpSandboxOptions {
 // loopback over impd, never an allow entry. Every imp it creates stays out of impd's backups.
 export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapter {
   const guestToolPort = options.guestToolPort ?? 8901;
+
   const routes = buildRouteRegistry({
     port: options.port,
     toolTarget: options.toolTarget,
     guestToolPort,
   });
+
   const sleeping = buildSleepRegistry();
+
   const getSandbox = (id: string, spec: SandboxSpec, isRetired = false): Sandbox =>
     buildImpSandbox({
       sleeping,
@@ -52,6 +55,7 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
       spec,
       isRetired,
     });
+
   const getRowSandbox = makeRowSandboxReader(options.port, sleeping, getSandbox);
 
   return {
@@ -91,6 +95,7 @@ function makeRowSandboxReader(
     const isBackedUp = await port.readImpBackup(row.sandboxID);
 
     sleeping.setAsleep(row.sandboxID, row.state === 'sleeping');
+
     return getSandbox(row.sandboxID, row.spec, isBackedUp === true);
   };
 }
@@ -105,7 +110,9 @@ function makeImageAdder(port: ImpPort): SandboxAdapter['addImage'] {
     if (digest === undefined) {
       throw new Error(`the image ${image.name} is not pinned by digest: ${image.ref}`);
     }
+
     const images = await port.listImages();
+
     const held = images.find((row) => row.name === image.name);
 
     if (held === undefined) {
@@ -146,6 +153,7 @@ function makeSecretAdder(port: ImpPort): SandboxAdapter['addSecret'] {
     if ((await port.readSecretHosts(secret.name)) !== null) {
       return;
     }
+
     await port.addSecret({
       name: secret.name,
       value: secret.value,
@@ -175,15 +183,18 @@ async function createImpSandbox(
   const sandbox = sandboxes.getSandbox(createSandboxID(), spec);
 
   await options.recorder.write({ event: 'created', sandboxID: sandbox.id, adapter: 'imp', spec });
+
   try {
     return await setupImp(options, sandbox);
   } catch (error) {
     await sandboxes.removeSandbox(sandbox.id);
+
     await options.recorder.write({
       event: 'destroyed',
       sandboxID: sandbox.id,
       reason: 'create_failed',
     });
+
     throw error;
   }
 }
@@ -198,6 +209,7 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
     policy: buildImpPolicy(sandbox.spec),
     backup: false,
   });
+
   for (const grant of sandbox.spec.grants) {
     // oxlint-disable-next-line no-await-in-loop -- one grant and its record at a time, in order
     await options.port.addGrant(sandbox.id, grant.secret);
@@ -210,7 +222,9 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
       host: grant.host,
     });
   }
+
   await sandbox.toolRoute();
+
   return sandbox;
 }
 
@@ -219,6 +233,7 @@ function makeRuntimeChecker(port: ImpPort): SandboxAdapter['checkRuntime'] {
   return async () => {
     try {
       await port.readFeatures();
+
       return { isReady: true, reason: null };
     } catch {
       // the health endpoint answers without a session, so the reason never quotes impd's error

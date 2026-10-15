@@ -9,7 +9,6 @@ function setupTest() {
 
 test('it issues a code while no device has a session', async () => {
   const ctx = await setupTest();
-
   const result = await createFirstEnrolmentCode(ctx.context);
 
   expect(result).toStrictEqual({
@@ -32,6 +31,7 @@ test('it issues a code again once every session has lapsed', async () => {
   const ctx = await setupTest();
 
   await createDeviceSession(ctx.context, 'laptop');
+
   ctx.clock.advance(30 * 24 * 60 * 60 * 1000 + 1);
 
   const result = await createFirstEnrolmentCode(ctx.context);

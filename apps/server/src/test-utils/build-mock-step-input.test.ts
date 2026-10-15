@@ -12,7 +12,9 @@ test('it builds a default step input', () => {
     'sessionBoundary',
     'signal',
   ]);
+
   expect(input.signal.aborted).toBe(false);
+
   expect(input).toMatchObject({
     taskID: 'conversation',
     stepKey: 'conversation:1',

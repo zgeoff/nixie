@@ -28,6 +28,7 @@ export function useConversationRecords(thread: string): ConversationRecords {
       unavailable: live.unavailable,
     };
   }
+
   return {
     status: 'ready',
     records: mergeRecords(page.data.records, live.records),
@@ -46,6 +47,7 @@ function mergeRecords(
   const bySequence = new Map(
     [...page, ...live].map((record) => [record.sequence, record] as const),
   );
+
   const sorted = [...bySequence.values()].toSorted((left, right) => left.sequence - right.sequence);
   const reset = sorted.findLastIndex((record) => record.kind === 'log_reset');
 

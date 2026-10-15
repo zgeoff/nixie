@@ -32,11 +32,14 @@ export async function findQuoteEvidence(
   if (invisible.test(search.quote)) {
     return { status: 'review', reason: 'invisible_character' };
   }
+
   const messages = await readOwnerMessages(log, { thread: search.thread, limit: search.window });
+
   const matches = messages.map((message) => ({
     message,
     match: findTypedQuote(message, search.quote),
   }));
+
   const typed = matches.flatMap((entry) =>
     entry.match.status === 'typed'
       ? [
@@ -55,10 +58,12 @@ export async function findQuoteEvidence(
   if (typed.length === 0) {
     return { status: 'review', reason: pickFailure(matches.map((entry) => entry.match)) };
   }
+
   const forgotten = await readForgottenSequences(
     log.writer.db,
     typed.map((entry) => entry.message.sequence),
   );
+
   const backing = typed.find((entry) => !forgotten.has(entry.message.sequence));
 
   return backing === undefined
@@ -76,8 +81,10 @@ function pickFailure(matches: readonly QuoteMatch[]): ReviewReason {
   if (matches.some((match) => match.status === 'in_quoted_block')) {
     return 'quote_in_quoted_block';
   }
+
   if (matches.some((match) => match.status === 'not_typed')) {
     return 'quote_not_typed';
   }
+
   return 'no_quote';
 }

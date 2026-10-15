@@ -8,7 +8,6 @@ const sessionPointSchema = z
   .readonly();
 
 const tokenCountSchema = z.int().nonnegative();
-
 const toolUseSchema = z.object({ id: z.string(), name: z.string() }).readonly();
 
 // one assistant message: its text, and the tools it asked for by the name the model sees

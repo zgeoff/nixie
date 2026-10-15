@@ -24,6 +24,7 @@ export function runQuotedGate(
   if (found.status === 'review') {
     return Promise.resolve(buildGateReview(found.reason, { checks: { quote: 'fail' } }));
   }
+
   if (findMissingToken(request.text, quoted.quote) !== null) {
     return Promise.resolve(
       buildGateReview('token_missing', {
@@ -32,5 +33,6 @@ export function runQuotedGate(
       }),
     );
   }
+
   return runMemoryChecker(context, request, found);
 }

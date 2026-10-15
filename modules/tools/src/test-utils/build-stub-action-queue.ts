@@ -42,14 +42,17 @@ export function buildStubActionQueue(): StubActionQueue {
         if (outcomes.isStopped()) {
           return Promise.reject(buildStoppedError());
         }
+
         const earlier = actions.find((entry) => isSameAction(entry.action, action));
 
         if (earlier !== undefined) {
           return Promise.resolve(earlier.actionID);
         }
+
         const actionID = crypto.randomUUID();
 
         actions.push({ actionID, action });
+
         return Promise.resolve(actionID);
       },
       waitForOutcome: (actionID, timeoutMs) =>
@@ -76,7 +79,9 @@ function isSameAction(left: QueuedAction, right: QueuedAction): boolean {
 
 function buildOutcomeWaits() {
   const waits: OutcomeWait[] = [];
+
   const outcomes = new Map<string, ActionOutcome>();
+
   const pending = buildPendingWaits();
   const state = { stopped: false };
 
@@ -88,6 +93,7 @@ function buildOutcomeWaits() {
       const wait = Promise.withResolvers<ActionOutcome | null>();
 
       waits.push({ actionID, timeoutMs });
+
       if (state.stopped) {
         wait.reject(buildStoppedError());
       } else if (outcome === undefined) {
@@ -95,10 +101,12 @@ function buildOutcomeWaits() {
       } else {
         wait.resolve(outcome);
       }
+
       return wait.promise;
     },
     writeOutcome: (actionID: string, outcome: ActionOutcome) => {
       outcomes.set(actionID, outcome);
+
       for (const wait of pending.drain(actionID)) {
         wait.resolve(outcome);
       }
@@ -110,6 +118,7 @@ function buildOutcomeWaits() {
     },
     stop: () => {
       state.stopped = true;
+
       for (const wait of pending.drain()) {
         wait.reject(buildStoppedError());
       }
@@ -138,6 +147,7 @@ function buildPendingWaits() {
       for (const wait of drained) {
         pending.delete(wait);
       }
+
       return drained;
     },
   };

@@ -15,15 +15,19 @@ export async function writeProposalApproval(
   answer: ProposalAnswer,
 ): Promise<ApprovalResult> {
   const opened = await readOpenProposal(parts, answer);
+
   const row = opened.row;
 
   if (row.target_version === null) {
     return writeApprovedNewItem(parts, opened, answer);
   }
+
   if (answer.revisionOf !== undefined) {
     throw new RevisionTargetError(row.proposal_id);
   }
+
   const target = { itemID: row.item_id, version: row.target_version };
+
   const ref =
     row.operation === 'retire'
       ? await writeApprovedRetirement(parts, opened, answer)

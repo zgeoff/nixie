@@ -16,6 +16,7 @@ export async function writeInboxRecordsInTransaction(
     // oxlint-disable-next-line no-await-in-loop -- a few records at most, each checked alone
     await requireInboxTarget(tx.$extendTables<TasksTables>(), input);
   }
+
   return writeRecordsInTransaction(tx, context.log, inputs);
 }
 
@@ -23,6 +24,7 @@ async function requireInboxTarget(db: Transaction<TasksTables>, input: RecordInp
   if (!isInboxRecord({ kind: input.kind, thread: input.thread ?? null })) {
     throw new Error(`a ${input.kind} record is not an inbox record`);
   }
+
   await requireTask(db, input.thread ?? '');
 }
 
@@ -36,6 +38,7 @@ async function requireTask(db: Transaction<TasksTables>, taskID: string): Promis
   if (row === undefined) {
     throw new Error(`no task has the ID ${taskID}`);
   }
+
   if (row.state === 'done' || row.state === 'failed') {
     throw new Error(`task ${taskID} is ${row.state} and takes no input`);
   }

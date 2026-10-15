@@ -17,6 +17,7 @@ export function EnrolForm(props: EnrolFormProps): ReactNode {
   const [code, setCode] = useState('');
   const [deviceName, setDeviceName] = useState('Browser');
   const lastAttempt = useRef<Attempt | undefined>(undefined);
+
   const enrol = useMutation(
     nixie.queryUtils.sessions.enrol.mutationOptions({ onSuccess: props.onEnrolled }),
   );
@@ -29,7 +30,9 @@ export function EnrolForm(props: EnrolFormProps): ReactNode {
         className={fields}
         onSubmit={(event) => {
           event.preventDefault();
+
           lastAttempt.current = buildAttempt(lastAttempt.current, code.trim(), deviceName);
+
           enrol.mutate({ ...lastAttempt.current, tokenDelivery: 'cookie' });
         }}
       >

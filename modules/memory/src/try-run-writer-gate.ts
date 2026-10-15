@@ -23,6 +23,7 @@ export async function tryRunWriterGate(
     ) {
       return null;
     }
+
     throw error;
   }
 }

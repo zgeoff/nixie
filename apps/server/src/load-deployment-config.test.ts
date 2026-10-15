@@ -30,11 +30,13 @@ test('it reads every section, with the default of each setting the file leaves o
 
   // a model profile's fields and each memory section's settings have tests of their own
   const { models, ...sections } = await loadDeploymentConfig(ctx.path);
+
   const { memory_writer: memoryWriter, memory, memory_consolidation: _, ...rest } = sections;
 
   expect(models.roles).toStrictEqual({ conversation: 'chat-direct' });
   expect(memoryWriter.batchMessages).toBe(4);
   expect(memory.pinnedCoreTokens).toBe(2000);
+
   expect(rest).toStrictEqual({
     server: {
       dataDir: '/data',

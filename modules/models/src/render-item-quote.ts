@@ -7,6 +7,7 @@ export function renderItemQuote(item: Pick<MemoryItem, 'evidenceQuote'>): readon
   if (item.evidenceQuote === null) {
     return [];
   }
+
   const quote = JSON.stringify(item.evidenceQuote)
     .replaceAll('\u2028', String.raw`\u2028`)
     .replaceAll('\u2029', String.raw`\u2029`);

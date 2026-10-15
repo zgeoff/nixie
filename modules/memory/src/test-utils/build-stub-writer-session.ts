@@ -17,8 +17,10 @@ export interface StubWriterSession {
 // retire tool once does, and ends with fixed token counts.
 export function buildStubWriterSession(write: StubStagedWrite): StubWriterSession {
   const staging = createWriterStaging();
+
   const runSession = mock(() => {
     staging.stage(write);
+
     return Promise.resolve({
       inputTokens: 100,
       outputTokens: 10,

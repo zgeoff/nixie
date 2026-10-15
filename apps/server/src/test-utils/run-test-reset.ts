@@ -29,11 +29,14 @@ export async function runTestReset(nixie: TestNixie): Promise<TestReset> {
   const command = await runHostCommand(nixie.configPath, ['reset', '--keep-sessions', '--yes']);
   const finished = await nixie.waitForLogEvent('reset.finished');
   const serverExit = await nixie.exited;
+
   const again = nixie.startAgain();
+
   const [listening] = await Promise.all([
     again.waitForLogEvent('http.listening'),
     again.waitForLogEvent('ready'),
   ]);
+
   const url = `http://127.0.0.1:${String(listening['port'])}`;
 
   return {
@@ -44,6 +47,7 @@ export async function runTestReset(nixie: TestNixie): Promise<TestReset> {
     connect: (token) => buildTestClient(url, token),
     stop: () => {
       again.sendSignal('SIGTERM');
+
       return again.waitForExit();
     },
   };

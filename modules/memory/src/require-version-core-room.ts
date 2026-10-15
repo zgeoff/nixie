@@ -31,6 +31,7 @@ async function readProposalApproval(
   if (proposalID === null) {
     return null;
   }
+
   const proposal = await db
     .selectFrom('memory_proposals')
     .select(['operation', 'review_reason as reason'])

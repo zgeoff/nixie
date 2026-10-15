@@ -7,6 +7,7 @@ import type { TasksTables } from './types';
 
 async function setupTest() {
   const tasks = await startTestTasks();
+
   const db = tasks.writer.db.$extendTables<TasksTables>();
 
   return { ...tasks, db };
@@ -15,13 +16,13 @@ async function setupTest() {
 test('it moves a ready task to running and records the step it starts', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'tidy the inbox');
-
   const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   const task = await ctx.db
     .selectFrom('tasks')
     .select(['state', 'started_step_key'])
     .executeTakeFirstOrThrow();
+
   const records = await ctx.db.selectFrom('records').select(['kind']).execute();
 
   expect(claim).toStrictEqual({
@@ -35,6 +36,7 @@ test('it moves a ready task to running and records the step it starts', async ()
     },
     stepKey: `${taskID}:1`,
   });
+
   expect(task).toStrictEqual({ state: 'running', started_step_key: `${taskID}:1` });
   expect(records).toStrictEqual([{ kind: 'task.created' }, { kind: 'task.step_started' }]);
 });
@@ -54,6 +56,7 @@ test('it never claims a running task whose lease still stands', async () => {
 
   await createTask(ctx.context, 'tidy the inbox');
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
   ctx.clock.advance(59_999);
 
   const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
@@ -66,6 +69,7 @@ test('it reclaims a running task whose lease expired, marking the lost step inte
   const taskID = await createTask(ctx.context, 'tidy the inbox');
 
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
   ctx.clock.advance(60_000);
 
   const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
@@ -80,6 +84,7 @@ test('it reclaims a running task whose lease expired, marking the lost step inte
     lease: { holder: 'runner-b', generation: 2 },
     stepKey: `${taskID}:1`,
   });
+
   expect(records).toStrictEqual([{ kind: 'task.step_interrupted' }, { kind: 'task.step_started' }]);
 });
 

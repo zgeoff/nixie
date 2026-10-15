@@ -8,7 +8,9 @@ const dataDir = process.argv.at(2);
 if (dataDir === undefined) {
   throw new Error('usage: run-stub-server.ts <data directory>');
 }
+
 const writer = await startWriter({ dataDir });
 
 console.log(`writer epoch ${writer.epoch}`);
+
 setInterval(() => {}, 1 << 30);

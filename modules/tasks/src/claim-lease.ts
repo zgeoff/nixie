@@ -24,11 +24,13 @@ export async function claimLease(
 ): Promise<Lease | null> {
   const lease = await withWriteTransaction(context.log.writer, async (tx) => {
     const now = context.clock.now();
+
     const workID = await request.findCandidate(tx, now);
 
     if (workID === null) {
       return null;
     }
+
     const held = await upsertLease(tx, {
       kind: request.kind,
       workID,
@@ -41,12 +43,14 @@ export async function claimLease(
     if (held !== null) {
       await request.onClaim?.(tx, held);
     }
+
     return held;
   });
 
   if (NIXIE_TEST_BUILD && lease !== null) {
     await waitAtFaultPoint('claim.after', { kind: lease.kind, id: lease.workID });
   }
+
   return lease;
 }
 

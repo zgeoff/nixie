@@ -12,6 +12,7 @@ function setupTest() {
 
 test('it passes while the lease stands as claimed', async () => {
   const ctx = await setupTest();
+
   const lease = await claimLease(ctx.context, {
     kind: 'action',
     holder: 'runner-a',
@@ -30,6 +31,7 @@ test('it passes while the lease stands as claimed', async () => {
 
 test('it throws once the lease expired', async () => {
   const ctx = await setupTest();
+
   const lease = await claimLease(ctx.context, {
     kind: 'action',
     holder: 'runner-a',
@@ -38,6 +40,7 @@ test('it throws once the lease expired', async () => {
   });
 
   invariant(lease);
+
   ctx.clock.advance(60_000);
 
   const check = withWriteTransaction(ctx.writer, (tx) => requireLease(tx, lease, ctx.clock.now()));
@@ -52,6 +55,7 @@ test('it throws once the lease expired', async () => {
 
 test('it throws once another runner claimed the work', async () => {
   const ctx = await setupTest();
+
   const lease = await claimLease(ctx.context, {
     kind: 'action',
     holder: 'runner-a',
@@ -60,7 +64,9 @@ test('it throws once another runner claimed the work', async () => {
   });
 
   invariant(lease);
+
   ctx.clock.advance(60_000);
+
   await claimLease(ctx.context, {
     kind: 'action',
     holder: 'runner-b',

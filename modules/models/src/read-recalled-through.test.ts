@@ -10,7 +10,9 @@ async function setupTest() {
 
 test('it reads the sequence of the newest recall record in the thread', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
+
   const [, newest] = await writeRecords(ctx.tasks.context.log, [
     { kind: 'memory.recalled', definitions, thread: 'conversation', payload: { items: [] } },
     { kind: 'memory.recalled', definitions, thread: 'conversation', payload: { items: [] } },
@@ -26,6 +28,7 @@ test('it reads the sequence of the newest recall record in the thread', async ()
 
 test('it reads 0 for a thread with no recall record', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await writeRecords(ctx.tasks.context.log, [

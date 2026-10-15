@@ -8,8 +8,10 @@ export const systemClock: Clock = {
     if (signal?.aborted === true) {
       return;
     }
+
     const sleep = Promise.withResolvers<void>();
     const timer: { id?: ReturnType<typeof setTimeout> } = {};
+
     const stopSleep = (): void => {
       clearTimeout(timer.id);
       signal?.removeEventListener('abort', stopSleep);
@@ -18,6 +20,7 @@ export const systemClock: Clock = {
 
     timer.id = setTimeout(stopSleep, ms);
     signal?.addEventListener('abort', stopSleep, { once: true });
+
     await sleep.promise;
   },
 };

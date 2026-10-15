@@ -20,9 +20,11 @@ async function setupTest() {
   stack.defer(() => rm(dir, { recursive: true, force: true }));
 
   const root = join(dir, 'definitions');
+
   const writer = await startWriter({ dataDir: dir });
 
   stack.defer(() => writer.stop());
+
   await mkdir(root);
 
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
@@ -40,7 +42,6 @@ async function setupTest() {
 
 test('it finds nothing before the first seed', async () => {
   const ctx = await setupTest();
-
   const seed = await findResetSeed(ctx.writer.db);
 
   expect(seed).toBeNull();
@@ -53,12 +54,15 @@ test('it reads the seed in force with its snapshot row and the payload of its re
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n');
 
   const policy = { rules: [{ id: 'slice1.read-only' }], tools: [] };
+
   const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
   const built = buildDefinitionsSnapshot({ persona: '# Persona\n\nCalm and short.\n', policy });
 
   const seed = await findResetSeed(ctx.writer.db);
 
   invariant(seeded.inForce);
+
   expect(seed).toStrictEqual({
     inForce: seeded.inForce,
     policyHash: built.policyHash,

@@ -8,12 +8,13 @@ async function setupTest() {
 
 test('it rebuilds the index from the active items at start', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
-  const restarted = await startNextTestMemory(ctx.memory);
 
+  const restarted = await startNextTestMemory(ctx.memory);
   const result = await restarted.store.recall({ query: 'flowerpot' });
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([item.itemID]);
@@ -21,6 +22,7 @@ test('it rebuilds the index from the active items at start', async () => {
 
 test('it leaves retired items out of the index it builds at start', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -39,7 +41,6 @@ test('it leaves retired items out of the index it builds at start', async () => 
 
 test('it starts on a log with no memory', async () => {
   const ctx = await setupTest();
-
   const result = await ctx.memory.store.recall({});
 
   expect(result).toStrictEqual({ items: [], next: null });

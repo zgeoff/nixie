@@ -29,8 +29,10 @@ test('it destroys each imp it made, then removes the secret, when the test finis
   // the removal goes on the fake's call log, so the log shows the order of every removal
   const removeSecret = mock((name: string) => {
     ctx.imp.calls.push(`secret-remove ${name}`);
+
     return Promise.resolve();
   });
+
   const isolation = await setupIsolationAdapter({
     port: ctx.imp.port,
     removeSecret,
@@ -38,6 +40,7 @@ test('it destroys each imp it made, then removes the secret, when the test finis
     guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   });
+
   const sandbox = await isolation.createSandbox(
     buildMockSandboxSpec({
       kind: 'conversation',
@@ -56,6 +59,7 @@ test('it destroys each imp it made, then removes the secret, when the test finis
 
 test('it destroys an imp whose create was still running when the test finished', async () => {
   const ctx = await setupTest();
+
   const isolation = await setupIsolationAdapter({
     port: ctx.imp.port,
     removeSecret: mock(),
@@ -82,6 +86,7 @@ test('it destroys an imp whose failed create could not roll it back', async () =
 
   // the rollback's removal fails, and the removal at teardown succeeds
   ctx.imp.failRemove = true;
+
   onTestFinished(() => {
     ctx.imp.failRemove = false;
   });
@@ -96,6 +101,7 @@ test('it destroys an imp whose failed create could not roll it back', async () =
     guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   });
+
   const created = isolation.createSandbox(
     buildMockSandboxSpec({
       kind: 'conversation',
@@ -119,6 +125,7 @@ test('it destroys an imp whose failed create could not roll it back', async () =
 
 test('it removes a secret whose add was still running when the test finished', async () => {
   const ctx = await setupTest();
+
   const removeSecret = mock(() => Promise.resolve());
 
   // the add stores the secret only 50 ms after the test has finished, as one that outlives a
@@ -128,6 +135,7 @@ test('it removes a secret whose add was still running when the test finished', a
   onTestFinished(() => {
     addSecret.release();
   });
+
   void setupIsolationAdapter({
     port: { ...ctx.imp.port, addSecret: addSecret.call },
     removeSecret,
@@ -135,6 +143,7 @@ test('it removes a secret whose add was still running when the test finished', a
     guestToolPort: ctx.imp.guestToolPort,
     secret: 'nixie-test-a',
   });
+
   await addSecret.started;
 
   onTestFinished(() => {
@@ -160,6 +169,7 @@ test('it refuses a secret name impd holds already', async () => {
 
 test('it never removes a secret it did not add', async () => {
   const ctx = await setupTest();
+
   const removeSecret = mock(() => Promise.resolve());
 
   ctx.imp.secrets.set('nixie-test-a', ['api.anthropic.com']);

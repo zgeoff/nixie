@@ -7,10 +7,12 @@ test('it runs the action before the first arrival continues', async () => {
 
   registerFaultPointAction('writer.batch.gated', async () => {
     await Promise.resolve();
+
     events.push('action');
   });
 
   await waitAtFaultPoint('writer.batch.gated', { kind: 'task', id: 'memory-writer' });
+
   events.push('continued');
 
   expect(events).toStrictEqual(['action', 'continued']);
@@ -41,6 +43,7 @@ test('it removes the handler when the test finishes', () => {
   const action = mock(() => Promise.resolve());
 
   registerFaultPointAction('writer.batch.gated', action);
+
   onTestFinished(async () => {
     await waitAtFaultPoint('writer.batch.gated', { kind: 'task', id: 'memory-writer' });
 

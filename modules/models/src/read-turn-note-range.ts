@@ -10,6 +10,7 @@ export async function readTurnNoteRange(
   beforeSequence = Number.MAX_SAFE_INTEGER,
 ): Promise<TurnNoteRange> {
   const db = log.writer.db.$extendTables<RecordTables>();
+
   const last = await db
     .selectFrom('records')
     .select(['sequence', 'payload'])
@@ -19,6 +20,7 @@ export async function readTurnNoteRange(
     .orderBy('sequence', 'desc')
     .limit(1)
     .executeTakeFirst();
+
   const head = await db
     .selectFrom('records')
     .select((eb) => eb.fn.max('sequence').as('head'))
@@ -46,6 +48,7 @@ function findNotedThrough(
   if (last === undefined) {
     return 0;
   }
+
   const payload = turnEnded.safeParse(JSON.parse(last.payload));
 
   return payload.success ? (payload.data.memoryNotedThrough ?? last.sequence) : last.sequence;

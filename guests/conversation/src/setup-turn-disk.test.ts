@@ -14,6 +14,7 @@ async function setupTest() {
 
 test('it creates the working directory and keeps only the session the turn resumes', async () => {
   const ctx = await setupTest();
+
   const projectDir = join(ctx.home, '.claude', 'projects', '-home-nixie-conversation');
 
   await mkdir(projectDir, { recursive: true });

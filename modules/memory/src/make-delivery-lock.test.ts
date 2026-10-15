@@ -13,6 +13,7 @@ test('it runs one callback at a time, in the order they arrive', async () => {
   ]);
 
   await gated.started;
+
   gated.release();
 
   const result = await runs;
@@ -24,10 +25,10 @@ test('it runs one callback at a time, in the order they arrive', async () => {
 test('it runs the next callback after one rejects', async () => {
   const lock = makeDeliveryLock();
   const failed = lock(() => Promise.reject(new Error('the write failed')));
-
   const next = lock(() => Promise.resolve('next ran'));
 
   expect(failed).rejects.toThrowWithMessage(Error, 'the write failed');
+
   const result = await next;
 
   expect(result).toBe('next ran');

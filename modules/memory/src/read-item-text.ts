@@ -16,6 +16,7 @@ export async function readItemText(parts: StoreParts, target: VersionRef): Promi
   if (key === null || key === undefined) {
     throw new MemoryItemNotFoundError(target.itemID);
   }
+
   const version = await readVersion(db, key, target);
 
   return version.text.text;

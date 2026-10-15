@@ -18,12 +18,14 @@ export async function withTriggersDropped<T>(
     // oxlint-disable-next-line no-await-in-loop -- the transaction runs one statement at a time
     await sql`drop trigger ${sql.id(trigger.name)}`.execute(tx);
   }
+
   const value = await fn();
 
   for (const trigger of result.rows) {
     // oxlint-disable-next-line no-await-in-loop -- the transaction runs one statement at a time
     await sql.raw(trigger.sql).execute(tx);
   }
+
   return value;
 }
 

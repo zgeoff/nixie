@@ -10,6 +10,7 @@ import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
+
   const memory = await startTestMemory({ gate: { clock } });
 
   return { memory, clock };
@@ -17,7 +18,6 @@ async function setupTest() {
 
 test('it reads no diff before the consolidator proposes one', async () => {
   const ctx = await setupTest();
-
   const pending = await ctx.memory.store.consolidations.readPending();
 
   expect(pending).toBeNull();
@@ -27,6 +27,7 @@ test('it drops a change whose first input was forgotten, and keeps the rest', as
   const ctx = await setupTest();
   const forgotten = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees' });
   const trip = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'retire', inputs: [forgotten], reason: 'Stale.', source: 'owner' },
@@ -34,9 +35,11 @@ test('it drops a change whose first input was forgotten, and keeps the rest', as
     ],
     now: ctx.clock.now(),
   });
+
   const [, kept] = diff.changes;
 
   invariant(kept);
+
   await ctx.memory.store.forget({
     target: forgotten,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -64,6 +67,7 @@ test('it shows a later input as no longer current once it moved on', async () =>
     ],
     now: ctx.clock.now(),
   });
+
   await ctx.memory.store.retire({
     target: moved,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -86,6 +90,7 @@ test('it leaves out a change past its lapse time', async () => {
     now: ctx.clock.now(),
     lapseMs: 60_000,
   });
+
   ctx.clock.advance(60_000);
 
   const pending = await ctx.memory.store.consolidations.readPending();
@@ -95,6 +100,7 @@ test('it leaves out a change past its lapse time', async () => {
 
 test('it stores the summary sealed, so the raw store holds no word of it', async () => {
   const ctx = await setupTest();
+
   const [oat, black] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
@@ -110,21 +116,25 @@ test('it stores the summary sealed, so the raw store holds no word of it', async
   });
 
   const db = ctx.memory.log.writer.db.$extendTables<ConsolidationTables & LogTables>();
+
   const runs = await db.selectFrom('memory_consolidations').selectAll().execute();
   const records = await db.selectFrom('records').selectAll().execute();
 
   expect(diff.summary?.text).toBe(
     'Two items conflict and stay unchanged: one says oat milk, the other says black.',
   );
+
   expect(runs).toMatchObject([
     { summary: expect.toBeString(), summary_shares: expect.toBeString() },
   ]);
+
   expect(JSON.stringify(runs)).not.toInclude('oat milk');
   expect(JSON.stringify(records)).not.toInclude('oat milk');
 });
 
 test('it erases the summary once an item it names is forgotten, and keeps the changes', async () => {
   const ctx = await setupTest();
+
   const [oat, black, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
@@ -139,6 +149,7 @@ test('it erases the summary once an item it names is forgotten, and keeps the ch
     },
     now: ctx.clock.now(),
   });
+
   await ctx.memory.store.forget({
     target: oat,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -151,6 +162,7 @@ test('it erases the summary once an item it names is forgotten, and keeps the ch
 
 test('it shows no diff once a forget erases the summary of a run that proposed no change', async () => {
   const ctx = await setupTest();
+
   const [oat, black] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
@@ -161,6 +173,7 @@ test('it shows no diff once a forget erases the summary of a run that proposed n
     summary: { text: 'Two items about coffee conflict.', itemIDs: [oat.itemID, black.itemID] },
     now: ctx.clock.now(),
   });
+
   await ctx.memory.store.forget({
     target: oat,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -173,6 +186,7 @@ test('it shows no diff once a forget erases the summary of a run that proposed n
 
 test('it lets the summary of a run that proposed no change lapse at its lapse time', async () => {
   const ctx = await setupTest();
+
   const [oat, black] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
@@ -184,6 +198,7 @@ test('it lets the summary of a run that proposed no change lapse at its lapse ti
     now: ctx.clock.now(),
     lapseMs: 60_000,
   });
+
   ctx.clock.advance(60_000);
 
   const pending = await ctx.memory.store.consolidations.readPending();
@@ -193,6 +208,7 @@ test('it lets the summary of a run that proposed no change lapse at its lapse ti
 
 test("it shows only the last run's summary, never an older run's", async () => {
   const ctx = await setupTest();
+
   const [oat, black] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
@@ -203,6 +219,7 @@ test("it shows only the last run's summary, never an older run's", async () => {
     summary: { text: 'Two items about coffee conflict.', itemIDs: [oat.itemID, black.itemID] },
     now: ctx.clock.now(),
   });
+
   await writeRecords(ctx.memory.log, [
     {
       kind: 'memory.consolidation_proposed',

@@ -17,12 +17,15 @@ export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number
 
   if (run === undefined) {
     io.print(`nixie has no command ${command}; it takes ${[...commands.keys()].join(', ')}`);
+
     return 2;
   }
+
   try {
     return await run(parsed.values, io, parsed.positionals.slice(1));
   } catch (error) {
     io.log('command.failed', { command, ...toErrorFields(error) });
+
     return 1;
   }
 }
@@ -61,6 +64,7 @@ async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
     sopsArgv: [flags.sops],
     log: io.log,
   });
+
   const exitCode = await Promise.race([
     waitForStopSignal(io),
     waitForFailure(server.failed),
@@ -68,6 +72,7 @@ async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
   ]);
 
   await server.stop();
+
   return exitCode;
 }
 
@@ -75,17 +80,20 @@ async function waitForStopSignal(io: CLIIO): Promise<number> {
   const signal = await io.waitForSignal();
 
   io.log('signal.received', { signal });
+
   return 0;
 }
 
 async function waitForFailure(failed: Promise<unknown>): Promise<number> {
   await failed;
+
   return 1;
 }
 
 // a reset leaves the server with no work, so it stops, and the normal start rebuilds the rest
 async function waitForReset(reset: Promise<void>): Promise<number> {
   await reset;
+
   return 0;
 }
 
@@ -93,9 +101,11 @@ async function waitForReset(reset: Promise<void>): Promise<number> {
 // loopback
 async function runHealth(configPath: string, isLive: boolean): Promise<number> {
   const config = await loadDeploymentConfig(configPath);
+
   const isWildcard = ['0.0.0.0', '::'].includes(config.server.hostname);
   const host = isWildcard ? '127.0.0.1' : config.server.hostname;
   const path = isLive ? 'live' : 'ready';
+
   const response = await Bun.fetch(`http://${host}:${config.server.port}/health/${path}`);
 
   return response.ok ? 0 : 1;

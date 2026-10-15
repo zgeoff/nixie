@@ -10,6 +10,7 @@ async function setupTest() {
 
 test('it leaves the message erasable fields unreadable', async () => {
   const ctx = await setupTest();
+
   const [message] = await writeRecords(ctx.memory.log, [
     {
       kind: 'owner_message',
@@ -20,6 +21,7 @@ test('it leaves the message erasable fields unreadable', async () => {
   ]);
 
   invariant(message);
+
   await removeMessageKey(ctx.memory.log, message.sequence);
 
   const [entry] = await readRecords(ctx.memory.log, { afterSequence: message.sequence - 1 });
@@ -29,6 +31,7 @@ test('it leaves the message erasable fields unreadable', async () => {
 
 test('it rejects a record with no key', async () => {
   const ctx = await setupTest();
+
   const [record] = await writeRecords(ctx.memory.log, [
     {
       kind: 'model.turn_ended',

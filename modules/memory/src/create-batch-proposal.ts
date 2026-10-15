@@ -31,7 +31,9 @@ export async function createBatchProposal(
   batch: GateBatch,
 ): Promise<BatchProposal> {
   const plan = buildBatchProposalPlan(reviewed, batch);
+
   const sealed = await createSealedProposal(parts, plan);
+
   const newItemID = plan.target === null ? sealed.itemID : null;
 
   try {
@@ -49,12 +51,14 @@ export async function createBatchProposal(
     if (newItemID !== null) {
       await removeRecordKey(parts.context.log, newItemID);
     }
+
     throw error;
   }
 }
 
 function buildBatchProposalPlan(reviewed: ReviewedWrite, batch: GateBatch): ProposalPlan {
   const batchID = `${String(batch.bounds.start)}-${String(batch.bounds.end)}`;
+
   const caller: WriteCaller = {
     origin: 'memory_writer',
     thread: memoryWriterTaskID,
@@ -63,6 +67,7 @@ function buildBatchProposalPlan(reviewed: ReviewedWrite, batch: GateBatch): Prop
     model: batch.model,
     batchID,
   };
+
   const review = reviewed.review;
 
   return {

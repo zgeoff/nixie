@@ -11,9 +11,11 @@ async function setupTest() {
 
 test('it lists every version recalled in a step that ended its turn', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);
+
   await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_started',
@@ -51,9 +53,11 @@ test('it lists every version recalled in a step that ended its turn', async () =
 
 test('it leaves out a recall from a step that never ended its turn', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);
+
   await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_started',
@@ -94,9 +98,11 @@ test('it leaves out a recall from a step that never ended its turn', async () =>
 
 test('it lists nothing that a step delivered before a session opened', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);
+
   await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_started',
@@ -138,9 +144,11 @@ test('it lists nothing that a step delivered before a session opened', async () 
 
 test('it keeps what a turn on a session opened in place of a lost one retrieved, and drops the recall for the lost session', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);
+
   await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_started',
@@ -183,6 +191,7 @@ test('it keeps what a turn on a session opened in place of a lost one retrieved,
 
 test('it keeps the recalls a lost session opening made after its mark, such as a replayed approval', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);
@@ -226,9 +235,11 @@ test('it keeps the recalls a lost session opening made after its mark, such as a
 
 test('it reads a rebuild record from before opening records as the opening of a lost session', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);
+
   await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_started',
@@ -272,9 +283,11 @@ test.each([
   ['a rebuild after a forget', { kind: 'rebuild', reason: 'forget' }],
 ])('it keeps every recall of a turn on %s', async (_start, payload) => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);
+
   await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_started',
@@ -299,9 +312,11 @@ test.each([
 
 test('it lists nothing that a step delivered before a compaction in that step', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);
+
   await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_started',
@@ -349,6 +364,7 @@ test('it lists nothing that a step delivered before a compaction in that step', 
 
 test('it lists nothing that another thread delivered', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await writeRecords(ctx.tasks.context.log, [
@@ -373,6 +389,7 @@ test('it lists nothing that another thread delivered', async () => {
 
 test('it leaves out a recall that came after the last result its turn ended at', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);
@@ -417,6 +434,7 @@ test('it leaves out a recall that came after the last result its turn ended at',
 
 test('it keeps a recall that came after a compaction in the same step', async () => {
   const ctx = await setupTest();
+
   const definitions = { snapshotHash: 'sha256:test' };
 
   await createConversationTask(ctx.tasks.context);

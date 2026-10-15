@@ -40,12 +40,15 @@ export async function writeMemoryProposal(
   plan: ProposalPlan,
 ): Promise<WrittenProposal> {
   const log = parts.context.log;
+
   const merged = await withWriteTransaction(log.writer, (tx) => writePendingMerge(tx, parts, plan));
 
   if (merged !== null) {
     return merged;
   }
+
   const sealed = await createSealedProposal(parts, plan);
+
   const written = await withWriteTransaction(log.writer, (tx) =>
     writeProposalOrMerge(tx, parts, { plan, sealed }),
   ).catch(async (error: unknown) => {
@@ -53,6 +56,7 @@ export async function writeMemoryProposal(
     if (plan.target === null) {
       await removeRecordKey(log, sealed.itemID);
     }
+
     throw error;
   });
 
@@ -60,6 +64,7 @@ export async function writeMemoryProposal(
   if (written.merged && plan.target === null) {
     await removeRecordKey(log, sealed.itemID);
   }
+
   return written;
 }
 
@@ -74,9 +79,11 @@ async function writePendingMerge(
   if (match === null) {
     return null;
   }
+
   await writeRecordsInTransaction(tx, parts.context.log, [
     buildMergeRecord(parts, { proposal: match, plan }),
   ]);
+
   return { proposalID: match.proposal_id, merged: true };
 }
 
@@ -90,6 +97,8 @@ async function writeProposalOrMerge(
   if (merged !== null) {
     return merged;
   }
+
   await writeProposalRecord(tx, parts, pending);
+
   return { proposalID: pending.sealed.proposalID, merged: false };
 }

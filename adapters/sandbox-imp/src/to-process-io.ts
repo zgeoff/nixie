@@ -15,6 +15,7 @@ export function toProcessIO(exec: ImpExec, killGraceMs: number): ProcessIO {
     stop: () => {
       if (!stopping.isSent) {
         stopping.isSent = true;
+
         exec.sendSignal('SIGTERM');
         void stopAfterGrace(exec, killGraceMs + 10_000);
       }
@@ -24,12 +25,15 @@ export function toProcessIO(exec: ImpExec, killGraceMs: number): ProcessIO {
 
 async function stopAfterGrace(exec: ImpExec, delayMs: number): Promise<void> {
   const timer = Promise.withResolvers<'late'>();
+
   const timeout = setTimeout(() => {
     timer.resolve('late');
   }, delayMs);
+
   const outcome = await Promise.race([exec.exit, timer.promise]).catch(() => 'ended' as const);
 
   clearTimeout(timeout);
+
   if (outcome === 'late') {
     exec.close();
   }

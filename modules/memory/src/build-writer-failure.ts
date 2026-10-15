@@ -16,11 +16,13 @@ export function buildWriterFailure(
   failure: WriterFailure,
 ): Omit<StepResult, 'acknowledged'> {
   const failures = failure.row.failures + 1;
+
   const backoff = planWriterBackoff(
     failures,
     parts.config.firstBackoffMs,
     parts.config.maxBackoffMs,
   );
+
   const retryAt = failure.now + backoff;
   const message = failure.error instanceof Error ? failure.error.message : String(failure.error);
 

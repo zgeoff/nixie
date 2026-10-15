@@ -9,6 +9,7 @@ import { startStubAPI } from './test-utils/start-stub-api';
 async function setupTest() {
   // the first test in the process waits here for the Vite build, so each test allows two minutes
   const serverPath = await buildWebOnce();
+
   const api = startStubAPI();
   const portProbe = Bun.serve({ fetch: () => new Response(), hostname: '127.0.0.1', port: 0 });
   const port = portProbe.port;
@@ -23,6 +24,7 @@ async function setupTest() {
 
   onTestFinished(async () => {
     child.kill();
+
     await child.exited;
   });
 
@@ -88,10 +90,10 @@ test('it keeps no session from one request to the next', async () => {
   await fetch(`${ctx.url}/`, { headers: { cookie: `nixie_session=${session.token}` } });
 
   const response = await fetch(`${ctx.url}/`);
-
   const html = await response.text();
 
   expect(html).toInclude('Enrol this browser');
+
   expect(ctx.api.requests.at(-1)).toStrictEqual({
     authorization: null,
     cookie: null,
@@ -114,7 +116,6 @@ test('it renders the enrolment form for a revoked session', async () => {
 
 test('it answers ready once it reaches the API', async () => {
   const ctx = await setupTest();
-
   const response = await fetch(`${ctx.url}/health/ready`);
 
   expect(response.status).toBe(200);
@@ -122,9 +123,12 @@ test('it answers ready once it reaches the API', async () => {
 
 test('it ships no private URL or session handling to the browser', async () => {
   const ctx = await setupTest();
+
   const assetsDir = join(ctx.serverPath, '..', '..', 'client', 'assets');
+
   const names = await readdir(assetsDir);
   const files = await Promise.all(names.map((name) => Bun.file(join(assetsDir, name)).text()));
+
   const bundle = files.join('\n');
 
   expect(['NIXIE_API_URL', 'nixie_session', 'Bearer ', 'getCookie']).toSatisfyAll(

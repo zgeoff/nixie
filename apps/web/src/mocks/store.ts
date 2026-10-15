@@ -142,6 +142,7 @@ export const store = {
     ratingNotes.clear();
     enrolmentCodes.clear();
     sessions.clear();
+
     counter.lastSequence = 0;
   },
   sessions,

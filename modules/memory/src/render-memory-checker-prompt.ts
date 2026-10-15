@@ -4,6 +4,7 @@
 export function renderMemoryCheckerPrompt(ownerName: string | null): string {
   const named = ownerName ?? 'The owner';
   const object = ownerName ?? 'the owner';
+
   const nameRule =
     ownerName === null
       ? ''

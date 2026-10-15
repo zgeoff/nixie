@@ -37,6 +37,7 @@ export async function createTestCertificate(names: readonly string[]): Promise<T
     if (result.exitCode !== 0) {
       throw new Error(`openssl failed: ${result.stderr.toString()}`);
     }
+
     return {
       cert: await readFile(join(dir, 'cert.pem'), 'utf8'),
       key: await readFile(join(dir, 'key.pem'), 'utf8'),

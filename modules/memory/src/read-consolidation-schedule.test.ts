@@ -6,6 +6,7 @@ import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
+
   const memory = await startTestMemory({ gate: { clock } });
 
   return { memory, clock };
@@ -13,7 +14,6 @@ async function setupTest() {
 
 test('it reads no run and nothing pending before the first run', async () => {
   const ctx = await setupTest();
-
   const schedule = await ctx.memory.store.consolidations.readSchedule();
 
   expect(schedule).toStrictEqual({ lastRunAt: null, pending: 0, nextLapseAt: null });
@@ -29,7 +29,9 @@ test('it reads the last run on the task clock and the earliest lapse of a pendin
     now: ctx.clock.now(),
     lapseMs: 60_000,
   });
+
   ctx.clock.advance(1000);
+
   await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [trip], reason: 'The trip ended.', source: 'owner' }],
     now: ctx.clock.now(),

@@ -16,6 +16,7 @@ export function renderConsolidatorSystemPrompt(
 // drops out, since it would ask for no change.
 function renderConsolidatorRules(maxChanges: number, ownerName: string | null): string {
   const owner = ownerName ?? 'the owner';
+
   const nameRule =
     ownerName === null
       ? ''

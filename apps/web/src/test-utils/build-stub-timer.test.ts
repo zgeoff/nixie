@@ -7,6 +7,7 @@ test('it fires a timer once time reaches its due time', () => {
 
   timer.startTimer(onTimeout, 100);
   timer.advance(99);
+
   const calledEarly = onTimeout.mock.calls.length;
 
   timer.advance(1);
@@ -22,6 +23,7 @@ test('it never fires a stopped timer', () => {
   const stop = timer.startTimer(onTimeout, 100);
 
   stop();
+
   timer.advance(200);
 
   expect(onTimeout).not.toHaveBeenCalled();
@@ -47,6 +49,7 @@ test('it fires a timer that a callback starts when its due time falls within the
   timer.startTimer(() => {
     timer.startTimer(onSecond, 10);
   }, 10);
+
   timer.advance(100);
 
   expect(onSecond).toHaveBeenCalledOnce();
@@ -60,7 +63,9 @@ test('it starts a timer from a callback at the time the callback fired, not the 
   timer.startTimer(() => {
     timer.startTimer(onSecond, 60);
   }, 50);
+
   timer.advance(100);
+
   const calledAtTarget = onSecond.mock.calls.length;
 
   timer.advance(10);
@@ -76,6 +81,7 @@ test('it fires the earliest pending timer on advancing to the next, and resolves
 
   timer.startTimer(onLate, 50);
   timer.startTimer(onEarly, 30);
+
   const waited = await timer.advanceToNext();
 
   expect(waited).toBe(30);
@@ -90,6 +96,7 @@ test('it waits for a timer that starts after a promise settles before advancing 
   queueMicrotask(() => {
     timer.startTimer(onTimeout, 20);
   });
+
   const waited = await timer.advanceToNext();
 
   expect(waited).toBe(20);
@@ -112,12 +119,15 @@ test('it fires the due timers earliest first', () => {
   timer.startTimer(() => {
     fired.push('late');
   }, 50);
+
   timer.startTimer(() => {
     fired.push('early');
   }, 10);
+
   timer.startTimer(() => {
     fired.push('not due');
   }, 500);
+
   timer.advance(100);
 
   expect(fired).toStrictEqual(['early', 'late']);

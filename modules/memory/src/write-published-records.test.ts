@@ -14,9 +14,12 @@ import { writerConfigSchema } from './writer-config-schema';
 // reaches waits for review as a proposal from the memory writer.
 async function setupTest() {
   const memory = await startTestMemory();
+
   const clock = buildTestClock(1_000_000);
   const context = { log: memory.log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
+
   const lease = await claimWriterLease(context);
+
   const parts = {
     context,
     store: memory.store,
@@ -26,6 +29,7 @@ async function setupTest() {
     getPersona: () => '',
     ownerName: null,
   };
+
   const input = {
     taskID: 'memory-writer',
     stepKey: 'step-1',
@@ -55,12 +59,14 @@ test('it merges a conversation write into the pending proposal the writer made o
     },
     { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
+
   const [proposed] = await ctx.memory.store.proposals.listPending();
 
   const outcome = await ctx.memory.store.writes.remember({
     text: 'the owner keeps bees',
     caller: buildMockWriteCaller({ model: 'claude-test-2' }),
   });
+
   const pending = await ctx.memory.store.proposals.listPending();
 
   expect(outcome).toMatchObject({
@@ -68,6 +74,7 @@ test('it merges a conversation write into the pending proposal the writer made o
     proposalID: proposed?.proposalID,
     merged: true,
   });
+
   expect(pending).toMatchObject([
     {
       proposalID: proposed?.proposalID,
@@ -79,15 +86,18 @@ test('it merges a conversation write into the pending proposal the writer made o
       ],
     },
   ]);
+
   expect(pending).toHaveLength(1);
 });
 
 test('it merges a writer proposal into the pending proposal the conversation made of the same text', async () => {
   const ctx = await setupTest();
+
   const first = await ctx.memory.store.writes.remember({
     text: 'The owner keeps bees.',
     caller: buildMockWriteCaller({ model: 'claude-test-2' }),
   });
+
   const planned = await writePlannedBatch(ctx.memory.log, ['I keep bees on the allotment.']);
 
   const result = await runWriterBatch(
@@ -103,21 +113,25 @@ test('it merges a writer proposal into the pending proposal the conversation mad
     },
     { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
+
   const pending = await ctx.memory.store.proposals.listPending();
 
   expect(result).toMatchObject({ next: 'wait' });
+
   expect(pending).toMatchObject([
     {
       proposalID: 'proposalID' in first ? first.proposalID : null,
       sources: [{ origin: 'conversation' }, { origin: 'memory_writer', model: 'claude-test-1' }],
     },
   ]);
+
   expect(pending).toHaveLength(1);
 });
 
 test('it makes one proposal of 2 writes of the same text in one batch', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I keep bees.', 'Yes, I keep bees.']);
+
   const session = buildStubWriterSession({
     op: 'remember',
     text: 'The owner keeps bees.',
@@ -134,6 +148,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
       sourceSequence: planned.sequences[0] ?? 0,
       itemID: null,
     });
+
     session.staging.stage({
       op: 'remember',
       text: 'The owner keeps bees.',
@@ -141,6 +156,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
       sourceSequence: planned.bounds.end,
       itemID: null,
     });
+
     return Promise.resolve({
       inputTokens: 1,
       outputTokens: 1,
@@ -148,10 +164,12 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
       cacheWriteTokens: 0,
     });
   });
+
   await runWriterBatch(
     { ...ctx.parts, ...session },
     { input: ctx.input, row: await readWriterRow(ctx.memory.log), now: ctx.clock.now() },
   );
+
   const pending = await ctx.memory.store.proposals.listPending();
 
   expect(pending).toMatchObject([
@@ -160,5 +178,6 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
       sources: [{ origin: 'memory_writer' }, { origin: 'memory_writer' }],
     },
   ]);
+
   expect(pending).toHaveLength(1);
 });

@@ -12,16 +12,19 @@ export async function readKeptFile(
   maxFileBytes: number,
 ): Promise<readonly [string, Uint8Array]> {
   const full = join(base, path);
+
   const dir = await realpath(dirname(full));
 
   if (dir !== base && !dir.startsWith(`${base}${sep}`)) {
     throw new SnapshotError('a symlink leads outside the definitions root', [path]);
   }
+
   const bytes = await readNoFollow(full, maxFileBytes);
 
   if (bytes === null) {
     throw new SnapshotError('a file changed while the snapshot read it', [path]);
   }
+
   return [path, normalizeLineEndings(bytes)];
 }
 
@@ -33,12 +36,14 @@ async function readNoFollow(full: string, maxFileBytes: number): Promise<Uint8Ar
   if (handle === null) {
     return null;
   }
+
   try {
     const stat = await handle.stat();
 
     if (!stat.isFile() || stat.size > maxFileBytes) {
       return null;
     }
+
     const bytes = await handle.readFile();
 
     return new Uint8Array(bytes);

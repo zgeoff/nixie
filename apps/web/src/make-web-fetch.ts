@@ -24,6 +24,7 @@ export function makeWebFetch(options: WebFetchOptions) {
     if (pathname === '/health/live') {
       return Response.json({ status: 'live' });
     }
+
     if (pathname === '/health/ready') {
       return checkReadiness(probe);
     }
@@ -112,6 +113,7 @@ function findAsset(clientDir: string, pathname: string): Promise<Response | unde
 
 async function readAsset(path: string, cacheControl: string): Promise<Response | undefined> {
   const file = Bun.file(path);
+
   const exists = await file.exists();
 
   return exists ? new Response(file, { headers: { 'cache-control': cacheControl } }) : undefined;

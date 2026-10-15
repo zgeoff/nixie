@@ -13,6 +13,7 @@ export const memoryProposalMergesProjection: Projection = {
     if (parsed?.kind !== 'memory.proposal_merged') {
       return [];
     }
+
     await tx
       .$extendTables<MemoryTables>()
       .insertInto('memory_proposal_merges')
@@ -27,6 +28,7 @@ export const memoryProposalMergesProjection: Projection = {
         recorded_at: record.recordedAt.getTime(),
       })
       .execute();
+
     return [parsed.mergeID];
   },
 };

@@ -52,14 +52,17 @@ test('it reports a check that throws as unready with the error name alone', asyn
 
 test('it reports a check that never settles as unready once the timeout passes', async () => {
   const clock = buildTestClock(0);
+
   const pending = checkParts(
     { imp_host: () => Promise.withResolvers<never>().promise },
     2000,
     clock,
   );
+
   await waitForCondition(() => clock.countSleepers() === 1);
 
   clock.advance(2000);
+
   const report = await pending;
 
   expect(report.parts['imp_host']).toStrictEqual({
@@ -70,11 +73,13 @@ test('it reports a check that never settles as unready once the timeout passes',
 
 test('it waits on a check that never settles until the timeout passes', async () => {
   const clock = buildTestClock(0);
+
   const pending = checkParts(
     { imp_host: () => Promise.withResolvers<never>().promise },
     2000,
     clock,
   );
+
   await waitForCondition(() => clock.countSleepers() === 1);
 
   clock.advance(1999);

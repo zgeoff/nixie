@@ -21,6 +21,7 @@ export function planProposalCap(
   if (proposals.length <= config.proposalCap) {
     return { kind: 'publish', writes: gated, dropped: 0 };
   }
+
   const half = planBatchSplit(
     batch.bounds,
     batch.entries.map((entry) => ({ sequence: entry.sequence, isOwner: entry.role === 'owner' })),
@@ -29,6 +30,7 @@ export function planProposalCap(
   if (half !== null) {
     return { kind: 'split', bounds: half };
   }
+
   const kept = new Set(proposals.slice(0, config.proposalCap));
 
   return {

@@ -44,7 +44,9 @@ function mergeStoredMessages(
   entries: readonly OutboxEntry[],
 ): readonly OutboxMessage[] {
   const held = new Set(entries.map((entry) => entry.message.clientMessageId));
+
   const others = stored.filter((message) => !held.has(message.clientMessageId));
+
   const unconfirmed = entries
     .filter((entry) => entry.status !== 'sent')
     .map((entry) => entry.message);

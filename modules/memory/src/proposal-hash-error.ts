@@ -2,6 +2,7 @@
 // another operation, and nothing applies.
 export class ProposalHashError extends Error {
   override readonly name = 'ProposalHashError';
+
   readonly code = 'PROPOSAL_HASH';
 
   constructor(proposalID: string) {

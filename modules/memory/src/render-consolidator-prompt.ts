@@ -14,6 +14,7 @@ export function renderConsolidatorPrompt(input: ConsolidatorPromptInput): string
   const heading = input.isComplete
     ? 'Current memory items (the complete list):'
     : 'Current memory items (not the complete list; find others with memory.recall):';
+
   const items =
     input.items.length === 0
       ? '(none)'

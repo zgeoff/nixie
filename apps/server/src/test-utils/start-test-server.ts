@@ -48,6 +48,7 @@ export async function startTestServer(): Promise<TestServer> {
     clock: systemClock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
+
   const endpoint = await startEmptyToolEndpoint(context, join(dataDir, 'tools'));
 
   stack.defer(() => endpoint.stop());

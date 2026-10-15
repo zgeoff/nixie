@@ -25,8 +25,10 @@ export function buildBatchRecords(
   batch: PublishedBatch,
 ): readonly RecordInput[] {
   const applied = batch.outcome.applied;
+
   const catchUpCount =
     batch.row.catch_up_applied + (batch.mode === 'catch_up' ? applied.length : 0);
+
   const notices = [
     ...(batch.mode === 'live' && applied.length > 0
       ? [buildNotice(parts, { notice: 'batch', versions: applied, count: applied.length })]

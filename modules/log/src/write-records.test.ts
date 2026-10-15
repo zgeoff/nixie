@@ -67,6 +67,7 @@ test('it refuses a record without the definitions field and writes none of the b
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a caller that reached past the type
   const unpinned = { kind: 'owner_message', thread: 'conversation' } as unknown as RecordInput;
+
   const write = writeRecords(ctx.log, [
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:aa11' } },
     unpinned,
@@ -80,6 +81,7 @@ test('it refuses a record without the definitions field and writes none of the b
     Error,
     'a owner_message record carries no definitions snapshot hash',
   );
+
   expect(records.rows).toStrictEqual([]);
 });
 
@@ -117,6 +119,7 @@ test('it keeps no plaintext of an erasable field in nixie.db', async () => {
   await ctx.writer.stop();
 
   const database = await readFile(join(ctx.dataDir, 'nixie.db'));
+
   const text = database.toString('latin1');
 
   expect(text).toInclude('plainmarker7731');
@@ -159,13 +162,16 @@ test('it gives each record with erasable fields its own random key in keys.db', 
 
   const records = await sql<{ key_id: string | null }>`select key_id from records
     order by sequence`.execute(ctx.writer.db);
+
   const keys = await sql<{ key_id: string }>`select key_id from record_keys`.execute(
     ctx.writer.keys,
   );
+
   const [first, second] = records.rows;
 
   invariant(first);
   invariant(second);
+
   expect(records.rows).toStrictEqual([
     {
       key_id: expect.toSatisfy((keyID: string) =>
@@ -179,6 +185,7 @@ test('it gives each record with erasable fields its own random key in keys.db', 
     },
     { key_id: null },
   ]);
+
   expect(first.key_id).not.toBe(second.key_id);
   expect(keys.rows).toIncludeSameMembers([{ key_id: first.key_id }, { key_id: second.key_id }]);
 });
@@ -207,6 +214,7 @@ test('it writes no record when a projection fold fails', async () => {
     keyColumn: 'thread',
     fold: () => Promise.reject(new Error('the fold failed')),
   };
+
   const write = writeRecords({ ...ctx.log, projections: [...logProjections, failing] }, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },
   ]);

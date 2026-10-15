@@ -14,12 +14,15 @@ async function setupTest() {
 
 test('it sends the run token over the run socket', async () => {
   const ctx = await setupTest();
+
   const socketPath = join(ctx.dir, 'run.sock');
   const authorizations: (string | null)[] = [];
+
   const server = Bun.serve({
     unix: socketPath,
     fetch: (request) => {
       authorizations.push(request.headers.get('authorization'));
+
       return new Response('refused', { status: 401 });
     },
   });
@@ -41,12 +44,15 @@ test('it sends the run token over the run socket', async () => {
 
 test('it sends the token given in place of the run token', async () => {
   const ctx = await setupTest();
+
   const socketPath = join(ctx.dir, 'run.sock');
   const authorizations: (string | null)[] = [];
+
   const server = Bun.serve({
     unix: socketPath,
     fetch: (request) => {
       authorizations.push(request.headers.get('authorization'));
+
       return new Response('refused', { status: 401 });
     },
   });

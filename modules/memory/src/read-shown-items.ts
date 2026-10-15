@@ -27,6 +27,7 @@ export async function readShownItems(
   if (listed !== null) {
     return { items: listed, isComplete: true };
   }
+
   const matched = await store.recall({
     query: query.text.slice(0, maxQueryCharacters),
     limit: query.topItems,
@@ -53,10 +54,12 @@ async function readItemList(
     });
 
     listed.push(...result.items.map((item) => toShownItem(item)));
+
     page.tokens += result.items.reduce(
       (total, item) => total + countBatchTokens(item.text) + itemOverheadTokens,
       0,
     );
+
     page.after = result.next;
   } while (page.after !== null && page.tokens <= query.listTokens);
 

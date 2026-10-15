@@ -14,7 +14,9 @@ import { writerConfigSchema } from './writer-config-schema';
 // gate never run, because no test runs a step.
 async function setupTest() {
   const memory = await startTestMemory();
+
   const log = { ...memory.log, projections: [...memory.log.projections, ...tasksProjections] };
+
   const options = {
     context: {
       log,
@@ -44,6 +46,7 @@ async function setupTest() {
 
 test('it records the head of the log as where memory started', async () => {
   const ctx = await setupTest();
+
   const messages = await writeRecords(ctx.log, [
     {
       kind: 'owner_message',
@@ -64,7 +67,6 @@ test('it records the head of the log as where memory started', async () => {
 
 test('it records where memory started once across two starts', async () => {
   const ctx = await setupTest();
-
   const first = await startMemoryWriter(ctx.options);
 
   await first.stop();
@@ -95,6 +97,7 @@ test('it wakes the writer at start with no message, so an earlier message counts
   ctx.memory.defer(() => writer.stop());
 
   const entries = await readRecords(ctx.log, { afterSequence: 0, thread: 'memory-writer' });
+
   const wakes = entries.filter((entry) => entry.record.kind === 'task.wake');
 
   expect(wakes.map((entry) => entry.record.payload)).toStrictEqual([{ at: 1_000_000 }]);
@@ -134,9 +137,11 @@ test('it wakes the writer for each later message of yours and never for a reply'
   });
 
   const entries = await readRecords(ctx.log, { afterSequence: 0, thread: 'memory-writer' });
+
   const wakes = entries.filter((entry) => entry.record.kind === 'task.wake');
 
   invariant(first && second);
+
   expect(wakes.map((entry) => entry.record.payload['messageSequence'])).toStrictEqual([
     undefined,
     first.sequence,

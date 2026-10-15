@@ -18,6 +18,7 @@ async function setupTest() {
   stack.defer(() => rm(dir, { recursive: true, force: true }));
 
   const statements: string[] = [];
+
   const db = new Kysely<unknown>({
     dialect: buildSqliteWorkerDialect(join(dir, 'nixie.db')),
     log: (event) => {
@@ -51,6 +52,7 @@ test('it backfills each existing item with the short ID its UUID gives', async (
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence) values
     ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1, 'active', 0, 1, 1),
@@ -73,10 +75,13 @@ test('it leaves the short IDs as they are when it runs again', async () => {
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence) values
     ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1, 'active', 0, 1, 1)`.execute(ctx.db);
+
   await ctx.db.transaction().execute((tx) => memoryShortIDsMigration.up(tx));
+
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence, short_id) values
     ('b81d4e07-2c9f-4a63-8e15-0f7a2d6c3b94', 1, 'active', 0, 1, 1, 'k3x9m2p7qa')`.execute(ctx.db);
@@ -98,15 +103,18 @@ test('it leaves every version and its sealed text untouched', async () => {
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence) values
     ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1, 'active', 0, 1, 1)`.execute(ctx.db);
+
   await sql`insert into memory_versions (version_key, item_id, version, change, state, sealed,
     origin, source, sequence, snapshot_hash, recorded_at) values
     ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13@1', '3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1,
     'created', 'active', 'c2VhbGVkIHRleHQ=', 'owner', 'owner', 1, 'snapshot-a', 1767225600000)`.execute(
     ctx.db,
   );
+
   const before = await sql`select * from memory_versions`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => memoryShortIDsMigration.up(tx));
@@ -121,14 +129,17 @@ test('it reads no version, so it never reads an item text', async () => {
 
   await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
     values (1, 1767225600000, 'memory.version_added', 'snapshot-a', '{}')`.execute(ctx.db);
+
   await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
     updated_sequence) values
     ('3f6c1a52-8e0b-4d7a-9c21-5b7e4f0d9a13', 1, 'active', 0, 1, 1)`.execute(ctx.db);
+
   ctx.statements.splice(0);
 
   await ctx.db.transaction().execute((tx) => memoryShortIDsMigration.up(tx));
 
   expect(ctx.statements).toSatisfyAny((statement: string) => statement.startsWith('update'));
+
   expect(ctx.statements).toSatisfyAll(
     (statement: string) => !statement.includes('memory_versions'),
   );

@@ -28,6 +28,7 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
   const holder = options.holder ?? crypto.randomUUID();
   const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
   const pollMs = options.pollMs ?? DEFAULT_POLL_MS;
+
   const steps = startRunnerPool(context.clock, {
     size: options.size ?? DEFAULT_SIZE,
     pollMs,
@@ -54,6 +55,7 @@ export function startTaskRunners(context: TasksContext, options: TaskRunnersOpti
     pollMs,
     claim: async () => {
       await runDueTimers(context);
+
       return null;
     },
     run: async () => {},

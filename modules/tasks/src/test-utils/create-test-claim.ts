@@ -12,5 +12,6 @@ export async function createTestClaim(context: TasksContext, brief: string): Pro
 
   // the task just created is ready, so the claim finds a task
   invariant(claim);
+
   return claim;
 }

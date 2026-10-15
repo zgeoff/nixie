@@ -14,6 +14,7 @@ export function mergeExecEnv(
   for (const grant of spec.grants) {
     Object.assign(merged, grant.env);
   }
+
   Object.assign(merged, env);
 
   const noProxy = [
@@ -22,6 +23,7 @@ export function mergeExecEnv(
 
   merged['NO_PROXY'] = noProxy;
   merged['no_proxy'] = noProxy;
+
   return merged;
 }
 

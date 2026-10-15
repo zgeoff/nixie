@@ -25,6 +25,7 @@ export interface MemoryWriter {
 // wakes the writer, and so does each later message of yours, with the time it arrived.
 export async function startMemoryWriter(options: MemoryWriterOptions): Promise<MemoryWriter> {
   const context = options.context;
+
   const head = await readHeadSequence(context.log);
 
   await createSystemTask(context, memoryWriterTaskID);
@@ -32,6 +33,7 @@ export async function startMemoryWriter(options: MemoryWriterOptions): Promise<M
   await writeWake(context, {});
 
   const stopping = new AbortController();
+
   const watching = runMessageWakes(context, {
     after: head,
     signal: stopping.signal,
@@ -43,6 +45,7 @@ export async function startMemoryWriter(options: MemoryWriterOptions): Promise<M
     readStatus: () => readWriterStatus(context.log),
     stop: async () => {
       stopping.abort();
+
       await watching;
     },
   };
@@ -71,6 +74,7 @@ async function writeWriterStarted(context: TasksContext, head: number): Promise<
     if (existing !== undefined) {
       return;
     }
+
     await writeRecordsInTransaction(tx, context.log, [
       {
         kind: 'memory.writer_started',

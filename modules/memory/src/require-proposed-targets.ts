@@ -29,8 +29,10 @@ function buildTargetRequirement(write: StagedWrite): ItemRequirement | null {
   if (write.op === 'retire') {
     return { target: write.target, operation: 'retire', states: ['active'] };
   }
+
   if (write.target === null) {
     return null;
   }
+
   return { target: write.target, operation: 'edit', states: ['active', 'retired'] };
 }

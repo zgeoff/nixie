@@ -20,6 +20,7 @@ async function setupTest(options: TestMemoryWriterOptions = {}) {
 
 test('it carries the note of a live batch, cut to its cap, on the next conversation turn', async () => {
   const ctx = await setupTest();
+
   const conversation = await startTestConversation(ctx.server, {
     context: ctx.memory.context,
     readTurnNote: () =>
@@ -50,8 +51,11 @@ test('it carries the note of a live batch, cut to its cap, on the next conversat
     { text: 'Staged.' },
     { text: 'Nothing to remember.' },
   );
+
   conversation.model.addReplies({ text: 'Hello.' });
+
   await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
+
   await writeInboxRecords(ctx.memory.context, [
     {
       kind: 'owner_message',
@@ -60,6 +64,7 @@ test('it carries the note of a live batch, cut to its cap, on the next conversat
       erasable: { text: 'Hi.' },
     },
   ]);
+
   await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
 
   expect(JSON.stringify(conversation.model.requests.at(-1)?.body?.messages)).toMatch(
@@ -69,12 +74,14 @@ test('it carries the note of a live batch, cut to its cap, on the next conversat
 
 test('it ends a catch-up over a changed address with one active item that holds the new address', async () => {
   const ctx = await setupTest();
+
   const sequences = await writeOwnerMessages(ctx.memory.context.log, [
     'I live at 4 Elm Row.',
     'We moved last week, so I live at 9 Oak Lane now.',
   ]);
 
   await ctx.memory.start();
+
   ctx.memory.model.addReplies(
     buildRememberReply({
       text: 'You live at 4 Elm Row.',
@@ -83,6 +90,7 @@ test('it ends a catch-up over a changed address with one active item that holds 
     }),
     { text: 'Staged.' },
   );
+
   await ctx.memory.run({
     isDone: async () => {
       const items = await ctx.memory.listItems();
@@ -107,6 +115,7 @@ test('it ends a catch-up over a changed address with one active item that holds 
     },
     { text: 'Staged.' },
   );
+
   await ctx.memory.run();
 
   const items = await ctx.memory.listItems();
@@ -118,7 +127,9 @@ test('it ends a catch-up over a changed address with one active item that holds 
 
 test('it publishes nothing from a message forgotten while the model extracts from it', async () => {
   const ctx = await setupTest();
+
   const log = ctx.memory.context.log;
+
   const [sequence] = await writeOwnerMessages(log, ['My sister is called Robin.']);
 
   await ctx.memory.start();
@@ -135,12 +146,14 @@ test('it publishes nothing from a message forgotten while the model extracts fro
       gate: removeMessageKeyAfter({ log, model: ctx.memory.model }, { sequence, requests: 2 }),
     },
   );
+
   await ctx.memory.run();
 
   const items = await ctx.memory.listItems();
   const entries = await readRecords(log, { afterSequence: 0, thread: 'memory-writer' });
 
   expect(items).toStrictEqual([]);
+
   expect(entries.filter((entry) => entry.record.kind === 'memory.batch_published')).toMatchObject([
     { record: { payload: { start: 0, end: sequence, applied: [], proposed: 0, dropped: 1 } } },
     { record: { payload: { applied: [], dropped: 0, catchUpEnded: true } } },
@@ -151,7 +164,9 @@ test('it backs off, doubling each wait, after more failed model calls than the t
   const ctx = await setupTest();
 
   await writeOwnerMessages(ctx.memory.context.log, ['I work at the harbour office.']);
+
   await ctx.memory.start();
+
   await ctx.memory.run({
     isDone: async () => {
       const status = await ctx.memory.readStatus();
@@ -172,11 +187,13 @@ test('it backs off, doubling each wait, after more failed model calls than the t
 
 test('it resumes the batch once the model answers after a backoff', async () => {
   const ctx = await setupTest();
+
   const [sequence] = await writeOwnerMessages(ctx.memory.context.log, [
     'I work at the harbour office.',
   ]);
 
   await ctx.memory.start();
+
   await ctx.memory.run({
     isDone: async () => {
       const status = await ctx.memory.readStatus();
@@ -184,6 +201,7 @@ test('it resumes the batch once the model answers after a backoff', async () => 
       return status.failures >= 4;
     },
   });
+
   ctx.memory.model.addReplies(
     buildRememberReply({
       text: 'You work at the harbour office.',
@@ -192,6 +210,7 @@ test('it resumes the batch once the model answers after a backoff', async () => 
     }),
     { text: 'Staged.' },
   );
+
   await ctx.memory.run();
 
   const items = await ctx.memory.listItems();
@@ -225,12 +244,15 @@ test('it applies a staged fact that the store gate confirms against the message 
       failure: null,
     }),
   );
+
   const ctx = await setupTest({ check });
+
   const [sequence] = await writeOwnerMessages(ctx.memory.context.log, [
     'By the way, my sister Ada lives in Leeds.',
   ]);
 
   await ctx.memory.start();
+
   ctx.memory.model.addReplies(
     buildRememberReply({
       text: 'Your sister Ada lives in Leeds.',
@@ -239,6 +261,7 @@ test('it applies a staged fact that the store gate confirms against the message 
     }),
     { text: 'Staged.' },
   );
+
   await ctx.memory.run();
 
   const entries = await readRecords(ctx.memory.context.log, { afterSequence: 0 });
@@ -273,11 +296,13 @@ test('it publishes a proposal with its batch for a staged fact the checker is un
         failure: null,
       }),
   });
+
   const [sequence] = await writeOwnerMessages(ctx.memory.context.log, [
     'Apparently I am the king of Leeds.',
   ]);
 
   await ctx.memory.start();
+
   ctx.memory.model.addReplies(
     buildRememberReply({
       text: 'You are the king of Leeds.',
@@ -286,9 +311,11 @@ test('it publishes a proposal with its batch for a staged fact the checker is un
     }),
     { text: 'Staged.' },
   );
+
   await ctx.memory.run();
 
   const pending = await ctx.memory.store.proposals.listPending();
+
   const entries = await readRecords(ctx.memory.context.log, {
     afterSequence: 0,
     thread: 'memory-writer',
@@ -302,6 +329,7 @@ test('it publishes a proposal with its batch for a staged fact the checker is un
       evidence: { recordSequence: sequence, start: 11, end: 33 },
     },
   ]);
+
   expect(entries.filter((entry) => entry.record.kind === 'memory.batch_published')).toMatchObject([
     { record: { payload: { start: 0, end: sequence, applied: [], proposed: 1 } } },
     { record: { payload: { start: sequence, proposed: 0, catchUpEnded: true } } },
@@ -319,6 +347,7 @@ test('it splits a batch over the proposal cap and publishes each half, so the cu
       }),
     writerConfig: { batch_messages: 2, proposal_cap: 1 },
   });
+
   const [first, second] = await writeOwnerMessages(ctx.memory.context.log, [
     'I might move to Oslo.',
     'I might learn the cello.',
@@ -336,9 +365,11 @@ test('it splits a batch over the proposal cap and publishes each half, so the cu
     buildRememberReply({ text: 'Might learn cello.', quote: 'learn the cello', sourceID: second }),
     { text: 'Staged.' },
   );
+
   await ctx.memory.run();
 
   const pending = await ctx.memory.store.proposals.listPending();
+
   const entries = await readRecords(ctx.memory.context.log, {
     afterSequence: 0,
     thread: 'memory-writer',
@@ -349,6 +380,7 @@ test('it splits a batch over the proposal cap and publishes each half, so the cu
     { record: { payload: { start: first, end: second, proposed: 1, dropped: 0 } } },
     { record: { payload: { start: second, proposed: 0, catchUpEnded: true } } },
   ]);
+
   expect(pending.map((proposal) => proposal.evidence?.recordSequence)).toIncludeSameMembers([
     first,
     second,
@@ -366,12 +398,14 @@ test('it leaves no key behind for the proposals of a batch that split', async ()
       }),
     writerConfig: { batch_messages: 2, proposal_cap: 1 },
   });
+
   const [first, second] = await writeOwnerMessages(ctx.memory.context.log, [
     'I might move to Oslo.',
     'I might learn the cello.',
   ]);
 
   await ctx.memory.start();
+
   ctx.memory.model.addReplies(
     buildRememberReply({ text: 'Might move to Oslo.', quote: 'move to Oslo', sourceID: first }),
     buildRememberReply({ text: 'Might learn cello.', quote: 'learn the cello', sourceID: second }),
@@ -381,14 +415,17 @@ test('it leaves no key behind for the proposals of a batch that split', async ()
     buildRememberReply({ text: 'Might learn cello.', quote: 'learn the cello', sourceID: second }),
     { text: 'Staged.' },
   );
+
   await ctx.memory.run();
 
   const pending = await ctx.memory.store.proposals.listPending();
+
   const keys = await ctx.memory.context.log.writer.keys
     .$extendTables<{ record_keys: { key_id: string } }>()
     .selectFrom('record_keys')
     .select('key_id')
     .execute();
+
   const recordKeys = await ctx.memory.context.log.writer.db
     .$extendTables<{ records: { key_id: string | null } }>()
     .selectFrom('records')

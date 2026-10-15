@@ -10,6 +10,7 @@ function setupTest() {
 
 test('it writes one record per lifecycle event', async () => {
   const ctx = await setupTest();
+
   const spec = buildMockSandboxSpec({ grants: [buildMockGrantSpec()] });
 
   await ctx.writeEvents([
@@ -33,6 +34,7 @@ test('it writes one record per lifecycle event', async () => {
 
 test('it writes each record with the definitions in force', async () => {
   const ctx = await setupTest();
+
   const recorder = buildSandboxRecorder({
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:in-force' }),
@@ -51,6 +53,7 @@ test('it writes each record with the definitions in force', async () => {
 
 test('it lists every sandbox of an owner and adapter that is not destroyed, with its state', async () => {
   const ctx = await setupTest();
+
   const spec = buildMockSandboxSpec({ owner: 'task-1:step-2' });
 
   await ctx.writeEvents([
@@ -78,6 +81,7 @@ test('it lists every sandbox of an owner and adapter that is not destroyed, with
 
 test('it finds a sandbox through its own adapter', async () => {
   const ctx = await setupTest();
+
   const spec = buildMockSandboxSpec({ owner: 'task-1:step-2' });
 
   await ctx.writeEvents([{ event: 'created', sandboxID: 'nixie-e', adapter: 'process', spec }]);

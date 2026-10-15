@@ -46,6 +46,7 @@ export interface ScriptedModel {
 export function startScriptedModel(): ScriptedModel {
   const requests: ScriptedModelRequest[] = [];
   const script: ScriptedReply[] = [];
+
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -57,6 +58,7 @@ export function startScriptedModel(): ScriptedModel {
       const response = renderResponse(recorded, script);
 
       await response.gate;
+
       return response.response;
     },
   });
@@ -96,9 +98,11 @@ function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]):
   if (request.path === '/v1/messages/count_tokens') {
     return { response: Response.json({ input_tokens: 10 }) };
   }
+
   if (request.path !== '/v1/messages' || request.body === null) {
     return { response: new Response('not found', { status: 404 }) };
   }
+
   const reply = script.shift();
 
   if (reply === undefined) {
@@ -112,7 +116,9 @@ function renderResponse(request: ScriptedModelRequest, script: ScriptedReply[]):
       ),
     };
   }
+
   const model = request.body.model ?? 'stub';
+
   const response =
     request.body.stream === true ? renderStream(reply, model) : renderWhole(reply, model);
 
@@ -137,6 +143,7 @@ function renderWhole(reply: ScriptedReply, model: string): Response {
 function renderStream(reply: ScriptedReply, model: string): Response {
   const block = buildBlock(reply);
   const isTool = 'toolUse' in reply;
+
   const events = [
     {
       type: 'message_start',
@@ -187,5 +194,6 @@ function buildBlock(reply: ScriptedReply): Readonly<Record<string, unknown>> {
       input: reply.toolUse.input,
     };
   }
+
   return { type: 'text', text: reply.text };
 }

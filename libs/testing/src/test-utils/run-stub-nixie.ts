@@ -5,14 +5,17 @@ import { startHarnessLink } from '../start-harness-link';
 const link = startHarnessLink();
 
 link.registerOperation('now', () => link.clock.now());
+
 link.registerOperation('hold', async (args) => {
   await link.waitAtFaultPoint('stub.point', { kind: 'stub', id: String(args) });
+
   return 'released';
 });
 
 // a sleeper that never sleeps again once it wakes, as a step that an advance starts
 link.registerOperation('sleepOnce', (args) => {
   void link.clock.sleep(Number(args));
+
   return null;
 });
 
@@ -24,8 +27,10 @@ link.registerOperation('startPoll', (args) => {
       await link.clock.sleep(Number(args));
     }
   })();
+
   return null;
 });
+
 link.registerOperation('startChild', () => {
   const child = Bun.spawn(['sleep', '60'], {
     detached: true,
@@ -39,4 +44,5 @@ if (process.env['STUB_NIXIE_REFUSE'] === '1') {
   process.stderr.write('the stub refused to start\n');
   process.exit(3);
 }
+
 link.sendReady();

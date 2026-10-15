@@ -22,11 +22,13 @@ export async function createAllowedAction(
   if (call.decision.outcome !== 'allow') {
     throw new Error(`a call the decision point answered ${call.decision.outcome} queues nothing`);
   }
+
   const taskID = call.step.lease.workID;
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('queue.commit.before', { kind: 'task', id: taskID });
   }
+
   const queued = await withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, call.step.lease, context.clock.now());
 
@@ -35,6 +37,7 @@ export async function createAllowedAction(
     if (earlier !== undefined) {
       return { actionID: earlier.action_id, status: earlier.status, isRepeat: true };
     }
+
     const actionID = crypto.randomUUID();
 
     await writeRecordsInTransaction(tx, context.log, [
@@ -54,12 +57,14 @@ export async function createAllowedAction(
         erasable: { arguments: call.arguments },
       },
     ]);
+
     return { actionID, status: 'pending' as const, isRepeat: false };
   });
 
   if (NIXIE_TEST_BUILD && !queued.isRepeat) {
     await waitAtFaultPoint('queue.commit.after', { kind: 'action', id: queued.actionID });
   }
+
   return queued;
 }
 

@@ -60,9 +60,11 @@ test('it passes over a summary whose key is gone to the newest one still readabl
 
   const keys = await sql<{ key_id: string }>`select key_id from records
     where sequence = 2`.execute(ctx.tasks.writer.db);
+
   const [key] = keys.rows;
 
   invariant(key);
+
   await removeRecordKey(ctx.tasks.context.log, key.key_id);
 
   const summary = await findSessionSummary(ctx.tasks.context, 'conversation');
@@ -76,7 +78,6 @@ test('it passes over a summary whose key is gone to the newest one still readabl
 
 test('it finds none on a thread with no summary', async () => {
   const ctx = await setupTest();
-
   const summary = await findSessionSummary(ctx.tasks.context, 'conversation');
 
   expect(summary).toBeNull();

@@ -49,6 +49,7 @@ test('it returns every record after the sequence with the rows as of that record
       ],
     },
   ]);
+
   expect(read).toHaveLength(3);
 });
 
@@ -144,6 +145,7 @@ test('it reads a record whose key fails to unwrap as unreadable and reads on pas
     'wrapKey',
     'unwrapKey',
   ]);
+
   const read = await readRecords({ ...ctx.log, deploymentKey: otherKey }, { afterSequence: 0 });
 
   expect(read.map((entry) => [entry.record.sequence, entry.record.erasable])).toStrictEqual([

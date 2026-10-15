@@ -40,6 +40,7 @@ export async function* subscribeToThreadRecords(
     if (record.kind === 'session.revoked' && record.payload['identityID'] === caller.identityID) {
       throw options.buildUnauthorized();
     }
+
     const visible = toContractRecord(record);
 
     if (visible !== null && (options.thread === undefined || visible.thread === options.thread)) {

@@ -7,10 +7,12 @@ import { writeKeyStoreCheckpoint } from './write-key-store-checkpoint';
 // out of the key store's WAL, and secure delete has overwritten the page, so no copy stays on disk.
 export async function removeRecordKey(log: Pick<Log, 'writer'>, keyID: string): Promise<void> {
   await withWriteTransaction(log.writer, () => Promise.resolve());
+
   await log.writer.keys
     .$extendTables<KeyStoreTables>()
     .deleteFrom('record_keys')
     .where('key_id', '=', keyID)
     .execute();
+
   await writeKeyStoreCheckpoint(log, keyID);
 }

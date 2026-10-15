@@ -10,6 +10,7 @@ import { writeStartRecord } from './write-start-record';
 
 async function setupTest() {
   const server = await startTestServer();
+
   const store = await startTestMemoryStore(
     server.context,
     mock(() => Promise.resolve()),
@@ -34,7 +35,9 @@ test('it joins the memory note and the events block, each as a system message, b
   const [last] = await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
   ]);
+
   const shortIDs = await ctx.store.readShortIDs([item.itemID]);
+
   const note = await readTurnNotes({
     log: ctx.log,
     store: ctx.store,
@@ -74,6 +77,7 @@ test("it shows events in the zone of the owner's newest message over the default
   onTestFinished(() => setSystemTime());
 
   await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.12.0');
+
   await writeRecords(ctx.log, [
     {
       kind: 'owner_message',
@@ -102,6 +106,7 @@ test("it stamps each message with the clock's time in the zone of the owner's ne
   onTestFinished(() => setSystemTime());
 
   await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.12.0');
+
   await writeRecords(ctx.log, [
     {
       kind: 'owner_message',
@@ -138,6 +143,7 @@ test('it renders no note when nothing happened since the last turn', async () =>
       payload: {},
     },
   ]);
+
   const note = await readTurnNotes({
     log: ctx.log,
     store: ctx.store,
@@ -148,6 +154,7 @@ test('it renders no note when nothing happened since the last turn', async () =>
   });
 
   invariant(turn);
+
   expect(note).toStrictEqual({ text: null, throughSequence: turn.sequence, eventCount: 0 });
 });
 
@@ -164,6 +171,7 @@ test('it reads the note over a span given, headed as the turns it covers, and le
   ]);
 
   invariant(last);
+
   await writeStartRecord(ctx.context, { tools: [], personaVersion: null }, '0.13.0');
 
   const note = await readTurnNotes(

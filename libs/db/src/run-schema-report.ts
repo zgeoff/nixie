@@ -9,13 +9,17 @@ import { runMigrations } from './run-migrations';
 import { startDatabase } from './start-database';
 
 const dir = await mkdtemp(join(tmpdir(), 'nixie-schema-report-'));
+
 const db = startDatabase(join(dir, 'schema-report.db'));
 
 await runMigrations(db, { schema: nixieSchema, copyDir: dir });
+
 const objects = await readSchemaObjects(db);
 
 await db.destroy();
+
 await rm(dir, { recursive: true, force: true });
+
 process.stdout.write(
   `${JSON.stringify({
     migrations: nixieSchema.migrations.map((migration) => migration.name),

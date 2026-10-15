@@ -11,26 +11,32 @@ export interface ToolRelay {
 // for imp's reverse forward. It never listens on an address another machine reaches.
 export async function startToolRelay(target: ToolTarget): Promise<ToolRelay> {
   const sockets = new Set<Socket>();
+
   const server = createServer((guest) => {
     const tool = 'path' in target ? createConnection(target.path) : createConnection(target);
 
     for (const socket of [guest, tool]) {
       sockets.add(socket);
+
       socket.once('close', () => {
         sockets.delete(socket);
       });
     }
+
     guest.pipe(tool).once('error', () => {
       guest.destroy();
     });
+
     tool.pipe(guest).once('error', () => {
       tool.destroy();
     });
   });
+
   const listening = Promise.withResolvers<void>();
 
   server.once('error', listening.reject);
   server.listen(0, '127.0.0.1', listening.resolve);
+
   await listening.promise;
 
   const address = server.address();
@@ -38,6 +44,7 @@ export async function startToolRelay(target: ToolTarget): Promise<ToolRelay> {
   if (address === null || typeof address === 'string') {
     throw new Error('the tool relay has no TCP address');
   }
+
   return {
     port: address.port,
     stop: async () => {
@@ -46,9 +53,11 @@ export async function startToolRelay(target: ToolTarget): Promise<ToolRelay> {
       server.close(() => {
         closed.resolve();
       });
+
       for (const socket of sockets) {
         socket.destroy();
       }
+
       await closed.promise;
     },
   };

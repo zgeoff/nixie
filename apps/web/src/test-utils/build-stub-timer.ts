@@ -27,7 +27,9 @@ interface PendingTimer {
 // fires once, and a stopped timer never fires.
 export function buildStubTimer(): StubTimer {
   const state = { now: 0 };
+
   const pending = new Set<PendingTimer>();
+
   const runTimersFor = (ms: number): void => {
     const target = state.now + ms;
     let next = findEarliestDue([...pending], target);
@@ -37,8 +39,10 @@ export function buildStubTimer(): StubTimer {
     // callback can stop a later timer, which then stays unfired.
     while (next !== undefined) {
       state.now = next.dueAt;
+
       pending.delete(next);
       next.onTimeout();
+
       next = findEarliestDue([...pending], target);
     }
 
@@ -50,6 +54,7 @@ export function buildStubTimer(): StubTimer {
       const timer: PendingTimer = { dueAt: state.now + ms, onTimeout, startedAt: state.now };
 
       pending.add(timer);
+
       return () => {
         pending.delete(timer);
       };

@@ -15,6 +15,7 @@ export function buildCheckerEvalInput(
   if (match.status !== 'typed') {
     throw new Error(`the quote of a ${sample.id} pair fails the quote check: ${match.status}`);
   }
+
   return renderCheckerInput(message, match, {
     kind: 'candidate_memory',
     text:

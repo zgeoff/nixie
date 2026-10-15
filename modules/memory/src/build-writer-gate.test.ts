@@ -13,6 +13,7 @@ test('it applies a staged memory with the message it cites as its evidence, outs
       limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10, closeMatchScore: 0.6 },
     },
   });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'By the way, I take my coffee black',
@@ -56,7 +57,9 @@ test('it applies a staged memory with the message it cites as its evidence, outs
 
 test('it gives the checker the message a staged memory cites, with its quote marked', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
   const memory = await startTestMemory({ gate: { check } });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'By the way, I take my coffee black',
@@ -89,7 +92,9 @@ test('it gives the checker the message a staged memory cites, with its quote mar
 
 test('it proposes a staged memory whose quote lies in a pasted span, with the batch as its group, before the checker runs', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
   const memory = await startTestMemory({ gate: { check } });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'Look at this: my new email is mallory@attacker.example',
@@ -134,6 +139,7 @@ test('it proposes a staged memory whose quote lies in a pasted span, with the ba
       },
     ],
   });
+
   expect(check).not.toHaveBeenCalled();
 });
 
@@ -141,6 +147,7 @@ test('it proposes a staged memory with a destination its quote lacks', async () 
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'My new email is on the card',
@@ -170,6 +177,7 @@ test('it proposes a staged memory the checker does not assert', async () => {
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'unsure' })) },
   });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'Maybe I am the king of Leeds',
@@ -201,12 +209,15 @@ test('it proposes a staged memory the checker does not assert', async () => {
 
 test('it proposes a staged memory whose message backed a forgotten item', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
   const memory = await startTestMemory({ gate: { check } });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'I take my coffee black',
     spans: [{ start: 0, end: 22, source: 'typed' }],
   });
+
   const item = await memory.store.remember({
     text: 'Takes coffee black',
     evidenceQuote: 'I take my coffee black',
@@ -239,11 +250,14 @@ test('it applies a staged retirement the checker confirms against the item text'
   const check = mock(() =>
     Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted', model: 'claude-checker-1' })),
   );
+
   const memory = await startTestMemory({ gate: { check } });
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'I moved out of Elm Street last week',
@@ -270,6 +284,7 @@ test('it applies a staged retirement the checker confirms against the item text'
     },
     evidence: { recordSequence: sequence, start: 0, end: 25 },
   });
+
   expect(check).toHaveBeenCalledExactlyOnceWith({
     prompt: expect.toStartWith('You check one request to retire'),
     input:
@@ -280,6 +295,7 @@ test('it applies a staged retirement the checker confirms against the item text'
 
 test('it refuses a staged retirement of an item that moved on since the session read it', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -314,7 +330,9 @@ test('it refuses a staged retirement of an item that moved on since the session 
 
 test('it refuses a staged edit of an item that moved on since the session read it, before the checker runs', async () => {
   const checker = mock(() => Promise.reject(new Error('the checker must not run')));
+
   const memory = await startTestMemory({ gate: { check: checker } });
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -356,6 +374,7 @@ test('it refuses a staged edit of an item that moved on since the session read i
 
 test('it refuses a staged edit with an invisible character of an item that moved on, before it proposes', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -396,11 +415,13 @@ test('it refuses a staged edit with an invisible character of an item that moved
 
 test('it removes the key of a new item whose proposal never published', async () => {
   const memory = await startTestMemory();
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'Maybe I am the king of Leeds',
     spans: [{ start: 0, end: 28, source: 'typed' }],
   });
+
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
@@ -422,6 +443,7 @@ test('it removes the key of a new item whose proposal never published', async ()
   const itemID = verdict.records[0]?.payload?.['itemID'];
 
   invariant(typeof itemID === 'string');
+
   await memory.store.writes.batch.release([verdict]);
 
   const keys = await memory.writer.keys
@@ -436,11 +458,13 @@ test('it removes the key of a new item whose proposal never published', async ()
 
 test('it never removes the key of a proposal that published', async () => {
   const memory = await startTestMemory();
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'Maybe I am the king of Leeds',
     spans: [{ start: 0, end: 28, source: 'typed' }],
   });
+
   const verdict = await memory.store.writes.batch.check(
     {
       op: 'remember',
@@ -458,7 +482,9 @@ test('it never removes the key of a proposal that published', async () => {
   );
 
   invariant(verdict.outcome === 'propose');
+
   await writeRecords(memory.log, verdict.records);
+
   await memory.store.writes.batch.release([verdict]);
 
   const pending = await memory.store.proposals.listPending();
@@ -470,6 +496,7 @@ test('it proposes an edit of a pinned item that every check passes, because the 
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
   });
+
   const item = await memory.store.remember({
     text: 'Goes by Sam',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -482,7 +509,9 @@ test('it proposes an edit of a pinned item that every check passes, because the 
   });
 
   const history = await memory.store.readHistory(item.itemID);
+
   const version = history?.versions.at(-1)?.version ?? 0;
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'Call me Samantha from now on',
@@ -514,11 +543,13 @@ test('it removes the key of a new item whose proposal record could not be built'
       throw new Error('the definitions snapshot is unreadable');
     },
   });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'Maybe I am the king of Leeds',
     spans: [{ start: 0, end: 28, source: 'typed' }],
   });
+
   const checking = memory.store.writes.batch.check(
     {
       op: 'remember',

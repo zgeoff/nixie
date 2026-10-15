@@ -14,6 +14,7 @@ async function setupTest() {
 
 test('it loads the run settings and each call with its verdict', async () => {
   const ctx = await setupTest();
+
   const report = {
     model: 'claude-sonnet-5-5',
     effort: 'low',

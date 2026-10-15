@@ -11,6 +11,7 @@ async function setupTest() {
 
 test('it reads both memory projections in key order', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -24,6 +25,7 @@ test('it reads both memory projections in key order', async () => {
   const rows = await readMemoryRows(ctx.db);
 
   expect(rows.items).toMatchObject([{ item_id: item.itemID, version: 2, state: 'retired' }]);
+
   expect(rows.versions.map((row) => row.version_key)).toStrictEqual([
     `${item.itemID}/1`,
     `${item.itemID}/2`,
@@ -32,7 +34,6 @@ test('it reads both memory projections in key order', async () => {
 
 test('it reads empty projections as empty lists', async () => {
   const ctx = await setupTest();
-
   const rows = await readMemoryRows(ctx.db);
 
   expect(rows).toStrictEqual({ items: [], versions: [] });

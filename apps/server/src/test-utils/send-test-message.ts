@@ -22,6 +22,7 @@ export async function sendTestMessage(
   if (claim === null) {
     throw new Error('the conversation had no work to claim');
   }
+
   await runTaskStep(context, claim, {
     runStep,
     leaseMs: 60_000,

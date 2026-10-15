@@ -56,16 +56,19 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
   await options.sandboxes.addSecret(secret);
 
   const sandbox = await setupSessionSandbox(options, buildModelGrant(secret));
+
   const model: ToolRunModel = {
     model: options.profile.profile.model,
     profile: options.profile.profile.id,
   };
+
   const endpoint = await options.tools.startRun({
     runID: options.taskID,
     thread: options.taskID,
     tools: options.toolNames,
     model,
   });
+
   return {
     model,
     runSession: (session) => runSession({ ...options, sandbox, token: endpoint.token }, session),
@@ -88,6 +91,7 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
   invariant(route, 'the session sandbox has no tool route');
 
   const profile = run.profile.profile;
+
   const turn = await runGuestTurn({
     sandbox: run.sandbox,
     command: run.command,
@@ -119,6 +123,7 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
   if (turn.ended.some((frame) => frame.isError === true)) {
     throw new Error(`the ${run.taskID} session ended at a model API error`);
   }
+
   return countSessionUsage(turn.ended);
 }
 
@@ -135,12 +140,15 @@ async function setupSessionSandbox(
     limits: options.limits,
     modelGrant: grant,
   });
+
   const existing = await options.sandboxes.list(options.taskID);
+
   const kept = findKeptSandbox(existing, spec);
 
   await Promise.all(
     existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),
   );
+
   return kept ?? options.sandboxes.create(spec);
 }
 

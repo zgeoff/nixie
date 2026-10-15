@@ -41,6 +41,7 @@ test('it hashes the canonical form for the snapshot and the persona text for its
     persona: '# Persona',
     policy: { rules: [], tools: [] },
   });
+
   const personaHash = createHash('sha256').update('# Persona\n').digest('hex');
   const policyHash = createHash('sha256').update('{"rules":[],"tools":[]}').digest('hex');
   const formHash = createHash('sha256').update(snapshot.form).digest('hex');
@@ -52,7 +53,6 @@ test('it hashes the canonical form for the snapshot and the persona text for its
 
 test('it gives a persona in NFD the snapshot hash of the same persona in NFC', () => {
   const policy = { rules: [], tools: [] };
-
   const nfd = buildDefinitionsSnapshot({ persona: 'Cafe\u0301 talk\n', policy });
   const nfc = buildDefinitionsSnapshot({ persona: 'Caf\u00E9 talk\n', policy });
 
@@ -61,7 +61,6 @@ test('it gives a persona in NFD the snapshot hash of the same persona in NFC', (
 
 test('it gives a persona with CRLF endings the snapshot hash of the same persona with LF', () => {
   const policy = { rules: [], tools: [] };
-
   const crlf = buildDefinitionsSnapshot({ persona: '# Persona\r\n\r\nWarm.\r\n', policy });
   const lf = buildDefinitionsSnapshot({ persona: '# Persona\n\nWarm.\n', policy });
 
@@ -70,7 +69,6 @@ test('it gives a persona with CRLF endings the snapshot hash of the same persona
 
 test('it gives a persona with no final newline or several the hash of one with one', () => {
   const policy = { rules: [], tools: [] };
-
   const none = buildDefinitionsSnapshot({ persona: '# Persona', policy });
   const several = buildDefinitionsSnapshot({ persona: '# Persona\n\n\n', policy });
   const one = buildDefinitionsSnapshot({ persona: '# Persona\n', policy });
@@ -81,7 +79,6 @@ test('it gives a persona with no final newline or several the hash of one with o
 
 test('it keeps trailing spaces, so a markdown line break changes the snapshot hash', () => {
   const policy = { rules: [], tools: [] };
-
   const lineBreak = buildDefinitionsSnapshot({ persona: 'Warm,  \nbrief.\n', policy });
   const plain = buildDefinitionsSnapshot({ persona: 'Warm,\nbrief.\n', policy });
 
@@ -97,6 +94,7 @@ test('it gives declarations with keys in any order the same snapshot hash', () =
       tools: [{ name: 'web_fetch', effects: ['fetch'], execution: 'direct' }],
     },
   });
+
   const backward = buildDefinitionsSnapshot({
     persona: '# Persona\n',
     policy: {
@@ -134,6 +132,7 @@ test('it sorts each effect list and drops its duplicates', () => {
     persona: '# Persona\n',
     policy: { rules: [], tools: [{ name: 'mail_send', effects: ['send', 'read', 'send'] }] },
   });
+
   const tidy = buildDefinitionsSnapshot({
     persona: '# Persona\n',
     policy: { rules: [], tools: [{ name: 'mail_send', effects: ['read', 'send'] }] },
@@ -147,6 +146,7 @@ test('it changes the snapshot hash and the policy hash when a tool declaration c
     persona: '# Persona\n',
     policy: { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch'] }] },
   });
+
   const after = buildDefinitionsSnapshot({
     persona: '# Persona\n',
     policy: { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch', 'send'] }] },

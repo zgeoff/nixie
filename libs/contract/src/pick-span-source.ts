@@ -18,14 +18,18 @@ export function pickSpanSource(inputType: string, data: string | null): SpanSour
   if (pastedInputTypes.has(inputType)) {
     return 'pasted';
   }
+
   if (inputType === 'insertFromDrop') {
     return 'dropped';
   }
+
   if (inputType === 'insertText' && data !== null && hasSeveralWords(data)) {
     return 'unknown';
   }
+
   if (typedInputTypes.has(inputType)) {
     return 'typed';
   }
+
   return 'unknown';
 }

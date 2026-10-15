@@ -9,10 +9,12 @@ async function setupTest() {
 
 test("it reads the conversation's own rejected edit of an item", async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Avery prefers spaces.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const proposal = await createProposal(ctx.memory.store, {
     text: 'Avery prefers tabs.',
     target: item,
@@ -31,10 +33,12 @@ test("it reads the conversation's own rejected edit of an item", async () => {
 
 test('it leaves out an edit whose item a forget began to remove', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Avery prefers spaces.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const proposal = await createProposal(ctx.memory.store, {
     text: 'Avery prefers tabs.',
     target: item,
@@ -45,6 +49,7 @@ test('it leaves out an edit whose item a forget began to remove', async () => {
     actionHash: proposal.actionHash,
     identityID: 'identity-1',
   });
+
   await writeRecords(ctx.memory.log, [
     {
       kind: 'memory.forget_started',
@@ -60,10 +65,12 @@ test('it leaves out an edit whose item a forget began to remove', async () => {
 
 test('it leaves out a rejected edit from outside the conversation', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Avery prefers spaces.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const proposal = await createProposal(ctx.memory.store, {
     text: 'Avery prefers tabs.',
     target: item,
@@ -89,10 +96,12 @@ test('it leaves out a rejected edit from outside the conversation', async () => 
 
 test('it leaves out a proposal that is still pending', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Avery prefers spaces.',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const proposal = await createProposal(ctx.memory.store, {
     text: 'Avery prefers tabs.',
     target: item,

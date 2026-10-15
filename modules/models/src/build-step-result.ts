@@ -51,6 +51,7 @@ export function buildStepResult(
       `the conversation turn failed: ${failure?.reason ?? 'no result'}: ${failure?.detail ?? ''}`,
     );
   }
+
   return {
     next: completed.hasMore ? 'continue' : 'wait',
     records: [...before, ...buildTurnRecords(source, completed)],
@@ -107,6 +108,7 @@ type EndedFrame = GuestTurn['ended'][number];
 function buildTurnSummary(turn: GuestTurn): JSONObject {
   const buildTotal = (pick: (frame: EndedFrame) => number) =>
     turn.ended.reduce((total, frame) => total + pick(frame), 0);
+
   const context = turn.ended.findLast((frame) => frame.context !== undefined)?.context;
 
   return {

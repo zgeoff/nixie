@@ -21,6 +21,7 @@ export function makeFrameDecoder(maxMessageBytes: number): FrameDecoder {
     ) {
       messages.push(message);
     }
+
     return messages;
   };
 }
@@ -30,6 +31,7 @@ function mergeBytes(head: Uint8Array, tail: Uint8Array): Uint8Array<ArrayBuffer>
 
   merged.set(head);
   merged.set(tail, head.byteLength);
+
   return merged;
 }
 
@@ -43,16 +45,20 @@ function splitFrame(buffer: FrameBuffer, maxMessageBytes: number): Uint8Array<Ar
   if (buffer.pending.byteLength < frameHeaderBytes) {
     return null;
   }
+
   const size = new DataView(buffer.pending.buffer).getUint32(0);
 
   if (size > maxMessageBytes) {
     throw new FrameTooLargeError(size, maxMessageBytes);
   }
+
   if (buffer.pending.byteLength < frameHeaderBytes + size) {
     return null;
   }
+
   const message = buffer.pending.slice(frameHeaderBytes, frameHeaderBytes + size);
 
   buffer.pending = buffer.pending.slice(frameHeaderBytes + size);
+
   return message;
 }

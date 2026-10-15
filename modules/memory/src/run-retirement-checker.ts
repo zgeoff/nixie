@@ -20,6 +20,7 @@ export async function runRetirementChecker(
       text: itemText,
     }),
   });
+
   const checks = {
     read: 'pass',
     quote: 'pass',
@@ -29,6 +30,7 @@ export async function runRetirementChecker(
   if (answer.verdict === 'asserted') {
     return { status: 'pass', source: 'owner', evidence: found.evidence, checks };
   }
+
   return buildGateReview(pickCheckerReviewReason(answer), {
     evidence: found.evidence,
     checks,

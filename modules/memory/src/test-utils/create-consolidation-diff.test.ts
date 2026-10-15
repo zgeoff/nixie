@@ -10,6 +10,7 @@ async function setupTest() {
 
 test('it writes the diff on the consolidator thread and returns its pending changes', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Is in Lisbon until May',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -43,6 +44,7 @@ test('it writes the diff on the consolidator thread and returns its pending chan
 
 test('it writes the summary the request gives, sealed under the items it names', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Is in Lisbon until May',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -59,6 +61,7 @@ test('it writes the summary the request gives, sealed under the items it names',
 
 test('it dates the run and lapses each change at the times the request gives', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Is in Lisbon until May',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

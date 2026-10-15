@@ -11,12 +11,14 @@ import { registerSandboxImages } from './register-sandbox-images';
 async function setupTest() {
   const recorder = await setupTestRecorder();
   const imp = await startFakeImp();
+
   const adapter = buildImpSandboxAdapter({
     port: imp.port,
     recorder: recorder.recorder,
     config: { publicEgress: null },
     toolTarget: () => ({ path: '/nonexistent/tools.sock' }),
   });
+
   const lines: (LogFields & { readonly event: string })[] = [];
 
   return {
@@ -34,10 +36,12 @@ test('it marks the images added when impd holds each one and refuses every add',
   const ctx = await setupTest();
 
   ctx.imp.refuseImageAdd = true;
+
   ctx.imp.images.set('nixie-conversation-bbbbbbbbbbbb', {
     digest: `sha256:${'b'.repeat(64)}`,
     ref: `ghcr.io/example/nixie-conversation@sha256:${'b'.repeat(64)}`,
   });
+
   ctx.imp.images.set('nixie-fetch-cccccccccccc', {
     digest: `sha256:${'c'.repeat(64)}`,
     ref: `ghcr.io/example/nixie-fetch@sha256:${'c'.repeat(64)}`,
@@ -59,6 +63,7 @@ test('it marks the images added when impd holds each one and refuses every add',
 
   expect(ctx.state.read().areImagesAdded).toBe(true);
   expect(ctx.imp.calls).toStrictEqual([]);
+
   expect(ctx.lines).toStrictEqual([
     { event: 'image.added', name: 'nixie-conversation-bbbbbbbbbbbb' },
     { event: 'image.added', name: 'nixie-fetch-cccccccccccc' },
@@ -69,6 +74,7 @@ test('it leaves the images unadded when impd refuses the add of an image it does
   const ctx = await setupTest();
 
   ctx.imp.refuseImageAdd = true;
+
   ctx.imp.images.set('nixie-conversation-bbbbbbbbbbbb', {
     digest: `sha256:${'b'.repeat(64)}`,
     ref: `ghcr.io/example/nixie-conversation@sha256:${'b'.repeat(64)}`,
@@ -92,5 +98,6 @@ test('it leaves the images unadded when impd refuses the add of an image it does
     Error,
     /^impd did not add the image nixie-fetch-cccccccccccc from /u,
   );
+
   expect(ctx.state.read().areImagesAdded).toBe(false);
 });

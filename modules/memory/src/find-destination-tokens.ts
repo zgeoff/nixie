@@ -16,6 +16,7 @@ export function findDestinationTokens(text: string): readonly DestinationToken[]
   for (const entry of patterns) {
     tokens.push(...collectPatternTokens(text, entry, taken));
   }
+
   return tokens;
 }
 
@@ -44,7 +45,9 @@ function collectPatternTokens(
     if (overlaps || isShortNumber) {
       return [];
     }
+
     taken.push(range);
+
     return [
       {
         kind: entry.kind,
@@ -77,6 +80,7 @@ function buildTokenKey(kind: DestinationToken['kind'], raw: string): string {
   if (kind === 'phone' || kind === 'account') {
     return cleaned.replaceAll(/[^\d+A-Z]/gu, '');
   }
+
   if (kind === 'url') {
     const match = /^(?<scheme>https?:\/\/)?(?<host>[^/?#]+)(?<path>.*)$/iu.exec(cleaned);
     const groups = match?.groups;
@@ -85,5 +89,6 @@ function buildTokenKey(kind: DestinationToken['kind'], raw: string): string {
       ? cleaned
       : `${(groups['scheme'] ?? '').toLowerCase()}${(groups['host'] ?? '').toLowerCase()}${groups['path'] ?? ''}`;
   }
+
   return cleaned.toLowerCase();
 }

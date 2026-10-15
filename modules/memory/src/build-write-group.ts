@@ -16,11 +16,13 @@ export function buildWriteGroup(caller: WriteCaller, newestMessage: number | nul
 
     return { capGroup: key, noticeKey: key };
   }
+
   if (caller.origin === 'conversation' && newestMessage !== null) {
     const key = `turn/${caller.thread}/${String(newestMessage)}`;
 
     return { capGroup: key, noticeKey: key };
   }
+
   const key = `run/${caller.runID}`;
 
   return { capGroup: key, noticeKey: key };

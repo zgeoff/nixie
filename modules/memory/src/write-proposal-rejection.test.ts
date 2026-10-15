@@ -34,6 +34,7 @@ test('it rejects a proposal and drops the key of the item it would have created'
     .select('status')
     .where('proposal_id', '=', pending.proposalID)
     .executeTakeFirstOrThrow();
+
   const keys = await findRecordKeys(memory.log, [pending.itemID]);
 
   expect(row.status).toBe('rejected');
@@ -42,6 +43,7 @@ test('it rejects a proposal and drops the key of the item it would have created'
 
 test('it keeps the key of an existing item when you reject an edit of it', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

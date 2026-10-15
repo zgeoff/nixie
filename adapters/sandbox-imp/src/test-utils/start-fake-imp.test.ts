@@ -3,7 +3,6 @@ import { startFakeImp } from './start-fake-imp';
 
 test('it holds no secret until a test adds one', async () => {
   const imp = await startFakeImp();
-
   const hosts = await imp.port.readSecretHosts('model-default');
 
   expect(hosts).toBeNull();
@@ -42,6 +41,7 @@ test('it logs a create, then refuses it as impd does without the RAM, when told 
       backup: false,
     }),
   ).rejects.toThrow('RAM_BUDGET_EXCEEDED');
+
   expect(imp.calls).toStrictEqual(['create nixie-a']);
   expect(imp.created).toStrictEqual([]);
 });
@@ -112,6 +112,7 @@ test('it refuses an exec that requires the broker and replaces a broker variable
 
 test('it returns an exec handle during an idle sleep and starts the exec once the sleep ends', async () => {
   const imp = await startFakeImp();
+
   const snapshot = Promise.withResolvers<void>();
 
   void imp.startIdleSleep('nixie-a', snapshot.promise);
@@ -121,12 +122,15 @@ test('it returns an exec handle during an idle sleep and starts the exec once th
     killGraceMs: 5000,
     requireBroker: false,
   });
+
   const before = await Promise.race([exec.started, Promise.resolve('starting')]);
 
   snapshot.resolve();
+
   await exec.started;
 
   expect(before).toBe('starting');
+
   expect(imp.calls).toStrictEqual([
     'idle-sleep nixie-a',
     'wait exec nixie-a',
@@ -137,6 +141,7 @@ test('it returns an exec handle during an idle sleep and starts the exec once th
 
 test('it runs an exec with the broker variables when the exec requires the broker', async () => {
   const imp = await startFakeImp();
+
   const exec = await imp.port.openExec('nixie-a', ['sh', '-c', 'echo "$HTTPS_PROXY $NO_PROXY"'], {
     env: {},
     killGraceMs: 5000,
@@ -150,6 +155,7 @@ test('it runs an exec with the broker variables when the exec requires the broke
 
 test('it kills an exec that outlives SIGTERM at its kill grace', async () => {
   const imp = await startFakeImp();
+
   const exec = await imp.port.openExec(
     'nixie-a',
     ['sh', '-c', 'trap "" TERM; echo ready; sleep 60'],
@@ -158,6 +164,7 @@ test('it kills an exec that outlives SIGTERM at its kill grace', async () => {
 
   // the shell prints once it ignores SIGTERM
   await exec.stdout.getReader().read();
+
   exec.sendSignal('SIGTERM');
 
   const exit = await exec.exit;
@@ -184,6 +191,7 @@ test('it rejects the exit of a session it loses on a stop, when told to', async 
 
 test('it listens for a reverse forward on its guest tool port and logs its stop', async () => {
   const imp = await startFakeImp();
+
   const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
 
   const port = await forward.listening;
@@ -196,19 +204,22 @@ test('it listens for a reverse forward on its guest tool port and logs its stop'
 
 test('it holds a wake, an exec and a listen until an idle sleep ends, then wakes the imp once', async () => {
   const imp = await startFakeImp();
+
   const snapshot = Promise.withResolvers<void>();
 
   void imp.startIdleSleep('nixie-a', snapshot.promise);
-
   const wake = imp.port.wakeImp('nixie-a');
+
   const exec = imp.port.openExec('nixie-a', ['true'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
   });
+
   const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
 
   snapshot.resolve();
+
   await Promise.all([wake, exec, forward.listening]);
 
   expect(imp.calls).toStrictEqual([
@@ -225,11 +236,13 @@ test('it holds a wake, an exec and a listen until an idle sleep ends, then wakes
 
 test('it ends each forward of the imp as lost when an idle sleep ends', async () => {
   const imp = await startFakeImp();
+
   const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
 
   await forward.listening;
 
   await imp.startIdleSleep('nixie-a', Promise.resolve());
+
   const ended = await forward.ended;
 
   expect(ended).toStrictEqual({ kind: 'lost' });
@@ -237,11 +250,13 @@ test('it ends each forward of the imp as lost when an idle sleep ends', async ()
 
 test('it starts the idle sleep set for the next wake of the imp once that wake ends', async () => {
   const imp = await startFakeImp();
+
   const snapshot = Promise.withResolvers<void>();
 
   imp.sleepsAfterWake.set('nixie-a', snapshot.promise);
 
   await imp.port.wakeImp('nixie-a');
+
   const exec = await imp.port.openExec('nixie-a', ['true'], {
     env: {},
     killGraceMs: 5000,
@@ -249,9 +264,11 @@ test('it starts the idle sleep set for the next wake of the imp once that wake e
   });
 
   snapshot.resolve();
+
   await exec.started;
 
   expect(imp.sleepsAfterWake.size).toBe(0);
+
   expect(imp.calls).toStrictEqual([
     'wake nixie-a',
     'idle-sleep nixie-a',
@@ -270,15 +287,19 @@ test('it kills each exec process group and closes each forward when the test fin
     killGraceMs: 5000,
     requireBroker: false,
   });
+
   const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
+
   const port = await forward.listening;
   const read = await exec.stdout.getReader().read();
+
   const pid = Number(new TextDecoder().decode(read.value).trim());
 
   onTestFinished(async () => {
     await exec.exit;
 
     expect(() => process.kill(-pid, 0)).toThrow();
+
     expect(
       Bun.connect({ hostname: '127.0.0.1', port: Number(port), socket: { data: () => {} } }),
     ).rejects.toThrow();
@@ -299,9 +320,11 @@ test('it logs an image add, then refuses it as impd does a scoped token, when to
       ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
     }),
   ).rejects.toThrowWithMessage(Error, /is limited to some imps; this call is host-wide$/u);
+
   expect(imp.calls).toStrictEqual([
     `image nixie-fetch ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
   ]);
+
   expect(imp.images.size).toBe(0);
 });
 

@@ -30,11 +30,13 @@ function readDateParts(at: Date, zone: string): Readonly<Record<DatePart, string
     minute: '2-digit',
     hourCycle: 'h23',
   }).formatToParts(at);
+
   const getPart = (type: DatePart): string => {
     const value = parts.find((part) => part.type === type)?.value;
 
     // the format asks for every part, so Intl returns each one
     invariant(value !== undefined, `the date has no ${type}`);
+
     return value;
   };
 

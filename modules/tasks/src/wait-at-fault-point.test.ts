@@ -17,14 +17,17 @@ test('it holds the caller until the handler releases it', async () => {
 
   setFaultPointHandler(async (id) => {
     progress.arrived.push(id);
+
     await release.promise;
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });
 
   const waiting = (async () => {
     await waitAtFaultPoint('step.commit.before', { kind: 'task', id: 'task-1' });
+
     progress.passed = true;
   })();
 
@@ -33,6 +36,7 @@ test('it holds the caller until the handler releases it', async () => {
   );
 
   release.resolve();
+
   await waiting;
 
   expect(heldBeforeRelease).toBeTrue();

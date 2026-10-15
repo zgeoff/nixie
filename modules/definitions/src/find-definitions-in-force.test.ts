@@ -18,9 +18,11 @@ async function setupTest() {
   stack.defer(() => rm(dir, { recursive: true, force: true }));
 
   const root = join(dir, 'definitions');
+
   const writer = await startWriter({ dataDir: dir });
 
   stack.defer(() => writer.stop());
+
   await mkdir(root);
 
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
@@ -38,7 +40,6 @@ async function setupTest() {
 
 test('it finds nothing before the first seed', async () => {
   const ctx = await setupTest();
-
   const inForce = await findDefinitionsInForce(ctx.writer.db);
 
   expect(inForce).toBeNull();

@@ -11,6 +11,7 @@ test("it binds each kind's renderer to the events the kind read", async () => {
         `${settings.ownerName ?? 'The owner'} got ${String(detail)} parcels.`,
     },
   ]);
+
   const [entry] = registry;
 
   invariant(entry !== undefined);
@@ -19,6 +20,7 @@ test("it binds each kind's renderer to the events the kind read", async () => {
   const bound = await entry.complete(read);
 
   expect(read).toStrictEqual([{ kind: 'parcel', sequence: 7, at: 1000 }]);
+
   expect(bound.map((event) => event.render({ ownerName: 'Avery', timeZone: 'UTC' }))).toStrictEqual(
     ['Avery got 2 parcels.'],
   );
@@ -34,6 +36,7 @@ test('it renders the detail that the kind completed', async () => {
       render: (detail: string) => `A parcel lay ${detail}.`,
     },
   ]);
+
   const [entry] = registry;
 
   invariant(entry !== undefined);
@@ -48,11 +51,13 @@ test('it renders the detail that the kind completed', async () => {
 
 test('it passes the range to the kind it reads', async () => {
   const ranges: unknown[] = [];
+
   const registry = buildEventRegistry([
     {
       name: 'parcel',
       read: (range) => {
         ranges.push(range);
+
         return Promise.resolve([]);
       },
       render: () => 'A parcel came.',

@@ -11,6 +11,7 @@ test('it restores the run time zone once the test finishes', () => {
   const before = new Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   setupBrowserTimeZone('Pacific/Auckland');
+
   onTestFinished(() => {
     expect(new Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(before);
   });

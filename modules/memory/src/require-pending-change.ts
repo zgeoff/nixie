@@ -27,14 +27,18 @@ export async function requirePendingChange(
   if (row === undefined) {
     throw new MemoryProposalNotFoundError(requirement.changeID);
   }
+
   if (row.status !== 'pending') {
     throw new ProposalClosedError(row.change_id, row.status);
   }
+
   if (row.lapse_at <= requirement.now) {
     throw new ProposalClosedError(row.change_id, 'lapsed');
   }
+
   if (row.action_hash !== requirement.actionHash) {
     throw new ProposalHashError(row.change_id);
   }
+
   return row;
 }

@@ -8,6 +8,7 @@ export async function readDataFiles(
   dataDir: string,
 ): Promise<readonly { readonly name: string; readonly text: string }[]> {
   const entries = await readdir(dataDir, { withFileTypes: true });
+
   const files = entries.filter((entry) => entry.isFile());
 
   return Promise.all(

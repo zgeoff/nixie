@@ -12,4 +12,5 @@ await runCheckGuest({
   },
   env: process.env,
 });
+
 process.exit(0);

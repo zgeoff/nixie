@@ -11,6 +11,7 @@ interface StubAPIRequest {
 // server, and records the credentials each request carried.
 export function startStubAPI() {
   const requests: StubAPIRequest[] = [];
+
   const server = Bun.serve({
     fetch(request) {
       requests.push({

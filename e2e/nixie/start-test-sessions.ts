@@ -32,6 +32,7 @@ export async function startTestSessions(
   models: TestSessionModels,
 ): Promise<TestSessions> {
   const conversation = await startTestConversation(context, tools, models.modelURL);
+
   const store = await startMemoryStore({
     log: context.log,
     definitions: context.definitions,
@@ -54,6 +55,7 @@ export async function startTestSessions(
       limits: defaultGateLimits,
     },
   });
+
   const writer =
     models.writerModelURL === null
       ? null

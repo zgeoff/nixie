@@ -13,6 +13,7 @@ export async function runDueTimers(context: TasksContext): Promise<number> {
     .where('due_at', '<=', context.clock.now())
     .orderBy('due_at')
     .execute();
+
   const fired = { count: 0 };
 
   for (const timer of due) {
@@ -21,6 +22,7 @@ export async function runDueTimers(context: TasksContext): Promise<number> {
 
     fired.count += didFire ? 1 : 0;
   }
+
   return fired.count;
 }
 
@@ -38,6 +40,7 @@ async function writeTimerFired(context: TasksContext, timer: DueTimer): Promise<
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('timer.fire.before', faultContext);
   }
+
   const didFire = await withWriteTransaction(context.log.writer, async (tx) => {
     const pending = await tx
       .$extendTables<TasksTables>()
@@ -50,6 +53,7 @@ async function writeTimerFired(context: TasksContext, timer: DueTimer): Promise<
     if (pending === undefined) {
       return false;
     }
+
     await writeRecordsInTransaction(tx, context.log, [
       {
         kind: 'timer.fired',
@@ -63,11 +67,13 @@ async function writeTimerFired(context: TasksContext, timer: DueTimer): Promise<
         },
       },
     ]);
+
     return true;
   });
 
   if (NIXIE_TEST_BUILD && didFire) {
     await waitAtFaultPoint('inbox.write.after', faultContext);
   }
+
   return didFire;
 }

@@ -31,6 +31,7 @@ export function makeTurnNoteReader(
       readRejectedEdits: (proposalIDs) => memory().proposals.readRejectedEdits(proposalIDs),
     },
   };
+
   const events = buildEventRegistry([
     buildProposalAnswerKind(options.log, store),
     buildRestartKind(options.log),

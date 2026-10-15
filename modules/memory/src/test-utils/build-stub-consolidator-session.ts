@@ -18,8 +18,10 @@ export function buildStubConsolidatorSession(
   summary?: string,
 ): StubConsolidatorSession {
   const staging = createConsolidationStaging();
+
   const runSession = mock(() => {
     staging.stage(requests, summary);
+
     return Promise.resolve({
       inputTokens: 400,
       outputTokens: 60,

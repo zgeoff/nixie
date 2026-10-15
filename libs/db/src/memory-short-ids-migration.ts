@@ -10,9 +10,11 @@ export const memoryShortIDsMigration: Migration = {
   name: 'add a short ID to each memory item',
   up: async (tx) => {
     await createShortIDColumn(tx);
+
     await sql`create unique index if not exists memory_items_by_short_id on memory_items (
       short_id
     )`.execute(tx);
+
     await writeShortIDs(tx);
   },
 };

@@ -13,6 +13,7 @@ export function renderReviewReason(
     their: gate.ownerPronouns.their,
     window: gate.limits.evidenceWindow,
   };
+
   const why = reasonSentences[reason](words);
 
   return `${reason}: Saved as a proposal for ${words.owner} to review. ${toSentenceCase(why)}`;

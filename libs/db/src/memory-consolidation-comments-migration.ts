@@ -12,8 +12,10 @@ export const memoryConsolidationCommentsMigration: Migration = {
     await createColumn(tx, 'short_id', 'text');
     await createColumn(tx, 'comment', 'text');
     await createColumn(tx, 'comment_sequence', 'integer references records (sequence)');
+
     await sql`create unique index if not exists memory_consolidation_changes_by_short_id
       on memory_consolidation_changes (short_id)`.execute(tx);
+
     await writeShortIDs(tx);
   },
 };

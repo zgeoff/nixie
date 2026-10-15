@@ -54,19 +54,25 @@ export interface ServerPartsOptions extends ServerOptions {
 // database, before the health endpoint listens.
 export async function startServer(options: ServerOptions): Promise<Server> {
   const loaded = await loadDeploymentConfig(options.configPath);
+
   const secrets = await loadSecrets({
     path: loaded.server.secretsFile,
     sopsArgv: options.sopsArgv,
   });
+
   const config = { ...loaded, owner: resolveOwnerConfig(loaded.owner, secrets.settings) };
+
   const images = await loadSandboxManifest(options.manifestPath);
+
   const cleanup = buildCleanup();
+
   const writer = await startLoggedWriter(config.server.dataDir, options.log, cleanup);
 
   try {
     return await startServerParts({ ...options, config, secrets, images, writer, cleanup });
   } catch (error) {
     await cleanup.stop();
+
     throw error;
   }
 }
@@ -75,11 +81,13 @@ async function startLoggedWriter(dataDir: string, log: Logger, cleanup: Cleanup)
   const writer = await startWriter({ dataDir });
 
   await cleanup.defer(() => writer.stop());
+
   log('writer.started', {
     epoch: writer.epoch,
     schemaFrom: writer.migration.from,
     schemaTo: writer.migration.to,
     isCopied: writer.migration.copyPath !== null,
   });
+
   return writer;
 }

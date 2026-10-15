@@ -9,11 +9,14 @@ export async function runForgetCleanup(parts: StoreParts, itemID: string): Promi
   const log = parts.context.log;
 
   await removeRecordKey(log, itemID);
+
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('memory.forget.key_removed', { kind: 'memory', id: itemID });
   }
+
   await parts.index.remove(itemID);
   await parts.context.cleanupSessions(itemID);
+
   await withWriteTransaction(log.writer, async (tx) => {
     const item = await tx
       .$extendTables<MemoryTables>()
@@ -25,6 +28,7 @@ export async function runForgetCleanup(parts: StoreParts, itemID: string): Promi
     if (item?.state !== 'forgetting') {
       return;
     }
+
     await writeRecordsInTransaction(tx, log, [
       {
         kind: 'memory.forgotten',

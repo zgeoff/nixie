@@ -15,10 +15,13 @@ export function findBotChallenge(
   if (!challengeStatuses.has(status)) {
     return null;
   }
+
   const mitigated = headers['cf-mitigated'];
+
   const hasChallengeHeader = [mitigated ?? []]
     .flat()
     .some((value) => value.trim().toLowerCase() === 'challenge');
+
   const hasChallengeMarkup = body !== null && cloudflareMarks.some((mark) => body.includes(mark));
 
   return hasChallengeHeader || hasChallengeMarkup

@@ -8,12 +8,14 @@ test('it joins each call to the pair it checked, on the memory named as the repo
     memory: 'The owner takes their coffee black.',
     quote: 'do I take my coffee black?',
   };
+
   const input = new Bun.CryptoHasher('sha256')
     .update(
       '<owner_message>\n«evidence»do I take my coffee black?«/evidence»\n</owner_message>\n\n' +
         '<candidate_memory>\nSam takes their coffee black.\n</candidate_memory>',
     )
     .digest('hex');
+
   const call = {
     sample: 'coffee',
     pair: 0,

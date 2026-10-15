@@ -18,6 +18,7 @@ export async function requireItem(
   requirement: ItemRequirement,
 ): Promise<MemoryItemRow> {
   const target = requirement.target;
+
   const item = await db
     .selectFrom('memory_items')
     .selectAll()
@@ -27,11 +28,14 @@ export async function requireItem(
   if (item === undefined || item.state === 'forgetting' || item.state === 'forgotten') {
     throw new MemoryItemNotFoundError(target.itemID);
   }
+
   if (item.version !== target.version) {
     throw new StaleVersionError(target, item.version);
   }
+
   if (!requirement.states.includes(item.state)) {
     throw new MemoryStateError(target.itemID, requirement.operation, item.state);
   }
+
   return item;
 }

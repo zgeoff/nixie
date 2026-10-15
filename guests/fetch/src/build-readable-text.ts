@@ -33,6 +33,7 @@ export function buildReadableText(html: string): string {
   const reading = buildReadingState();
 
   buildPageRewriter(reading).transform(html);
+
   const content = pickContent(reading.regions);
 
   return normalizeWhitespace(decodeEntities(`${reading.title.join(' ')}\n\n${content}`));
@@ -83,6 +84,7 @@ function buildPageRewriter(reading: ReadingState): HTMLRewriter {
       },
     });
   }
+
   return rewriter;
 }
 
@@ -101,16 +103,20 @@ function collectElement(
   if (isCounted) {
     reading.depth[counts] += 1;
   }
+
   if (rule.isBlock) {
     collectPart(reading, '\n');
   }
+
   if (!element.canHaveContent) {
     return;
   }
+
   element.onEndTag(() => {
     if (rule.isBlock) {
       collectPart(reading, '\n');
     }
+
     if (isCounted) {
       reading.depth[counts] -= 1;
     }
@@ -119,9 +125,11 @@ function collectElement(
 
 function collectPart(reading: ReadingState, part: string): void {
   reading.regions.page.push(part);
+
   if (reading.depth.main > 0) {
     reading.regions.main.push(part);
   }
+
   if (reading.depth.article > 0) {
     reading.regions.article.push(part);
   }
@@ -170,6 +178,7 @@ function decodeEntity(reference: string): string {
   if (!body.startsWith('#')) {
     return namedEntities[body] ?? reference;
   }
+
   const isHex = body[1] === 'x' || body[1] === 'X';
   const codePoint = isHex ? Number.parseInt(body.slice(2), 16) : Number(body.slice(1));
 

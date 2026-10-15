@@ -9,7 +9,6 @@ function setupTest() {
 
 test('it issues a code that lapses in 15 minutes', async () => {
   const ctx = await setupTest();
-
   const result = await createEnrolmentCode(ctx.context);
 
   expect(result.code).toMatch(/^[0-9A-Z]{5}-[0-9A-Z]{5}$/u);
@@ -18,8 +17,8 @@ test('it issues a code that lapses in 15 minutes', async () => {
 
 test('it records the code as issued by the host, without the code', async () => {
   const ctx = await setupTest();
-
   const issued = await createEnrolmentCode(ctx.context);
+
   const record = await ctx.writer.db
     .$extendTables<APITables & { records: { kind: string; payload: string } }>()
     .selectFrom('records')

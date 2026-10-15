@@ -9,7 +9,9 @@ import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record
 
 test('it retires an item you asked to retire, with your intent quote and the checks', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
   const memory = await startTestMemory({ gate: { check } });
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: {
@@ -26,6 +28,7 @@ test('it retires an item you asked to retire, with your intent quote and the che
     text: 'I moved out of Elm Street last week',
     spans: [{ start: 0, end: 36, source: 'typed' }],
   });
+
   await memory.store.recall({ query: 'Elm', thread: 'conversation' });
 
   const outcome = await memory.store.writes.retire({
@@ -33,14 +36,17 @@ test('it retires an item you asked to retire, with your intent quote and the che
     intentQuote: 'I moved out of Elm Street',
     caller: buildMockWriteCaller(),
   });
+
   const history = await memory.store.readHistory(item.itemID);
 
   expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+
   expect(history?.versions.at(-1)).toMatchObject({
     change: 'retired',
     origin: 'conversation',
     source: 'untrusted',
   });
+
   expect(check).toHaveBeenCalledExactlyOnceWith({
     prompt: expect.toStartWith('You check one request to retire'),
     input:
@@ -51,6 +57,7 @@ test('it retires an item you asked to retire, with your intent quote and the che
 
 test('it proposes a retirement of an item the thread never read', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -73,6 +80,7 @@ test('it proposes a retirement of an item the thread never read', async () => {
 
 test('it proposes a retirement that cites no intent quote', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -106,10 +114,12 @@ test('it proposes a retirement the checker does not confirm', async () => {
         }),
     },
   });
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const text = 'Did I move out of Elm Street?';
 
   await writeOwnerMessageRecord(memory.log, {
@@ -117,6 +127,7 @@ test('it proposes a retirement the checker does not confirm', async () => {
     text,
     spans: [{ start: 0, end: text.length, source: 'typed' }],
   });
+
   await memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' });
 
   const outcome = await memory.store.writes.retire({
@@ -136,7 +147,9 @@ test('it proposes a retirement the checker does not confirm', async () => {
 
 test('it proposes a retirement whose evidence message backed an item you forgot while the checker answered', async () => {
   const checker = makeGatedCall(() => buildMockCheckerAnswer({ verdict: 'asserted' }));
+
   const memory = await startTestMemory({ gate: { check: checker.call } });
+
   const [item, sequence] = await Promise.all([
     memory.store.remember({ text: 'Lives on Elm Street', provenance: buildMockProvenance() }),
     writeOwnerMessageRecord(memory.log, {
@@ -145,6 +158,7 @@ test('it proposes a retirement whose evidence message backed an item you forgot 
       spans: [{ start: 0, end: 36, source: 'typed' }],
     }),
   ]);
+
   const [forgotten] = await Promise.all([
     memory.store.remember({
       text: 'Moved out of Elm Street last week',
@@ -162,7 +176,9 @@ test('it proposes a retirement whose evidence message backed an item you forgot 
   });
 
   await checker.started;
+
   await memory.store.forget({ target: forgotten, provenance: buildMockProvenance() });
+
   checker.release();
 
   const outcome = await retirement;
@@ -172,10 +188,12 @@ test('it proposes a retirement whose evidence message backed an item you forgot 
 
 test('it refuses a retirement of a retired item before any check runs', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const retired = await memory.store.retire({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -199,6 +217,7 @@ test('it refuses a retirement of a retired item before any check runs', async ()
 
 test('it seals a retirement proposal with the item text you review', async () => {
   const memory = await startTestMemory();
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -215,9 +234,11 @@ test('it seals a retirement proposal with the item text you review', async () =>
       model: 'claude-opus-5-5',
     },
   });
+
   const [pending] = await memory.store.proposals.listPending();
 
   invariant(outcome.status === 'proposed');
+
   expect(pending).toMatchObject({
     proposalID: outcome.proposalID,
     operation: 'retire',

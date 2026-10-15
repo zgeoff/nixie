@@ -13,6 +13,7 @@ test('it answers each call with the response the test set, and records the call'
   });
 
   expect(response).toStrictEqual({ kind: 'success', result: { messageID: 'm-1' } });
+
   expect(stub.calls).toStrictEqual([
     {
       actionID: 'action-1',

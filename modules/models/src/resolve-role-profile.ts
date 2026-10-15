@@ -9,5 +9,6 @@ export function resolveRoleProfile(config: ModelsConfig, role: ModelRole): Model
   if (profile === undefined) {
     throw new Error(`the ${role} role names the profile ${profileID}, which is not defined`);
   }
+
   return profile;
 }

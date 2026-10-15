@@ -4,6 +4,7 @@ import { startTestNixie } from './start-test-nixie';
 
 test('it starts nixie on the crash harness clock at 1,000,000 ms', async () => {
   const nixie = await startTestNixie();
+
   const first = nixie.harness.start();
 
   await first.ready;
@@ -13,12 +14,15 @@ test('it starts nixie on the crash harness clock at 1,000,000 ms', async () => {
 
 test('it reads back the records that nixie writes', async () => {
   const nixie = await startTestNixie();
+
   const first = nixie.harness.start();
 
   await first.ready;
 
   const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
   const taskID = String(created);
+
   const record = await nixie.waitForRecord((candidate) => candidate.stepKey === `${taskID}:1`);
 
   expect(record).toMatchObject({ thread: taskID, stepKey: `${taskID}:1` });
@@ -26,11 +30,13 @@ test('it reads back the records that nixie writes', async () => {
 
 test('it keeps the leases and the tasks that each start recovered', async () => {
   const nixie = await startTestNixie();
+
   const first = nixie.harness.start();
 
   await first.ready;
 
   const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
   const taskID = String(created);
 
   await first.kill();
@@ -47,6 +53,7 @@ test('it keeps the leases and the tasks that each start recovered', async () => 
 
 test('it removes its data directory once the test finishes', async () => {
   const nixie = await startTestNixie();
+
   const first = nixie.harness.start();
 
   await first.ready;

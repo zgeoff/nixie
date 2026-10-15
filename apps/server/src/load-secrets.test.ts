@@ -18,6 +18,7 @@ async function setupTest() {
 
 test('it keeps the deployment key, the impd token and the model credentials', async () => {
   const ctx = await setupTest();
+
   const key = Buffer.alloc(32, 7).toString('base64');
 
   await writeFile(
@@ -35,11 +36,13 @@ test('it keeps the deployment key, the impd token and the model credentials', as
     models: { model_credentials: { anthropic: 'model-key' } },
     settings: {},
   });
+
   expect(deploymentKey.algorithm).toMatchObject({ name: 'AES-KW', length: 256 });
 });
 
 test('it keeps the private settings', async () => {
   const ctx = await setupTest();
+
   const key = Buffer.alloc(32, 7).toString('base64');
 
   await writeFile(
@@ -54,6 +57,7 @@ test('it keeps the private settings', async () => {
 
 test('it refuses an empty setting, and never names the value', async () => {
   const ctx = await setupTest();
+
   const key = Buffer.alloc(32, 7).toString('base64');
 
   await writeFile(
@@ -68,6 +72,7 @@ test('it refuses an empty setting, and never names the value', async () => {
 
 test('it refuses a deployment key that is not 32 bytes, and never names the value', async () => {
   const ctx = await setupTest();
+
   const key = Buffer.alloc(16, 7).toString('base64');
 
   await writeFile(ctx.path, `deployment_key: ${key}\nimpd_token: impd-token\n`);
@@ -81,6 +86,7 @@ test('it refuses a deployment key that is not 32 bytes, and never names the valu
 
 test('it refuses an unknown key', async () => {
   const ctx = await setupTest();
+
   const key = Buffer.alloc(32, 7).toString('base64');
 
   await writeFile(ctx.path, `deployment_key: ${key}\nimpd_token: impd-token\nimp_token: x\n`);

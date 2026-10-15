@@ -7,5 +7,6 @@ export function buildImpPolicy(spec: SandboxSpec): ImpPolicy {
   if (spec.egress.kind === 'allow') {
     return { mode: 'box', allow: spec.egress.hosts };
   }
+
   return { mode: spec.egress.kind, allow: [] };
 }

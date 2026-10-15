@@ -10,14 +10,17 @@ test('it makes the dark color scheme query match', () => {
 test('it tells a color scheme query handleChange about the change', () => {
   const query = globalThis.matchMedia('(prefers-color-scheme: dark)');
   const seen: boolean[] = [];
+
   const handleChange = (): void => {
     seen.push(query.matches);
   };
 
   query.addEventListener('change', handleChange);
+
   onTestFinished(() => {
     query.removeEventListener('change', handleChange);
   });
+
   updateSystemColorScheme('dark');
 
   expect(seen).toStrictEqual([true]);

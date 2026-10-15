@@ -57,6 +57,7 @@ export const modelsConfigSchema = z
         message: 'the conversation role is unset, and nixie needs it to start',
       });
     }
+
     for (const [role, profileID] of Object.entries(config.roles)) {
       if (profileID !== undefined && !Object.hasOwn(config.profiles, profileID)) {
         issues.addIssue({

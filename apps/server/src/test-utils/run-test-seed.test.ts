@@ -5,7 +5,6 @@ import { startTestServer } from './start-test-server';
 
 test('it puts the definitions it writes in force', async () => {
   const server = await startTestServer();
-
   const seeded = await runTestSeed(server.context.log, server.dataDir);
   const inForce = await findDefinitionsInForce(server.context.log.writer.db);
 

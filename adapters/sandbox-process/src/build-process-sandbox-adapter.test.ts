@@ -31,6 +31,7 @@ async function setupTest(config: SetupConfig = {}) {
   const rootDir = await mkdtemp(join(tmpdir(), 'nixie-sandbox-process-'));
 
   stack.defer(() => rm(rootDir, { recursive: true, force: true }));
+
   startStubToolEndpoint(join(rootDir, 'tools.sock'));
 
   const buildAdapter = () =>
@@ -40,11 +41,14 @@ async function setupTest(config: SetupConfig = {}) {
       toolTarget: () => ({ path: join(rootDir, 'tools.sock') }),
       ...(config.killGraceMs === undefined ? {} : { killGraceMs: config.killGraceMs }),
     });
+
   const adapter = buildAdapter();
+
   const createSandbox = async (spec: SandboxSpec): Promise<Sandbox> => {
     const sandbox = await adapter.create(spec);
 
     stack.defer(() => sandbox.destroy());
+
     return sandbox;
   };
 
@@ -60,11 +64,13 @@ async function setupTest(config: SetupConfig = {}) {
 
 test('it records every create, grant, sleep, wake and destroy', async () => {
   const ctx = await setupTest();
+
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ grants: [buildMockGrantSpec()] }),
   );
 
   invariant(sandbox.suspension.kind === 'memory');
+
   await sandbox.suspension.sleep();
   await sandbox.suspension.wake();
   await sandbox.destroy();
@@ -100,7 +106,9 @@ test('it lists every sandbox of the owner until it is destroyed', async () => {
 test('it lets a restarted adapter list and destroy what the last one made', async () => {
   const ctx = await setupTest();
   const made = await ctx.adapter.create(buildMockSandboxSpec({ owner: 'task-1:step-2' }));
+
   const restarted = ctx.buildAdapter();
+
   const [orphan] = await restarted.list('task-1:step-2');
 
   await orphan?.destroy();
@@ -122,6 +130,7 @@ test.each([
   ],
 ] as const)('it refuses a spec with %s and writes no record', async (reason, kind, egress) => {
   const ctx = await setupTest();
+
   const spec = buildMockSandboxSpec({ kind, egress, grants: [buildMockGrantSpec()] });
 
   expect(ctx.adapter.create(spec)).rejects.toThrow(new SandboxSpecRefusedError(reason));
@@ -133,6 +142,7 @@ test.each([
 
 test("it fails the create of a disk smaller than a built image's filesystem", async () => {
   const ctx = await setupTest();
+
   const spec = buildMockSandboxSpec({ limits: { diskMiB: 4095 } });
 
   expect(ctx.adapter.create(spec)).rejects.toThrow(
@@ -161,11 +171,13 @@ test('it cuts exec output past 1 MiB per stream', async () => {
     stdout: { totalBytes: 2_097_152, isCut: true },
     stderr: { totalBytes: 4, isCut: false },
   });
+
   expect(result.stdout.bytes.byteLength).toBe(1_048_576);
 });
 
 test('it passes the grant placeholders and keeps the loopback on NO_PROXY', async () => {
   const ctx = await setupTest();
+
   const sandbox = await ctx.createSandbox(
     buildMockSandboxSpec({
       grants: [buildMockGrantSpec({ env: { ANTHROPIC_API_KEY: 'broker-placeholder' } })],
@@ -186,6 +198,7 @@ test('it carries framed messages both ways on a spawn stream', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
   const stream = await sandbox.spawn({ argv: ['cat'], maxMessageBytes: 1024 });
+
   const messages = stream.messages[Symbol.asyncIterator]();
 
   await stream.send(new TextEncoder().encode('first'));
@@ -208,6 +221,7 @@ test('it ends a spawn stream whose message passes the caller limit', async () =>
   expect(stream.messages[Symbol.asyncIterator]().next()).rejects.toThrow(
     'a frame of 8 bytes is past the limit of 4 bytes per message',
   );
+
   expect(stream.exit).resolves.toMatchObject({ code: null, signal: 'SIGTERM' });
 });
 
@@ -229,6 +243,7 @@ test('it kills the whole group when SIGTERM leaves it running', async () => {
   await waitForCondition(() => Bun.file(join(ctx.rootDir, sandbox.id, 'fs', 'ready.txt')).exists());
 
   const exit = await stream.stop();
+
   const after = await sandbox.exec({
     argv: [
       'sh',
@@ -244,6 +259,7 @@ test('it kills the whole group when SIGTERM leaves it running', async () => {
 test('it holds the kill until the deadline when SIGTERM leaves the group running', async () => {
   const ctx = await setupTest({ killGraceMs: 300 });
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
+
   const stream = await sandbox.spawn({
     argv: ['sh', '-c', 'trap "" TERM; echo started > started.txt; while :; do sleep 1; done'],
     maxMessageBytes: 1024,
@@ -268,7 +284,9 @@ test('it returns a stop at once when the group ends on SIGTERM', async () => {
   const stream = await sandbox.spawn({ argv: ['sleep', '60'], maxMessageBytes: 1024 });
 
   const startedAt = performance.now();
+
   const exit = await stream.stop();
+
   const elapsed = performance.now() - startedAt;
 
   expect(exit.signal).toBe('SIGTERM');
@@ -278,7 +296,6 @@ test('it returns a stop at once when the group ends on SIGTERM', async () => {
 test('it stops the command of an aborted exec', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
-
   const result = await sandbox.exec({ argv: ['sleep', '60'] }, AbortSignal.timeout(50));
 
   expect(result).toMatchObject({ code: null, signal: 'SIGTERM' });
@@ -301,6 +318,7 @@ test('it lets the guest reach the tool endpoint through its local tool route', a
   });
 
   expect(route.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/u);
+
   expect(JSON.parse(new TextDecoder().decode(result.stdout.bytes))).toStrictEqual({
     path: '/mcp',
     authorization: 'Bearer run-token',
@@ -309,6 +327,7 @@ test('it lets the guest reach the tool endpoint through its local tool route', a
 
 test('it gives a sandbox without the tool route no route', async () => {
   const ctx = await setupTest();
+
   const sandbox = await ctx.createSandbox(
     buildMockSandboxSpec({ kind: 'code_run', grants: [], toolRoute: false }),
   );
@@ -351,6 +370,7 @@ test('it refuses an exec while the sandbox sleeps', async () => {
   const sandbox = await ctx.createSandbox(buildMockSandboxSpec());
 
   invariant(sandbox.suspension.kind === 'memory');
+
   await sandbox.suspension.sleep();
 
   expect(sandbox.exec({ argv: ['true'] })).rejects.toThrow(`sandbox ${sandbox.id} is asleep`);
@@ -362,6 +382,7 @@ test('it resumes a sleeping process on the wake', async () => {
   const stream = await sandbox.spawn({ argv: ['cat'], maxMessageBytes: 1024 });
 
   invariant(sandbox.suspension.kind === 'memory');
+
   await sandbox.suspension.sleep();
   await sandbox.suspension.wake();
   await stream.send(new TextEncoder().encode('x'));

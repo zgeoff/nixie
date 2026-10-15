@@ -24,7 +24,9 @@ export async function removeStaleSandboxes(options: StaleSandboxesOptions): Prom
     .where('adapter', '=', options.adapter.id)
     .orderBy('owner')
     .execute();
+
   const stale = rows.map((row) => row.owner).filter((owner) => !options.keptOwners.includes(owner));
+
   const sandboxes = await Promise.all(stale.map((owner) => options.adapter.list(owner)));
 
   await Promise.all(sandboxes.flat().map((sandbox) => sandbox.destroy()));

@@ -11,7 +11,9 @@ import { startTestMemory } from './test-utils/start-test-memory';
 // consolidator's task
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
+
   const memory = await startTestMemory({ gate: { clock } });
+
   const log = { ...memory.log, projections: [...memory.log.projections, ...tasksProjections] };
   const tasks = { log, clock, definitions: () => ({ snapshotHash: 'sha256:test' }) };
 
@@ -28,6 +30,7 @@ test('it wakes the consolidator when you reject the last pending change', async 
     changes: [{ kind: 'retire', inputs: [item], reason: 'The trip ended.', source: 'owner' }],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -61,6 +64,7 @@ test('it wakes the consolidator when you approve the last pending change', async
     changes: [{ kind: 'retire', inputs: [item], reason: 'The trip ended.', source: 'owner' }],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -82,6 +86,7 @@ test('it wakes the consolidator when you approve the last pending change', async
 
 test('it leaves the consolidator asleep while another change still pends', async () => {
   const ctx = await setupTest();
+
   const [stale, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' }),
     createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
@@ -96,6 +101,7 @@ test('it leaves the consolidator asleep while another change still pends', async
     ],
     now: ctx.clock.now(),
   });
+
   const [first] = diff.changes;
 
   invariant(first);
@@ -118,10 +124,12 @@ test('it leaves the consolidator asleep while another change still pends', async
 test('it writes no wake when no consolidator task runs', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'The trip ended.', source: 'owner' }],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);

@@ -10,6 +10,7 @@ export function parseSessionBoundary(boundary: string | null): SessionPoint | nu
   if (boundary === null) {
     return null;
   }
+
   try {
     return sessionPointSchema.parse(JSON.parse(boundary));
   } catch {

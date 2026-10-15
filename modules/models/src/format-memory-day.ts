@@ -5,6 +5,7 @@ import type { MessageTimeOptions } from './types';
 // only when it is not the current year in that zone, as in 13 Oct 2025.
 export function formatMemoryDay(time: number, options: MessageTimeOptions): string {
   const recorded = readDayParts(new Date(time), options.defaultZone);
+
   const year =
     recorded.year === readDayParts(options.now, options.defaultZone).year
       ? ''
@@ -21,11 +22,13 @@ interface DayParts {
 
 function readDayParts(at: Date, zone: string): DayParts {
   const parts = getDayFormat(zone).formatToParts(at);
+
   const getPart = (type: keyof DayParts): string => {
     const value = parts.find((part) => part.type === type)?.value;
 
     // the format asks for every part, so Intl returns each one
     invariant(value !== undefined, `the date has no ${type}`);
+
     return value;
   };
 
@@ -42,6 +45,7 @@ function getDayFormat(zone: string): Intl.DateTimeFormat {
   if (known !== undefined) {
     return known;
   }
+
   const format = new Intl.DateTimeFormat('en-US', {
     timeZone: zone,
     day: 'numeric',
@@ -50,5 +54,6 @@ function getDayFormat(zone: string): Intl.DateTimeFormat {
   });
 
   dayFormats.set(zone, format);
+
   return format;
 }

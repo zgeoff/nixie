@@ -20,9 +20,11 @@ async function setupTest() {
   stack.defer(() => rm(dir, { recursive: true, force: true }));
 
   const root = join(dir, 'definitions');
+
   const writer = await startWriter({ dataDir: dir });
 
   stack.defer(() => writer.stop());
+
   await mkdir(root);
 
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
@@ -45,6 +47,7 @@ test('it seeds the definitions in force again as the first record of the new log
     writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n'),
     writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
   ]);
+
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
@@ -56,6 +59,7 @@ test('it seeds the definitions in force again as the first record of the new log
     readKept: (tx) => findResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
+
       await writeResetSeed(tx, ctx.log, seed);
     },
   });
@@ -63,6 +67,7 @@ test('it seeds the definitions in force again as the first record of the new log
   const read = await readRecords(ctx.log, { afterSequence: 0 });
 
   invariant(seeded.status === 'seeded');
+
   expect(read.map((entry) => entry.record)).toStrictEqual([
     { ...seeded.record, sequence: 2, recordedAt: expect.toBeValidDate() },
   ]);
@@ -75,6 +80,7 @@ test('it puts the same definitions in force under the new record', async () => {
     writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n'),
     writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
   ]);
+
   const seeded = await runSeed({
     log: ctx.log,
     source: ctx.source,
@@ -86,6 +92,7 @@ test('it puts the same definitions in force under the new record', async () => {
     readKept: (tx) => findResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
+
       await writeResetSeed(tx, ctx.log, seed);
     },
   });
@@ -93,6 +100,7 @@ test('it puts the same definitions in force under the new record', async () => {
   const after = await findResetSeed(ctx.writer.db);
 
   invariant(seeded.inForce);
+
   expect(after?.inForce).toStrictEqual({
     ...seeded.inForce,
     seededAt: expect.toBeValidDate(),
@@ -107,12 +115,15 @@ test('it leaves the next seed of the same definitions unchanged', async () => {
     writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n'),
     writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
   ]);
+
   await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
   await runLogReset(ctx.log, {
     keptTables: [],
     readKept: (tx) => findResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
+
       await writeResetSeed(tx, ctx.log, seed);
     },
   });

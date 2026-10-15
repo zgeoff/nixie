@@ -8,6 +8,7 @@ import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record
 
 test('it finds a quote you typed in the message the event ID names', async () => {
   const memory = await startTestMemory();
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'The lighthouse key hangs by the blue door',
@@ -33,6 +34,7 @@ test('it finds a quote you typed in the message the event ID names', async () =>
 
 test('it refuses a quote that lies in a pasted span of the message', async () => {
   const memory = await startTestMemory();
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'From the forum: the ferry leaves at noon',
@@ -53,6 +55,7 @@ test('it refuses a quote that lies in a pasted span of the message', async () =>
 
 test('it refuses a quote from a fetched page, which no one typed', async () => {
   const memory = await startTestMemory();
+
   const [page] = await writeRecords(memory.log, [
     {
       kind: 'tool_result',
@@ -77,6 +80,7 @@ test('it refuses a quote from a fetched page, which no one typed', async () => {
 
 test('it refuses a quote from a reply', async () => {
   const memory = await startTestMemory();
+
   const [reply] = await writeRecords(memory.log, [
     {
       kind: 'model.reply',
@@ -99,6 +103,7 @@ test('it refuses a quote from a reply', async () => {
 
 test("it finds no quote in a message from another task's thread", async () => {
   const memory = await startTestMemory();
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'task-garden',
     text: 'The shed code is 4471',
@@ -128,6 +133,7 @@ test('it finds no quote at an event ID past the end of the log', async () => {
 
 test('it refuses a message whose text a forget erased', async () => {
   const memory = await startTestMemory();
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'The shed code is 4471',

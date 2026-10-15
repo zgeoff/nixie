@@ -23,11 +23,13 @@ export async function removeSessionState(home: string): Promise<void> {
 async function findPresentPath(path: string): Promise<readonly string[]> {
   try {
     await access(path);
+
     return [path];
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       return [];
     }
+
     throw error;
   }
 }

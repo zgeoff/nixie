@@ -30,6 +30,7 @@ export async function runWriterExtraction(
   if (batch.sources.size === 0) {
     return { writes: [], usage: null, shownTexts: new Set() };
   }
+
   const shown = await readShownItems(parts.store, {
     text: [...batch.sources.values()].map((source) => source.text).join('\n'),
     listTokens: parts.config.itemListTokens,
@@ -41,8 +42,11 @@ export async function runWriterExtraction(
     sources: batch.sources,
     shown: new Map(shown.items.map((item) => [item.itemID, item.version])),
   });
+
   const proposals = await parts.store.proposals.listPending();
+
   const prompt = renderWriterPrompt({ ...shown, proposals, messages: buildBatchMessages(batch) });
+
   const session = await runSession(parts, { prompt, signal, staged });
 
   if (NIXIE_TEST_BUILD) {
@@ -62,6 +66,7 @@ function buildBatchMessages(batch: WriterBatch): readonly BatchMessage[] {
     if (entry.text === null) {
       return [];
     }
+
     const shown = entry.role === 'owner' ? renderShownText(entry.text, entry.spans) : entry.text;
 
     return [{ sequence: entry.sequence, role: entry.role, shown, recordedAt: entry.recordedAt }];

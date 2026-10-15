@@ -11,6 +11,7 @@ export async function runCommand(
   signal: AbortSignal | undefined,
 ): Promise<ExecResult> {
   const startedAt = performance.now();
+
   const stopOnAbort = (): void => {
     io.stop();
   };
@@ -18,7 +19,9 @@ export async function runCommand(
   if (signal?.aborted === true) {
     io.stop();
   }
+
   signal?.addEventListener('abort', stopOnAbort, { once: true });
+
   try {
     const [stdout, stderr, exit] = await Promise.all([
       collectOutput(io.stdout, execOutputLimitBytes),
@@ -40,6 +43,7 @@ async function writeStdin(io: ProcessIO, stdin: Uint8Array | undefined): Promise
     if (stdin !== undefined && stdin.byteLength > 0) {
       await io.write(stdin);
     }
+
     await io.closeStdin();
   } catch {
     // the exit reports what happened

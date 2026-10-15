@@ -82,12 +82,16 @@ export async function writeVersionInTransaction(
 
   const item = plan.requirement === null ? null : await requireItem(db, plan.requirement);
   const current = item?.version ?? 0;
+
   const versionKey = await readVersionKey(parts, plan.newItemID, item);
+
   const next = await plan.buildVersion(
     (version) => readVersion(db, versionKey.key, { itemID: versionKey.itemID, version }),
     current,
   );
+
   const ref = { itemID: versionKey.itemID, version: current + 1 };
+
   const sealed = await encodePinnableVersion(parts, db, {
     key: versionKey.key,
     plan,
@@ -102,6 +106,7 @@ export async function writeVersionInTransaction(
     parts.context.log,
     buildRecords(parts, { plan, ref, shortID: versionKey.shortID, next, sealed }),
   );
+
   return { ref, next };
 }
 
@@ -129,6 +134,7 @@ async function encodePinnableVersion(
   if (isPinned && version.next.state !== 'active') {
     throw new MemoryStateError(version.ref.itemID, 'pin', version.next.state);
   }
+
   if (version.next.state === 'active' && (isPinned || version.wasPinned)) {
     const provenance = version.plan.provenance;
 
@@ -143,6 +149,7 @@ async function encodePinnableVersion(
       evidenceQuote: version.next.text.evidenceQuote,
     });
   }
+
   return encodeVersionText(version.key, version.ref, version.next.text);
 }
 
@@ -156,10 +163,12 @@ interface SealedVersion {
 
 function buildRecords(parts: StoreParts, written: SealedVersion): readonly RecordInput[] {
   const provenance = written.plan.provenance;
+
   const base = {
     definitions: parts.context.definitions(),
     ...(provenance.thread === undefined ? {} : { thread: provenance.thread }),
   };
+
   const payload: JSONObject = {
     itemID: written.ref.itemID,
     version: written.ref.version,
@@ -177,7 +186,9 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
     noticeKey: written.plan.noticeKey ?? null,
     ...(written.next.change === 'created' ? { shortID: written.shortID } : {}),
   };
+
   const approval = written.plan.approval;
+
   const version: RecordInput = {
     ...base,
     kind: 'memory.version_added',
@@ -185,6 +196,7 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
     ...(approval === undefined ? {} : { approval: approval.envelope }),
     payload,
   };
+
   const pinned: readonly RecordInput[] =
     written.plan.isPinned === true
       ? [

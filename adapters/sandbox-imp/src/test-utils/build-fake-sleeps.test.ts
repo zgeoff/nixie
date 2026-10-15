@@ -7,11 +7,11 @@ test('it holds a call until the idle sleep ends, then wakes the imp for that cal
   const snapshot = Promise.withResolvers<void>();
 
   void sleeps.startIdleSleep('nixie-a', snapshot.promise);
-
   const first = sleeps.waitForAwake('nixie-a', 'exec');
   const second = sleeps.waitForAwake('nixie-a', 'listen');
 
   snapshot.resolve();
+
   await Promise.all([first, second]);
 
   expect(calls).toStrictEqual([
@@ -34,16 +34,19 @@ test('it lets a call through at once when no sleep holds the imp', async () => {
 
 test('it ends each listening forward of the imp as lost, and none that waits to listen', async () => {
   const sleeps = buildFakeSleeps([]);
+
   const listening = {
     listening: Promise.resolve(8901),
     ended: Promise.withResolvers<{ readonly kind: string }>().promise,
   };
+
   const waiting = { listening: Promise.withResolvers().promise, ended: listening.ended };
   const lost = { ...listening, stop: mock(), stopAsLost: mock() };
   const held = { ...waiting, stop: mock(), stopAsLost: mock() };
 
   sleeps.registerForward('nixie-a', lost);
   sleeps.registerForward('nixie-a', held);
+
   await sleeps.startIdleSleep('nixie-a', Promise.resolve());
 
   expect(lost.stopAsLost).toHaveBeenCalledOnce();
@@ -57,6 +60,7 @@ test('it starts the sleep set for the next wake once, and none after it', async 
   sleeps.sleepsAfterWake.set('nixie-a', Promise.resolve());
   sleeps.startSleepAfterWake('nixie-a');
   sleeps.startSleepAfterWake('nixie-a');
+
   await sleeps.waitForAwake('nixie-a', 'exec');
 
   expect(calls).toStrictEqual([

@@ -28,10 +28,10 @@ async function setupTest() {
 
 test('it refuses a reset without --keep-sessions, and says backups still hold the old data', async () => {
   const ctx = await setupTest();
-
   const exitCode = await runCLI(['reset', '--yes', '--config', ctx.configPath], ctx.io);
 
   expect(exitCode).toBe(2);
+
   expect(ctx.io.print.mock.calls).toStrictEqual([
     [
       [
@@ -46,10 +46,10 @@ test('it refuses a reset without --keep-sessions, and says backups still hold th
 
 test('it refuses a reset without --yes, and says backups still hold the old data', async () => {
   const ctx = await setupTest();
-
   const exitCode = await runCLI(['reset', '--keep-sessions', '--config', ctx.configPath], ctx.io);
 
   expect(exitCode).toBe(2);
+
   expect(ctx.io.print.mock.calls).toStrictEqual([
     [
       [
@@ -64,6 +64,7 @@ test('it refuses a reset without --yes, and says backups still hold the old data
 
 test('it prints what the server reset, and that backups still hold the old data', async () => {
   const ctx = await setupTest();
+
   const socket = await startControlSocket({
     path: ctx.socketPath,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
@@ -86,6 +87,7 @@ test('it prints what the server reset, and that backups still hold the old data'
   );
 
   expect(exitCode).toBe(0);
+
   expect(ctx.io.print.mock.calls).toStrictEqual([
     [
       [
@@ -99,6 +101,7 @@ test('it prints what the server reset, and that backups still hold the old data'
 
 test('it exits 1 when the server fails the reset', async () => {
   const ctx = await setupTest();
+
   const socket = await startControlSocket({
     path: ctx.socketPath,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
@@ -116,6 +119,7 @@ test('it exits 1 when the server fails the reset', async () => {
   );
 
   expect(exitCode).toBe(1);
+
   expect(ctx.io.log).toHaveBeenCalledExactlyOnceWith('command.failed', {
     command: 'reset',
     error: 'Error',

@@ -9,7 +9,9 @@ import { routeTree } from './routeTree.gen';
 // session crosses from one request to the next.
 export function getRouter() {
   const client = getClient();
+
   const queryClient = new QueryClient();
+
   const router = createRouter({
     context: { client, queryClient, queryUtils: buildQueryUtils(client) },
     routeTree,

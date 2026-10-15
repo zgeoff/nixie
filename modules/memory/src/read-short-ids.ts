@@ -9,6 +9,7 @@ export async function readShortIDs(
   if (itemIDs.length === 0) {
     return new Map();
   }
+
   const rows = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')

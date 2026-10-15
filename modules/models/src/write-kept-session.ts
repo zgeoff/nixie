@@ -19,13 +19,16 @@ export async function writeKeptSession(spec: KeptSessionSpec): Promise<void> {
   if (spec.from.suspension.kind === 'memory') {
     await spec.from.suspension.wake();
   }
+
   const files = await readKeptFiles(spec.from, spec.command, spec.sessionID);
   const target = await readGuestLayout(spec.to, spec.command, spec.sessionID);
+
   const targetDir = join(
     target.guestHome,
     configProjectsDir,
     buildProjectName(join(target.home, workDirName)),
   );
+
   const transcript = `${spec.sessionID}.jsonl`;
 
   // the transcript lands under a staged name, so a copy that fails partway leaves no session to
@@ -37,6 +40,7 @@ export async function writeKeptSession(spec: KeptSessionSpec): Promise<void> {
       return { path: join(targetDir, name), content: file.content };
     }),
   );
+
   await applyStagedTranscript(spec, targetDir, transcript);
 }
 
@@ -76,12 +80,15 @@ async function readKeptFiles(
   sessionID: string,
 ): Promise<readonly FileSpec[]> {
   const source = await readGuestLayout(sandbox, command, sessionID);
+
   const transcript = source.files.find((file) => isTranscript(file, sessionID));
 
   if (transcript === undefined) {
     throw new Error(`the sandbox ${sandbox.id} holds no transcript of session ${sessionID}`);
   }
+
   const projectDir = join(source.guestHome, configProjectsDir, transcript.split('/')[0] ?? '');
+
   const files = await sandbox.copyOut(
     source.files
       .map((file) => join(source.guestHome, configProjectsDir, file))
@@ -130,7 +137,9 @@ async function readGuestLayout(
 
     throw new Error(`the sandbox ${sandbox.id} did not list its session files: ${stderr}`);
   }
+
   const lines = new TextDecoder().decode(result.stdout.bytes).split('\n');
+
   const [guestHome = '', home = '', ...files] = lines.filter((line) => line !== '');
 
   return { guestHome, home, files: files.map((file) => file.replace(/^\.\//u, '')) };

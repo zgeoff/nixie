@@ -16,6 +16,7 @@ test('it reads the inbox records past the read cursor, and no other record of th
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
+
   await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',
@@ -28,10 +29,13 @@ test('it reads the inbox records past the read cursor, and no other record of th
   const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
   invariant(claim);
+
   await writeStepCommit(ctx.context, claim, { next: 'wait', records: [], acknowledged: [2] });
+
   await writeRecords(ctx.context.log, [
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
   ]);
+
   await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',

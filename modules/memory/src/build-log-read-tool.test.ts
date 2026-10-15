@@ -10,6 +10,7 @@ async function setupTest() {
   onTestFinished(() => {
     setSystemTime();
   });
+
   return { log: memory.log, tool: buildLogReadTool(memory.log) };
 }
 
@@ -17,18 +18,23 @@ test('it reads one page of a date range, with the cursor of the next page', asyn
   const ctx = await setupTest();
 
   setSystemTime(new Date(Date.UTC(2026, 9, 11, 23, 50)));
+
   await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'The day before',
     spans: [{ start: 0, end: 14, source: 'typed' }],
   });
+
   setSystemTime(new Date(Date.UTC(2026, 9, 12, 8, 15)));
+
   const first = await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'Morning walk by the river',
     spans: [{ start: 0, end: 25, source: 'typed' }],
   });
+
   setSystemTime(new Date(Date.UTC(2026, 9, 12, 9, 40)));
+
   await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'Bread is in the oven',
@@ -71,11 +77,13 @@ test('it reads one page of the entries that hold every word of a search', async 
     text: 'The bike needs a bell',
     spans: [{ start: 0, end: 21, source: 'typed' }],
   });
+
   const matched = await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'The red bike has a flat tyre',
     spans: [{ start: 0, end: 28, source: 'typed' }],
   });
+
   await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'Fixed the flat tyre on the bike',

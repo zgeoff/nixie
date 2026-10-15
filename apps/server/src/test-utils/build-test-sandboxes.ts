@@ -29,7 +29,9 @@ export function buildTestSandboxes(options: TestSandboxesOptions): TestSandboxes
     imp: { url: 'http://127.0.0.1:7070', publicEgress: null, token: 'impd-token' },
     testRootDir: options.rootDir,
   });
+
   const retired = new Set<string>();
+
   const toListed = (sandbox: Sandbox): Sandbox =>
     retired.has(sandbox.id) ? { ...sandbox, isRetired: true } : sandbox;
 
@@ -49,11 +51,13 @@ export function buildTestSandboxes(options: TestSandboxesOptions): TestSandboxes
     },
     retireSandboxes: async (owner) => {
       const sandboxes = await adapter.list(owner);
+
       const ids = sandboxes.map((sandbox) => sandbox.id);
 
       for (const id of ids) {
         retired.add(id);
       }
+
       return ids;
     },
   };

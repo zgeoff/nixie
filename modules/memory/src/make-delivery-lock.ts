@@ -12,8 +12,10 @@ export function makeDeliveryLock(): DeliveryLock {
     const done = Promise.withResolvers<void>();
 
     tail.last = done.promise;
+
     try {
       await previous;
+
       return await fn();
     } finally {
       done.resolve();

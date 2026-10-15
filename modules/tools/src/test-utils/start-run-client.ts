@@ -10,10 +10,12 @@ export async function startRunClient(
   token: string = endpoint.token,
 ): Promise<Client> {
   const socketPath = endpoint.socketPath;
+
   const client = new Client(
     { name: 'nixie-test', version: '0.0.0' },
     { versionNegotiation: { mode: { pin: '2026-07-28' } } },
   );
+
   const transport = new StreamableHTTPClientTransport(new URL('http://localhost/mcp'), {
     // Bun.fetch, because the test preload's request interceptor drops the unix option from fetch
     fetch: (url, init) => Bun.fetch(url, { ...init, unix: socketPath }),
@@ -21,6 +23,8 @@ export async function startRunClient(
   });
 
   await client.connect(transport);
+
   onTestFinished(() => client.close());
+
   return client;
 }

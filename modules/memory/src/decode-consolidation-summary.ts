@@ -44,5 +44,6 @@ async function decodeSummaryKey(
       summaryKey[index] = (summaryKey[index] ?? 0) ^ byte;
     }
   }
+
   return summaryKey;
 }

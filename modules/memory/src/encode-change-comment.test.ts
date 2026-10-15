@@ -13,9 +13,7 @@ async function setupTest() {
 
 test('it seals a comment that opens under the same change', async () => {
   const ctx = await setupTest();
-
   const sealed = await encodeChangeComment(ctx.key, 'change-a', 'Keep the joke.');
-
   const result = await decodeChangeComment(ctx.key, 'change-a', sealed);
 
   expect(result).toBe('Keep the joke.');
@@ -23,7 +21,6 @@ test('it seals a comment that opens under the same change', async () => {
 
 test('it writes base64 with no plain text in it', async () => {
   const ctx = await setupTest();
-
   const sealed = await encodeChangeComment(ctx.key, 'change-a', 'Keep the joke.');
 
   expect(sealed).toMatch(/^[A-Za-z0-9+/]+=*$/u);

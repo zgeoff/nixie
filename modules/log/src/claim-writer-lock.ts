@@ -16,11 +16,14 @@ export function claimWriterLock(dataDir: string): WriterLock {
     const errno = libc.readErrno();
 
     closeSync(fd);
+
     if (errno === libc.wouldBlock) {
       throw new WriterLockHeldError();
     }
+
     throw new Error(`flock on ${dataDir} failed with errno ${errno}`);
   }
+
   const held = { open: true };
 
   // a second release must never close a descriptor that reused the number, such as a later lock
@@ -28,6 +31,7 @@ export function claimWriterLock(dataDir: string): WriterLock {
     release: () => {
       if (held.open) {
         held.open = false;
+
         closeSync(fd);
       }
     },
@@ -48,6 +52,7 @@ const libcCache: { libc: Libc | null } = { libc: null };
 // Bun has no flock, so the lock calls libc's through FFI: glibc or musl on Linux, and macOS
 function getLibc(): Libc {
   libcCache.libc ??= loadLibc();
+
   return libcCache.libc;
 }
 
@@ -66,6 +71,7 @@ function loadLibc(): Libc {
       wouldBlock: 35,
     };
   }
+
   const library = dlopen(findLinuxLibc(), {
     flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
     __errno_location: { args: [], returns: FFIType.ptr },
@@ -88,11 +94,13 @@ function findLinuxLibc(): string {
   if (muslArch !== undefined && existsSync(`/lib/ld-musl-${muslArch}.so.1`)) {
     return `libc.musl-${muslArch}.so.1`;
   }
+
   return 'libc.so.6';
 }
 
 // libc always returns the thread's errno location, and a user-space address fits in a number
 function readPointedInt(pointer: Pointer | bigint | null): number {
   invariant(typeof pointer === 'number', 'libc returned no errno location');
+
   return read.i32(pointer, 0);
 }

@@ -68,14 +68,17 @@ async function runAttempt(
 ): Promise<void> {
   const attempt = { ...claimed, attempt: claimed.action.attempt_count + 1 };
   const connector = options.connectors.get(claimed.action.tool);
+
   const args = await readArguments(context, claimed.action.queued_sequence);
 
   if (connector === undefined || args === null) {
     const reason = connector === undefined ? 'unknown_tool' : 'arguments_unreadable';
 
     await writeOutcome(context, attempt, { outcome: { status: 'failed', reason } });
+
     return;
   }
+
   await writeAttemptStarted(context, attempt);
 
   const response = await runConnector(context, attempt, { connector, args, options });
@@ -89,6 +92,7 @@ async function runAttempt(
 // the arguments sit in the queued record's erasable fields, so a forgotten action has none
 async function readArguments(context: TasksContext, sequence: number): Promise<JSONObject | null> {
   const [entry] = await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
+
   const erasable = entry?.record.erasable;
   const args = erasable?.status === 'readable' ? erasable.fields['arguments'] : undefined;
 
@@ -106,6 +110,7 @@ async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Pro
     },
     reset: false,
   });
+
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.record.after', {
       kind: 'action',
@@ -165,10 +170,13 @@ async function writeAttemptResult(
       id: attempt.action.action_id,
     });
   }
+
   if (outcome.status !== 'pending') {
     await writeOutcome(context, attempt, { outcome, details });
+
     return;
   }
+
   await writeLeasedRecord(context, attempt.lease, {
     record: {
       kind: 'action.retry_scheduled',
@@ -184,6 +192,7 @@ async function writeAttemptResult(
     },
     reset: true,
   });
+
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.result.after', {
       kind: 'action',
@@ -227,6 +236,7 @@ async function writeOutcome(
     },
     reset: true,
   });
+
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.result.after', { kind: 'action', id: actionID });
     await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: attempt.action.task_id });
@@ -249,6 +259,7 @@ async function writeLeasedRecord(
   await withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, lease, context.clock.now());
     await writeRecordsInTransaction(tx, context.log, [leased.record]);
+
     if (leased.reset) {
       await resetLease(tx, lease);
     }

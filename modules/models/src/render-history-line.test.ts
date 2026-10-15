@@ -71,6 +71,7 @@ test('it renders a reply as nixie with its own event ID and its time in the zone
     payload: { timeZone: 'Australia/Sydney' },
     erasable: { status: 'readable', fields: { text: 'Where is the spare key?' } },
   });
+
   const record = buildMockLogRecord({
     sequence: 48_214,
     kind: 'model.reply',
@@ -109,6 +110,7 @@ test('it renders a reply in the default zone when the message it answers carries
     recordedAt: new Date('2025-10-14T03:05:00Z'),
     erasable: { status: 'readable', fields: { text: 'Where is the spare key?' } },
   });
+
   const record = buildMockLogRecord({
     sequence: 48_214,
     kind: 'model.reply',
@@ -176,6 +178,7 @@ test('it renders a span you pasted in your message inside a pasted block', () =>
       },
     },
   });
+
   const line = renderHistoryLine(
     { record, answered: null },
     {
@@ -183,6 +186,7 @@ test('it renders a span you pasted in your message inside a pasted block', () =>
       now: new Date('2026-10-13T05:00:00Z'),
     },
   );
+
   const blockID = /<pasted id="(?<blockID>\w+)">/u.exec(line)?.groups?.['blockID'];
 
   expect(line).toBe(

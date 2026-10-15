@@ -16,5 +16,6 @@ export async function claimTestAction(
 
   // the caller queued an action that is due, so the claim takes it
   invariant(lease);
+
   return lease;
 }

@@ -24,5 +24,6 @@ export async function claimTestLease(
 
   // no runner holds the work, so the claim takes it
   invariant(lease);
+
   return lease;
 }

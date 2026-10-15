@@ -13,11 +13,13 @@ import { startTestMemory } from './test-utils/start-test-memory';
 async function setupTest() {
   // the wall clock stops, so the diff's time and its lapse read the same on every run
   setSystemTime(new Date(Date.UTC(2026, 9, 12, 3, 0)));
+
   onTestFinished(() => {
     setSystemTime();
   });
 
   const memory = await startTestMemory();
+
   const registry = buildToolRegistry([buildDiffTool(memory.store)]);
 
   return {
@@ -45,10 +47,12 @@ async function setupTest() {
 
 test('it shows a pending merge with its reason, each input by short ID and the text it writes', async () => {
   const ctx = await setupTest();
+
   const [first, second] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee with oat milk' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -60,6 +64,7 @@ test('it shows a pending merge with its reason, each input by short ID and the t
       },
     ],
   });
+
   const firstID = await readItemShortID(ctx.memory.log, first.itemID);
   const secondID = await readItemShortID(ctx.memory.log, second.itemID);
 
@@ -93,16 +98,19 @@ test('it shows a pending merge with its reason, each input by short ID and the t
 
 test('it shows every pending change in the order the run proposed it, a retirement with no text', async () => {
   const ctx = await setupTest();
+
   const [trip, stale] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
     createMemoryItem(ctx.memory.store, { text: 'Sees the dentist on Friday' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' },
       { kind: 'retire', inputs: [stale], reason: 'The appointment has passed.', source: 'owner' },
     ],
   });
+
   const tripID = await readItemShortID(ctx.memory.log, trip.itemID);
   const staleID = await readItemShortID(ctx.memory.log, stale.itemID);
 
@@ -141,6 +149,7 @@ test('it shows every pending change in the order the run proposed it, a retireme
 test('it names each change by a short ID and never shows the action hash an answer binds to', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Lives near the river' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -152,6 +161,7 @@ test('it names each change by a short ID and never shows the action hash an answ
       },
     ],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -174,9 +184,11 @@ test('it names each change by a short ID and never shows the action hash an answ
 
 test('it shows the comment left on a change beside that change', async () => {
   const ctx = await setupTest();
+
   const item = await createMemoryItem(ctx.memory.store, {
     text: 'Says the bike is held together by optimism',
   });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -188,9 +200,11 @@ test('it shows the comment left on a change beside that change', async () => {
       },
     ],
   });
+
   const [change] = diff.changes;
 
   invariant(change);
+
   await ctx.memory.store.consolidations.comment({
     changeID: change.shortID,
     text: 'The optimism is the point of this one.',
@@ -215,10 +229,12 @@ test('it shows the comment left on a change beside that change', async () => {
 
 test('it shows no text of an item once its forget has started, before its key is gone', async () => {
   const ctx = await setupTest();
+
   const [secret, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Hides the spare key under the blue pot' }),
     createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       { kind: 'retire', inputs: [secret], reason: 'Stale.', source: 'owner' },
@@ -247,6 +263,7 @@ test('it shows no text of an item once its forget has started, before its key is
   );
 
   expect(JSON.stringify(result.structuredContent)).not.toInclude('blue pot');
+
   expect(result.structuredContent).toMatchObject({
     changes: [{ changeID: diff.changes[1]?.shortID, reason: 'The trip has ended.' }],
   });
@@ -254,6 +271,7 @@ test('it shows no text of an item once its forget has started, before its key is
 
 test('it leaves out a merge whose later input was forgotten, because its text can hold that input', async () => {
   const ctx = await setupTest();
+
   const [kept, forgotten] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Sees a therapist' }),
     createMemoryItem(ctx.memory.store, { text: 'Sees Dr Okafor on Thursdays' }),
@@ -270,6 +288,7 @@ test('it leaves out a merge whose later input was forgotten, because its text ca
       },
     ],
   });
+
   await ctx.memory.store.forget({
     target: forgotten,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -309,6 +328,7 @@ test('it shows no changes when no diff waits', async () => {
 test('it records only the change IDs of its result, never a text', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps a tin of brass buttons' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -331,6 +351,7 @@ test('it records only the change IDs of its result, never a text', async () => {
     },
     ctx.toolCallOptions,
   );
+
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
   expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
@@ -339,16 +360,19 @@ test('it records only the change IDs of its result, never a text', async () => {
       fields: { result: { changes: [{ changeID: diff.changes[0]?.changeID }] } },
     },
   });
+
   expect(JSON.stringify(entries)).not.toInclude('brass buttons');
 });
 
 test('it shows the summary the consolidator left beside the changes, and records no word of it', async () => {
   const ctx = await setupTest();
+
   const [oat, black, trip] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
     createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' }),
   ]);
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [trip], reason: 'The trip has ended.', source: 'owner' }],
     summary: {
@@ -367,17 +391,20 @@ test('it shows the summary the consolidator left beside the changes, and records
     },
     ctx.toolCallOptions,
   );
+
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
   expect(result.structuredContent).toMatchObject({
     changes: [{ changeID: diff.changes[0]?.shortID, kind: 'retire' }],
     summary: 'Two items conflict and stay unchanged: one says oat milk, the other says black.',
   });
+
   expect(JSON.stringify(entries)).not.toInclude('oat milk');
 });
 
 test('it shows the summary of a run that proposed no change', async () => {
   const ctx = await setupTest();
+
   const [oat, black] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),
@@ -411,6 +438,7 @@ test('it shows the summary of a run that proposed no change', async () => {
 
 test('it leaves out the summary once a forget starts on an item it is sealed under, before its key is gone', async () => {
   const ctx = await setupTest();
+
   const [oat, black] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes oat milk in coffee' }),
     createMemoryItem(ctx.memory.store, { text: 'Drinks coffee black' }),

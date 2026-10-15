@@ -8,6 +8,7 @@ import { webOrigin } from './web-origin';
 export const handlers = [
   http.all(`${webOrigin}/rpc/*`, async (info) => {
     const headers = new Headers(info.request.headers);
+
     const cookie = [...browserCookies].map(([name, value]) => `${name}=${value}`).join('; ');
 
     if (cookie !== '') {

@@ -27,6 +27,7 @@ test('it finds every file under the directory that holds the text, at any depth'
 
 test('it reads the whole of a file larger than 50 MB', async () => {
   const ctx = await setupTest();
+
   const filler = Buffer.alloc(51 * 1024 * 1024, 'x');
 
   await writeFile(join(ctx.root, 'large.jsonl'), Buffer.concat([filler, Buffer.from('flowerpot')]));
@@ -38,7 +39,6 @@ test('it reads the whole of a file larger than 50 MB', async () => {
 
 test('it finds nothing under a directory that is gone', async () => {
   const ctx = await setupTest();
-
   const found = await collectFilesWithText(join(ctx.root, 'missing'), 'flowerpot');
 
   expect(found).toStrictEqual([]);

@@ -17,6 +17,7 @@ export function resolveModelCredentials(
           `the profile ${profile.id} names the credential ${profile.credential}, and the secrets file has no model_credentials entry ${name}`,
         );
       }
+
       return [profile.id, { profile, credential }];
     }),
   );

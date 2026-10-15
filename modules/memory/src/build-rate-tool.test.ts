@@ -13,6 +13,7 @@ import { startTestMemory } from './test-utils/start-test-memory';
 // call runs under, which record each call and its result in the memory's log.
 async function setupTest(config: RateToolOptions) {
   const memory = await startTestMemory();
+
   const tool = buildRateTool(memory.store, config);
   const registry = buildToolRegistry([tool]);
 
@@ -42,12 +43,14 @@ async function setupTest(config: RateToolOptions) {
 
 test('it keeps the ratings of two items against the latest recall, and notes them for the owner', async () => {
   const ctx = await setupTest({ ownerName: 'Robin', agentName: 'Pip' });
+
   const [tram, jam] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' }),
     createMemoryItem(ctx.memory.store, { text: 'Makes plum jam each autumn' }),
   ]);
 
   await ctx.memory.store.recall({ itemIDs: [tram.itemID, jam.itemID], thread: 'conversation' });
+
   const ratings = [
     { item: await readItemShortID(ctx.memory.log, tram.itemID), verdict: 'helpful', note: 'yes' },
     { item: await readItemShortID(ctx.memory.log, jam.itemID), verdict: 'noise' },
@@ -57,9 +60,11 @@ test('it keeps the ratings of two items against the latest recall, and notes the
     { callID: 'call-1', tool: 'memory.rate', input: { ratings }, toolUseID: null },
     buildMockToolContext({ runID: 'run-1', thread: 'conversation' }),
   );
+
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
   expect(outcome).toStrictEqual({ status: 'ok', result: { message: 'Noted for Robin.' } });
+
   expect(records.map((entry) => entry.record).slice(-2)).toMatchObject([
     { kind: 'memory.recalled', sequence: expect.toBeNumber() },
     {
@@ -80,6 +85,7 @@ test('it keeps the ratings of two items against the latest recall, and notes the
 
 test('it refuses an item the latest recall did not deliver, with the reason, and keeps no rating', async () => {
   const ctx = await setupTest({ ownerName: 'Robin', agentName: 'Pip' });
+
   const [tram, jam] = await Promise.all([
     createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' }),
     createMemoryItem(ctx.memory.store, { text: 'Makes plum jam each autumn' }),
@@ -87,6 +93,7 @@ test('it refuses an item the latest recall did not deliver, with the reason, and
 
   await ctx.memory.store.recall({ itemIDs: [jam.itemID], thread: 'conversation' });
   await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
+
   const jamID = await readItemShortID(ctx.memory.log, jam.itemID);
 
   const outcome = await ctx.tool.run(
@@ -98,12 +105,14 @@ test('it refuses an item the latest recall did not deliver, with the reason, and
     },
     buildMockToolContext({ thread: 'conversation' }),
   );
+
   const rated = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['memory.rated'] });
 
   expect(outcome).toStrictEqual({
     status: 'error',
     message: `${jamID} was not among the memories you were given on the latest turn, so it can't be rated.`,
   });
+
   expect(rated).toStrictEqual([]);
 });
 
@@ -185,6 +194,7 @@ test('it leaves no readable copy of text planted in a rating call once the item 
   const tram = await createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' });
 
   await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
+
   const inputs = [
     { ratings: [{ item: tram.itemID, verdict: 'misleading', note: 'planted orchard words' }] },
     { ratings: [{ item: 'planted orchard words', verdict: 'noise' }] },
@@ -207,7 +217,9 @@ test('it leaves no readable copy of text planted in a rating call once the item 
       ),
     ),
   );
+
   await ctx.memory.store.forget({ target: tram, provenance: buildMockProvenance() });
+
   const records = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
   expect(records.filter((entry) => entry.record.kind === 'tool_result')).toHaveLength(5);
@@ -258,6 +270,7 @@ test("it keeps the note out of the call's record", async () => {
     },
     ctx.toolCallOptions,
   );
+
   const [called] = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['tool_called'] });
 
   expect(called?.record.erasable).toStrictEqual({
@@ -290,9 +303,11 @@ test('it answers a malformed call as invalid, and records only the IDs and verdi
     },
     ctx.toolCallOptions,
   );
+
   const [called] = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['tool_called'] });
 
   expect(result).toMatchObject({ isError: true });
+
   expect(called?.record.erasable).toStrictEqual({
     status: 'readable',
     fields: { input: { ratings: [{ item: 'k3x9m2p7qa' }, { verdict: 'noise' }] } },
@@ -307,6 +322,7 @@ test('it names the owner in its description, and the owner when the config names
       agentName: null,
     },
   );
+
   const unnamed = buildRateTool(
     { rate: () => Promise.resolve() },
     {
@@ -319,6 +335,7 @@ test('it names the owner in its description, and the owner when the config names
     'Tell Robin how the memories you were given this turn worked. Use it when something stands ' +
       'out, not every turn. Nothing changes because of a rating; Robin sees it.',
   );
+
   expect(unnamed.description).toBe(
     'Tell the owner how the memories you were given this turn worked. Use it when something ' +
       'stands out, not every turn. Nothing changes because of a rating; the owner sees it.',

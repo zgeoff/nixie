@@ -9,6 +9,7 @@ import { withFetchDirectory } from './with-fetch-directory';
 // one request frame on stdin and reads one reply frame from stdout.
 await withFetchDirectory(tmpdir(), async (dir) => {
   process.chdir(dir);
+
   process.env['TMPDIR'] = dir;
 
   await runFetcher(

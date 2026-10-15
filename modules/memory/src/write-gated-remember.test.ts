@@ -19,11 +19,13 @@ test('it applies a backed write with your words as its source, each verdict and 
       check: () => Promise.resolve(buildMockCheckerAnswer({ model: 'claude-sonnet-5-5' })),
     },
   });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'Remember that I take my coffee black',
     spans: [{ start: 0, end: 36, source: 'typed' }],
   });
+
   const outcome = await memory.store.writes.remember({
     text: 'Takes coffee black',
     quote: 'I take my coffee black',
@@ -70,6 +72,7 @@ test('it proposes a write that cites no quote', async () => {
 
 test('it proposes a write whose quote lies in a pasted span, before the checker runs', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
   const memory = await startTestMemory({ gate: { check } });
 
   await writeOwnerMessageRecord(memory.log, {
@@ -95,6 +98,7 @@ test('it applies a write that quotes words typed on Gboard, a run-together word 
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
   });
+
   const typed = buildSpanStateFromEvents(gboardTypedEvents['respaced-autocorrect']);
 
   await writeOwnerMessageRecord(memory.log, {
@@ -116,6 +120,7 @@ test('it proposes a write that quotes words Gboard inserted from the clipboard c
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
   });
+
   const chip = buildSpanStateFromEvents(gboardPastedEvents.chip);
 
   await writeOwnerMessageRecord(memory.log, {
@@ -229,6 +234,7 @@ test('it proposes a write when the checker times out', async () => {
 
 test('it gives the checker only your one message and the memory text', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
   const memory = await startTestMemory({ gate: { check } });
 
   await writeOwnerMessageRecord(memory.log, {
@@ -236,6 +242,7 @@ test('it gives the checker only your one message and the memory text', async () 
     text: 'My old number was 0400 000 001',
     spans: [{ start: 0, end: 30, source: 'typed' }],
   });
+
   await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'My new number is 0400 000 002, the old one is gone: see screenshot',
@@ -244,6 +251,7 @@ test('it gives the checker only your one message and the memory text', async () 
       { start: 52, end: 66, source: 'pasted' },
     ],
   });
+
   await memory.store.writes.remember({
     text: 'Phone number is 0400 000 002',
     quote: 'My new number is 0400 000 002',
@@ -278,6 +286,7 @@ test('it proposes a write that cites the evidence message of an item you forgot'
   });
 
   invariant(first.status === 'applied');
+
   await memory.store.forget({
     target: { itemID: first.itemID, version: first.version },
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -294,12 +303,15 @@ test('it proposes a write that cites the evidence message of an item you forgot'
 
 test('it proposes a write whose evidence message backed an item you forgot while the checker answered', async () => {
   const checker = makeGatedCall(() => buildMockCheckerAnswer());
+
   const memory = await startTestMemory({ gate: { check: checker.call } });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'I take my coffee black',
     spans: [{ start: 0, end: 22, source: 'typed' }],
   });
+
   const forgotten = await memory.store.remember({
     text: 'Takes coffee black',
     evidenceQuote: 'I take my coffee black',
@@ -314,10 +326,12 @@ test('it proposes a write whose evidence message backed an item you forgot while
   });
 
   await checker.started;
+
   await memory.store.forget({
     target: forgotten,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   checker.release();
 
   const outcome = await write;
@@ -343,6 +357,7 @@ test('it proposes a write for another item that cites a message a forgotten item
   });
 
   invariant(coffee.status === 'applied');
+
   await memory.store.forget({
     target: { itemID: coffee.itemID, version: coffee.version },
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -391,6 +406,7 @@ test('it proposes a write whose quote lies only in a message outside the window'
     text: 'I take my coffee black',
     spans: [{ start: 0, end: 22, source: 'typed' }],
   });
+
   await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'Thanks',
@@ -413,6 +429,7 @@ test('it applies a write whose quote you typed in a message outside the window, 
       limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10, closeMatchScore: 0.6 },
     },
   });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'I take my coffee black',
@@ -449,7 +466,9 @@ test('it applies a write whose quote you typed in a message outside the window, 
 
 test('it proposes a write whose quote matches only a fetched page in the log, cited by its event ID', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
   const memory = await startTestMemory({ gate: { check } });
+
   const [page] = await writeRecords(memory.log, [
     {
       kind: 'tool_result',
@@ -506,7 +525,9 @@ test('it counts the cap again from your next message', async () => {
     text: 'Hello',
     spans: [{ start: 0, end: 5, source: 'typed' }],
   });
+
   await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+
   await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'Again',
@@ -523,7 +544,9 @@ test('it counts the cap again from your next message', async () => {
 
 test('it refuses an edit of a version that moved on before any check runs', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
   const memory = await startTestMemory({ gate: { check } });
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -550,9 +573,11 @@ test('it refuses an edit of a version that moved on before any check runs', asyn
 
 test('it applies a write under your allow rule with outside content as its source', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'not_asserted' })));
+
   const memory = await startTestMemory({
     gate: { check, findAllowRule: () => Promise.resolve({ ruleID: 'rule-a', revision: 2 }) },
   });
+
   const outcome = await memory.store.writes.remember({
     text: 'Likes jazz',
     caller: buildMockWriteCaller(),
@@ -589,6 +614,7 @@ test('it runs the full gate on an edit when your allow rule names only memory.re
   const memory = await startTestMemory({
     gate: { findAllowRule: makeToolAllowRule('memory.remember') },
   });
+
   const item = await memory.store.remember({
     text: 'Likes jazz',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -598,6 +624,7 @@ test('it runs the full gate on an edit when your allow rule names only memory.re
     text: 'Likes opera',
     caller: buildMockWriteCaller(),
   });
+
   const edited = await memory.store.writes.remember({
     text: 'Likes blues',
     target: item,
@@ -612,6 +639,7 @@ test('it runs the full gate on a new item when your allow rule names only memory
   const memory = await startTestMemory({
     gate: { findAllowRule: makeToolAllowRule('memory.edit') },
   });
+
   const item = await memory.store.remember({
     text: 'Likes jazz',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -622,6 +650,7 @@ test('it runs the full gate on a new item when your allow rule names only memory
     target: item,
     caller: buildMockWriteCaller(),
   });
+
   const created = await memory.store.writes.remember({
     text: 'Likes opera',
     caller: buildMockWriteCaller(),
@@ -635,23 +664,28 @@ test("it groups a turn's applied writes and proposals under one notice", async (
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
   });
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'I take my coffee black',
     spans: [{ start: 0, end: 22, source: 'typed' }],
   });
+
   const applied = await memory.store.writes.remember({
     text: 'Takes coffee black',
     quote: 'I take my coffee black',
     caller: buildMockWriteCaller(),
   });
+
   const proposed = await memory.store.writes.remember({
     text: 'Likes jazz',
     caller: buildMockWriteCaller(),
   });
+
   const notices = await memory.store.readNotices('conversation');
 
   invariant(applied.status === 'applied' && proposed.status === 'proposed');
+
   expect(notices).toStrictEqual([
     {
       noticeKey: `turn/conversation/${String(sequence)}`,
@@ -674,6 +708,7 @@ test("it groups a turn's applied writes and proposals under one notice", async (
 
 test("it merges a task's write into the conversation's pending proposal of the same text", async () => {
   const memory = await startTestMemory();
+
   const first = await memory.store.writes.remember({
     text: 'Collects vintage fountain pens.',
     caller: buildMockWriteCaller(),
@@ -683,15 +718,18 @@ test("it merges a task's write into the conversation's pending proposal of the s
     text: 'collects vintage  fountain pens',
     caller: buildMockWriteCaller({ origin: 'task', thread: 'task-7', taskID: 'task-7' }),
   });
+
   const pending = await memory.store.proposals.listPending();
 
   invariant(first.status === 'proposed');
+
   expect(second).toStrictEqual({
     status: 'proposed',
     proposalID: first.proposalID,
     reason: 'no_quote',
     merged: true,
   });
+
   expect(pending).toMatchObject([
     {
       proposalID: first.proposalID,
@@ -702,11 +740,13 @@ test("it merges a task's write into the conversation's pending proposal of the s
       ],
     },
   ]);
+
   expect(pending).toHaveLength(1);
 });
 
 test("it shows the proposal a write merged into in the notice of the write's own task run", async () => {
   const memory = await startTestMemory();
+
   const first = await memory.store.writes.remember({
     text: 'Collects vintage fountain pens.',
     caller: buildMockWriteCaller(),
@@ -716,9 +756,11 @@ test("it shows the proposal a write merged into in the notice of the write's own
     text: 'Collects vintage fountain pens.',
     caller: buildMockWriteCaller({ origin: 'task', thread: 'task-7', runID: 'run-7' }),
   });
+
   const notices = await memory.store.readNotices('task-7');
 
   invariant(first.status === 'proposed');
+
   expect(notices).toMatchObject([
     {
       noticeKey: 'run/run-7',
@@ -752,18 +794,22 @@ test('it keeps a reworded write, and a write that pins, as proposals of their ow
     text: 'Collects vintage fountain pens.',
     caller: buildMockWriteCaller(),
   });
+
   await memory.store.writes.remember({
     text: 'Collects old fountain pens.',
     caller: buildMockWriteCaller(),
   });
+
   const pinned = await memory.store.writes.remember({
     text: 'Collects vintage fountain pens.',
     isPinned: true,
     caller: buildMockWriteCaller(),
   });
+
   const pending = await memory.store.proposals.listPending();
 
   expect(pinned).toMatchObject({ status: 'proposed', merged: false });
+
   expect(pending.map((proposal) => [proposal.text, proposal.isPinned])).toStrictEqual([
     ['Collects vintage fountain pens.', false],
     ['Collects old fountain pens.', false],
@@ -773,6 +819,7 @@ test('it keeps a reworded write, and a write that pins, as proposals of their ow
 
 test('it moves a proposal lapse back to a full lapse window when a later write merges into it', async () => {
   const clock = buildTestClock(1_000_000);
+
   const memory = await startTestMemory({
     gate: {
       clock,
@@ -786,7 +833,9 @@ test('it moves a proposal lapse back to a full lapse window when a later write m
   });
 
   await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
+
   clock.advance(50_000);
+
   await memory.store.writes.remember({ text: 'Fact one', caller: buildMockWriteCaller() });
 
   const pending = await memory.store.proposals.listPending();

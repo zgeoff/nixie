@@ -34,7 +34,9 @@ export async function setupTestRecorder(): Promise<TestRecorder> {
     'wrapKey',
     'unwrapKey',
   ]);
+
   const log: Log = { writer, deploymentKey, projections: [...logProjections, sandboxesProjection] };
+
   const recorder = buildSandboxRecorder({
     log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),

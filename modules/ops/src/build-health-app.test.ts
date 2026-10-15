@@ -20,6 +20,7 @@ test('it answers readiness with 200 and every part when all are ready', async ()
   const body = await response.json();
 
   expect(response.status).toBe(200);
+
   expect(body).toStrictEqual({
     status: 'ready',
     parts: {
@@ -51,6 +52,7 @@ test('it answers readiness with 503 while one part is unready', async () => {
   const body = await response.json();
 
   expect(response.status).toBe(503);
+
   expect(body).toMatchObject({
     status: 'unready',
     parts: { imp_host: { isReady: false, reason: 'impd does not answer' } },
@@ -76,6 +78,7 @@ test('it answers liveness per part, apart from readiness', async () => {
   const body = await response.json();
 
   expect(response.status).toBe(503);
+
   expect(body).toStrictEqual({
     status: 'unready',
     parts: {

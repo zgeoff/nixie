@@ -21,6 +21,7 @@ export function writeMemoryVersion(parts: StoreParts, plan: VersionPlan): Promis
     );
 
     await updateVersionIndex(parts, written.ref.itemID, written.next);
+
     return written.ref;
   });
 }

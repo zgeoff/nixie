@@ -39,6 +39,7 @@ export async function writeOwnerMessage(
     if (!live) {
       return { status: 'unauthorized' } as const;
     }
+
     const earlier = await findClientAction(tx, input.clientMessageId);
 
     if (earlier !== null) {
@@ -47,15 +48,18 @@ export async function writeOwnerMessage(
 
       return { status: 'earlier', isRetry, result: earlier.result } as const;
     }
+
     return writeMessage(tx, context, { caller, input });
   });
 
   if (written.status !== 'earlier') {
     return written;
   }
+
   if (!written.isRetry) {
     return { status: 'reused' };
   }
+
   return checkRetry(context, input, Number(written.result['sequence']));
 }
 
@@ -70,6 +74,7 @@ async function writeMessage(
   pending: PendingMessage,
 ): Promise<OwnerMessageResult> {
   const input = pending.input;
+
   const task = await tx
     .$extendTables<APITables>()
     .selectFrom('tasks')
@@ -81,8 +86,11 @@ async function writeMessage(
   if (task === undefined || task.state === 'done' || task.state === 'failed') {
     return { status: 'thread_not_found' };
   }
+
   const spans = normalizeSpans(input.text, input.spans);
+
   const sessionLabel = await readSessionLabel(tx, pending.caller.identityID);
+
   const [record] = await writeInboxRecordsInTransaction(tx, context, [
     {
       kind: 'owner_message',
@@ -100,6 +108,7 @@ async function writeMessage(
   ]);
 
   invariant(record, 'the log wrote no owner_message record');
+
   await writeClientAction(tx, {
     clientActionID: input.clientMessageId,
     procedure: 'conversation.send',
@@ -108,6 +117,7 @@ async function writeMessage(
     result: { sequence: record.sequence },
     recordedAt: context.clock.now(),
   });
+
   return { status: 'written', duplicate: false, sequence: record.sequence };
 }
 
@@ -124,6 +134,7 @@ async function readSessionLabel(tx: Transaction<unknown>, identityID: string): P
 
   // the caller's session was live in this transaction, so its row is there
   invariant(row, 'the live session has no identity row');
+
   return row.label;
 }
 
@@ -145,13 +156,16 @@ async function checkRetry(
   sequence: number,
 ): Promise<OwnerMessageResult> {
   const [entry] = await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
+
   const record = entry?.record;
 
   if (record?.sequence !== sequence || record.thread !== input.thread) {
     return { status: 'reused' };
   }
+
   if (record.erasable.status === 'readable' && record.erasable.fields['text'] !== input.text) {
     return { status: 'reused' };
   }
+
   return { status: 'written', duplicate: true, sequence };
 }

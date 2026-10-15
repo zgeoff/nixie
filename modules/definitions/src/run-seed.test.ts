@@ -21,9 +21,11 @@ async function setupTest(config: { readonly projections?: readonly Projection[] 
   stack.defer(() => rm(dir, { recursive: true, force: true }));
 
   const root = join(dir, 'definitions');
+
   const writer = await startWriter({ dataDir: dir });
 
   stack.defer(() => writer.stop());
+
   await mkdir(root);
 
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
@@ -47,14 +49,17 @@ test('it seeds the persona and records the source ID, the revision and the conte
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [{ id: 'slice1.read-only' }], tools: [] };
+
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
   const manifest = new TextEncoder().encode('format: 1\n');
   const persona = new TextEncoder().encode('# Persona\n');
+
   const files = new Map([
     ['nixie.yaml', manifest],
     ['persona.md', persona],
   ]);
+
   const built = buildDefinitionsSnapshot({ persona: '# Persona\n', policy });
 
   expect(result).toMatchObject({
@@ -84,9 +89,10 @@ test('it returns the definitions it put in force', async () => {
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\r\n\r\nWarm, brief.');
 
   const policy = { rules: [], tools: [] };
-  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
+  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
   const snapshot = await ctx.source.snapshot();
+
   const built = buildDefinitionsSnapshot({ persona: '# Persona\n\nWarm, brief.\n', policy });
 
   expect(result.inForce).toStrictEqual({
@@ -114,7 +120,9 @@ test('it keeps the snapshot under its hash with the revision as its label', asyn
   await runSeed({ log: ctx.log, source: ctx.source, policy });
 
   const snapshot = await ctx.source.snapshot();
+
   const built = buildDefinitionsSnapshot({ persona: '# Persona\n', policy });
+
   const snapshots = await sql`select snapshot_hash, persona_version, policy_hash, form, label
     from definition_snapshots`.execute(ctx.writer.db);
 
@@ -160,6 +168,7 @@ test('it keeps the last seed when a later snapshot fails to parse', async () => 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [] };
+
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: [1\n');
@@ -175,6 +184,7 @@ test('it keeps the last seed when a later snapshot fails to parse', async () => 
     error: { name: 'DefinitionsParseError', problems: [{ path: 'nixie.yaml' }] },
     inForce: first.inForce,
   });
+
   expect(seeds.rows).toStrictEqual([{ seed: 1, record_sequence: 1 }]);
 });
 
@@ -202,6 +212,7 @@ test('it keeps the last seed when the source refuses the snapshot', async () => 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [] };
+
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
   await writeFile(join(ctx.dir, 'secret.md'), 'outside\n');
@@ -236,6 +247,7 @@ test('it refuses a first snapshot that fails to parse and leaves no seed', async
     error: { name: 'DefinitionsParseError' },
     inForce: null,
   });
+
   expect(seeds.rows).toStrictEqual([]);
 });
 
@@ -246,9 +258,9 @@ test('it writes nothing when the newest seed already holds the same definitions'
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const policy = { rules: [], tools: [] };
+
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
-
   const records = await sql`select sequence from records`.execute(ctx.writer.db);
 
   expect(result.status).toBe('unchanged');
@@ -285,6 +297,7 @@ test('it seeds again when a release changes a tool declaration over the same fil
 
   const before = { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch'] }] };
   const after = { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch', 'send'] }] };
+
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy: before });
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy: after });
 
@@ -302,6 +315,7 @@ test('it rolls the whole seed back when its record fails to write', async () => 
     keyColumn: 'thread',
     fold: () => Promise.reject(new Error('the fold failed')),
   };
+
   const ctx = await setupTest({ projections: [failingFold] });
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 1\n');

@@ -14,6 +14,7 @@ export const memoryVersionsProjection: Projection = {
     if (parsed?.kind !== 'memory.version_added') {
       return [];
     }
+
     const versionKey = buildVersionKey(parsed);
 
     await tx
@@ -40,6 +41,7 @@ export const memoryVersionsProjection: Projection = {
         recorded_at: record.recordedAt.getTime(),
       })
       .execute();
+
     return [versionKey];
   },
 };

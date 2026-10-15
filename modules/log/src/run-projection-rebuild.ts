@@ -49,6 +49,7 @@ async function applyEveryRecord(
       // oxlint-disable-next-line no-await-in-loop -- a fold builds on the records before it
       await applyProjections(tx, projections, buildEnvelopeRecord(row));
     }
+
     cursor.after = rows.at(-1)?.sequence ?? cursor.after;
     cursor.done = rows.length < PAGE_SIZE;
   }

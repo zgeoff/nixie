@@ -16,11 +16,13 @@ async function setupTest() {
 
   // the wall clock stops where the test clock starts, so a proposal is recorded at its start
   setSystemTime(new Date(startedAt));
+
   onTestFinished(() => {
     setSystemTime();
   });
 
   const memory = await startTestMemory();
+
   const clock = buildTestClock(startedAt);
   const registry = buildToolRegistry([buildPendingTool(memory.store, clock)]);
 
@@ -51,6 +53,7 @@ async function setupTest() {
 test('it lists a pending proposal from the conversation and one from the note-taker, each with who noted it and why it waits', async () => {
   const ctx = await setupTest();
   const own = await createProposal(ctx.memory.store, { text: 'Waters the ferns on Sundays' });
+
   const noted = await createWriterProposal(ctx.memory, {
     message: 'I keep bees on the allotment.',
     text: 'The owner keeps bees.',
@@ -103,6 +106,7 @@ test('it leaves out a proposal the owner approved and one the owner rejected', a
     actionHash: approved.actionHash,
     identityID: 'identity-1',
   });
+
   await ctx.memory.store.proposals.reject({
     proposalID: rejected.proposalID,
     actionHash: rejected.actionHash,
@@ -142,6 +146,7 @@ test('it names both proposers of a conversation write that merged into the note-
     text: 'The owner grows tomatoes.',
     quote: 'I grow tomatoes',
   });
+
   await ctx.memory.store.writes.remember({
     text: 'the owner grows tomatoes',
     caller: buildMockWriteCaller(),
@@ -167,14 +172,17 @@ test('it names both proposers of a conversation write that merged into the note-
 
 test('it names the item that a pending edit changes by its short ID, and the version', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Cycles to work',
     provenance: buildMockProvenance(),
   });
+
   const proposal = await createProposal(ctx.memory.store, {
     text: 'Takes the tram to work',
     target: { itemID: item.itemID, version: 1 },
   });
+
   const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
 
   const result = await runToolCall(
@@ -206,6 +214,7 @@ test('it names the item that a pending edit changes by its short ID, and the ver
 
 test('it lists a pending retirement with the text of the item it retires', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Rents a flat on Quay Street',
     provenance: buildMockProvenance(),
@@ -215,6 +224,7 @@ test('it lists a pending retirement with the text of the item it retires', async
     target: { itemID: item.itemID, version: 1 },
     caller: buildMockWriteCaller(),
   });
+
   const shortIDs = await ctx.memory.store.readShortIDs([item.itemID]);
 
   const result = await runToolCall(
@@ -253,6 +263,7 @@ test.each([
   const ctx = await setupTest();
 
   await createProposal(ctx.memory.store, { text: 'Bakes sourdough on Saturdays' });
+
   ctx.clock.advance(elapsed);
 
   const result = await runToolCall(
@@ -300,6 +311,7 @@ test('it records only the proposal IDs, never the proposed text', async () => {
     },
     ctx.toolCallOptions,
   );
+
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
   expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
@@ -308,5 +320,6 @@ test('it records only the proposal IDs, never the proposed text', async () => {
       fields: { result: { proposals: [{ proposalID: proposal.proposalID }] } },
     },
   });
+
   expect(JSON.stringify(entries)).not.toInclude('tin robots');
 });

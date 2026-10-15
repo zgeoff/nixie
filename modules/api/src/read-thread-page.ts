@@ -25,6 +25,7 @@ export async function readThreadPage(
   input: ThreadPageInput,
 ): Promise<ThreadPage | null> {
   const db = context.log.writer.db.$extendTables<APITables>();
+
   const thread = await db
     .selectFrom('threads')
     .select('thread')
@@ -34,15 +35,18 @@ export async function readThreadPage(
   if (thread === undefined) {
     return null;
   }
+
   const last = await db
     .selectFrom('records')
     .select(sql<number>`coalesce(max(sequence), 0)`.as('sequence'))
     .executeTakeFirstOrThrow();
+
   const window = await findPageWindow(context, {
     thread: input.thread,
     before: Math.min(input.beforeSequence ?? Number.POSITIVE_INFINITY, last.sequence + 1),
     limit: input.limit ?? DEFAULT_LIMIT,
   });
+
   const entries =
     window.count === 0
       ? []
@@ -86,6 +90,7 @@ async function findPageWindow(context: APIContext, bounds: PageBounds): Promise<
     .orderBy('sequence', 'desc')
     .limit(bounds.limit + 1)
     .execute();
+
   const count = Math.min(bounds.limit, newest.length);
 
   return {
@@ -121,6 +126,7 @@ async function readLastStepEnd(
     limit: 1,
     thread,
   });
+
   const record = entries[0]?.record;
 
   return record === undefined ? null : toContractRecord(record);

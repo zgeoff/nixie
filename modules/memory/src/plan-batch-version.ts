@@ -28,6 +28,7 @@ export function planBatchVersion(
       intentEvidence: verdict.evidence,
     });
   }
+
   return planRememberedVersion({
     text: write.text,
     provenance,

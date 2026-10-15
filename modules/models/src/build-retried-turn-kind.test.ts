@@ -44,6 +44,7 @@ test('it renders a retried turn with its error, as the events block lists it', a
 
 test('it says only that a turn failed and was retried when the log holds no error', async () => {
   const ctx = await setupTest();
+
   const [failure] = await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_errored',
@@ -56,6 +57,7 @@ test('it says only that a turn failed and was retried when the log holds no erro
   invariant(failure);
 
   const kind = buildRetriedTurnKind(ctx.tasks.context.log);
+
   const events = await kind.read({ after: 0, through: failure.sequence });
 
   expect(
@@ -65,6 +67,7 @@ test('it says only that a turn failed and was retried when the log holds no erro
 
 test('it reads a retried turn with its sequence and time', async () => {
   const ctx = await setupTest();
+
   const [failure] = await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_errored',
@@ -93,6 +96,7 @@ test('it reads a retried turn with its sequence and time', async () => {
 
 test('it leaves out a failure that ended the task, which no retry follows', async () => {
   const ctx = await setupTest();
+
   const [failure] = await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_errored',
@@ -114,6 +118,7 @@ test('it leaves out a failure that ended the task, which no retry follows', asyn
 
 test("it leaves out another task's failure", async () => {
   const ctx = await setupTest();
+
   const [failure] = await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'task.step_errored',
@@ -135,6 +140,7 @@ test("it leaves out another task's failure", async () => {
 
 test('it reads only the failures inside the range', async () => {
   const ctx = await setupTest();
+
   const [before, inside, after] = await writeRecords(
     ctx.tasks.context.log,
     ['the first failure', 'the second failure', 'the third failure'].map((message) => ({

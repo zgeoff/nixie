@@ -9,7 +9,6 @@ async function setupTest() {
 
 test('it reads no earlier core and no invalidation before the first turn', async () => {
   const ctx = await setupTest();
-
   const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
 
   expect(marks).toStrictEqual({

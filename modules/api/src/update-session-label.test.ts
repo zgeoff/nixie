@@ -13,7 +13,6 @@ function setupTest() {
 
 test('it puts a renamed label on the next message, and leaves the message before it as it was', async () => {
   const ctx = await setupTest();
-
   const browser = await createDeviceSession(ctx.context, 'Browser');
 
   await writeOwnerMessage(ctx.context, browser.caller, {
@@ -22,7 +21,9 @@ test('it puts a renamed label on the next message, and leaves the message before
     text: 'Before.',
     spans: [],
   });
+
   await updateSessionLabel(ctx.context, { sessionID: browser.sessionID, label: 'phone' });
+
   await writeOwnerMessage(ctx.context, browser.caller, {
     clientMessageId: '1c8e7a2f-5b3d-4e6a-8f9c-2d4b6a8c0e12',
     thread: 'conversation',
@@ -57,13 +58,13 @@ test('it puts a renamed label on the next message, and leaves the message before
 
 test('it records the change with the label encrypted, and keeps the label on the session’s row', async () => {
   const ctx = await setupTest();
-
   const browser = await createDeviceSession(ctx.context, 'Browser');
 
   const result = await updateSessionLabel(ctx.context, {
     sessionID: browser.sessionID,
     label: 'phone',
   });
+
   const [records, row] = await Promise.all([
     readRecords(ctx.context.log, { afterSequence: 0, kinds: ['session.labelled'] }),
     ctx.writer.db
@@ -79,15 +80,16 @@ test('it records the change with the label encrypted, and keeps the label on the
     sessionID: browser.sessionID,
     label: 'phone',
   });
+
   expect(records.map((entry) => [entry.record.payload, entry.record.erasable])).toStrictEqual([
     [{ identityID: browser.sessionID }, { status: 'readable', fields: { label: 'phone' } }],
   ]);
+
   expect(row.label).toBe('phone');
 });
 
 test('it puts a label that holds line breaks on one line', async () => {
   const ctx = await setupTest();
-
   const browser = await createDeviceSession(ctx.context, 'Browser');
 
   const result = await updateSessionLabel(ctx.context, {
@@ -107,10 +109,9 @@ test.each([
   ['more than 100 characters', 'x'.repeat(101)],
 ])('it refuses a label of %s and keeps the label before it', async (_case, label) => {
   const ctx = await setupTest();
-
   const browser = await createDeviceSession(ctx.context, 'Browser');
-
   const result = await updateSessionLabel(ctx.context, { sessionID: browser.sessionID, label });
+
   const row = await ctx.writer.db
     .$extendTables<APITables>()
     .selectFrom('identities')
@@ -124,7 +125,6 @@ test.each([
 
 test('it answers not found for a revoked session', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const phone = await createDeviceSession(ctx.context, 'phone');
 

@@ -34,6 +34,7 @@ export function buildConversationTools(
     if (store === null) {
       throw new Error('a tool call ran before the memory store started');
     }
+
     return store;
   };
 

@@ -26,11 +26,13 @@ export async function readOpenProposal(
       now: parts.context.gate.clock.now(),
     },
   );
+
   const key = await findItemKey(parts.context.log, row.item_id);
 
   if (key === null || key === undefined) {
     throw new MemoryItemNotFoundError(row.item_id);
   }
+
   const text = await decodeProposalText(key, row.proposal_id, row.sealed);
 
   return { row, text };

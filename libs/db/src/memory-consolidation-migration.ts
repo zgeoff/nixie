@@ -21,6 +21,7 @@ async function createRunTable(tx: Transaction<unknown>): Promise<void> {
     sequence integer not null references records (sequence),
     created_at integer not null
   ) strict`.execute(tx);
+
   await sql`create index memory_consolidations_by_time on memory_consolidations (
     created_at
   )`.execute(tx);
@@ -44,9 +45,11 @@ async function createChangeTable(tx: Transaction<unknown>): Promise<void> {
     lapse_at integer not null,
     resolved_sequence integer references records (sequence)
   ) strict`.execute(tx);
+
   await sql`create index memory_consolidation_changes_by_status on memory_consolidation_changes (
     status, lapse_at
   )`.execute(tx);
+
   await sql`create index memory_consolidation_changes_by_diff on memory_consolidation_changes (
     diff_id, position
   )`.execute(tx);

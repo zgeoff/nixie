@@ -31,6 +31,7 @@ test('it yields the turn inbox, then each host message, and marks each one pendi
       uuid: '6e697869-0000-8000-8000-000000000002',
     },
   ]);
+
   expect([...state.pending]).toStrictEqual([
     '6e697869-0000-8000-8000-000000000001',
     '6e697869-0000-8000-8000-000000000002',
@@ -46,7 +47,9 @@ test('it ends the stream when the turn ends while it waits for the host', async 
   };
 
   state.toolsReady.resolve(true);
+
   const channel = new TransformStream<InboxMessage, InboxMessage>();
+
   const input = readTurnInput(buildMockTurnFrame(), channel.readable, state);
 
   await input.next();
@@ -67,12 +70,12 @@ test('it ends the stream and fails the turn with the error the host stream throw
   };
 
   state.toolsReady.resolve(true);
+
   const channel = new TransformStream<InboxMessage, InboxMessage>();
 
   void channel.writable.getWriter().abort(new Error('a turn is already running'));
 
   const input = await Array.fromAsync(readTurnInput(buildMockTurnFrame(), channel.readable, state));
-
   const failure = await state.inputFailed.promise;
 
   expect(input).toHaveLength(1);
@@ -88,9 +91,11 @@ test('it fails the turn with an error that names a host stream failure of anothe
   };
 
   state.toolsReady.resolve(true);
+
   const channel = new TransformStream<InboxMessage, InboxMessage>();
 
   void channel.writable.getWriter().abort('the host went away');
+
   await Array.fromAsync(readTurnInput(buildMockTurnFrame(), channel.readable, state));
 
   const failure = await state.inputFailed.promise;

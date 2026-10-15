@@ -14,7 +14,6 @@ function setupTest() {
 
 test('it keeps a live session signed in across a reset', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   await runLogReset(ctx.context.log, {
@@ -34,7 +33,6 @@ test('it keeps a live session signed in across a reset', async () => {
 
 test('it writes a session_kept record for each kept session and points the session at it', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   await runLogReset(ctx.context.log, {
@@ -49,6 +47,7 @@ test('it writes a session_kept record for each kept session and points the sessi
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });
   const identities = await sql`select paired_sequence from identities`.execute(ctx.writer.db);
+
   const kept = read.at(0)?.record;
 
   expect(kept).toMatchObject({
@@ -58,12 +57,12 @@ test('it writes a session_kept record for each kept session and points the sessi
     payload: { sessionID: laptop.sessionID, channel: 'client', pairedAt: 1_000_000 },
     erasable: { status: 'readable', fields: { label: 'laptop' } },
   });
+
   expect(identities.rows).toStrictEqual([{ paired_sequence: kept?.sequence }]);
 });
 
 test('it refuses a revoked token as a stranger after a reset', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const phone = await createDeviceSession(ctx.context, 'phone');
 
@@ -71,6 +70,7 @@ test('it refuses a revoked token as a stranger after a reset', async () => {
     clientActionID: '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d',
     sessionID: phone.sessionID,
   });
+
   await runLogReset(ctx.context.log, {
     keptTables: ['identities'],
     readKept: (tx) => readKeptSessions(tx, ctx.context),
@@ -82,12 +82,14 @@ test('it refuses a revoked token as a stranger after a reset', async () => {
   });
 
   const caller = await verifySessionToken(ctx.context, phone.token);
+
   const read = await readRecords(ctx.context.log, {
     afterSequence: 0,
     kinds: ['identity.refused'],
   });
 
   expect(caller).toBeNull();
+
   expect(read.map((entry) => entry.record.payload)).toStrictEqual([
     { channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 },
   ]);
@@ -97,6 +99,7 @@ test('it removes a lapsed session', async () => {
   const ctx = await setupTest();
 
   await createDeviceSession(ctx.context, 'laptop');
+
   ctx.clock.advance(30 * 24 * 60 * 60 * 1000 + 1);
 
   await runLogReset(ctx.context.log, {

@@ -25,6 +25,7 @@ export async function* subscribeToRecords(
 
       yield* batch;
       cursor.after = batch.at(-1)?.record.sequence ?? cursor.after;
+
       if (batch.length < BATCH_SIZE) {
         // oxlint-disable-next-line no-await-in-loop -- the stream sleeps until the next wake
         await wake.wait();
@@ -44,6 +45,7 @@ function readNextBatch(
   options: SubscribeToRecordsOptions,
 ): Promise<readonly RecordWithChanges[]> {
   wake.reset();
+
   return readRecords(log, {
     afterSequence: options.afterSequence,
     limit: BATCH_SIZE,

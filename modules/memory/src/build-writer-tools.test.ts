@@ -7,6 +7,7 @@ import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
   const memory = await startTestMemory();
+
   const staging = createWriterStaging();
   const registry = buildToolRegistry(buildWriterTools(memory.store, staging, 5));
 
@@ -30,6 +31,7 @@ test('it declares read for recall and note for remember, edit and retire', async
 
 test('it stages a new item that cites your message in the batch', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.remember');
 
   invariant(tool);
@@ -38,6 +40,7 @@ test('it stages a new item that cites your message in the batch', async () => {
     sources: new Map([[12, { sequence: 12, text: 'I keep bees on the roof.', spans: [] }]]),
     shown: new Map(),
   });
+
   const outcome = await tool.definition.run(
     {
       callID: 'call-1',
@@ -56,6 +59,7 @@ test('it stages a new item that cites your message in the batch', async () => {
   );
 
   expect(outcome).toStrictEqual({ status: 'ok', result: { staged: true } });
+
   expect(staged.close()).toStrictEqual([
     {
       op: 'remember',
@@ -69,9 +73,11 @@ test('it stages a new item that cites your message in the batch', async () => {
 
 test('it returns a write that cites a message outside the batch to the model as an error', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.remember');
 
   invariant(tool);
+
   ctx.staging.open({
     sources: new Map([[12, { sequence: 12, text: 'I keep bees on the roof.', spans: [] }]]),
     shown: new Map(),
@@ -102,6 +108,7 @@ test('it returns a write that cites a message outside the batch to the model as 
 
 test('it stages a retirement bound to the version the session was shown', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.retire');
 
   invariant(tool);
@@ -140,7 +147,9 @@ test('it stages a retirement bound to the version the session was shown', async 
 
 test('it delivers the items a recall finds', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.recall');
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps bees on the roof',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -168,8 +177,10 @@ test('it delivers the items a recall finds', async () => {
 
 test('it binds an edit to the version a recall showed', async () => {
   const ctx = await setupTest();
+
   const recall = ctx.registry.findTool('memory.recall');
   const edit = ctx.registry.findTool('memory.edit');
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps bees on the roof',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -181,6 +192,7 @@ test('it binds an edit to the version a recall showed', async () => {
     sources: new Map([[12, { sequence: 12, text: 'The bees are in the garden now.', spans: [] }]]),
     shown: new Map(),
   });
+
   const run = {
     runID: 'run-1',
     thread: 'memory-writer',
@@ -192,6 +204,7 @@ test('it binds an edit to the version a recall showed', async () => {
     { callID: 'call-1', tool: 'memory.recall', input: { query: 'bees' }, toolUseID: null },
     { run },
   );
+
   await edit.definition.run(
     {
       callID: 'call-2',
@@ -212,9 +225,11 @@ test('it binds an edit to the version a recall showed', async () => {
 
 test('it returns an edit of an item the session was never shown to the model as an error', async () => {
   const ctx = await setupTest();
+
   const tool = ctx.registry.findTool('memory.edit');
 
   invariant(tool);
+
   ctx.staging.open({
     sources: new Map([[12, { sequence: 12, text: 'The bees are in the garden now.', spans: [] }]]),
     shown: new Map(),

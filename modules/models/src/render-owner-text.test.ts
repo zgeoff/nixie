@@ -60,11 +60,13 @@ test('it wraps each span you pasted or dropped in its own block with a fresh ID 
       },
     }),
   );
+
   const [pastedID, droppedID] = [
     ...rendered.matchAll(/<(?:pasted|dropped) id="(?<blockID>\w+)">/gu),
   ].map((match) => match.groups?.['blockID']);
 
   expect(pastedID).not.toBe(droppedID);
+
   expect(rendered).toBe(
     `Read this: <pasted id="${pastedID}">Call Sam at noon.</pasted id="${pastedID}"> And this: <dropped id="${droppedID}">notes.txt</dropped id="${droppedID}"> Thanks.`,
   );
@@ -87,6 +89,7 @@ test('it keeps a pasted closing tag inside the block it was pasted in', () => {
       },
     }),
   );
+
   const blockID = /<pasted id="(?<blockID>\w+)">/u.exec(rendered)?.groups?.['blockID'];
 
   expect(rendered).toBe(

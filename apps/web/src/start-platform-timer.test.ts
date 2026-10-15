@@ -24,5 +24,6 @@ test('it never calls back once stopped', async () => {
   await waitFor(() => {
     expect(onLater).toHaveBeenCalledOnce();
   });
+
   expect(onStopped).not.toHaveBeenCalled();
 });

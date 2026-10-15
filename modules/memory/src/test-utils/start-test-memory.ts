@@ -45,6 +45,7 @@ export async function startTestMemory(options: TestMemoryOptions = {}): Promise<
     'wrapKey',
     'unwrapKey',
   ]);
+
   const wiring = {
     dataDir,
     deploymentKey,
@@ -52,6 +53,7 @@ export async function startTestMemory(options: TestMemoryOptions = {}): Promise<
       stack.defer(cleanup);
     },
   };
+
   const started = await startTestStore(wiring, options);
 
   return { ...wiring, ...started };

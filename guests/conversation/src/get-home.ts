@@ -6,5 +6,6 @@ export function getHome(env: Readonly<Record<string, string | undefined>>): stri
   if (home === undefined || home === '') {
     throw new Error('the conversation guest needs HOME');
   }
+
   return home;
 }

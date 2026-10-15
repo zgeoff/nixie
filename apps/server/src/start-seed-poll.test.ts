@@ -11,19 +11,25 @@ async function setupTest() {
   await nixie.waitForLogEvent('ready');
   await nixie.sendStopSignal();
   await nixie.waitForExit();
+
   return nixie;
 }
 
 test('it reports the definitions ready within seconds of a checkout that lands after a restart', async () => {
   const ctx = await setupTest();
+
   const definitionsDir = join(ctx.dir, 'definitions');
 
   await rename(definitionsDir, join(ctx.dir, 'checkout'));
+
   const again = ctx.startAgain();
+
   const listening = await again.waitForLogEvent('http.listening');
 
   await again.waitForLogEvent('ready');
+
   await rename(join(ctx.dir, 'checkout'), definitionsDir);
+
   const landedAt = Date.now();
 
   await waitForCondition(

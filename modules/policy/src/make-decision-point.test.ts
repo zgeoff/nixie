@@ -136,13 +136,16 @@ test('it denies test.send with slice1.read-only in the release bundle, which hol
   );
 
   const decided = Bun.spawnSync([process.execPath, join(outdir, 'decide.js')]);
+
   const bundle = await Bun.file(join(outdir, 'policy.js')).text();
 
   expect(result.success).toBeTrue();
+
   expect(JSON.parse(decided.stdout.toString())).toStrictEqual({
     outcome: 'deny',
     stage: 3,
     rule: { id: 'slice1.read-only', revision: 1 },
   });
+
   expect(bundle).not.toInclude('test.allow-send');
 });

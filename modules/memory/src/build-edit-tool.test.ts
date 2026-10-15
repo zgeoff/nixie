@@ -12,10 +12,12 @@ test('it applies an edit with no quote under your allow rule on memory.edit', as
   const memory = await startTestMemory({
     gate: { findAllowRule: makeToolAllowRule('memory.edit') },
   });
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const shortID = await readItemShortID(memory.log, item.itemID);
 
   const outcome = await buildEditTool(memory.store).run(
@@ -38,6 +40,7 @@ test('it proposes an edit with no quote when your allow rule names only memory.r
   const memory = await startTestMemory({
     gate: { findAllowRule: makeToolAllowRule('memory.remember') },
   });
+
   const item = await memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -72,8 +75,10 @@ test('it applies an edit that quotes a message outside the window by its event I
       limits: { evidenceWindow: 1, proposalLapseMs: 1000, proposalCap: 10, closeMatchScore: 0.6 },
     },
   });
+
   const item = await createMemoryItem(memory.store, { text: 'Lives on Elm Street' });
   const shortID = await readItemShortID(memory.log, item.itemID);
+
   const sequence = await writeOwnerMessageRecord(memory.log, {
     thread: 'conversation',
     text: 'I live on Oak Avenue now',

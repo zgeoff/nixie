@@ -62,7 +62,9 @@ export async function startConversationImp(
   });
 
   await parts.cleanup.defer(() => conversation.stop());
+
   parts.state.update({ conversation: { isReady: true, reason: null } });
+
   return {
     runStep: makeConversationReadinessStep(parts.state, conversation.runStep),
     cleanupSessions: conversation.cleanupSessions,

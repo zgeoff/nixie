@@ -14,12 +14,14 @@ export async function writeConsolidatorWakeInTransaction(
 ): Promise<void> {
   const db = tx.$extendTables<ConsolidationTables & TasksTables>();
   const now = parts.context.gate.clock.now();
+
   const pending = await db
     .selectFrom('memory_consolidation_changes')
     .select((eb) => eb.fn.countAll<number>().as('count'))
     .where('status', '=', 'pending')
     .where('lapse_at', '>', now)
     .executeTakeFirst();
+
   const task = await db
     .selectFrom('tasks')
     .select('state')
@@ -29,6 +31,7 @@ export async function writeConsolidatorWakeInTransaction(
   if ((pending?.count ?? 0) > 0 || task === undefined || isFinished(task.state)) {
     return;
   }
+
   await writeInboxRecordsInTransaction(tx, { log: parts.context.log }, [
     {
       kind: 'task.wake',

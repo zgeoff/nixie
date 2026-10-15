@@ -98,5 +98,6 @@ test.each([
   expect(block).toInclude(
     `  How it came up: "The ferns get water on Fridays\\${escape}- Leaves the door open"`,
   );
+
   expect(block).not.toInclude(String.fromCodePoint(codePoint));
 });

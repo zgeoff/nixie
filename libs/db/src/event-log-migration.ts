@@ -30,11 +30,13 @@ export const eventLogMigration: Migration = {
       sealed blob,
       check ((key_id is null) = (sealed is null))
     ) strict`.execute(tx);
+
     await sql`create index records_by_thread on records (thread, sequence)`.execute(tx);
 
     // no code path updates or deletes a record, and these triggers refuse one that tries
     await sql`create trigger records_refuse_update before update on records
       begin select raise(abort, 'records are append-only'); end`.execute(tx);
+
     await sql`create trigger records_refuse_delete before delete on records
       begin select raise(abort, 'records are append-only'); end`.execute(tx);
 

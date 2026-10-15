@@ -32,6 +32,7 @@ export function runChangeLapses(parts: StoreParts): Promise<number> {
         payload: { changeID: row.change_id },
       })),
     );
+
     return rows.length;
   });
 }

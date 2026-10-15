@@ -21,6 +21,7 @@ export interface StartedMemoryStore extends MemoryStore, MemoryGate, ItemIDStore
 // proposal that a crash left behind, then builds the index from the readable active items. The log must already hold the memory projections.
 export async function startMemoryStore(context: MemoryContext): Promise<StartedMemoryStore> {
   const index = await startMemoryIndex();
+
   const parts: StoreParts = { context, index, lock: makeDeliveryLock() };
 
   try {
@@ -32,8 +33,10 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
     await index.updateAll(entries);
   } catch (error) {
     await index.stop();
+
     throw error;
   }
+
   return {
     ...buildMemoryStore(parts),
     ...buildItemIDStore(parts),

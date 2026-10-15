@@ -44,6 +44,7 @@ export function renderMemoryChangeNote(note: MemoryChangeNote): string | null {
   ) {
     return null;
   }
+
   const listed = note.changes.map((change) => renderChange(change));
   const more = note.moreCount;
 

@@ -15,6 +15,7 @@ export async function readMemoryNotices(
     .where('thread', '=', thread)
     .orderBy('sequence')
     .execute();
+
   const notices = new Map<string, NoticeEntry[]>();
 
   for (const row of rows) {
@@ -26,8 +27,10 @@ export async function readMemoryNotices(
       version: row.version,
       proposalID: row.proposal_id,
     });
+
     notices.set(row.notice_key, entries);
   }
+
   return [...notices.entries()].map(([noticeKey, entries]) => ({
     noticeKey,
     thread,

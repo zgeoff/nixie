@@ -27,6 +27,7 @@ export function Composer(props: ComposerProps): ReactNode {
         // the removed text only labels the next edit, so it stays in the box
         if (message.text.trim() !== '') {
           props.onSend({ spans: message.spans, text: message.text });
+
           setMessage(emptyMessage);
         }
       }}
@@ -38,6 +39,7 @@ export function Composer(props: ComposerProps): ReactNode {
           const text = event.target.value;
 
           pendingInput.current = undefined;
+
           setMessage((current) => buildSpanState(current, pending, text));
         }}
         className={messageBox}

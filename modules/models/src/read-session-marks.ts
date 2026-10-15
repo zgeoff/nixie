@@ -34,6 +34,7 @@ export async function readSessionMarks(
     readNewest(context, { thread: taskID, kinds: ['model.turn_ended'], limit: 2 }),
     readNewest(context, { thread: taskID, kinds: ['model.session_opened'], limit: 1 }),
   ]);
+
   const [turn, turnBefore] = lastTurns;
   const invalidatedThrough = invalidated.at(0)?.sequence ?? 0;
 

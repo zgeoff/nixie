@@ -26,15 +26,20 @@ export interface ProcessSandboxOptions {
 // but enforces no egress and injects no grant, passing each grant's placeholders alone.
 export function buildProcessSandboxAdapter(options: ProcessSandboxOptions): SandboxAdapter {
   const live = new Map<string, ProcessState>();
+
   const removeSandbox = async (id: string): Promise<void> => {
     await live.get(id)?.stop();
+
     live.delete(id);
+
     await rm(join(options.rootDir, id), { recursive: true, force: true });
   };
+
   const getSandbox = (id: string, spec: SandboxSpec): Sandbox => {
     const state = live.get(id) ?? buildProcessState();
 
     live.set(id, state);
+
     return buildProcessSandbox({
       recorder: options.recorder,
       toolTarget: options.toolTarget,
@@ -90,11 +95,13 @@ async function createProcessSandbox(
   const id = createSandboxID();
 
   await options.recorder.write({ event: 'created', sandboxID: id, adapter: 'process', spec });
+
   try {
     return await setupProcessSandbox(options, sandboxes.getSandbox(id, spec));
   } catch (error) {
     await sandboxes.removeSandbox(id);
     await options.recorder.write({ event: 'destroyed', sandboxID: id, reason: 'create_failed' });
+
     throw error;
   }
 }
@@ -112,9 +119,12 @@ async function setupProcessSandbox(
       `a disk of ${sandbox.spec.limits.diskMiB} MiB is smaller than the image's filesystem (${imageFilesystemMiB} MiB)`,
     );
   }
+
   await mkdir(join(options.rootDir, sandbox.id, 'fs'), { recursive: true });
   await writeGrantRecords(options.recorder, sandbox.id, sandbox.spec);
+
   await sandbox.toolRoute();
+
   return sandbox;
 }
 

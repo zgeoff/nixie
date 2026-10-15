@@ -25,6 +25,7 @@ async function setupTest() {
       env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },
       write: (bytes: Uint8Array) => {
         written.push(bytes);
+
         return Promise.resolve();
       },
     },
@@ -33,6 +34,7 @@ async function setupTest() {
 
 test('it answers a check request with the model verdict in one reply frame', async () => {
   const ctx = await setupTest();
+
   const request = {
     profile: {
       model: 'claude-sonnet-5-5',
@@ -52,6 +54,7 @@ test('it answers a check request with the model verdict in one reply frame', asy
       input: { verdict: 'asserted', reason: 'The owner states it.' },
     },
   });
+
   await runCheckGuest({ ...ctx.io, input: [encodeFrame(bytes)] });
 
   const [frame] = makeFrameDecoder(1024 * 1024)(ctx.written[0] ?? new Uint8Array());
@@ -67,6 +70,7 @@ test('it answers a check request with the model verdict in one reply frame', asy
 
 test('it answers a malformed request with a failed reply', async () => {
   const ctx = await setupTest();
+
   const bytes = new TextEncoder().encode(JSON.stringify({ input: '' }));
 
   await runCheckGuest({ ...ctx.io, input: [encodeFrame(bytes)] });

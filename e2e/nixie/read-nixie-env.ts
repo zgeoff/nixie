@@ -25,5 +25,6 @@ function requireValue(env: Readonly<Record<string, string | undefined>>, name: s
   if (value === undefined || value === '') {
     throw new Error(`the test build of nixie needs ${name}`);
   }
+
   return value;
 }

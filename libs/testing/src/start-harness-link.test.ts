@@ -13,6 +13,7 @@ test('it starts the clock at the time the harness passed', () => {
 
 test('it passes a fault point that no arm names at once, and sends nothing', async () => {
   const stub = buildStubHarnessChannel();
+
   const link = startHarnessLink(
     { NIXIE_TEST_FAULT_POINTS: '[{"point":"claim.after"}]' },
     stub.channel,
@@ -25,6 +26,7 @@ test('it passes a fault point that no arm names at once, and sends nothing', asy
 
 test('it holds an armed fault point until the harness releases the arrival', async () => {
   const stub = buildStubHarnessChannel();
+
   const link = startHarnessLink(
     { NIXIE_TEST_FAULT_POINTS: '[{"point":"claim.after"}]' },
     stub.channel,
@@ -39,7 +41,9 @@ test('it holds an armed fault point until the harness releases the arrival', asy
   stub.sendToLink({ type: 'release', arrivalID: 1 });
 
   await expect(held).toResolve();
+
   expect(statusBeforeRelease).toBe('pending');
+
   expect(stub.sent).toStrictEqual([
     { type: 'arrived', arrivalID: 1, point: 'claim.after', work: { kind: 'task', id: 'task-1' } },
   ]);
@@ -47,12 +51,14 @@ test('it holds an armed fault point until the harness releases the arrival', asy
 
 test('it holds an arm only as many times as it names', async () => {
   const stub = buildStubHarnessChannel();
+
   const link = startHarnessLink(
     { NIXIE_TEST_FAULT_POINTS: '[{"point":"claim.after","times":1}]' },
     stub.channel,
   );
 
   void link.waitAtFaultPoint('claim.after', { kind: 'task', id: 'task-1' });
+
   await link.waitAtFaultPoint('claim.after', { kind: 'task', id: 'task-2' });
 
   expect(stub.sent).toHaveLength(1);
@@ -60,6 +66,7 @@ test('it holds an arm only as many times as it names', async () => {
 
 test('it holds only the work of the kind and the ID an arm names', async () => {
   const stub = buildStubHarnessChannel();
+
   const link = startHarnessLink(
     { NIXIE_TEST_FAULT_POINTS: '[{"point":"claim.after","kind":"action","workID":"action-1"}]' },
     stub.channel,
@@ -67,6 +74,7 @@ test('it holds only the work of the kind and the ID an arm names', async () => {
 
   await link.waitAtFaultPoint('claim.after', { kind: 'task', id: 'action-1' });
   await link.waitAtFaultPoint('claim.after', { kind: 'action', id: 'action-2' });
+
   void link.waitAtFaultPoint('claim.after', { kind: 'action', id: 'action-1' });
 
   expect(stub.sent).toStrictEqual([
@@ -89,7 +97,9 @@ test('it holds a fault point the harness arms after start', async () => {
     operation: 'arm',
     args: { point: 'renew.after' },
   });
+
   await waitForCondition(() => stub.sent.length === 1);
+
   void link.waitAtFaultPoint('renew.after', { kind: 'task', id: 'task-1' });
 
   expect(stub.sent).toStrictEqual([
@@ -106,6 +116,7 @@ test('it advances the clock and wakes its sleepers for an advance', async () => 
   stub.sendToLink({ type: 'request', requestID: 1, operation: 'advance', args: { ms: 5000 } });
 
   await expect(sleep).toResolve();
+
   expect(link.clock.now()).toBe(5000);
 });
 
@@ -120,12 +131,14 @@ test('it reports an advance settled once every sleeper it woke sleeps again', as
       await link.clock.sleep(1000);
     }
   })();
+
   stub.sendToLink({
     type: 'request',
     requestID: 1,
     operation: 'advance',
     args: { ms: 1000, settle: true },
   });
+
   await waitForCondition(() => stub.sent.length === 1);
 
   expect(stub.sent).toStrictEqual([{ type: 'reply', requestID: 1, result: { settled: true } }]);
@@ -136,12 +149,14 @@ test('it reports an advance unsettled when a sleeper it woke does not sleep agai
   const link = startHarnessLink({ NIXIE_TEST_CLOCK_MS: '0' }, stub.channel);
 
   void link.clock.sleep(1000);
+
   stub.sendToLink({
     type: 'request',
     requestID: 1,
     operation: 'advance',
     args: { ms: 1000, settle: true, settleTimeoutMs: 50 },
   });
+
   await waitForCondition(() => stub.sent.length === 1);
 
   expect(stub.sent).toStrictEqual([{ type: 'reply', requestID: 1, result: { settled: false } }]);
@@ -153,6 +168,7 @@ test('it runs a registered operation and replies with its result', async () => {
 
   link.registerOperation('double', (args) => Number(args) * 2);
   stub.sendToLink({ type: 'request', requestID: 7, operation: 'double', args: 21 });
+
   await waitForCondition(() => stub.sent.length === 1);
 
   expect(stub.sent).toStrictEqual([{ type: 'reply', requestID: 7, result: 42 }]);
@@ -165,7 +181,9 @@ test('it replies with the error of an operation that throws', async () => {
   link.registerOperation('fail', () => {
     throw new Error('the operation failed');
   });
+
   stub.sendToLink({ type: 'request', requestID: 2, operation: 'fail', args: null });
+
   await waitForCondition(() => stub.sent.length === 1);
 
   expect(stub.sent).toStrictEqual([{ type: 'reply', requestID: 2, error: 'the operation failed' }]);
@@ -175,7 +193,9 @@ test('it replies with an error to an operation it does not have', async () => {
   const stub = buildStubHarnessChannel();
 
   startHarnessLink({}, stub.channel);
+
   stub.sendToLink({ type: 'request', requestID: 3, operation: 'nope', args: null });
+
   await waitForCondition(() => stub.sent.length === 1);
 
   expect(stub.sent).toStrictEqual([
@@ -203,6 +223,7 @@ test('it refuses to send when nixie runs without the crash harness IPC channel',
   });
 
   const stderr = await new Response(nixie.stderr).text();
+
   const code = await nixie.exited;
 
   expect(code).toBe(1);

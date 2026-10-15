@@ -23,6 +23,7 @@ import type { MemoryTables, StoreParts, VersionRef } from './types';
 export async function readPendingDiff(parts: StoreParts): Promise<ConsolidationDiff | null> {
   const db = parts.context.log.writer.db.$extendTables<ConsolidationTables & MemoryTables>();
   const now = parts.context.gate.clock.now();
+
   const first = await db
     .selectFrom('memory_consolidation_changes')
     .select('diff_id')
@@ -34,11 +35,13 @@ export async function readPendingDiff(parts: StoreParts): Promise<ConsolidationD
   if (first === undefined) {
     return readSummaryOnlyDiff(parts, now);
   }
+
   const diff = await db
     .selectFrom('memory_consolidations')
     .selectAll()
     .where('diff_id', '=', first.diff_id)
     .executeTakeFirstOrThrow();
+
   const rows = await db
     .selectFrom('memory_consolidation_changes')
     .selectAll()
@@ -47,6 +50,7 @@ export async function readPendingDiff(parts: StoreParts): Promise<ConsolidationD
     .where('lapse_at', '>', now)
     .orderBy('position')
     .execute();
+
   const changes = await readChanges(parts, rows);
 
   return {
@@ -70,6 +74,7 @@ async function readSummaryOnlyDiff(
     .orderBy('sequence', 'desc')
     .limit(1)
     .executeTakeFirst();
+
   const summary = last === undefined ? null : await readConsolidationSummary(parts, last, now);
 
   return last === undefined || summary === null
@@ -82,11 +87,14 @@ async function readChanges(
   rows: readonly ConsolidationChangeRow[],
 ): Promise<readonly ConsolidationChange[]> {
   const log = parts.context.log;
+
   const keys = await findRecordKeys(
     log,
     rows.map((row) => row.item_id),
   );
+
   const commentTimes = await readCommentTimes(parts, rows);
+
   const changes = await Promise.all(
     rows.map(async (row) => {
       const key = keys.get(row.item_id);
@@ -94,6 +102,7 @@ async function readChanges(
       if (key === null || key === undefined) {
         return null;
       }
+
       const text = await decodeChangeText(key, row.change_id, row.sealed);
 
       return {
@@ -126,6 +135,7 @@ async function readCommentTimes(
   if (sequences.length === 0) {
     return new Map();
   }
+
   const records = await parts.context.log.writer.db
     .$extendTables<LogTables>()
     .selectFrom('records')
@@ -142,6 +152,7 @@ async function readInputs(
   inputs: readonly VersionRef[],
 ): Promise<readonly ChangeInput[]> {
   const texts = await readVersionTexts(parts.context.log, inputs);
+
   const items = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
@@ -152,6 +163,7 @@ async function readInputs(
       inputs.map((input) => input.itemID),
     )
     .execute();
+
   const current = new Map(items.map((item) => [item.item_id, item]));
 
   return texts.map((text) => {
@@ -174,8 +186,10 @@ async function readComment(
   if (row.comment === null || row.comment_sequence === null) {
     return null;
   }
+
   const at = times.get(row.comment_sequence);
 
   invariant(at !== undefined, 'a comment names a record that the log does not hold');
+
   return { text: await decodeChangeComment(key, row.change_id, row.comment), at };
 }

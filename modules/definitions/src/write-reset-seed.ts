@@ -31,6 +31,7 @@ export async function writeResetSeed(
   const inForce = { ...seed.inForce, seededAt: new Date(), recordSequence: record.sequence };
 
   await writeSeedRow(tx, inForce);
+
   return inForce;
 }
 
@@ -41,6 +42,7 @@ async function writeSnapshotRows(tx: Transaction<unknown>, seed: ResetSeed): Pro
     .insertInto('personas')
     .values({ persona_version: seed.inForce.personaVersion, instructions: seed.inForce.persona })
     .execute();
+
   await tables
     .insertInto('definition_snapshots')
     .values({

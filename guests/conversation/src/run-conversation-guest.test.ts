@@ -37,6 +37,7 @@ async function setupTest() {
     env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },
     write: (bytes: Uint8Array) => {
       frames.push(...decode(bytes).map((message) => decodeTurnFrame(guestFrameSchema, message)));
+
       return Promise.resolve();
     },
   };
@@ -44,9 +45,11 @@ async function setupTest() {
 
 test('it runs the turn the first frame starts and writes its frames framed', async () => {
   const ctx = await setupTest();
+
   const turn = buildMockTurnFrame({ profile: { baseURL: ctx.model.url } });
 
   ctx.model.addReplies({ text: 'Hello.' });
+
   await runConversationGuest({
     input: [encodeFrame(encodeTurnFrame(turn))],
     write: ctx.write,
@@ -59,12 +62,16 @@ test('it runs the turn the first frame starts and writes its frames framed', asy
 
 test('it answers a turn whose tool server connection failed at start, after one reconnect', async () => {
   const ctx = await setupTest();
+
   const turn = buildMockTurnFrame({ profile: { baseURL: ctx.model.url } });
+
   const tools = await startStubHTTPToolServer();
 
   onTestFinished(() => tools.stop());
+
   tools.dropConnections();
   ctx.model.addReplies({ text: 'Hello.' });
+
   await runConversationGuest({
     input: [encodeFrame(encodeTurnFrame(turn))],
     write: ctx.write,
@@ -77,20 +84,25 @@ test('it answers a turn whose tool server connection failed at start, after one 
   });
 
   expect(ctx.frames.map((frame) => frame.type)).toStrictEqual(['read', 'assistant', 'ended']);
+
   expect(ctx.model.requests.filter((request) => request.path === '/v1/messages')).toMatchObject([
     { body: { tools: [{ name: 'mcp__nixie__note_read' }] } },
   ]);
+
   expect(tools.resets()).toBeGreaterThanOrEqual(1);
 });
 
 test('it reaches the run tool endpoint over HTTP with the run bearer token', async () => {
   const ctx = await setupTest();
+
   const seen: (string | null)[] = [];
+
   const endpoint = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
     fetch: (request) => {
       seen.push(request.headers.get('authorization'));
+
       return new Response('unauthorized', { status: 401 });
     },
   });
@@ -115,6 +127,7 @@ test('it reaches the run tool endpoint over HTTP with the run bearer token', asy
 
 test('it answers a first frame that starts no turn with a failed frame', async () => {
   const ctx = await setupTest();
+
   const message = buildMockMessageFrame();
 
   await runConversationGuest({
@@ -134,9 +147,11 @@ test('it answers a first frame that starts no turn with a failed frame', async (
 
 test('it answers a turn frame that arrives while a turn runs with a failed frame', async () => {
   const ctx = await setupTest();
+
   const turn = buildMockTurnFrame({ profile: { baseURL: ctx.model.url } });
 
   ctx.model.addReplies({ text: 'Hello.' });
+
   await runConversationGuest({
     input: [encodeFrame(encodeTurnFrame(turn)), encodeFrame(encodeTurnFrame(turn))],
     write: ctx.write,
@@ -151,9 +166,11 @@ test('it answers a turn frame that arrives while a turn runs with a failed frame
 
 test('it removes every session transcript and the working directory on a purge frame', async () => {
   const ctx = await setupTest();
+
   const turn = buildMockTurnFrame({ profile: { baseURL: ctx.model.url } });
 
   ctx.model.addReplies({ text: 'Hello.' });
+
   await runConversationGuest({
     input: [encodeFrame(encodeTurnFrame(turn))],
     write: ctx.write,
@@ -180,6 +197,7 @@ test('it never removes a file in the guest home outside the session state on a p
   const ctx = await setupTest();
 
   await writeFile(join(ctx.home, 'keep.txt'), 'not session state');
+
   await runConversationGuest({
     input: [encodeFrame(encodeTurnFrame({ type: 'purge' }))],
     write: ctx.write,

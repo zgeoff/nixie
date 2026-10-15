@@ -31,10 +31,14 @@ const dir = import.meta.dir;
 const name = process.argv[2] ?? 'corpus';
 const ownerName = process.argv[3] === undefined || process.argv[3] === '' ? null : process.argv[3];
 const prompt = renderMemoryCheckerPrompt(ownerName);
+
 const corpus = await loadCheckerCorpus(join(dir, `${name}.json`));
 const home = await mkdtemp(join(tmpdir(), 'nixie-checker-eval-'));
+
 const planned = corpus.samples.flatMap((sample) => planSampleCalls(sample));
+
 const calls = await runPlannedCalls(planned, home);
+
 const report: CheckerReport = {
   model,
   effort,
@@ -63,6 +67,7 @@ async function runPlannedCalls(
 ): Promise<readonly CheckerCall[]> {
   const queue = [...all];
   const done: CheckerCall[] = [];
+
   const runWorker = async (): Promise<void> => {
     for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
       // oxlint-disable-next-line no-await-in-loop -- each worker runs its calls one at a time
@@ -74,6 +79,7 @@ async function runPlannedCalls(
   };
 
   await Promise.all(Array.from({ length: concurrency }, runWorker));
+
   return done.toSorted(
     (left, right) =>
       left.sample.localeCompare(right.sample) ||
@@ -84,6 +90,7 @@ async function runPlannedCalls(
 
 async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCall> {
   const cost = { usd: 0 };
+
   const check = makeChecker({
     model,
     ask: async (request, signal) => {
@@ -102,11 +109,15 @@ async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCal
       if (reply.kind === 'failed') {
         throw new Error(reply.reason);
       }
+
       cost.usd = reply.costUSD;
+
       return reply.output;
     },
   });
+
   const started = performance.now();
+
   const answer = await check({ prompt, input: call.input });
 
   return {
@@ -126,6 +137,7 @@ async function runCall(call: PlannedCall, guestHome: string): Promise<CheckerCal
 function makeLoggedInQuery(signal: AbortSignal): typeof query {
   return (params) => {
     const { ANTHROPIC_API_KEY: _placeholder, ...env } = params.options?.env ?? {};
+
     const session = query({
       ...params,
       options: {
@@ -152,6 +164,7 @@ function makeLoggedInQuery(signal: AbortSignal): typeof query {
     if (signal.aborted) {
       session.close();
     }
+
     return session;
   };
 }

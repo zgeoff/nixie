@@ -19,11 +19,13 @@ export interface RecordWake {
 // poll every pollMs (1 s by default) for a change the watcher misses, and the signal's abort.
 export function startRecordWake(dataDir: string, options: RecordWakeOptions): RecordWake {
   const state: WakeState = { pending: true, stopped: false, waiter: null };
+
   const emitWake = (): void => {
     state.pending = true;
     state.waiter?.resolve();
     state.waiter = null;
   };
+
   const unsubscribe = (options.subscribeToChanges ?? subscribeToWAL)(dataDir, emitWake);
   const poll = setInterval(emitWake, options.pollMs ?? DEFAULT_POLL_MS);
 
@@ -31,7 +33,9 @@ export function startRecordWake(dataDir: string, options: RecordWakeOptions): Re
     if (state.stopped) {
       return;
     }
+
     state.stopped = true;
+
     clearInterval(poll);
     unsubscribe();
     options.signal?.removeEventListener('abort', stop);
@@ -40,6 +44,7 @@ export function startRecordWake(dataDir: string, options: RecordWakeOptions): Re
 
   // an abort stops the watcher and the poll at once, even when no consumer pulls again
   options.signal?.addEventListener('abort', stop, { once: true });
+
   return {
     reset: () => {
       state.pending = false;
@@ -48,7 +53,9 @@ export function startRecordWake(dataDir: string, options: RecordWakeOptions): Re
       if (state.pending) {
         return Promise.resolve();
       }
+
       state.waiter ??= Promise.withResolvers<void>();
+
       return state.waiter.promise;
     },
     stop,

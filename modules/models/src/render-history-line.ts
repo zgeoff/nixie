@@ -16,5 +16,6 @@ export function renderHistoryLine(turn: HistoryTurn, times: MessageTimeOptions):
 
     return `[#${record.sequence} · ${time}] nixie: ${typeof text === 'string' ? text : '[a reply, since forgotten]'}`;
   }
+
   return `[${formatMessageStamp(record, times)}] owner: ${renderOwnerText(record)}`;
 }

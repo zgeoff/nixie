@@ -19,10 +19,12 @@ test('it removes the config folder and the working directory with every file in 
   const ctx = await setupTest();
 
   await mkdir(join(ctx.home, '.claude', 'projects', 'conversation'), { recursive: true });
+
   await writeFile(
     join(ctx.home, '.claude', 'projects', 'conversation', 'session.jsonl'),
     '{"text":"the spare key"}\n',
   );
+
   await mkdir(join(ctx.home, 'conversation'));
   await removeSessionState(ctx.home);
 

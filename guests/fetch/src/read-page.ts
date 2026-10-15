@@ -27,6 +27,7 @@ export async function readPage(url: string, options: PageReaderOptions): Promise
     if (signal.aborted) {
       return { kind: 'failed', reason: `the fetch passed ${options.limits.timeoutMs} ms` };
     }
+
     return { kind: 'failed', reason: error instanceof Error ? error.message : String(error) };
   }
 }
@@ -47,9 +48,11 @@ async function readRedirectChain(
     if (step.kind !== 'redirect') {
       return step;
     }
+
     if (hop.count === options.limits.redirects) {
       return { kind: 'failed', reason: `the page redirected more than ${hop.count} times` };
     }
+
     hop.url = step.location;
     hop.count += 1;
   }
@@ -65,12 +68,16 @@ async function readHop(
   if (planned.kind === 'refused') {
     return planned;
   }
+
   const response = await sendPinnedRequest(planned, options);
+
   const location = response.headers.location;
 
   if (!redirectStatuses.has(response.statusCode ?? 0) || location === undefined) {
     return readResponsePage(planned.url, response, options.limits);
   }
+
   response.destroy();
+
   return { kind: 'redirect', location: new URL(location, planned.url).href };
 }

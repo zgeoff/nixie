@@ -12,6 +12,7 @@ async function setupTest() {
   onTestFinished(() => {
     setSystemTime();
   });
+
   return { log: memory.log };
 }
 
@@ -19,18 +20,23 @@ test('it reads only the entries recorded in the time range', async () => {
   const ctx = await setupTest();
 
   setSystemTime(new Date(Date.UTC(2026, 9, 11, 22, 0)));
+
   await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'Before the range',
     spans: [{ start: 0, end: 16, source: 'typed' }],
   });
+
   setSystemTime(new Date(Date.UTC(2026, 9, 12, 9, 30)));
+
   const inside = await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'Inside the range',
     spans: [{ start: 0, end: 16, source: 'typed' }],
   });
+
   setSystemTime(new Date(Date.UTC(2026, 9, 13, 0, 0)));
+
   await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'At the end of the range',
@@ -68,6 +74,7 @@ test('it reads only the entries that hold every word of a search, in any case', 
     text: 'The plum tree needs pruning',
     spans: [{ start: 0, end: 27, source: 'typed' }],
   });
+
   const [reply] = await writeRecords(ctx.log, [
     {
       kind: 'model.reply',
@@ -78,6 +85,7 @@ test('it reads only the entries that hold every word of a search, in any case', 
   ]);
 
   invariant(reply);
+
   await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'The pear tree is fine',
@@ -135,11 +143,13 @@ test('it returns at most one page, with the cursor that reads the next one', asy
     first.sequence,
     second.sequence,
   ]);
+
   expect(page.next).toBe(second.sequence);
 });
 
 test('it reads the page after the cursor and ends with no cursor', async () => {
   const ctx = await setupTest();
+
   const [, second, third] = await writeRecords(
     ctx.log,
     ['One', 'Two', 'Three'].map((text) => ({
@@ -177,6 +187,7 @@ test('it reads the page after the cursor and ends with no cursor', async () => {
 
 test('it stops a search after 500 records with the cursor to go on from', async () => {
   const ctx = await setupTest();
+
   const written = await writeRecords(
     ctx.log,
     Array.from({ length: 501 }, (_, index) => ({
@@ -186,6 +197,7 @@ test('it stops a search after 500 records with the cursor to go on from', async 
       erasable: { text: index === 500 ? 'The kettle is descaled' : 'Nothing here' },
     })),
   );
+
   const lastScanned = written.at(499);
 
   invariant(lastScanned);
@@ -210,6 +222,7 @@ test('it leaves out the records of other threads and the kinds a reader never se
     text: 'A task message',
     spans: [{ start: 0, end: 14, source: 'typed' }],
   });
+
   await writeRecords(ctx.log, [
     {
       kind: 'tool_called',
@@ -233,6 +246,7 @@ test('it leaves out the records of other threads and the kinds a reader never se
 
 test('it shows a forgotten message with no text, and a search never returns it', async () => {
   const ctx = await setupTest();
+
   const sequence = await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'The gate code is 2290',
@@ -249,6 +263,7 @@ test('it shows a forgotten message with no text, and a search never returns it',
     words: [],
     limit: 20,
   });
+
   const searched = await readLogPage(ctx.log, {
     thread: 'conversation',
     after: 0,
@@ -261,6 +276,7 @@ test('it shows a forgotten message with no text, and a search never returns it',
   expect(read.entries).toStrictEqual([
     { sequence, role: 'owner', recordedAt: expect.toBeNumber(), text: null, isCut: false },
   ]);
+
   expect(searched.entries).toStrictEqual([]);
 });
 
@@ -290,6 +306,7 @@ test('it matches a search against the words of your message, never the block aro
 
 test('it puts each pasted span of your message in a block', async () => {
   const ctx = await setupTest();
+
   const sequence = await writeOwnerMessageRecord(ctx.log, {
     thread: 'conversation',
     text: 'See this: buses run hourly',
@@ -307,12 +324,15 @@ test('it puts each pasted span of your message in a block', async () => {
     words: [],
     limit: 20,
   });
+
   const [entry] = page.entries;
 
   invariant(typeof entry?.text === 'string');
+
   expect(page.entries).toStrictEqual([
     { sequence, role: 'owner', recordedAt: expect.toBeNumber(), text: entry.text, isCut: false },
   ]);
+
   expect(entry.text).toMatch(
     /^See this: <pasted id="(?<id>[0-9a-f]{12})">buses run hourly<\/pasted id="\k<id>">$/u,
   );
@@ -320,6 +340,7 @@ test('it puts each pasted span of your message in a block', async () => {
 
 test('it shows a tool result as its fields', async () => {
   const ctx = await setupTest();
+
   const [result] = await writeRecords(ctx.log, [
     {
       kind: 'tool_result',

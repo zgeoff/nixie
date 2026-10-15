@@ -14,6 +14,7 @@ export function buildRunServer(run: ToolRun, options: ToolCallOptions): Server {
     { name: 'nixie', version: '0.0.0' },
     { capabilities: { tools: { listChanged: true } } },
   );
+
   const tools = run.tools.flatMap((name) => {
     const registered = options.registry.findTool(name);
 
@@ -30,6 +31,7 @@ export function buildRunServer(run: ToolRun, options: ToolCallOptions): Server {
   });
 
   server.setRequestHandler('tools/list', () => ({ tools }));
+
   server.setRequestHandler('tools/call', (request) =>
     runToolCall(
       {
@@ -46,6 +48,7 @@ export function buildRunServer(run: ToolRun, options: ToolCallOptions): Server {
       options,
     ),
   );
+
   return server;
 }
 

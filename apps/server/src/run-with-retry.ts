@@ -25,11 +25,13 @@ export async function runWithRetry<T>(
 
   for (;;) {
     options.signal.throwIfAborted();
+
     try {
       // oxlint-disable-next-line no-await-in-loop -- each attempt follows the last one's wait
       return await attempt();
     } catch (error) {
       options.signal.throwIfAborted();
+
       options.log('start.retry', {
         step: options.step,
         delayMs: delay.ms,
@@ -38,6 +40,7 @@ export async function runWithRetry<T>(
 
       // oxlint-disable-next-line no-await-in-loop -- the wait between attempts
       await waitForDelay(delay.ms, options.signal);
+
       delay.ms = Math.min(delay.ms * 2, options.maxDelayMs ?? 30_000);
     }
   }
@@ -51,9 +54,11 @@ function waitForDelay(ms: number, signal: AbortSignal): Promise<void> {
     'abort',
     () => {
       clearTimeout(timer);
+
       waited.reject(signal.reason);
     },
     { once: true },
   );
+
   return waited.promise;
 }

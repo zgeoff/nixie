@@ -11,5 +11,6 @@ export function buildGuestCommand(): GuestCommand {
       env: {},
     };
   }
+
   return { argv: ['bun', '/app/guests/conversation/src/main.ts'], env: { HOME: '/home/nixie' } };
 }

@@ -30,6 +30,7 @@ export async function startTestConversation(
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
+
   await createConversationTask(options.context);
 
   const runner = await startConversation({
@@ -64,5 +65,6 @@ export async function startTestConversation(
   });
 
   server.defer(() => runner.stop());
+
   return { runner, model };
 }

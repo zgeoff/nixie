@@ -16,5 +16,6 @@ export async function readChangeText(
   if (key === null || key === undefined) {
     throw new MemoryItemNotFoundError(row.item_id);
   }
+
   return decodeChangeText(key, row.change_id, row.sealed);
 }

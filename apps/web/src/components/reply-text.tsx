@@ -32,6 +32,7 @@ function ReplyLink(props: ComponentProps<'a'>): ReactNode {
   if (props.href === undefined || props.href === '') {
     return <span>{props.children}</span>;
   }
+
   if (props.href.startsWith('#')) {
     return (
       <a

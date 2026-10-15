@@ -33,6 +33,7 @@ async function waitForToolServer(
   if (first === null || first.status === 'connected') {
     return first;
   }
+
   await waitBeforeReconnect();
 
   try {
@@ -40,6 +41,7 @@ async function waitForToolServer(
   } catch {
     // the status read next carries the reason
   }
+
   return findToolServer(session);
 }
 

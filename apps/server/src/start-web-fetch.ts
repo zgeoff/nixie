@@ -27,6 +27,7 @@ export const fetchImageArgv: readonly string[] = ['/usr/local/bin/bun', '/app/fe
 // others.
 export function startWebFetch(options: WebFetchOptions): WebFetch {
   const config = options.config ?? webFetchDefaults;
+
   const fetchSandbox = startFetchSandbox({
     adapter: options.adapter,
     image: options.image,

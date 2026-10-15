@@ -52,14 +52,17 @@ async function readSealedNote(
   sealed: SealedNote,
 ): Promise<RatingNoteResult> {
   const base = { sequence: ref.sequence, itemID: ref.itemID };
+
   const key = await findItemKey(log, ref.itemID);
 
   if (key === undefined) {
     return { ...base, status: 'shredded' };
   }
+
   if (key === null) {
     return { ...base, status: 'unreadable' };
   }
+
   try {
     const text = await decodeRatingNote(key, sealed, sealed.sealedNote);
 
@@ -80,6 +83,7 @@ async function findSealedNote(
     kinds: ['memory.rated'],
     limit: 1,
   });
+
   const payload = ratedPayload.safeParse(entry?.record.payload);
   const rating = payload.data?.ratings.find((candidate) => candidate.itemID === ref.itemID);
 
@@ -89,5 +93,4 @@ async function findSealedNote(
 }
 
 const ratedItem = z.object({ itemID: z.string(), sealedNote: z.string().optional() });
-
 const ratedPayload = z.object({ ratingID: z.string(), ratings: z.array(ratedItem) });

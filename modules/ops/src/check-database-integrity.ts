@@ -7,6 +7,7 @@ import type { PartReport } from './types';
 // their count.
 export async function checkDatabaseIntegrity(db: Kysely<unknown>): Promise<PartReport> {
   const result = await sql<{ readonly quick_check: string }>`PRAGMA quick_check`.execute(db);
+
   const problems = result.rows.filter((row) => row.quick_check !== 'ok');
 
   return problems.length === 0

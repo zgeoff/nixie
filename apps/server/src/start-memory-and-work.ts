@@ -15,6 +15,7 @@ export async function startMemoryAndWork(
   conversation: ConversationImp,
 ): Promise<void> {
   const retry = { signal: parts.cleanup.signal, log: parts.log };
+
   const store = await runWithRetry(() => startMemory(parts, conversation.cleanupSessions), {
     ...retry,
     step: 'memory',
@@ -31,6 +32,7 @@ export async function startMemoryAndWork(
     ...retry,
     step: 'memory_consolidator',
   });
+
   const systemSteps = new Map<string, RunStep>([
     [memoryWriterTaskID, writerStep],
     [memoryConsolidatorTaskID, consolidatorStep],

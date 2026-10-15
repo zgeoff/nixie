@@ -24,6 +24,7 @@ export interface TestLog {
 // clock.
 export async function startTestLog(options: TestLogOptions): Promise<TestLog> {
   const writer = await startWriter({ dataDir: options.dataDir });
+
   const deploymentKey = await crypto.subtle.importKey(
     'raw',
     Buffer.from(options.deploymentKey, 'base64'),

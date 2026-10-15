@@ -31,6 +31,7 @@ export async function runRecovery(
   for (const step of steps) {
     // oxlint-disable-next-line no-await-in-loop -- the steps run in order
     await step.run();
+
     if (NIXIE_TEST_BUILD) {
       // oxlint-disable-next-line no-await-in-loop -- the harness holds each step in turn
       await waitAtFaultPoint(`recovery.step.${step.number}`, { kind: 'recovery', id: null });

@@ -19,6 +19,7 @@ export function writeApprovedRetirement(
   if (answer.editedText !== undefined) {
     return Promise.reject(new RetirementEditError(row.proposal_id));
   }
+
   const evidence = parseEvidence(row.evidence);
 
   return writeRetirement(

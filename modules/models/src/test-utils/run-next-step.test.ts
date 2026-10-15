@@ -10,9 +10,11 @@ function setupTest() {
 
 test('it runs one step of the task with work and commits its result', async () => {
   const ctx = await setupTest();
+
   const inputs: StepInput[] = [];
 
   await createConversationTask(ctx.context);
+
   await writeInboxRecords(ctx.context, [
     {
       kind: 'owner_message',
@@ -21,8 +23,10 @@ test('it runs one step of the task with work and commits its result', async () =
       erasable: { text: 'Hi.' },
     },
   ]);
+
   await runNextStep(ctx.context, (input) => {
     inputs.push(input);
+
     return Promise.resolve({ next: 'wait', records: [], acknowledged: [2] });
   });
 

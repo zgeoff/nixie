@@ -20,6 +20,7 @@ test('it resolves ready once nixie says it is ready', async () => {
 
 test('it rejects ready with the stderr of a nixie that exits first', async () => {
   const ctx = setupTest();
+
   const nixie = startNixieProcess({
     entry: ctx.entry,
     env: { STUB_NIXIE_REFUSE: '1' },
@@ -29,6 +30,7 @@ test('it rejects ready with the stderr of a nixie that exits first', async () =>
   onTestFinished(() => nixie.kill());
 
   expect(nixie.ready).rejects.toThrow('nixie exited with code 3: the stub refused to start');
+
   const exit = await nixie.exited;
 
   expect(exit).toStrictEqual({ code: 3, signal: null });
@@ -39,6 +41,7 @@ test('it starts nixie on the clock time it is given', async () => {
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 1_000_000 });
 
   onTestFinished(() => nixie.kill());
+
   await nixie.ready;
 
   const now = await nixie.request('now', null);
@@ -48,6 +51,7 @@ test('it starts nixie on the clock time it is given', async () => {
 
 test('it reports an arrival at an armed fault point and lets the runner go on release', async () => {
   const ctx = setupTest();
+
   const nixie = startNixieProcess({
     entry: ctx.entry,
     env: {},
@@ -56,9 +60,11 @@ test('it reports an arrival at an armed fault point and lets the runner go on re
   });
 
   onTestFinished(() => nixie.kill());
+
   await nixie.ready;
 
   const held = nixie.request('hold', 'work-1');
+
   const arrival = await nixie.waitForArrival('stub.point', 'work-1');
 
   nixie.release(arrival);
@@ -68,6 +74,7 @@ test('it reports an arrival at an armed fault point and lets the runner go on re
     point: 'stub.point',
     work: { kind: 'stub', id: 'work-1' },
   });
+
   const result = await held;
 
   expect(result).toBe('released');
@@ -78,9 +85,11 @@ test('it kills nixie and every process nixie started', async () => {
   const nixie = startNixieProcess({ entry: ctx.entry, env: {}, clockMs: 0 });
 
   onTestFinished(() => nixie.kill());
+
   await nixie.ready;
 
   const started = await nixie.request('startChild', null);
+
   const childPID = Number(started);
 
   onTestFinished(() => {
@@ -90,11 +99,13 @@ test('it kills nixie and every process nixie started', async () => {
   const exit = await nixie.kill();
 
   expect(exit).toStrictEqual({ code: null, signal: 'SIGKILL' });
+
   await expect(waitForCondition(() => isProcessGone(childPID))).toResolve();
 });
 
 test('it rejects a request that a kill cut short', async () => {
   const ctx = setupTest();
+
   const nixie = startNixieProcess({
     entry: ctx.entry,
     env: {},
@@ -103,6 +114,7 @@ test('it rejects a request that a kill cut short', async () => {
   });
 
   onTestFinished(() => nixie.kill());
+
   await nixie.ready;
 
   const held = nixie.request('hold', 'work-1');

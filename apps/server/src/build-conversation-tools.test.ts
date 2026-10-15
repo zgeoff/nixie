@@ -23,6 +23,7 @@ async function setupTest() {
   const log = await startTestLog(dataDir);
 
   stack.defer(() => log.writer.stop());
+
   return { logRead: buildLogReadTool(log) };
 }
 
@@ -75,6 +76,7 @@ function buildWriteStandIn(): ToolDefinition {
 
 test('it lists the web fetch tool, the time tool, the log reader and the 8 memory tools', async () => {
   const ctx = await setupTest();
+
   const definitions = buildConversationTools(
     { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
     {
@@ -103,6 +105,7 @@ test('it lists the web fetch tool, the time tool, the log reader and the 8 memor
 
 test('it fails a memory call that runs before the memory store starts', async () => {
   const ctx = await setupTest();
+
   const definitions = buildConversationTools(
     { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
     {
@@ -113,6 +116,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
       defaultZone: 'Australia/Sydney',
     },
   );
+
   const recall = definitions.find((definition) => definition.name === 'memory.recall');
 
   expect(
@@ -132,6 +136,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
 
 test('it allows the time tool, the log reader and each memory tool and denies a write tool under the read-only rule', async () => {
   const ctx = await setupTest();
+
   const registry = buildToolRegistry([
     ...buildConversationTools(
       { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
@@ -145,9 +150,11 @@ test('it allows the time tool, the log reader and each memory tool and denies a 
     ),
     buildWriteStandIn(),
   ]);
+
   const decide = makeDecisionPoint({
     findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
   });
+
   const readTools = [
     'time.now',
     'log.read',
@@ -160,7 +167,9 @@ test('it allows the time tool, the log reader and each memory tool and denies a 
     'memory.diff',
     'memory.comment',
   ];
+
   const toolList = ['web.fetch', ...readTools, 'files.write'];
+
   const allowed = {
     decision: {
       outcome: 'allow' as const,
@@ -173,6 +182,7 @@ test('it allows the time tool, the log reader and each memory tool and denies a 
   expect(readTools.map((tool) => decide({ tool, toolList }))).toStrictEqual(
     readTools.map(() => allowed),
   );
+
   expect(decide({ tool: 'files.write', toolList })).toMatchObject({
     decision: { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only' } },
   });
@@ -180,6 +190,7 @@ test('it allows the time tool, the log reader and each memory tool and denies a 
 
 test('it offers no tool that approves, rejects or edits a consolidation change', async () => {
   const ctx = await setupTest();
+
   const definitions = buildConversationTools(
     { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
     {
@@ -190,6 +201,7 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
       defaultZone: 'Australia/Sydney',
     },
   );
+
   const inputs = definitions.map(
     (definition) => [definition.name, Object.keys(definition.input['properties'] ?? {})] as const,
   );
@@ -198,6 +210,7 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
   expect(inputs).toSatisfyAll(
     ([, keys]: readonly [string, readonly string[]]) => !keys.includes('actionHash'),
   );
+
   expect(inputs.filter(([, keys]) => keys.includes('changeID'))).toStrictEqual([
     ['memory.comment', ['changeID', 'comment']],
   ]);

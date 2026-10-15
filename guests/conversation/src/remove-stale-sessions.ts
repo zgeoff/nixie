@@ -11,8 +11,11 @@ export async function removeStaleSessions(
   if (configDir === undefined) {
     return;
   }
+
   const projectsDir = join(configDir, 'projects');
+
   const projects = await readdir(projectsDir).catch(() => []);
+
   const entries = await Promise.all(
     projects.map(async (project) => {
       const names = await readdir(join(projectsDir, project));
@@ -20,6 +23,7 @@ export async function removeStaleSessions(
       return names.map((name) => join(projectsDir, project, name));
     }),
   );
+
   const stale = entries.flat().filter((path) => !isKeptSession(basename(path), keep));
 
   await Promise.all(stale.map((path) => rm(path, { recursive: true, force: true })));

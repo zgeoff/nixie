@@ -17,6 +17,7 @@ test('it refuses an item rated once by its short ID and once by its item ID', as
   const tram = await createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' });
 
   await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
+
   const shortID = await readItemShortID(ctx.memory.log, tram.itemID);
 
   const rate = ctx.memory.store.rate({
@@ -42,6 +43,7 @@ test('it rates the newest version a recall with history delivered', async () => 
   const tram = await createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' });
 
   await ctx.memory.store.retire({ target: tram, provenance: buildMockProvenance() });
+
   await ctx.memory.store.recall({
     itemIDs: [tram.itemID],
     includeRetired: true,
@@ -55,6 +57,7 @@ test('it rates the newest version a recall with history delivered', async () => 
     ratedBy: null,
     ratings: [{ item: tram.itemID, verdict: 'noise' }],
   });
+
   const [rated] = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['memory.rated'] });
 
   expect(rated?.record.payload['ratings']).toStrictEqual([
@@ -68,6 +71,7 @@ test('it refuses a note on an item forgotten since the recall', async () => {
 
   await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
   await ctx.memory.store.forget({ target: tram, provenance: buildMockProvenance() });
+
   const shortID = await readItemShortID(ctx.memory.log, tram.itemID);
 
   const rate = ctx.memory.store.rate({

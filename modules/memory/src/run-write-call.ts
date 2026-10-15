@@ -23,6 +23,7 @@ export async function runWriteCall(
         result: { ...outcome, reason: memory.renderReviewReason(outcome.reason) },
       };
     }
+
     const shortIDs = await memory.readShortIDs([outcome.itemID]);
 
     return {
@@ -38,6 +39,7 @@ export async function runWriteCall(
     ) {
       return { status: 'error', message: await renderMessage(memory, error.message, itemID) };
     }
+
     throw error;
   }
 }
@@ -51,7 +53,9 @@ async function renderMessage(
   if (itemID === null) {
     return message;
   }
+
   const shortIDs = await memory.readShortIDs([itemID]);
+
   const shortID = shortIDs.get(itemID);
 
   return shortID === undefined ? message : message.replaceAll(itemID, shortID);

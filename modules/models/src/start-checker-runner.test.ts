@@ -39,6 +39,7 @@ test('it keeps the checker sandbox when its spec still matches', async () => {
     command: { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: {} },
     log: () => {},
   });
+
   await startCheckerRunner({
     profile,
     sandboxes: sandboxes.adapter,
@@ -64,6 +65,7 @@ test('it replaces the checker sandbox when the image changed', async () => {
     command: { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: {} },
     log: () => {},
   });
+
   await startCheckerRunner({
     profile,
     sandboxes: sandboxes.adapter,
@@ -77,5 +79,6 @@ test('it replaces the checker sandbox when the image changed', async () => {
     'nixie-conversation-0123456789ab',
     'nixie-conversation-ba9876543210',
   ]);
+
   expect(sandboxes.destroyed).toHaveLength(1);
 });

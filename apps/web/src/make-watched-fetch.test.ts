@@ -12,6 +12,7 @@ function setupTest() {
 
 test('it fails an event stream that sends nothing for the idle period', async () => {
   const ctx = setupTest();
+
   const watchedFetch = makeWatchedFetch({
     fetch: () =>
       Promise.resolve(
@@ -20,6 +21,7 @@ test('it fails an event stream that sends nothing for the idle period', async ()
     idleMs: 100,
     startTimer: ctx.timer.startTimer,
   });
+
   const response = await watchedFetch(new Request('http://127.0.0.1/events'));
 
   ctx.timer.advance(100);
@@ -32,6 +34,7 @@ test('it fails an event stream that sends nothing for the idle period', async ()
 
 test('it keeps an event stream open while its keepalives arrive within the idle period', async () => {
   const ctx = setupTest();
+
   const watchedFetch = makeWatchedFetch({
     fetch: () =>
       Promise.resolve(
@@ -40,16 +43,21 @@ test('it keeps an event stream open while its keepalives arrive within the idle 
     idleMs: 100,
     startTimer: ctx.timer.startTimer,
   });
+
   const response = await watchedFetch(new Request('http://127.0.0.1/events'));
 
   invariant(response.body);
+
   const reader = response.body.getReader();
 
   // a read returns once the watch passed the chunk on, so its idle timer restarted first; the two
   // waits add up past the idle period, and neither reaches it alone
   ctx.timer.advance(60);
+
   await Promise.all([ctx.writer.write(new TextEncoder().encode(': keepalive\n\n')), reader.read()]);
+
   ctx.timer.advance(60);
+
   const [, last] = await Promise.all([
     ctx.writer.write(new TextEncoder().encode('data: {"last":true}\n\n')),
     reader.read(),
@@ -60,6 +68,7 @@ test('it keeps an event stream open while its keepalives arrive within the idle 
 
 test('it passes a response that is not an event stream through unwatched', async () => {
   const ctx = setupTest();
+
   const watchedFetch = makeWatchedFetch({
     fetch: () =>
       Promise.resolve(
@@ -70,7 +79,6 @@ test('it passes a response that is not an event stream through unwatched', async
   });
 
   const response = await watchedFetch(new Request('http://127.0.0.1/state'));
-
   const body: unknown = await response.json();
 
   expect(body).toStrictEqual({ ok: true });

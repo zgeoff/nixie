@@ -68,9 +68,11 @@ export function buildPendingTool(
     execution: 'direct',
     run: async () => {
       const proposals = await memory.proposals.listPending();
+
       const shortIDs = await memory.readShortIDs(
         proposals.flatMap((proposal) => (proposal.targetVersion === null ? [] : [proposal.itemID])),
       );
+
       const now = clock.now();
 
       // the record holds only the proposal IDs, so a forget leaves no readable copy of the text
@@ -106,6 +108,7 @@ function pickChange(proposal: MemoryProposal): 'new' | 'edit' | 'retire' {
   if (proposal.operation === 'retire') {
     return 'retire';
   }
+
   return proposal.targetVersion === null ? 'new' : 'edit';
 }
 
@@ -131,9 +134,11 @@ function formatAge(ms: number): string {
   if (minutes < 1) {
     return 'under a minute';
   }
+
   if (minutes < 60) {
     return formatCount(minutes, 'minute');
   }
+
   const hours = Math.floor(minutes / 60);
 
   return hours < 24 ? formatCount(hours, 'hour') : formatCount(Math.floor(hours / 24), 'day');

@@ -25,6 +25,7 @@ interface RunnerConfig {
 // started last, and a start of the conversation that stops the runner before it, as a deploy does
 async function setupTest() {
   const server = await startTestServer();
+
   const model = startScriptedModel();
   const log = mock<Parameters<typeof startConversation>[0]['log']>();
 
@@ -34,6 +35,7 @@ async function setupTest() {
 
   // before a runner starts, no session holds anything to clean up
   const runners = { last: null as Awaited<ReturnType<typeof startConversation>> | null };
+
   const memory = await startTestMemoryStore(
     context,
     (itemID) => runners.last?.cleanupSessions(itemID) ?? Promise.resolve(),
@@ -48,6 +50,7 @@ async function setupTest() {
     sandboxesDir: `${server.dataDir}/sandboxes`,
     startRunner: async (config: RunnerConfig) => {
       await runners.last?.stop();
+
       runners.last = await startConversation({
         context,
         models: buildTestModelsConfig({ modelURL: model.url, ...config }),
@@ -61,6 +64,7 @@ async function setupTest() {
         memory: () => memory,
         log,
       });
+
       return runners.last;
     },
     readRecords: async () => {
@@ -75,12 +79,14 @@ async function setupTest() {
 
 test('it runs each turn in the conversation guest on the role profile and resumes at the boundary', async () => {
   const ctx = await setupTest();
+
   const [runner] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
   ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+
   await sendTestMessage(ctx.context, runner.runStep, 'Say a fruit.');
   await sendTestMessage(ctx.context, runner.runStep, 'Another.');
 
@@ -96,15 +102,18 @@ test('it runs each turn in the conversation guest on the role profile and resume
       erasable: { fields: { text: 'BANANA' } },
     },
   ]);
+
   expect(ctx.model.requests.filter((request) => request.path === '/v1/messages')).toMatchObject([
     { headers: { 'x-api-key': 'imp-broker-placeholder' }, body: { model: 'claude-test-1' } },
     { headers: { 'x-api-key': 'imp-broker-placeholder' }, body: { model: 'claude-test-1' } },
   ]);
+
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
 }, 30_000);
 
 test('it opens a new session with a pinned item and the line that says where it came from in the first message, and leaves it out of the system prompt', async () => {
   const ctx = await setupTest();
+
   const [item, runner] = await Promise.all([
     ctx.memory.remember({
       text: 'Goes by Sam',
@@ -127,6 +136,7 @@ test('it opens a new session with a pinned item and the line that says where it 
     ctx.memory.readShortIDs([item.itemID]),
     sendTestMessage(ctx.context, runner.runStep, 'What do I go by?'),
   ]);
+
   const request = ctx.readLastRequest();
   const shortID = String(shortIDs.get(item.itemID));
 
@@ -145,6 +155,7 @@ test('it opens a new session with a pinned item and the line that says where it 
 
 test('it keeps the system prompt the same bytes when a pinned item is edited during a session, and sends the change note before the next message', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -152,6 +163,7 @@ test('it keeps the system prompt the same bytes when a pinned item is edited dur
     proposalID: null,
     checks: null,
   } as const;
+
   const [item, runner] = await Promise.all([
     ctx.memory.remember({ text: 'Goes by Sam', isPinned: true, provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
@@ -159,13 +171,17 @@ test('it keeps the system prompt the same bytes when a pinned item is edited dur
   ]);
 
   ctx.model.addReplies({ text: 'Hello, Sam.' }, { text: 'You go by Sasha now.' });
+
   await sendTestMessage(ctx.context, runner.runStep, 'Hi.');
 
   const before = JSON.stringify(ctx.readLastRequest()?.system);
+
   await ctx.memory.remember({ text: 'Goes by Sasha', target: item, provenance });
+
   await sendTestMessage(ctx.context, runner.runStep, 'What do I go by?');
 
   expect(JSON.stringify(ctx.readLastRequest()?.system)).toBe(before);
+
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toMatch(
     /<system-message type=\\"pinned-memory-changes\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- Changed \[(?<shortID>[\da-z]+)\]:\\n  - Goes by Sasha\\n    \k<shortID> v2 · [^\\]+ · the owner said this\\n<\/system-message id=\\"\k<blockID>\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] What do I go by\?/u,
   );
@@ -173,12 +189,14 @@ test('it keeps the system prompt the same bytes when a pinned item is edited dur
 
 test('it rebuilds the session with the recent turns once a replaced sandbox has lost the session', async () => {
   const ctx = await setupTest();
+
   const [first] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
   ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+
   await sendTestMessage(ctx.context, first.runStep, 'Say a fruit.');
 
   // with every transcript gone, the replacement has no session to carry over
@@ -197,6 +215,7 @@ test('it rebuilds the session with the recent turns once a replaced sandbox has 
       messages.includes(String.raw`] nixie: APPLE\n</system-message id=\"`) &&
       messages.includes(String.raw`, UTC] Another.`),
   );
+
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },
     { payload: { kind: 'rebuild', reason: 'lost', recentRecords: 2 } },
@@ -205,6 +224,7 @@ test('it rebuilds the session with the recent turns once a replaced sandbox has 
 
 test('it removes every session file that holds a forgotten item', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -212,6 +232,7 @@ test('it removes every session file that holds a forgotten item', async () => {
     proposalID: null,
     checks: null,
   } as const;
+
   const [key, runner] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
@@ -223,6 +244,7 @@ test('it removes every session file that holds a forgotten item', async () => {
   ]);
 
   ctx.model.addReplies({ text: 'Under the flowerpot.' });
+
   await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
 
   const held = await collectFilesWithText(`${ctx.dataDir}/sandboxes`, 'blue flowerpot');
@@ -234,11 +256,13 @@ test('it removes every session file that holds a forgotten item', async () => {
   expect(held).toSatisfy((paths: readonly string[]) =>
     paths.some((path) => path.includes('/fs/.claude/projects/')),
   );
+
   expect(left).toStrictEqual([]);
 }, 30_000);
 
 test('it runs the turn after a forget on a rebuilt session without the forgotten item', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -246,6 +270,7 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
     proposalID: null,
     checks: null,
   } as const;
+
   const [key, runner] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
@@ -257,8 +282,11 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
   ]);
 
   ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'You are welcome.' });
+
   await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
+
   await ctx.memory.forget({ target: key, provenance });
+
   await sendTestMessage(ctx.context, runner.runStep, 'Thanks.');
 
   const records = await ctx.readRecords();
@@ -266,6 +294,7 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
   expect(JSON.stringify(ctx.readLastRequest())).toSatisfy(
     (request: string) => request.includes('Thanks.') && !request.includes('blue flowerpot'),
   );
+
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },
     { payload: { kind: 'rebuild', reason: 'forget' } },
@@ -274,6 +303,7 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
 
 test('it records an automatic compaction once, with its token counts and no summary text', async () => {
   const ctx = await setupTest();
+
   const [runner] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab', contextTokens: 100_000 }),
     createConversationTask(ctx.context),
@@ -288,6 +318,7 @@ test('it records an automatic compaction once, with its token counts and no summ
     { text: 'SUMMARY: the owner said one and two.' },
     { text: 'CHERRY' },
   );
+
   await sendTestMessage(ctx.context, runner.runStep, 'one');
   await sendTestMessage(ctx.context, runner.runStep, 'two');
   await sendTestMessage(ctx.context, runner.runStep, 'three');
@@ -305,17 +336,20 @@ test('it records an automatic compaction once, with its token counts and no summ
       erasable: { status: 'none' },
     },
   ]);
+
   expect(JSON.stringify(records)).not.toInclude('SUMMARY');
 }, 30_000);
 
 test('it resumes the session on a sandbox that a new image replaced between two turns', async () => {
   const ctx = await setupTest();
+
   const [before] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
   ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+
   await sendTestMessage(ctx.context, before.runStep, 'Say a fruit.');
 
   const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
@@ -325,14 +359,17 @@ test('it resumes the session on a sandbox that a new image replaced between two 
   const records = await ctx.readRecords();
 
   expect(records.filter((record) => record.kind === 'sandbox.destroyed')).toHaveLength(1);
+
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },
   ]);
+
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
 }, 30_000);
 
 test('it resumes the session on a sandbox that replaced a retired one between two turns', async () => {
   const ctx = await setupTest();
+
   const [before] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -353,6 +390,7 @@ test('it resumes the session on a sandbox that replaced a retired one between tw
       .filter((record) => record.kind === 'sandbox.destroyed')
       .map((record) => record.payload['sandboxID']),
   ).toStrictEqual([...retired]);
+
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },
   ]);
@@ -360,6 +398,7 @@ test('it resumes the session on a sandbox that replaced a retired one between tw
 
 test('it takes the session into a replacement that a stopped start left beside the old sandbox', async () => {
   const ctx = await setupTest();
+
   const [before] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -389,6 +428,7 @@ test('it takes the session into a replacement that a stopped start left beside t
 
 test('it wakes a sleeping sandbox to take its session before it replaces it', async () => {
   const ctx = await setupTest();
+
   const [before] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -401,6 +441,7 @@ test('it wakes a sleeping sandbox to take its session before it replaces it', as
   if (asleep?.suspension.kind !== 'memory') {
     throw new Error('the process double sleeps its sandboxes');
   }
+
   await asleep.suspension.sleep();
 
   const after = await ctx.startRunner({ image: 'nixie-conversation-ba9876543210' });
@@ -414,6 +455,7 @@ test.skipIf(isRoot)(
   'it starts the new sandbox and the next turn on a fresh session when the session copy fails',
   async () => {
     const ctx = await setupTest();
+
     const [before] = await Promise.all([
       ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
       createConversationTask(ctx.context),
@@ -436,6 +478,7 @@ test.skipIf(isRoot)(
       toSandboxID: expect.toBeString(),
       reason: expect.toInclude('EACCES'),
     });
+
     expect(
       records.filter(
         (record) => record.kind === 'model.session_opened' && record.payload['kind'] === 'rebuild',
@@ -447,6 +490,7 @@ test.skipIf(isRoot)(
 
 test('it starts a fresh session on the new sandbox when the old sandbox no longer holds the session', async () => {
   const ctx = await setupTest();
+
   const [before] = await Promise.all([
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
@@ -468,6 +512,7 @@ test('it starts a fresh session on the new sandbox when the old sandbox no longe
     toSandboxID: expect.toBeString(),
     reason: expect.toInclude('holds no transcript'),
   });
+
   expect(
     records.filter(
       (record) => record.kind === 'model.session_opened' && record.payload['kind'] === 'rebuild',
@@ -477,6 +522,7 @@ test('it starts a fresh session on the new sandbox when the old sandbox no longe
 
 test('it gives the next best match the slot of an item the session already holds', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -484,6 +530,7 @@ test('it gives the next best match the slot of an item the session already holds
     proposalID: null,
     checks: null,
   } as const;
+
   const [flowerpot, garage, runner] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.memory.remember({ text: 'A second spare key hangs in the garage', provenance }),
@@ -504,6 +551,7 @@ test('it gives the next best match the slot of an item the session already holds
   ]);
 
   ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'In the garage.' });
+
   await sendTestMessage(ctx.context, runner.runStep, 'Is the spare key under the blue flowerpot?');
   await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
 
@@ -514,6 +562,7 @@ test('it gives the next best match the slot of an item the session already holds
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...flowerpot }], [{ ...garage }]]);
+
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toMatch(
     /<system-message type=\\"retrieved-memory\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\n[^\\]+\\n- A second spare key hangs in the garage\\n(?:[^<]*\\n)?<\/system-message id=\\"\k<blockID>\\">/u,
   );
@@ -521,6 +570,7 @@ test('it gives the next best match the slot of an item the session already holds
 
 test('it retrieves an item again after a compaction leaves it out of the session', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -528,6 +578,7 @@ test('it retrieves an item again after a compaction leaves it out of the session
     proposalID: null,
     checks: null,
   } as const;
+
   const [key, runner] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab', contextTokens: 100_000 }),
@@ -544,6 +595,7 @@ test('it retrieves an item again after a compaction leaves it out of the session
     { text: 'BANANA' },
     { text: 'CHERRY' },
   );
+
   await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
   await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key again?');
   await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key now?');
@@ -551,6 +603,7 @@ test('it retrieves an item again after a compaction leaves it out of the session
   const records = await ctx.readRecords();
 
   expect(records.filter((record) => record.kind === 'model.compacted')).toHaveLength(1);
+
   expect(
     records
       .filter((record) => record.kind === 'model.turn_ended')
@@ -560,6 +613,7 @@ test('it retrieves an item again after a compaction leaves it out of the session
 
 test('it retrieves an item again on a rebuilt session that lost the turn it came in', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -567,6 +621,7 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
     proposalID: null,
     checks: null,
   } as const;
+
   const [key, first] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
@@ -590,6 +645,7 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
     { payload: { kind: 'first' } },
     { payload: { kind: 'rebuild', reason: 'lost' } },
   ]);
+
   expect(
     records
       .filter((record) => record.kind === 'model.turn_ended')
@@ -599,6 +655,7 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
 
 test('it retrieves an edited item even though the session holds its earlier version', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -606,6 +663,7 @@ test('it retrieves an edited item even though the session holds its earlier vers
     proposalID: null,
     checks: null,
   } as const;
+
   const [key, runner] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
@@ -615,6 +673,7 @@ test('it retrieves an edited item even though the session holds its earlier vers
   ]);
 
   ctx.model.addReplies({ text: 'Under the flowerpot.' }, { text: 'Under the doormat.' });
+
   await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
 
   const edited = await ctx.memory.remember({
@@ -636,6 +695,7 @@ test('it retrieves an edited item even though the session holds its earlier vers
 
 test("it matches your message to an item on its other words and never on the agent's name", async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -643,6 +703,7 @@ test("it matches your message to an item on its other words and never on the age
     proposalID: null,
     checks: null,
   } as const;
+
   const [bun, runner] = await Promise.all([
     ctx.memory.remember({ text: 'Switched the server scripts from Node to Bun', provenance }),
     ctx.startRunner({
@@ -662,6 +723,7 @@ test("it matches your message to an item on its other words and never on the age
   ]);
 
   ctx.model.addReplies({ text: 'Bun is quick.' });
+
   await sendTestMessage(ctx.context, runner.runStep, 'nix, what do you think about bun');
 
   const records = await ctx.readRecords();
@@ -675,6 +737,7 @@ test("it matches your message to an item on its other words and never on the age
 
 test("it retrieves nothing for a message that is only the agent's name", async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -682,6 +745,7 @@ test("it retrieves nothing for a message that is only the agent's name", async (
     proposalID: null,
     checks: null,
   } as const;
+
   const [runner] = await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
@@ -697,6 +761,7 @@ test("it retrieves nothing for a message that is only the agent's name", async (
   ]);
 
   ctx.model.addReplies({ text: 'Yes?' });
+
   await sendTestMessage(ctx.context, runner.runStep, 'nix?');
 
   const records = await ctx.readRecords();
@@ -710,6 +775,7 @@ test("it retrieves nothing for a message that is only the agent's name", async (
 
 test('it retrieves nothing for a message that is only your name', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -717,6 +783,7 @@ test('it retrieves nothing for a message that is only your name', async () => {
     proposalID: null,
     checks: null,
   } as const;
+
   const [runner] = await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
@@ -732,6 +799,7 @@ test('it retrieves nothing for a message that is only your name', async () => {
   ]);
 
   ctx.model.addReplies({ text: 'Hello.' });
+
   await sendTestMessage(ctx.context, runner.runStep, "It's Avery.");
 
   const records = await ctx.readRecords();

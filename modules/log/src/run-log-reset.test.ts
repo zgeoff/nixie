@@ -76,6 +76,7 @@ test('it hands the first records what the reset read before it deleted anything'
     },
     writeFirstRecords: (_tx, kept) => {
       handed.kept = kept;
+
       return Promise.resolve();
     },
   });
@@ -103,12 +104,14 @@ test('it empties every projection, so the thread of a first record starts at tha
 
   const threads = await sql`select thread, first_sequence, last_sequence, record_count
     from threads`.execute(ctx.writer.db);
+
   const changes = await sql`select sequence, projection, row_key
     from projection_changes`.execute(ctx.writer.db);
 
   expect(threads.rows).toStrictEqual([
     { thread: 'conversation', first_sequence: 3, last_sequence: 3, record_count: 1 },
   ]);
+
   expect(changes.rows).toStrictEqual([
     { sequence: 3, projection: 'threads', row_key: 'conversation' },
   ]);
@@ -245,10 +248,12 @@ test('it leaves no old payload in the database files and no old key ID in the ke
 
   const names = await readdir(ctx.dataDir);
   const files = await Promise.all(names.map((name) => readFile(join(ctx.dataDir, name))));
+
   const texts = files.map((file) => file.toString('latin1'));
 
   expect(keys.rows).toBeArrayOfSize(1);
   expect(texts.filter((text) => text.includes('Marigold-errand-5KD'))).toStrictEqual([]);
+
   expect(texts.filter((text) => keys.rows.some((row) => text.includes(row.key_id)))).toStrictEqual(
     [],
   );
@@ -276,6 +281,7 @@ test('it leaves every record in place, shredded, when the wipe fails after the k
   const read = await readRecords(ctx.log, { afterSequence: 0 });
 
   expect(reset).rejects.toThrowWithMessage(Error, 'the read failed');
+
   expect(read.map((entry) => [entry.record.sequence, entry.record.erasable])).toStrictEqual([
     [1, { status: 'shredded' }],
   ]);
@@ -292,6 +298,7 @@ test('it finishes a reset that a crash cut short after the keys were gone', asyn
     },
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
   ]);
+
   await Promise.allSettled([
     runLogReset(ctx.log, {
       keptTables: [],
@@ -299,6 +306,7 @@ test('it finishes a reset that a crash cut short after the keys were gone', asyn
       writeFirstRecords: () => Promise.resolve(),
     }),
   ]);
+
   await ctx.writer.stop();
 
   const writer = await startWriter({ dataDir: ctx.dataDir });
@@ -334,6 +342,7 @@ test('it removes nothing when another process took the writer role', async () =>
       erasable: { text: 'feed the cat' },
     },
   ]);
+
   await sql`update writer_epoch set epoch = epoch + 1`.execute(ctx.writer.db);
 
   const reset = runLogReset(ctx.log, {

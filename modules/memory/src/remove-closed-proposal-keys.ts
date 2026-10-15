@@ -6,6 +6,7 @@ import type { MemoryTables, StoreParts } from './types';
 // and each lapse sweep run it. It returns how many keys it removed.
 export async function removeClosedProposalKeys(parts: StoreParts): Promise<number> {
   const log = parts.context.log;
+
   const rows = await log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
@@ -23,6 +24,7 @@ export async function removeClosedProposalKeys(parts: StoreParts): Promise<numbe
       ),
     )
     .execute();
+
   const left = await findLeftKeys(parts, [...new Set(rows.map((row) => row.item_id))]);
 
   // one key removal at a time, because each checkpoints the key store
@@ -35,6 +37,7 @@ export async function removeClosedProposalKeys(parts: StoreParts): Promise<numbe
   if (rows.length > 0) {
     await writeKeyStoreCheckpoint(log, null);
   }
+
   return left.length;
 }
 
@@ -49,6 +52,7 @@ async function findLeftKeys(
   const chunks = Array.from({ length: Math.ceil(itemIDs.length / chunkSize) }, (_, index) =>
     itemIDs.slice(index * chunkSize, (index + 1) * chunkSize),
   );
+
   const found = await Promise.all(chunks.map((chunk) => findRecordKeys(parts.context.log, chunk)));
 
   return found.flatMap((keys) => keys.keys().toArray());

@@ -10,7 +10,6 @@ function setupTest() {
 
 test('it starts a writer at the next epoch and hands it to the context', async () => {
   const ctx = await setupTest();
-
   const next = await startNextTestWriter(ctx);
 
   expect(next.writer.epoch).toBe(2);
@@ -20,7 +19,6 @@ test('it starts a writer at the next epoch and hands it to the context', async (
 test('it keeps the rows the writer before it committed', async () => {
   const ctx = await setupTest();
   const taskID = await createTask(ctx.context, 'tidy the inbox');
-
   const next = await startNextTestWriter(ctx);
 
   const task = await next.writer.db

@@ -15,6 +15,7 @@ export const sandboxesMigration: Migration = {
       spec text not null check (json_valid(spec)),
       created_sequence integer not null references records (sequence)
     ) strict`.execute(tx);
+
     await sql`create index sandboxes_by_owner on sandboxes (adapter, owner)`.execute(tx);
   },
 };

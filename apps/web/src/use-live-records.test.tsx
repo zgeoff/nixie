@@ -51,9 +51,11 @@ test('it drops the records it delivered before a reset once the reset arrives', 
   const hook = renderHook(() => useLiveRecords('conversation', 0));
 
   await store.records.create({ kind: 'tool_called' });
+
   await waitFor(() => {
     expect(hook.result.current.records).toHaveLength(1);
   });
+
   await store.records.create({ kind: 'log_reset' });
   await store.records.create({ kind: 'tool_result' });
 
@@ -67,7 +69,9 @@ test('it drops the records it delivered before a reset once the reset arrives', 
 
 test('it catches up after the stream drops, with no gap and no repeat', async () => {
   const ctx = await setupTest();
+
   const hook = renderHook(() => useLiveRecords('conversation', 0));
+
   const one = await store.records.create({ kind: 'tool_called' });
 
   await waitFor(() => {
@@ -90,6 +94,7 @@ test('it catches up after the stream drops, with no gap and no repeat', async ()
     },
     { timeout: 3000 },
   );
+
   expect(ctx.follows).toHaveBeenLastCalledWith({
     json: { afterSequence: one.sequence, thread: 'conversation' },
   });
@@ -97,6 +102,7 @@ test('it catches up after the stream drops, with no gap and no repeat', async ()
 
 test('it follows the log again at once when the page becomes visible', async () => {
   const ctx = await setupTest();
+
   const stalled = mock();
 
   // the first connection opens and then delivers nothing, as one that died unseen does
@@ -119,7 +125,9 @@ test('it follows the log again at once when the page becomes visible', async () 
   await waitFor(() => {
     expect(stalled).toHaveBeenCalledOnce();
   });
+
   await store.records.create({ kind: 'tool_called' });
+
   globalThis.document.dispatchEvent(new Event('visibilitychange'));
 
   await waitFor(
@@ -130,11 +138,13 @@ test('it follows the log again at once when the page becomes visible', async () 
     },
     { timeout: 500 },
   );
+
   expect(ctx.follows).toHaveBeenCalledOnce();
 });
 
 test('it keeps reporting live updates unavailable while the API refuses a revoked session', async () => {
   const ctx = await setupTest();
+
   const reported: boolean[] = [];
 
   await store.sessions.update(ctx.session, {
@@ -149,6 +159,7 @@ test('it keeps reporting live updates unavailable while the API refuses a revoke
       await delay(20);
     }),
   );
+
   renderHook(() => {
     const live = useLiveRecords('conversation', 0, { startTimer: ctx.timer.startTimer });
 
@@ -223,9 +234,11 @@ test('it clears the unavailable report once the stream connects again', async ()
 
   await ctx.timer.advanceToNext();
   await ctx.timer.advanceToNext();
+
   await waitFor(() => {
     expect(hook.result.current.unavailable).toBeTrue();
   });
+
   await ctx.timer.advanceToNext();
 
   await waitFor(() => {

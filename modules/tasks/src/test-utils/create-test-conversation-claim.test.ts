@@ -9,7 +9,6 @@ function setupTest() {
 
 test('it claims the conversation step for runner-a under a 60 s lease', async () => {
   const ctx = await setupTest();
-
   const claim = await createTestConversationClaim(ctx.context, 'what is on today?');
 
   expect(claim).toStrictEqual({

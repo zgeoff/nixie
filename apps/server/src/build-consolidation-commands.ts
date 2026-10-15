@@ -18,6 +18,7 @@ async function runMemoryDiff(configPath: string, io: CLIIO): Promise<number> {
   const diff = await sendMemoryRequest(socketPath, { command: 'diff' });
 
   io.print(JSON.stringify(diff));
+
   return 0;
 }
 
@@ -31,15 +32,19 @@ async function runDiffApprove(
 
   if (answers.length === 0 || answers.includes(null)) {
     io.print('nixie memory-diff-approve takes one or more <changeID>=<actionHash>');
+
     return 2;
   }
+
   const socketPath = await resolveSocketPath(flags.config);
+
   const outcomes = await sendMemoryRequest(socketPath, {
     command: 'diff-approve',
     answers: answers.filter((answer) => answer !== null),
   });
 
   io.print(JSON.stringify(outcomes));
+
   return 0;
 }
 
@@ -48,9 +53,12 @@ async function runDiffReject(flags: CLIFlags, io: CLIIO, args: readonly string[]
 
   if (changeID === undefined || flags.hash === undefined || args.length > 1) {
     io.print('nixie memory-diff-reject takes a change ID and --hash <action hash>');
+
     return 2;
   }
+
   const socketPath = await resolveSocketPath(flags.config);
+
   const rejected = await sendMemoryRequest(socketPath, {
     command: 'diff-reject',
     changeID,
@@ -58,6 +66,7 @@ async function runDiffReject(flags: CLIFlags, io: CLIIO, args: readonly string[]
   });
 
   io.print(JSON.stringify(rejected));
+
   return 0;
 }
 

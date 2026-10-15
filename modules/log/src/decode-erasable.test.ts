@@ -13,7 +13,6 @@ async function setupTest() {
 
 test('it returns the fields that encodeErasable sealed under the same key and key ID', async () => {
   const ctx = await setupTest();
-
   const sealed = await encodeErasable(ctx.key, 'key-1', { text: 'call the bank', count: 2 });
   const decoded = await decodeErasable(ctx.key, 'key-1', sealed);
 
@@ -25,8 +24,8 @@ test('it returns the fields that encodeErasable sealed under the same key and ke
 
 test('it refuses fields sealed under another key ID', async () => {
   const ctx = await setupTest();
-
   const sealed = await encodeErasable(ctx.key, 'key-1', { text: 'call the bank' });
+
   const decode = decodeErasable(ctx.key, 'key-2', sealed);
 
   await decode.catch(() => {});
@@ -36,10 +35,10 @@ test('it refuses fields sealed under another key ID', async () => {
 
 test('it refuses sealed fields with a changed byte', async () => {
   const ctx = await setupTest();
-
   const sealed = await encodeErasable(ctx.key, 'key-1', { text: 'call the bank' });
 
   sealed[sealed.length - 1] = (sealed.at(-1) ?? 0) ^ 1;
+
   const decode = decodeErasable(ctx.key, 'key-1', sealed);
 
   await decode.catch(() => {});

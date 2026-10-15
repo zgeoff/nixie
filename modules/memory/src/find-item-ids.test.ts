@@ -12,10 +12,12 @@ async function setupTest() {
 
 test('it finds the item each short ID names', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps the spare key under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const row = await ctx.db
     .selectFrom('memory_items')
     .select('short_id')
@@ -31,6 +33,7 @@ test('it finds the item each short ID names', async () => {
 
 test('it finds an item by its item ID', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps the spare key under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -43,6 +46,7 @@ test('it finds an item by its item ID', async () => {
 
 test('it finds an item that holds no short ID by the one its UUID gives', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps the spare key under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -56,6 +60,7 @@ test('it finds an item that holds no short ID by the one its UUID gives', async 
     .execute();
 
   const shortID = buildShortIDFromUUID(item.itemID);
+
   const found = await ctx.memory.store.findItemIDs([shortID]);
 
   expect(found).toStrictEqual(new Map([[shortID, item.itemID]]));

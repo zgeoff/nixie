@@ -12,7 +12,6 @@ async function setupTest() {
 
 test('it holds no plaintext of the fields', async () => {
   const ctx = await setupTest();
-
   const sealed = await encodeErasable(ctx.key, 'key-1', { text: 'secretmarker3301' });
 
   expect(new TextDecoder().decode(sealed)).not.toInclude('secretmarker3301');
@@ -20,7 +19,6 @@ test('it holds no plaintext of the fields', async () => {
 
 test('it encodes the same fields differently each time', async () => {
   const ctx = await setupTest();
-
   const first = await encodeErasable(ctx.key, 'key-1', { text: 'same' });
   const second = await encodeErasable(ctx.key, 'key-1', { text: 'same' });
 

@@ -18,6 +18,7 @@ export async function createDeviceSession(
   deviceName: string,
 ): Promise<DeviceSession> {
   const issued = await createEnrolmentCode(context);
+
   const enrolled = await claimEnrolmentCode(context, {
     clientActionID: crypto.randomUUID(),
     code: issued.code,
@@ -27,8 +28,10 @@ export async function createDeviceSession(
 
   // a fresh host code always enrols, and the token it gives always resolves
   invariant(enrolled.status === 'enrolled', `a fresh code failed to enrol: ${enrolled.status}`);
+
   const caller = await verifySessionToken(context, enrolled.token);
 
   invariant(caller, 'a fresh session token failed to resolve');
+
   return { sessionID: enrolled.sessionID, token: enrolled.token, caller };
 }

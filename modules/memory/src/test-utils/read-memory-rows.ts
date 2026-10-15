@@ -9,6 +9,7 @@ export interface MemoryRows {
 // Reads every row of both memory projections in key order, so two reads compare row for row.
 export async function readMemoryRows(db: Kysely<MemoryTables>): Promise<MemoryRows> {
   const items = await db.selectFrom('memory_items').selectAll().orderBy('item_id').execute();
+
   const versions = await db
     .selectFrom('memory_versions')
     .selectAll()

@@ -13,6 +13,7 @@ export function usePendingInput(
 
   useEffect(() => {
     const element = textBox.current;
+
     const listening = new AbortController();
 
     element?.addEventListener(

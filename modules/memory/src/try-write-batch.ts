@@ -21,6 +21,7 @@ export async function tryWriteBatch(
   batch: BatchToWrite,
 ): Promise<PublishResult> {
   const mode = pickBatchMode(batch.row, batch.bounds);
+
   const catchUpEnded =
     batch.row.caught_up_sequence === null && batch.bounds.end >= batch.row.start_sequence;
 
@@ -46,6 +47,7 @@ export async function tryWriteBatch(
     if (error instanceof StaleVersionError || error instanceof MemoryItemNotFoundError) {
       return { status: 'superseded' };
     }
+
     throw error;
   }
 }

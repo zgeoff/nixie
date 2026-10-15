@@ -45,6 +45,7 @@ test('it refuses while another connection holds a read on the key store', async 
   const reader = startDatabase(join(ctx.dataDir, 'keys.db'));
 
   onTestFinished(() => reader.destroy());
+
   await sql`begin`.execute(reader);
   await sql`select count(*) from record_keys`.execute(reader);
 

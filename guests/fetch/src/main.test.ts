@@ -19,6 +19,7 @@ async function setupTest() {
 
 test('it answers one request in a process of its own and leaves its temporary directory behind it removed', async () => {
   const ctx = await setupTest();
+
   const fetcher = Bun.spawn([process.execPath, join(import.meta.dir, 'main.ts')], {
     env: { PATH: process.env['PATH'] ?? '', TMPDIR: ctx.root },
     stdin: encodeFrame(
@@ -40,6 +41,7 @@ test('it answers one request in a process of its own and leaves its temporary di
   const left = await readdir(ctx.root);
 
   expect(code).toBe(0);
+
   expect(
     makeFrameDecoder(100_000)(stdout).map((message) => decodeFetchReply(message)),
   ).toStrictEqual([
@@ -51,11 +53,13 @@ test('it answers one request in a process of its own and leaves its temporary di
       ]),
     },
   ]);
+
   expect(left).toStrictEqual([]);
 });
 
 test('it exits non-zero with no reply for a malformed request', async () => {
   const ctx = await setupTest();
+
   const fetcher = Bun.spawn([process.execPath, join(import.meta.dir, 'main.ts')], {
     env: { PATH: process.env['PATH'] ?? '', TMPDIR: ctx.root },
     stdin: encodeFrame(new TextEncoder().encode('{"url":"https://example.com/"}')),

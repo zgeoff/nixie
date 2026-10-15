@@ -9,6 +9,7 @@ function setupTest() {
 
 test('it lists the sandboxes the recorder holds for its adapter and the owner', async () => {
   const ctx = await setupTest();
+
   const adapter = buildStubRecordedAdapter(ctx.recorder, 'imp');
 
   await ctx.writeEvents([
@@ -39,6 +40,7 @@ test('it lists the sandboxes the recorder holds for its adapter and the owner', 
 
 test('it notes the ID of each sandbox it destroys', async () => {
   const ctx = await setupTest();
+
   const adapter = buildStubRecordedAdapter(ctx.recorder, 'imp');
 
   await ctx.writeEvents([

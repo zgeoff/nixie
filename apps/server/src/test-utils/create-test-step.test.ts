@@ -38,9 +38,7 @@ async function setupTest() {
 
 test('it returns the first step of a new task that a runner claimed', async () => {
   const ctx = await setupTest();
-
   const step = await createTestStep(ctx.context);
-
   const task = await ctx.db.selectFrom('tasks').select('task_id').executeTakeFirstOrThrow();
 
   expect(step).toStrictEqual({
@@ -58,12 +56,12 @@ test('it returns the first step of a new task that a runner claimed', async () =
     sessionBoundary: null,
     signal: step.signal,
   });
+
   expect(step.signal).toBeInstanceOf(AbortSignal);
 });
 
 test('it leaves the task running under the step', async () => {
   const ctx = await setupTest();
-
   const step = await createTestStep(ctx.context);
 
   const task = await ctx.db

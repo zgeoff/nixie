@@ -11,6 +11,7 @@ import { writeStepError } from './write-step-error';
 
 async function setupTest() {
   const tasks = await startTestTasks();
+
   const db = tasks.writer.db.$extendTables<TasksTables>();
 
   await createConversationTask(tasks.context);
@@ -129,11 +130,13 @@ test('it refuses a record for a task that is done', async () => {
 
 test('it reaches inbox.write.after once the message commits', async () => {
   const ctx = await setupTest();
+
   const reached: { id: FaultPointID; context: FaultPointContext }[] = [];
 
   setFaultPointHandler((id, context) => {
     reached.push({ id, context });
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });

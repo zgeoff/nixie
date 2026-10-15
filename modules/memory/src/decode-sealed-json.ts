@@ -8,6 +8,7 @@ export async function decodeSealedJSON(
   sealed: string,
 ): Promise<unknown> {
   const bytes = new Uint8Array(Buffer.from(sealed, 'base64'));
+
   const plaintext = await crypto.subtle.decrypt(
     {
       name: 'AES-GCM',

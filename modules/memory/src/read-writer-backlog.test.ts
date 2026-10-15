@@ -11,6 +11,7 @@ async function setupTest() {
 
 test('it reads your messages and the replies after the sequence, oldest first', async () => {
   const ctx = await setupTest();
+
   const [before, message, reply] = await writeRecords(ctx.memory.log, [
     {
       kind: 'owner_message',
@@ -83,6 +84,7 @@ test('it leaves out conversation records that are neither a message nor a reply'
 
 test('it reads a forgotten message with no text', async () => {
   const ctx = await setupTest();
+
   const [message] = await writeRecords(ctx.memory.log, [
     {
       kind: 'owner_message',
@@ -105,6 +107,7 @@ test('it reads a forgotten message with no text', async () => {
 
 test('it takes a message arrival time from the first wake recorded for it', async () => {
   const ctx = await setupTest();
+
   const [message] = await writeRecords(ctx.memory.log, [
     {
       kind: 'owner_message',
@@ -115,6 +118,7 @@ test('it takes a message arrival time from the first wake recorded for it', asyn
   ]);
 
   invariant(message);
+
   await writeRecords(ctx.memory.log, [
     {
       kind: 'task.wake',
@@ -141,6 +145,7 @@ test('it takes a message arrival time from the first wake recorded for it', asyn
 
 test('it stops at the last sequence to read', async () => {
   const ctx = await setupTest();
+
   const [first] = await writeRecords(ctx.memory.log, [
     {
       kind: 'owner_message',

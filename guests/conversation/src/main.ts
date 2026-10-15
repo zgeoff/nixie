@@ -12,4 +12,5 @@ await runConversationGuest({
   },
   env: process.env,
 });
+
 process.exit(0);

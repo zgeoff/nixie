@@ -24,6 +24,7 @@ test.each([
   async (point) => {
     const ctx = await setupTest();
     const [sequence] = await writeSeedMessages(ctx.nixie, ['I live at 4 Elm Row.']);
+
     const remember = {
       toolUse: {
         name: 'mcp__nixie__memory_remember',
@@ -37,6 +38,7 @@ test.each([
     const first = ctx.nixie.harness.start([{ point }]);
 
     await first.ready;
+
     await first.waitForArrival(point);
     await first.kill();
 
@@ -51,6 +53,7 @@ test.each([
       (record) =>
         record.kind === 'memory.batch_published' && record.payload['catchUpEnded'] === true,
     );
+
     await second.kill();
 
     const records = await ctx.nixie.readRecords();
@@ -65,7 +68,9 @@ test.each([
       ['catch_up', [{ itemID: items[0]?.['item_id'], version: 1 }]],
       ['catch_up', []],
     ]);
+
     expect(items).toMatchObject([{ state: 'active', version: 1 }]);
+
     expect(oracle).toStrictEqual({
       repeatedStepKeys: [],
       repeatedActions: [],
@@ -95,20 +100,24 @@ test.each([
     const first = ctx.nixie.harness.start();
 
     await first.ready;
+
     await ctx.nixie.waitForRecord(
       (record) => record.kind === 'task.step_committed' && record.stepKey === 'memory-writer:1',
     );
+
     await first.kill();
 
     const second = ctx.nixie.harness.start([{ point }]);
 
     await second.ready;
+
     ctx.nixie.model.addReplies({ text: 'Noted.' });
 
     const sequence = await second.request('sendMessage', {
       thread: 'conversation',
       text: 'I live at 4 Elm Row.',
     });
+
     const remember = {
       toolUse: {
         name: 'mcp__nixie__memory_remember',
@@ -118,6 +127,7 @@ test.each([
 
     // one script for the first session and one for the rerun's fresh session
     ctx.nixie.writerModel.addReplies(remember, { text: 'Staged.' }, remember, { text: 'Staged.' });
+
     await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
 
     // a short batch waits for the conversation to go idle: one advance of 5 minutes on the one
@@ -128,9 +138,11 @@ test.each([
     const third = ctx.nixie.harness.start();
 
     await third.ready;
+
     await ctx.nixie.waitForRecord(
       (record) => record.kind === 'memory.batch_published' && record.payload['mode'] === 'live',
     );
+
     await third.kill();
 
     const records = await ctx.nixie.readRecords();
@@ -144,7 +156,9 @@ test.each([
         )
         .map((record) => record.payload['applied']),
     ).toStrictEqual([[{ itemID: items[0]?.['item_id'], version: 1 }]]);
+
     expect(items).toMatchObject([{ state: 'active', version: 1 }]);
+
     expect(oracle).toStrictEqual({
       repeatedStepKeys: [],
       repeatedActions: [],

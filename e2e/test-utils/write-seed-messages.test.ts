@@ -9,9 +9,7 @@ async function setupTest() {
 
 test('it records the messages where nixie reads them once it starts', async () => {
   const ctx = await setupTest();
-
   const sequences = await writeSeedMessages(ctx.nixie, ['I live at 4 Elm Row.', 'I work nights.']);
-
   const records = await ctx.nixie.readRecords();
 
   expect(records).toMatchObject([

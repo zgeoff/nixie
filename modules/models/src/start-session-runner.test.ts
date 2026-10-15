@@ -14,6 +14,7 @@ interface RunnerConfig {
 // the stub sandboxes and tool endpoint, and a runner for the memory writer's system task
 async function setupTest() {
   const tasks = await startTestTasks();
+
   const sandboxes = buildStubSandboxes();
   const tools = buildStubToolEndpoint();
 
@@ -40,6 +41,7 @@ async function setupTest() {
 
 test('it sums the token counts over every model turn the session ended', async () => {
   const ctx = await setupTest();
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -81,6 +83,7 @@ test('it sums the token counts over every model turn the session ended', async (
 
 test('it starts each session fresh with the prompt as its one message', async () => {
   const ctx = await setupTest();
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -104,6 +107,7 @@ test('it starts each session fresh with the prompt as its one message', async ()
 
 test('it throws when the guest fails the session', async () => {
   const ctx = await setupTest();
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -127,6 +131,7 @@ test('it throws when the guest fails the session', async () => {
 
 test('it throws when a model turn of the session ended at a model API error', async () => {
   const ctx = await setupTest();
+
   const runner = await ctx.startRunner({
     models: buildMockModelsConfig(),
     credential: 'not-a-real-key',
@@ -173,6 +178,7 @@ test('it opens the tool run for the system task on the profile model', async () 
 
 test('it keeps the worker sandbox across restarts while its spec matches', async () => {
   const ctx = await setupTest();
+
   const models = buildMockModelsConfig();
 
   await ctx.startRunner({ models, credential: 'not-a-real-key' });
@@ -184,6 +190,7 @@ test('it keeps the worker sandbox across restarts while its spec matches', async
 
 test('it replaces the worker sandbox when its spec no longer matches', async () => {
   const ctx = await setupTest();
+
   const profiles = {
     'chat-direct': { baseURL: 'https://api.anthropic.com' },
     'chat-aggregator': { baseURL: 'https://gateway.example/anthropic' },
@@ -193,6 +200,7 @@ test('it replaces the worker sandbox when its spec no longer matches', async () 
     models: buildMockModelsConfig({ profiles }),
     credential: 'not-a-real-key',
   });
+
   await ctx.startRunner({
     models: buildMockModelsConfig({ profiles, roles: { conversation: 'chat-aggregator' } }),
     credential: 'not-a-real-key',
@@ -202,5 +210,6 @@ test('it replaces the worker sandbox when its spec no longer matches', async () 
     'api.anthropic.com',
     'gateway.example',
   ]);
+
   expect(ctx.sandboxes.destroyed).toHaveLength(1);
 });

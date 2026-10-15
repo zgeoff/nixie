@@ -5,10 +5,12 @@ import { buildStubProcessIO } from './test-utils/build-stub-process-io';
 
 test('it reads each framed message, whatever the transport splits', async () => {
   const encoder = new TextEncoder();
+
   const frames = new Uint8Array([
     ...encodeFrame(encoder.encode('one')),
     ...encodeFrame(encoder.encode('two')),
   ]);
+
   const stub = buildStubProcessIO({ stdout: [frames.slice(0, 5), frames.slice(5)], stderr: [] });
   const stream = startExecStream(stub.io, 16);
 
@@ -22,6 +24,7 @@ test('it reads each framed message, whatever the transport splits', async () => 
 
 test('it writes each sent message as one frame', async () => {
   const encoder = new TextEncoder();
+
   const stub = buildStubProcessIO({ stdout: [], stderr: [] });
   const stream = startExecStream(stub.io, 16);
 

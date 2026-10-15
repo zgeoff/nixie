@@ -25,16 +25,20 @@ export const timersProjection: Projection = {
           })),
         )
         .execute();
+
       return parsed.timers.map((timer) => timer.timerID);
     }
+
     if (parsed?.kind === 'timer.fired') {
       await db
         .updateTable('timers')
         .set({ fired_at: parsed.firedAt, fired_sequence: record.sequence })
         .where('timer_id', '=', parsed.timerID)
         .execute();
+
       return [parsed.timerID];
     }
+
     return [];
   },
 };

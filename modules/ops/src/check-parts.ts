@@ -14,6 +14,7 @@ export async function checkParts(
       async ([part, check]) => [part, await runCheck(check, timeoutMs, clock)] as const,
     ),
   );
+
   const parts = Object.fromEntries(entries);
 
   return {
@@ -41,6 +42,7 @@ async function waitForTimeout(
   signal: AbortSignal,
 ): Promise<PartReport> {
   await clock.sleep(timeoutMs, signal);
+
   return { isReady: false, reason: `the check took longer than ${timeoutMs} ms` };
 }
 

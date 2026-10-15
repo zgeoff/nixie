@@ -20,12 +20,15 @@ interface NixieChannel {
 export function buildNixieChannel(): NixieChannel {
   const ready = Promise.withResolvers<void>();
   const arrivals = buildArrivalQueue();
+
   const requests = new Map<number, PromiseWithResolvers<unknown>>();
+
   const counter = { next: 1 };
 
   // a test that never waits for ready, such as one whose nixie must refuse to start, leaves its
   // rejection unread
   void waitQuietly(ready.promise);
+
   return {
     ready: ready.promise,
     receive: (message) => {
@@ -43,20 +46,24 @@ export function buildNixieChannel(): NixieChannel {
       const reply = Promise.withResolvers<unknown>();
 
       counter.next += 1;
+
       requests.set(requestID, reply);
 
       // a request that a kill cut short, such as a message held at inbox.write.after, rejects
       // unread when the test never waits for it
       void waitQuietly(reply.promise);
       send({ type: 'request', requestID, operation, args });
+
       return reply.promise;
     },
     close: (error) => {
       ready.reject(error);
       arrivals.close(error);
+
       for (const pending of requests.values()) {
         pending.reject(error);
       }
+
       requests.clear();
     },
   };
@@ -71,6 +78,7 @@ async function waitQuietly(promise: Promise<unknown>): Promise<void> {
 }
 
 type PendingRequests = Map<number, PromiseWithResolvers<unknown>>;
+
 type NixieReply = Extract<NixieMessage, { type: 'reply' }>;
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the channel's own requests
@@ -78,6 +86,7 @@ function applyReply(requests: PendingRequests, reply: NixieReply): void {
   const pending = requests.get(reply.requestID);
 
   requests.delete(reply.requestID);
+
   if (reply.error === undefined) {
     pending?.resolve(reply.result);
   } else {
@@ -122,16 +131,20 @@ function buildArrivalQueue(): ArrivalQueue {
       if (arrival !== undefined) {
         return Promise.resolve(arrival);
       }
+
       if (state.closed !== null) {
         return Promise.reject(state.closed);
       }
+
       const waiter = Promise.withResolvers<FaultPointArrival>();
 
       waiters.push({ point, workID, resolve: waiter.resolve, reject: waiter.reject });
+
       return waiter.promise;
     },
     close: (error) => {
       state.closed = error;
+
       for (const waiter of waiters.splice(0)) {
         waiter.reject(error);
       }

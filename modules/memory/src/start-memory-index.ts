@@ -59,21 +59,26 @@ export async function startMemoryIndex(): Promise<MemoryIndex> {
       text,
       tokenize = 'porter unicode61'
     )`.execute(db);
+
     await sql`create virtual table query_words using fts5 (
       word,
       tokenize = 'porter unicode61'
     )`.execute(db);
+
     await sql`create virtual table query_word_stems using fts5vocab (query_words, 'instance')`.execute(
       db,
     );
   } catch (error) {
     await db.destroy();
+
     throw error;
   }
+
   return {
     updateAll: (entries) =>
       db.transaction().execute(async (tx) => {
         await sql`delete from memory_index`.execute(tx);
+
         for (const entry of entries) {
           // oxlint-disable-next-line no-await-in-loop -- one connection runs one statement at a time
           await writeEntry(tx, entry);
@@ -82,6 +87,7 @@ export async function startMemoryIndex(): Promise<MemoryIndex> {
     update: (entry) =>
       db.transaction().execute(async (tx) => {
         await sql`delete from memory_index where item_id = ${entry.itemID}`.execute(tx);
+
         await writeEntry(tx, entry);
       }),
     remove: async (itemID) => {
@@ -115,10 +121,13 @@ async function findMatches(
   if (words.length === 0) {
     return [];
   }
+
   const minScore = options.minScore ?? 0;
   const excludedIDs = options.excludedIDs ?? [];
+
   const excluded =
     excludedIDs.length === 0 ? sql`` : sql`and item_id not in (${sql.join(excludedIDs)})`;
+
   const result = await sql<{ item_id: string; rank: number }>`select item_id, rank from memory_index
     where memory_index match ${buildMatchExpression(words)} and rank <= ${-minScore} ${excluded}
     order by rank limit ${options.limit}`.execute(db);
@@ -140,15 +149,20 @@ async function readQueryWords(
   if (words.length === 0 || excluded.length === 0) {
     return words;
   }
+
   const rows = [...words, ...excluded].map((word, index) => sql`(${index}, ${word})`);
+
   const stems = await db.transaction().execute(async (tx) => {
     await sql`insert into query_words (rowid, word) values ${sql.join(rows)}`.execute(tx);
+
     const result = await sql<{ term: string; doc: number }>`select term, doc
       from query_word_stems`.execute(tx);
 
     await sql`delete from query_words`.execute(tx);
+
     return result.rows;
   });
+
   const excludedStems = new Set(
     stems.filter((row) => row.doc >= words.length).map((row) => row.term),
   );

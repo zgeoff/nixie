@@ -22,10 +22,12 @@ test('it stages a new item that cites one of your messages in the batch', () => 
 
 test('it returns the staged writes in order when the batch closes', () => {
   const staging = createWriterStaging();
+
   const staged = staging.open({
     sources: new Map([[7, { sequence: 7, text: 'I moved to Marlow Vale', spans: [] }]]),
     shown: new Map([['item-home', 3]]),
   });
+
   staging.stage({
     op: 'remember',
     text: 'The owner lives in Marlow Vale.',
@@ -33,6 +35,7 @@ test('it returns the staged writes in order when the batch closes', () => {
     sourceSequence: 7,
     itemID: 'item-home',
   });
+
   staging.stage({
     op: 'remember',
     text: 'The owner moved.',
@@ -55,6 +58,7 @@ test('it returns the staged writes in order when the batch closes', () => {
 
 test('it binds a retirement to the version the session was shown', () => {
   const staging = createWriterStaging();
+
   const staged = staging.open({
     sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
     shown: new Map([['item-bike', 2]]),
@@ -74,6 +78,7 @@ test('it binds a retirement to the version the session was shown', () => {
 
 test('it binds a change to an item a recall showed the session', () => {
   const staging = createWriterStaging();
+
   const staged = staging.open({
     sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
     shown: new Map(),
@@ -164,6 +169,7 @@ test('it refuses a second change to the same item in a batch', () => {
     sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
     shown: new Map([['item-bike', 2]]),
   });
+
   staging.stage({ op: 'retire', quote: 'I sold the bike', sourceSequence: 7, itemID: 'item-bike' });
 
   const result = staging.stage({
@@ -196,6 +202,7 @@ test('it refuses a write when no batch is open', () => {
 
 test('it refuses a write once the batch closes', () => {
   const staging = createWriterStaging();
+
   const staged = staging.open({
     sources: new Map([[7, { sequence: 7, text: 'I moved', spans: [] }]]),
     shown: new Map(),
@@ -216,6 +223,7 @@ test('it refuses a write once the batch closes', () => {
 
 test('it keeps the text of each item a recall showed the batch', () => {
   const staging = createWriterStaging();
+
   const staged = staging.open({
     sources: new Map([[7, { sequence: 7, text: 'I sold the bike', spans: [] }]]),
     shown: new Map(),
@@ -228,6 +236,7 @@ test('it keeps the text of each item a recall showed the batch', () => {
 
 test('it keeps a newer batch open when an older batch closes', () => {
   const staging = createWriterStaging();
+
   const older = staging.open({
     sources: new Map([[7, { sequence: 7, text: 'I moved', spans: [] }]]),
     shown: new Map(),
@@ -237,6 +246,7 @@ test('it keeps a newer batch open when an older batch closes', () => {
     sources: new Map([[7, { sequence: 7, text: 'I moved', spans: [] }]]),
     shown: new Map(),
   });
+
   older.close();
 
   const result = staging.stage({

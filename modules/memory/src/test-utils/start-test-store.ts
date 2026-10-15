@@ -24,6 +24,7 @@ export async function startTestStore(
     deploymentKey: wiring.deploymentKey,
     projections: [...logProjections, ...memoryProjections],
   };
+
   const store = await startMemoryStore({
     log,
     definitions: options.definitions ?? (() => ({ snapshotHash: 'sha256:test' })),
@@ -47,5 +48,6 @@ export async function startTestStore(
   });
 
   wiring.defer(() => store.stop());
+
   return { writer, log, store };
 }

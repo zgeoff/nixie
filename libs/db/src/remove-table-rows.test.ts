@@ -29,7 +29,6 @@ test('it deletes every row of every table but the kept ones', async () => {
   await sql`create table tags (tag text primary key) strict`.execute(ctx.db);
   await sql`insert into notes (id) values (1), (2)`.execute(ctx.db);
   await sql`insert into tags (tag) values ('errand')`.execute(ctx.db);
-
   await ctx.db.transaction().execute((tx) => removeTableRows(tx, []));
 
   const notes = await sql`select id from notes`.execute(ctx.db);
@@ -46,7 +45,6 @@ test('it never touches the rows of a kept table', async () => {
   await sql`create table tags (tag text primary key) strict`.execute(ctx.db);
   await sql`insert into notes (id) values (1)`.execute(ctx.db);
   await sql`insert into tags (tag) values ('errand'), ('garden')`.execute(ctx.db);
-
   await ctx.db.transaction().execute((tx) => removeTableRows(tx, ['tags']));
 
   const tags = await sql`select tag from tags order by tag`.execute(ctx.db);
@@ -59,7 +57,6 @@ test('it leaves the tables in place', async () => {
 
   await sql`create table notes (id integer primary key) strict`.execute(ctx.db);
   await sql`insert into notes (id) values (1)`.execute(ctx.db);
-
   await ctx.db.transaction().execute((tx) => removeTableRows(tx, []));
 
   const tables = await sql`select name from sqlite_master where type = 'table'`.execute(ctx.db);

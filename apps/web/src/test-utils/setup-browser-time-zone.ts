@@ -6,6 +6,7 @@ export function setupBrowserTimeZone(zone: string): void {
   const previous = process.env.TZ;
 
   process.env.TZ = zone;
+
   onTestFinished(() => {
     if (previous === undefined) {
       delete process.env.TZ;

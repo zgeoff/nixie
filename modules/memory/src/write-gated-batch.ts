@@ -41,12 +41,15 @@ async function writeCappedBatch(parts: WriterParts, gated: GatedBatch): Promise<
     const mode = pickBatchMode(gated.row, bounds);
 
     await writeBatchPlan(parts, { ...gated, bounds: capped.bounds, mode });
+
     return { next: 'continue', timers: [] };
   }
+
   const published = await tryWriteBatch(parts, { ...gated, bounds, capped });
 
   if (published.status === 'superseded') {
     return { next: 'continue', timers: [] };
   }
+
   return { next: 'wait', timers: [{ dueAt: gated.now + parts.config.paceMs }] };
 }

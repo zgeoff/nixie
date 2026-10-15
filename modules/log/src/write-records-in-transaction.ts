@@ -17,7 +17,9 @@ export async function writeRecordsInTransaction(
   for (const input of inputs) {
     requireDefinitions(input);
   }
+
   const sealed = await Promise.all(inputs.map((input) => encodeErasableFields(log, input)));
+
   const records: LogRecord[] = [];
 
   for (const [index, input] of inputs.entries()) {
@@ -26,6 +28,7 @@ export async function writeRecordsInTransaction(
 
     records.push(record);
   }
+
   return records;
 }
 
@@ -49,6 +52,7 @@ async function encodeErasableFields(log: Log, input: RecordInput): Promise<Seale
   if (input.erasable === undefined || Object.keys(input.erasable).length === 0) {
     return null;
   }
+
   const recordKey = await createRecordKey(log);
   const sealed = await encodeErasable(recordKey.key, recordKey.keyID, input.erasable);
 
@@ -71,9 +75,11 @@ async function writeRecord(
     .values(buildRecordValues(pending))
     .returningAll()
     .executeTakeFirstOrThrow();
+
   const record = buildEnvelopeRecord(row);
 
   await applyProjections(tx, log.projections, record);
+
   return { ...record, erasable: buildWrittenErasable(pending.input.erasable, pending.sealed) };
 }
 

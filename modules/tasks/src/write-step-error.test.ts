@@ -45,6 +45,7 @@ test('it fails a task once its steps threw the limit of times in a row', async (
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
   });
+
   ctx.clock.advance(30_000);
 
   const second = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
@@ -102,6 +103,7 @@ test('it returns the conversation to ready when its errors in a row pass the lim
     retryDelayMs: 30_000,
     maxRetryDelayMs: 300_000,
   });
+
   ctx.clock.advance(30_000);
 
   const second = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
@@ -123,6 +125,7 @@ test('it returns the conversation to ready when its errors in a row pass the lim
 
 test("it doubles the conversation's retry delay with each error until the delay reaches its cap", async () => {
   const ctx = await setupTest();
+
   const claims = { next: await createTestConversationClaim(ctx.context, 'what is on today?') };
 
   // each error's retry comes due before the next claim, so the clock reads the last retry time
@@ -141,6 +144,7 @@ test("it doubles the conversation's retry delay with each error until the delay 
     const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
     invariant(claim);
+
     claims.next = claim;
   }
 

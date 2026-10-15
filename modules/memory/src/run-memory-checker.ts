@@ -24,15 +24,18 @@ export async function runMemoryChecker(
       text: request.text,
     }),
   });
+
   const checks = { quote: 'pass', tokens: 'pass', checker: toCheckerJSON(answer) };
   const detail = { evidence: found.evidence, checks, checkerReason: answer.reason };
 
   if (answer.verdict !== 'asserted') {
     return buildGateReview(pickCheckerReviewReason(answer), detail);
   }
+
   if (request.isPinned) {
     return buildGateReview('pinned', detail);
   }
+
   return { status: 'pass', source: 'owner', evidence: found.evidence, checks };
 }
 

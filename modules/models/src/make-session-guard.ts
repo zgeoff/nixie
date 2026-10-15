@@ -21,6 +21,7 @@ interface CleanupGate {
 // took over an expired lease never waits on the turn a stale runner still holds.
 export function makeSessionGuard(): SessionGuard {
   const gate: CleanupGate = { current: Promise.resolve(), pending: 0 };
+
   const active = new Map<AbortController, Promise<void>>();
 
   return {
@@ -33,9 +34,11 @@ export function makeSessionGuard(): SessionGuard {
       }
 
       const controller = new AbortController();
+
       const done = Promise.withResolvers<void>();
 
       active.set(controller, done.promise);
+
       try {
         return await run(controller.signal);
       } finally {
@@ -52,6 +55,7 @@ export function makeSessionGuard(): SessionGuard {
 
       gate.pending += 1;
       gate.current = waitForCleanup(gate, ran);
+
       return ran;
     },
   };
@@ -62,6 +66,7 @@ async function runAfter(
   cleanup: () => Promise<void>,
 ): Promise<void> {
   await Promise.all(before);
+
   await cleanup();
 }
 

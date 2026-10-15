@@ -29,6 +29,7 @@ interface IsolationAdapter {
 // the test; hooks run first in, first out, so each imp goes before the writer stops.
 export function setupIsolationAdapter(options: IsolationAdapterOptions): Promise<IsolationAdapter> {
   const stack = new AsyncDisposableStack();
+
   const started: Promise<unknown>[] = [];
 
   onTestFinished(async () => {
@@ -41,6 +42,7 @@ export function setupIsolationAdapter(options: IsolationAdapterOptions): Promise
   });
 
   started.push(setup);
+
   return setup;
 }
 
@@ -88,10 +90,12 @@ function buildSandboxTracker(adapter: SandboxAdapter): SandboxTracker {
 
       owners.add(spec.owner);
       creating.add(created);
+
       return created;
     },
     removeAll: async () => {
       await Promise.allSettled(creating);
+
       await removeOwnedSandboxes(adapter, [...owners]);
     },
   };
@@ -102,11 +106,13 @@ function buildSandboxTracker(adapter: SandboxAdapter): SandboxTracker {
 // after impd stored the secret.
 async function createTestSecret(options: IsolationAdapterOptions): Promise<void> {
   const name = options.secret;
+
   const held = await options.port.readSecretHosts(name);
 
   if (held !== null) {
     throw new Error(`impd holds a secret named ${name} that this run did not add`);
   }
+
   const added = options.port.addSecret({
     name,
     value: 'nixie-isolation-dummy',
@@ -125,5 +131,6 @@ async function createTestSecret(options: IsolationAdapterOptions): Promise<void>
       await options.removeSecret(name);
     }
   });
+
   await added;
 }

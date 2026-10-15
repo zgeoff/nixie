@@ -19,8 +19,10 @@ test('it calls back on a write to the WAL file and 3 more times as the commit se
 
   const settled = Promise.withResolvers<number>();
   const calls = { count: 0 };
+
   const unsubscribe = subscribeToWAL(ctx.dataDir, () => {
     calls.count += 1;
+
     if (calls.count === 4) {
       settled.resolve(performance.now());
     }
@@ -42,12 +44,15 @@ test('it ignores a write to any other file in the data directory', async () => {
 
   const first = Promise.withResolvers<number>();
   const calls = { count: 0 };
+
   const unsubscribe = subscribeToWAL(ctx.dataDir, () => {
     calls.count += 1;
+
     first.resolve(calls.count);
   });
 
   onTestFinished(unsubscribe);
+
   await writeFile(join(ctx.dataDir, 'keys.db-wal'), 'frame 1');
   await writeFile(join(ctx.dataDir, 'nixie.db-shm'), 'index');
 
@@ -70,12 +75,14 @@ test('it stops calling back once unsubscribed', async () => {
 
   const unsubscribe = subscribeToWAL(ctx.dataDir, () => {
     calls.count += 1;
+
     if (calls.count === 4) {
       settled.resolve();
     }
   });
 
   onTestFinished(unsubscribe);
+
   await writeFile(join(ctx.dataDir, 'nixie.db-wal'), 'frame 1');
   await settled.promise;
 
@@ -84,7 +91,6 @@ test('it stops calling back once unsubscribed', async () => {
 
 test('it gives no calls and no error for a directory it cannot watch', () => {
   const onChange = mock<() => void>();
-
   const unsubscribe = subscribeToWAL('/nonexistent/nixie-data', onChange);
 
   expect(unsubscribe).not.toThrow();

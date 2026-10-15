@@ -47,6 +47,7 @@ test('it renders the same note for the same changes', () => {
     catchUpCount: 2,
     merges: [],
   });
+
   const second = renderMemoryChangeNote({
     changes: [{ shortID: 'item-cello', change: 'remembered', text: 'The owner plays the cello.' }],
     moreCount: 1,

@@ -9,6 +9,7 @@ import type { MemoryTables, StoreParts } from './types';
 // as nothing and drops out of the list.
 export async function readPendingProposals(parts: StoreParts): Promise<readonly MemoryProposal[]> {
   const log = parts.context.log;
+
   const rows = await log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
@@ -17,11 +18,14 @@ export async function readPendingProposals(parts: StoreParts): Promise<readonly 
     .where('lapse_at', '>', parts.context.gate.clock.now())
     .orderBy('created_sequence')
     .execute();
+
   const keys = await findRecordKeys(
     log,
     rows.map((row) => row.item_id),
   );
+
   const merges = await readMergeSources(parts, rows);
+
   const proposals = await Promise.all(
     rows.map(async (row) => {
       const key = keys.get(row.item_id);
@@ -29,6 +33,7 @@ export async function readPendingProposals(parts: StoreParts): Promise<readonly 
       if (key === null || key === undefined) {
         return null;
       }
+
       const text = await decodeProposalText(key, row.proposal_id, row.sealed);
 
       return {
@@ -62,6 +67,7 @@ async function readMergeSources(
   if (rows.length === 0) {
     return new Map();
   }
+
   const merges = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposal_merges')
@@ -73,6 +79,7 @@ async function readMergeSources(
     )
     .orderBy('sequence')
     .execute();
+
   const sources = new Map<string, ProposalSource[]>();
 
   for (const merge of merges) {
@@ -85,8 +92,10 @@ async function readMergeSources(
       model: merge.model,
       proposedAt: merge.recorded_at,
     });
+
     sources.set(merge.proposal_id, list);
   }
+
   return sources;
 }
 

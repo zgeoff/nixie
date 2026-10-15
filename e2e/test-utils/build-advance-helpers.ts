@@ -63,14 +63,17 @@ async function runAdvances<T>(advances: Advances<T>, remaining: number): Promise
 
   const timeoutMs =
     remaining <= 1 ? advances.waits.lastAdvanceWaitMs : advances.waits.advanceWaitMs;
+
   const found = await advances.waitFor(timeoutMs);
 
   if (found !== null) {
     return found;
   }
+
   if (remaining <= 1) {
     throw new Error(`nothing arrived after the last advance of ${advances.stepMs} ms`);
   }
+
   return runAdvances(advances, remaining - 1);
 }
 

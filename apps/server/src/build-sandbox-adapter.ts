@@ -24,6 +24,7 @@ export function buildSandboxAdapter(options: SandboxAdapterOptions): SandboxAdap
       toolTarget: options.toolTarget,
     });
   }
+
   return buildImpSandboxAdapter({
     port: buildImpPort({ url: options.imp.url, token: options.imp.token }),
     recorder: options.recorder,

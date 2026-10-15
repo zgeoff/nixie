@@ -8,7 +8,6 @@ function setupTest() {
 
 test('it writes a refusal for an external ID it has not refused before', async () => {
   const ctx = await setupTest();
-
   const result = await writeRefusal(ctx.context, { channel: 'client', externalID: 'ab12' });
 
   expect(result).toBeTrue();
@@ -18,6 +17,7 @@ test('it writes no second refusal for the same external ID within the hour', asy
   const ctx = await setupTest();
 
   await writeRefusal(ctx.context, { channel: 'client', externalID: 'ab12' });
+
   ctx.clock.advance(60 * 60 * 1000 - 1);
 
   const result = await writeRefusal(ctx.context, { channel: 'client', externalID: 'ab12' });

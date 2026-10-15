@@ -12,13 +12,16 @@ export function isDefinitionsPath(path: string): boolean {
   if (parts.some((part) => part.startsWith('.'))) {
     return false;
   }
+
   if (parts.length === 1) {
     return definitionsLayout.files.has(path);
   }
+
   const [folder] = parts;
 
   if (folder === 'skills') {
     return true;
   }
+
   return definitionsLayout.folders.has(folder ?? '') && definitionsExtensions.has(extname(path));
 }

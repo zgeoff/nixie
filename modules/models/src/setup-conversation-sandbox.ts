@@ -32,14 +32,19 @@ export async function setupConversationSandbox(
     limits: options.limits,
     modelGrant: buildModelGrant(secret),
   });
+
   const existing = await options.sandboxes.list(conversationTaskID);
+
   const kept = findKeptSandbox(existing, spec);
   const replaced = existing.filter((sandbox) => sandbox !== kept);
+
   const target = await (kept ?? options.sandboxes.create(spec));
 
   // a start that stopped before the old sandbox went left both, so the copy runs again on a kept
   // one; no turn runs while an old sandbox remains, so the old copy is never behind the kept one
   await writeReplacedSession({ ...options, replaced, target });
+
   await Promise.all(replaced.map((old) => old.destroy()));
+
   return target;
 }

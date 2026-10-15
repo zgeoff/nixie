@@ -21,11 +21,13 @@ export interface StartWriterOptions {
 // database, then open the key store beside it. Any failure releases what the start took.
 export async function startWriter(options: StartWriterOptions): Promise<Writer> {
   requireLocalFilesystem(options.dataDir, options.readFilesystemType ?? statfsSync);
+
   const lock = claimWriterLock(options.dataDir);
   const db = startDatabase(join(options.dataDir, 'nixie.db'));
 
   try {
     const epoch = await claimWriterEpoch(db);
+
     const migration = await runMigrations(db, {
       schema: options.schema ?? nixieSchema,
       copyDir: options.dataDir,
@@ -44,6 +46,7 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
     };
   } catch (error) {
     await stopWriter([db], lock);
+
     throw error;
   }
 }
@@ -57,6 +60,7 @@ function makeStopOnce(
 
   return () => {
     stopped.pending ??= stopWriter(handles, lock);
+
     return stopped.pending;
   };
 }

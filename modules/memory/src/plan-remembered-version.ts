@@ -9,6 +9,7 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
     evidenceQuote: request.evidenceQuote ?? null,
     intentQuote: null,
   };
+
   const evidence = request.evidence ?? null;
   const pin = request.isPinned === undefined ? {} : { isPinned: request.isPinned };
 
@@ -27,6 +28,7 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
       ...pin,
     };
   }
+
   return {
     requirement: { target: request.target, operation: 'edit', states: ['active', 'retired'] },
     provenance: request.provenance,

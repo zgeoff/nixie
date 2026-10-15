@@ -17,13 +17,17 @@ export const memoryNoticesProjection: Projection = {
     if (entry === null) {
       return [];
     }
+
     const db = tx.$extendTables<MemoryTables>();
+
     const isListed = await hasProposalEntry(db, entry);
 
     if (isListed) {
       return [];
     }
+
     await writeNoticeEntry(db, record, entry);
+
     return [entry.entry_key];
   },
 };
@@ -50,6 +54,7 @@ function buildNoticeEntry(record: EnvelopeRecord): NoticeEntryValues | null {
       proposal_id: version.proposalID,
     };
   }
+
   const proposal = version === null ? parseProposalRecord(record) : null;
 
   // a write that merged into a pending proposal shows that proposal in its own turn's notice
@@ -63,6 +68,7 @@ function buildNoticeEntry(record: EnvelopeRecord): NoticeEntryValues | null {
       proposal_id: proposal.proposalID,
     };
   }
+
   if (proposal?.kind === 'memory.proposed' && proposal.noticeKey !== null) {
     return {
       entry_key: `proposal/${proposal.proposalID}`,
@@ -73,6 +79,7 @@ function buildNoticeEntry(record: EnvelopeRecord): NoticeEntryValues | null {
       proposal_id: proposal.proposalID,
     };
   }
+
   return null;
 }
 
@@ -84,6 +91,7 @@ async function hasProposalEntry(
   if (entry.change !== 'proposed' || entry.proposal_id === null) {
     return false;
   }
+
   const found = await db
     .selectFrom('memory_notice_entries')
     .select('entry_key')

@@ -22,16 +22,22 @@ export function startFaultPointHold(id: FaultPointID): FaultPointHold {
     if (arrived !== id) {
       return;
     }
+
     arrivals.count += 1;
+
     if (arrivals.count === 1) {
       reached.resolve(context);
+
       await gate.promise;
     }
   });
+
   onTestFinished(() => {
     gate.resolve();
+
     setFaultPointHandler(null);
   });
+
   return {
     reached: reached.promise,
     release: () => {

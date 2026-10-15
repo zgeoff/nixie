@@ -58,6 +58,7 @@ test.each([
     const expected = ctx.corpus.samples.flatMap((sample) =>
       sample.pairs.flatMap((pair, index) => {
         const input = buildCheckerEvalInput(sample, pair, ctx.report.ownerName);
+
         const inputHash = new Bun.CryptoHasher('sha256').update(input).digest('hex');
 
         return Array.from({ length: ctx.report.repeats }, (_, repeat) => ({
@@ -68,6 +69,7 @@ test.each([
         }));
       }),
     );
+
     const ran = ctx.report.calls.map((call) => ({
       sample: call.sample,
       pair: call.pair,

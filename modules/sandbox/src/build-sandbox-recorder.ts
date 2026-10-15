@@ -23,6 +23,7 @@ export function buildSandboxRecorder(options: SandboxRecorderOptions): SandboxRe
   if (!options.log.projections.includes(sandboxesProjection)) {
     throw new Error('the log passed to the sandbox recorder lacks the sandboxes projection');
   }
+
   const query = options.log.writer.db
     .$extendTables<SandboxTables>()
     .selectFrom('sandboxes')

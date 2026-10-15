@@ -15,7 +15,9 @@ interface SetupConfig {
 
 async function setupTest(config: SetupConfig) {
   const testLog = await setupTestLog();
+
   const registry = buildToolRegistry(config.tools);
+
   const endpoint = await startToolEndpoint({
     socketDir: join(testLog.dataDir, 'tools'),
     registry,
@@ -41,14 +43,15 @@ test("it lists only the run's tools, each with its name, description and input s
       buildMockToolDefinition({ name: 'notes_search', description: 'Search your notes.' }),
     ],
   });
+
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
-  const client = await startRunClient(run);
 
+  const client = await startRunClient(run);
   const listed = await client.listTools();
 
   expect(listed.tools).toStrictEqual([
@@ -72,14 +75,15 @@ test('it denies a registered tool missing from the run list at the scope stage w
       buildMockToolDefinition({ name: 'notes_search' }),
     ],
   });
+
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
-  const client = await startRunClient(run);
 
+  const client = await startRunClient(run);
   const result = await client.callTool({ name: 'notes_search', arguments: { query: 'milk' } });
   const entries = await readRecords(ctx.log, { afterSequence: 0 });
 
@@ -89,17 +93,20 @@ test('it denies a registered tool missing from the run list at the scope stage w
     ],
     isError: true,
   });
+
   expect(entries[0]?.record.decision).toStrictEqual({ outcome: 'deny', stage: 2, rule: null });
 });
 
 test('it records the tool-use ID that the call carries in _meta', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
+
   const client = await startRunClient(run);
 
   await client.callTool({
@@ -120,14 +127,15 @@ test('it records the tool-use ID that the call carries in _meta', async () => {
 
 test('it returns a typed result to the client as structured content with no text block', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
-  const client = await startRunClient(run);
 
+  const client = await startRunClient(run);
   const result = await client.callTool({ name: 'notes_read', arguments: { query: 'milk' } });
 
   expect(result).toMatchObject({ content: [], structuredContent: { text: 'a note' } });
@@ -135,6 +143,7 @@ test('it returns a typed result to the client as structured content with no text
 
 test('it refuses a request with no bearer token', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
@@ -154,12 +163,14 @@ test('it refuses a request with no bearer token', async () => {
 
 test("it refuses another run's token on this run's socket", async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const runA = await ctx.endpoint.startRun({
     runID: 'run-a',
     thread: 'task-a',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
+
   const runB = await ctx.endpoint.startRun({
     runID: 'run-b',
     thread: 'task-b',
@@ -179,6 +190,7 @@ test("it refuses another run's token on this run's socket", async () => {
 
 test('it revokes the run token when the run ends, so a restarted run refuses the old token', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const ended = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
@@ -194,6 +206,7 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
+
   const response = await Bun.fetch('http://localhost/mcp', {
     method: 'POST',
     unix: restarted.socketPath,
@@ -207,14 +220,18 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
 
 test('it hands each call the run identity of the step whose token the call carries', async () => {
   const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
+
   const endpoint = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
+
   const step = endpoint.startStep('task-1:3@2');
+
   const client = await startRunClient(endpoint, step.token);
 
   await client.callTool({ name: 'notes_read', arguments: { query: 'milk' } });
@@ -232,7 +249,9 @@ test('it hands each call the run identity of the step whose token the call carri
 
 test('it hands a call under the run token no step run identity', async () => {
   const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
+
   const endpoint = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
@@ -241,6 +260,7 @@ test('it hands a call under the run token no step run identity', async () => {
   });
 
   endpoint.startStep('task-1:3@2');
+
   const client = await startRunClient(endpoint);
 
   await client.callTool({ name: 'notes_read', arguments: { query: 'milk' } });
@@ -257,12 +277,14 @@ test('it hands a call under the run token no step run identity', async () => {
 
 test('it refuses a step token once its step stops', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const endpoint = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
+
   const step = endpoint.startStep('task-1:3@2');
 
   await step.stop();
@@ -279,12 +301,14 @@ test('it refuses a step token once its step stops', async () => {
 
 test('it keeps the run token when a step stops', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const endpoint = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
+
   const step = endpoint.startStep('task-1:3@2');
 
   await step.stop();
@@ -297,12 +321,14 @@ test('it keeps the run token when a step stops', async () => {
 
 test("it keeps another step's token when one step stops", async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const endpoint = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
+
   const stopped = endpoint.startStep('task-1:3@2');
   const running = endpoint.startStep('task-1:3@3');
 
@@ -316,6 +342,7 @@ test("it keeps another step's token when one step stops", async () => {
 
 test('it stops listening on the run socket when the run ends', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
@@ -356,6 +383,7 @@ test('it refuses a second endpoint for a run that has one', async () => {
 
 test('it gives a sandbox the socket of the run that owns it', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
@@ -370,12 +398,14 @@ test('it gives a sandbox the socket of the run that owns it', async () => {
 
 test('it sends the listen acknowledgement while the listen stream stays open', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
   const run = await ctx.endpoint.startRun({
     runID: 'run-1',
     thread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
+
   const response = await Bun.fetch('http://localhost/mcp', {
     method: 'POST',
     unix: run.socketPath,

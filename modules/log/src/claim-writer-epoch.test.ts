@@ -30,7 +30,6 @@ async function setupTest() {
 
 test('it raises the writer epoch by one on each claim, starting at 1', async () => {
   const ctx = await setupTest();
-
   const first = await claimWriterEpoch(ctx.db);
   const second = await claimWriterEpoch(ctx.other);
 
@@ -52,18 +51,20 @@ test('it gives every concurrent claim its own epoch', async () => {
 
 test('it commits the raise in one transaction that waits for a write already in flight', async () => {
   const ctx = await setupTest();
-
   const epoch = await claimWriterEpoch(ctx.db);
 
   await sql`create table notes (id text primary key)`.execute(ctx.db);
 
   const raise: { pending: Promise<number> | null } = { pending: null };
+
   const settledDuringWrite = await withWriteTransaction({ db: ctx.db, epoch }, async (tx) => {
     raise.pending = claimWriterEpoch(ctx.other);
+
     await sql`insert into notes (id) values ('before the raise')`.execute(tx);
 
     return Promise.race([raise.pending, Promise.resolve('pending')]);
   });
+
   const raised = await raise.pending;
   const notes = await sql`select id from notes`.execute(ctx.other);
 

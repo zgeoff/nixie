@@ -12,6 +12,7 @@ export async function runTestSeed(log: Log, dir: string): Promise<SeedResult> {
   await mkdir(root);
   await writeFile(join(root, 'nixie.yaml'), 'format: 1\n');
   await writeFile(join(root, 'persona.md'), '# Persona\n\nPlain and kind.\n');
+
   return runSeed({
     log,
     source: createPathSource({ dir: root }),

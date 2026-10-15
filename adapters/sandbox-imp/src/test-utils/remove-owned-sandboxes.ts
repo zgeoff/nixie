@@ -7,8 +7,11 @@ export async function removeOwnedSandboxes(
   owners: readonly string[],
 ): Promise<void> {
   const listed = await Promise.all(owners.map((owner) => adapter.list(owner)));
+
   const sandboxes = listed.flat();
+
   const results = await Promise.allSettled(sandboxes.map((sandbox) => sandbox.destroy()));
+
   const errors = results.flatMap((result): unknown[] =>
     result.status === 'rejected' ? [result.reason] : [],
   );

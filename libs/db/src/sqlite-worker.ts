@@ -36,16 +36,21 @@ function buildResponse(request: WorkerRequest): WorkerResponse {
 function runRequest(request: WorkerRequest): WorkerQueryResult {
   if (request.kind === 'open') {
     state.database = startConnection(request.path, request.options);
+
     return { rows: [] };
   }
+
   if (request.kind === 'close') {
     state.database?.close();
     state.database = null;
+
     return { rows: [] };
   }
+
   if (state.database === null) {
     throw new Error('the database is not open');
   }
+
   return runTransactionStep(state.database, request.sql, request.parameters);
 }
 
@@ -58,12 +63,16 @@ function startConnection(path: string, options: DatabaseOptions): Database {
   const database = new Database(path, { create: true, strict: true });
 
   database.run(`pragma busy_timeout = ${String(busyTimeoutMs)}`);
+
   updateJournalMode(database, Date.now() + busyTimeoutMs);
+
   database.run('pragma synchronous = full');
   database.run('pragma foreign_keys = on');
+
   if (options.secureDelete === true) {
     database.run('pragma secure_delete = on');
   }
+
   return database;
 }
 
@@ -77,7 +86,9 @@ function updateJournalMode(database: Database, deadline: number): void {
     if (!isBusyError(error) || Date.now() >= deadline) {
       throw error;
     }
+
     Bun.sleepSync(walRetryMs);
+
     updateJournalMode(database, deadline);
   }
 }
@@ -99,14 +110,17 @@ function runTransactionStep(
   if (sql === 'commit' || sql === 'rollback') {
     return runTransactionEnd(database, sql);
   }
+
   if (state.transactionOpen && !database.inTransaction) {
     throw new Error('SQLite rolled the transaction back after an earlier error');
   }
+
   const result = runQuery(database, sql, parameters);
 
   if (sql === 'begin immediate') {
     state.transactionOpen = true;
   }
+
   return result;
 }
 
@@ -114,14 +128,17 @@ function runTransactionEnd(database: Database, sql: 'commit' | 'rollback'): Work
   const rolledBack = state.transactionOpen && !database.inTransaction;
 
   state.transactionOpen = false;
+
   if (rolledBack && sql === 'rollback') {
     return { rows: [] };
   }
+
   if (rolledBack) {
     throw new Error(
       'SQLite rolled the transaction back after an earlier error, so nothing committed',
     );
   }
+
   return runQuery(database, sql, []);
 }
 
@@ -151,5 +168,6 @@ function toWorkerError(error: unknown): WorkerError {
   if (error instanceof Error) {
     return { message: error.message, code: 'code' in error ? String(error.code) : undefined };
   }
+
   return { message: String(error), code: undefined };
 }

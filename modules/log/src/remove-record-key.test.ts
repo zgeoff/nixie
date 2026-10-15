@@ -33,9 +33,11 @@ test('it leaves the envelope and a gap where the payload was once the key is gon
 
   const keys = await sql<{ key_id: string }>`select key_id from records
     where sequence = 1`.execute(ctx.writer.db);
+
   const [key] = keys.rows;
 
   invariant(key);
+
   await removeRecordKey(ctx.log, key.key_id);
 
   const read = await readRecords(ctx.log, { afterSequence: 0 });
@@ -55,6 +57,7 @@ test('it leaves the envelope and a gap where the payload was once the key is gon
     payload: { spans: 1 },
     erasable: { status: 'shredded' },
   });
+
   expect(read.at(1)?.record.erasable).toStrictEqual({
     status: 'readable',
     fields: { text: 'keep this one' },
@@ -74,9 +77,11 @@ test('it leaves no copy of the wrapped key in keys.db or its WAL', async () => {
 
   const stored = await sql<{ key_id: string; wrapped: Uint8Array }>`select key_id, wrapped
     from record_keys`.execute(ctx.writer.keys);
+
   const [key] = stored.rows;
 
   invariant(key);
+
   const walBefore = await readFile(join(ctx.dataDir, 'keys.db-wal'));
 
   await removeRecordKey(ctx.log, key.key_id);
@@ -99,6 +104,7 @@ test('it refuses to remove a key under a stale writer epoch and keeps the key', 
       erasable: { text: 'keep me' },
     },
   ]);
+
   await sql`update writer_epoch set epoch = epoch + 1`.execute(ctx.writer.db);
 
   const stored = await sql<{ key_id: string }>`select key_id from record_keys`.execute(
@@ -106,6 +112,7 @@ test('it refuses to remove a key under a stale writer epoch and keeps the key', 
   );
 
   invariant(stored.rows[0]);
+
   const remove = removeRecordKey(ctx.log, stored.rows[0].key_id);
 
   await remove.catch(() => {});

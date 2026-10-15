@@ -19,6 +19,7 @@ async function setupTest() {
   const log = await startTestLog(dataDir);
 
   stack.defer(() => log.writer.stop());
+
   return { log, context: { log, definitions: () => ({ snapshotHash: 'sha256:test' }) } };
 }
 
@@ -90,11 +91,13 @@ test('it records the tools added and removed by name and a changed persona', asy
     { tools: ['memory_search', 'web_fetch'], personaVersion: 'sha256:persona-1' },
     '0.11.0',
   );
+
   await writeStartRecord(
     ctx.context,
     { tools: ['web_fetch', 'memory_search', 'event_log_read'], personaVersion: 'sha256:persona-1' },
     '0.12.0',
   );
+
   await writeStartRecord(
     ctx.context,
     { tools: ['event_log_read', 'web_fetch'], personaVersion: 'sha256:persona-2' },

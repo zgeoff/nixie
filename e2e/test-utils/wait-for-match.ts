@@ -16,6 +16,7 @@ export async function waitForMatch(
       const records = await readRecords();
 
       found.record = records.find((record) => matches(record)) ?? null;
+
       return found.record !== null;
     },
     { timeoutMs },
@@ -23,5 +24,6 @@ export async function waitForMatch(
 
   // the wait returns only once a poll found a record
   invariant(found.record);
+
   return found.record;
 }

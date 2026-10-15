@@ -14,6 +14,7 @@ export const memoryForgottenEvidenceProjection: Projection = {
     if (parsed?.kind !== 'memory.forget_started' || parsed.evidenceSequences.length === 0) {
       return [];
     }
+
     const rows = [...new Set(parsed.evidenceSequences)].map((sequence) => ({
       evidence_key: `${String(sequence)}/${parsed.itemID}`,
       record_sequence: sequence,
@@ -25,6 +26,7 @@ export const memoryForgottenEvidenceProjection: Projection = {
       .insertInto('memory_forgotten_evidence')
       .values(rows)
       .execute();
+
     return rows.map((row) => row.evidence_key);
   },
 };

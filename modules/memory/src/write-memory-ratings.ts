@@ -15,6 +15,7 @@ import type { StoreParts } from './types';
 // names an item only by its stored short ID, so a forget leaves no readable copy of either.
 export async function writeMemoryRatings(parts: StoreParts, request: RateRequest): Promise<void> {
   const log = parts.context.log;
+
   const recall = await readLatestRecall(parts, request.thread);
   const items = await readRatedItems(parts, request.ratings);
 
@@ -22,6 +23,7 @@ export async function writeMemoryRatings(parts: StoreParts, request: RateRequest
   requireRecalled(request.ratings, { ...items, versions: recall.versions });
 
   const ratingID = crypto.randomUUID();
+
   const ratings = await Promise.all(
     request.ratings.map((rating) =>
       buildRatingJSON(parts, { ...items, rating, ratingID, versions: recall.versions }),
@@ -67,16 +69,17 @@ async function readLatestRecall(parts: StoreParts, thread: string): Promise<Late
       'You have not been given any memories in this conversation yet, so there is nothing to rate.',
     );
   }
+
   const versions = new Map<string, number>();
 
   for (const item of recalledPayload.parse(newest.record.payload).items) {
     versions.set(item.itemID, Math.max(item.version, versions.get(item.itemID) ?? 0));
   }
+
   return { sequence: newest.record.sequence, versions };
 }
 
 const recalledItem = z.object({ itemID: z.string(), version: z.int() });
-
 const recalledPayload = z.object({ items: z.array(recalledItem) });
 
 // Each named item, by the item ID it names and the short ID the store holds for it. The model can
@@ -101,6 +104,7 @@ async function readRatedItems(
       'An item you rated is not the ID of a memory, so nothing was rated. Rate the memories by the IDs you were given.',
     );
   }
+
   return { found, shortIDs: await readShortIDs(parts, [...found.values()]) };
 }
 
@@ -108,6 +112,7 @@ function getItemID(items: RatedItems, rating: MemoryRating): string {
   const itemID = items.found.get(rating.item);
 
   invariant(itemID !== undefined, 'readRatedItems checked the item');
+
   return itemID;
 }
 
@@ -115,6 +120,7 @@ function getShortID(items: RatedItems, itemID: string): string {
   const shortID = items.shortIDs.get(itemID);
 
   invariant(shortID !== undefined, 'readShortIDs reads every item that exists');
+
   return shortID;
 }
 
@@ -129,6 +135,7 @@ function requireRatedOnce(ratings: readonly MemoryRating[], items: RatedItems): 
         `${getShortID(items, itemID)} is rated twice; rate each item once.`,
       );
     }
+
     seen.add(itemID);
   }
 }
@@ -194,5 +201,6 @@ async function requireSealedNote(
       `${getShortID(rating, note.itemID)} was forgotten, so a note on it can't be kept.`,
     );
   }
+
   return encodeRatingNote(key, { ratingID: rating.ratingID, itemID: note.itemID }, note.note);
 }

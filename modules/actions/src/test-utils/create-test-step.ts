@@ -11,5 +11,6 @@ export async function createTestStep(context: TasksContext): Promise<TaskClaim> 
 
   // the task just created is ready, so the claim finds a task
   invariant(step);
+
   return step;
 }

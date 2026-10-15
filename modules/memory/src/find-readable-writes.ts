@@ -38,12 +38,14 @@ async function readReadableSources(
   if (sequences.length === 0) {
     return new Set();
   }
+
   const rows: readonly SourceRow[] = await tx
     .$extendTables<{ records: SourceRow }>()
     .selectFrom('records')
     .select(['sequence', 'key_id'])
     .where('sequence', 'in', sequences)
     .execute();
+
   const keys = await findRecordKeys(
     parts.context.log,
     rows.flatMap((row) => (row.key_id === null ? [] : [row.key_id])),

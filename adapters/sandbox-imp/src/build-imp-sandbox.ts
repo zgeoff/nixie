@@ -52,6 +52,7 @@ export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
     copyOut: (paths) => Promise.all(paths.map((path) => readGuestFile(ctx, path))),
     toolRoute: async () => {
       await startRoute(ctx);
+
       return ctx.spec.toolRoute ? { url: `http://127.0.0.1:${ctx.guestToolPort}` } : null;
     },
     suspension: buildSuspension(ctx),
@@ -79,11 +80,13 @@ async function startImpProcess(ctx: ImpSandboxContext, command: ExecSpec) {
   // exec has started, which imp's client reports after it returns the handle
   try {
     await exec.started;
+
     await ctx.routes.open(ctx.id, ctx.spec);
   } catch (error) {
     exec.close();
     throw error;
   }
+
   return toProcessIO(exec, ctx.killGraceMs);
 }
 
@@ -99,6 +102,7 @@ function buildImpExecEnv(
   for (const grant of spec.grants) {
     Object.assign(merged, grant.env);
   }
+
   return { ...merged, ...env };
 }
 
@@ -111,12 +115,15 @@ async function startRoute(ctx: ImpSandboxContext): Promise<void> {
   } else if (ctx.spec.toolRoute) {
     await ctx.port.wakeImp(ctx.id);
   }
+
   await ctx.routes.open(ctx.id, ctx.spec);
 }
 
 async function updateImpAwake(ctx: ImpSandboxContext): Promise<void> {
   await ctx.port.wakeImp(ctx.id);
+
   ctx.sleeping.setAsleep(ctx.id, false);
+
   await ctx.recorder.write({ event: 'woken', sandboxID: ctx.id });
 }
 
@@ -127,12 +134,14 @@ function buildSuspension(ctx: ImpSandboxContext): Sandbox['suspension'] {
     kind: 'memory',
     sleep: async () => {
       ctx.sleeping.setAsleep(ctx.id, true);
+
       await ctx.routes.close(ctx.id);
       await ctx.port.sleepImp(ctx.id);
       await ctx.recorder.write({ event: 'slept', sandboxID: ctx.id });
     },
     wake: async () => {
       await updateImpAwake(ctx);
+
       await ctx.routes.open(ctx.id, ctx.spec);
     },
   };
@@ -164,15 +173,18 @@ async function readGuestFile(ctx: ImpSandboxContext, path: string): Promise<File
   const io = await startImpProcess(ctx, {
     argv: ['head', '-c', String(copyOutLimitBytes + 1), '--', path],
   });
+
   const [content, result] = await Promise.all([
     collectOutput(io.stdout, copyOutLimitBytes),
     runCommand({ ...io, stdout: new Blob().stream() }, undefined, undefined),
   ]);
 
   requireSuccess(result, `copy out of ${path}`);
+
   if (content.isCut) {
     throw new Error(`copy out of ${path} failed: the file passes ${copyOutLimitBytes} bytes`);
   }
+
   return { path, content: content.bytes };
 }
 

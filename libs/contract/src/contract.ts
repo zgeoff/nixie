@@ -8,9 +8,7 @@ import { z } from 'zod';
 // A client creates the ID once per action and sends it again on every retry, so the server applies
 // the action once and answers a retry with the first result.
 const clientActionIDSchema = z.uuid();
-
 const sequenceSchema = z.int().nonnegative();
-
 const threadSchema = z.string().min(1).max(200);
 
 // Offsets count UTF-16 code units, as JavaScript string indices do. The server labels the whole
@@ -51,7 +49,6 @@ const versionRefSchema = z.object({
 // A recall's delivered versions, each with its match score when a query ranked it. The record
 // holds references and scores, never text; memory.readVersions reads the text.
 const recallItemSchema = versionRefSchema.extend({ score: z.number().optional() });
-
 const recallSchema = z.object({ items: z.array(recallItemSchema) });
 
 // The conversation's model's rating of one memory a recall delivered: whether it helped, was noise

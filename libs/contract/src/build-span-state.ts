@@ -13,6 +13,7 @@ export function buildSpanState(
   // comes from a plain diff instead, and its text counts as unknown.
   const fallback = pending === undefined || !isEditAtSelection(pinned, pending.selection);
   const edit = fallback ? planEdit(state.text, text) : pinned;
+
   const source = fallback
     ? 'unknown'
     : pickEditSource(state.removed, pending, {
@@ -20,6 +21,7 @@ export function buildSpanState(
         removed: edit.removed,
         text: text.slice(edit.at, edit.at + edit.inserted),
       });
+
   const spans = state.spans.flatMap((span) => splitSpan(span, edit));
 
   if (edit.inserted > 0) {
@@ -138,6 +140,7 @@ function pickEditSource(
   insertion: Insertion,
 ): SpanSource {
   const respacing = pending.respacing;
+
   const isRespaced =
     respacing !== undefined &&
     removed !== undefined &&
@@ -162,11 +165,13 @@ function splitSpan(span: Readonly<Span>, edit: Edit): Span[] {
   if (span.end <= edit.at) {
     return [span];
   }
+
   if (span.start >= removedEnd) {
     return [{ ...span, end: span.end + shift, start: span.start + shift }];
   }
 
   const head = span.start < edit.at ? [{ ...span, end: edit.at }] : [];
+
   const tail =
     span.end > removedEnd
       ? [{ ...span, end: span.end + shift, start: edit.at + edit.inserted }]
@@ -178,6 +183,7 @@ function splitSpan(span: Readonly<Span>, edit: Edit): Span[] {
 // The text a pure delete removed, when every character of it was typed.
 function findTypedRemoval(state: SpanState, edit: Edit): SpanState['removed'] {
   const end = edit.at + edit.removed;
+
   const isTyped = state.spans.some(
     (span) => span.source === 'typed' && span.start <= edit.at && end <= span.end,
   );

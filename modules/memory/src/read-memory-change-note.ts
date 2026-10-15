@@ -33,10 +33,14 @@ export async function readMemoryChangeNote(
   options: MemoryNoteOptions,
 ): Promise<TurnMemoryNote> {
   const noted = await readNoteRange(log, options.range);
+
   const cap = options.cap;
+
   const versions = await readOutsideVersions(log, noted);
   const caughtUp = await readCaughtUpSequence(log);
+
   const split = splitCatchUpVersions(versions, caughtUp);
+
   const changes = await readNotedChanges(store, split.listed.slice(0, cap));
   const merges = await readOutsideMerges(log, noted);
 
@@ -130,6 +134,7 @@ function splitCatchUpVersions(
 ): SplitVersions {
   const isCatchUp = (version: NotedVersion) =>
     version.origin === 'memory_writer' && (caughtUp === null || version.sequence < caughtUp);
+
   const catchUp = versions.filter((version) => isCatchUp(version));
 
   return {
@@ -150,6 +155,7 @@ function collectLatestVersions(versions: readonly NotedVersion[]): readonly Note
       change: first?.change === 'created' ? 'created' : version.change,
     });
   }
+
   return [...latest.values()];
 }
 
@@ -162,12 +168,14 @@ async function readNotedChanges(
   if (versions.length === 0) {
     return [];
   }
+
   const result = await store.recall({
     itemIDs: versions.map((version) => version.item_id),
     includeRetired: true,
     limit: versions.length,
     thread: conversationTaskID,
   });
+
   const texts = new Map(result.items.map((item) => [item.itemID, item]));
 
   return versions.flatMap((version) => {
@@ -176,6 +184,7 @@ async function readNotedChanges(
     if (item === undefined) {
       return [];
     }
+
     return [{ shortID: item.shortID, change: pickChange(version, item.state), text: item.text }];
   });
 }
@@ -184,5 +193,6 @@ function pickChange(version: NotedVersion, state: 'active' | 'retired'): NotedCh
   if (state === 'retired') {
     return 'retired';
   }
+
   return version.change === 'created' ? 'remembered' : 'changed';
 }

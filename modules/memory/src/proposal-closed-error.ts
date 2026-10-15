@@ -2,6 +2,7 @@
 // time passed.
 export class ProposalClosedError extends Error {
   override readonly name = 'ProposalClosedError';
+
   readonly code = 'PROPOSAL_CLOSED';
 
   constructor(proposalID: string, status: string) {

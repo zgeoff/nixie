@@ -19,6 +19,7 @@ test('it enrols the browser with a code and the device name', async () => {
   await user.clear(rendered.getByLabelText('Device name'));
   await user.type(rendered.getByLabelText('Device name'), 'laptop');
   await user.click(rendered.getByRole('button', { name: 'Enrol' }));
+
   await waitFor(() => {
     expect(onEnrolled).toHaveBeenCalledOnce();
   });
@@ -36,6 +37,7 @@ test('it leaves the session cookie to the API response', async () => {
 
   await user.type(rendered.getByLabelText('Enrolment code'), 'k7p-2xq');
   await user.click(rendered.getByRole('button', { name: 'Enrol' }));
+
   await waitFor(() => {
     expect(onEnrolled).toHaveBeenCalledOnce();
   });

@@ -20,6 +20,7 @@ export { startWriter } from './start-writer';
 export type { SubscribeToRecordsOptions } from './subscribe-to-records';
 export { subscribeToRecords } from './subscribe-to-records';
 export { threadsProjection } from './threads-projection';
+
 export type {
   Approval,
   ContentSource,
@@ -41,6 +42,7 @@ export type {
   Writer,
   WriterLock,
 } from './types';
+
 export { withWriteTransaction } from './with-write-transaction';
 export { writeRecords } from './write-records';
 export { writeRecordsInTransaction } from './write-records-in-transaction';

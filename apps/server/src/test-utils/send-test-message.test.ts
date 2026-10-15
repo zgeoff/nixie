@@ -6,6 +6,7 @@ import { startTestServer } from './start-test-server';
 
 test('it runs the conversation step on the message and commits the step result', async () => {
   const server = await startTestServer();
+
   const runStep = mock(() =>
     Promise.resolve({
       next: 'wait' as const,
@@ -30,6 +31,7 @@ test('it runs the conversation step on the message and commits the step result',
       inbox: [expect.objectContaining({ kind: 'owner_message', thread: 'conversation' })],
     }),
   );
+
   expect(
     entries.map((entry) => entry.record).filter((record) => record.kind !== 'task.created'),
   ).toMatchObject([
@@ -44,6 +46,7 @@ test('it throws when another holder already claimed the conversation task', asyn
   const server = await startTestServer();
 
   await createConversationTask(server.context);
+
   await writeInboxRecords(server.context, [
     {
       kind: 'owner_message',
@@ -52,6 +55,7 @@ test('it throws when another holder already claimed the conversation task', asyn
       erasable: { text: 'Hi.' },
     },
   ]);
+
   await claimTask(server.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   const sent = sendTestMessage(server.context, mock(), 'Say a fruit.');

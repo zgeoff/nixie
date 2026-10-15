@@ -10,6 +10,7 @@ async function setupTest() {
 
 test('it pins an active item without adding a version', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Goes by Sam',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -32,6 +33,7 @@ test('it pins an active item without adding a version', async () => {
 
 test('it unpins an item', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Goes by Sam',
     isPinned: true,
@@ -55,6 +57,7 @@ test('it unpins an item', async () => {
 
 test('it rejects a pin of a retired item', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -90,6 +93,7 @@ test('it rejects a pin that takes the pinned core past 2,000 tokens, and pins no
     text: 'Keeps a long reading list for winter. '.repeat(116),
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const pin = ctx.memory.store.pin({
     itemID: second.itemID,
     isPinned: true,
@@ -171,6 +175,7 @@ test('it rejects a pin whose quotes take the pinned core past 2,000 tokens', asy
     evidenceQuote: 'Oat milk in the coffee, please, never the dairy kind. '.repeat(81),
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const pin = ctx.memory.store.pin({
     itemID: second.itemID,
     isPinned: true,

@@ -23,6 +23,7 @@ async function setupTest() {
       sent(body);
     }),
   );
+
   return { sent, rendered: renderHook(() => useOutbox()) };
 }
 
@@ -39,6 +40,7 @@ test("it sends a message with the browser's time zone", async () => {
       thread: 'conversation',
     });
   });
+
   await waitFor(() => {
     expect(store.records.count()).toBe(1);
   });
@@ -58,6 +60,7 @@ test('it keeps the time zone a message was written in when its retry sends', asy
   const ctx = await setupTest();
 
   setupBrowserTimeZone('America/Sao_Paulo');
+
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
 
   act(() => {
@@ -68,6 +71,7 @@ test('it keeps the time zone a message was written in when its retry sends', asy
       thread: 'conversation',
     });
   });
+
   await waitFor(() => {
     expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
   });
@@ -78,6 +82,7 @@ test('it keeps the time zone a message was written in when its retry sends', asy
   const [entry] = ctx.rendered.result.current.entries;
 
   invariant(entry, 'the outbox holds no message');
+
   await act(async () => {
     await ctx.rendered.result.current.retry(entry.message);
   });

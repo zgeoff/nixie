@@ -11,6 +11,7 @@ async function setupTest() {
 
 test('it reads the short ID the items table holds for an item', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -29,6 +30,7 @@ test('it reads the short ID the items table holds for an item', async () => {
 
 test('it fails for an item that holds no short ID', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

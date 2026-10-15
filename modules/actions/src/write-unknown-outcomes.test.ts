@@ -26,6 +26,7 @@ test('it marks an action whose attempt record has no result unknown', async () =
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   await runStalledAttempt(ctx);
 
   const before = await ctx.writer.db
@@ -33,6 +34,7 @@ test('it marks an action whose attempt record has no result unknown', async () =
     .selectFrom('actions')
     .select(['status', 'attempt_open'])
     .executeTakeFirstOrThrow();
+
   const next = await startNextTestWriter(ctx);
 
   await writeUnknownOutcomes(next.context);
@@ -44,6 +46,7 @@ test('it marks an action whose attempt record has no result unknown', async () =
     .executeTakeFirstOrThrow();
 
   expect(before).toStrictEqual({ status: 'pending', attempt_open: 1 });
+
   expect(after).toMatchObject({
     status: 'unknown',
     attempt_count: 1,
@@ -62,6 +65,7 @@ test('it writes the unknown outcome to the task inbox', async () => {
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   await runStalledAttempt(ctx);
 
   const before = await ctx.writer.db
@@ -70,6 +74,7 @@ test('it writes the unknown outcome to the task inbox', async () => {
     .select(['kind', 'thread'])
     .where('kind', '=', 'action.outcome')
     .execute();
+
   const next = await startNextTestWriter(ctx);
 
   await writeUnknownOutcomes(next.context);
@@ -87,6 +92,7 @@ test('it writes the unknown outcome to the task inbox', async () => {
 
 test('it runs as recovery step 3, between the interrupted steps and the late timers', async () => {
   const ctx = await setupTest();
+
   const reached: string[] = [];
 
   await createAllowedAction(ctx.context, {
@@ -96,6 +102,7 @@ test('it runs as recovery step 3, between the interrupted steps and the late tim
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   await runStalledAttempt(ctx);
 
   const next = await startNextTestWriter(ctx);
@@ -103,6 +110,7 @@ test('it runs as recovery step 3, between the interrupted steps and the late tim
   setFaultPointHandler((id) => {
     reached.push(id);
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });
@@ -132,6 +140,7 @@ test('it frees the step and the action leases through recovery', async () => {
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   await runStalledAttempt(ctx);
 
   const held = await ctx.writer.db
@@ -139,6 +148,7 @@ test('it frees the step and the action leases through recovery', async () => {
     .selectFrom('leases')
     .select('holder')
     .execute();
+
   const next = await startNextTestWriter(ctx);
 
   await runRecovery(next.context, {
@@ -166,6 +176,7 @@ test('it readies the task through recovery', async () => {
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   await runStalledAttempt(ctx);
 
   const before = await ctx.writer.db
@@ -173,6 +184,7 @@ test('it readies the task through recovery', async () => {
     .selectFrom('tasks')
     .select('state')
     .executeTakeFirstOrThrow();
+
   const next = await startNextTestWriter(ctx);
 
   await runRecovery(next.context, {
@@ -200,6 +212,7 @@ test('it leaves an action with no open attempt as it was', async () => {
     arguments: { to: 'team' },
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
+
   await runStalledAttempt(ctx);
 
   const next = await startNextTestWriter(ctx);

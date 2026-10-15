@@ -15,6 +15,7 @@ async function setupTest() {
 
 test('it returns the sessions the running server lists', async () => {
   const ctx = await setupTest();
+
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
@@ -48,6 +49,7 @@ test('it returns the sessions the running server lists', async () => {
 
 test('it returns the label the running server set', async () => {
   const ctx = await setupTest();
+
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),
@@ -78,6 +80,7 @@ test('it returns the label the running server set', async () => {
 
 test('it rejects with the status and the reason when the server refuses the label', async () => {
   const ctx = await setupTest();
+
   const socket = await startControlSocket({
     path: ctx.path,
     createEnrolmentCode: () => Promise.reject(new Error('unused')),

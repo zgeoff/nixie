@@ -17,20 +17,25 @@ import type {
 // record lists what was delivered, so no text gets through after a forget began.
 export async function readRecall(parts: StoreParts, request: RecallRequest): Promise<RecallResult> {
   const limit = Math.min(request.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+
   const states: readonly MemoryState[] =
     request.includeRetired === true ? ['active', 'retired'] : ['active'];
+
   const candidates = await findCandidates(parts, { request, limit, states });
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('memory.recall.ranked', { kind: 'memory', id: null });
   }
+
   return parts.lock(async () => {
     const deliverable = await readDeliverableItems(parts, {
       itemIDs: candidates.itemIDs,
       states,
       includeHistory: request.includeHistory === true,
     });
+
     const excluded = buildVersionKeys(request.excludedVersions ?? []);
+
     const items = deliverable.filter(
       (item) =>
         !(request.excludePinned === true && item.isPinned) &&
@@ -41,7 +46,9 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
     if (NIXIE_TEST_BUILD) {
       await waitAtFaultPoint('memory.recall.checked', { kind: 'memory', id: null });
     }
+
     await writeRecallRecord(parts, { request, items, scores: candidates.scores });
+
     return { items, next: candidates.next };
   });
 }
@@ -69,11 +76,13 @@ async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise
   if (request.query !== undefined) {
     return findQueryCandidates(parts, { ...query, request: { ...request, query: request.query } });
   }
+
   const named = request.versions?.map((ref) => ref.itemID) ?? request.itemIDs;
 
   if (named !== undefined) {
     return { itemIDs: [...new Set(named)].slice(0, query.limit), next: null };
   }
+
   const rows = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
@@ -83,6 +92,7 @@ async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise
     .orderBy('created_sequence')
     .limit(query.limit + 1)
     .execute();
+
   const page = rows.slice(0, query.limit);
   const last = page.at(-1);
 
@@ -104,6 +114,7 @@ async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): P
     query.request.excludePinned === true ? readPinnedItemIDs(parts) : [],
     readCurrentItemIDs(parts, query.request.excludedVersions ?? []),
   ]);
+
   const matches = await parts.index.findMatches(query.request.query, {
     limit: query.limit,
     excludedIDs: [...pinned, ...held],
@@ -148,7 +159,9 @@ async function readCurrentItemIDs(
   if (refs.length === 0) {
     return [];
   }
+
   const keys = buildVersionKeys(refs);
+
   const rows = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
@@ -174,9 +187,11 @@ function parseCursor(after: string | undefined): number {
   if (after === undefined) {
     return 0;
   }
+
   if (!/^\d+$/u.test(after) || !Number.isSafeInteger(Number(after))) {
     throw new InvalidCursorError(after);
   }
+
   return Number(after);
 }
 

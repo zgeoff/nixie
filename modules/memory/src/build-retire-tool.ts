@@ -58,6 +58,7 @@ async function runRetireCall(
   context: ToolContext,
 ): Promise<ToolOutcome> {
   const input = retireArguments.parse(call.input);
+
   const [itemID = input.itemID] = await readItemIDs(memory, [input.itemID]);
 
   return runWriteCall(

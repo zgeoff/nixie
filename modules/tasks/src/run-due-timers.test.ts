@@ -23,6 +23,7 @@ test('it fires a due timer into its task inbox and wakes the task', async () => 
     acknowledged: [],
     timers: [{ dueAt: 1_060_000 }],
   });
+
   ctx.clock.advance(60_000);
 
   const fired = await runDueTimers(ctx.context);
@@ -46,6 +47,7 @@ test('it leaves a timer that is not yet due', async () => {
     acknowledged: [],
     timers: [{ dueAt: 1_060_000 }],
   });
+
   ctx.clock.advance(59_999);
 
   const fired = await runDueTimers(ctx.context);
@@ -63,6 +65,7 @@ test('it records both the due time and the fire time of a timer that fires late'
     acknowledged: [],
     timers: [{ dueAt: 1_060_000 }],
   });
+
   ctx.clock.advance(3_600_000);
 
   await runDueTimers(ctx.context);
@@ -82,6 +85,7 @@ test('it records both the due time and the fire time of a timer that fires late'
       },
     },
   ]);
+
   expect(timer).toMatchObject({ fired_at: 4_600_000, fired_sequence: 4 });
 });
 
@@ -95,7 +99,9 @@ test('it fires each timer once', async () => {
     acknowledged: [],
     timers: [{ dueAt: 1_060_000 }],
   });
+
   ctx.clock.advance(60_000);
+
   await runDueTimers(ctx.context);
 
   const fired = await runDueTimers(ctx.context);
@@ -105,7 +111,9 @@ test('it fires each timer once', async () => {
 
 test('it reaches timer.fire.before, then inbox.write.after once the fire commits', async () => {
   const ctx = await setupTest();
+
   const reached: FaultPointID[] = [];
+
   const claim = await createTestClaim(ctx.context, 'check back in a minute');
 
   await writeStepCommit(ctx.context, claim, {
@@ -114,12 +122,15 @@ test('it reaches timer.fire.before, then inbox.write.after once the fire commits
     acknowledged: [],
     timers: [{ dueAt: 1_060_000 }],
   });
+
   setFaultPointHandler((id) => {
     reached.push(id);
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });
+
   ctx.clock.advance(60_000);
 
   await runDueTimers(ctx.context);

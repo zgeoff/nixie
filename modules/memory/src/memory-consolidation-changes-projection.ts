@@ -17,6 +17,7 @@ export const memoryConsolidationChangesProjection: Projection = {
     if (parsed === null || parsed.kind === 'memory.consolidation_summarized') {
       return Promise.resolve([]);
     }
+
     return writeChangeRows(tx.$extendTables<ConsolidationTables>(), record, parsed);
   },
 };
@@ -30,6 +31,7 @@ async function writeChangeRows(
     if (parsed.changes.length === 0) {
       return [];
     }
+
     await db
       .insertInto('memory_consolidation_changes')
       .values(
@@ -57,16 +59,20 @@ async function writeChangeRows(
         })),
       )
       .execute();
+
     return parsed.changes.map((change) => change.changeID);
   }
+
   if (parsed.kind === 'memory.consolidation_commented') {
     return updateChangeComment(db, record, parsed);
   }
+
   await db
     .updateTable('memory_consolidation_changes')
     .set({ status: statusAfter[parsed.kind], resolved_sequence: record.sequence })
     .where('change_id', '=', parsed.changeID)
     .execute();
+
   return [parsed.changeID];
 }
 
@@ -81,6 +87,7 @@ async function updateChangeComment(
     .set({ comment: parsed.sealed, comment_sequence: record.sequence })
     .where('change_id', '=', parsed.changeID)
     .execute();
+
   return [parsed.changeID];
 }
 

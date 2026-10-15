@@ -24,6 +24,7 @@ async function runMemoryPending(configPath: string, io: CLIIO): Promise<number> 
   const pending = await sendMemoryRequest(socketPath, { command: 'pending' });
 
   io.print(JSON.stringify(pending));
+
   return 0;
 }
 
@@ -39,12 +40,15 @@ function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
           : '';
 
       io.print(`nixie memory-${command} takes a proposal ID and --hash <action hash>${options}`);
+
       return 2;
     }
+
     const socketPath = await resolveSocketPath(flags.config);
     const answer = await sendMemoryRequest(socketPath, request);
 
     io.print(JSON.stringify(answer));
+
     return 0;
   };
 }
@@ -61,9 +65,11 @@ function buildAnswerRequest(
   if (proposalID === undefined || flags.hash === undefined || revisionOf === null) {
     return null;
   }
+
   if (command === 'reject') {
     return flags.text === undefined ? { command, proposalID, actionHash: flags.hash } : null;
   }
+
   return {
     command,
     proposalID,
@@ -84,12 +90,15 @@ async function runMemoryShow(
 
   if (itemID === undefined) {
     io.print('nixie memory-show takes an item ID');
+
     return 2;
   }
+
   const socketPath = await resolveSocketPath(configPath);
   const history = await sendMemoryRequest(socketPath, { command: 'show', itemID });
 
   io.print(JSON.stringify(history));
+
   return 0;
 }
 
@@ -100,12 +109,15 @@ async function runMemoryEdit(flags: CLIFlags, io: CLIIO, args: readonly string[]
 
   if (target === null || flags.text === undefined) {
     io.print('nixie memory-edit takes <itemID>@<version> and --text <new text>');
+
     return 2;
   }
+
   const socketPath = await resolveSocketPath(flags.config);
   const ref = await sendMemoryRequest(socketPath, { command: 'edit', target, text: flags.text });
 
   io.print(JSON.stringify(ref));
+
   return 0;
 }
 
@@ -117,12 +129,15 @@ function makeMemoryVersionChange(command: 'retire' | 'restore'): Command {
 
     if (target === null) {
       io.print(`nixie memory-${command} takes <itemID>@<version>`);
+
       return 2;
     }
+
     const socketPath = await resolveSocketPath(flags.config);
     const ref = await sendMemoryRequest(socketPath, { command, target });
 
     io.print(JSON.stringify(ref));
+
     return 0;
   };
 }
@@ -134,12 +149,15 @@ function makeMemoryPin(isPinned: boolean): Command {
 
     if (itemID === undefined) {
       io.print(`nixie memory-${isPinned ? 'pin' : 'unpin'} takes an item ID`);
+
       return 2;
     }
+
     const socketPath = await resolveSocketPath(flags.config);
     const pinned = await sendMemoryRequest(socketPath, { command: 'pin', itemID, isPinned });
 
     io.print(JSON.stringify(pinned));
+
     return 0;
   };
 }

@@ -7,6 +7,7 @@ import { writeInboxRecordsInTransaction } from './write-inbox-records-in-transac
 
 async function setupTest() {
   const tasks = await startTestTasks();
+
   const db = tasks.writer.db.$extendTables<TasksTables>();
 
   await createConversationTask(tasks.context);
@@ -47,6 +48,7 @@ test('it writes no message when the caller rolls its transaction back', async ()
         thread: 'conversation',
       },
     ]);
+
     throw new Error('the caller failed after the write');
   });
 

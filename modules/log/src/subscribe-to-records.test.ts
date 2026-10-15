@@ -8,6 +8,7 @@ import { writeRecords } from './write-records';
 
 async function setupTest() {
   const started = await startTestLog();
+
   const abort = new AbortController();
 
   onTestFinished(() => {
@@ -46,7 +47,9 @@ test('it yields the records after the sequence, then a new record when the WAL c
     pollMs: 3_600_000,
     signal: ctx.signal,
   });
+
   const first = await stream.next();
+
   const waiting = stream.next();
 
   await writeRecords(ctx.log, [
@@ -61,6 +64,7 @@ test('it yields the records after the sequence, then a new record when the WAL c
   const second = await waiting;
 
   expect(first.value?.record.sequence).toBe(2);
+
   expect(second.value).toMatchObject({
     record: { sequence: 3, erasable: { status: 'readable', fields: { text: 'are you there' } } },
     changes: [
@@ -82,6 +86,7 @@ test('it wakes by polling when no WAL change arrives', async () => {
     subscribeToChanges: () => () => {},
     signal: ctx.signal,
   });
+
   const waiting = stream.next();
 
   await writeRecords(ctx.log, [
@@ -97,11 +102,13 @@ test('it finishes the stream once the signal aborts', async () => {
   const ctx = await setupTest();
 
   const abort = new AbortController();
+
   const stream = subscribeToRecords(ctx.reader, {
     afterSequence: 0,
     pollMs: 3_600_000,
     signal: abort.signal,
   });
+
   const waiting = stream.next();
 
   abort.abort();
@@ -119,7 +126,9 @@ test('it stops watching once the signal aborts, even when no consumer pulls agai
   ]);
 
   const unsubscribe = mock<() => void>();
+
   const abort = new AbortController();
+
   const stream = subscribeToRecords(ctx.reader, {
     afterSequence: 0,
     pollMs: 3_600_000,
@@ -128,6 +137,7 @@ test('it stops watching once the signal aborts, even when no consumer pulls agai
   });
 
   await stream.next();
+
   abort.abort();
 
   expect(unsubscribe).toHaveBeenCalledOnce();

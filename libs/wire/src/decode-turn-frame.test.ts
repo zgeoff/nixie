@@ -46,6 +46,7 @@ test('it refuses a turn frame whose input message has no uuid', () => {
     systemPrompt: 'You are nixie.',
     input: [{ uuid: 'not-a-uuid', text: 'Hi.' }],
   };
+
   const result = hostFrameSchema.safeParse(frame);
 
   expect(result.error?.issues).toPartiallyContain({ path: ['input', 0, 'uuid'] });
@@ -66,6 +67,7 @@ test('it refuses a turn frame with an empty inbox', () => {
     systemPrompt: 'You are nixie.',
     input: [],
   };
+
   const result = hostFrameSchema.safeParse(frame);
 
   expect(result.error?.issues).toPartiallyContain({ path: ['input'] });
@@ -94,6 +96,7 @@ test('it drops any summary text a compaction frame carries', () => {
   });
 
   expect(result.success).toBe(true);
+
   expect(result.data).toStrictEqual({
     type: 'compacted',
     trigger: 'auto',

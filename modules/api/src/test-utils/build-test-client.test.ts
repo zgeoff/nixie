@@ -10,7 +10,6 @@ function setupTest() {
 
 test('it calls the API as the device whose session token it holds', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const listed = await buildTestClient(ctx.url, laptop.token).sessions.list();
 
@@ -19,7 +18,6 @@ test('it calls the API as the device whose session token it holds', async () => 
 
 test('it calls the API signed out when it holds no token', async () => {
   const ctx = await setupTest();
-
   const result = await safe(buildTestClient(ctx.url).sessions.list());
 
   expect(result.error).toMatchObject({ code: 'UNAUTHORIZED', status: 401 });

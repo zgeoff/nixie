@@ -107,14 +107,18 @@ export function parseProposalRecord(record: EnvelopeRecord): ProposalRecord | nu
   if (record.kind === 'memory.proposed') {
     return { kind: record.kind, ...proposed.parse(record.payload) };
   }
+
   if (record.kind === 'memory.proposal_merged') {
     return { kind: record.kind, ...merged.parse(record.payload) };
   }
+
   if (record.kind === 'memory.approval_recorded') {
     return { kind: record.kind, ...approvalRecorded.parse(record.payload) };
   }
+
   if (record.kind === 'memory.proposal_rejected' || record.kind === 'memory.proposal_lapsed') {
     return { kind: record.kind, ...resolved.parse(record.payload) };
   }
+
   return null;
 }

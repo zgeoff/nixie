@@ -20,12 +20,14 @@ export function buildReadinessChecks(
       if (!runtime.isReady) {
         return runtime;
       }
+
       return state.read().areImagesAdded
         ? { isReady: true, reason: null }
         : { isReady: false, reason: 'the images in the sandbox manifest are not all added' };
     },
     conversation_imp: () => {
       const reports = state.read();
+
       const report =
         !reports.conversation.isReady || reports.areRunnersStarted
           ? reports.conversation

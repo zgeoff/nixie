@@ -12,8 +12,8 @@ function setupTest() {
 
 test('it reads the page before a sequence, newest last', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const sendText = (text: string) =>
     writeOwnerMessage(ctx.context, laptop.caller, {
       clientMessageId: crypto.randomUUID(),
@@ -27,6 +27,7 @@ test('it reads the page before a sequence, newest last', async () => {
   const three = await sendText('three');
 
   invariant(three.status === 'written');
+
   const page = await readThreadPage(ctx.context, {
     thread: 'conversation',
     beforeSequence: three.sequence,
@@ -40,7 +41,6 @@ test('it reads the page before a sequence, newest last', async () => {
 
 test('it reads a whole short thread with no earlier page', async () => {
   const ctx = await setupTest();
-
   const page = await readThreadPage(ctx.context, { thread: 'conversation' });
 
   expect(page?.hasEarlier).toBeFalse();
@@ -78,6 +78,7 @@ test("it reads the thread's newest step end when newer records push it off the p
   const page = await readThreadPage(ctx.context, { thread: 'conversation', limit: 1 });
 
   expect(page?.records.map((record) => record.kind)).toStrictEqual(['task.step_started']);
+
   expect(page?.lastStepEnd).toMatchObject({
     kind: 'task.step_errored',
     task: { errorLimit: 3, errors: 3, taskID: 'conversation' },
@@ -86,7 +87,6 @@ test("it reads the thread's newest step end when newer records push it off the p
 
 test('it reads no step end for a thread whose task never ended a step', async () => {
   const ctx = await setupTest();
-
   const page = await readThreadPage(ctx.context, { thread: 'conversation' });
 
   expect(page?.lastStepEnd).toBeNull();
@@ -94,7 +94,6 @@ test('it reads no step end for a thread whose task never ended a step', async ()
 
 test('it answers null for a thread with no records', async () => {
   const ctx = await setupTest();
-
   const result = await readThreadPage(ctx.context, { thread: 'task-404' });
 
   expect(result).toBeNull();

@@ -12,6 +12,7 @@ import { startTestServer } from './test-utils/start-test-server';
 // the turn note reader; startRunner stops the runner before it and starts one on an image
 async function setupTest() {
   const server = await startTestServer();
+
   const model = startScriptedModel();
 
   onTestFinished(() => model.stop());
@@ -20,9 +21,12 @@ async function setupTest() {
     server.context,
     mock(() => Promise.resolve()),
   );
+
   const runners = { last: null as Awaited<ReturnType<typeof startConversation>> | null };
+
   const startRunner = async (image: string) => {
     await runners.last?.stop();
+
     runners.last = await startConversation({
       context: server.context,
       models: buildTestModelsConfig({ modelURL: model.url }),
@@ -44,8 +48,10 @@ async function setupTest() {
       memory: () => memory,
       log: mock<Parameters<typeof startConversation>[0]['log']>(),
     });
+
     return runners.last;
   };
+
   const [first] = await Promise.all([
     startRunner('nixie-conversation-0123456789ab'),
     createConversationTask(server.context),
@@ -65,6 +71,7 @@ test('it carries an answered proposal the model saw into the recent turns of a r
   const ctx = await setupTest();
 
   ctx.model.addReplies({ text: 'Saved.' }, { text: 'Two cats.' });
+
   await ctx.memory.writes.remember({
     text: 'Has two cats',
     caller: {
@@ -87,6 +94,7 @@ test('it carries an answered proposal the model saw into the recent turns of a r
       }),
     ),
   );
+
   await sendTestMessage(ctx.context, ctx.first.runStep, 'Did you save it?');
 
   // with every transcript gone, the replacement has no session to carry over

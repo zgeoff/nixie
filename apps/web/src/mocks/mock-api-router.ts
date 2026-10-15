@@ -32,6 +32,7 @@ export const mockAPIRouter = os.router({
 
       const limit = options.input.limit ?? 50;
       const before = options.input.beforeSequence ?? Number.POSITIVE_INFINITY;
+
       const page = store.records.findMany(
         (query) =>
           query.where(
@@ -39,6 +40,7 @@ export const mockAPIRouter = os.router({
           ),
         { orderBy: { sequence: 'asc' } },
       );
+
       const lastStepEnd = page.findLast((record) =>
         /^task\.(?:step_committed|step_errored|revived)$/u.test(record.kind),
       );
@@ -55,6 +57,7 @@ export const mockAPIRouter = os.router({
       requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       const input = options.input;
+
       const earlier = store.records.findFirst((query) =>
         query.where((record) => record.message?.clientMessageId === input.clientMessageId),
       );
@@ -68,6 +71,7 @@ export const mockAPIRouter = os.router({
 
         return { duplicate: false, sequence: record.sequence };
       }
+
       if (earlier.message?.text !== input.text || earlier.thread !== input.thread) {
         throw options.errors.CLIENT_ACTION_ID_REUSED();
       }
@@ -254,10 +258,12 @@ async function claimEnrolmentCode(input: EnrolInput): Promise<StoredSession> {
   const earlier = store.sessions.findFirst((query) =>
     query.where({ sessionID: input.sessionID ?? '' }),
   );
+
   const enrolled =
     earlier === undefined
       ? store.sessions.create({ deviceName: input.deviceName })
       : Promise.resolve(earlier);
+
   const session = await enrolled;
 
   await store.enrolmentCodes.update((query) => query.where({ code: input.code }), {
@@ -276,8 +282,10 @@ async function waitForRecord(signal: AbortSignal | undefined): Promise<void> {
   // oxlint-disable-next-line promise/avoid-new -- the store's hook emitter has no promise form
   await new Promise<void>((resolve) => {
     const waiting = new AbortController();
+
     const stopWaiting = (): void => {
       waiting.abort();
+
       setTimeout(resolve, 0);
     };
 

@@ -18,6 +18,7 @@ test('it reads each named note in the order named, and a rating with no note as 
   const jam = await createMemoryItem(ctx.memory.store, { text: 'Makes plum jam each autumn' });
 
   await ctx.memory.store.recall({ itemIDs: [tram.itemID, jam.itemID], thread: 'conversation' });
+
   await ctx.memory.store.rate({
     thread: 'conversation',
     runID: 'run-1',
@@ -27,6 +28,7 @@ test('it reads each named note in the order named, and a rating with no note as 
       { item: jam.itemID, verdict: 'noise' },
     ],
   });
+
   const [rated] = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['memory.rated'] });
 
   invariant(rated);
@@ -52,15 +54,18 @@ test('it reads the note of a forgotten item as shredded', async () => {
   const tram = await createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' });
 
   await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
+
   await ctx.memory.store.rate({
     thread: 'conversation',
     runID: 'run-1',
     ratedBy: null,
     ratings: [{ item: tram.itemID, verdict: 'helpful', note: 'the tram matters here' }],
   });
+
   const [rated] = await readRecords(ctx.memory.log, { afterSequence: 0, kinds: ['memory.rated'] });
 
   invariant(rated);
+
   await ctx.memory.store.forget({ target: tram, provenance: buildMockProvenance() });
 
   const notes = await readRatingNotes(ctx.memory.log, [
@@ -77,6 +82,7 @@ test('it reads a sequence that holds no rating as missing', async () => {
   const tram = await createMemoryItem(ctx.memory.store, { text: 'Takes the tram to work' });
 
   await ctx.memory.store.recall({ itemIDs: [tram.itemID], thread: 'conversation' });
+
   const [recalled] = await readRecords(ctx.memory.log, {
     afterSequence: 0,
     kinds: ['memory.recalled'],

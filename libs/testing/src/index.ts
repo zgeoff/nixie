@@ -10,12 +10,14 @@ export type { AdvanceOptions, CrashHarness, CrashHarnessOptions } from './start-
 export { startCrashHarness } from './start-crash-harness';
 export type { HarnessChannel, HarnessLink, HarnessOperation } from './start-harness-link';
 export { startHarnessLink } from './start-harness-link';
+
 export type {
   FaultPointArrival,
   NixieExit,
   NixieProcess,
   NixieProcessOptions,
 } from './start-nixie-process';
+
 export { startNixieProcess } from './start-nixie-process';
 export type { ProviderCall, ProviderDouble, ProviderReply } from './start-provider-double';
 export { startProviderDouble } from './start-provider-double';

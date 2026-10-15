@@ -9,6 +9,7 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
   link.registerOperation('sendMessage', async (args) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
     const message = args as { readonly thread: string; readonly text: string };
+
     const [record] = await writeInboxRecords(context, [
       {
         kind: 'owner_message',
@@ -20,15 +21,18 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
 
     return record?.sequence ?? null;
   });
+
   link.registerOperation('createTask', (args) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
     const task = args as { readonly brief: string };
 
     return createTask(context, task.brief);
   });
+
   link.registerOperation('finishTask', async (args) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
     const taskID = (args as { readonly taskID: string }).taskID;
+
     const [record] = await writeInboxRecords(context, [
       {
         kind: 'owner_message',
@@ -45,6 +49,7 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
   // another process takes the lock while this one still writes
   link.registerOperation('releaseWriterLock', () => {
     removeLockDescriptor(context.log.writer.dataDir);
+
     return null;
   });
 }
@@ -52,6 +57,7 @@ export function registerHarnessOperations(link: HarnessLink, context: TasksConte
 // the writer lock is a flock on the data directory itself, so its descriptor names the directory
 function removeLockDescriptor(dataDir: string): void {
   const target = realpathSync(dataDir);
+
   const fd = readdirSync('/proc/self/fd')
     .map(Number)
     .find((candidate) => readDescriptorPath(candidate) === target);
@@ -59,6 +65,7 @@ function removeLockDescriptor(dataDir: string): void {
   if (fd === undefined) {
     throw new Error(`no descriptor of this process names ${dataDir}`);
   }
+
   closeSync(fd);
 }
 

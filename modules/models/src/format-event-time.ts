@@ -10,6 +10,7 @@ export function formatEventTime(at: number, timeZone: string): string {
     minute: '2-digit',
     hourCycle: 'h23',
   }).formatToParts(at);
+
   const getPart = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((entry) => entry.type === type)?.value ?? '';
 

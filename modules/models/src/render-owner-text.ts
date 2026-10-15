@@ -12,11 +12,13 @@ export function renderOwnerText(record: LogRecord): string {
   if (typeof text !== 'string') {
     return '[a message you sent, since forgotten]';
   }
+
   const spans = messageSpans.safeParse(fields['spans']);
 
   if (!spans.success || !spans.data.some((span) => isForeignSource(span.source))) {
     return text;
   }
+
   return spans.data
     .toSorted((left, right) => left.start - right.start)
     .map((span) => renderSpan(text.slice(span.start, span.end), span.source))
@@ -34,6 +36,7 @@ function renderSpan(part: string, source: string): string {
   if (!isForeignSource(source)) {
     return part;
   }
+
   const blockID = createBlockID();
 
   return `<${source} id="${blockID}">${part}</${source} id="${blockID}">`;

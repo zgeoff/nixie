@@ -58,6 +58,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
 
   // the credentials resolve for every profile, or resolveModelCredentials throws first
   invariant(resolved, `the conversation profile ${profile.id} has no credential`);
+
   return startConversationRunner({
     context: options.context,
     profile: resolved,

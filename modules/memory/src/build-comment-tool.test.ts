@@ -13,7 +13,9 @@ import { startTestMemory } from './test-utils/start-test-memory';
 // which record each call and its result in the memory's log.
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-10-12T09:00:00Z'));
+
   const memory = await startTestMemory({ gate: { clock } });
+
   const registry = buildToolRegistry([buildCommentTool(memory.store)]);
 
   return {
@@ -42,9 +44,11 @@ async function setupTest() {
 
 test('it keeps the comment beside the change it names, which still waits under the same action hash', async () => {
   const ctx = await setupTest();
+
   const item = await createMemoryItem(ctx.memory.store, {
     text: 'Calls the vacuum cleaner Gerald',
   });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -57,6 +61,7 @@ test('it keeps the comment beside the change it names, which still waits under t
     ],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -75,12 +80,14 @@ test('it keeps the comment beside the change it names, which still waits under t
     },
     ctx.toolCallOptions,
   );
+
   const pending = await ctx.memory.store.consolidations.readPending();
 
   expect(result.structuredContent).toStrictEqual({
     changeID: change.shortID,
     status: 'commented',
   });
+
   expect(pending?.changes).toStrictEqual([
     { ...change, comment: { text: 'The name is the whole memory.', at: expect.toBeNumber() } },
   ]);
@@ -89,6 +96,7 @@ test('it keeps the comment beside the change it names, which still waits under t
 test('it replaces the comment a change held with a second one', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Plays the ukulele badly' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -101,9 +109,11 @@ test('it replaces the comment a change held with a second one', async () => {
     ],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);
+
   await ctx.memory.store.consolidations.comment({
     changeID: change.shortID,
     text: 'Keep it.',
@@ -124,6 +134,7 @@ test('it replaces the comment a change held with a second one', async () => {
     },
     ctx.toolCallOptions,
   );
+
   const pending = await ctx.memory.store.consolidations.readPending();
 
   expect(pending?.changes[0]?.comment?.text).toBe('"Badly" is the joke, so keep it.');
@@ -132,10 +143,12 @@ test('it replaces the comment a change held with a second one', async () => {
 test('it takes the change by its UUID as well as its short ID, and answers with the short ID', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'It has passed.', source: 'owner' }],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -154,18 +167,21 @@ test('it takes the change by its UUID as well as its short ID, and answers with 
     },
     ctx.toolCallOptions,
   );
+
   const pending = await ctx.memory.store.consolidations.readPending();
 
   expect(result.structuredContent).toStrictEqual({
     changeID: change.shortID,
     status: 'commented',
   });
+
   expect(pending?.changes[0]?.comment?.text).toBe('Fine to drop.');
 });
 
 test('it takes the short ID a change shows when an older build left its alias empty', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'It has passed.', source: 'owner' }],
     now: ctx.clock.now(),
@@ -180,7 +196,9 @@ test('it takes the short ID a change shows when an older build left its alias em
       .where('change_id', '=', diff.changes[0]?.changeID ?? '')
       .execute(),
   );
+
   const shown = await ctx.memory.store.consolidations.readPending();
+
   const [change] = shown?.changes ?? [];
 
   invariant(change);
@@ -232,13 +250,16 @@ test('it answers the model that no change has the ID it names', async () => {
 test('it answers the model that a change the owner rejected takes no comment', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'The trip ended.', source: 'owner' }],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);
+
   await ctx.memory.store.consolidations.reject({
     changeID: change.changeID,
     actionHash: change.actionHash,
@@ -276,14 +297,17 @@ test('it answers the model that a change the owner rejected takes no comment', a
 test('it answers the model that a change past its lapse time takes no comment', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Is in Lisbon until May' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'The trip ended.', source: 'owner' }],
     now: ctx.clock.now(),
     lapseMs: 60_000,
   });
+
   const [change] = diff.changes;
 
   invariant(change);
+
   ctx.clock.advance(60_000);
 
   const result = await runToolCall(
@@ -317,13 +341,16 @@ test('it answers the model that a change past its lapse time takes no comment', 
 test('it answers the model that a change whose first input was forgotten takes no comment', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Keeps bees' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'Stale.', source: 'owner' }],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);
+
   await ctx.memory.store.forget({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -360,13 +387,16 @@ test('it answers the model that a change whose first input was forgotten takes n
 test('it leaves the change for the owner to approve after a comment', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Has a dentist appointment' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [{ kind: 'retire', inputs: [item], reason: 'It has passed.', source: 'owner' }],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);
+
   await runToolCall(
     {
       tool: 'memory.comment',
@@ -394,6 +424,7 @@ test('it leaves the change for the owner to approve after a comment', async () =
 test('it keeps the comment text out of every record but its sealed copy', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Hums while cooking' });
+
   const diff = await createConsolidationDiff(ctx.memory, {
     changes: [
       {
@@ -406,6 +437,7 @@ test('it keeps the comment text out of every record but its sealed copy', async 
     ],
     now: ctx.clock.now(),
   });
+
   const [change] = diff.changes;
 
   invariant(change);
@@ -424,6 +456,7 @@ test('it keeps the comment text out of every record but its sealed copy', async 
     },
     ctx.toolCallOptions,
   );
+
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
   expect(
@@ -432,5 +465,6 @@ test('it keeps the comment text out of every record but its sealed copy', async 
     thread: 'memory-consolidator',
     payload: { changeID: change.changeID, runID: 'run-1', sealed: expect.toBeString() },
   });
+
   expect(JSON.stringify(entries)).not.toInclude('humming happens');
 });

@@ -9,6 +9,7 @@ async function setupTest() {
 
 test('it returns the items that match a query word for word, with their provenance', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -56,6 +57,7 @@ test('it leaves pinned items out of a query when asked', async () => {
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const result = await ctx.memory.store.recall({
     query: 'spare key',
     limit: 1,
@@ -110,6 +112,7 @@ test('it finds an unpinned match when more pinned matches rank first than recall
     text: 'The spare key sits under the blue flowerpot by the door',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const result = await ctx.memory.store.recall({
     query: 'spare key',
     limit: 1,
@@ -121,6 +124,7 @@ test('it finds an unpinned match when more pinned matches rank first than recall
 
 test('it leaves out a match below the score floor', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -128,6 +132,7 @@ test('it leaves out a match below the score floor', async () => {
     proposalID: null,
     checks: null,
   } as const;
+
   const flowerpot = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance,
@@ -144,14 +149,17 @@ test('it leaves out a match below the score floor', async () => {
 
 test('it ranks the next match in place of an excluded version', async () => {
   const ctx = await setupTest();
+
   const flowerpot = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const garage = await ctx.memory.store.remember({
     text: 'A second spare key hangs in the garage',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const result = await ctx.memory.store.recall({
     query: 'spare key flowerpot',
     limit: 1,
@@ -163,15 +171,18 @@ test('it ranks the next match in place of an excluded version', async () => {
 
 test('it returns the current version of an item whose earlier version is excluded', async () => {
   const ctx = await setupTest();
+
   const first = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const edited = await ctx.memory.store.remember({
     text: 'The spare key sits under the doormat',
     target: first,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const result = await ctx.memory.store.recall({ query: 'spare key', excludedVersions: [first] });
 
   expect(
@@ -181,6 +192,7 @@ test('it returns the current version of an item whose earlier version is exclude
 
 test('it recalls none of 3 items for a message unrelated to them', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -193,10 +205,12 @@ test('it recalls none of 3 items for a message unrelated to them', async () => {
     text: 'Wants retrieved memories to be relevant to the current message',
     provenance,
   });
+
   await ctx.memory.store.remember({
     text: 'Drinks oat milk flat whites and no coffee after 2pm',
     provenance,
   });
+
   await ctx.memory.store.remember({
     text: 'Has a sister called Priya who lives in Lisbon',
     provenance,
@@ -214,6 +228,7 @@ test('it recalls none of 3 items for a message unrelated to them', async () => {
 
 test('it recalls only the 1 of 3 items that a message bears on', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -226,6 +241,7 @@ test('it recalls only the 1 of 3 items that a message bears on', async () => {
     text: 'Wants retrieved memories to be relevant to the current message',
     provenance,
   });
+
   await ctx.memory.store.remember({
     text: 'Drinks oat milk flat whites and no coffee after 2pm',
     provenance,
@@ -235,6 +251,7 @@ test('it recalls only the 1 of 3 items that a message bears on', async () => {
     text: 'Has a sister called Priya who lives in Lisbon',
     provenance,
   });
+
   const result = await ctx.memory.store.recall({
     query: 'When is my sister visiting from Lisbon?',
     limit: 5,
@@ -247,6 +264,7 @@ test('it recalls only the 1 of 3 items that a message bears on', async () => {
 
 test('it recalls neither of 2 items, which BM25 cannot rank, above a score floor', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -259,6 +277,7 @@ test('it recalls neither of 2 items, which BM25 cannot rank, above a score floor
     text: 'Wants retrieved memories to be relevant to the current message',
     provenance,
   });
+
   await ctx.memory.store.remember({
     text: 'Drinks oat milk flat whites and no coffee after 2pm',
     provenance,
@@ -276,6 +295,7 @@ test('it recalls neither of 2 items, which BM25 cannot rank, above a score floor
 
 test('it recalls only the train item of 10 for a message that shares function words with others', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -312,6 +332,7 @@ test('it recalls only the train item of 10 for a message that shares function wo
     text: 'Prefers window seats on trains',
     provenance,
   });
+
   const result = await ctx.memory.store.recall({
     query: 'I need to book a train to Manchester next week',
     limit: 5,
@@ -324,6 +345,7 @@ test('it recalls only the train item of 10 for a message that shares function wo
 
 test('it recalls only the coffee item of 10 for a message that shares function words with others', async () => {
   const ctx = await setupTest();
+
   const provenance = {
     origin: 'owner',
     source: 'owner',
@@ -357,6 +379,7 @@ test('it recalls only the coffee item of 10 for a message that shares function w
     text: 'Drinks oat milk flat whites and no coffee after 2pm',
     provenance,
   });
+
   const result = await ctx.memory.store.recall({
     query: 'Is it too late for a coffee now?',
     limit: 5,
@@ -369,6 +392,7 @@ test('it recalls only the coffee item of 10 for a message that shares function w
 
 test('it matches a query word through its stem', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Waters the ferns every Tuesday',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -381,10 +405,12 @@ test('it matches a query word through its stem', async () => {
 
 test('it returns items by ID in the order asked', async () => {
   const ctx = await setupTest();
+
   const first = await ctx.memory.store.remember({
     text: 'Prefers window seats on trains',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const second = await ctx.memory.store.remember({
     text: 'Allergic to hazelnuts',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -405,10 +431,12 @@ test('it lists every active item a page at a time', async () => {
     text: 'Prefers window seats on trains',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   await ctx.memory.store.remember({
     text: 'Allergic to hazelnuts',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   await ctx.memory.store.remember({
     text: 'The library closes at six on Sundays',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -421,6 +449,7 @@ test('it lists every active item a page at a time', async () => {
     'Prefers window seats on trains',
     'Allergic to hazelnuts',
   ]);
+
   expect(secondPage).toMatchObject({
     items: [{ text: 'The library closes at six on Sundays' }],
     next: null,
@@ -439,6 +468,7 @@ test('it rejects a cursor that no page returned', async () => {
 
 test('it leaves a retired item out unless asked for retired items', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -450,6 +480,7 @@ test('it leaves a retired item out unless asked for retired items', async () => 
   });
 
   const active = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
   const withRetired = await ctx.memory.store.recall({
     itemIDs: [item.itemID],
     includeRetired: true,
@@ -461,6 +492,7 @@ test('it leaves a retired item out unless asked for retired items', async () => 
 
 test('it returns every version of an item with its history', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -494,6 +526,7 @@ test('it returns every version of an item with its history', async () => {
 
 test('it records each item and version it delivered, and no text', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -516,10 +549,12 @@ test('it records each item and version it delivered, and no text', async () => {
 
 test('it records the match score of each item a query delivered', async () => {
   const ctx = await setupTest();
+
   const both = await ctx.memory.store.remember({
     text: 'The library on Elm Street closes at six on Sundays',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const one = await ctx.memory.store.remember({
     text: 'The library closes at six',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -529,6 +564,7 @@ test('it records the match score of each item a query delivered', async () => {
     text: 'Allergic to hazelnuts',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   await ctx.memory.store.recall({ query: 'Sundays library', thread: 'conversation' });
 
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
@@ -543,6 +579,7 @@ test('it records the match score of each item a query delivered', async () => {
 
 test('it records no score for items recalled by ID', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -559,6 +596,7 @@ test('it records no score for items recalled by ID', async () => {
 
 test('it records every version that a history recall delivered', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -569,6 +607,7 @@ test('it records every version that a history recall delivered', async () => {
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   await ctx.memory.store.recall({ itemIDs: [item.itemID], includeHistory: true });
 
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
@@ -586,6 +625,7 @@ test('it records every version that a history recall delivered', async () => {
 
 test('it delivers and records an item named at its current version', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -597,6 +637,7 @@ test('it delivers and records an item named at its current version', async () =>
   expect(result.items).toMatchObject([
     { itemID: item.itemID, version: 1, text: 'Lives on Elm Street' },
   ]);
+
   expect(records.at(-1)?.record).toMatchObject({
     kind: 'memory.recalled',
     payload: { items: [{ itemID: item.itemID, version: 1 }] },
@@ -605,6 +646,7 @@ test('it delivers and records an item named at its current version', async () =>
 
 test('it leaves out an item named at a version that is no longer current, and records none of it', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -620,6 +662,7 @@ test('it leaves out an item named at a version that is no longer current, and re
   const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
 
   expect(result.items).toStrictEqual([]);
+
   expect(records.at(-1)?.record).toMatchObject({
     kind: 'memory.recalled',
     payload: { items: [] },
@@ -628,10 +671,12 @@ test('it leaves out an item named at a version that is no longer current, and re
 
 test('it holds a forget until a recall that checked the item has recorded its delivery', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const hold = startFaultPointHold('memory.recall.checked');
   const recall = ctx.memory.store.recall({ itemIDs: [item.itemID] });
 
@@ -658,18 +703,22 @@ test('it holds a forget until a recall that checked the item has recorded its de
 
 test('it never delivers an item that a forget removed while the recall ranked it', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'The spare key sits under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const hold = startFaultPointHold('memory.recall.ranked');
   const recall = ctx.memory.store.recall({ query: 'flowerpot', thread: 'conversation' });
+
   const ranked = await hold.reached;
 
   await ctx.memory.store.forget({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   hold.release();
 
   const result = await recall;

@@ -16,6 +16,7 @@ test('it shows each record of the page and the live stream once, in order', asyn
   await setupTest();
 
   const one = await store.records.create({ kind: 'owner_message' });
+
   const hook = renderHook(() => useConversationRecords('conversation'));
 
   await waitFor(() => {
@@ -34,6 +35,7 @@ test('it shows each record of the page and the live stream once, in order', asyn
 
 test('it reports the conversation failed when the first read fails', async () => {
   await setupTest();
+
   server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
 
   const hook = renderHook(() => useConversationRecords('conversation'));
@@ -45,6 +47,7 @@ test('it reports the conversation failed when the first read fails', async () =>
 
 test('it drops the records from before a reset once the reset arrives', async () => {
   await setupTest();
+
   await store.records.create({ kind: 'owner_message' });
 
   const hook = renderHook(() => useConversationRecords('conversation'));
@@ -84,6 +87,7 @@ test('it reads the conversation again when a reset arrives', async () => {
   await waitFor(() => {
     expect(hook.result.current.status).toBe('ready');
   });
+
   await store.records.create({ kind: 'log_reset' });
 
   await waitFor(() => {
@@ -117,7 +121,9 @@ test('it reads the conversation again once the live stream reconnects after a re
       reads();
     }),
   );
+
   await store.records.create({ kind: 'log_reset' });
+
   await waitFor(() => {
     expect(failed).toHaveBeenCalledOnce();
   });
@@ -139,6 +145,7 @@ test('it keeps the conversation ready when the read after a reset fails', async 
   await waitFor(() => {
     expect(hook.result.current.status).toBe('ready');
   });
+
   server.use(
     http.post('*/rpc/conversation/read', () => {
       failed();
@@ -146,7 +153,9 @@ test('it keeps the conversation ready when the read after a reset fails', async 
       return new HttpResponse(null, { status: 503 });
     }),
   );
+
   await store.records.create({ kind: 'log_reset' });
+
   await waitFor(() => {
     expect(failed).toHaveBeenCalledOnce();
   });
@@ -156,5 +165,6 @@ test('it keeps the conversation ready when the read after a reset fails', async 
   await waitFor(() => {
     expect(hook.result.current.records.at(-1)?.sequence).toBe(next.sequence);
   });
+
   expect(hook.result.current.status).toBe('ready');
 });

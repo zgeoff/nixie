@@ -11,11 +11,14 @@ export function registerFaultPointAction(id: FaultPointID, action: () => Promise
     if (arrived !== id) {
       return;
     }
+
     arrivals.count += 1;
+
     if (arrivals.count === 1) {
       await action();
     }
   });
+
   onTestFinished(() => {
     setFaultPointHandler(null);
   });

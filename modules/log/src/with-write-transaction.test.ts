@@ -30,7 +30,6 @@ async function setupTest() {
 
 test('it commits a write under the current writer epoch', async () => {
   const ctx = await setupTest();
-
   const epoch = await claimWriterEpoch(ctx.db);
 
   await sql`create table notes (id text primary key)`.execute(ctx.db);
@@ -46,10 +45,10 @@ test('it commits a write under the current writer epoch', async () => {
 
 test('it fails a write transaction under an older epoch and commits none of it', async () => {
   const ctx = await setupTest();
-
   const epoch = await claimWriterEpoch(ctx.db);
 
   await claimWriterEpoch(ctx.other);
+
   await sql`create table notes (id text primary key)`.execute(ctx.db);
 
   const write = withWriteTransaction({ db: ctx.db, epoch }, async (tx) => {
@@ -64,5 +63,6 @@ test('it fails a write transaction under an older epoch and commits none of it',
     Error,
     'writer epoch 1 is stale: the database holds writer epoch 2',
   );
+
   expect(notes.rows).toStrictEqual([]);
 });

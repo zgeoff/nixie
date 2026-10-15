@@ -37,11 +37,13 @@ export interface DefinitionsPoll {
 // older revision never commits after a newer one.
 export function startDefinitionsPoll(options: DefinitionsPollOptions): DefinitionsPoll {
   const stopping = new AbortController();
+
   const loop = runPoll(options, stopping.signal);
 
   return {
     stop: async () => {
       stopping.abort();
+
       await loop;
     },
   };
@@ -58,6 +60,7 @@ async function runPoll(options: DefinitionsPollOptions, signal: AbortSignal): Pr
   while (!signal.aborted) {
     // oxlint-disable-next-line no-await-in-loop -- the poll waits between probes
     await options.clock.sleep(state.retryMs ?? options.intervalMs, signal);
+
     if (signal.aborted) {
       return;
     }
@@ -86,15 +89,19 @@ async function runProbe(
 ): Promise<ProbeOutcome> {
   try {
     const token = await options.probe();
+
     const isChanged = token !== lastToken;
 
     options.onProbed({ isChanged });
+
     if (isChanged && !(await options.seed())) {
       return { token: null, isFailed: true };
     }
+
     return { token, isFailed: false };
   } catch (error) {
     options.onError(error);
+
     return { token: lastToken, isFailed: true };
   }
 }

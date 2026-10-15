@@ -297,6 +297,7 @@ test('it lists every migration and refuses none before the first release', async
           name: 'create notes',
           up: async (tx) => {
             await sql`create table notes (id text primary key)`.execute(tx);
+
             await sql`create trigger notes_frozen before delete on notes
               begin select raise(abort, 'notes are append-only'); end`.execute(tx);
           },

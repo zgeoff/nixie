@@ -32,6 +32,7 @@ test('it removes on the next lapse sweep a key that a closed proposal left behin
     .select('item_id')
     .where('proposal_id', '=', proposed.proposalID)
     .executeTakeFirstOrThrow();
+
   const keys = await findRecordKeys(memory.log, [row.item_id]);
 
   expect(keys.get(row.item_id)).toBeUndefined();
@@ -53,12 +54,14 @@ test('it removes at start a key that a rejected proposal left behind', async () 
   );
 
   const next = await startNextTestMemory(memory);
+
   const row = await next.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .select('item_id')
     .where('proposal_id', '=', proposed.proposalID)
     .executeTakeFirstOrThrow();
+
   const keys = await findRecordKeys(next.log, [row.item_id]);
 
   expect(keys.get(row.item_id)).toBeUndefined();
@@ -76,6 +79,7 @@ test('it never removes the key of a pending proposal', async () => {
     .select('item_id')
     .where('proposal_id', '=', proposed.proposalID)
     .executeTakeFirstOrThrow();
+
   const keys = await findRecordKeys(memory.log, [row.item_id]);
 
   expect(keys.get(row.item_id)).toBeInstanceOf(CryptoKey);
@@ -84,6 +88,7 @@ test('it never removes the key of a pending proposal', async () => {
 // each blocked checkpoint waits out the database's busy timeout before it reports the reader
 test('it finishes on the next lapse sweep a key removal whose checkpoint a reader blocked', async () => {
   const clock = buildTestClock(1_000_000);
+
   const memory = await startTestMemory({
     gate: {
       clock,

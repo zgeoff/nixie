@@ -33,6 +33,7 @@ export async function runTaskStep(
     if (!(error instanceof LeaseLostError)) {
       throw error;
     }
+
     return null;
   } finally {
     await renewal.stop();
@@ -48,6 +49,7 @@ async function tryCommitStep(
   try {
     const inbox = await readInbox(context, claim.lease.workID);
     const sessionBoundary = await readSessionBoundary(context, claim.lease.workID);
+
     const result = await options.runStep({
       taskID: claim.lease.workID,
       stepKey: claim.stepKey,
@@ -58,11 +60,13 @@ async function tryCommitStep(
     });
 
     await writeStepCommit(context, claim, result);
+
     return null;
   } catch (error) {
     if (error instanceof LeaseLostError || error instanceof StaleWriterError) {
       throw error;
     }
+
     return { error };
   }
 }

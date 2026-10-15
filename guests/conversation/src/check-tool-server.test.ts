@@ -36,6 +36,7 @@ async function setupTest() {
     onTestFinished(() => {
       session.close();
     });
+
     return session;
   };
 
@@ -47,6 +48,7 @@ test('it reconnects once to a server whose first connection the route reset, and
   const tools = await startStubHTTPToolServer();
 
   onTestFinished(() => tools.stop());
+
   tools.dropConnections();
 
   const session = ctx.startSession(tools.config);
@@ -95,6 +97,7 @@ test('it lets the turn go on with no reconnect when the server connected at star
 
 test('it lets the turn go on when the CLI has not listed an in-process server yet', async () => {
   const ctx = await setupTest();
+
   const session = ctx.startSession(buildStubToolServer().config);
 
   const result = await checkToolServer(session, () => Promise.resolve());
@@ -104,6 +107,7 @@ test('it lets the turn go on when the CLI has not listed an in-process server ye
 
 test('it lets the turn go on to read why when the CLI has ended', async () => {
   const ctx = await setupTest();
+
   const session = ctx.startSession(buildStubToolServer().config);
 
   session.close();

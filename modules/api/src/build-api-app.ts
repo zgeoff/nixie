@@ -30,6 +30,7 @@ export function buildAPIApp(context: APIContext) {
       if ((request.headers.get(clientHeaderName) ?? '') === '') {
         return new Response('the client header is missing', { status: 403 });
       }
+
       const result = await handler.handle(request, {
         context: findSessionToken(request.headers),
         prefix: '/rpc',
@@ -49,6 +50,7 @@ function findSessionToken(headers: Headers): APIRequestContext {
   if (bearer?.groups?.['token'] !== undefined) {
     return { sessionToken: bearer.groups['token'], tokenSource: 'bearer' };
   }
+
   for (const pair of (headers.get('cookie') ?? '').split(';')) {
     const [name, ...value] = pair.trim().split('=');
 
@@ -56,5 +58,6 @@ function findSessionToken(headers: Headers): APIRequestContext {
       return { sessionToken: value.join('='), tokenSource: 'cookie' };
     }
   }
+
   return { sessionToken: undefined, tokenSource: 'none' };
 }

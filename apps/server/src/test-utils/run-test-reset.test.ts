@@ -23,6 +23,7 @@ test('it connects a signed-out client to the server started again', async () => 
 
   const reset = await runTestReset(nixie);
   const code = await runHostCommand(nixie.configPath, ['enrol-code']);
+
   const enrolled = await reset.connect().sessions.enrol({
     clientActionID: crypto.randomUUID(),
     code: code.stdout.split('\n')[0] ?? '',
@@ -42,6 +43,7 @@ test('it stops the server started again and reads its records', async () => {
   const run = await reset.stop();
 
   expect(run.exitCode).toBe(0);
+
   expect(run.records.at(0)).toMatchObject({
     sequence: reset.lastSequence + 1,
     kind: 'definitions_seeded',

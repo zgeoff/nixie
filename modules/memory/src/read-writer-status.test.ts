@@ -43,6 +43,7 @@ test('it reports every message of yours as backlog before the writer first start
 
 test('it counts only your messages after the cursor as backlog', async () => {
   const ctx = await setupTest();
+
   const [first] = await writeRecords(ctx.memory.log, [
     {
       kind: 'owner_message',
@@ -53,6 +54,7 @@ test('it counts only your messages after the cursor as backlog', async () => {
   ]);
 
   invariant(first);
+
   await writeRecords(ctx.memory.log, [
     {
       kind: 'memory.writer_started',
@@ -144,6 +146,7 @@ test('it reports the last error with its text', async () => {
 
 test('it reports the last error with no text once its text is forgotten', async () => {
   const ctx = await setupTest();
+
   const [, failed] = await writeRecords(ctx.memory.log, [
     {
       kind: 'memory.writer_started',

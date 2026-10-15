@@ -59,6 +59,7 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
   const channel = buildNixieChannel();
   const child = startChild(options, channel.receive);
   const stderr = collectText(child.stderr);
+
   const exited = waitForExit(child, (exit) => {
     channel.close(new Error(`nixie exited with ${formatExit(exit)}: ${stderr.read()}`));
   });
@@ -84,7 +85,9 @@ export function startNixieProcess(options: NixieProcessOptions): NixieProcess {
       const descendants = collectDescendants(child.pid);
 
       child.kill('SIGKILL');
+
       stopProcesses(descendants);
+
       return exited;
     },
     signal: (signal) => {
@@ -123,11 +126,13 @@ async function waitForExit(child: NixieChild, onExit: OnExit): Promise<NixieExit
   const exit = { code: child.exitCode, signal: child.signalCode };
 
   onExit(exit);
+
   return exit;
 }
 
 function collectText(stream: ReadableStream<Uint8Array>): { readonly read: () => string } {
   const text = { value: '' };
+
   const decoder = new TextDecoder();
 
   void (async () => {
@@ -135,6 +140,7 @@ function collectText(stream: ReadableStream<Uint8Array>): { readonly read: () =>
       text.value += decoder.decode(chunk, { stream: true });
     }
   })();
+
   return { read: () => text.value };
 }
 

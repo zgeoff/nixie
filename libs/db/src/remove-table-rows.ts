@@ -10,6 +10,7 @@ export async function removeTableRows(
 ): Promise<void> {
   const result = await sql<{ name: string }>`select name from sqlite_master
     where type = 'table' and name not like 'sqlite\\_%' escape '\\' order by name`.execute(tx);
+
   const removed = result.rows.filter((table) => !keptTables.includes(table.name));
 
   for (const table of removed) {

@@ -13,6 +13,7 @@ import { startFakeImp } from './start-fake-imp';
 async function setupTest() {
   const recorder = await setupTestRecorder();
   const imp = await startFakeImp();
+
   const adapter = buildImpSandboxAdapter({
     port: imp.port,
     recorder: recorder.recorder,
@@ -25,6 +26,7 @@ async function setupTest() {
 
 test('it reports the status and a zero exit for a server that answers', async () => {
   const ctx = await setupTest();
+
   const server = Bun.serve({ port: 0, fetch: () => new Response('ok', { status: 204 }) });
 
   onTestFinished(() => server.stop(true));
@@ -37,6 +39,7 @@ test('it reports the status and a zero exit for a server that answers', async ()
 
 test('it reports status 000 and the refused-connection exit for a port with no listener', async () => {
   const ctx = await setupTest();
+
   const server = Bun.serve({ port: 0, fetch: () => new Response('ok') });
   const closedPort = server.port;
 
@@ -50,6 +53,7 @@ test('it reports status 000 and the refused-connection exit for a port with no l
 
 test('it goes through the proxy that the guest env names when it uses the broker', async () => {
   const ctx = await setupTest();
+
   const grant = buildMockGrantSpec();
 
   ctx.imp.secrets.set(grant.secret, [grant.host]);
@@ -59,6 +63,7 @@ test('it goes through the proxy that the guest env names when it uses the broker
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ grants: [grant], toolRoute: false }),
   );
+
   const outcome = await runProbe(sandbox, 'https://example.test/', { viaBroker: true });
 
   expect(outcome).toBe('status=000 exit=5');

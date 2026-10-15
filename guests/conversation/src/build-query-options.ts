@@ -92,6 +92,7 @@ function buildQueryEnv(
       `the conversation guest has no placeholder credential in ${credentialVariable}`,
     );
   }
+
   const passed = Object.fromEntries(
     passedVariables.flatMap((name) => {
       const value = env[name];

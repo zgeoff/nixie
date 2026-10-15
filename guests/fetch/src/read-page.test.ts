@@ -16,6 +16,7 @@ test('it returns the readable text of an HTML page over a connection to the chec
         },
       ),
   });
+
   const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1']] } });
 
   const reply = await readPage(`https://site.test:${site.port}/page?q=1#part`, {
@@ -34,12 +35,14 @@ test('it returns the readable text of an HTML page over a connection to the chec
     isTruncated: false,
     blocked: null,
   });
+
   expect(resolver.hosts).toStrictEqual(['site.test']);
   expect(site.requests).toMatchObject([{ headers: { host: `site.test:${site.port}` } }]);
 });
 
 test('it connects to the checked address and never resolves the host a second time', async () => {
   const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('pinned') });
+
   const resolver = buildStubResolver({ answers: { 'site.test': [['127.0.0.1'], ['10.0.0.1']] } });
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
@@ -98,6 +101,7 @@ test.each([
     kind: 'refused',
     reason: `only https URLs are fetched, not ${scheme}`,
   });
+
   expect(resolver.hosts).toStrictEqual([]);
 });
 
@@ -113,12 +117,14 @@ test('it refuses text that is not a URL', async () => {
 
 test('it refuses a host when any of its A and AAAA addresses is not public', async () => {
   const site = await startTestSite({ names: ['site.test'], fetch: () => new Response('x') });
+
   const checked: string[] = [];
 
   const reply = await readPage(`https://site.test:${site.port}/`, {
     limits: { bodyBytes: 1_000_000, timeoutMs: 5000, redirects: 5, textBytes: 1_000_000 },
     checkAddress: (address) => {
       checked.push(address);
+
       return address === '127.0.0.1' || address === '2606:4700::1';
     },
     resolveHost: () => Promise.resolve(['127.0.0.1', '2606:4700::1', 'fd00::1']),
@@ -129,6 +135,7 @@ test('it refuses a host when any of its A and AAAA addresses is not public', asy
     kind: 'refused',
     reason: 'site.test resolves to fd00::1, which is not a public address',
   });
+
   expect(checked).toStrictEqual(['127.0.0.1', '2606:4700::1', 'fd00::1']);
   expect(site.requests).toStrictEqual([]);
 });
@@ -159,6 +166,7 @@ test('it checks an address literal in the URL', async () => {
     kind: 'refused',
     reason: '::ffff:a00:1 resolves to ::ffff:a00:1, which is not a public address',
   });
+
   expect(resolver.hosts).toStrictEqual([]);
 });
 
@@ -177,6 +185,7 @@ test('it resolves and checks the host of each redirect before it connects', asyn
     names: ['site.test', 'inside.test'],
     fetch: () => Response.redirect('https://inside.test/admin', 302),
   });
+
   const resolver = buildStubResolver({
     answers: { 'site.test': [['127.0.0.1']], 'inside.test': [['10.0.0.5']] },
   });
@@ -192,6 +201,7 @@ test('it resolves and checks the host of each redirect before it connects', asyn
     kind: 'refused',
     reason: 'inside.test resolves to 10.0.0.5, which is not a public address',
   });
+
   expect(resolver.hosts).toStrictEqual(['site.test', 'inside.test']);
   expect(site.requests).toHaveLength(1);
 });
@@ -377,6 +387,7 @@ test('it sends no credential from the URL and no cookie a redirect set', async (
   });
 
   expect(reply).toMatchObject({ kind: 'page', url: `https://site.test:${site.port}/next` });
+
   expect(site.requests.map((recorded) => Object.keys(recorded.headers).toSorted())).toStrictEqual([
     ['accept', 'accept-encoding', 'connection', 'host', 'user-agent'],
     ['accept', 'accept-encoding', 'connection', 'host', 'user-agent'],
@@ -484,6 +495,7 @@ test('it fails a fetch that passes the time limit', async () => {
     fetch: async () => {
       // the fault: the site answers well after the limit
       await Bun.sleep(800);
+
       return new Response('late');
     },
   });
@@ -504,6 +516,7 @@ test('it returns the page of a slow site that answers within the time limit', as
     fetch: async () => {
       // the same slow site as the time limit's, under a limit it fits in
       await Bun.sleep(800);
+
       return new Response('late');
     },
   });
@@ -520,6 +533,7 @@ test('it returns the page of a slow site that answers within the time limit', as
 
 test('it fails a fetch whose compressed body stalls past the time limit', async () => {
   const body = gzipSync('a'.repeat(1000));
+
   const site = await startTestSite({
     names: ['site.test'],
     fetch: () =>
@@ -530,6 +544,7 @@ test('it fails a fetch whose compressed body stalls past the time limit', async 
 
             // the fault: the body stalls well after the limit
             await Bun.sleep(800);
+
             controller.enqueue(body.subarray(10));
             controller.close();
           },
@@ -550,6 +565,7 @@ test('it fails a fetch whose compressed body stalls past the time limit', async 
 
 test('it returns a compressed body that stalls and finishes within the time limit', async () => {
   const body = gzipSync('a'.repeat(1000));
+
   const site = await startTestSite({
     names: ['site.test'],
     fetch: () =>
@@ -560,6 +576,7 @@ test('it returns a compressed body that stalls and finishes within the time limi
 
             // the same stall as the time limit's, under a limit it fits in
             await Bun.sleep(800);
+
             controller.enqueue(body.subarray(10));
             controller.close();
           },

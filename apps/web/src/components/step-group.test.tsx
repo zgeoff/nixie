@@ -36,6 +36,7 @@ test('it shows a step with three web fetches as one collapsed line naming the to
       })}
     />,
   );
+
   const summary = rendered.getByText(
     'conversation · web fetch: theverge.com, arstechnica.com, news.ycombinator.com',
   );
@@ -48,6 +49,7 @@ test('it shows a step with three web fetches as one collapsed line naming the to
 
 test('it shows each call with its input and result once its section opens', async () => {
   const user = userEvent.setup();
+
   const rendered = render(
     <StepGroup
       step={buildMockStepActivity({
@@ -78,6 +80,7 @@ test('it shows each call with its input and result once its section opens', asyn
 
 test('it names the task, the step and its events once the step section opens', async () => {
   const user = userEvent.setup();
+
   const rendered = render(
     <StepGroup
       step={buildMockStepActivity({
@@ -105,6 +108,7 @@ test('it names the task, the step and its events once the step section opens', a
 
 test('it shows the error of a failed step once its section opens', async () => {
   const user = userEvent.setup();
+
   const rendered = render(
     <StepGroup
       step={buildMockStepActivity({
@@ -115,6 +119,7 @@ test('it shows the error of a failed step once its section opens', async () => {
       })}
     />,
   );
+
   const error = rendered.getByText('the conversation guest exited before it ended its turn');
 
   await user.click(
@@ -122,6 +127,7 @@ test('it shows the error of a failed step once its section opens', async () => {
       'conversation · failed: the conversation guest exited before it ended its turn · no tools',
     ),
   );
+
   await user.click(rendered.getByText('Error'));
 
   expect(error).toBeVisible();
@@ -129,6 +135,7 @@ test('it shows the error of a failed step once its section opens', async () => {
 
 test('it keeps the toggles of a long input and a long result each with its own text', async () => {
   const user = userEvent.setup();
+
   const rendered = render(
     <StepGroup
       step={buildMockStepActivity({
@@ -151,6 +158,7 @@ test('it keeps the toggles of a long input and a long result each with its own t
   const inputBox = rendered.getByRole('button', {
     name: /^Show all 1,0\d\d characters$/u,
   }).parentElement;
+
   const resultBox = rendered.getByRole('button', {
     name: /^Show all 2,0\d\d characters$/u,
   }).parentElement;
@@ -165,6 +173,7 @@ test('it shows a turn with 5 memories as one line, and each memory with its scor
   const user = userEvent.setup();
 
   await createDeviceSession();
+
   await Promise.all([
     store.memoryVersions.create({ itemID: 'item-1', text: 'Stub memory one', version: 1 }),
     store.memoryVersions.create({ itemID: 'item-2', text: 'Stub memory two', version: 3 }),
@@ -211,6 +220,7 @@ test('it shows a turn with 5 memories as one line, and each memory with its scor
 
 test('it shows the context against its window in the collapsed line, and each compaction in the Context section', async () => {
   const user = userEvent.setup();
+
   const rendered = render(
     <StepGroup
       step={buildMockStepActivity({
@@ -249,6 +259,7 @@ test('it marks a compaction under the collapsed line with its tokens before and 
 
 test('it opens one section of a step and leaves the others closed', async () => {
   const user = userEvent.setup();
+
   const rendered = render(
     <StepGroup
       step={buildMockStepActivity({
@@ -272,6 +283,7 @@ test('it opens one section of a step and leaves the others closed', async () => 
 
 test('it closes one section of a step and leaves another open', async () => {
   const user = userEvent.setup();
+
   const rendered = render(
     <StepGroup
       step={buildMockStepActivity({
@@ -285,7 +297,6 @@ test('it closes one section of a step and leaves another open', async () => {
   await user.click(rendered.getByText(/^conversation · 0 memories/u));
   await user.click(rendered.getByText('Step'));
   await user.click(rendered.getByText('Memories 0'));
-
   await user.click(rendered.getByText('Step'));
 
   expect(rendered.getByRole('group', { name: 'Step' })).not.toHaveAttribute('open');

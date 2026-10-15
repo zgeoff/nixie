@@ -3,6 +3,7 @@ import { collectEvents } from './collect-events';
 
 test('it reads the next events and leaves the rest of the stream', async () => {
   const stream = [1, 2, 3][Symbol.iterator]();
+
   const asyncStream = {
     next: () => Promise.resolve(stream.next()),
   };

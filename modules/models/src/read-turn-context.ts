@@ -54,16 +54,21 @@ export async function readTurnContext(
   query: TurnContextQuery,
 ): Promise<TurnContext> {
   const memory = run.memory();
+
   const core = await memory.readPinnedCore();
   const retrieved = await readRetrievedItems(run, query);
+
   const lines = {
     ownerName: run.memorySettings.ownerName,
     defaultZone: run.defaultZone,
     now: new Date(run.context.clock.now()),
   };
+
   const at = formatMessageTime(lines.now, null, lines);
   const pinnedMemory = renderPinnedMemory(core, lines);
+
   const changes = await readCoreChanges(memory, query, { core, lines });
+
   const recap = query.isCompacted ? pinnedMemory : null;
 
   return {
@@ -93,7 +98,9 @@ async function readCoreChanges(
   pinned: PinnedCore,
 ): Promise<string | null> {
   const pinnedIDs = new Set(pinned.core.map((item) => item.itemID));
+
   const previousCore = query.isNewSession ? null : query.previousCore;
+
   const unpinnedShortIDs = await memory.readShortIDs(
     (previousCore ?? []).filter((ref) => !pinnedIDs.has(ref.itemID)).map((ref) => ref.itemID),
   );
@@ -124,6 +131,7 @@ async function readRetrievedItems(
   if (text.trim() === '') {
     return [];
   }
+
   const result = await run.memory().recall({
     query: text,
     limit: run.memorySettings.retrievalItems,
@@ -147,6 +155,7 @@ function findMessageText(record: LogRecord): string | null {
   if (record.kind !== 'owner_message' || record.erasable.status !== 'readable') {
     return null;
   }
+
   const text = record.erasable.fields['text'];
 
   return typeof text === 'string' ? text : null;

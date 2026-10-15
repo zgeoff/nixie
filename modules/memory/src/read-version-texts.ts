@@ -26,6 +26,7 @@ async function readVersionText(
   ref: VersionRef,
 ): Promise<VersionTextResult> {
   const base = { itemID: ref.itemID, version: ref.version };
+
   const row = await log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
@@ -37,11 +38,13 @@ async function readVersionText(
   if (row === undefined) {
     return { ...base, status: 'missing' };
   }
+
   const key = await findItemKey(log, ref.itemID);
 
   if (key === undefined) {
     return { ...base, status: 'shredded' };
   }
+
   return key === null ? { ...base, status: 'unreadable' } : decodeText(key, base, row.sealed);
 }
 

@@ -22,11 +22,13 @@ export async function runGuestPurge(spec: GuestPurgeSpec): Promise<void> {
     env: spec.command.env,
     maxMessageBytes: turnFrameLimitBytes,
   });
+
   const frames = await collectPurgeFrames(stream);
   const exit = await stream.exit;
 
   if (!frames.some((frame) => frame.type === 'purged')) {
     const failed = frames.find((frame) => frame.type === 'failed');
+
     const stderr = new TextDecoder().decode(exit.stderr.bytes);
 
     throw new Error(
@@ -41,12 +43,15 @@ async function collectPurgeFrames(stream: ExecStream): Promise<readonly GuestFra
 
   try {
     await stream.send(encodeTurnFrame({ type: 'purge' }));
+
     for await (const message of stream.messages) {
       frames.push(decodeTurnFrame(guestFrameSchema, message));
     }
   } catch (error) {
     await stream.stop();
+
     throw error;
   }
+
   return frames;
 }

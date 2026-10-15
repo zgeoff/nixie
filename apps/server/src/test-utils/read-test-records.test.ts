@@ -12,6 +12,7 @@ async function setupTest() {
   onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
 
   const raw = crypto.getRandomValues(new Uint8Array(32));
+
   const deploymentKey = await crypto.subtle.importKey('raw', raw, 'AES-KW', false, [
     'wrapKey',
     'unwrapKey',
@@ -25,6 +26,7 @@ test('it reads every record with its erasable fields decrypted', async () => {
   const writer = await startWriter({ dataDir: ctx.dataDir });
 
   onTestFinished(() => writer.stop());
+
   await writeRecords({ writer, deploymentKey: ctx.deploymentKey, projections: logProjections }, [
     {
       kind: 'owner_message',
@@ -32,6 +34,7 @@ test('it reads every record with its erasable fields decrypted', async () => {
       erasable: { text: 'Hi.' },
     },
   ]);
+
   await writer.stop();
 
   const records = await readTestRecords(ctx.dataDir, ctx.keyBase64);

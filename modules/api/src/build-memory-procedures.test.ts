@@ -14,6 +14,7 @@ import { startTestAPI } from './test-utils/start-test-api';
 // through the gate
 async function setupTest() {
   const api = await startTestAPI();
+
   const memory = await startMemoryStore({
     log: api.context.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
@@ -41,8 +42,8 @@ async function setupTest() {
 
 test('#memory.readVersions reads the text of each named version, and a missing one as missing', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const item = await ctx.memory.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -74,23 +75,26 @@ test('#memory.readVersions refuses a caller with no session', async () => {
 
 test('#memory.readRatingNotes reads the note of each named rating', async () => {
   const ctx = await setupTest();
-
   const laptop = await createDeviceSession(ctx.context, 'laptop');
+
   const item = await ctx.memory.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
   await ctx.memory.recall({ itemIDs: [item.itemID], thread: 'conversation' });
+
   await ctx.memory.rate({
     thread: 'conversation',
     runID: 'run-1',
     ratedBy: null,
     ratings: [{ item: item.itemID, verdict: 'noise', note: 'the street never came up' }],
   });
+
   const page = await buildTestClient(ctx.url, laptop.token).conversation.read({
     thread: 'conversation',
   });
+
   const rated = page.records.find((record) => record.kind === 'memory.rated');
 
   invariant(rated);

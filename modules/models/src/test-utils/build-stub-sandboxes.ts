@@ -72,6 +72,7 @@ export function buildStubSandboxes(): StubSandboxes {
     script: buildHelloTurn as StubGuestScript,
     purgeAnswer: [{ type: 'purged' }] as readonly GuestFrame[],
   };
+
   const buildSandbox = (spec: SandboxSpec): Sandbox => buildStubSandbox(spec, buildHooks(state));
 
   return {
@@ -83,12 +84,14 @@ export function buildStubSandboxes(): StubSandboxes {
 
         state.created.push(spec);
         state.sandboxes.push(sandbox);
+
         return Promise.resolve(sandbox);
       },
       get: (id) => Promise.resolve(findLive(state, (sandbox) => sandbox.id === id)[0] ?? null),
       list: (owner) => Promise.resolve(findLive(state, (sandbox) => sandbox.spec.owner === owner)),
       addSecret: (secret) => {
         state.secrets.push(secret);
+
         return Promise.resolve();
       },
       addImage: () => Promise.resolve(),
@@ -127,6 +130,7 @@ function buildHooks(state: RecordingState): StubSandboxHooks {
   return {
     onTurn: (turn, guest) => {
       state.turns.push(turn);
+
       return state.script(turn, guest);
     },
     onDestroy: (id) => {
@@ -134,6 +138,7 @@ function buildHooks(state: RecordingState): StubSandboxHooks {
     },
     onPurge: (id) => {
       state.purged.push(id);
+
       return state.purgeAnswer;
     },
   };
@@ -180,6 +185,7 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
     isRetired: false,
     destroy: () => {
       hooks.onDestroy(id);
+
       return Promise.resolve();
     },
   };
@@ -196,13 +202,17 @@ interface StubGuestHooks {
 // has removed its session state
 function startStubGuest(hooks: StubGuestHooks): ExecStream {
   const output = new TransformStream<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>();
+
   const writer = output.writable.getWriter();
   const exit = Promise.withResolvers<StreamExit>();
   const inbox = buildMessageQueue();
+
   const stopGuest = async (ended: StreamExit) => {
     await writer.close().catch(() => {});
+
     exit.resolve(ended);
   };
+
   const runScript = async (first: Exclude<HostFrame, { type: 'message' }>) => {
     const frames = await runFirstFrame(hooks, first, { waitForMessage: inbox.wait });
 
@@ -210,6 +220,7 @@ function startStubGuest(hooks: StubGuestHooks): ExecStream {
       // oxlint-disable-next-line no-await-in-loop -- frames reach the host in order
       await writer.write(encodeTurnFrame(frame));
     }
+
     await stopGuest({ code: 0, signal: null, stderr: noStderr });
   };
 
@@ -223,11 +234,13 @@ function startStubGuest(hooks: StubGuestHooks): ExecStream {
       } else {
         void runScript(frame);
       }
+
       return Promise.resolve();
     },
     exit: exit.promise,
     stop: async () => {
       await stopGuest({ code: null, signal: 'SIGTERM', stderr: noStderr });
+
       return exit.promise;
     },
   };
@@ -241,6 +254,7 @@ function runFirstFrame(
   if (first.type === 'purge') {
     return hooks.onPurge();
   }
+
   return hooks.onTurn(first, guest);
 }
 
@@ -267,9 +281,11 @@ function buildMessageQueue(): {
       if (message !== undefined) {
         return Promise.resolve(message);
       }
+
       const next = Promise.withResolvers<InboxMessage>();
 
       waiting.push(next.resolve);
+
       return next.promise;
     },
   };

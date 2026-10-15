@@ -34,6 +34,7 @@ const reportSchema = z
   .readonly();
 
 export type CheckerReport = z.infer<typeof reportSchema>;
+
 export type CheckerCall = z.infer<typeof callSchema>;
 
 // Loads a committed checker eval report: the model, the prompt and each call's verdict.

@@ -5,7 +5,6 @@ import { startTestMemory } from './start-test-memory';
 
 test("it claims the memory writer's lease for an hour", async () => {
   const memory = await startTestMemory();
-
   const lease = await claimWriterLease({ log: memory.log, clock: buildTestClock(1_000_000) });
 
   expect(lease).toStrictEqual({
@@ -20,6 +19,7 @@ test("it claims the memory writer's lease for an hour", async () => {
 
 test('it throws when another holder already has the lease', async () => {
   const memory = await startTestMemory();
+
   const clock = buildTestClock(1_000_000);
 
   await claimWriterLease({ log: memory.log, clock });

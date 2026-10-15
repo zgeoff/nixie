@@ -38,11 +38,13 @@ export function writeSessionRevocation(
     if (settled !== null) {
       return settled;
     }
+
     const revokedAt = await updateRevokedAt(tx, context, { caller, sessionID: input.sessionID });
 
     if (revokedAt === null) {
       return { status: 'not_found' };
     }
+
     await writeClientAction(tx, {
       clientActionID: input.clientActionID,
       procedure: 'sessions.revoke',
@@ -51,6 +53,7 @@ export function writeSessionRevocation(
       result: { revokedAt },
       recordedAt: context.clock.now(),
     });
+
     return { status: 'revoked', revokedAt };
   });
 }
@@ -67,9 +70,11 @@ function pickSettledRevocation(state: RevocationState): RevocationResult | null 
   if (!state.live) {
     return { status: 'unauthorized' };
   }
+
   if (state.earlier === null) {
     return null;
   }
+
   return state.earlier.procedure === 'sessions.revoke' &&
     state.earlier.inputHash === state.inputHash
     ? { status: 'revoked', revokedAt: Number(state.earlier.result['revokedAt']) }
@@ -89,6 +94,7 @@ async function updateRevokedAt(
   revocation: Revocation,
 ): Promise<number | null> {
   const db = tx.$extendTables<APITables>();
+
   const session = await db
     .selectFrom('identities')
     .select('revoked_at')
@@ -99,9 +105,11 @@ async function updateRevokedAt(
   if (session === undefined) {
     return null;
   }
+
   if (session.revoked_at !== null) {
     return session.revoked_at;
   }
+
   const revokedAt = context.clock.now();
 
   await writeRecordsInTransaction(tx, context.log, [
@@ -111,10 +119,12 @@ async function updateRevokedAt(
       payload: { identityID: revocation.sessionID, revokedBy: revocation.caller.identityID },
     },
   ]);
+
   await db
     .updateTable('identities')
     .set({ revoked_at: revokedAt })
     .where('identity_id', '=', revocation.sessionID)
     .execute();
+
   return revokedAt;
 }

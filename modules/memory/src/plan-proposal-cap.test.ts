@@ -57,14 +57,17 @@ test('it keeps the first proposals up to the cap and counts the rest as dropped 
       evidence: { recordSequence: 1, start: 0, end: 5 },
     },
   };
+
   const first: GatedWrite = {
     write: { op: 'remember', text: 'Dog.', quote: 'dog', sourceSequence: 1, target: null },
     verdict: { outcome: 'propose', reason: 'checker', records: [], plan: null },
   };
+
   const second: GatedWrite = {
     write: { op: 'remember', text: 'Cat.', quote: 'cat', sourceSequence: 1, target: null },
     verdict: { outcome: 'propose', reason: 'checker', records: [], plan: null },
   };
+
   const third: GatedWrite = {
     write: { op: 'remember', text: 'Hen.', quote: 'hen', sourceSequence: 1, target: null },
     verdict: { outcome: 'propose', reason: 'checker', records: [], plan: null },

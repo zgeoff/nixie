@@ -19,6 +19,7 @@ export async function readVersionKey(
   item: MemoryItemRow | null,
 ): Promise<VersionKey> {
   const itemID = item?.item_id ?? newItemID ?? crypto.randomUUID();
+
   const key = await (item === null && newItemID === undefined
     ? createItemKey(parts, itemID)
     : requireKey(parts, itemID));
@@ -38,5 +39,6 @@ async function requireKey(parts: StoreParts, itemID: string): Promise<CryptoKey>
   if (key === null || key === undefined) {
     throw new Error(`memory item ${itemID} has no readable key`);
   }
+
   return key;
 }

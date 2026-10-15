@@ -11,10 +11,12 @@ async function setupTest() {
 
 test('it reads the short ID of each item by its item ID', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps the spare key under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const row = await ctx.db
     .selectFrom('memory_items')
     .select('short_id')
@@ -30,6 +32,7 @@ test('it reads the short ID of each item by its item ID', async () => {
 
 test('it reads the short ID of a forgotten item', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Keeps the spare key under the blue flowerpot',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -47,7 +50,6 @@ test('it reads the short ID of a forgotten item', async () => {
 
 test('it leaves out an item ID that names no item', async () => {
   const ctx = await setupTest();
-
   const shortIDs = await ctx.memory.store.readShortIDs(['0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01']);
 
   expect(shortIDs).toStrictEqual(new Map());

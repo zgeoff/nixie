@@ -23,6 +23,7 @@ async function setupTest() {
 
 test('it defers stopping the store and then the writer', async () => {
   const ctx = await setupTest();
+
   const deferred: (() => Promise<void>)[] = [];
 
   const started = await startTestStore(

@@ -5,10 +5,12 @@ import type { StoreParts } from './types';
 // with the earliest time one lapses.
 export async function readConsolidationSchedule(parts: StoreParts): Promise<ConsolidationSchedule> {
   const db = parts.context.log.writer.db.$extendTables<ConsolidationTables>();
+
   const last = await db
     .selectFrom('memory_consolidations')
     .select((eb) => eb.fn.max('created_at').as('at'))
     .executeTakeFirst();
+
   const pending = await db
     .selectFrom('memory_consolidation_changes')
     .select((eb) => [eb.fn.countAll<number>().as('count'), eb.fn.min('lapse_at').as('lapse')])

@@ -36,5 +36,6 @@ export async function writeOwnerMessageRecord(
   ]);
 
   invariant(record, 'the log wrote no owner_message record');
+
   return record.sequence;
 }

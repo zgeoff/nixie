@@ -11,12 +11,14 @@ async function setupTest() {
 
 test('it runs a turn on its own model with the note before your message', async () => {
   const ctx = await setupTest();
+
   const conversation = await startTestConversation(ctx.server, {
     context: ctx.server.context,
     readTurnNote: () => Promise.resolve({ text: 'NOTE', throughSequence: 0, eventCount: 0 }),
   });
 
   conversation.model.addReplies({ text: 'APPLE' });
+
   await writeInboxRecords(ctx.server.context, [
     {
       kind: 'owner_message',
@@ -25,6 +27,7 @@ test('it runs a turn on its own model with the note before your message', async 
       erasable: { text: 'Say a fruit.' },
     },
   ]);
+
   await runTaskSteps(ctx.server.context, {
     steps: { conversation: conversation.runner.runStep },
     advance: () => {},

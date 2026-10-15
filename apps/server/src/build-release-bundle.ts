@@ -27,6 +27,7 @@ export async function buildReleaseBundle(
 
   // Bun.build throws on a failed build, so every result here is a success
   const texts = await Promise.all(result.outputs.map((output) => output.text()));
+
   const text = texts.join('\n');
 
   return {

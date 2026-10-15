@@ -7,7 +7,6 @@ import { buildOpenAPIDocument } from './build-openapi-document';
 // contract it was cut with. Run `bun run --cwd libs/contract openapi` to rewrite it.
 test('it matches the committed openapi.json', async () => {
   const committed = await readFile(join(import.meta.dir, '..', 'openapi.json'), 'utf8');
-
   const document = await buildOpenAPIDocument();
 
   expect(`${JSON.stringify(document, null, 2)}\n`).toBe(committed);

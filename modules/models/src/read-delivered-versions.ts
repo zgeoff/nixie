@@ -16,6 +16,7 @@ export async function readDeliveredVersions(
   for await (const record of readSessionRecords(context, taskID)) {
     state.current = buildSessionState(state.current, record);
   }
+
   return [...state.current.delivered.values()];
 }
 
@@ -80,6 +81,7 @@ function buildSessionState(state: SessionState, record: LogRecord): SessionState
 function buildTurnEnd(state: SessionState, record: LogRecord): SessionState {
   const retrieved = state.isCompacted ? [] : parseRefs(record.payload['retrieved']);
   const through = parseRecalledThrough(record.payload['recalledThrough']);
+
   const recalled = state.pending
     .filter((recall) => recall.sequence <= through)
     .flatMap((recall) => recall.refs);
@@ -123,7 +125,6 @@ const resetKinds = [
 ];
 
 const replayKinds = ['memory.recalled', 'model.turn_ended', 'task.step_started', ...resetKinds];
-
 const pageSize = 200;
 
 // The thread's records from the start of the step that wrote its newest reset, oldest first, so the
@@ -165,6 +166,7 @@ async function readReplayStart(
   if (reset === undefined) {
     return 0;
   }
+
   const [started] = await readRecords(context.log, {
     afterSequence: 0,
     beforeSequence: reset.record.sequence,

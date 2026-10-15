@@ -4,6 +4,7 @@ import type { VersionRef } from './types';
 // never saw. The caller reads the item again and decides.
 export class StaleVersionError extends Error {
   override readonly name = 'StaleVersionError';
+
   readonly code = 'STALE_VERSION';
 
   constructor(target: VersionRef, current: number) {

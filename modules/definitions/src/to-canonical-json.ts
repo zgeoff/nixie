@@ -6,6 +6,7 @@ export function toCanonicalJSON(value: JSONValue): string {
   if (isJSONArray(value)) {
     return `[${value.map((item) => toCanonicalJSON(item)).join(',')}]`;
   }
+
   if (value !== null && typeof value === 'object') {
     const entries = Object.keys(value)
       .toSorted()
@@ -13,9 +14,11 @@ export function toCanonicalJSON(value: JSONValue): string {
 
     return `{${entries.join(',')}}`;
   }
+
   if (typeof value === 'number' && !Number.isFinite(value)) {
     throw new TypeError(`canonical JSON has no form for ${value}`);
   }
+
   return JSON.stringify(value);
 }
 

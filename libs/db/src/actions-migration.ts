@@ -21,6 +21,7 @@ export const actionsMigration: Migration = {
       outcome_sequence integer references records (sequence),
       updated_sequence integer not null references records (sequence)
     ) strict`.execute(tx);
+
     await sql`create index actions_by_status on actions (status, next_attempt_at)`.execute(tx);
     await sql`create index actions_by_hash on actions (task_id, action_hash)`.execute(tx);
   },

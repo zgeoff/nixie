@@ -9,15 +9,18 @@ export async function encodeSealedJSON(
   value: JSONValue,
 ): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(sealedIVBytes));
+
   const ciphertext = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(additionalData) },
     key,
     new TextEncoder().encode(JSON.stringify(value)),
   );
+
   const sealed = new Uint8Array(sealedIVBytes + ciphertext.byteLength);
 
   sealed.set(iv);
   sealed.set(new Uint8Array(ciphertext), sealedIVBytes);
+
   return Buffer.from(sealed).toString('base64');
 }
 

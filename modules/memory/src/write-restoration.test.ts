@@ -7,10 +7,12 @@ async function setupTest() {
 
 test('it restores a retired item as active with the text it had', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const retired = await ctx.memory.store.retire({
     target: item,
     intentQuote: 'forget my address',
@@ -27,9 +29,11 @@ test('it restores a retired item as active with the text it had', async () => {
     target: retired,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
+
   const recalled = await ctx.memory.store.recall({ query: 'Elm' });
 
   expect(restored).toStrictEqual({ itemID: item.itemID, version: 3 });
+
   expect(recalled.items).toMatchObject([
     {
       itemID: item.itemID,
@@ -43,6 +47,7 @@ test('it restores a retired item as active with the text it had', async () => {
 
 test('it keeps the source of the text it restores', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: {
@@ -53,6 +58,7 @@ test('it keeps the source of the text it restores', async () => {
       checks: null,
     },
   });
+
   const retired = await ctx.memory.store.retire({
     target: item,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
@@ -70,6 +76,7 @@ test('it keeps the source of the text it restores', async () => {
 
 test('it rejects a restore of an active item', async () => {
   const ctx = await setupTest();
+
   const item = await ctx.memory.store.remember({
     text: 'Lives on Elm Street',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },

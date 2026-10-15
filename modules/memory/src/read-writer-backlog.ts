@@ -59,17 +59,21 @@ async function readConversationRecords(
       thread: conversationTaskID,
       limit: pageSize,
     });
+
     const inRange = entries
       .map((entry) => entry.record)
       .filter((record) => range.through === null || record.sequence <= range.through);
 
     collected.push(...inRange);
+
     page.isDone =
       entries.length < pageSize ||
       inRange.length < entries.length ||
       countOwnerMessages(collected) > range.ownerLimit;
+
     page.after = entries.at(-1)?.record.sequence ?? page.after;
   }
+
   return collected;
 }
 
@@ -100,6 +104,7 @@ async function readArrivals(
     .where('sequence', '>', cursor)
     .orderBy('sequence', 'desc')
     .execute();
+
   const wakes = rows.flatMap((row) => {
     const payload: unknown = JSON.parse(row.payload);
     const wake = wakePayload.safeParse(payload);
@@ -112,9 +117,7 @@ async function readArrivals(
 }
 
 const spanFields = z.object({ start: z.int(), end: z.int(), source: z.string() });
-
 const ownerFields = z.object({ text: z.string(), spans: z.array(spanFields).optional() });
-
 const replyFields = z.object({ text: z.string() });
 
 function toBacklogEntry(
@@ -134,11 +137,13 @@ function toBacklogEntry(
       arrivedAt: arrivals.get(record.sequence) ?? null,
     };
   }
+
   if (record.kind === 'model.reply') {
     const fields = parseFields(record, replyFields);
 
     return { ...base, role: 'assistant', text: fields?.text ?? null, spans: [], arrivedAt: null };
   }
+
   return null;
 }
 
@@ -148,6 +153,7 @@ function parseFields<Fields>(record: LogRecord, schema: z.ZodType<Fields>): Fiel
   if (record.erasable.status !== 'readable') {
     return null;
   }
+
   const parsed = schema.safeParse(record.erasable.fields);
 
   return parsed.success ? parsed.data : null;

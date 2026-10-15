@@ -15,12 +15,15 @@ export async function runDefinitionsSeed(parts: ServerParts): Promise<SeedResult
   if (result.inForce !== null) {
     parts.inForce.set(result.inForce);
   }
+
   parts.state.update({
     definitions:
       result.status === 'refused'
         ? { isReady: false, reason: `the last snapshot was refused: ${result.error.name}` }
         : { isReady: true, reason: null },
   });
+
   parts.log('definitions.seeded', buildSeedLogFields(result));
+
   return result;
 }

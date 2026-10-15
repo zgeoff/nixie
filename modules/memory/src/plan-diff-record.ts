@@ -35,6 +35,7 @@ export async function planDiffRecord(
     log,
     plan.changes.flatMap((change) => change.inputs.slice(0, 1).map((input) => input.itemID)),
   );
+
   const sealed = await Promise.all(
     plan.changes.map((change) => {
       const key = keys.get(change.inputs[0].itemID);
@@ -46,6 +47,7 @@ export async function planDiffRecord(
   );
 
   const diffID = crypto.randomUUID();
+
   const proposed: RecordInput = {
     kind: 'memory.consolidation_proposed',
     definitions: plan.definitions,
@@ -59,6 +61,7 @@ export async function planDiffRecord(
       changes: sealed.filter((change) => change !== null),
     },
   };
+
   const summary =
     plan.summary === null
       ? null
@@ -74,7 +77,9 @@ async function planSummaryRecord(
   plan: DiffPlan & { readonly summary: PlannedSummary },
 ): Promise<RecordInput | null> {
   const planned = plan.summary;
+
   const found = await findRecordKeys(log, planned.itemIDs);
+
   const keys = new Map(
     [...found].flatMap(([itemID, key]) => (key === null ? [] : [[itemID, key] as const])),
   );
@@ -82,6 +87,7 @@ async function planSummaryRecord(
   if (keys.size === 0 || keys.size < new Set(planned.itemIDs).size) {
     return null;
   }
+
   const summary = await encodeConsolidationSummary(diffID, planned.text, keys);
 
   return {

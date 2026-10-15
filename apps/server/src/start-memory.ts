@@ -19,6 +19,7 @@ export async function startMemory(
     timeoutMs: parts.config.memory.checkerTimeoutMs,
     log: parts.log,
   });
+
   const store = await startMemoryStore({
     log: parts.context.log,
     definitions: parts.context.definitions,
@@ -45,6 +46,7 @@ export async function startMemory(
   await parts.cleanup.defer(() => {
     clearInterval(sweep);
   });
+
   return store;
 }
 
