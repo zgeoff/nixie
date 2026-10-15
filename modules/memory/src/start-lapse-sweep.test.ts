@@ -18,7 +18,7 @@ test('it lapses a proposal past its lapse time on the next sweep', async () => {
 
   clock.advance(5000);
 
-  const sweep = startLapseSweep({ store: memory.store, intervalMs: 10, onError: mock() });
+  const sweep = startLapseSweep({ store: memory.store, intervalMs: 10, onError: () => {} });
 
   onTestFinished(() => sweep.stop());
 
@@ -37,7 +37,7 @@ test('it lapses a proposal past its lapse time on the next sweep', async () => {
 });
 
 test('it passes a failed sweep to onError, and sweeps again', async () => {
-  const onError = mock();
+  const onError = mock<(error: unknown) => void>();
 
   const sweep = startLapseSweep({
     store: {

@@ -14,7 +14,8 @@ type HostErrors = Readonly<
 // oRPC error passes through as it is.
 export function toHostError(error: unknown, errors: HostErrors): ORPCError<string, unknown> {
   if (error instanceof ORPCError) {
-    return error;
+    // the class narrows to its any-typed form, and every oRPC error has a string code
+    return error as ORPCError<string, unknown>;
   }
 
   const message = error instanceof Error ? error.message : String(error);
