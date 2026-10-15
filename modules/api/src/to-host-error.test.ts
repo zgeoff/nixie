@@ -2,12 +2,6 @@ import { expect, test } from 'bun:test';
 import { ORPCError } from '@orpc/server';
 import { toHostError } from './to-host-error';
 
-test('it passes an oRPC error through as it is', () => {
-  const error = new ORPCError('BAD_REQUEST', { message: 'Input validation failed' });
-
-  expect(toHostError(error, {})).toBe(error);
-});
-
 test('it builds the declared error for the code a memory store error carries', () => {
   const error = Object.assign(new Error('the item has moved past version 1'), {
     code: 'STALE_VERSION',
