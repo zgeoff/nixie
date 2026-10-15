@@ -257,6 +257,33 @@ test('it marks a compaction under the collapsed line with its tokens before and 
   expect(marker).toHaveTextContent('compacted (auto) · 384k → 42k tokens');
 });
 
+test('it marks a summary under the collapsed line as the same closed rule as a compaction', () => {
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        compactions: [{ postTokens: 40_000, preTokens: 380_000, sequence: 30, trigger: 'auto' }],
+        summaries: [
+          {
+            contextSize: 170_000,
+            sequence: 31,
+            summaryTokens: 1500,
+            text: 'Open threads: the bike fitting on Thursday.',
+            trigger: 'threshold',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  const compaction = rendered.getByRole('note', { name: 'compaction' });
+  const line = rendered.getByText('summarized (threshold) · 170k → 1.5k tokens');
+
+  expect(line).toBeVisible();
+  expect(line).toHaveClass(...compaction.classList);
+  expect(rendered.getByText('Open threads: the bike fitting on Thursday.')).not.toBeVisible();
+});
+
 test('it opens one section of a step and leaves the others closed', async () => {
   const user = userEvent.setup();
 
