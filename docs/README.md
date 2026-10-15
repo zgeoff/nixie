@@ -361,6 +361,8 @@ left untested. The [spikes index](design/platform/spikes/README.md) describes ho
   production, Gmail's restricted scope, and token refresh past 7 days
 - [Worker start inside an imp](design/platform/spikes/imp-worker-start/) — imp create and wake, and
   the SDK's first token inside an imp against the host
+- [Worker cold start on the worker image](design/platform/spikes/worker-cold-start/) — first text
+  with the code runtimes in the image, and a fresh fetch sandbox per fetch
 - [Serving nixie's tools](design/platform/spikes/tools-endpoint/) — the tool list, the MCP revision
   and the result the model receives, against a local stand-in for the model API
 - [A pinning MCP proxy](design/platform/spikes/mcp-proxy-pin/) — hash pinning, effect declarations
