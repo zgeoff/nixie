@@ -97,3 +97,33 @@ test('it never lets a field replace the level', () => {
     { time: '2026-10-11T12:00:00.000Z', event: 'runner.failed', level: 'error' },
   ]);
 });
+
+test('it drops a field named level from a call that names no level', () => {
+  const lines: string[] = [];
+
+  const log = makeLogger(
+    (line) => {
+      lines.push(line);
+    },
+    () => Date.UTC(2026, 9, 11, 12, 0, 0),
+  );
+
+  log('ready', { level: 'error' });
+
+  expect(lines).toStrictEqual(['{"time":"2026-10-11T12:00:00.000Z","event":"ready"}\n']);
+});
+
+test('it drops a field named level from an info call', () => {
+  const lines: string[] = [];
+
+  const log = makeLogger(
+    (line) => {
+      lines.push(line);
+    },
+    () => Date.UTC(2026, 9, 11, 12, 0, 0),
+  );
+
+  log('ready', { level: 'error' }, 'info');
+
+  expect(lines).toStrictEqual(['{"time":"2026-10-11T12:00:00.000Z","event":"ready"}\n']);
+});

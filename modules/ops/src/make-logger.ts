@@ -13,7 +13,10 @@ export function makeLogger(
     // an info line names no level, so it reads the same as a line from before nixie had levels
     const envelope = level === 'info' ? { time, event } : { time, event, level };
 
+    // the level is the call's alone, so a field named level never reaches the line
+    const { level: _fieldLevel, ...rest } = fields;
+
     // the time and the event lead the line, and no field can replace them
-    writeLine(`${JSON.stringify({ ...envelope, ...fields, ...envelope })}\n`);
+    writeLine(`${JSON.stringify({ ...envelope, ...rest, ...envelope })}\n`);
   };
 }
