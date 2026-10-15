@@ -29,7 +29,13 @@ export function startFakeForward(options: FakeForwardOptions): SleepingForward {
 
   server.once('error', ending.listening.reject);
   void startListener(options, server, ending);
-  onTestFinished(() => stopForward(server, sockets));
+
+  // a wake that resolves after the test finishes finds the forward ended, so it opens no listener
+  onTestFinished(() => {
+    ending.stop();
+
+    return stopForward(server, sockets);
+  });
 
   return {
     listening: ending.listening.promise,
@@ -50,6 +56,9 @@ interface Ending {
   readonly listening: PromiseWithResolvers<unknown>;
   readonly ended: PromiseWithResolvers<{ readonly kind: string }>;
   readonly isEnded: () => boolean;
+
+  // ends the forward without settling its promises, as no one reads them once the test finishes
+  readonly stop: () => void;
   readonly stopAs: (kind: string) => void;
 }
 
@@ -65,6 +74,9 @@ function buildEnding(): Ending {
     listening,
     ended,
     isEnded: () => isEnded,
+    stop: () => {
+      isEnded = true;
+    },
     stopAs: (kind) => {
       isEnded = true;
 
