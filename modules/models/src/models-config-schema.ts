@@ -11,6 +11,7 @@ const priceSchema = z.number().nonnegative();
 const pricesSchema = z.strictObject({
   input: priceSchema,
   cache_write: priceSchema,
+  cache_write_1h: priceSchema,
   cached_input: priceSchema,
   output: priceSchema,
 });
@@ -112,6 +113,7 @@ function toProfile(id: string, input: z.infer<typeof profileSchema>): ModelProfi
         : {
             input: input.prices.input,
             cacheWrite: input.prices.cache_write,
+            cacheWrite1h: input.prices.cache_write_1h,
             cachedInput: input.prices.cached_input,
             output: input.prices.output,
           },

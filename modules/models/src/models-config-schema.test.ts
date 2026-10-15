@@ -11,7 +11,7 @@ test('it reads a direct profile with its context tokens and prices into its type
         model: 'claude-sonnet-5-5',
         effort: 'medium',
         context_tokens: 400_000,
-        prices: { input: 3, cache_write: 3.75, cached_input: 0.3, output: 15 },
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
       },
     },
     roles: { conversation: 'chat-direct' },
@@ -28,7 +28,7 @@ test('it reads a direct profile with its context tokens and prices into its type
         effort: 'medium',
         providerPin: null,
         contextTokens: 400_000,
-        prices: { input: 3, cacheWrite: 3.75, cachedInput: 0.3, output: 15 },
+        prices: { input: 3, cacheWrite: 3.75, cacheWrite1h: 6, cachedInput: 0.3, output: 15 },
       },
     },
     roles: { conversation: 'chat-direct' },
@@ -194,6 +194,26 @@ test('it refuses a credential reference outside the secrets file', () => {
 
   expect(result.error?.issues).toPartiallyContain({
     path: ['profiles', 'chat-direct', 'credential'],
+  });
+});
+
+test('it refuses a price table without the 1-hour cache write price', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['profiles', 'chat-direct', 'prices', 'cache_write_1h'],
   });
 });
 

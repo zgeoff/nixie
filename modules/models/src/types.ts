@@ -20,7 +20,11 @@ export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 // Prices per million tokens, in the deployment's currency.
 export interface ModelPrices {
   readonly input: number;
+
+  // a write to a 5-minute cache entry, and to a 1-hour one; a profile that never asks for 1-hour
+  // entries sets both to the same price
   readonly cacheWrite: number;
+  readonly cacheWrite1h: number;
   readonly cachedInput: number;
   readonly output: number;
 }
@@ -44,7 +48,8 @@ export interface ModelProfile {
   // model's own window
   readonly contextTokens: number | null;
 
-  // parsed for the counting proxy, which prices each response; nothing here reads them
+  // the counting proxy prices each response with them through buildCallCost, and nothing else
+  // reads them
   readonly prices: ModelPrices | null;
 }
 
