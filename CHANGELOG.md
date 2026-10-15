@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/zgeoff/nixie/compare/v0.25.0...v0.26.0) (2026-10-15)
+
+
+### Features
+
+* **geo-926:** attach images to a message ([#261](https://github.com/zgeoff/nixie/issues/261)) ([d3f27b6](https://github.com/zgeoff/nixie/commit/d3f27b6912b20ec980e3bcd61fb1663a707eca9c))
+
 ## [0.25.0](https://github.com/zgeoff/nixie/compare/v0.24.0...v0.25.0) (2026-10-15)
 
 
