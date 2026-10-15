@@ -5,20 +5,17 @@ import type { LiveSessionPosition, SessionPosition, SessionStart } from './types
 export function pickSessionStart(
   position: Exclude<SessionPosition, LiveSessionPosition>,
 ): SessionStart {
-  const lostSessionID = position.boundary?.sessionID ?? null;
-
-  switch (position.state) {
-    case 'fresh': {
-      return { kind: 'first' };
-    }
-    case 'summarized': {
-      return { kind: 'compaction' };
-    }
-    case 'invalidated': {
-      return { kind: 'rebuild', reason: 'forget', lostSessionID };
-    }
-    case 'lost': {
-      return { kind: 'rebuild', reason: 'lost', lostSessionID };
-    }
+  if (position.state === 'fresh') {
+    return { kind: 'first' };
   }
+
+  if (position.state === 'summarized') {
+    return { kind: 'compaction' };
+  }
+
+  return {
+    kind: 'rebuild',
+    reason: position.state === 'invalidated' ? 'forget' : 'lost',
+    lostSessionID: position.boundary?.sessionID ?? null,
+  };
 }
