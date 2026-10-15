@@ -178,6 +178,9 @@ const createTable = /^create table (?:if not exists )?(?<table>[^\s(]+)/u;
 const createIndex =
   /^create (?<unique>unique )?index (?:if not exists )?\S+ on (?<table>[^\s(]+) ?\((?<columns>[^)]*)\)/u;
 
+const createTrigger =
+  /^create trigger (?:if not exists )?\S+ (?:before |after |instead of )?(?:insert|update|delete)(?: of .*?)? on (?<table>\S+)/u;
+
 const addColumn = /^alter table (?<table>\S+) add (?:column )?(?<definition>.+)$/u;
 const update = /^update (?<table>\S+) set (?<assignments>.+?)(?: where .*)?$/u;
 const select = /^select\b/u;
@@ -209,8 +212,8 @@ function collectAddedSchema(statements: readonly string[]): AddedSchema {
   };
 }
 
-// A new table, a read, an index or a column an old insert still satisfies, or a backfill of a column
-// the release adds: the release before reads and writes around each of them.
+// A new table, a read, an index or a column an old insert still satisfies, a trigger on a new table,
+// or a backfill of a column the release adds: the release before reads and writes around each.
 function isExpandStatement(statement: string, added: AddedSchema): boolean {
   const normalized = normalizeStatement(statement);
 
@@ -219,6 +222,7 @@ function isExpandStatement(statement: string, added: AddedSchema): boolean {
     select.test(normalized) ||
     isExpandIndex(normalized, added) ||
     isExpandColumn(normalized, added) ||
+    isExpandTrigger(normalized, added) ||
     isBackfill(normalized, added)
   );
 }
@@ -244,6 +248,14 @@ function isExpandColumn(statement: string, added: AddedSchema): boolean {
     (added.tables.includes(normalizeTable(column['table'] ?? '')) ||
       isOptionalColumn(column['definition'] ?? ''))
   );
+}
+
+// a trigger passes only on a table the release creates, which the release before never writes; its
+// log reset drops and restores every trigger the schema holds
+function isExpandTrigger(statement: string, added: AddedSchema): boolean {
+  const table = createTrigger.exec(statement)?.groups?.['table'];
+
+  return table !== undefined && added.tables.includes(normalizeTable(table));
 }
 
 // an update that sets only columns the release adds, which the release before never reads
