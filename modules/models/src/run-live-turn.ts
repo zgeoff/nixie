@@ -7,7 +7,7 @@ import { readLiveInbox } from './read-live-inbox';
 import { readOpeningBatch } from './read-opening-batch';
 import { readRecalledThrough } from './read-recalled-through';
 import { runGuestTurn } from './run-guest-turn';
-import type { ConversationRun, MessageTimeOptions, TurnNote } from './types';
+import type { ConversationRun, ImageTally, MessageTimeOptions, TurnNote } from './types';
 
 // The session a turn runs on and what it opens with.
 export interface LiveTurnPlan {
@@ -24,8 +24,8 @@ export interface LiveTurnPlan {
   // how each message renders its send time
   readonly times: MessageTimeOptions;
 
-  // the image bytes, in base64, the session holds before the turn: 0 for a new session
-  readonly imageBytes: number;
+  // the images the session holds before the turn: none for a new session
+  readonly images: ImageTally;
 }
 
 // Runs one turn in the guest on the step's inbox, as much as readTurnBatch lets through, resuming at
@@ -93,7 +93,7 @@ async function runTokenTurn(
       sent,
       hasMore: hasMore || opening.images.isCapped,
       notedThrough: note?.throughSequence ?? null,
-      imageBytes: opening.images.spent,
+      images: opening.images.spent,
     };
   } finally {
     live.abort();

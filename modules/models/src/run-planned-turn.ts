@@ -5,7 +5,7 @@ import type { OpeningRecord, SessionOpening } from './read-session-opening';
 import { readSessionOpening } from './read-session-opening';
 import type { TurnContext } from './read-turn-context';
 import { runLiveTurn } from './run-live-turn';
-import type { ConversationRun, MessageTimeOptions, SessionStart } from './types';
+import type { ConversationRun, ImageTally, MessageTimeOptions, SessionStart } from './types';
 
 // One step's turn: the run, the step, what memory adds, and the signal that stops it.
 export interface SessionTurn {
@@ -16,8 +16,8 @@ export interface SessionTurn {
   // the newest session invalidation the step saw before the turn ran
   readonly invalidatedThrough: number;
 
-  // the image bytes, in base64, the session holds before the turn: 0 for a new session
-  readonly imageBytes: number;
+  // the images the session holds before the turn: none for a new session
+  readonly images: ImageTally;
 
   // aborts when the step's lease is lost or a forget invalidates the session
   readonly signal: AbortSignal;
@@ -50,7 +50,7 @@ export async function runPlannedTurn(
     preamble: [...(opening?.blocks ?? []), ...turn.context.preamble],
     signal: turn.signal,
     times,
-    imageBytes: turn.imageBytes,
+    images: turn.images,
   });
 
   turn.signal.throwIfAborted();

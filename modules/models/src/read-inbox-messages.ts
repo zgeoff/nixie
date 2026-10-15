@@ -1,16 +1,19 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecordAttachments } from '@heynixie/log';
 import type { InboxMessage } from '@heynixie/wire';
-import { countImageBytes } from './count-image-bytes';
+import { countImages } from './count-images';
+import { isPastImageBudget } from './is-past-image-budget';
+import { mergeImageTallies } from './merge-image-tallies';
 import { toInboxMessage } from './to-inbox-message';
-import type { MessageTimeOptions } from './types';
+import type { ImageTally, MessageTimeOptions } from './types';
 
 export interface InboxRead {
   readonly times: MessageTimeOptions;
 
-  // the most image bytes, in base64, that the messages may carry together; the first message
-  // always goes, so one message of yours with the most images a send takes still reaches the model
-  readonly imageBudgetBytes: number;
+  // the most images, in base64 bytes and in count, that the messages may carry together; the first
+  // message always goes, so one message of yours with the most images a send takes still reaches
+  // the model
+  readonly imageBudget: ImageTally;
 }
 
 // Reads the inbox records a turn takes as the guest passes them to the model, oldest first, each
@@ -22,19 +25,19 @@ export async function readInboxMessages(
   read: InboxRead,
 ): Promise<readonly InboxMessage[]> {
   const messages: InboxMessage[] = [];
-  const spent = { bytes: 0 };
+  let spent: ImageTally = { bytes: 0, count: 0 };
 
   for (const record of records) {
     // oxlint-disable-next-line no-await-in-loop -- each record's images read only once the budget has room
     const message = await readInboxMessage(log, record, read.times);
 
-    const bytes = countImageBytes(message);
+    const images = countImages(message);
 
-    if (messages.length > 0 && bytes > 0 && spent.bytes + bytes > read.imageBudgetBytes) {
+    if (messages.length > 0 && isPastImageBudget(spent, images, read.imageBudget)) {
       return messages;
     }
 
-    spent.bytes += bytes;
+    spent = mergeImageTallies(spent, images);
 
     messages.push(message);
   }

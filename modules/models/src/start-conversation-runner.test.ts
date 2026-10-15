@@ -691,6 +691,60 @@ test('it rebuilds the session when your next images would pass the images the se
   ]);
 }, 60_000);
 
+test('it rebuilds the session when your next images would pass the 100 it can hold, however small', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    {
+      type: 'ended',
+      boundary: {
+        sessionID: '8b4e2f60-1c7a-4d93-b5e8-3f0a6c2d9e17',
+        messageID: crypto.randomUUID(),
+      },
+      subtype: 'success',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  // 26 messages of 4 small icons each come to 104 images and a few hundred bytes
+  await writeInboxRecords(
+    ctx.context,
+    Array.from({ length: 26 }, () => ({
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { images: Array.from({ length: 4 }, () => ({ mediaType: 'image/png' })) },
+      erasable: { text: 'Four more icons.' },
+      attachments: Array.from({ length: 4 }, () => new Uint8Array(6).fill(3)),
+    })),
+  );
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  expect(
+    ctx.sandboxes.turns.map((turn) => turn.input.flatMap((message) => message.images ?? []).length),
+  ).toStrictEqual([100, 4]);
+
+  const opened = await ctx.readKinds('model.session_opened');
+
+  expect(opened).toMatchObject([
+    { payload: { kind: 'first' } },
+    { payload: { kind: 'rebuild', reason: 'images', status: { start: 'rebuild:images' } } },
+  ]);
+});
+
 test('it resumes the session for a photo while the images it holds leave room', async () => {
   const ctx = await setupTest();
 

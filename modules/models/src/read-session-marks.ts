@@ -2,7 +2,8 @@ import type { LogRecord, ReadRecordsOptions } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { z } from 'zod';
-import type { MemoryRef } from './types';
+import { sessionImageBudget } from './session-image-budget';
+import type { ImageTally, MemoryRef } from './types';
 
 export interface SessionMarks {
   // the pinned core the last turn ran with, or null before the first turn
@@ -29,8 +30,8 @@ export interface SessionMarks {
   // the compactions that failed in a row since the last summary or opening
   readonly compactionFailures: number;
 
-  // the image bytes, in base64, the session held after the last turn, or 0 before any turn
-  readonly imageBytes: number;
+  // the images the session held after the last turn, or none before any turn
+  readonly images: ImageTally;
 }
 
 export interface TurnContextSize {
@@ -70,7 +71,7 @@ export async function readSessionMarks(
     lastContext: turn === undefined ? null : parseContext(turn),
     isSummarized: summarizedThrough > openedThrough,
     compactionFailures: countFailures(failed.at(0), Math.max(openedThrough, summarizedThrough)),
-    imageBytes: turn === undefined ? 0 : parseImageBytes(turn),
+    images: turn === undefined ? { bytes: 0, count: 0 } : parseImages(turn),
   };
 }
 
@@ -114,11 +115,25 @@ function parseContext(turn: LogRecord): TurnContextSize | null {
     : null;
 }
 
-// a turn recorded before turns kept their session's image bytes ran on a session with no images
-function parseImageBytes(turn: LogRecord): number {
-  const parsed = z.int().nonnegative().safeParse(turn.payload['sessionImageBytes']);
+const tallySchema = z.int().nonnegative();
 
-  return parsed.success ? parsed.data : 0;
+// a turn recorded before turns kept their session's images ran on a session with no images; one
+// recorded before they kept the count reads as holding the most images a session takes, so a
+// message with images rebuilds the session rather than risk the count
+function parseImages(turn: LogRecord): ImageTally {
+  const bytes = tallySchema.safeParse(turn.payload['sessionImageBytes']);
+
+  if (!bytes.success) {
+    return { bytes: 0, count: 0 };
+  }
+
+  const count = tallySchema.safeParse(turn.payload['sessionImageCount']);
+
+  if (count.success) {
+    return { bytes: bytes.data, count: count.data };
+  }
+
+  return { bytes: bytes.data, count: bytes.data > 0 ? sessionImageBudget.count : 0 };
 }
 
 const failuresSchema = z.object({ failures: z.int().positive() });

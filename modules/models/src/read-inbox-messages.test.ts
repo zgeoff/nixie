@@ -31,7 +31,7 @@ test('it reads each record with the images its attachments hold', async () => {
 
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
-    imageBudgetBytes: 1024,
+    imageBudget: { bytes: 1024, count: 100 },
   });
 
   expect(messages).toStrictEqual([
@@ -72,11 +72,43 @@ test('it stops before the record whose images would pass the budget', async () =
   // 6 bytes read as 8 in base64, so the second image would bring the total to 16
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
-    imageBudgetBytes: 12,
+    imageBudget: { bytes: 12, count: 100 },
   });
 
   expect(messages.map((message) => message.text)).toStrictEqual([
     expect.toEndWith('The first plan.'),
+  ]);
+});
+
+test('it stops before the record whose images would pass the count, however few their bytes', async () => {
+  const ctx = await setupTest();
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { images: [{ mediaType: 'image/png' }, { mediaType: 'image/png' }] },
+      erasable: { text: 'The first two plans.' },
+      attachments: [new Uint8Array(6).fill(1), new Uint8Array(6).fill(2)],
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'The third plan.' },
+      attachments: [new Uint8Array(6).fill(3)],
+    },
+  ]);
+
+  const messages = await readInboxMessages(ctx.log, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    imageBudget: { bytes: 1024, count: 2 },
+  });
+
+  expect(messages.map((message) => message.text)).toStrictEqual([
+    expect.toEndWith('The first two plans.'),
   ]);
 });
 
@@ -102,7 +134,7 @@ test('it reads a record with no images past a budget the images before it spent'
 
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
-    imageBudgetBytes: 4,
+    imageBudget: { bytes: 4, count: 100 },
   });
 
   expect(messages.map((message) => message.text)).toStrictEqual([
@@ -127,7 +159,7 @@ test('it reads the first record whatever its images, so a large message still re
 
   const messages = await readInboxMessages(ctx.log, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
-    imageBudgetBytes: 0,
+    imageBudget: { bytes: 0, count: 0 },
   });
 
   expect(messages).toHaveLength(1);
