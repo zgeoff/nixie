@@ -1,3 +1,4 @@
+// oxlint-disable import/max-dependencies -- the local and imp fetch sandbox tests share this setup
 import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -8,6 +9,7 @@ import { buildImpPort, buildImpSandboxAdapter, parseImpConfig } from '@heynixie/
 import { buildSandboxAdapter } from './build-sandbox-adapter';
 import { fetchImageArgv, startWebFetch } from './start-web-fetch';
 import { buildConnectProbe } from './test-utils/build-connect-probe';
+import { checkIsolationTargets } from './test-utils/check-isolation-targets';
 
 // The imp tests run against a real impd on a host with /dev/kvm, with the fetch image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on.
@@ -224,17 +226,15 @@ test.skipIf(!hasImpHost)(
       ),
     ];
 
-    const outcomes = await Promise.all(
-      targets.map(async ([host, port]) => {
-        const result = await sandbox.exec(
-          buildConnectProbe(fetchImageArgv[0] ?? 'bun', host, port),
-        );
+    const lines = await checkIsolationTargets(targets, async (host, port) => {
+      const result = await sandbox.exec(buildConnectProbe(fetchImageArgv[0] ?? 'bun', host, port));
 
-        return `${host}:${port} ${new TextDecoder().decode(result.stdout.bytes).trim()}`;
-      }),
+      return new TextDecoder().decode(result.stdout.bytes).trim();
+    });
+
+    expect(lines).toSatisfyAll((line: string) =>
+      /:\d+ listener (?:connected|unprovable from the runner, .+); sandbox failed /u.test(line),
     );
-
-    expect(outcomes).toSatisfyAll((outcome: string) => /:\d+ failed /u.test(outcome));
   },
   120_000,
 );
