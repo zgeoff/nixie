@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { waitFor } from '@testing-library/react';
 import { z } from 'zod';
 
-export interface BrowserFile {
+interface BrowserFile {
   readonly name: string;
   readonly bytes: Uint8Array;
 }
