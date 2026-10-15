@@ -489,6 +489,60 @@ test('#conversation.send refuses a client message ID that came with another numb
   expect(result.error).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
 });
 
+test('#conversation.send refuses a client message ID that came with other image bytes', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The new tiles.',
+    spans: [],
+    images: [new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'tiles.jpg')],
+  });
+
+  const otherTiles = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe1])], 'other-tiles.jpg');
+
+  const result = await safe(
+    laptopClient.conversation.send({
+      clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+      thread: 'conversation',
+      text: 'The new tiles.',
+      spans: [],
+      images: [otherTiles],
+    }),
+  );
+
+  expect(result.error).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+});
+
+test('#conversation.send answers a retry with the same image bytes as a duplicate', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const first = await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The new tiles.',
+    spans: [],
+    images: [new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'tiles.jpg')],
+  });
+
+  const retry = await laptopClient.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'The new tiles.',
+    spans: [],
+    images: [new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'tiles.jpg')],
+  });
+
+  expect(retry).toStrictEqual({ duplicate: true, sequence: first.sequence });
+});
+
 test('#conversation.readImage refuses an image of a forgotten message', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');

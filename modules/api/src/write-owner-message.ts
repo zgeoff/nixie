@@ -1,7 +1,7 @@
 import type { Span } from '@heynixie/contract';
 import { isTimeZone } from '@heynixie/contract';
-import type { JSONObject } from '@heynixie/log';
-import { readRecords, withWriteTransaction } from '@heynixie/log';
+import type { JSONObject, LogRecord } from '@heynixie/log';
+import { readRecordAttachments, readRecords, withWriteTransaction } from '@heynixie/log';
 import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -162,7 +162,8 @@ function toSpanJSON(span: Span): JSONObject {
 }
 
 // nixie keeps no hash of a message's text, which would outlive a forget of the text, so a retry is
-// compared with the first record itself: its thread, its image count, and its text until forgotten
+// compared with the first record itself: its thread, its image count, and its text and image bytes
+// until forgotten
 async function checkRetry(
   context: APIContext,
   input: OwnerMessageInput,
@@ -176,15 +177,38 @@ async function checkRetry(
     return { status: 'reused' };
   }
 
-  const images = record.payload['images'];
-
-  if ((Array.isArray(images) ? images.length : 0) !== (input.images?.length ?? 0)) {
-    return { status: 'reused' };
-  }
-
   if (record.erasable.status === 'readable' && record.erasable.fields['text'] !== input.text) {
     return { status: 'reused' };
   }
 
-  return { status: 'written', duplicate: true, sequence };
+  const hasSame = await hasSameImages(context, record, input.images ?? []);
+
+  return hasSame ? { status: 'written', duplicate: true, sequence } : { status: 'reused' };
+}
+
+// The count always compares, from the payload. The bytes compare while the first record's images
+// are readable, and a forgotten record's images, unreadable with its text, compare as the same.
+async function hasSameImages(
+  context: APIContext,
+  record: LogRecord,
+  images: readonly OwnerImage[],
+): Promise<boolean> {
+  const sent = record.payload['images'];
+
+  if ((Array.isArray(sent) ? sent.length : 0) !== images.length) {
+    return false;
+  }
+
+  const stored = await readRecordAttachments(context.log, [record.sequence]);
+
+  const first = stored.get(record.sequence);
+
+  return (
+    first?.status !== 'readable' ||
+    first.attachments.every((bytes, index) => isSameBytes(bytes, images[index]?.bytes))
+  );
+}
+
+function isSameBytes(left: Uint8Array, right: Uint8Array | undefined): boolean {
+  return right?.length === left.length && left.every((byte, index) => byte === right[index]);
 }
