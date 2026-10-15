@@ -23,8 +23,8 @@ A new session opens with six slots, from what defines the model to the current t
    that says where it came from, or a line that says nothing is pinned.
 3. **Status.** A readout taken when the session opens.
 4. **Summary.** The newest summary that is still readable.
-5. **Recent turns.** The user's messages and the replies after that summary, with the memory changes
-   and the events over the same span of the log.
+5. **Recent turns.** The user's messages and the replies after that summary, with the events over
+   the same span of the log, memory changes included.
 6. **The current turn.** The retrieved items, the turn's own notes and the user's messages.
 
 Slots 2 to 5 render as system messages, of types `pinned-memory`, `status`, `summary` and
@@ -60,13 +60,13 @@ messages for the next step commits its reply after them.
 
 ## The note over the recent turns
 
-The events block and the writer's memory change note read a range of the log from a cursor, so a
-rebuild renders them again over the span of the recent turns: from where the note of the oldest kept
-turn started, through where the last turn's note ended. The span starts at that note, not at the
-turn's first record, because the note covers what happened before the turn's message. The current
-turn's own note starts where the span ends, so an event the model saw before the rebuild appears
-once, in slot 5, and an event that happened since appears once, in the current turn's note. A
-replayed note says that it covers the recent turns, not the time since the last turn.
+The events block reads a range of the log from a cursor, so a rebuild renders it again over the span
+of the recent turns: from where the note of the oldest kept turn started, through where the last
+turn's note ended. The span starts at that note, not at the turn's first record, because the note
+covers what happened before the turn's message. The current turn's own note starts where the span
+ends, so an event the model saw before the rebuild appears once, in slot 5, and an event that
+happened since appears once, in the current turn's note. A replayed note says that it covers the
+recent turns, not the time since the last turn.
 
 A replayed event follows the events block's rules, so an approval quotes its version through a
 recall of that version alone, and an item a forget began never returns through the replay. The

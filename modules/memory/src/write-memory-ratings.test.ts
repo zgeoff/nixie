@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { buildEventRegistry, readEventsNote } from '@heynixie/models';
 import invariant from 'tiny-invariant';
+import { buildMemoryChangeKind } from './build-memory-change-kind';
 import { MemoryRatingError } from './memory-rating-error';
-import { readMemoryChangeNote } from './read-memory-change-note';
 import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { readItemShortID } from './test-utils/read-item-short-id';
@@ -55,7 +56,11 @@ test("it rates each item the turn's recall gave when a note about outside change
 
   await createMemoryItem(ctx.memory.store, { text: 'Grows tomatoes on the balcony' });
 
-  const note = await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
+  const note = await readEventsNote(
+    buildEventRegistry([buildMemoryChangeKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: null, timeZone: 'UTC' },
+  );
 
   await ctx.memory.store.rate({
     thread: 'conversation',
@@ -74,7 +79,7 @@ test("it rates each item the turn's recall gave when a note about outside change
 
   invariant(turnRecall);
 
-  expect(note.text).toInclude('Grows tomatoes on the balcony');
+  expect(note).toInclude('Grows tomatoes on the balcony');
 
   expect(rated?.record.payload).toStrictEqual({
     ratingID: expect.toBeString(),
@@ -101,7 +106,11 @@ test("it refuses an item that only a note about outside changes gave, not the tu
     text: 'Grows tomatoes on the balcony',
   });
 
-  await readMemoryChangeNote(ctx.memory.log, ctx.memory.store, { cap: 5 });
+  await readEventsNote(
+    buildEventRegistry([buildMemoryChangeKind(ctx.memory.log, ctx.memory.store)]),
+    { after: 0, through: 100 },
+    { ownerName: null, timeZone: 'UTC' },
+  );
 
   const shortID = await readItemShortID(ctx.memory.log, balcony.itemID);
 

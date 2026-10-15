@@ -1,6 +1,11 @@
 import type { Log } from '@heynixie/log';
 import type { AnswerQuoteSource, StartedMemoryStore } from '@heynixie/memory';
-import { buildProposalAnswerKind } from '@heynixie/memory';
+import {
+  buildCatchUpKind,
+  buildMemoryChangeKind,
+  buildProposalAnswerKind,
+  buildProposalMergeKind,
+} from '@heynixie/memory';
 import type { TurnNote, TurnNoteRange } from '@heynixie/models';
 import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/models';
 import type { Clock } from '@heynixie/tasks';
@@ -18,7 +23,7 @@ export interface TurnNoteReaderOptions {
   readonly defaultZone: string;
 }
 
-// Makes the reader of the note before each turn: the memory changes and the events, whose kinds
+// Makes the reader of the note before each turn: the events, memory changes included, whose kinds
 // read memory through the getter, because the store starts after the conversation. Given a span,
 // it reads the note a new session's recent turns carry again over that span.
 export function makeTurnNoteReader(
@@ -33,10 +38,13 @@ export function makeTurnNoteReader(
   };
 
   const events = buildEventRegistry([
+    buildMemoryChangeKind(options.log, store),
+    buildCatchUpKind(options.log),
+    buildProposalMergeKind(options.log),
     buildProposalAnswerKind(options.log, store),
     buildRestartKind(options.log),
     buildRetriedTurnKind(options.log),
   ]);
 
-  return (span) => readTurnNotes({ ...options, store, events }, span);
+  return (span) => readTurnNotes({ ...options, events }, span);
 }

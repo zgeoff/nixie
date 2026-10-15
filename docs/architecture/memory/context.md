@@ -108,9 +108,8 @@ edit makes a new version, which the session has not seen, so an edited item matc
 that the model calls itself excludes nothing.
 
 The blocks before the first message keep one order: a new session's opening, the pinned-core change
-note, the retrieved items, [the writer's change note](./writer.md#the-change-note), then
-[the events block](../core/conversation-turns.md#the-events-block). The user's own words come last,
-so the model reads each block as context for them.
+note, the retrieved items, then [the events block](../core/conversation-turns.md#the-events-block).
+The user's own words come last, so the model reads each block as context for them.
 
 ## Reading the log
 

@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { writeInboxRecords } from '@heynixie/tasks';
-import { readTurnNotes } from './read-turn-notes';
+import { makeTurnNoteReader } from './make-turn-note-reader';
 import { buildRememberReply } from './test-utils/build-remember-reply';
 import { removeMessageKeyAfter } from './test-utils/remove-message-key-after';
 import { startTestConversation } from './test-utils/start-test-conversation';
@@ -18,20 +18,20 @@ async function setupTest(options: TestMemoryWriterOptions = {}) {
   return { server, memory: await startTestMemoryWriter(server, options) };
 }
 
-test('it carries the note of a live batch, cut to its cap, on the next conversation turn', async () => {
+test('it carries each item of a live batch as an events line on the next conversation turn', async () => {
   const ctx = await setupTest();
 
   const conversation = await startTestConversation(ctx.server, {
     context: ctx.memory.context,
-    readTurnNote: () =>
-      readTurnNotes({
+    readTurnNote: makeTurnNoteReader(
+      {
         log: ctx.memory.context.log,
-        store: ctx.memory.store,
-        events: [],
         clock: ctx.memory.context.clock,
         ownerName: null,
         defaultZone: 'UTC',
-      }),
+      },
+      () => ctx.memory.store,
+    ),
   });
 
   await ctx.memory.start();
@@ -68,7 +68,7 @@ test('it carries the note of a live batch, cut to its cap, on the next conversat
   await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
 
   expect(JSON.stringify(conversation.model.requests.at(-1)?.body?.messages)).toMatch(
-    /(?<listed>- Remembered \[[^\]]+\]: You have a pet called \w+\.\\n){5}and 1 more\\n<\/system-message id=\\"[\da-f]{12}\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\./u,
+    /(?<listed>- \w{3} \d{1,2} \w{3}, \d{2}:\d{2}, UTC · Remembered \[[^\]]+\]: \\"You have a pet called \w+\.\\"\\n){6}<\/system-message id=\\"[\da-f]{12}\\">\\n\\n\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC\] Hi\./u,
   );
 }, 60_000);
 

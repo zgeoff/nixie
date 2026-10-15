@@ -165,8 +165,8 @@ a system message comes from nixie only at the top level of a user message, and o
 result, a pasted or dropped block or a quote is text. The SDK sends a tool result as a block of its
 own, so the model can tell the two places apart.
 
-A new session's pinned memory, status, summary and recent turns, the events block, both memory
-change notes and the retrieved items each render as one system message before the user's message. A
+A new session's pinned memory, status, summary and recent turns, the events block, the pinned-core
+change note and the retrieved items each render as one system message before the user's message. A
 fired timer and an action's outcome render as one each, with the time their record was written, and
 each body leads with the record's event ID so the model can cite it. The user's own message stays
 outside any element, after its stamp, because it holds the user's own words.
@@ -197,13 +197,12 @@ with each failure in a row. The conversation never fails ([tasks](./tasks.md#ste
 ## The events block
 
 The conversation hears of what happened outside it through the events block, which goes before the
-user's message on the next turn. The block lists the user's answers to memory proposals, nixie's
-restarts and the conversation's own turns that failed and were retried, each after its time, oldest
-first, up to a cap and then a count of the rest. A turn after which nothing happened gets no block.
-The block reads the same range of the log as
-[the memory change note](../memory/writer.md#the-change-note), from the sequence the last turn's
-note covered to the log's head, so the next turn's note starts where this one ends and no event
-appears twice.
+user's message on the next turn. The block lists memory that changed outside the conversation, the
+user's answers to memory proposals, nixie's restarts and the conversation's own turns that failed
+and were retried, each after its time, oldest first, up to a cap and then a count of the rest. A
+turn after which nothing happened gets no block. The block reads a range of the log, from the
+sequence the last turn's note covered to the log's head, so the next turn's note starts where this
+one ends and no event appears twice.
 
 Each kind of event is one entry in a registry: its name, how it reads its events in a range of the
 log, and how one event's line renders. The block merges every entry's events by sequence, so a new
@@ -213,6 +212,9 @@ recall records what it delivered and the block must never record an event it lea
 builds the registry when the conversation starts, and each entry's package owns the records it
 reads.
 
+- **A memory change**, the memory writer's catch-up and a merge into one of the conversation's
+  proposals are memory's own kinds, which
+  [the memory writer](../memory/writer.md#changes-the-conversation-hears-of) covers.
 - **A proposal answer** reads each proposal the user approved or rejected, from any source, the
   conversation's own included. A listed approval quotes the version it wrote while that version is
   still current, through a recall of that version alone. The recall record then names only the text

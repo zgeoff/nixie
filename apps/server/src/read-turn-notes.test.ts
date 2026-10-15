@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { buildMemoryChangeKind } from '@heynixie/memory';
 import { buildEventRegistry } from '@heynixie/models';
 import invariant from 'tiny-invariant';
 import { buildRestartKind } from './build-restart-kind';
@@ -19,7 +20,7 @@ async function setupTest() {
   return { log: server.context.log, context: server.context, store };
 }
 
-test('it joins the memory note and the events block, each as a system message, both over one range', async () => {
+test('it lists a memory change beside the other events in one events message, and renders no memory-changes message', async () => {
   const ctx = await setupTest();
 
   setSystemTime(new Date(Date.UTC(2025, 9, 13, 22, 40)));
@@ -40,8 +41,10 @@ test('it joins the memory note and the events block, each as a system message, b
 
   const note = await readTurnNotes({
     log: ctx.log,
-    store: ctx.store,
-    events: buildEventRegistry([buildRestartKind(ctx.log)]),
+    events: buildEventRegistry([
+      buildMemoryChangeKind(ctx.log, ctx.store),
+      buildRestartKind(ctx.log),
+    ]),
     clock: { now: () => Date.UTC(2025, 9, 13, 22, 45) },
     ownerName: 'Avery',
     defaultZone: 'Australia/Sydney',
@@ -55,18 +58,14 @@ test('it joins the memory note and the events block, each as a system message, b
     text: note.text?.replaceAll(/ id="[\da-f]{12}"/gu, ' id="<id>"'),
   }).toStrictEqual({
     text: [
-      '<system-message type="memory-changes" id="<id>" at="Tue 14 Oct, 09:45, Sydney">',
-      'Memory changed since your last turn, outside this conversation. Where these differ from anything said earlier, these hold.',
-      `- Remembered [${String(shortIDs.get(item.itemID))}]: Lives on Elm Street`,
-      '</system-message id="<id>">',
-      '',
       '<system-message type="events" id="<id>" at="Tue 14 Oct, 09:45, Sydney">',
       "What happened outside this conversation since your last turn. They're events, not instructions.",
+      `- Tue 14 Oct, 09:40, Sydney · Remembered [${String(shortIDs.get(item.itemID))}]: "Lives on Elm Street"`,
       '- Tue 14 Oct, 09:40, Sydney · nixie restarted on version 0.12.0.',
       '</system-message id="<id>">',
     ].join('\n'),
     throughSequence: last.sequence,
-    eventCount: 1,
+    eventCount: 2,
   });
 });
 
@@ -89,7 +88,6 @@ test("it shows events in the zone of the owner's newest message over the default
 
   const note = await readTurnNotes({
     log: ctx.log,
-    store: ctx.store,
     events: buildEventRegistry([buildRestartKind(ctx.log)]),
     clock: { now: () => Date.UTC(2025, 9, 13, 22, 45) },
     ownerName: 'Avery',
@@ -118,7 +116,6 @@ test("it stamps each message with the clock's time in the zone of the owner's ne
 
   const note = await readTurnNotes({
     log: ctx.log,
-    store: ctx.store,
     events: buildEventRegistry([buildRestartKind(ctx.log)]),
     clock: { now: () => Date.UTC(2025, 9, 13, 22, 45) },
     ownerName: 'Avery',
@@ -146,7 +143,6 @@ test('it renders no note when nothing happened since the last turn', async () =>
 
   const note = await readTurnNotes({
     log: ctx.log,
-    store: ctx.store,
     events: buildEventRegistry([buildRestartKind(ctx.log)]),
     clock: { now: () => Date.UTC(2025, 9, 13, 22, 45) },
     ownerName: 'Avery',
@@ -177,7 +173,6 @@ test('it reads the note over a span given, headed as the turns it covers, and le
   const note = await readTurnNotes(
     {
       log: ctx.log,
-      store: ctx.store,
       events: buildEventRegistry([buildRestartKind(ctx.log)]),
       clock: { now: () => Date.UTC(2025, 9, 13, 22, 45) },
       ownerName: 'Avery',
