@@ -116,6 +116,8 @@ below, and planned work lives in Linear.
   public, checking an attestation and repairing a failed release
 - [Run the imp isolation tests](runbooks/imp-isolation-tests.md) — what a conversation imp and a
   public imp reach, on a host with impd
+- [The Agent SDK contract suite](../evals/sdk-contract/README.md) — the SDK behaviours nixie relies
+  on, checked against the model on every SDK bump
 
 ## Design
 

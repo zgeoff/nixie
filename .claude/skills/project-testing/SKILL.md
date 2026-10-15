@@ -21,9 +21,12 @@ records.
 | ---------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
 | Unit and package tests | `bun test` at the root                                     | Bun; the gated suites below skip                                        |
 | imp isolation          | `bun test src/isolation.test.ts` in `adapters/sandbox-imp` | An impd on a host with `/dev/kvm`, and the `NIXIE_IMP_TEST_*` variables |
+| SDK contract           | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract`         | A model credential, or a broker's placeholder, in `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` |
 
 The [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) gives that run's
-variables and steps.
+variables and steps. The [SDK contract suite](../../../evals/sdk-contract/README.md) runs the pinned
+Agent SDK against the model. The deployment repo's preview service runs it on a pull request that
+changes the SDK version, and posts the result as the `sdk-contract` commit status (GEO-1119).
 
 The memory encoder's suites run the real model from `node_modules/.cache/nixie-encoder`, which
 `bun run models` fills with the pinned model files after checking each one. `bun run test` runs it

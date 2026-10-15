@@ -193,8 +193,9 @@ Each step commit records the SDK session's last chain entry as the task's sessio
 rerun calls `query()` with `resume`, `resumeSessionAt` at that boundary and `forkSession: true`,
 which drops everything after the boundary and writes to a new session ID. **Why:** a plain resume
 keeps the interrupted turn's partial work and its prompt, so the model would answer from a turn that
-never committed ([resume-at spike](../spikes/sdk-resume-at/README.md)). A task that crashes in its
-first step has no boundary, so its rerun starts a fresh session from the task's brief.
+never committed ([resume at a boundary](../../../../evals/sdk-contract/README.md#the-probes)). A
+task that crashes in its first step has no boundary, so its rerun starts a fresh session from the
+task's brief.
 
 A rerun never resumes at a boundary that a compaction of the session passed. When the session's
 transcript holds a `compact_boundary` entry after the boundary, the rerun rebuilds the session from
@@ -206,7 +207,7 @@ message that starts `No message found with message.uuid of:` or
 entry drops the boundary from the chain that a resume loads, so the resume fails the same way on
 every try. Where the compaction kept the boundary, the resume works, but the model continues from a
 summary that the SDK wrote and that the event log never holds
-([resume after a compaction](../spikes/sdk-resume-at/README.md#after-a-compaction)).
+([resume after a compaction](../../../../evals/sdk-contract/README.md#the-probes)).
 [Compaction](../../../architecture/core/compaction.md) turns the SDK's auto-compaction off and
 clears the boundary when nixie's compactor commits, so the guard covers a compaction that nixie's
 compactor did not run.
