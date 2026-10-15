@@ -1,14 +1,18 @@
 import { afterAll, afterEach } from 'bun:test';
 import { faker } from '@faker-js/faker';
+import { IDBFactory } from 'fake-indexeddb';
 import type { Window } from 'happy-dom';
 import { browserCookies } from './browser-cookies';
 import { server } from './node';
 import { store } from './store';
 import { webOrigin } from './web-origin';
 
-// The web client's test preload: it opens the tests' browser on the web origin, starts the mock
-// API, and returns every piece of shared state to its baseline after each test.
+// The web client's test preload: it opens the tests' browser on the web origin, gives it IndexedDB,
+// which happy-dom lacks, starts the mock API, and returns every piece of shared state to its
+// baseline after each test.
 faker.seed(321);
+
+globalThis.indexedDB = new IDBFactory();
 
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the preload registered happy-dom's window
 const window = globalThis as unknown as Window;
@@ -35,6 +39,8 @@ afterEach(() => {
   store.reset();
   browserCookies.clear();
   globalThis.localStorage.clear();
+
+  globalThis.indexedDB = new IDBFactory();
 
   window.happyDOM.settings.device.prefersColorScheme = 'light';
   delete globalThis.document.documentElement.dataset['theme'];

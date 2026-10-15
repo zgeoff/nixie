@@ -124,10 +124,11 @@ calling run's thread, and the read-only rule allows it because it declares only 
 
 The log holds outside text, such as fetched pages and pastes, so every entry counts as outside
 content to the decision point. A message of the user's reads as a rebuilt session's recent turns
-show it, with each pasted or dropped span in its own block, and a search matches only the words,
-never those blocks. The call's record holds only the event IDs it returned, so a forget leaves no
-readable copy of what the model read, and a forgotten message reads with no text and never matches a
-search.
+show it, with each pasted or dropped span in its own block and a marker line for each image, and a
+search matches only the words, never those blocks. A log read never returns an image's bytes, so
+memory learns only what the user wrote. The call's record holds only the event IDs it returned, so a
+forget leaves no readable copy of what the model read, and a forgotten message reads with no text
+and never matches a search.
 
 A memory write that quotes a message passes that message's event ID with its quote, from the
 message's stamp in the session or from a log read entry. The content gate then checks the quote

@@ -3,7 +3,7 @@ import type { SessionStart } from './types';
 
 // The status entry for the kind of start and its reason. Its line says that earlier history is in
 // the event log, after a compaction that the summary covers the earlier session, and after a forget
-// that the forget erased the summary of earlier sessions, so the model reads the gap as deliberate.
+// or a full session why the session opened again, so the model reads the gap as deliberate.
 export function buildStartStatus(): StatusEntry {
   return {
     name: 'start',
@@ -29,6 +29,10 @@ function renderStartLine(start: SessionStart): string {
 
   if (start.reason === 'lost') {
     return `Start: a rebuild, because the earlier session was lost. ${historyLine}`;
+  }
+
+  if (start.reason === 'images') {
+    return `Start: a rebuild, because the earlier session held as many images as a session takes. ${historyLine}`;
   }
 
   return `Start: a rebuild after a forget. The forget erased the summary of earlier sessions, so the gap is deliberate. ${historyLine}`;

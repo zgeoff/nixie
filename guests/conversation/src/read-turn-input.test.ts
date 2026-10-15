@@ -38,6 +38,54 @@ test('it yields the turn inbox, then each host message, and marks each one pendi
   ]);
 });
 
+test('it sends a message with 2 images as its text, then each image block after its marker', async () => {
+  const state = {
+    pending: new Set<string>(),
+    toolsReady: Promise.withResolvers<boolean>(),
+    inputFailed: Promise.withResolvers<Error>(),
+    ended: Promise.withResolvers<void>(),
+  };
+
+  state.toolsReady.resolve(true);
+
+  const input = await Array.fromAsync(
+    readTurnInput(
+      buildMockTurnFrame({
+        input: [
+          {
+            uuid: '6e697869-0000-8000-8000-000000000001',
+            text: 'Which of these two mockups reads better?',
+            images: [
+              {
+                marker: '<dropped-image id="K7Q2" n="1"/>',
+                mediaType: 'image/png',
+                data: 'iVBORw0K',
+              },
+              {
+                marker: '<dropped-image id="P9X4" n="2"/>',
+                mediaType: 'image/jpeg',
+                data: '/9j/4AAQ',
+              },
+            ],
+          },
+        ],
+      }),
+      [],
+      state,
+    ),
+  );
+
+  expect(input.map((message) => message.message.content)).toStrictEqual([
+    [
+      { type: 'text', text: 'Which of these two mockups reads better?' },
+      { type: 'text', text: '<dropped-image id="K7Q2" n="1"/>' },
+      { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'iVBORw0K' } },
+      { type: 'text', text: '<dropped-image id="P9X4" n="2"/>' },
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: '/9j/4AAQ' } },
+    ],
+  ]);
+});
+
 test('it ends the stream when the turn ends while it waits for the host', async () => {
   const state = {
     pending: new Set<string>(),

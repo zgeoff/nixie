@@ -84,6 +84,53 @@ test('it shows the writer the pending proposals beside the current items, with t
   );
 });
 
+test('it shows the writer the image markers of your message on the lines after its text', async () => {
+  const ctx = await setupTest();
+  const planned = await writePlannedBatch(ctx.memory.log, ['I painted the fence green.']);
+
+  const session = buildStubWriterSession({
+    op: 'remember',
+    text: 'The owner painted the fence green.',
+    quote: 'I painted the fence green.',
+    sourceSequence: planned.bounds.end,
+    itemID: null,
+  });
+
+  const batch = {
+    bounds: planned.bounds,
+    entries: [
+      {
+        sequence: planned.bounds.end,
+        role: 'owner' as const,
+        text: 'I painted the fence green.',
+        spans: [],
+        imageMarkers: [
+          '<dropped-image id="0a1b2c3d4e5f" n="1"/>',
+          '<dropped-image id="6a7b8c9d0e1f" n="2"/>',
+        ],
+        recordedAt: 1_000_000,
+        arrivedAt: null,
+      },
+    ],
+    sources: new Map([
+      [
+        planned.bounds.end,
+        { sequence: planned.bounds.end, text: 'I painted the fence green.', spans: [] },
+      ],
+    ]),
+  };
+
+  await runWriterExtraction({ ...ctx.parts, ...session }, batch, new AbortController().signal);
+
+  expect(session.model.runSession).toHaveBeenCalledWith(
+    expect.objectContaining({
+      prompt: expect.toInclude(
+        'owner: I painted the fence green.\n<dropped-image id="0a1b2c3d4e5f" n="1"/>\n<dropped-image id="6a7b8c9d0e1f" n="2"/>',
+      ),
+    }),
+  );
+});
+
 test('it tells the writer to name the owner by the configured name', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I play the cello on Sundays.']);

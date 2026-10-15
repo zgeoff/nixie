@@ -44,6 +44,7 @@
             "package": "bun-types",
             "name": [
               "AbortSignal",
+              "Blob",
               "CryptoKey",
               "ErrorEvent",
               "MessageEvent",
@@ -120,7 +121,8 @@
       }
     },
     {
-      // the web client passes browser and React handles, which no caller can make readonly
+      // the web client passes browser and React handles, such as an image's File and the events
+      // that carry it, which no caller can make readonly
       "files": ["apps/web/**"],
       "rules": {
         "typescript/prefer-readonly-parameter-types": [
@@ -132,19 +134,24 @@
                 "from": "lib",
                 "name": [
                   "AbortSignal",
+                  "Blob",
                   "Date",
                   "Element",
                   "Error",
+                  "File",
                   "Headers",
                   "InputEvent",
+                  "ReadonlySet",
                   "Request",
-                  "Response"
+                  "Response",
+                  "Uint8Array"
                 ]
               },
+              { "from": "package", "package": "bun-types", "name": ["Blob", "File", "WebView"] },
               {
                 "from": "package",
                 "package": "react",
-                "name": ["KeyboardEvent", "ReactNode", "RefObject"]
+                "name": ["ClipboardEvent", "DragEvent", "KeyboardEvent", "ReactNode", "RefObject"]
               }
             ]
           }

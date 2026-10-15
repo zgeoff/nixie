@@ -1,0 +1,15 @@
+import type { LogRecord } from '@heynixie/log';
+import { createBlockID } from './create-block-id';
+
+// Renders a marker for each image of your message, in the order sent, so the model reads each image
+// as dropped in, as it reads a dropped block of text. Each marker has a fresh random ID and the
+// image's number. A forgotten message renders none, because its note says it is gone.
+export function renderImageMarkers(record: LogRecord): readonly string[] {
+  const images = record.payload['images'];
+
+  if (record.erasable.status !== 'readable' || !Array.isArray(images)) {
+    return [];
+  }
+
+  return images.map((_image, index) => `<dropped-image id="${createBlockID()}" n="${index + 1}"/>`);
+}

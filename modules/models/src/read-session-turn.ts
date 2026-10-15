@@ -22,6 +22,7 @@ export async function readSessionTurn(
     input: step.input,
     signal: step.signal,
     invalidatedThrough: step.marks.invalidatedThrough,
+    imageBytes: isNewSession ? 0 : step.marks.imageBytes,
     context,
   };
 }

@@ -38,6 +38,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
+    "fake-indexeddb": "catalog:",
     "happy-dom": "catalog:",
     "msw": "catalog:",
     "tiny-invariant": "catalog:",

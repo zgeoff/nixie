@@ -150,6 +150,55 @@ test('it refuses a column or a unique index on a released table that an old inse
   ]);
 });
 
+test('it allows a trigger on a table the release creates and refuses one on a released table', async () => {
+  const ctx = await setupTest();
+
+  const check = await checkMigrations(
+    {
+      migrations: [
+        {
+          name: 'create notes',
+          up: async (tx) => {
+            await sql`create table notes (id text)`.execute(tx);
+          },
+        },
+        {
+          name: 'freeze notes and their tags',
+          up: async (tx) => {
+            await sql`create table tags (note text not null, tag text not null)`.execute(tx);
+
+            await sql`create trigger if not exists tags_frozen before delete on tags
+              begin select raise(abort, 'tags are append-only'); end`.execute(tx);
+
+            await sql`create trigger notes_frozen before update on notes
+              begin select raise(abort, 'notes are append-only'); end`.execute(tx);
+          },
+        },
+      ],
+      oldestReader: 0,
+    },
+    {
+      migrations: ['create notes'],
+      oldestReader: 0,
+      objects: [
+        { type: 'table', name: 'notes', tableName: 'notes', sql: 'CREATE TABLE notes (id text)' },
+      ],
+    },
+    ctx.dir,
+  );
+
+  expect(check.added).toStrictEqual([
+    {
+      version: 2,
+      name: 'freeze notes and their tags',
+      refused: [
+        `create trigger notes_frozen before update on notes
+              begin select raise(abort, 'notes are append-only'); end`,
+      ],
+    },
+  ]);
+});
+
 test('it allows a read, a backfill and a unique index of a column the release adds and leaves null', async () => {
   const ctx = await setupTest();
 

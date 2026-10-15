@@ -30,4 +30,11 @@ export interface OutboxMessage {
 
   // the browser's IANA time zone when you wrote the message, so a retry carries the same zone
   readonly timeZone?: string | undefined;
+
+  // the images attached to the message, each already scaled and re-encoded on the device
+  readonly images?: readonly File[] | undefined;
+
+  // how many images the device keeps for the message that it has not read back, so no send goes
+  // without them
+  readonly unreadImages?: number | undefined;
 }

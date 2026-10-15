@@ -63,12 +63,36 @@ test('it declares a missing device session, a reused action ID and an unknown se
   ]);
 });
 
-test('it declares a missing device session, a reused action ID and an unknown thread for a send', () => {
+test('it declares a missing device session, a reused action ID, an unknown thread and a refused image for a send', () => {
   expect(contract.conversation.send['~orpc'].errorMap).toContainAllKeys([
     'UNAUTHORIZED',
     'CLIENT_ACTION_ID_REUSED',
     'THREAD_NOT_FOUND',
+    'IMAGE_REFUSED',
   ]);
+});
+
+test('it answers a refused image with 422 and the reason on a send', () => {
+  const refused = contract.conversation.send['~orpc'].errorMap.IMAGE_REFUSED;
+
+  expect(refused?.status).toBe(422);
+  expect(refused?.data?.safeParse({ position: 1, reason: 'too_large' }).success).toBeTrue();
+});
+
+test('it declares a missing device session and a missing image for an image read', () => {
+  expect(contract.conversation.readImage['~orpc'].errorMap).toContainAllKeys([
+    'UNAUTHORIZED',
+    'IMAGE_NOT_FOUND',
+  ]);
+});
+
+test('it refuses an image read without its position', () => {
+  const result = contract.conversation.readImage['~orpc'].inputSchema?.safeParse({
+    sequence: 4,
+    thread: 'conversation',
+  });
+
+  expect(result?.error?.issues).toPartiallyContain({ path: ['position'] });
 });
 
 test('it declares a missing device session, a reused action ID and an unknown record for a forget', () => {

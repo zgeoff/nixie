@@ -20,6 +20,51 @@ test('it shows your message as typed with the control that forgets it', () => {
   expect(rendered.getByRole('listitem')).toHaveTextContent('You The shed code is 4417.Forget');
 });
 
+test('it shows the images of your message, each read from the API', async () => {
+  await createDeviceSession();
+
+  const stored = await store.records.create({
+    kind: 'owner_message',
+    message: {
+      images: [
+        { data: 'iVBORw==', mediaType: 'image/png' },
+        { data: '/9j/4A==', mediaType: 'image/jpeg' },
+      ],
+      text: 'Which tile?',
+    },
+    thread: 'conversation',
+  });
+
+  const rendered = render(<RecordItem record={toLogRecord(stored)} />);
+
+  const images = await rendered.findAllByRole('img');
+
+  expect(images.map((image) => image.getAttribute('alt'))).toStrictEqual(['Image 1', 'Image 2']);
+
+  expect(images).toSatisfyAll(
+    (image: Element) => image.getAttribute('src')?.startsWith('blob:') === true,
+  );
+});
+
+test('it shows an image the API no longer holds as unavailable', async () => {
+  await createDeviceSession();
+
+  const rendered = render(
+    <RecordItem
+      record={buildMockLogRecord({
+        kind: 'owner_message',
+        message: { images: [{ mediaType: 'image/png' }], text: 'Which tile?' },
+        sequence: 404,
+        thread: 'conversation',
+      })}
+    />,
+  );
+
+  const gap = await rendered.findByText('Image unavailable');
+
+  expect(gap).toBeInTheDocument();
+});
+
 test('it shows a forgotten message as a gap with no control', () => {
   const rendered = render(<RecordItem record={buildMockLogRecord({ kind: 'owner_message' })} />);
 

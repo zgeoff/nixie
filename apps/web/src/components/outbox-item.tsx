@@ -2,13 +2,15 @@ import type { ReactNode } from 'react';
 import { css } from '../styled-system/css';
 import type { OutboxMessage } from '../types';
 import type { OutboxEntry } from '../use-outbox';
+import { ImageThumbnail } from './image-thumbnail';
 
 export interface OutboxItemProps {
   readonly entry: OutboxEntry;
   readonly onRetry: (message: OutboxMessage) => Promise<void>;
 }
 
-// A message this device sent that the conversation does not show yet, with how its send stands.
+// A message this device sent that the conversation does not show yet, with its images and how its
+// send stands.
 export function OutboxItem(props: OutboxItemProps): ReactNode {
   return (
     <li>
@@ -16,8 +18,25 @@ export function OutboxItem(props: OutboxItemProps): ReactNode {
       <span className={css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' })}>
         {props.entry.message.text}
       </span>{' '}
+      {renderImages(props.entry.message.images ?? [])}
       {renderStatus(props)}
     </li>
+  );
+}
+
+function renderImages(images: readonly File[]): ReactNode {
+  if (images.length === 0) {
+    return null;
+  }
+
+  return (
+    <ul aria-label="Images" className={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
+      {images.map((image, index) => (
+        <li key={index}>
+          <ImageThumbnail alt={`Image ${index + 1}`} image={image} />
+        </li>
+      ))}
+    </ul>
   );
 }
 

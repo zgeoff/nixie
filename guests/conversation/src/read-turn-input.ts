@@ -79,7 +79,7 @@ async function readNextMessage(
 function buildUserMessage(message: InboxMessage): SDKUserMessage {
   return {
     type: 'user',
-    message: { role: 'user', content: message.text },
+    message: { role: 'user', content: buildContent(message) },
     parent_tool_use_id: null,
 
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the wire schema checked it
@@ -87,4 +87,27 @@ function buildUserMessage(message: InboxMessage): SDKUserMessage {
     session_id: '',
     priority: 'next',
   };
+}
+
+type UserContent = SDKUserMessage['message']['content'];
+
+// A message with images reads as its text, then each image after the marker that names it, so the
+// model sees which marker in the text stands for which image. A message with none stays a string.
+function buildContent(message: InboxMessage): UserContent {
+  const images = message.images ?? [];
+
+  if (images.length === 0) {
+    return message.text;
+  }
+
+  return [
+    { type: 'text', text: message.text },
+    ...images.flatMap((image) => [
+      { type: 'text' as const, text: image.marker },
+      {
+        type: 'image' as const,
+        source: { type: 'base64' as const, media_type: image.mediaType, data: image.data },
+      },
+    ]),
+  ];
 }

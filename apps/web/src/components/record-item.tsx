@@ -3,24 +3,34 @@ import { useState } from 'react';
 import { css } from '../styled-system/css';
 import type { LiveRecord } from '../use-live-records';
 import { ForgetControl } from './forget-control';
+import { MessageImages } from './message-images';
 import { ReplyText } from './reply-text';
 
 export interface RecordItemProps {
   readonly record: LiveRecord;
 }
 
-// One message of the conversation: yours as you typed it, or a reply rendered as Markdown, with
-// the control that forgets it. A message the log forgot keeps its place as a gap with no text.
+// One message of the conversation: yours as you typed it with its images, or a reply rendered as
+// Markdown, with the control that forgets it. A message the log forgot keeps its place as a gap
+// with no text and no images.
 export function RecordItem(props: RecordItemProps): ReactNode {
   const [isForgotten, setForgotten] = useState(false);
   const text = isForgotten ? undefined : props.record.message?.text;
   const isYours = props.record.kind === 'owner_message';
+  const images = props.record.message?.images?.length ?? 0;
 
   return (
     <li>
       <strong className={speaker}>{isYours ? 'You' : 'nixie'}</strong>{' '}
       {text === undefined ? <span className={gap}>Forgotten</span> : null}
       {text !== undefined && isYours ? <span className={message}>{text}</span> : null}
+      {text !== undefined && isYours && images > 0 ? (
+        <MessageImages
+          count={images}
+          sequence={props.record.sequence}
+          thread={props.record.thread}
+        />
+      ) : null}
       {text !== undefined && !isYours ? <ReplyText text={text} /> : null}
       {forgettableKinds.has(props.record.kind) ? (
         <ForgetControl

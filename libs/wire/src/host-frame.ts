@@ -1,11 +1,24 @@
 import { z } from 'zod';
 
+// One image of your message as the model reads it: the marker that names it in the message, which
+// goes just before it, and its bytes in base64 under the type the server found in them.
+const inboxImageSchema = z
+  .object({
+    marker: z.string(),
+    mediaType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif']),
+    data: z.base64(),
+  })
+  .readonly();
+
+export type InboxImage = z.infer<typeof inboxImageSchema>;
+
 // One inbox record as the model reads it. The uuid stands for the record, and the SDK stamps it on
 // what the model read, so the host marks exactly those records read.
 const inboxMessageSchema = z
   .object({
     uuid: z.uuid(),
     text: z.string(),
+    images: z.array(inboxImageSchema).readonly().optional(),
   })
   .readonly();
 

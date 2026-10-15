@@ -64,9 +64,16 @@ export const mockAPIRouter = os.router({
       );
 
       if (earlier === undefined) {
+        const images = await Promise.all((input.images ?? []).map((image) => toStoredImage(image)));
+
         const record = await store.records.create({
           kind: 'owner_message',
-          message: { clientMessageId: input.clientMessageId, spans: input.spans, text: input.text },
+          message: {
+            clientMessageId: input.clientMessageId,
+            spans: input.spans,
+            text: input.text,
+            ...(images.length === 0 ? {} : { images }),
+          },
           thread: input.thread,
         });
 
@@ -78,6 +85,28 @@ export const mockAPIRouter = os.router({
       }
 
       return { duplicate: true, sequence: earlier.sequence };
+    }),
+
+    // an image of a message the store holds, which a forget removes with the message's text
+    readImage: os.conversation.readImage.handler((options) => {
+      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const record = store.records.findFirst((query) =>
+        query.where(
+          (stored) =>
+            stored.sequence === options.input.sequence && stored.thread === options.input.thread,
+        ),
+      );
+
+      const image = record?.message?.images?.[options.input.position];
+
+      if (image === undefined) {
+        throw options.errors.IMAGE_NOT_FOUND();
+      }
+
+      return new File([Uint8Array.fromBase64(image.data)], `image-${options.input.position + 1}`, {
+        type: image.mediaType,
+      });
     }),
 
     // forgets your message or a reply as the API's forget leaves the log
@@ -306,4 +335,15 @@ async function waitForRecord(signal: AbortSignal | undefined): Promise<void> {
     store.records.hooks.once('create', stopWaiting, { signal: waiting.signal });
     signal?.addEventListener('abort', stopWaiting, { once: true, signal: waiting.signal });
   });
+}
+
+const mediaTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
+
+// the API takes an image's type from its bytes; the mock trusts the type the client gives
+async function toStoredImage(image: Blob) {
+  const mediaType = mediaTypes.find((known) => known === image.type) ?? 'image/png';
+
+  const bytes = await image.bytes();
+
+  return { data: bytes.toBase64(), mediaType };
 }

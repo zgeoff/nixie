@@ -105,6 +105,74 @@ test('it drops any summary text a compaction frame carries', () => {
   });
 });
 
+test('it decodes a message frame whose message carries images', () => {
+  const frame: HostFrame = {
+    type: 'message',
+    message: {
+      uuid: '6e697869-0000-8000-8000-000000000001',
+      text: 'The two door colours.',
+      images: [
+        {
+          marker: '<dropped-image id="a1b2c3d4e5f6" n="1"/>',
+          mediaType: 'image/png',
+          data: 'iVBORw==',
+        },
+        {
+          marker: '<dropped-image id="0f9e8d7c6b5a" n="2"/>',
+          mediaType: 'image/gif',
+          data: 'R0lGOA==',
+        },
+      ],
+    },
+  };
+
+  const message = encoder.encode(JSON.stringify(frame));
+
+  expect(decodeTurnFrame(hostFrameSchema, message)).toStrictEqual(frame);
+});
+
+test('it refuses an image of a type the model does not take', () => {
+  const message = encoder.encode(
+    JSON.stringify({
+      type: 'message',
+      message: {
+        uuid: '6e697869-0000-8000-8000-000000000001',
+        text: 'A photo.',
+        images: [
+          {
+            marker: '<dropped-image id="a1b2c3d4e5f6" n="1"/>',
+            mediaType: 'image/heic',
+            data: 'AAAA',
+          },
+        ],
+      },
+    }),
+  );
+
+  expect(() => decodeTurnFrame(hostFrameSchema, message)).toThrow(ZodError);
+});
+
+test('it refuses an image whose data is not base64', () => {
+  const message = encoder.encode(
+    JSON.stringify({
+      type: 'message',
+      message: {
+        uuid: '6e697869-0000-8000-8000-000000000001',
+        text: 'A photo.',
+        images: [
+          {
+            marker: '<dropped-image id="a1b2c3d4e5f6" n="1"/>',
+            mediaType: 'image/png',
+            data: 'not base64!',
+          },
+        ],
+      },
+    }),
+  );
+
+  expect(() => decodeTurnFrame(hostFrameSchema, message)).toThrow(ZodError);
+});
+
 test('it decodes a purge frame the host sent', () => {
   const message = encoder.encode(JSON.stringify({ type: 'purge' }));
 

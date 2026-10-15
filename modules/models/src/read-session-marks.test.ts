@@ -20,7 +20,42 @@ test('it reads no earlier core and no invalidation before the first turn', async
     lastContext: null,
     isSummarized: false,
     compactionFailures: 0,
+    imageBytes: 0,
   });
+});
+
+test('it reads the image bytes the session held after the last turn', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { sessionImageBytes: 4_200_000 },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.imageBytes).toBe(4_200_000);
+});
+
+test('it reads no image bytes from a turn that recorded none', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { contextSize: 120_000, contextWindow: 200_000 },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.imageBytes).toBe(0);
 });
 
 test('it reads the context the last turn ended with and its window', async () => {

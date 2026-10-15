@@ -60,14 +60,17 @@ export async function runWriterExtraction(
   };
 }
 
-// each readable record, with your pasted spans marked
+// each readable record, with your pasted spans marked and a marker line for each image
 function buildBatchMessages(batch: WriterBatch): readonly BatchMessage[] {
   return batch.entries.flatMap((entry) => {
     if (entry.text === null) {
       return [];
     }
 
-    const shown = entry.role === 'owner' ? renderShownText(entry.text, entry.spans) : entry.text;
+    const shown =
+      entry.role === 'owner'
+        ? [renderShownText(entry.text, entry.spans), ...(entry.imageMarkers ?? [])].join('\n')
+        : entry.text;
 
     return [{ sequence: entry.sequence, role: entry.role, shown, recordedAt: entry.recordedAt }];
   });

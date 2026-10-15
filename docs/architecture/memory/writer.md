@@ -63,16 +63,17 @@ calls the user "the owner" when the section sets none, so the writer's items rea
 conversation saves. The rules keep the user's own distinctive words where those words carry the
 meaning, because a generic paraphrase loses what made the fact worth saving.
 
-The prompt holds the batch's records with their sequences, the user's pasted spans marked, the
-active items, and the pending proposals with the item each one changes. It lists every active item
-while the list fits its budget, else the items a keyword recall over the batch finds. A rule tells
-the writer to stage nothing for a fact that a pending proposal already holds, even in other words,
-because the gate merges only a proposal of the same text. The session's tools are recall, remember,
-edit and retire, and they stage writes instead of applying them. Remember only creates an item, and
-edit is the one tool that changes an item's text, as in the conversation. Staging refuses a write
-that cites a record outside the batch, a change to an item the session was never shown, and a second
-change to the same item, and the refusal goes back to the model at once. Staging binds each change
-to the version the session was shown, never to a version the model sent.
+The prompt holds the batch's records with their sequences, the user's pasted spans marked, a marker
+line for each image the user sent and never its bytes, the active items, and the pending proposals
+with the item each one changes. It lists every active item while the list fits its budget, else the
+items a keyword recall over the batch finds. A rule tells the writer to stage nothing for a fact
+that a pending proposal already holds, even in other words, because the gate merges only a proposal
+of the same text. The session's tools are recall, remember, edit and retire, and they stage writes
+instead of applying them. Remember only creates an item, and edit is the one tool that changes an
+item's text, as in the conversation. Staging refuses a write that cites a record outside the batch,
+a change to an item the session was never shown, and a second change to the same item, and the
+refusal goes back to the model at once. Staging binds each change to the version the session was
+shown, never to a version the model sent.
 
 A batch's staging belongs to the step that opened it. A step that lost its lease and stops late
 closes only its own staging, so it never empties the staging of the step that replaced it.

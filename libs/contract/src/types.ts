@@ -4,6 +4,7 @@ import type {
   InferContractRouterOutputs,
 } from '@orpc/contract';
 import type { contract } from './contract';
+import type { imageLimits } from './image-limits';
 
 export type ContractClient = ContractRouterClient<typeof contract>;
 
@@ -42,3 +43,6 @@ export interface PendingInput {
   // typed text the edit before it removed, with spaces added
   readonly respacing?: string;
 }
+
+// One of the image types a message takes.
+export type ImageMediaType = (typeof imageLimits.mediaTypes)[number];

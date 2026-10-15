@@ -189,6 +189,34 @@ memory before the page paints, so it never shows the text again as a sent messag
 write leaves out the forgotten message, whatever status a render in flight gives it, so a page load
 never sends the message again.
 
+A message's images go to IndexedDB under its client message ID, because local storage holds only
+strings and too few of them for an image. Local storage keeps the text and the count of images, and
+a send reads the images back in their order before it goes. A send that reads back fewer images than
+the count fails without reaching the API, because the API keeps the first send under a client
+message ID, and a send without the images would lose them for good. A retry reads them again. The
+outbox removes a message's images once no stored message holds its ID, so a confirmed or forgotten
+message leaves no image on the device.
+
+## Images
+
+The user attaches an image from a camera picker, a photo picker, a paste or a drop onto the message
+box. Each path passes the file through one normalizer before the composer holds it. The normalizer
+decodes the image in the browser, scales its long edge down to the contract's limit, and encodes it
+again, as PNG for a PNG, GIF or WebP and as JPEG for anything else. Encoding again drops the EXIF
+data, a photo's location included, and the device keeps only the scaled copy. A HEIC photo converts
+only where the browser decodes HEIC, as Safari does; elsewhere the composer leaves the image out and
+says so. The composer refuses an image past the contract's count, and one still past its size once
+scaled, with a notice in place of an error from the API. It scales the picked images one at a time
+and stops once the free slots hold images that read and fit, so a large selection never decodes
+every photo at full size before Send works again.
+
+The composer shows each attached image as a thumbnail with a control that removes it, and the outbox
+shows the same thumbnails while a message waits. The thread reads each image of a sent message
+through the conversation's image read, which returns the bytes from the record's
+[attachments](../core/erasable-fields.md#keys), and says the image is unavailable once a forget
+makes them unreadable. The API checks the count, the size and the type again from the bytes, because
+a client other than the web app skips the normalizer.
+
 ## Paste spans
 
 The message box labels every span of its text with how it arrived: typed, pasted, dropped or

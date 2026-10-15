@@ -50,8 +50,12 @@ function toMessage(record: LogRecord): Message | undefined {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- writeOwnerMessage wrote the spans
   const spans = record.erasable.fields['spans'] as readonly Span[] | undefined;
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- writeOwnerMessage wrote the images
+  const images = record.payload['images'] as Message['images'];
+
   return {
     ...(typeof clientMessageId === 'string' ? { clientMessageId } : {}),
+    ...(images === undefined ? {} : { images: [...images] }),
     ...(spans === undefined ? {} : { spans: [...spans] }),
     text,
   };

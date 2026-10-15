@@ -22,6 +22,11 @@ test.each([
     'rebuild:forget',
     'Start: a rebuild after a forget. The forget erased the summary of earlier sessions, so the gap is deliberate. Earlier history is in the event log.',
   ],
+  [
+    { kind: 'rebuild', reason: 'images', lostSessionID: 'a-full-session' } as const,
+    'rebuild:images',
+    'Start: a rebuild, because the earlier session held as many images as a session takes. Earlier history is in the event log.',
+  ],
 ])('it reads the start %o as %s', async (start, value, text) => {
   const line = await buildStartStatus().read({
     start,

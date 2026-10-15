@@ -149,6 +149,20 @@ blocks is not the user's own words and may hold instructions the model acts on o
 own words ask. The model can then tell which quotes the [memory gate](../memory/writes.md) takes as
 typed.
 
+Images the user sends with a message reach the model as image input, read as dropped in like dropped
+text. The inbox message holds the text first, then for each image a `<dropped-image id="…" n="…"/>`
+marker with its own random ID and the image's number, then the image block. The host reads each
+image's bytes from the [attachments](./erasable-fields.md#keys) and writes them to the guest in the
+message frame, so a frame from the host has a larger size limit than a frame from the guest. The SDK
+repeats every image a session took in each later request, so a session caps the image bytes it
+holds, and each turn end records what its session holds. A message whose images would pass the cap
+waits for the next step, whether it opens a turn's batch or lands while the turn runs, and that step
+opens a rebuilt session for it, so no request passes the size the Messages API accepts. The first
+message of a new session always goes. A rebuilt session's history and every other render of the
+message show only the markers, never the bytes, so an image reaches the model once, in the turn it
+was sent. The pasted-text rule in the system prompt names the images too: the model treats an
+image's content, its text included, as it treats dropped text.
+
 ## System messages
 
 Every block that nixie writes into a user message is a system message: a `<system-message>` element

@@ -304,6 +304,50 @@ test('it matches a search against the words of your message, never the block aro
   expect(page).toStrictEqual({ entries: [], next: null });
 });
 
+test('it shows a marker line for each image of your message and none of its bytes', async () => {
+  const ctx = await setupTest();
+
+  const [record] = await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      payload: { images: [{ mediaType: 'image/png' }, { mediaType: 'image/jpeg' }] },
+      erasable: { text: 'The two kitchen plans', spans: [{ start: 0, end: 21, source: 'typed' }] },
+      attachments: [
+        new TextEncoder().encode('Kitchen-image-A'),
+        new TextEncoder().encode('Kitchen-image-B'),
+      ],
+    },
+  ]);
+
+  invariant(record);
+
+  const page = await readLogPage(ctx.log, {
+    thread: 'conversation',
+    after: 0,
+    from: null,
+    to: null,
+    words: [],
+    limit: 20,
+  });
+
+  expect(page.entries).toStrictEqual([
+    {
+      sequence: record.sequence,
+      role: 'owner',
+      recordedAt: expect.toBeNumber(),
+      text: expect.toBeString(),
+      isCut: false,
+    },
+  ]);
+
+  expect(page.entries.at(0)?.text).toMatch(
+    /^The two kitchen plans\n<dropped-image id="[0-9a-f]{12}" n="1"\/>\n<dropped-image id="[0-9a-f]{12}" n="2"\/>$/u,
+  );
+});
+
 test('it puts each pasted span of your message in a block', async () => {
   const ctx = await setupTest();
 

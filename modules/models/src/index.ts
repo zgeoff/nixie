@@ -33,6 +33,7 @@ export { readEventsBlock } from './read-events-block';
 export type { EventsBlockSettings } from './render-events-block';
 export { readEventsNote } from './read-events-note';
 export { readTurnNoteRange } from './read-turn-note-range';
+export { renderImageMarkers } from './render-image-markers';
 export { renderOwnerText } from './render-owner-text';
 export type { SystemMessage, SystemMessageType } from './render-system-message';
 export { renderSystemMessage } from './render-system-message';

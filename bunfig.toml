@@ -22,5 +22,6 @@ preload = [
   "./libs/testing/src/define-test-build.ts",
   "@zgeoff/bun-test-extended",
   "@zgeoff/bun-test-react",
+  "./libs/testing/src/restore-native-form-data.ts",
   "./apps/web/src/mocks/test-preload.ts",
 ]
