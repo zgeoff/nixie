@@ -66,7 +66,8 @@ the same step runs the turn on the old session and tries no second compaction. T
 the compaction first again, because the session's last turn still ended past the threshold. Turns
 therefore go on while the session stays inside the window, and a turn that overflows it fails like
 any other step, so a broken compactor stops the conversation where the user sees it. The client
-shows a notice from the first failure until a summary commits or a new session opens.
+shows a notice from the first failure until a summary commits, a forget invalidates the session or a
+new session opens.
 
 A turn can grow past the window on its own, such as from large tool results. The guest detects the
 overflow on the result's terminal reason, which the CLI sets when it refuses the call and the model

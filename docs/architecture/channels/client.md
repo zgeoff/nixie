@@ -107,8 +107,8 @@ which holds the errors in a row, the limit and the retry time. A long step can p
 the newest page, so the page read also returns the thread's newest step end, and the notice reads it
 beside the records. A failed compaction gets a notice of its own, with the count of failures in a
 row, because turns go on while it fails and the conversation stops only once the context is full
-([compaction](../core/compaction.md#failure-and-overflow)). The notice goes once a summary commits
-or a new session opens.
+([compaction](../core/compaction.md#failure-and-overflow)). The notice goes once a summary commits,
+a forget invalidates the session or a new session opens.
 
 Each message stands on its own line, and every other record folds into the step it belongs to, from
 the step's start to its end. A record before a step, such as the task's creation, folds into the

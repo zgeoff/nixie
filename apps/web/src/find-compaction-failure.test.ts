@@ -40,6 +40,18 @@ test('it finds no failure once a new session opens after it', () => {
   expect(findCompactionFailure([failed, opened])).toBeNull();
 });
 
+test('it finds no failure once a forget invalidates the session after it', () => {
+  const failed = buildMockLogRecord({
+    compactionFailure: { failures: 2 },
+    kind: 'model.compaction_failed',
+    sequence: 4,
+  });
+
+  const invalidated = buildMockLogRecord({ kind: 'model.session_invalidated', sequence: 9 });
+
+  expect(findCompactionFailure([failed, invalidated])).toBeNull();
+});
+
 test('it keeps the failure across the turns that ran on the old session after it', () => {
   const failed = buildMockLogRecord({
     compactionFailure: { failures: 2 },
