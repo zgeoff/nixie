@@ -164,6 +164,10 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
       POST: async (request: Request) => {
         const answer = await parseControlBody(request, answerBody, answerUsage);
 
+        if (answer.reason !== undefined) {
+          throw new ControlRequestError(400, 'an approval takes no reason');
+        }
+
         const result = await requireHostMemory(options.readMemory).proposals.approve({
           proposalID: answer.proposalID,
           actionHash: answer.actionHash,
@@ -191,6 +195,7 @@ function buildMemoryRoutes(options: ControlSocketOptions) {
           proposalID: answer.proposalID,
           actionHash: answer.actionHash,
           identityID: hostIdentityID,
+          ...(answer.reason === undefined ? {} : { reason: answer.reason }),
         });
 
         return Response.json({ proposalID: answer.proposalID });
@@ -236,10 +241,11 @@ const answerBody = z.strictObject({
   revisionOf: z.strictObject({ itemID: z.string().min(1), version: z.int().positive() }).optional(),
   ignoreCloseMatch: z.boolean().optional(),
   editedText: z.string().max(2000).regex(/\S/u).optional(),
+  reason: z.string().max(500).regex(/\S/u).optional(),
 });
 
 const answerUsage =
-  'an answer takes a proposalID and an actionHash, and edited text of 1 to 2,000 characters';
+  'an answer takes a proposalID and an actionHash, edited text of 1 to 2,000 characters, and a reason of 1 to 500 characters';
 
 // the memory gate's refusals keep their meaning for the host command; anything else is a failure
 function pickErrorStatus(error: Error): number {

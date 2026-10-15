@@ -222,7 +222,10 @@ reads.
   only the conversation's own proposed edit, which its session already holds. The store reads that
   edit under the delivery lock and only while its item is active or retired, so no text reaches the
   model once a forget of the item began. A rejected new item has no quote, because the rejection
-  removes the item's key and its text with it.
+  removes the item's key and its text with it. A rejection with the user's reason quotes the reason
+  after any proposed text, so the conversation learns what to stop proposing. The block reads the
+  reason from the rejection record's own erasable fields, and a record whose key is gone gives no
+  reason.
 - **A restart** reads the record the server writes at each start, with nixie's version and the
   version of the start before it. When the conversation's tools or persona changed since the start
   before, a second line names each tool added or removed and says when the persona was updated,

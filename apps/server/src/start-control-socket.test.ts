@@ -525,8 +525,114 @@ test('it answers 400 to an answer with no action hash', async () => {
   expect(response.status).toBe(400);
 
   expect(reason).toBe(
-    'an answer takes a proposalID and an actionHash, and edited text of 1 to 2,000 characters',
+    'an answer takes a proposalID and an actionHash, edited text of 1 to 2,000 characters, and a reason of 1 to 500 characters',
   );
+});
+
+test('it keeps the reason a rejection gives with its record', async () => {
+  const ctx = await setupTest();
+
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const proposal = await createProposal(ctx.memory.store, { text: 'Prefers tabs.' });
+
+  const response = await Bun.fetch('http://localhost/memory/proposals/reject', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({
+      proposalID: proposal.proposalID,
+      actionHash: proposal.actionHash,
+      reason: "wrong, it's spaces",
+    }),
+  });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.proposal_rejected'],
+  });
+
+  expect(response.status).toBe(200);
+
+  expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
+    { status: 'readable', fields: { reason: "wrong, it's spaces" } },
+  ]);
+});
+
+test('it answers 400 to a rejection whose reason is blank, and rejects nothing', async () => {
+  const ctx = await setupTest();
+
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const proposal = await createProposal(ctx.memory.store, { text: 'Prefers tabs.' });
+
+  const response = await Bun.fetch('http://localhost/memory/proposals/reject', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({
+      proposalID: proposal.proposalID,
+      actionHash: proposal.actionHash,
+      reason: '   ',
+    }),
+  });
+
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(response.status).toBe(400);
+  expect(pending.map((entry) => entry.proposalID)).toStrictEqual([proposal.proposalID]);
+});
+
+test('it answers 400 to an approval that gives a reason, and applies nothing', async () => {
+  const ctx = await setupTest();
+
+  const socket = await startControlSocket({
+    path: ctx.path,
+    createEnrolmentCode: () => Promise.reject(new Error('unused')),
+    readMemory: () => ctx.memory.store,
+    readSessions: () => Promise.reject(new Error('unused')),
+    runReset: () => Promise.reject(new Error('unused')),
+    updateSessionLabel: () => Promise.reject(new Error('unused')),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const proposal = await createProposal(ctx.memory.store, { text: 'Prefers tabs.' });
+
+  const response = await Bun.fetch('http://localhost/memory/proposals/approve', {
+    method: 'POST',
+    unix: ctx.path,
+    body: JSON.stringify({
+      proposalID: proposal.proposalID,
+      actionHash: proposal.actionHash,
+      reason: 'looks right',
+    }),
+  });
+
+  const [reason, pending] = await Promise.all([
+    response.text(),
+    ctx.memory.store.proposals.listPending(),
+  ]);
+
+  expect(response.status).toBe(400);
+  expect(reason).toBe('an approval takes no reason');
+  expect(pending.map((entry) => entry.proposalID)).toStrictEqual([proposal.proposalID]);
 });
 
 test('it answers 503 to a memory request before the memory store starts', async () => {

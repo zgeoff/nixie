@@ -97,6 +97,74 @@ test('it approves a proposal with your text, then edits, retires, restores and p
   ]);
 }, 60_000);
 
+test('it rejects a proposal with your reason, which the next turn reads in its events block', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Plays the oboe' } } },
+    { text: 'Noted.' },
+    { text: 'Understood.' },
+  );
+
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'I tried the oboe once.',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Noted.');
+  });
+
+  const listed = await runHostCommand(ctx.configPath, ['memory-pending']);
+
+  const [{ proposalID, actionHash }] = z
+    .tuple([z.object({ proposalID: z.string(), actionHash: z.string() })])
+    .parse(JSON.parse(listed.stdout));
+
+  await runHostCommand(ctx.configPath, [
+    'memory-reject',
+    proposalID,
+    '--hash',
+    actionHash,
+    '--reason',
+    'only tried it once',
+  ]);
+
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Anyway, how are you?',
+    thread: 'conversation',
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Understood.');
+  });
+
+  expect(JSON.stringify(ctx.model.requests.map((request) => request.body?.messages))).toInclude(
+    String.raw`Reason: \"only tried it once\".`,
+  );
+}, 60_000);
+
+test('it refuses a reason on an approval before it reads the configuration', async () => {
+  const run = await runHostCommand('/nonexistent/config.yaml', [
+    'memory-approve',
+    'proposal-1',
+    '--hash',
+    'sha256:hash',
+    '--reason',
+    'looks right',
+  ]);
+
+  expect(run.exitCode).toBe(2);
+});
+
 test('it refuses a version target that is not a plain decimal before it reads the configuration', async () => {
   const runs = await runHostCommands('/nonexistent/config.yaml', [
     ['memory-retire', 'item-1@0x2'],

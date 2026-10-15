@@ -1,4 +1,5 @@
 import type { Log } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
 import type { EventKind, NotedEvent, TurnNoteRange } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
@@ -16,6 +17,9 @@ export interface ProposalAnswerEvent {
   // the item and version an approval wrote, which the block quotes when it lists the event
   readonly written: VersionRef | null;
   readonly text: string | null;
+
+  // the reason the owner gave for a rejection, or null when they gave none or its key is gone
+  readonly reason: string | null;
 }
 
 // What the kind reads its quotes through, so each passes the delivery lock and no forget's item.
@@ -24,18 +28,19 @@ export type AnswerQuoteSource = Pick<MemoryStore, 'recall'> & {
 };
 
 // The event kind for the owner's answer to a memory proposal from any source, the conversation's
-// own included. A listed approval quotes the current version it wrote, recalled so the record names
-// only what the block shows; a rejection quotes only the conversation's own edit.
+// own included. An approval quotes the current version it wrote, recalled so the record names only
+// what the block shows; a rejection quotes only the conversation's own edit, then any reason.
 export function buildProposalAnswerKind(
-  log: Pick<Log, 'writer'>,
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
   store: AnswerQuoteSource,
 ): EventKind<ProposalAnswerEvent> {
   return {
     name: 'proposal_answer',
     read: async (range) => {
       const rows = await readAnsweredProposals(log, range);
+      const reasons = await readRejectionReasons(log, range, rows);
 
-      return rows.map((row) => buildAnswerEvent(row));
+      return rows.map((row) => buildAnswerEvent(row, reasons.get(row.sequence) ?? null));
     },
     complete: async (events) => {
       const approved = await readApprovedTexts(store, events);
@@ -55,7 +60,9 @@ export function buildProposalAnswerKind(
           ? `${owner} approved ${proposal} with edits`
           : `${owner} ${detail.answer} ${proposal}`;
 
-      return detail.text === null ? `${line}.` : `${line}: "${detail.text}"`;
+      const quoted = detail.text === null ? `${line}.` : `${line}: "${detail.text}"`;
+
+      return detail.reason === null ? quoted : `${quoted} Reason: "${detail.reason}".`;
     },
   };
 }
@@ -118,6 +125,39 @@ function readAnsweredProposals(
     .execute();
 }
 
+// The reason of each rejection in the range, by the sequence of the record that rejected it. A
+// reason sits in that record's erasable fields, so a record with none, or whose key is gone, gives
+// no reason.
+async function readRejectionReasons(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  range: TurnNoteRange,
+  rows: readonly AnsweredRow[],
+): Promise<ReadonlyMap<number, string>> {
+  const rejections = rows.filter((row) => row.status === 'rejected').length;
+
+  if (rejections === 0) {
+    return new Map();
+  }
+
+  // each rejected row's resolving record is one rejection record in the range, so the limit reads
+  // them all
+  const records = await readRecords(log, {
+    afterSequence: range.after,
+    beforeSequence: range.through + 1,
+    kinds: ['memory.proposal_rejected'],
+    limit: rejections,
+  });
+
+  return new Map(
+    records.flatMap((entry) => {
+      const erasable = entry.record.erasable;
+      const reason = erasable.status === 'readable' ? erasable.fields['reason'] : undefined;
+
+      return typeof reason === 'string' ? [[entry.record.sequence, reason] as const] : [];
+    }),
+  );
+}
+
 // Each listed approval's text, through a recall of the exact version it wrote, which records only
 // that version as a turn note's and leaves out an item that a forget has begun or that changed
 // since.
@@ -177,7 +217,10 @@ async function readRejectedTexts(
 
 const approvalPayload = z.object({ answer: z.enum(['approved', 'edited']) });
 
-function buildAnswerEvent(row: AnsweredRow): NotedEvent<ProposalAnswerEvent> {
+function buildAnswerEvent(
+  row: AnsweredRow,
+  reason: string | null,
+): NotedEvent<ProposalAnswerEvent> {
   const approval = approvalPayload.safeParse(JSON.parse(row.payload));
   const answer = row.status === 'rejected' ? 'rejected' : (approval.data?.answer ?? 'approved');
 
@@ -190,6 +233,7 @@ function buildAnswerEvent(row: AnsweredRow): NotedEvent<ProposalAnswerEvent> {
       origin: row.origin,
       written: buildWrittenVersion(row),
       text: null,
+      reason,
     },
   };
 }

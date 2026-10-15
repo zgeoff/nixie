@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
-import { findRecordKeys } from '@heynixie/log';
+import { findRecordKeys, readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { createProposal } from './test-utils/create-proposal';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
 
@@ -39,6 +40,68 @@ test('it rejects a proposal and drops the key of the item it would have created'
 
   expect(row.status).toBe('rejected');
   expect(keys.get(pending.itemID)).toBeUndefined();
+});
+
+test('it keeps your reason in the erasable fields of the rejection record', async () => {
+  const memory = await startTestMemory();
+  const proposal = await createProposal(memory.store, { text: 'Prefers tabs.' });
+
+  await memory.store.proposals.reject({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+    reason: "wrong, it's spaces",
+  });
+
+  const records = await readRecords(memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.proposal_rejected'],
+  });
+
+  expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
+    { status: 'readable', fields: { reason: "wrong, it's spaces" } },
+  ]);
+});
+
+test('it writes no erasable fields for a rejection with no reason', async () => {
+  const memory = await startTestMemory();
+  const proposal = await createProposal(memory.store, { text: 'Prefers tabs.' });
+
+  await memory.store.proposals.reject({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const records = await readRecords(memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.proposal_rejected'],
+  });
+
+  expect(records.map((entry) => entry.record.erasable)).toStrictEqual([{ status: 'none' }]);
+});
+
+test('it keeps your reason after the rejection removes the key of the item it would have created', async () => {
+  const memory = await startTestMemory();
+  const proposal = await createProposal(memory.store, { text: 'Prefers tabs.' });
+
+  await memory.store.proposals.reject({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'identity-1',
+    reason: "wrong, it's spaces",
+  });
+
+  const [records, keys] = await Promise.all([
+    readRecords(memory.log, { afterSequence: 0, kinds: ['memory.proposal_rejected'] }),
+    findRecordKeys(memory.log, [proposal.itemID]),
+  ]);
+
+  expect(keys.get(proposal.itemID)).toBeUndefined();
+
+  expect(records.map((entry) => entry.record.erasable)).toStrictEqual([
+    { status: 'readable', fields: { reason: "wrong, it's spaces" } },
+  ]);
 });
 
 test('it keeps the key of an existing item when you reject an edit of it', async () => {

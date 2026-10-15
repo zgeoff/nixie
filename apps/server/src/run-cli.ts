@@ -40,6 +40,7 @@ const cliOptions = {
   revise: { type: 'string' },
   'as-new': { type: 'boolean', default: false },
   text: { type: 'string' },
+  reason: { type: 'string' },
   'keep-sessions': { type: 'boolean', default: false },
   yes: { type: 'boolean', default: false },
 } as const;

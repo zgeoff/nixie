@@ -37,7 +37,7 @@ function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
       const options =
         command === 'approve'
           ? ', then --text <edited text>, and --revise <itemID>@<version> or --as-new'
-          : '';
+          : ', then --reason <why>';
 
       io.print(`nixie memory-${command} takes a proposal ID and --hash <action hash>${options}`);
 
@@ -54,7 +54,7 @@ function makeMemoryAnswer(command: 'approve' | 'reject'): Command {
 }
 
 // the request an answer sends, or null when its arguments are malformed; only an approval takes
-// --revise, --as-new or --text
+// --revise, --as-new or --text, and only a rejection takes --reason
 function buildAnswerRequest(
   command: 'approve' | 'reject',
   proposalID: string | undefined,
@@ -67,7 +67,18 @@ function buildAnswerRequest(
   }
 
   if (command === 'reject') {
-    return flags.text === undefined ? { command, proposalID, actionHash: flags.hash } : null;
+    return flags.text === undefined
+      ? {
+          command,
+          proposalID,
+          actionHash: flags.hash,
+          ...(flags.reason === undefined ? {} : { reason: flags.reason }),
+        }
+      : null;
+  }
+
+  if (flags.reason !== undefined) {
+    return null;
   }
 
   return {
