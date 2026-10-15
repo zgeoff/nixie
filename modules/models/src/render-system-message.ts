@@ -5,6 +5,7 @@ export type SystemMessageType =
   | 'pinned-memory'
   | 'status'
   | 'summary'
+  | 'compaction'
   | 'recent-turns'
   | 'events'
   | 'retrieved-memory'

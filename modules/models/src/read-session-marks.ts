@@ -19,6 +19,20 @@ export interface SessionMarks {
 
   // whether any session opened with an opening record; one from before them lacks the pinned core
   readonly hasOpening: boolean;
+
+  // the context the last turn ended with and its window, or null when it reported none
+  readonly lastContext: TurnContextSize | null;
+
+  // whether a summary committed after the last session opened, so the next one opens from it
+  readonly isSummarized: boolean;
+
+  // the compactions that failed in a row since the last summary or opening
+  readonly compactionFailures: number;
+}
+
+export interface TurnContextSize {
+  readonly size: number;
+  readonly window: number;
 }
 
 // Reads the last turn's pinned core, and whether a forget invalidated the session after that turn
@@ -28,15 +42,19 @@ export async function readSessionMarks(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
 ): Promise<SessionMarks> {
-  const [invalidated, compacted, lastTurns, opened] = await Promise.all([
+  const [invalidated, compacted, lastTurns, opened, summarized, failed] = await Promise.all([
     readNewest(context, { thread: taskID, kinds: ['model.session_invalidated'], limit: 1 }),
     readNewest(context, { thread: taskID, kinds: ['model.compacted'], limit: 1 }),
     readNewest(context, { thread: taskID, kinds: ['model.turn_ended'], limit: 2 }),
     readNewest(context, { thread: taskID, kinds: ['model.session_opened'], limit: 1 }),
+    readNewest(context, { thread: taskID, kinds: ['model.session_summarized'], limit: 1 }),
+    readNewest(context, { thread: taskID, kinds: ['model.compaction_failed'], limit: 1 }),
   ]);
 
   const [turn, turnBefore] = lastTurns;
   const invalidatedThrough = invalidated.at(0)?.sequence ?? 0;
+  const openedThrough = opened.at(0)?.sequence ?? 0;
+  const summarizedThrough = summarized.at(0)?.sequence ?? 0;
 
   return {
     previousCore: turn === undefined ? null : parseCore(turn.payload['pinnedCore']),
@@ -46,6 +64,9 @@ export async function readSessionMarks(
     // a step commits its compactions before its turn's end
     isCompacted: (compacted.at(0)?.sequence ?? 0) > (turnBefore?.sequence ?? 0),
     hasOpening: opened.length > 0,
+    lastContext: turn === undefined ? null : parseContext(turn),
+    isSummarized: summarizedThrough > openedThrough,
+    compactionFailures: countFailures(failed.at(0), Math.max(openedThrough, summarizedThrough)),
   };
 }
 
@@ -72,4 +93,33 @@ function parseCore(value: unknown): readonly MemoryRef[] {
   const parsed = coreSchema.safeParse(value);
 
   return parsed.success ? parsed.data : [];
+}
+
+const contextSchema = z.object({
+  contextSize: z.int().nonnegative(),
+  contextWindow: z.int().positive(),
+});
+
+// a turn whose model calls reported no usage, or one recorded before turns kept their context,
+// gives none
+function parseContext(turn: LogRecord): TurnContextSize | null {
+  const parsed = contextSchema.safeParse(turn.payload);
+
+  return parsed.success
+    ? { size: parsed.data.contextSize, window: parsed.data.contextWindow }
+    : null;
+}
+
+const failuresSchema = z.object({ failures: z.int().positive() });
+
+// the newest failure counts the failures in a row before it, unless a summary or a session opened
+// after it
+function countFailures(failed: LogRecord | undefined, resetThrough: number): number {
+  if (failed === undefined || failed.sequence < resetThrough) {
+    return 0;
+  }
+
+  const parsed = failuresSchema.safeParse(failed.payload);
+
+  return parsed.success ? parsed.data.failures : 1;
 }

@@ -5,11 +5,12 @@ import { buildDefaultStatus } from './build-default-status';
 import { deriveModelSecret } from './derive-model-secret';
 import { makeSessionGuard } from './make-session-guard';
 import { runConversationStep } from './run-conversation-step';
-import type { GuestCommand } from './run-guest-turn';
 import { runSessionCleanup } from './run-session-cleanup';
 import type { ConversationSandboxSpec } from './setup-conversation-sandbox';
 import { setupConversationSandbox } from './setup-conversation-sandbox';
+import { toTurnProfile } from './to-turn-profile';
 import type {
+  CompactionSettings,
   ConversationMemory,
   ConversationMemorySettings,
   ConversationRun,
@@ -30,7 +31,7 @@ export interface ConversationRunnerOptions {
   readonly toolNames: readonly string[];
   readonly image: string;
   readonly limits: ConversationSandboxSpec['limits'];
-  readonly command: GuestCommand;
+  readonly command: ConversationRun['command'];
 
   // the persona in force, read at each turn so a new seed reaches the next turn
   readonly getSystemPrompt: () => string;
@@ -43,6 +44,9 @@ export interface ConversationRunnerOptions {
   // the memory store, which starts after the runner, so each turn reads it again
   readonly memory: () => ConversationMemory;
   readonly memorySettings?: Partial<ConversationMemorySettings>;
+
+  // when the session compacts, 0.8 of the window with a 2,000-token summary cap by default
+  readonly compaction?: Partial<CompactionSettings>;
 
   // the IANA zone your message renders its send time in when it carries no zone of its own
   readonly defaultZone?: string;
@@ -69,6 +73,8 @@ const defaultMemorySettings: ConversationMemorySettings = {
   ownerName: null,
   agentNames: [],
 };
+
+const defaultCompaction: CompactionSettings = { threshold: 0.8, summaryTokens: 2000 };
 
 // Starts the conversation's runner on its role's profile: it stores the profile's credential with
 // the sandbox backend, keeps the conversation's long-lived sandbox when its spec still matches and
@@ -99,7 +105,9 @@ export async function startConversationRunner(
     sandbox,
     endpoint,
     model,
+    turnProfile: toTurnProfile(options.profile.profile),
     memorySettings: { ...defaultMemorySettings, ...options.memorySettings },
+    compaction: { ...defaultCompaction, ...options.compaction },
     status: options.status ?? buildDefaultStatus(),
 
     // a runner given no zone renders a message that carries none in UTC

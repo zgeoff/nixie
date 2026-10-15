@@ -3,6 +3,7 @@ import type { StepResult } from '@heynixie/tasks';
 import type { ModelRecordSource } from './build-model-record';
 import { buildModelRecord } from './build-model-record';
 import { decodeInboxUUID } from './decode-inbox-uuid';
+import { isContextOverflow } from './is-context-overflow';
 import type { GuestTurn } from './run-guest-turn';
 import type { MemoryRef } from './types';
 
@@ -34,8 +35,8 @@ export interface StepTurn extends CompletedTurn {
 }
 
 // Builds the step's result from a turn the guest ended: its records, the inbox records the model
-// read, and the session's last chain entry as the boundary. A turn that failed throws, so the step
-// retries from the boundary it started at.
+// read, and the session's last chain entry as the boundary. A turn that failed, or one whose context
+// passed the window, throws, so the step retries from the boundary it started at.
 export function buildStepResult(
   source: ModelRecordSource,
 
@@ -49,6 +50,12 @@ export function buildStepResult(
   if (failure !== null || last === undefined) {
     throw new Error(
       `the conversation turn failed: ${failure?.reason ?? 'no result'}: ${failure?.detail ?? ''}`,
+    );
+  }
+
+  if (isContextOverflow(last)) {
+    throw new Error(
+      `the conversation turn passed the context window: ${last.terminalReason ?? ''}`,
     );
   }
 

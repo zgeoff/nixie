@@ -85,7 +85,7 @@ const credentialVariables = {
 } as const;
 
 function buildQueryEnv(
-  turn: TurnFrame,
+  turn: Pick<TurnFrame, 'profile'>,
   env: Readonly<Record<string, string | undefined>>,
   home: string,
 ): Record<string, string> {

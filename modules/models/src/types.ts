@@ -1,9 +1,11 @@
-import type { ContentSource } from '@heynixie/log';
+import type { ContentSource, RecordInput } from '@heynixie/log';
 import type { Sandbox } from '@heynixie/sandbox';
-import type { TasksContext } from '@heynixie/tasks';
+import type { StepInput, TasksContext } from '@heynixie/tasks';
 import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
+import type { TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './build-status-registry';
 import type { SessionGuard } from './make-session-guard';
+import type { SessionMarks } from './read-session-marks';
 import type { GuestCommand } from './run-guest-turn';
 
 // The model roles, each of which names the profile it uses.
@@ -161,6 +163,16 @@ export interface ConversationMemorySettings {
   readonly agentNames: readonly string[];
 }
 
+// When nixie compacts the conversation's session, each setting tunable from the deployment
+// configuration.
+export interface CompactionSettings {
+  // the share of the profile's window at or past which a turn's end compacts the session
+  readonly threshold: number;
+
+  // the token cap of the summary the model writes, which its word target derives from
+  readonly summaryTokens: number;
+}
+
 // How your message's send time renders: the zone for a message that carries none, and the time
 // now, which decides whether the year shows.
 export interface MessageTimeOptions {
@@ -176,6 +188,9 @@ export type SessionCleanupCause = { readonly itemID: string } | { readonly recor
 export interface ConversationRun {
   readonly context: TasksContext;
   readonly profile: ResolvedProfile;
+
+  // the profile as every guest frame carries it, with no credential reference and no prices
+  readonly turnProfile: TurnProfile;
   readonly sandbox: Sandbox;
 
   // the conversation's run endpoint, which issues each turn a step token of its own
@@ -197,12 +212,30 @@ export interface ConversationRun {
   // the memory store, read at each turn, which starts after the runner
   readonly memory: () => ConversationMemory;
   readonly memorySettings: ConversationMemorySettings;
+  readonly compaction: CompactionSettings;
 
   // the IANA zone your message renders its send time in when it carries no zone of its own
   readonly defaultZone: string;
 
   // keeps a forget's session cleanup from meeting a running turn
   readonly session: SessionGuard;
+}
+
+// One step of the conversation as its parts see it: the run, the step's input, the session marks it
+// read, and the signal that stops it when the lease is lost or a forget invalidates the session.
+export interface SessionStep {
+  readonly run: ConversationRun;
+  readonly input: StepInput;
+  readonly signal: AbortSignal;
+  readonly marks: SessionMarks;
+}
+
+// What a step that takes the inbox may do: compact when its turn overflows or ends past the
+// threshold, which a step whose compaction already failed never does again, and the records it
+// commits before the turn's own.
+export interface InboxPlan {
+  readonly canCompact: boolean;
+  readonly before: readonly RecordInput[];
 }
 
 // A note for the start of a turn and the last sequence it covers, which the turn's end record
@@ -215,9 +248,11 @@ export interface TurnNote {
   readonly eventCount: number;
 }
 
-// How a new session starts: the first session, or a rebuild in place of a lost or invalidated one.
+// How a new session starts: the first session, the one after a compaction, or a rebuild in place of
+// a lost or invalidated one.
 export type SessionStart =
   | { readonly kind: 'first' }
+  | { readonly kind: 'compaction' }
   | {
       readonly kind: 'rebuild';
       readonly reason: 'lost' | 'forget';

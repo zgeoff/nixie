@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { decodeTurnFrame, encodeTurnFrame, guestFrameSchema } from '@heynixie/wire';
+import { buildMockSummarizeFrame } from '@heynixie/wire/test-utils';
 import { buildStubSandboxes } from './build-stub-sandboxes';
 
 function setupTest() {
@@ -76,6 +77,65 @@ test('it answers a purge frame with the frames a test sets', async () => {
 
   expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toStrictEqual([
     { type: 'failed', reason: 'error', detail: 'the disk is read-only' },
+  ]);
+});
+
+test('it answers a summarize frame with a summary at a new chain entry, records the frame, then exits', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+  const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
+
+  const frame = buildMockSummarizeFrame();
+
+  await stream.send(encodeTurnFrame(frame));
+
+  const messages = await Array.fromAsync(stream.messages);
+  const exit = await stream.exit;
+
+  expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toStrictEqual([
+    {
+      type: 'summarized',
+      boundary: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
+      text: 'Open threads: none.',
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  expect(exit).toMatchObject({ code: 0, signal: null });
+  expect(ctx.stub.summaries).toStrictEqual([frame]);
+});
+
+test('it answers a summarize frame with the script a test sets', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stub.setSummaryScript((frame) => [
+    { type: 'failed', reason: 'error', detail: `no summary at ${frame.resume.messageID}` },
+  ]);
+
+  const stream = await sandbox.spawn({ argv: ['guest'], maxMessageBytes: 1024 });
+
+  await stream.send(
+    encodeTurnFrame(
+      buildMockSummarizeFrame({
+        resume: {
+          sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+          messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+        },
+      }),
+    ),
+  );
+
+  const messages = await Array.fromAsync(stream.messages);
+
+  expect(messages.map((message) => decodeTurnFrame(guestFrameSchema, message))).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'error',
+      detail: 'no summary at 7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+    },
   ]);
 });
 
