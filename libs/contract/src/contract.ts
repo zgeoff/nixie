@@ -1,6 +1,7 @@
 import { eventIterator, oc } from '@orpc/contract';
 import { z } from 'zod';
 import { imageLimits } from './image-limits';
+import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
 
 // The contract is add-only once released: a later release adds procedures, optional input fields,
@@ -24,6 +25,13 @@ const spanSchema = z.object({
 const jsonObjectSchema = z.record(z.string(), z.unknown());
 const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
 const imageFilesSchema = z.array(z.file());
+
+// one image of your message on a thread, by its position in the order sent
+const imageRefSchema = z.object({
+  position: z.int().nonnegative(),
+  sequence: sequenceSchema,
+  thread: threadSchema,
+});
 
 // A failed step's record carries the error its step threw, while the record is readable, the
 // errors in a row with this one, the limit in force, and when the task tries again. The
@@ -254,19 +262,8 @@ export const contract = {
     // Reads one image of your message, by its position in the order sent. An image whose message
     // was forgotten reads as not found, as one that never existed does.
     readImage: signedIn
-      .errors({
-        IMAGE_NOT_FOUND: {
-          message: 'No readable image of a message has this position',
-          status: 404,
-        },
-      })
-      .input(
-        z.object({
-          position: z.int().nonnegative(),
-          sequence: sequenceSchema,
-          thread: threadSchema,
-        }),
-      )
+      .errors({ IMAGE_NOT_FOUND: imageNotFoundError })
+      .input(imageRefSchema)
       .output(z.file()),
 
     // Forgets one of your messages or one of nixie's replies for good: the server deletes its key,
