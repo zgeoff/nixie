@@ -113,7 +113,9 @@ that runs the session. The transcript is a cache:
   activity and summaries.
 - **Kept while its task lives.** nixie sets `cleanupPeriodDays` high enough that the SDK never
   deletes a session a task still resumes, and deletes a task's sessions when the task closes.
-- **Rebuilt when lost or invalid.**
+- **Rebuilt when lost or invalid.** A task's rerun after a crash takes the same rebuild when the
+  session compacted past the step's boundary, as [crash recovery](../core/tasks.md#crash-recovery)
+  covers.
 
 nixie does not use the SDK's `sessionStore` mirror. **Why:** the option is alpha, it drops writes on
 failure, and it would need a write route from every imp to the host.
