@@ -61,6 +61,7 @@
         "@heynixie/models": "workspace:*",
         "@heynixie/ops": "workspace:*",
         "@heynixie/policy": "workspace:*",
+        "@heynixie/retry": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/sandbox-imp": "workspace:*",
         "@heynixie/sandbox-process": "workspace:*",
@@ -169,6 +170,10 @@
         "zod": "catalog:",
       },
     },
+    "libs/retry": {
+      "name": "@heynixie/retry",
+      "version": "0.0.0",
+    },
     "libs/testing": {
       "name": "@heynixie/testing",
       "version": "0.0.0",
@@ -189,6 +194,7 @@
       "dependencies": {
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/retry": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "kysely": "catalog:",
         "zod": "catalog:",
@@ -265,6 +271,7 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/retry": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
@@ -338,6 +345,7 @@
       "dependencies": {
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/retry": "workspace:*",
         "kysely": "catalog:",
         "zod": "catalog:",
       },
@@ -562,6 +570,8 @@
     "@heynixie/ops": ["@heynixie/ops@workspace:modules/ops"],
 
     "@heynixie/policy": ["@heynixie/policy@workspace:modules/policy"],
+
+    "@heynixie/retry": ["@heynixie/retry@workspace:libs/retry"],
 
     "@heynixie/sandbox": ["@heynixie/sandbox@workspace:modules/sandbox"],
 

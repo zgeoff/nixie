@@ -1,5 +1,6 @@
 import type { Logger } from '@heynixie/ops';
 import { toErrorFields } from '@heynixie/ops';
+import { planBackoffDelay } from '@heynixie/retry';
 
 export interface RetryOptions {
   // the start step's name, which each failure's log line carries
@@ -21,7 +22,7 @@ export async function runWithRetry<T>(
   attempt: () => Promise<T>,
   options: RetryOptions,
 ): Promise<T> {
-  const delay = { ms: options.firstDelayMs ?? 1000 };
+  const state = { failures: 0 };
 
   for (;;) {
     options.signal.throwIfAborted();
@@ -32,16 +33,21 @@ export async function runWithRetry<T>(
     } catch (error) {
       options.signal.throwIfAborted();
 
+      state.failures += 1;
+
+      const delayMs = planBackoffDelay(state.failures, {
+        firstMs: options.firstDelayMs ?? 1000,
+        maxMs: options.maxDelayMs ?? 30_000,
+      });
+
       options.log('start.retry', {
         step: options.step,
-        delayMs: delay.ms,
+        delayMs,
         ...toErrorFields(error),
       });
 
       // oxlint-disable-next-line no-await-in-loop -- the wait between attempts
-      await waitForDelay(delay.ms, options.signal);
-
-      delay.ms = Math.min(delay.ms * 2, options.maxDelayMs ?? 30_000);
+      await waitForDelay(delayMs, options.signal);
     }
   }
 }

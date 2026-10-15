@@ -1,5 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { planRetryDelay } from './plan-retry-delay';
+import { planBackoffDelay } from '@heynixie/retry';
 import { requireLease } from './require-lease';
 import { resetLease } from './reset-lease';
 import type { StepErrored, TaskClaim, TasksContext, TasksTables } from './types';
@@ -80,7 +80,10 @@ function planRetry(
   if (isConversation) {
     return {
       nextState: 'ready',
-      delayMs: planRetryDelay(errors, options.retryDelayMs, options.maxRetryDelayMs),
+      delayMs: planBackoffDelay(errors, {
+        firstMs: options.retryDelayMs,
+        maxMs: options.maxRetryDelayMs,
+      }),
     };
   }
 

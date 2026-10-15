@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { defaultRetryDelaysMs } from './default-retry-delays-ms';
 import { pickOutcome } from './pick-outcome';
+import { defaultRetryDelaysMs } from './run-action-attempt';
 
 test('it maps a success to done', () => {
   expect(pickOutcome({ kind: 'success', result: {} }, 1, defaultRetryDelaysMs)).toStrictEqual({
