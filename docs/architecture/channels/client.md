@@ -177,8 +177,9 @@ outlives a release, so the outbox drops a stored message that no longer fits the
 input.
 
 When a forget drops the text of a message this device sent, the outbox removes the message from
-memory and from storage before the page paints. The outbox therefore never shows the text again as a
-sent message, and a page load never sends the message again.
+memory before the page paints, so it never shows the text again as a sent message. Every storage
+write leaves out the forgotten message, whatever status a render in flight gives it, so a page load
+never sends the message again.
 
 ## Paste spans
 

@@ -24,17 +24,16 @@ async function setupTest() {
     }),
   );
 
-  // the conversation names the messages a forget dropped, and a test names them through forget
+  // the conversation names the messages a forget dropped, and a test names them through
+  // setForgotten, which the next render reads
   let forgotten: readonly string[] = [];
   const rendered = renderHook(() => useOutbox(forgotten));
 
   return {
     sent,
     rendered,
-    forget: (clientMessageIDs: readonly string[]) => {
+    setForgotten: (clientMessageIDs: readonly string[]) => {
       forgotten = clientMessageIDs;
-
-      rendered.rerender();
     },
   };
 }
@@ -125,10 +124,42 @@ test('it drops a forgotten message from memory and device storage', async () => 
   const stored = globalThis.localStorage.getItem('nixie.outbox');
 
   act(() => {
-    ctx.forget(['8c4e2b7a-1d9f-4a3e-b6c5-0e7d3f1a9b28']);
+    ctx.setForgotten(['8c4e2b7a-1d9f-4a3e-b6c5-0e7d3f1a9b28']);
+    ctx.rendered.rerender();
   });
 
   expect(stored).toInclude('8c4e2b7a-1d9f-4a3e-b6c5-0e7d3f1a9b28');
+  expect(ctx.rendered.result.current.entries).toStrictEqual([]);
+  expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
+});
+
+test('it keeps a forgotten message out of device storage when a failed retry lands in the same render', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error()));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '4b1f8e6a-2c7d-4d9e-8a3b-6f0e2c5d9a71',
+      spans: [{ end: 13, source: 'typed', start: 0 }],
+      text: 'Feed the cat.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  const [entry] = ctx.rendered.result.current.entries;
+
+  invariant(entry, 'the outbox holds no message');
+
+  // the forget and the failed retry's status reach the outbox in one render
+  ctx.setForgotten(['4b1f8e6a-2c7d-4d9e-8a3b-6f0e2c5d9a71']);
+
+  await act(() => ctx.rendered.result.current.retry(entry.message));
+
   expect(ctx.rendered.result.current.entries).toStrictEqual([]);
   expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
 });

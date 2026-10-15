@@ -6,21 +6,18 @@ import type { OutboxEntry } from './use-outbox';
 
 export interface StoredOutboxOptions {
   readonly entries: readonly OutboxEntry[];
+
+  // a forgotten message never goes back to storage, whatever status a stale render gives it
+  readonly forgottenClientMessageIDs: readonly string[];
   readonly sendEntry: (message: OutboxMessage) => Promise<void>;
   readonly setEntries: (entries: readonly OutboxEntry[]) => void;
-}
-
-export interface StoredOutbox {
-  // drops stored messages by client message ID, which the outbox's own writes would keep as
-  // another tab's once the outbox no longer holds them
-  readonly remove: (clientMessageIDs: readonly string[]) => void;
 }
 
 const storageKey = 'nixie.outbox';
 
 // Keeps the outbox's unconfirmed messages in device storage. Storage exists only in the browser,
 // so the outbox loads after hydration and sends again whatever an earlier page left unsent.
-export function useStoredOutbox(options: StoredOutboxOptions): StoredOutbox {
+export function useStoredOutbox(options: StoredOutboxOptions): void {
   const [loaded, setLoaded] = useState(false);
   const sendEntry = options.sendEntry;
   const setEntries = options.setEntries;
@@ -38,24 +35,13 @@ export function useStoredOutbox(options: StoredOutboxOptions): StoredOutbox {
 
   useEffect(() => {
     if (loaded) {
-      writeStoredMessages(mergeStoredMessages(readStoredMessages(), options.entries));
+      const forgotten = new Set(options.forgottenClientMessageIDs);
+
+      const merged = mergeStoredMessages(readStoredMessages(), options.entries);
+
+      writeStoredMessages(merged.filter((message) => !forgotten.has(message.clientMessageId)));
     }
-  }, [loaded, options.entries]);
-
-  return storedOutbox;
-}
-
-const storedOutbox: StoredOutbox = { remove: removeStoredMessages };
-
-function removeStoredMessages(clientMessageIDs: readonly string[]): void {
-  const removed = new Set(clientMessageIDs);
-
-  const stored = readStoredMessages();
-  const kept = stored.filter((message) => !removed.has(message.clientMessageId));
-
-  if (kept.length !== stored.length) {
-    writeStoredMessages(kept);
-  }
+  }, [loaded, options.entries, options.forgottenClientMessageIDs]);
 }
 
 // Another tab shares the storage key, so a write keeps every stored message this outbox does not

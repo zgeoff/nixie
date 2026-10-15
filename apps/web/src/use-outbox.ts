@@ -51,10 +51,10 @@ export function useOutbox(forgottenClientMessageIDs: readonly string[]) {
     [sendEntry],
   );
 
-  const stored = useStoredOutbox({ entries, sendEntry, setEntries });
+  useStoredOutbox({ entries, forgottenClientMessageIDs, sendEntry, setEntries });
 
-  // A forgotten message goes from memory and from device storage before the page paints, so its
-  // text never shows again as a sent message, and a reload never sends it.
+  // A forgotten message goes from memory before the page paints, so its text never shows again as
+  // a sent message; the stored outbox keeps it out of storage, so a reload never sends it.
   useLayoutEffect(() => {
     if (forgottenClientMessageIDs.length === 0) {
       return;
@@ -62,14 +62,12 @@ export function useOutbox(forgottenClientMessageIDs: readonly string[]) {
 
     const removed = new Set(forgottenClientMessageIDs);
 
-    stored.remove(forgottenClientMessageIDs);
-
     setEntries((current) =>
       current.some((entry) => removed.has(entry.message.clientMessageId))
         ? current.filter((entry) => !removed.has(entry.message.clientMessageId))
         : current,
     );
-  }, [forgottenClientMessageIDs, stored]);
+  }, [forgottenClientMessageIDs]);
 
   return { add, entries, retry: sendEntry };
 }
