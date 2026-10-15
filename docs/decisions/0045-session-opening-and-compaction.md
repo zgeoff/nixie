@@ -2,7 +2,8 @@
 
 - Date: 2026-10-14
 - Status: decided
-- Design: [session opening](../design/platform/core/session-opening.md)
+- Architecture: [session opening](../architecture/core/session-opening.md),
+  [compaction](../architecture/core/compaction.md)
 
 Every new session of the conversation opens with the same context, in the same order, from one
 builder, and nixie compacts the session itself. When a session grows past a threshold, nixie asks

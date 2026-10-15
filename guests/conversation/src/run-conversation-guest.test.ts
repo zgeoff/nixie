@@ -140,7 +140,7 @@ test('it answers a first frame that starts no turn with a failed frame', async (
     {
       type: 'failed',
       reason: 'error',
-      detail: 'Error: the first host frame must start a turn or purge the session',
+      detail: 'Error: the first host frame must start a turn, a summary or a purge',
     },
   ]);
 });

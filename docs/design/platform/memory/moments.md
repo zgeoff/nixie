@@ -99,7 +99,9 @@ browsing, holds thousands of records with tool results.
 `memory.recall` returns each item's links as moment IDs and titles, never moment text. The tool
 descriptions of `memory.recall` and `moment.read` tell the model to read a linked moment when the
 reason behind a fact matters. Per-turn retrieval and the pinned core never include a moment's title,
-note or reflection.
+note or reflection. The moments package adds an entry to the
+[session opening](../../../architecture/core/session-opening.md#status) status for the moments kept
+in the last 7 days.
 
 `moment.read` returns each record with its source of content. A span that holds outside content
 stays untrusted when it is read, so the task that reads it is tainted under

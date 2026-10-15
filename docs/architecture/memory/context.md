@@ -150,9 +150,11 @@ record it ran for. The cleanup runs in order:
    that a live CLI still writes.
 2. It commits a session-invalidated record on the conversation's thread. From then on, no turn
    resumes a session that existed before the record, even one whose step commits later.
-3. It starts the guest in the conversation's sandbox with a purge frame, and the guest removes the
+3. It deletes the key of every session summary on the conversation's thread, because any summary can
+   hold the forgotten text ([compaction](../core/compaction.md#forgetting)).
+4. It starts the guest in the conversation's sandbox with a purge frame, and the guest removes the
    CLI's whole state directory, every transcript and fork included.
-4. It commits a session-cleanup-completed record.
+5. It commits a session-cleanup-completed record.
 
 A turn and a cleanup never overlap: a turn that starts while a cleanup runs waits for it, and each
 cleanup waits for the one before it. Turns never wait for each other, because a runner that took a

@@ -11,15 +11,22 @@ import { decodeTurnFrame, encodeTurnFrame, hostFrameSchema } from '@heynixie/wir
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
+type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
+
 // The stub guest's side of one turn: the messages the host sent into it, one at a time.
 interface StubGuest {
   readonly waitForMessage: () => Promise<InboxMessage>;
 }
 
 // Answers one turn frame with the guest frames the stub sends back before it exits.
-type StubGuestScript = (
+export type StubGuestScript = (
   turn: TurnFrame,
   guest: StubGuest,
+) => Promise<readonly GuestFrame[]> | readonly GuestFrame[];
+
+// Answers one summarize frame with the guest frames the stub sends back before it exits.
+type StubSummaryScript = (
+  frame: SummarizeFrame,
 ) => Promise<readonly GuestFrame[]> | readonly GuestFrame[];
 
 export interface StubSandboxes {
@@ -31,11 +38,17 @@ export interface StubSandboxes {
   // every turn frame the guests received, in order
   readonly turns: readonly TurnFrame[];
 
+  // every summarize frame the guests received, in order
+  readonly summaries: readonly SummarizeFrame[];
+
   // the ID of the sandbox each purge frame reached, in order
   readonly purged: readonly string[];
 
   // sets how the guest of each later spawn answers its turn
   readonly setGuestScript: (script: StubGuestScript) => void;
+
+  // sets how the guest of each later spawn answers a summarize frame
+  readonly setSummaryScript: (script: StubSummaryScript) => void;
 
   // sets the frames the guest of each later spawn answers a purge frame with, purged by default
   readonly setPurgeAnswer: (frames: readonly GuestFrame[]) => void;
@@ -58,6 +71,18 @@ function buildHelloTurn(turn: TurnFrame): readonly GuestFrame[] {
   ];
 }
 
+// The stub guest's summary until a test sets one: a short summary at a new chain entry.
+function buildSummary(): readonly GuestFrame[] {
+  return [
+    {
+      type: 'summarized',
+      boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
+      text: 'Open threads: none.',
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ];
+}
+
 // Builds a stand-in for the sandbox adapter whose sandboxes run a scripted conversation guest. It
 // speaks the real turn frames over a framed stream, as the guest does, so the host side runs as it
 // would against a sandbox, with no process and no model.
@@ -67,9 +92,11 @@ export function buildStubSandboxes(): StubSandboxes {
     created: [] as SandboxSpec[],
     destroyed: [] as string[],
     turns: [] as TurnFrame[],
+    summaries: [] as SummarizeFrame[],
     purged: [] as string[],
     sandboxes: [] as Sandbox[],
     script: buildHelloTurn as StubGuestScript,
+    summaryScript: buildSummary as StubSummaryScript,
     purgeAnswer: [{ type: 'purged' }] as readonly GuestFrame[],
   };
 
@@ -101,9 +128,13 @@ export function buildStubSandboxes(): StubSandboxes {
     created: state.created,
     destroyed: state.destroyed,
     turns: state.turns,
+    summaries: state.summaries,
     purged: state.purged,
     setGuestScript: (script) => {
       state.script = script;
+    },
+    setSummaryScript: (script) => {
+      state.summaryScript = script;
     },
     setPurgeAnswer: (frames) => {
       state.purgeAnswer = frames;
@@ -118,6 +149,8 @@ interface StubSandboxState {
 
 interface RecordingState {
   readonly turns: TurnFrame[];
+  readonly summaries: SummarizeFrame[];
+  readonly summaryScript: StubSummaryScript;
   readonly destroyed: string[];
   readonly purged: string[];
   readonly script: StubGuestScript;
@@ -132,6 +165,11 @@ function buildHooks(state: RecordingState): StubSandboxHooks {
       state.turns.push(turn);
 
       return state.script(turn, guest);
+    },
+    onSummary: (frame) => {
+      state.summaries.push(frame);
+
+      return state.summaryScript(frame);
     },
     onDestroy: (id) => {
       state.destroyed.push(id);
@@ -155,6 +193,7 @@ function findLive(
 
 interface StubSandboxHooks {
   readonly onTurn: StubGuestScript;
+  readonly onSummary: StubSummaryScript;
   readonly onDestroy: (id: string) => void;
   readonly onPurge: (id: string) => readonly GuestFrame[];
 }
@@ -175,6 +214,7 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
       Promise.resolve(
         startStubGuest({
           onTurn: hooks.onTurn,
+          onSummary: hooks.onSummary,
           onPurge: () => hooks.onPurge(id),
         }),
       ),
@@ -195,10 +235,11 @@ const noStderr = { bytes: new Uint8Array(0), totalBytes: 0, isCut: false };
 
 interface StubGuestHooks {
   readonly onTurn: StubGuestScript;
+  readonly onSummary: StubSummaryScript;
   readonly onPurge: () => readonly GuestFrame[];
 }
 
-// the stub guest answers a turn frame with its script, and a purge frame as the guest does once it
+// the stub guest answers a turn frame and a summarize frame with their scripts, and a purge frame as the guest does once it
 // has removed its session state
 function startStubGuest(hooks: StubGuestHooks): ExecStream {
   const output = new TransformStream<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>();
@@ -253,6 +294,10 @@ function runFirstFrame(
 ): Promise<readonly GuestFrame[]> | readonly GuestFrame[] {
   if (first.type === 'purge') {
     return hooks.onPurge();
+  }
+
+  if (first.type === 'summarize') {
+    return hooks.onSummary(first);
   }
 
   return hooks.onTurn(first, guest);

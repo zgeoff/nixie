@@ -1,3 +1,4 @@
+import type { RecordInput } from '@heynixie/log';
 import type { StepResult } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import type { ModelRecordSource } from './build-model-record';
@@ -7,15 +8,21 @@ import type { SessionTurn } from './run-planned-turn';
 import { runPlannedTurn } from './run-planned-turn';
 import type { SessionStart } from './types';
 
+// How the new session starts, the source its records name, and the records that go before its own
+// in the commit.
+export interface Opening {
+  readonly source: ModelRecordSource;
+  readonly start: SessionStart;
+  readonly before: readonly RecordInput[];
+}
+
 // Runs the turn on a new session, which opens with the same slots whatever started it, and records
 // the opening: the start, the summary it used, the turns and events it carried again, and the status
 // values. Retrieval counts what the session holds from this record.
-export async function runOpenedTurn(
-  turn: SessionTurn,
-  source: ModelRecordSource,
-  start: SessionStart,
-): Promise<StepResult> {
-  const opened = await runPlannedTurn(turn, { resume: null, start });
+export async function runOpenedTurn(turn: SessionTurn, opening: Opening): Promise<StepResult> {
+  const source = opening.source;
+
+  const opened = await runPlannedTurn(turn, { resume: null, start: opening.start });
 
   // a turn on a new session always reads its opening
   invariant(opened.opening, 'a new session ran with no opening');
@@ -26,6 +33,9 @@ export async function runOpenedTurn(
       ...opened.completed,
       memory: { ...turn.context, invalidatedThrough: turn.invalidatedThrough },
     },
-    [buildModelRecord(source, 'model.session_opened', { payload: { ...opened.opening } })],
+    [
+      ...opening.before,
+      buildModelRecord(source, 'model.session_opened', { payload: { ...opened.opening } }),
+    ],
   );
 }

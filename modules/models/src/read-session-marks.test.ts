@@ -17,7 +17,125 @@ test('it reads no earlier core and no invalidation before the first turn', async
     invalidatedThrough: 0,
     isCompacted: false,
     hasOpening: false,
+    lastContext: null,
+    isSummarized: false,
+    compactionFailures: 0,
   });
+});
+
+test('it reads the context the last turn ended with and its window', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { contextSize: 120_000, contextWindow: 200_000 },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { contextSize: 165_000, contextWindow: 200_000 },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.lastContext).toStrictEqual({ size: 165_000, window: 200_000 });
+});
+
+test('it reads the session as summarized when a summary committed after the last opening', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    {
+      kind: 'model.session_summarized',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { throughSequence: 1 },
+      erasable: { text: 'Open threads: the gauge report.' },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.isSummarized).toBe(true);
+});
+
+test('it reads the session as not summarized once a session opened from the summary', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_summarized',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { throughSequence: 0 },
+      erasable: { text: 'Open threads: the gauge report.' },
+    },
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.isSummarized).toBe(false);
+});
+
+test('it counts the compactions that failed in a row from the newest failure', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    {
+      kind: 'model.compaction_failed',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { trigger: 'threshold', failures: 2 },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.compactionFailures).toBe(2);
+});
+
+test('it counts no failure in a row once a summary committed after the last failure', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.compaction_failed',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { trigger: 'threshold', failures: 1 },
+    },
+    {
+      kind: 'model.session_summarized',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { throughSequence: 0 },
+      erasable: { text: 'Open threads: the gauge report.' },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.compactionFailures).toBe(0);
 });
 
 test('it reads that a session opened with an opening record', async () => {

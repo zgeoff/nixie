@@ -12,6 +12,7 @@ import {
 import type { TurnFrame } from './build-query-options';
 import { getHome } from './get-home';
 import { removeSessionState } from './remove-session-state';
+import { runSummary } from './run-summary';
 import { runTurn } from './run-turn';
 
 export interface GuestIO {
@@ -27,8 +28,8 @@ export interface GuestIO {
 }
 
 // Runs the conversation guest for one turn: the first host frame starts it, each later message
-// frame goes into it, and its frames go out framed. A purge frame in its place removes the session
-// state instead. A failure becomes a failed frame, so the host always learns how the run ended.
+// frame goes into it, and its frames go out framed. A summarize frame in its place runs one summary
+// call instead, and a purge frame removes the session state. A failure becomes a failed frame, so the host always learns how the run ended.
 export async function runConversationGuest(io: GuestIO): Promise<void> {
   const frames = readHostFrames(io.input)[Symbol.asyncIterator]();
   const emit = (frame: GuestFrame) => io.write(encodeFrame(encodeTurnFrame(frame)));
@@ -37,7 +38,7 @@ export async function runConversationGuest(io: GuestIO): Promise<void> {
     const first = await frames.next();
 
     if (first.done === true || first.value.type === 'message') {
-      throw new Error('the first host frame must start a turn or purge the session');
+      throw new Error('the first host frame must start a turn, a summary or a purge');
     }
 
     await runFirstFrame(first.value, { io, frames, emit });
@@ -60,6 +61,12 @@ async function runFirstFrame(
     await removeSessionState(getHome(run.io.env));
 
     await run.emit({ type: 'purged' });
+
+    return;
+  }
+
+  if (frame.type === 'summarize') {
+    await runSummary(frame, { env: run.io.env, emit: run.emit });
 
     return;
   }

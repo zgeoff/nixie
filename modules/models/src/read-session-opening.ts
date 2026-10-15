@@ -99,8 +99,8 @@ export async function readSessionOpening(
     blocks: blocks.filter((block) => block !== null),
     record: {
       kind: query.start.kind,
-      reason: query.start.kind === 'first' ? null : query.start.reason,
-      lostSessionID: query.start.kind === 'first' ? null : query.start.lostSessionID,
+      reason: query.start.kind === 'rebuild' ? query.start.reason : null,
+      lostSessionID: query.start.kind === 'rebuild' ? query.start.lostSessionID : null,
       summarySequence: summary?.sequence ?? null,
       recentRecords: recent.length,
       recentEvents: replayed?.eventCount ?? 0,

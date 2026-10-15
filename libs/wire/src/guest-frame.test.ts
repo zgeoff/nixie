@@ -126,3 +126,27 @@ test('it refuses an ended frame whose end reason is not a string', () => {
     path: ['terminalReason'],
   });
 });
+
+test('it accepts a summarized frame with the summary, its chain entry and its token counts', () => {
+  const frame: GuestFrame = {
+    type: 'summarized',
+    boundary: {
+      sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+    },
+    text: 'Open threads: the tide gauge report is due on Friday.',
+    usage: { inputTokens: 40, outputTokens: 12, cacheReadTokens: 900, cacheWriteTokens: 0 },
+  };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it refuses a summarized frame with no chain entry', () => {
+  const result = guestFrameSchema.safeParse({
+    type: 'summarized',
+    text: 'Open threads: the tide gauge report is due on Friday.',
+    usage: { inputTokens: 40, outputTokens: 12, cacheReadTokens: 900, cacheWriteTokens: 0 },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['boundary'] });
+});

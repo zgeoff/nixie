@@ -1,15 +1,15 @@
 # Session opening
 
 Every new session of the conversation opens from one builder, with the same slots in the same order,
-whatever started it: the first session, or a rebuild after the guest lost the session or a forget
-invalidated it. The system prompt holds only what nixie's definitions set, and everything that
-changes with the user's data goes in the session's first user message. That message stays in the
-session's transcript for the session's life, so the cached prefix holds from turn to turn, and a
-change during the session reaches the model as a note before the next message.
+whatever started it: the first session, a compaction, or a rebuild after the guest lost the session
+or a forget invalidated it. The system prompt holds only what nixie's definitions set, and
+everything that changes with the user's data goes in the session's first user message. That message
+stays in the session's transcript for the session's life, so the cached prefix holds from turn to
+turn, and a change during the session reaches the model as a note before the next message.
 [Conversation turns](./conversation-turns.md) covers the turn, the fork on each resume and when a
-turn opens a new session, and [memory in context](../memory/context.md) covers the pinned core and
-retrieval. The [session opening](../../design/platform/core/session-opening.md) design covers the
-compactor, which is not built.
+turn opens a new session, [memory in context](../memory/context.md) covers the pinned core and
+retrieval, and [compaction](./compaction.md) covers the step that writes the summary a session opens
+with.
 
 ## The slots
 
@@ -34,10 +34,9 @@ pin therefore leaves the system prompt and the cached prefix of the whole histor
 pin, an edit or an unpin during the session arrives as the pinned-core change note, which overrides
 the opening's copy of the item, and the next session opens with the new core.
 
-The SDK's own compaction runs inside a turn and can summarize the first message away with the rest
-of the history. The turn after a compaction therefore sends the whole pinned core again, as a
-pinned-memory system message before its other blocks. The model calls later in the turn that
-compacted read the summary without that copy, until the next turn sends it.
+The CLI's own compaction, which the guest keeps off, would summarize the first message away with the
+rest of the history. When the CLI reports one anyway, the turn after it therefore sends the whole
+pinned core again, as a pinned-memory system message before its other blocks.
 
 ## One path for every start
 
@@ -82,7 +81,7 @@ order the status shows:
 
 | Entry             | Owner              | What it reads                                                  |
 | ----------------- | ------------------ | -------------------------------------------------------------- |
-| The kind of start | the models package | the first session, or a rebuild and its reason                 |
+| The kind of start | the models package | the first session, a compaction, or a rebuild and its reason   |
 | The start time    | the models package | when the session opened, in the zone of the newest message     |
 | The nixie version | the server         | the release that opened the session                            |
 | The model         | the models package | the model of the conversation's profile, so it can name itself |

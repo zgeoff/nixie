@@ -1,6 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
+import type { ScriptedModelRequest } from '@heynixie/testing';
 import { startScriptedModel } from '@heynixie/testing';
 import { startConversation } from './start-conversation';
 import { buildTestModelsConfig } from './test-utils/build-test-models-config';
@@ -324,43 +325,96 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
   ]);
 }, 30_000);
 
-test('it records an automatic compaction once, with its token counts and no summary text', async () => {
+test('it summarizes a session past 0.8 of its window in the guest, and opens the next session from the summary alone', async () => {
   const ctx = await setupTest();
 
   const [runner] = await Promise.all([
-    ctx.startRunner({ image: 'nixie-conversation-0123456789ab', contextTokens: 100_000 }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  // the tool call reports a context past the window, so the CLI compacts before its next call,
-  // and the summary request takes the reply after it
+  // the first reply reports a context past 0.8 of the 200,000-token window; the second answers the
+  // compaction instruction
   ctx.model.addReplies(
-    { text: 'APPLE' },
-    { text: 'BANANA' },
-    { toolUse: { name: 'mcp__nixie__notes_read', input: {} }, inputTokens: 150_000 },
-    { text: 'SUMMARY: the owner said one and two.' },
-    { text: 'CHERRY' },
+    { text: 'The gauge reads 3.2 m.', inputTokens: 170_000 },
+    { text: 'Open threads: the gauge report is due on Friday.' },
+    { text: 'It will read 3.4 m.' },
   );
 
-  await sendTestMessage(ctx.context, runner.runStep, 'one');
-  await sendTestMessage(ctx.context, runner.runStep, 'two');
-  await sendTestMessage(ctx.context, runner.runStep, 'three');
+  await sendTestMessage(ctx.context, runner.runStep, 'What does the tide gauge read?');
+
+  // the step this message wakes compacts first, and the next one opens the new session
+  await sendTestMessage(ctx.context, runner.runStep, 'And tomorrow?');
+  await sendTestMessage(ctx.context, runner.runStep, 'Is that high?');
 
   const records = await ctx.readRecords();
 
-  expect(records.filter((record) => record.kind === 'model.compacted')).toMatchObject([
+  // the summary call forks the session after the first turn and adds the instruction to it
+  expect(ctx.model.requests).toSatisfyAny((request: ScriptedModelRequest) => {
+    const sent = JSON.stringify(request.body);
+
+    return sent.includes('nixie is closing this session now') && sent.includes('3.2 m.');
+  });
+
+  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toSatisfy(
+    (messages: string) =>
+      messages.includes('Open threads: the gauge report is due on Friday.') &&
+      messages.includes('Is that high?') &&
+      !messages.includes('The gauge reads 3.2 m.'),
+  );
+
+  expect(records.filter((record) => record.kind === 'model.session_summarized')).toMatchObject([
     {
-      thread: 'conversation',
-      payload: {
-        trigger: 'auto',
-        preTokens: expect.toBeWithin(150_000, 160_000),
-        postTokens: expect.toBeNumber(),
-      },
-      erasable: { status: 'none' },
+      payload: { trigger: 'threshold', contextSize: expect.toBeWithin(170_000, 171_000) },
+      erasable: { fields: { text: 'Open threads: the gauge report is due on Friday.' } },
     },
   ]);
+}, 30_000);
 
-  expect(JSON.stringify(records)).not.toInclude('SUMMARY');
+test('it erases the summary when you forget a memory item, and opens the next session with no summary', async () => {
+  const ctx = await setupTest();
+
+  const [key, runner] = await Promise.all([
+    ctx.memory.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance: {
+        origin: 'owner',
+        source: 'owner',
+        taskID: null,
+        proposalID: null,
+        checks: null,
+      },
+    }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  ctx.model.addReplies(
+    { text: 'Under the flowerpot.', inputTokens: 170_000 },
+    { text: 'Open threads: the spare key under the blue flowerpot.' },
+    { text: 'You asked about a key.' },
+  );
+
+  await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
+  await sendTestMessage(ctx.context, runner.runStep, 'Thanks.');
+
+  await ctx.memory.forget({
+    target: key,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await sendTestMessage(ctx.context, runner.runStep, 'What was I asking about?');
+
+  const records = await ctx.readRecords();
+
+  expect(records.filter((record) => record.kind === 'model.session_summarized')).toMatchObject([
+    { erasable: { status: 'shredded' } },
+  ]);
+
+  expect(JSON.stringify(ctx.readLastRequest())).toSatisfy(
+    (request: string) =>
+      request.includes('What was I asking about?') && !request.includes('Open threads:'),
+  );
 }, 30_000);
 
 test('it resumes the session on a sandbox that a new image replaced between two turns', async () => {
@@ -591,7 +645,7 @@ test('it gives the next best match the slot of an item the session already holds
   );
 }, 30_000);
 
-test('it retrieves an item again after a compaction leaves it out of the session', async () => {
+test('it retrieves an item again in the session that opens after a compaction', async () => {
   const ctx = await setupTest();
 
   const provenance = {
@@ -604,19 +658,17 @@ test('it retrieves an item again after a compaction leaves it out of the session
 
   const [key, runner] = await Promise.all([
     ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
-    ctx.startRunner({ image: 'nixie-conversation-0123456789ab', contextTokens: 100_000 }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
     ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
     ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
-  // the tool call reports a context past the window, so the CLI compacts in the second turn
+  // the first reply reports a context past 0.8 of the window, so the next step compacts
   ctx.model.addReplies(
-    { text: 'APPLE' },
-    { toolUse: { name: 'mcp__nixie__notes_read', input: {} }, inputTokens: 150_000 },
-    { text: 'SUMMARY: the owner asked about a key.' },
+    { text: 'APPLE', inputTokens: 170_000 },
+    { text: 'Open threads: the owner asked about a key.' },
     { text: 'BANANA' },
-    { text: 'CHERRY' },
   );
 
   await sendTestMessage(ctx.context, runner.runStep, 'Where is the spare key?');
@@ -625,13 +677,13 @@ test('it retrieves an item again after a compaction leaves it out of the session
 
   const records = await ctx.readRecords();
 
-  expect(records.filter((record) => record.kind === 'model.compacted')).toHaveLength(1);
+  expect(records.filter((record) => record.kind === 'model.session_summarized')).toHaveLength(1);
 
   expect(
     records
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
-  ).toStrictEqual([[{ ...key }], [], [{ ...key }]]);
+  ).toStrictEqual([[{ ...key }], [{ ...key }]]);
 }, 30_000);
 
 test('it retrieves an item again on a rebuilt session that lost the turn it came in', async () => {

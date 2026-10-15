@@ -346,7 +346,7 @@ test('it records no context on a turn end whose model calls reported none', asyn
   ).toStrictEqual([false]);
 });
 
-test('it records the reason each turn ended on its turn end, an overflow apart from an API error', async () => {
+test('it records the reason each turn ended on its turn end', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -362,9 +362,8 @@ test('it records the reason each turn ended on its turn end, an overflow apart f
       type: 'ended',
       boundary: { sessionID: crypto.randomUUID(), messageID: crypto.randomUUID() },
       subtype: 'success',
-      stopReason: 'stop_sequence',
-      isError: true,
-      terminalReason: 'prompt_too_long',
+      stopReason: 'end_turn',
+      terminalReason: 'completed',
       turns: 1,
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     },
@@ -390,7 +389,7 @@ test('it records the reason each turn ended on its turn end, an overflow apart f
   const records = await ctx.readKinds('model.turn_ended');
 
   expect(records.map((record) => record.payload['terminalReason'])).toStrictEqual([
-    'prompt_too_long',
+    'completed',
     'api_error',
   ]);
 });

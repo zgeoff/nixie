@@ -40,6 +40,12 @@ export type CompactionActivity = NonNullable<LiveRecord['compaction']> & {
   readonly sequence: number;
 };
 
+// A summary nixie committed to close the session, with its sizes, its text while readable, and the
+// sequence of its record, which keys it in a list.
+export type SummaryActivity = NonNullable<LiveRecord['summary']> & {
+  readonly sequence: number;
+};
+
 type StepStatus = 'done' | 'failed' | 'interrupted' | 'running';
 
 export interface StepActivity {
@@ -51,6 +57,9 @@ export interface StepActivity {
 
   // the context of the step's last turn end that recorded one
   readonly context?: ContextActivity;
+
+  // each summary the step committed; absent when the step closed no session
+  readonly summaries?: readonly SummaryActivity[];
 
   // how long the step ran, from its start to its end, once it has ended
   readonly durationMs?: number;
@@ -210,9 +219,14 @@ function buildStep(
     record.compaction === undefined ? [] : [{ ...record.compaction, sequence: record.sequence }],
   );
 
+  const summaries = records.flatMap((record) =>
+    record.summary === undefined ? [] : [{ ...record.summary, sequence: record.sequence }],
+  );
+
   return {
     calls: collectCalls(records),
     ...(compactions.length === 0 ? {} : { compactions }),
+    ...(summaries.length === 0 ? {} : { summaries }),
     ...(context === undefined ? {} : { context }),
     ...(durationMs === undefined ? {} : { durationMs }),
     ...(error === undefined ? {} : { error }),

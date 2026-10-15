@@ -1,6 +1,6 @@
 import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
-import type { InboxMessage, SessionPoint, TurnProfile } from '@heynixie/wire';
+import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { CompletedTurn } from './build-step-result';
 import { inboxBatchLimit } from './inbox-batch-limit';
@@ -8,7 +8,7 @@ import { readLiveInbox } from './read-live-inbox';
 import { readRecalledThrough } from './read-recalled-through';
 import { runGuestTurn } from './run-guest-turn';
 import { toInboxMessage } from './to-inbox-message';
-import type { ConversationRun, MessageTimeOptions, ResolvedProfile, TurnNote } from './types';
+import type { ConversationRun, MessageTimeOptions, TurnNote } from './types';
 
 // The session a turn runs on and what it opens with.
 export interface LiveTurnPlan {
@@ -67,7 +67,7 @@ async function runTokenTurn(
       command: run.command,
       turn: {
         type: 'turn',
-        profile: toTurnProfile(run.profile.profile),
+        profile: run.turnProfile,
         tools: { url, token: plan.token },
         resume: plan.resume,
         systemPrompt: plan.systemPrompt,
@@ -124,15 +124,4 @@ function buildTurnInput(
   }
 
   return [{ uuid: first.uuid, text: [...preamble, first.text].join('\n\n') }, ...rest];
-}
-
-// the profile as the guest needs it, with no credential reference and no prices
-function toTurnProfile(profile: ResolvedProfile['profile']): TurnProfile {
-  return {
-    model: profile.model,
-    baseURL: profile.baseURL,
-    effort: profile.effort,
-    authHeader: profile.authHeader,
-    contextTokens: profile.contextTokens,
-  };
 }

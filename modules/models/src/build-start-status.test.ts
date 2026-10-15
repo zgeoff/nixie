@@ -8,6 +8,11 @@ test.each([
     'Start: a new session. Earlier history is in the event log.',
   ],
   [
+    { kind: 'compaction' } as const,
+    'compaction',
+    'Start: after a compaction. The summary below is yours, written as the earlier session closed, and it covers every turn of that session. Earlier history is in the event log.',
+  ],
+  [
     { kind: 'rebuild', reason: 'lost', lostSessionID: 'a-lost-session' } as const,
     'rebuild:lost',
     'Start: a rebuild, because the earlier session was lost. Earlier history is in the event log.',

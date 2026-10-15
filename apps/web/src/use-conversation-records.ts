@@ -66,8 +66,8 @@ function mergeRecords(page: readonly LiveRecord[], live: readonly LiveRecord[]):
   );
 
   return {
-    records: kept.map((record) =>
-      forgotten.has(record.sequence) ? toForgottenRecord(record) : record,
+    records: toReadableSummaries(
+      kept.map((record) => (forgotten.has(record.sequence) ? toForgottenRecord(record) : record)),
     ),
     forgottenClientMessageIDs: kept.flatMap((record) =>
       forgotten.has(record.sequence) && record.message?.clientMessageId !== undefined
@@ -81,4 +81,41 @@ function toForgottenRecord(record: LiveRecord): LiveRecord {
   const { message: _forgotten, ...rest } = record;
 
   return rest;
+}
+
+// Every forget invalidates the session and erases every summary, a summary that commits after the
+// invalidation included, so a summary keeps its text only while no invalidation is newer than the
+// opening of the session it summarized.
+function toReadableSummaries(records: readonly LiveRecord[]): readonly LiveRecord[] {
+  const invalidated = records.findLast((record) => record.kind === 'model.session_invalidated');
+
+  if (invalidated === undefined) {
+    return records;
+  }
+
+  return records.map((record) =>
+    record.summary?.text !== undefined &&
+    invalidated.sequence > findOpenedBefore(records, record.sequence)
+      ? toErasedSummary(record)
+      : record,
+  );
+}
+
+// the sequence of the newest session opening before the sequence, or -1 when the records hold none
+function findOpenedBefore(records: readonly LiveRecord[], sequence: number): number {
+  return (
+    records.findLast(
+      (record) => record.kind === 'model.session_opened' && record.sequence < sequence,
+    )?.sequence ?? -1
+  );
+}
+
+function toErasedSummary(record: LiveRecord): LiveRecord {
+  if (record.summary === undefined) {
+    return record;
+  }
+
+  const { text: _erased, ...summary } = record.summary;
+
+  return { ...record, summary };
 }

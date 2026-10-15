@@ -56,15 +56,28 @@ const messageFrameSchema = z
   })
   .readonly();
 
+// asks for a summary of the session at the resume point, on a fork, in one model call with no
+// tools: the instruction goes in as the call's one user message
+const summarizeFrameSchema = z
+  .object({
+    type: z.literal('summarize'),
+    profile: turnProfileSchema,
+    resume: sessionPointSchema,
+    systemPrompt: z.string(),
+    instruction: z.string().min(1),
+  })
+  .readonly();
+
 // removes the guest's session state, every transcript and fork, once a forget invalidated it
 const purgeFrameSchema = z.object({ type: z.literal('purge') }).readonly();
 
-// What the host sends the conversation guest. A turn starts one model turn, which resumes at the
-// session boundary when there is one. A message reaches the running turn at its next tool boundary.
-// A purge, sent in place of a turn, removes the session state and runs no model.
+// What the host sends the conversation guest: a turn, which resumes at the session boundary when
+// there is one, a message for the running turn's next tool boundary, or in a turn's place a summary
+// of the session or a purge of its state.
 export const hostFrameSchema = z.discriminatedUnion('type', [
   turnFrameSchema,
   messageFrameSchema,
+  summarizeFrameSchema,
   purgeFrameSchema,
 ]);
 

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
 import { startTestMemory } from './test-utils/start-test-memory';
 
@@ -42,6 +42,29 @@ test('it returns the items that match a query word for word, with their provenan
     ],
     next: null,
   });
+});
+
+test('it never returns a session summary whose text matches the query', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'model.session_summarized',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { throughSequence: 0, trigger: 'threshold', summaryTokens: 9 },
+      erasable: { text: 'Open threads: the blue flowerpot by the door.' },
+    },
+  ]);
+
+  const result = await ctx.memory.store.recall({ query: 'blue flowerpot' });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([item.itemID]);
 });
 
 test('it leaves pinned items out of a query when asked', async () => {

@@ -14,12 +14,9 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
   const toolCall = toolKinds.has(record.kind) ? toToolCall(record) : undefined;
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
-  const context = record.kind === 'model.turn_ended' ? toContext(record) : undefined;
-  const compaction = record.kind === 'model.compacted' ? toCompaction(record) : undefined;
 
   return {
-    ...(compaction === undefined ? {} : { compaction }),
-    ...(context === undefined ? {} : { context }),
+    ...toSessionFields(record),
     ...(forgetKinds.has(record.kind) ? toForget(record) : {}),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
@@ -203,6 +200,29 @@ function isVerdict(value: JSONValue | undefined): value is RatingItem['verdict']
   return typeof value === 'string' && verdicts.has(value);
 }
 
+type SessionFields = Pick<
+  ContractRecord,
+  'compaction' | 'compactionFailure' | 'context' | 'summary'
+>;
+
+// What the conversation's session records carry: a turn end's context, a compaction of the SDK's,
+// and nixie's summary or a failed compaction in its place.
+function toSessionFields(record: LogRecord): SessionFields {
+  const context = record.kind === 'model.turn_ended' ? toContext(record) : undefined;
+  const compaction = record.kind === 'model.compacted' ? toCompaction(record) : undefined;
+  const summary = record.kind === 'model.session_summarized' ? toSummary(record) : undefined;
+
+  const compactionFailure =
+    record.kind === 'model.compaction_failed' ? toCompactionFailure(record) : undefined;
+
+  return {
+    ...(compaction === undefined ? {} : { compaction }),
+    ...(compactionFailure === undefined ? {} : { compactionFailure }),
+    ...(context === undefined ? {} : { context }),
+    ...(summary === undefined ? {} : { summary }),
+  };
+}
+
 type Context = NonNullable<ContractRecord['context']>;
 
 // A turn end names the context its last model call read and the window it compacts within; one
@@ -228,6 +248,37 @@ function toCompaction(record: LogRecord): Compaction | undefined {
   }
 
   return { ...(typeof postTokens === 'number' ? { postTokens } : {}), preTokens, trigger };
+}
+
+type Summary = NonNullable<ContractRecord['summary']>;
+
+// A summary's record holds what asked for it and its sizes, and its text while its key exists. A
+// summary a forget erased keeps its place with no text.
+function toSummary(record: LogRecord): Summary | undefined {
+  const trigger = record.payload['trigger'];
+  const contextSize = record.payload['contextSize'];
+  const summaryTokens = record.payload['summaryTokens'];
+  const text = record.erasable.status === 'readable' ? record.erasable.fields['text'] : undefined;
+
+  if ((trigger !== 'threshold' && trigger !== 'overflow') || typeof summaryTokens !== 'number') {
+    return undefined;
+  }
+
+  return {
+    ...(typeof contextSize === 'number' ? { contextSize } : {}),
+    summaryTokens,
+    ...(typeof text === 'string' ? { text } : {}),
+    trigger,
+  };
+}
+
+type CompactionFailure = NonNullable<ContractRecord['compactionFailure']>;
+
+// A failed compaction's record counts the failures in a row; its error stays out of the client.
+function toCompactionFailure(record: LogRecord): CompactionFailure | undefined {
+  const failures = record.payload['failures'];
+
+  return typeof failures === 'number' && failures > 0 ? { failures } : undefined;
 }
 
 // the start and the end of a forget of your message or a reply

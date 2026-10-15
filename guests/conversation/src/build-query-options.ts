@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's MCP config has no readonly form
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
 import { getCompactWindow } from './get-compact-window';
@@ -8,24 +9,30 @@ import { toolServerName } from './tool-server-name';
 
 export type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
+export type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
+
 export interface QueryContext {
   // the guest process's own environment, which holds the sandbox's placeholders and proxy settings
   readonly env: Readonly<Record<string, string | undefined>>;
 
-  // nixie's tool server: the run's HTTP endpoint in production, an in-process server in a test
-  readonly toolServer: McpServerConfig;
+  // nixie's tool server: the run's HTTP endpoint in production, an in-process server in a test, or
+  // null for a summary, which runs with no tools
+  readonly toolServer: McpServerConfig | null;
 }
 
-// Builds the options of every query(): nixie's tools alone, a system prompt rendered fresh on every
-// request, and the SDK's compaction pinned to run only inside a turn. options.env replaces the
-// CLI's environment, so each variable goes in by name.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the SDK's MCP config has no readonly form
-export function buildQueryOptions(turn: TurnFrame, context: QueryContext): Options {
+// Builds the options of every query(): nixie's tools alone, or none and one model call for a
+// summary, a system prompt rendered fresh on every request, and every SDK compaction off. options.env
+// replaces the CLI's environment, so each variable goes in by name.
+export function buildQueryOptions(
+  turn: TurnFrame | SummarizeFrame,
+  context: QueryContext,
+): Options {
   const home = getHome(context.env);
 
   return {
     tools: [],
-    allowedTools: [`mcp__${toolServerName}`],
+    allowedTools: context.toolServer === null ? [] : [`mcp__${toolServerName}`],
+    ...(context.toolServer === null ? { maxTurns: 1 } : {}),
     permissionMode: 'dontAsk',
     settingSources: [],
     strictMcpConfig: true,
@@ -35,15 +42,13 @@ export function buildQueryOptions(turn: TurnFrame, context: QueryContext): Optio
       disableBundledSkills: true,
       autoMemoryEnabled: false,
       autoDreamEnabled: false,
-      autoCompactEnabled: true,
+      autoCompactEnabled: false,
 
       autoCompactWindow: getCompactWindow(turn.profile),
       precomputeCompactionEnabled: false,
-
-      // a compaction runs only inside a turn, so its record lands with that turn's
       idleCompaction: false,
     },
-    mcpServers: { [toolServerName]: context.toolServer },
+    mcpServers: context.toolServer === null ? {} : { [toolServerName]: context.toolServer },
     systemPrompt: { type: 'custom', prompt: turn.systemPrompt, snapshot: false },
     cwd: getWorkDir(home),
     env: buildQueryEnv(turn, context.env, home),
@@ -80,7 +85,7 @@ const credentialVariables = {
 } as const;
 
 function buildQueryEnv(
-  turn: TurnFrame,
+  turn: Pick<TurnFrame, 'profile'>,
   env: Readonly<Record<string, string | undefined>>,
   home: string,
 ): Record<string, string> {

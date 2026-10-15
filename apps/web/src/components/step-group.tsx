@@ -7,12 +7,13 @@ import { CompactionMarker } from './compaction-marker';
 import { StepContext } from './step-context';
 import { StepMemories } from './step-memories';
 import { StepSection } from './step-section';
+import { SummaryMarker } from './summary-marker';
 
 export interface StepGroupProps {
   readonly step: StepActivity;
 }
 
-// One step of a task as one collapsed line, with a marker under it for each compaction. Opening it
+// One step of a task as one collapsed line, with a marker under it for each compaction and summary. Opening it
 // shows a collapsible section per source: the step, its memories, its context, its tool calls with
 // their inputs and results, and the error of a failed step.
 export function StepGroup(props: StepGroupProps): ReactNode {
@@ -46,6 +47,9 @@ export function StepGroup(props: StepGroupProps): ReactNode {
       </details>
       {step.compactions?.map((compaction) => (
         <CompactionMarker compaction={compaction} key={compaction.sequence} />
+      ))}
+      {step.summaries?.map((summary) => (
+        <SummaryMarker key={summary.sequence} summary={summary} />
       ))}
     </li>
   );

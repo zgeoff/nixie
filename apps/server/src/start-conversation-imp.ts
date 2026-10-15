@@ -58,6 +58,7 @@ export async function startConversationImp(
       ownerName: parts.config.owner.name,
       agentNames: parts.config.agent.names,
     },
+    compaction: parts.config.compaction,
     defaultZone: parts.config.time.default_zone,
     log: parts.log,
   });

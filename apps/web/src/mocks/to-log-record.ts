@@ -17,6 +17,7 @@ export function toLogRecord(record: StoredRecord): LogRecord {
     ...(record.recall === undefined ? {} : { recall: toLogRecall(record.recall) }),
     recordedAt: record.recordedAt,
     sequence: record.sequence,
+    ...(record.summary === undefined ? {} : { summary: { ...record.summary } }),
     ...(record.task === undefined ? {} : { task: structuredClone(record.task) }),
     thread: record.thread,
     ...(record.toolCall === undefined ? {} : { toolCall: structuredClone(record.toolCall) }),

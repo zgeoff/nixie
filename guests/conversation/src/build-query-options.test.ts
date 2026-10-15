@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
+import { buildMockSummarizeFrame, buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
 import { buildQueryOptions } from './build-query-options';
 
@@ -102,6 +102,30 @@ test('it resumes at the boundary on a fork of the session', () => {
     resume: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
     resumeSessionAt: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
     forkSession: true,
+  });
+});
+
+test('it gives a summary no tools and one model call, on a fork of the session at its point', () => {
+  const options = buildQueryOptions(
+    buildMockSummarizeFrame({
+      profile: { authHeader: 'x-api-key' },
+      resume: {
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      },
+    }),
+    { env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' }, toolServer: null },
+  );
+
+  expect(options).toMatchObject({
+    tools: [],
+    allowedTools: [],
+    maxTurns: 1,
+    mcpServers: {},
+    resume: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+    resumeSessionAt: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+    forkSession: true,
+    settings: { autoCompactEnabled: false },
   });
 });
 
