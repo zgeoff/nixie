@@ -33,8 +33,15 @@ const spanSchema = z.object({
   start: z.int().default(() => faker.number.int({ max: 100, min: 0 })),
 });
 
+// an image of your message, with its bytes in base64 as the API keeps them sealed
+const imageSchema = z.object({
+  data: z.base64().default(() => faker.string.alphanumeric(8)),
+  mediaType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif']).default('image/png'),
+});
+
 const messageSchema = z.object({
   clientMessageId: z.uuid().optional(),
+  images: z.array(imageSchema).optional(),
   spans: z.array(spanSchema).optional(),
   text: z.string().default(() => faker.lorem.sentence()),
 });

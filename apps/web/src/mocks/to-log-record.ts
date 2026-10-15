@@ -73,8 +73,11 @@ function toLogMessage(message: NonNullable<StoredRecord['message']>): LogMessage
     start: span.start,
   }));
 
+  const images = message.images?.map((image) => ({ mediaType: image.mediaType }));
+
   return {
     ...(message.clientMessageId === undefined ? {} : { clientMessageId: message.clientMessageId }),
+    ...(images === undefined ? {} : { images }),
     ...(spans === undefined ? {} : { spans }),
     text: message.text,
   };

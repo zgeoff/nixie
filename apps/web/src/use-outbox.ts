@@ -97,6 +97,7 @@ async function trySendMessage(
       text: message.text,
       thread: message.thread,
       ...(message.timeZone === undefined ? {} : { timeZone: message.timeZone }),
+      ...(message.images === undefined ? {} : { images: [...message.images] }),
     });
 
     return 'sent';
