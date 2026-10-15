@@ -88,14 +88,15 @@ interface SessionDiff {
 }
 
 // Fewer than 2 active items leave nothing to merge and little to tidy, so that run needs no
-// session. The run closes whether the session ends or fails, so a failed run leaves nothing staged.
+// session. A list cut at the budget still runs one, since the session recalls the items past the
+// cut. The run closes whether the session ends or fails, so a failed run leaves nothing staged.
 async function runSession(parts: ConsolidatorParts, signal: AbortSignal): Promise<SessionDiff> {
   const listed = await readConsolidationItems(parts.store, {
     listTokens: parts.config.itemListTokens,
     thread: memoryConsolidatorTaskID,
   });
 
-  if (listed.items.length < 2) {
+  if (listed.isComplete && listed.items.length < 2) {
     return { changes: [], model: null, shownItems: listed.items.length, summary: null };
   }
 
