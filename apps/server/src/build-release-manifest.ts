@@ -47,7 +47,8 @@ export function buildReleaseManifest(inputs: ReleaseManifestInputs) {
 }
 
 function toTaggedImage(ref: string, version: string): string {
-  const match = /^(?<repository>[^@:]+)@(?<digest>sha256:[\da-f]{64})$/u.exec(ref);
+  // only the registry host may hold a colon, for its port, so a tag in the last segment fails
+  const match = /^(?<repository>(?:[^/@]+\/)*[^/@:]+)@(?<digest>sha256:[\da-f]{64})$/u.exec(ref);
 
   if (match?.groups === undefined) {
     throw new Error(`"${ref}" is not an image named <repository>@sha256:<digest>`);

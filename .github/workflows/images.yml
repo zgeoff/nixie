@@ -1,7 +1,8 @@
 # Rehearses the release's image stages on every pull request, against a registry that lives only
 # for the job: it builds each image as the release does, writes the sandbox manifest from the
-# sandbox digests, checks that the nixie image carries it, then runs the release's pull check and
-# tag stage. A broken Dockerfile or a changed checksum then fails the pull request, never a release.
+# sandbox digests, checks that the nixie image carries it, then runs the release's pull check, tag
+# stage and assets stage. A broken Dockerfile or a changed checksum then fails the pull request,
+# never a release.
 name: Images
 
 on:
@@ -113,4 +114,45 @@ jobs:
             echo '| ----- | ------ |'
             printf '| `%s` | `%s` |\n' "${CONVERSATION%@*}" "${CONVERSATION#*@}" "${FETCH%@*}" "${FETCH#*@}" \
               "${WEB%@*}" "${WEB#*@}" "${NIXIE%@*}" "${NIXIE#*@}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      # the release's assets stage on the rehearsal digests, with the summaries the notes stage
+      # writes; every image that release.json names must resolve its tag to its digest
+      - name: Build release.json, and check each image it names
+        env:
+          CONVERSATION:
+            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
+          FETCH: ${{ env.REGISTRY }}/nixie-fetch@${{ steps.fetch.outputs.digest }}
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+          WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
+        run: |
+          bun libs/db/src/run-migration-check.ts --summary "$RUNNER_TEMP/migrations.json" > /dev/null
+          bun apps/server/src/run-config-schema-check.ts --summary "$RUNNER_TEMP/config-schema.json" \
+            > /dev/null
+          bun apps/server/src/run-release-manifest.ts --version 0.0.0-rehearsal \
+            --commit "$GITHUB_SHA" --server "$NIXIE" --web "$WEB" --conversation "$CONVERSATION" \
+            --fetch "$FETCH" --migrations "$RUNNER_TEMP/migrations.json" \
+            --config-schema "$RUNNER_TEMP/config-schema.json" --out "$RUNNER_TEMP/release.json"
+          jq -r '.images[], .sandboxImages[]' "$RUNNER_TEMP/release.json" | while read -r ref; do
+            named=$(docker buildx imagetools inspect "${ref%@*}" --format '{{json .Manifest}}' | jq -r .digest)
+            if [[ $named != "${ref#*@}" ]]; then
+              echo "::error::release.json names $ref, but ${ref%@*} names $named"
+              exit 1
+            fi
+            echo "$ref resolves"
+          done
+          {
+            echo '## release.json'
+            echo
+            echo '```json'
+            cat "$RUNNER_TEMP/release.json"
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

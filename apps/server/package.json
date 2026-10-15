@@ -37,6 +37,7 @@
     "@heynixie/testing": "workspace:*",
     "@orpc/client": "catalog:",
     "ajv": "8.20.0",
-    "ajv-formats": "3.0.1"
+    "ajv-formats": "3.0.1",
+    "release-please": "17.11.2"
   }
 }

@@ -121,7 +121,9 @@ impd pulls without credentials, and the check-pulls stage fails the release unti
 Every pull request rehearses the image stages against a registry that lives only for the job. It
 builds all 4 images, writes the sandbox manifest, checks that the nixie image carries it, pulls the
 sandbox images with no credentials, and tags every image twice to prove the tag stage keeps each
-digest and repeats safely. A broken Dockerfile therefore fails the pull request, never a release.
+digest and repeats safely. It then builds `release.json` from those digests, as the assets stage
+does, and checks that each image it names resolves its tag to its digest. A broken Dockerfile or
+release script therefore fails the pull request, never a release.
 
 ## Attestations
 
