@@ -65,8 +65,9 @@ flowchart LR
    fails while a sandbox package is private.
 6. **Tag.** The workflow gives the version tag to each image's digest: the sandbox images first,
    then web, then nixie.
-7. **Assets.** The workflow builds `release.json` and uploads it to the GitHub release with the
-   committed `config.schema.json`, replacing the assets of an earlier attempt.
+7. **Assets.** The workflow uploads the committed `config.schema.json` to the GitHub release, then
+   builds and uploads `release.json`, replacing the assets of an earlier attempt. `release.json`
+   goes last, so a reader that finds it finds the schema it points to.
 
 The nixie image needs the sandbox digests, so the sandbox images go first. A failed nixie build
 stops the release before a web image exists that calls an API no image serves. The tag stage comes
@@ -171,11 +172,13 @@ GitHub release: each added migration with its schema version, and whether the re
 the schema it leaves. The list comes from the code, so it holds every migration whatever the commit
 messages say.
 
-The config schema check compares the committed `config.schema.json` with the copy the last release
-tag holds, and lists each change that can refuse a `config.yaml` that release accepts: a removed or
-newly required key, a narrower type, bound or value list, or a new pattern. A change it cannot prove
-harmless counts as breaking, so the list can hold a false alarm but never misses a break. A pull
-request with a breaking change fails until its title marks a breaking change with `!`, because the
-squash merge makes the title the commit header, and release-please then lists the commit under the
-changelog's breaking changes. A title edit runs the check again. The release notes stage runs the
-same comparison, adds its list to the GitHub release, and carries it in `release.json`.
+The config schema check lists each change between two copies of `config.schema.json` that can refuse
+a `config.yaml` the older copy accepts: a removed or newly required key, a narrower type, bound or
+value list, or a new pattern. A change it cannot prove harmless counts as breaking, so the list can
+hold a false alarm but never misses a break. On a pull request, the check compares with the copy on
+the pull request's base, so each pull request answers only for the change it adds. A pull request
+with a breaking change fails until its title marks a breaking change with `!`, because the squash
+merge makes the title the commit header, and release-please then lists the commit under the
+changelog's breaking changes. A title edit runs the check again. The release notes stage compares
+with the copy the last release tag holds, adds the list to the GitHub release, and carries it in
+`release.json`, so a break that merged with its marker never blocks the release.

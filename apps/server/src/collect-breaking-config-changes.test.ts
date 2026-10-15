@@ -176,6 +176,28 @@ test.each([
     expected: ['(root): adds minLength'],
   },
   {
+    label: 'a one-string tuple that becomes an array of nothing',
+    released: {
+      type: 'array',
+      prefixItems: [{ type: 'string' }],
+      items: false,
+      minItems: 1,
+      maxItems: 1,
+    },
+    current: { type: 'array', items: { not: {} } },
+    expected: ['(root): drops prefixItems'],
+  },
+  {
+    label: 'a dropped patternProperties',
+    released: {
+      type: 'object',
+      patternProperties: { '^x-': { type: 'string' } },
+      additionalProperties: false,
+    },
+    current: { type: 'object', additionalProperties: false },
+    expected: ['(root): drops patternProperties'],
+  },
+  {
     label: 'a widened oneOf choice',
     released: { oneOf: [{ type: 'integer' }, { type: 'number' }] },
     current: { oneOf: [{ type: 'number' }, { type: 'number' }] },

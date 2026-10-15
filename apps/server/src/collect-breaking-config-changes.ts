@@ -80,10 +80,28 @@ const narrowingCollectors: Readonly<Record<string, (change: KeywordChange) => re
     oneOf: collectChoiceChanges,
   };
 
-// every keyword but these only narrows what passes, so dropping one refuses nothing
+// keywords that only narrow what passes, so dropping one refuses nothing; a keyword such as
+// prefixItems also exempts values from another keyword, so dropping it can refuse a value
+const droppable = new Set([
+  ...Object.keys(narrowingCollectors),
+  'const',
+  'multipleOf',
+  'pattern',
+  'format',
+  'uniqueItems',
+  'allOf',
+  'not',
+  'contains',
+  'minContains',
+  'maxContains',
+  'dependentRequired',
+]);
+
 function collectNarrowingChanges(change: KeywordChange): readonly string[] {
   if (change.after === undefined) {
-    return [];
+    return droppable.has(change.keyword)
+      ? []
+      : [`${formatPath(change.path)}: drops ${change.keyword}`];
   }
 
   if (change.before === undefined) {

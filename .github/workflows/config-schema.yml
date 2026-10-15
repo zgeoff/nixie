@@ -1,9 +1,9 @@
-# Checks a pull request's config schema against the last release's, the newest v* tag reachable
-# from its base. A change that can refuse a config.yaml the release accepts passes only when the
-# pull request title marks a breaking change with "!", because the squash merge makes the title the
-# commit header and release-please lists such a commit under the changelog's breaking changes. A
-# title edit re-runs the check, so fixing the title clears it. Before a release commits the schema,
-# the check passes with nothing to compare.
+# Checks the config schema change that a pull request adds, against the schema on its base. A change
+# that can refuse a config.yaml the base accepts passes only when the pull request title marks a
+# breaking change with "!", because the squash merge makes the title the commit header and
+# release-please lists such a commit under the changelog's breaking changes. Each pull request
+# answers only for its own change, so a break that merged with its marker never fails a later one,
+# and the release notes compare with the last release. A title edit re-runs the check.
 name: Config schema
 
 on:
@@ -38,15 +38,14 @@ jobs:
           bun-version-file: .bun-version
 
       # the check imports nothing outside the repo, so it needs no install
-      - name: Check the config schema against the last release
+      - name: Check the config schema against the base
         env:
-          BASE: origin/${{ github.base_ref }}
+          BASE: ${{ github.base_ref }}
           TITLE: ${{ github.event.pull_request.title }}
         run: |
-          released="$RUNNER_TEMP/released-config.schema.json"
-          last=$(git describe --tags --abbrev=0 --match 'v*' "$BASE" 2> /dev/null || true)
-          if [[ -n $last ]] && git show "$last:apps/server/config.schema.json" > "$released" 2> /dev/null; then
-            bun apps/server/src/run-config-schema-check.ts --released "$released" --last-tag "$last" \
+          base="$RUNNER_TEMP/base-config.schema.json"
+          if git show "origin/$BASE:apps/server/config.schema.json" > "$base" 2> /dev/null; then
+            bun apps/server/src/run-config-schema-check.ts --released "$base" --last-tag "$BASE" \
               --title "$TITLE" | tee -a "$GITHUB_STEP_SUMMARY"
           else
             bun apps/server/src/run-config-schema-check.ts --title "$TITLE" | tee -a "$GITHUB_STEP_SUMMARY"

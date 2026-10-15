@@ -343,7 +343,8 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile --ignore-scripts
 
-      # --clobber replaces the assets of an earlier attempt, so a re-run publishes the same files
+      # --clobber replaces the assets of an earlier attempt, so a re-run publishes the same files.
+      # release.json goes last, so a reader that finds it finds the schema it points to
       - name: Publish release.json and the config schema
         env:
           GH_TOKEN: ${{ github.token }}
@@ -364,7 +365,8 @@ jobs:
             --server "$NIXIE" --web "$WEB" --conversation "$CONVERSATION" --fetch "$FETCH" \
             --migrations "$RUNNER_TEMP/migrations.json" \
             --config-schema "$RUNNER_TEMP/config-schema.json" --out "$RUNNER_TEMP/release.json"
-          gh release upload "$TAG" "$RUNNER_TEMP/release.json" apps/server/config.schema.json --clobber
+          gh release upload "$TAG" apps/server/config.schema.json --clobber
+          gh release upload "$TAG" "$RUNNER_TEMP/release.json" --clobber
           {
             echo '## release.json'
             echo
