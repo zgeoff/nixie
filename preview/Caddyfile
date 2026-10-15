@@ -1,0 +1,13 @@
+# One origin for the preview: the API and nixie's health endpoint go to nixie, and every other path
+# to the web client, as the deployment's ingress splits them.
+:8080 {
+	handle /rpc* {
+		reverse_proxy nixie:8080
+	}
+	handle /health/* {
+		reverse_proxy nixie:8080
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

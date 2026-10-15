@@ -1,0 +1,60 @@
+# A throwaway nixie for one pull request: a test build on the test sandbox, the web client, and one
+# origin in front of both. Every start of a new project makes a fresh database and a fresh
+# deployment key. Run it from this folder:
+#   docker compose up --build --wait
+name: nixie-preview
+
+services:
+  nixie:
+    build:
+      context: ..
+      dockerfile: preview/Dockerfile
+    image: nixie-preview:local
+    volumes:
+      - data:/data
+      - secrets:/var/lib/nixie-preview
+    healthcheck:
+      test: ['CMD', '/app/preview/run-preview.sh', 'health']
+      interval: 5s
+      timeout: 5s
+      start_period: 60s
+      retries: 24
+    # longer than the runner pools' grace, so a stop lets the steps in flight commit
+    stop_grace_period: 45s
+
+  # prints a code that signs one device in, once nixie is ready; run it again for another code
+  enrol:
+    image: nixie-preview:local
+    command: ['enrol-code']
+    volumes:
+      - data:/data
+      - secrets:/var/lib/nixie-preview
+    depends_on:
+      nixie:
+        condition: service_healthy
+    restart: 'no'
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    image: nixie-web-preview:local
+    environment:
+      NIXIE_API_URL: http://nixie:8080
+    depends_on:
+      nixie:
+        condition: service_healthy
+
+  proxy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - ${NIXIE_PREVIEW_BIND:-127.0.0.1}:${NIXIE_PREVIEW_PORT:-8080}:8080
+    depends_on:
+      - nixie
+      - web
+
+volumes:
+  data:
+  secrets:

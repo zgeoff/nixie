@@ -1,0 +1,50 @@
+# Starts the preview recipe on every pull request, as a preview environment starts it: it builds the
+# images, waits for every service to report healthy, checks that nixie's health URL answers ready
+# through the preview's one origin, and that the enrol service printed a sign-in code.
+name: Preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+# an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
+defaults:
+  run:
+    shell: bash
+    working-directory: preview
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Start the preview
+        run: docker compose up --build --wait --wait-timeout 300
+
+      - name: Check the health URL
+        run: |
+          curl --fail --silent --show-error http://127.0.0.1:8080/health/ready | tee -a "$GITHUB_STEP_SUMMARY"
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:8080/
+
+      # a code is two groups of five characters, which the enrol service prints on its first line
+      - name: Check the sign-in code
+        run: |
+          docker compose logs --no-log-prefix enrol | grep -E '^[0-9A-Z]{5}-[0-9A-Z]{5}$'
+
+      - name: Show the logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop the preview
+        if: always()
+        run: docker compose down --volumes

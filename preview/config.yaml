@@ -1,0 +1,26 @@
+# The preview's deployment configuration: a test build on the test sandbox, which runs every guest
+# as a local process with no isolation, so the preview needs no impd. It holds invented data only.
+server:
+  data_dir: /data
+  port: 8080
+  secrets_file: /var/lib/nixie-preview/secrets.yaml
+owner:
+  # an invented name, so the preview shows how nixie addresses the person it works for
+  name: Juniper Vale
+models:
+  profiles:
+    preview:
+      base_url: https://api.anthropic.com
+      # a placeholder that the host's credential broker replaces on the way out
+      credential: deployment:broker
+      auth_header: x-api-key
+      model: claude-haiku-5-5
+      effort: low
+  roles:
+    conversation: preview
+sandbox:
+  adapter: test
+definitions:
+  source:
+    kind: path
+    path: /app/preview/definitions
