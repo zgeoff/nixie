@@ -55,8 +55,9 @@ input price. A profile that never asks for 1-hour cache entries sets its 1-hour 
 its cache write price. A 1-hour entry costs more to write than a 5-minute one, 2 times the input
 price against 1.25 times at Anthropic's rates, so one price for both would undercharge every 1-hour
 write. The response's usage splits its cache writes by lifetime, and the proxy prices the 1-hour
-share at the 1-hour price and the rest at the cache write price. A response that leaves out the
-split has every cache write priced at the 1-hour price. A response that reports no cached count is
-priced as all uncached input. Both rules exist so that a missing count never lowers a charge. A
-change to a profile's prices applies to charges after nixie reads it, and never reprices a recorded
-turn. [Budgets](../policy/budgets.md#model-cost) set the limits that these counts feed.
+share at the 1-hour price and the rest at the cache write price. Only the writes a response reports
+as 5-minute take the cache write price, so a response that leaves out the split, or part of it, has
+its unreported writes priced at the 1-hour price. A response that reports no cached count is priced
+as all uncached input. Both rules exist so that a missing count never lowers a charge. A change to a
+profile's prices applies to charges after nixie reads it, and never reprices a recorded turn.
+[Budgets](../policy/budgets.md#model-cost) set the limits that these counts feed.

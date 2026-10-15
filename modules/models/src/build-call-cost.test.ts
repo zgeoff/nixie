@@ -48,6 +48,21 @@ test('it prices every cache write at the 1-hour price when the response leaves o
   expect(cost).toBeCloseTo(0.06005, 10);
 });
 
+test('it prices the cache writes the split leaves unreported at the 1-hour price', () => {
+  const cost = buildCallCost(
+    {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_creation_input_tokens: 3000,
+      cache_creation: { ephemeral_5m_input_tokens: 1000 },
+    },
+    { input: 5, cacheWrite: 6.25, cacheWrite1h: 10, cachedInput: 0.5, output: 25 },
+  );
+
+  // 1,000 × 6.25 + 2,000 × 10 = 26,250 per million
+  expect(cost).toBeCloseTo(0.02625, 10);
+});
+
 test('it counts the split in full when it reports more cache writes than the total', () => {
   const cost = buildCallCost(
     {

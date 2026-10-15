@@ -66,10 +66,10 @@ they outlive a forgotten reply and a projection can read them.
 
 ## Prices and the provider pin
 
-The schema reads each profile's prices, per million tokens of input, 5-minute cache write, 1-hour
-cache write, cached input and output, and refuses a price table that leaves one out. The call cost
-prices one response's usage with the table. It splits the cache writes by the lifetime the response
-reports, and prices every cache write at the 1-hour price when the response leaves out that split,
-so a missing count never lowers a charge. No built part calls the call cost or reads the provider
-pin. The [models design](../../design/platform/core/models.md#cost) sets out how the counting proxy
-prices each response with the table.
+The schema reads each profile's prices, per million tokens of input, a cache write for each of the
+two prompt cache lifetimes, cached input and output, and refuses a price table that leaves one out.
+The call cost prices one response's usage with the table. It splits the cache writes by the lifetime
+the response reports, and prices every write the response does not report under the shorter lifetime
+at the longer lifetime's price, so a missing count never lowers a charge. No built part calls the
+call cost or reads the provider pin. The [models design](../../design/platform/core/models.md#cost)
+sets out how the counting proxy prices each response with the table.

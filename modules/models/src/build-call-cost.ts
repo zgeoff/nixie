@@ -13,23 +13,21 @@ export interface CallUsage {
   } | null;
 }
 
-// The cost of one model call, in the currency of the profile's prices. A response without the split
-// by lifetime prices every cache write at the 1-hour price, and a split larger than the total
-// counts in full, so a missing or inconsistent count never lowers a charge.
+// The cost of one model call, in the currency of the profile's prices. Only the writes the response
+// reports as 5-minute take the 5-minute price, and a split larger than the total counts in full, so
+// a missing or inconsistent count never lowers a charge.
 export function buildCallCost(usage: CallUsage, prices: ModelPrices): number {
-  const split = usage.cache_creation ?? null;
-  const reportedWrites = usage.cache_creation_input_tokens ?? 0;
-  const cacheWrites1h = split === null ? reportedWrites : (split.ephemeral_1h_input_tokens ?? 0);
+  const cacheWrites5m = usage.cache_creation?.ephemeral_5m_input_tokens ?? 0;
 
   const cacheWrites = Math.max(
-    reportedWrites,
-    cacheWrites1h + (split?.ephemeral_5m_input_tokens ?? 0),
+    usage.cache_creation_input_tokens ?? 0,
+    cacheWrites5m + (usage.cache_creation?.ephemeral_1h_input_tokens ?? 0),
   );
 
   return (
     (usage.input_tokens * prices.input +
-      (cacheWrites - cacheWrites1h) * prices.cacheWrite +
-      cacheWrites1h * prices.cacheWrite1h +
+      cacheWrites5m * prices.cacheWrite +
+      (cacheWrites - cacheWrites5m) * prices.cacheWrite1h +
       (usage.cache_read_input_tokens ?? 0) * prices.cachedInput +
       usage.output_tokens * prices.output) /
     1_000_000
