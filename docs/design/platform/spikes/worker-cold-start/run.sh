@@ -7,6 +7,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/../../../../.." && pwd)"
 samples="${SPIKE_SAMPLES:-10}"
+phases="${SPIKE_PHASES:-start fetch turn}"
 conversation=spike-wcs-conversation
 fetch=spike-wcs-fetch
 box=spike-wcs-fetch-box
@@ -32,8 +33,11 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$here"
-rm -rf results
+# A run of some phases keeps the other phases' recorded results.
 mkdir -p results
+for phase in $phases; do
+  rm -f "results/$phase.jsonl"
+done
 
 SECONDS=0
 docker build -q -f "$repo/guests/conversation/Dockerfile" -t "$conversation" "$repo" >/dev/null
@@ -58,7 +62,7 @@ export SPIKE_PROXY="$HTTPS_PROXY" SPIKE_CA="$SSL_CERT_FILE"
 export NIXIE_MODEL="${NIXIE_MODEL:-claude-haiku-5-5}"
 export SPIKE_FETCH_URL="${SPIKE_FETCH_URL:-https://example.com/}"
 
-for phase in start fetch turn; do
+for phase in $phases; do
   bun bench.ts "$phase" "$samples"
 done
 bun summarize.ts | tee results/summary.md

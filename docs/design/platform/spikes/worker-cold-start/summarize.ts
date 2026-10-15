@@ -59,7 +59,7 @@ function isGoodFetch(sample: Sample): boolean {
 }
 
 printRows('start', 'image', ['totalMs'], (sample) => sample.code === 0);
-printRows('fetch', 'route', ['totalMs'], isGoodFetch);
+printRows('fetch', 'route', ['frameMs', 'totalMs'], isGoodFetch);
 printRows(
   'turn',
   'image',

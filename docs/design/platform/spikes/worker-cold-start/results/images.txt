@@ -1,4 +1,4 @@
+spike-wcs-fetch 252MB
 spike-wcs-turn-yes 1.51GB
 spike-wcs-turn-no 1.03GB
-spike-wcs-fetch 252MB
 spike-wcs-conversation 1.03GB

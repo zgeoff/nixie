@@ -11,12 +11,16 @@
 
 ## fetch (0 failed samples left out)
 
-| Group | Mode | Field   |   n | Median | p90 |
-| ----- | ---- | ------- | --: | -----: | --: |
-| fresh | cold | totalMs |  10 |    912 | 981 |
-| fresh | warm | totalMs |  10 |    516 | 571 |
-| exec  | cold | totalMs |  10 |    535 | 657 |
-| exec  | warm | totalMs |  10 |    180 | 202 |
+| Group | Mode | Field   |   n | Median |  p90 |
+| ----- | ---- | ------- | --: | -----: | ---: |
+| fresh | cold | frameMs |  10 |    824 | 1070 |
+| fresh | cold | totalMs |  10 |    998 | 1240 |
+| fresh | warm | frameMs |  10 |    364 |  384 |
+| fresh | warm | totalMs |  10 |    568 |  592 |
+| exec  | cold | frameMs |  10 |    572 |  658 |
+| exec  | cold | totalMs |  10 |    588 |  671 |
+| exec  | warm | frameMs |  10 |    167 |  238 |
+| exec  | warm | totalMs |  10 |    183 |  256 |
 
 ## turn (0 failed samples left out)
 

@@ -15,6 +15,9 @@ interface Line {
 
 interface RunResult {
   code: number;
+
+  // when the last byte of the first whole frame arrived, or undefined when none did
+  frameMs: number | undefined;
   lines: Line[];
   stdout: Uint8Array;
   stderr: string;
@@ -41,15 +44,17 @@ function parseLine(text: string): Record<string, unknown> {
   }
 }
 
-// Stamps each stdout line on arrival, relative to `origin`, and keeps the raw bytes for frames.
+// Stamps each stdout line on arrival, relative to `origin`, and keeps the raw bytes for frames. It
+// also stamps the arrival of the first whole frame: a 4-byte length, then that many bytes.
 async function collectOutput(
   stream: ReadableStream<Uint8Array>,
   origin: number,
-): Promise<{ lines: Line[]; stdout: Uint8Array }> {
+): Promise<{ frameMs: number | undefined; lines: Line[]; stdout: Uint8Array }> {
   const decoder = new TextDecoder(),
     lines: Line[] = [],
     chunks: Uint8Array[] = [];
-  let buffer = '';
+  let buffer = '',
+    frameMs: number | undefined;
   for await (const chunk of stream) {
     const at = readElapsed(origin),
       parts = (buffer + decoder.decode(chunk, { stream: true })).split('\n');
@@ -58,8 +63,15 @@ async function collectOutput(
     for (const part of parts) {
       lines.push({ at, data: parseLine(part) });
     }
+    if (frameMs === undefined && hasWholeFrame(Buffer.concat(chunks))) {
+      frameMs = at;
+    }
   }
-  return { lines, stdout: Buffer.concat(chunks) };
+  return { frameMs, lines, stdout: Buffer.concat(chunks) };
+}
+
+function hasWholeFrame(bytes: Buffer): boolean {
+  return bytes.length >= 4 && bytes.length >= 4 + bytes.readUInt32BE(0);
 }
 
 async function run(command: string[], origin: number, input?: Uint8Array): Promise<RunResult> {
@@ -73,10 +85,17 @@ async function run(command: string[], origin: number, input?: Uint8Array): Promi
     child.stdin.write(input);
     await child.stdin.end();
   }
-  const { lines, stdout } = await output,
+  const { frameMs, lines, stdout } = await output,
     code = await child.exited,
     stderr = await new Response(child.stderr).text();
-  return { code, lines, stderr: stderr.slice(-2000), stdout, totalMs: readElapsed(origin) };
+  return {
+    code,
+    frameMs,
+    lines,
+    stderr: stderr.slice(-2000),
+    stdout,
+    totalMs: readElapsed(origin),
+  };
 }
 
 // Empties the page cache, so the next run reads the image and every binary from disk.
@@ -217,8 +236,11 @@ async function runFetch(samples: number): Promise<void> {
       for (const mode of ['cold', 'warm']) {
         await setupMode(mode);
         const result = await run(commands[route] ?? [], performance.now(), frame);
+        // frameMs is the reply's latency; totalMs adds the process exit and, for fresh, the
+        // container's removal.
         writeSample('fetch', {
           code: result.code,
+          frameMs: result.frameMs,
           mode,
           reply: formatReply(result),
           route,

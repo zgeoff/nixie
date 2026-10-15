@@ -6,10 +6,10 @@ no start time that 10 samples can see: from a cold page cache, a worker turn rea
 in a median of 2.6 s on the worker image and 3.0 s on the conversation image, both inside the
 spread. So the 2.5 to 3 s to first text in [0003](../../../../decisions/0003-sdk-placement.md) holds
 for the worker image, and nixie needs no separate, smaller worker image. A fresh fetch sandbox adds
-about 0.5 s before its page against a fetcher in a long-lived sandbox, which one sandbox per fetch
-can afford. The spike ran in Docker inside an imp guest, which cannot create imps, so the imp create
-time comes from imp's own design and the [imp worker spike](../imp-worker-start/README.md), not from
-a run here.
+about 0.5 to 0.9 s before its reply against a fetcher in a long-lived sandbox, which one sandbox per
+fetch can afford. The spike ran in Docker inside an imp guest, which cannot create imps, so the imp
+create time comes from imp's own design and the [imp worker spike](../imp-worker-start/README.md),
+not from a run here.
 
 ## Question
 
@@ -54,11 +54,14 @@ alternate the image that goes first.
   the imp's broker injects the real one.
 - **fetch**: one fetch request frame for `https://example.com/`, sent either to a new container from
   the fetch image with the fetch sandbox's limits (1 vCPU, 512 MiB, no swap) or by `docker exec` of
-  the fetcher in one long-lived container with the same limits.
+  the fetcher in one long-lived container with the same limits. A fetch counts to the arrival of the
+  reply's whole frame, and records the process's exit apart, because a new container's exit includes
+  its removal.
 
 [`summarize.ts`](summarize.ts) prints the median and the 90th percentile (nearest rank) of each
 cell. The [`results`](results/) folder holds the recorded run: every sample line, the build times,
-the image sizes and the summary.
+the image sizes and the summary. The fetch phase comes from a later run of `run.sh` with
+`SPIKE_PHASES=fetch`, which keeps the other phases' results.
 
 ## Run it
 
@@ -67,7 +70,10 @@ start when an image or container with one of its names exists, and a trap remove
 
 ```bash
 bash run.sh
+SPIKE_PHASES=fetch bash run.sh
 ```
+
+The second form runs only the named phases, and keeps the recorded results of the others.
 
 A run makes about 40 short model calls and takes about 10 minutes.
 
@@ -123,25 +129,31 @@ about half of what the code runtimes add.
 
 ### 2. A fresh fetch sandbox
 
-| Route                                     | Cache | Median | p90 |
-| ----------------------------------------- | ----- | -----: | --: |
-| a new container per fetch, to the reply   | cold  |    912 | 981 |
-| a new container per fetch, to the reply   | warm  |    516 | 571 |
-| the fetcher in a long-lived container     | cold  |    535 | 657 |
-| the fetcher in a long-lived container     | warm  |    180 | 202 |
-| `docker run` of `true` in the fetch image | cold  |    632 | 683 |
-| `docker run` of `true` in the fetch image | warm  |    409 | 475 |
+| Route                                     | Cache | Reply median | Reply p90 | Exit median |
+| ----------------------------------------- | ----- | -----------: | --------: | ----------: |
+| a new container per fetch                 | cold  |          824 |      1070 |         998 |
+| a new container per fetch                 | warm  |          364 |       384 |         568 |
+| the fetcher in a long-lived container     | cold  |          572 |       658 |         588 |
+| the fetcher in a long-lived container     | warm  |          167 |       238 |         183 |
+| `docker run` of `true` in the fetch image | cold  |              |           |         632 |
+| `docker run` of `true` in the fetch image | warm  |              |           |         409 |
 
-Less Docker's own start, the fetcher in a new container replies about 280 ms after start from a cold
-cache and about 110 ms from a warm one, with the page's own fetch inside both. A fresh fetch sandbox
-on imp therefore reaches its reply in about 0.75 s: a create of about 0.47 s, then the fetcher from
-a cold disk. The fetcher in a long-lived sandbox replies in about 0.2 s, so a sandbox per fetch adds
-about 0.5 s to each fetch.
+A new container's removal adds about 170 ms after the reply from a cold cache and about 200 ms from
+a warm one. That time falls after the reply, so it stays off the fetch's path.
 
-One sandbox per fetch is affordable. A worker's model call takes over a second on its own, so 0.5 s
-per fetch adds under half a model call. The fetch sandbox's shape (1 vCPU, 512 MiB) gets its own
-boot template, whose first boot costs about 0.8 s once per impd. Each fetch's imp holds its memory
-only for the fetch, and nixie can destroy it after the reply, off the fetch's path.
+The fetcher's own cold start in a new sandbox, with the page's fetch inside it, lies between 0.19 s
+and 0.57 s. The low end is the new container's reply less the cold `docker run` of `true`, whose
+time includes a removal, so it subtracts too much. The high end is the fetcher in the long-lived
+container from a cold cache, whose time includes the `docker exec` call's own cold reads. A fresh
+fetch sandbox on imp therefore reaches its reply in about 0.7 to 1.0 s: a create of about 0.47 s,
+then the fetcher from a cold disk. The fetcher in a long-lived sandbox replies in about 0.17 s, so a
+sandbox per fetch adds about 0.5 to 0.9 s to each fetch.
+
+One sandbox per fetch is affordable. A worker's model call took a median of 1.2 to 1.5 s of API time
+in this run, so 0.5 to 0.9 s per fetch adds under one model call. The fetch sandbox's shape (1 vCPU,
+512 MiB) gets its own boot template, whose first boot costs about 0.8 s once per impd. Each fetch's
+imp holds its memory only for the fetch, and nixie can destroy it after the reply, off the fetch's
+path.
 
 ## Untested
 
