@@ -2,8 +2,8 @@ import { buildWriteGroup } from './build-write-group';
 import { findNewestMessage } from './find-newest-message';
 import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { OfferAnswerOutcome, OfferAnswerRequest } from './gate-types';
-import type { OfferYes } from './read-offer-answer';
 import { readOfferAnswer } from './read-offer-answer';
+import type { OfferYes } from './read-typed-yes';
 import { removeOfferKey } from './remove-offer-key';
 import { requireOfferSources } from './require-offer-sources';
 import type { StoreParts, VersionRef } from './types';
@@ -65,7 +65,7 @@ async function writeConfirmedOffer(
     },
     {
       noticeKey: group.noticeKey,
-      requireInTransaction: (db) => requireOfferSources(db, request, answer.offerSequence),
+      requireInTransaction: (db) => requireOfferSources(db, request, answer),
     },
   );
 

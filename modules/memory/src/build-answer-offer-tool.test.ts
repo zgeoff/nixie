@@ -1,7 +1,12 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { buildAnswerOfferTool } from './build-answer-offer-tool';
-import { buildMockWriteCaller, readItemShortID, startTestMemory } from './test-utils';
+import {
+  buildMockWriteCaller,
+  readItemShortID,
+  startTestMemory,
+  writeModelReplyRecord,
+} from './test-utils';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 import type { MemoryTables } from './types';
@@ -22,11 +27,13 @@ test('it returns the saved item by its short ID on your typed yes', async () => 
     images: ['image/webp'],
   });
 
-  await ctx.memory.store.writes.offerImage({
+  const line = await ctx.memory.store.writes.offerImage({
     image: { messageSequence: photo, image: 1 },
     text: 'The owner has a beagle puppy',
     caller: buildMockWriteCaller(),
   });
+
+  await writeModelReplyRecord(ctx.memory.log, { thread: 'conversation', text: line });
 
   const answer = await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',

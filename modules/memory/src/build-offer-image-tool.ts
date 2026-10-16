@@ -43,8 +43,9 @@ const offerImageDescription =
   'thing they own, and they did not ask you to remember it. Pass the eventID of the message ' +
   'that holds the image, its n from the <dropped-image> marker, and text: the one plain factual ' +
   'sentence you would save, naming the owner as a memory does. Then say the line the result ' +
-  'gives, word for word, as its own line of your reply. Nothing is saved until the owner ' +
-  'answers with a typed yes, which memory.answer_offer reads. An image takes one offer: a second ' +
+  'gives, word for word, as the last line of your reply, with nothing after it. Nothing is saved ' +
+  'until the owner answers that reply with a typed yes, which memory.answer_offer reads; a yes to ' +
+  'a reply that does not end with the line saves nothing. An image takes one offer: a second ' +
   'for the same image is refused, so never offer again after a no or no answer.';
 
 const offerImageInput = {

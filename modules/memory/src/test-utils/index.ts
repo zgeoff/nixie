@@ -15,3 +15,5 @@ export { readItemShortID } from './read-item-short-id';
 export type { TestMemory, TestMemoryOptions } from './start-test-memory';
 export { startTestMemory } from './start-test-memory';
 export { startNextTestMemory } from './start-next-test-memory';
+export type { ModelReplyRecord } from './write-model-reply-record';
+export { writeModelReplyRecord } from './write-model-reply-record';
