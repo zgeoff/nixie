@@ -42,4 +42,4 @@ export interface OutboxMessage {
 // A memory item as the memory view lists it, and one version of an item's history.
 export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];
 
-export type MemoryVersion = ContractOutputs['memory']['readItem']['versions'][number];
+export type MemoryVersion = ReadonlyDeep<ContractOutputs['memory']['readItem']['versions'][number]>;

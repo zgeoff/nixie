@@ -24,7 +24,7 @@ test('it shows the enrolment form in place of the page when the session is refus
 });
 
 test('it reads the page again with the browser cookie when the server render was refused', () => {
-  const onRefresh = mock();
+  const onRefresh = mock<() => void>();
 
   const rendered = render(
     <SignedInPage onRefresh={onRefresh} session="unchecked">

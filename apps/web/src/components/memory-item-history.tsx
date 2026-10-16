@@ -109,7 +109,6 @@ function DiffRuns(props: DiffRunsProps): ReactNode {
   const parts = buildWordDiff(props.before, props.after);
 
   // the parts never reorder, so each one's place is its identity
-  // oxlint-disable-next-line react/no-array-index-key
   return parts.map((part, index) => <DiffRun key={index} kind={part.kind} text={part.text} />);
 }
 
