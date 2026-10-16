@@ -23,14 +23,17 @@ export function readMockMemoryItem(itemID: string) {
 
 type StoredVersion = StoredMemoryItem['versions'][number];
 
-// one version as nixie's API reads it, as a gap once the item's key is gone
+// one version as nixie's API reads it, as a gap once the item's key is gone; a version whose text
+// fails to open shows neither its quote nor its message
 function toMockVersion(version: StoredVersion, number: number, isGone: boolean) {
+  const isClosed = isGone || version.isUnreadable;
+
   return {
     change: version.change,
     checkerModel: version.checkerModel,
     checks: version.checks === null ? null : { ...version.checks },
-    evidence: version.evidence === null ? null : readEvidence(version.evidence, isGone),
-    evidenceQuote: isGone ? null : version.evidenceQuote,
+    evidence: version.evidence === null ? null : readEvidence(version.evidence, isClosed),
+    evidenceQuote: isClosed ? null : version.evidenceQuote,
     origin: version.origin,
     proposalID: version.proposalID,
     recordedAt: version.recordedAt,
@@ -39,18 +42,26 @@ function toMockVersion(version: StoredVersion, number: number, isGone: boolean) 
     taskID: version.taskID,
     version: number,
     writerModel: version.writerModel,
-    ...(isGone
-      ? { status: 'shredded' as const }
-      : { status: 'readable' as const, text: version.text }),
+    ...toVersionText(version, isGone),
   };
+}
+
+function toVersionText(version: StoredVersion, isGone: boolean) {
+  if (isGone) {
+    return { status: 'shredded' as const };
+  }
+
+  return version.isUnreadable
+    ? { status: 'unreadable' as const }
+    : { status: 'readable' as const, text: version.text };
 }
 
 type StoredEvidence = NonNullable<StoredVersion['evidence']>;
 
-function readEvidence(evidence: StoredEvidence, isGone: boolean) {
+function readEvidence(evidence: StoredEvidence, isClosed: boolean) {
   return {
     end: evidence.end,
-    message: isGone ? null : readMessage(evidence.sequence),
+    message: isClosed ? null : readMessage(evidence.sequence),
     sequence: evidence.sequence,
     start: evidence.start,
   };

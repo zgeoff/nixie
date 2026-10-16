@@ -12,6 +12,9 @@ import { ThemePicker } from './theme-picker';
 
 export interface ConversationProps {
   readonly thread: string;
+
+  // the links to the app's other views, which the route supplies
+  readonly navigation?: ReactNode;
 }
 
 // The conversation: the page the API returned, the records the live stream adds after it, and
@@ -35,7 +38,10 @@ export function Conversation(props: ConversationProps): ReactNode {
   return (
     <main className={layout}>
       <header className={header}>
-        <ThemePicker />
+        <div className={headerRow}>
+          {props.navigation}
+          <ThemePicker />
+        </div>
       </header>
       {conversation.unavailable ? <LiveUpdatesNotice /> : null}
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
@@ -59,11 +65,20 @@ export function Conversation(props: ConversationProps): ReactNode {
 // The page fills the window: the messages scroll, and the composer stays below them in view.
 const layout = css({ display: 'flex', flexDirection: 'column', height: '100dvh' });
 
-// A slim bar above the messages that holds the page's settings, aligned with the column.
-const header = css({
-  borderBottomWidth: '1px',
-  paddingBlock: '1',
-  '& > label': { marginInline: 'auto', maxWidth: '3xl', paddingInline: '4', width: 'full' },
+// A slim bar above the messages that holds the links to other views and the page's settings,
+// aligned with the column.
+const header = css({ borderBottomWidth: '1px', paddingBlock: '1' });
+
+const headerRow = css({
+  alignItems: 'baseline',
+  display: 'flex',
+  fontSize: 'sm',
+  gap: '4',
+  justifyContent: 'space-between',
+  marginInline: 'auto',
+  maxWidth: '3xl',
+  paddingInline: '4',
+  '& > label': { marginInlineStart: 'auto' },
 });
 
 const composerBar = css({
