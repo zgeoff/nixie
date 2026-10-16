@@ -1,11 +1,10 @@
 # The Agent SDK contract suite
 
 Each probe in this folder runs the Agent SDK version that `bun.lock` pins against the model, and
-checks one behaviour that nixie's guests or designs rely on. A pull request that changes the SDK
-version runs the suite, so a bump fails until every probe passes on the new version. The probes run
-Haiku 5.5 with options that mirror the guest's, in a config directory of their own, and read the
-stream, the hooks and the session transcript rather than the model's prose wherever the SDK exposes
-the answer.
+checks one behaviour that nixie's guests or designs rely on, so an SDK bump that changes one of them
+fails the suite. The probes run Haiku 5.5 with options that mirror the guest's, in a config
+directory of their own, and read the stream, the hooks and the session transcript rather than the
+model's prose wherever the SDK exposes the answer.
 
 ## The probes
 
@@ -44,25 +43,25 @@ before the CLI loads them, because the CLI writes type files into each mod it lo
 
 ## Run it
 
-The probes sign in with a Claude Code OAuth token from `claude setup-token`, read from
-`CLAUDE_CODE_OAUTH_TOKEN`. The local login that the memory checker eval uses does not work here,
-because each probe gives the CLI an empty config directory and reads the session transcripts in it.
-Inside a sandbox whose broker adds the model credential, any placeholder token works. A full run
-takes about 3 minutes and cost $0.47 in the SDK's estimate on SDK 0.3.290.
+The probes read the model credential from `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY`, the
+variables the conversation guest reads. Inside a sandbox with a model grant, the variable holds the
+grant's placeholder and the broker adds the real credential on the way out. The local login that the
+memory checker eval uses does not work here, because each probe gives the CLI an empty config
+directory and reads the session transcripts in it. A full run takes about 3 minutes and cost $0.47
+in the SDK's estimate on SDK 0.3.290.
 
 ```bash
-NIXIE_SDK_CONTRACT=1 CLAUDE_CODE_OAUTH_TOKEN=<oauth_token> bun test evals/sdk-contract
+NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract
 ```
 
 Without `NIXIE_SDK_CONTRACT=1` every probe skips, so a plain `bun test` never calls the model. With
-it and no token, every probe fails.
+it and neither variable set, every probe fails.
 
-## The gate in CI
+## The check on SDK bumps
 
-The [SDK contract workflow](../../.github/workflows/sdk-contract.yml) compares the SDK packages that
-`bun.lock` resolves on the pull request and on its base. When they differ, or when the suite or the
-workflow changed, it runs the suite with the `CLAUDE_CODE_OAUTH_TOKEN` repository secret, and a
-failed probe fails the check. Every other pull request passes the check without a model call.
+The deployment repo's preview service runs the suite in a sandbox on each pull request that changes
+the SDK version, and posts the result as the `sdk-contract` commit status (GEO-1119). No credential
+for the suite lives in this repo or its CI.
 
 A probe that fails on a new SDK version marks a behaviour that changed under nixie. Read the failing
 assertion, find the code or design that relies on it in the table, and change that code before the

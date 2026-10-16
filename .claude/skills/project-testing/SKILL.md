@@ -17,10 +17,10 @@ records.
 
 ## Runs
 
-| Run                    | Command                                                    | Needs                                                                   |
-| ---------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Unit and package tests | `bun test` at the root                                     | Bun; the gated suites below skip                                        |
-| imp isolation          | `bun test src/isolation.test.ts` in `adapters/sandbox-imp` | An impd on a host with `/dev/kvm`, and the `NIXIE_IMP_TEST_*` variables |
+| Run                    | Command                                                    | Needs                                                                                           |
+| ---------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Unit and package tests | `bun test` at the root                                     | Bun; the gated suites below skip                                                                |
+| imp isolation          | `bun test src/isolation.test.ts` in `adapters/sandbox-imp` | An impd on a host with `/dev/kvm`, and the `NIXIE_IMP_TEST_*` variables                         |
 | SDK contract           | `NIXIE_SDK_CONTRACT=1 bun test evals/sdk-contract`         | A model credential, or a broker's placeholder, in `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` |
 
 The [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) gives that run's
