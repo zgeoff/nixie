@@ -55,7 +55,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for recall, pending and diff and note for remember, edit, retire, comment and rate', async () => {
+test('it declares read for recall, pending and diff and note for remember, edit, retire, the image offer, comment and rate', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -64,6 +64,8 @@ test('it declares read for recall, pending and diff and note for remember, edit,
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.offer_image',
+    'memory.answer_offer',
     'memory.diff',
     'memory.comment',
     'memory.rate',
@@ -75,6 +77,8 @@ test('it declares read for recall, pending and diff and note for remember, edit,
     ['memory.remember', ['note']],
     ['memory.edit', ['note']],
     ['memory.retire', ['note']],
+    ['memory.offer_image', ['note']],
+    ['memory.answer_offer', ['note']],
     ['memory.diff', ['read']],
     ['memory.comment', ['note']],
     ['memory.rate', ['note']],

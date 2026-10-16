@@ -98,6 +98,8 @@ test('it lists the web fetch tool, the time tool, the log reader and the 8 memor
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.offer_image',
+    'memory.answer_offer',
     'memory.diff',
     'memory.comment',
   ]);
@@ -164,6 +166,8 @@ test('it allows the time tool, the log reader and each memory tool and denies a 
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.offer_image',
+    'memory.answer_offer',
     'memory.diff',
     'memory.comment',
   ];

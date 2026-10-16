@@ -101,6 +101,35 @@ The token check never runs on a retirement, because a retirement adds no text. T
 version copies the stored text with that text's source and evidence, and records its own intent
 quote and checks beside them.
 
+## Image offers
+
+Memory never holds an image or a description of one: the writer and the log reader see only a marker
+where the user attached an image. An image the user shows the assistant would therefore leave memory
+once the conversation moved on, so the assistant offers to keep it in words the user confirms. The
+assistant calls `memory.offer_image` with one image of one of the user's messages and the plain
+factual sentence it would save, and the tool returns one line for the assistant to say: "Want me to
+remember this? Here's what I'd save: …". nixie seals that sentence in the offer record under the
+record's own key, and nothing reaches memory or the proposal list until the user answers.
+
+An image takes one offer. The check for an earlier offer and the offer record commit in one
+transaction, so 2 offers for one image never both pass, and a second offer is refused even after a
+no or a silence, so the assistant never asks again.
+
+`memory.answer_offer` passes on the user's first message after the offer, and only that message
+answers it, so a later yes about something else never saves the offered sentence. The sentence saves
+only when that whole message is a plain yes that the user typed, such as "yes" or "yes please",
+under the quote rules. A yes with anything more, such as a correction, saves nothing, because the
+version would then hold something other than what the user agreed to. Every other answer, a no
+included, writes nothing at all: no version, no proposal and no notice. The same holds once the
+image's message or the offer's sentence is forgotten.
+
+A saved offer skips the token check and the checker, because the user read the whole sentence before
+typing the yes. The model never passes the sentence at answer time: it comes from the offer record,
+so the version holds exactly what the offer line showed. The version's quote is the user's yes
+followed by the sentence it confirmed, and its checks name the offer record, so the sentence never
+reads as words the user typed. Its source is the user, and the check that runs inside the version's
+transaction saves one offer once.
+
 ## Provenance
 
 nixie sets every provenance field from the calling step, never from the tool's arguments: the origin

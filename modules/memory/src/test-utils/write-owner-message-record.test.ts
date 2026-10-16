@@ -39,4 +39,24 @@ test('it writes a message of yours with its text and spans in the erasable field
       },
     },
   });
+
+  expect(entry?.record.payload).toStrictEqual({ spans: 'as_sent' });
+});
+
+test('it names the media type of each image in the payload, in the order sent', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Two shots from the hike',
+    spans: [{ start: 0, end: 23, source: 'typed' }],
+    images: ['image/jpeg', 'image/png'],
+  });
+
+  const [entry] = await readRecords(ctx.memory.log, { afterSequence: sequence - 1, limit: 1 });
+
+  expect(entry?.record.payload).toStrictEqual({
+    spans: 'as_sent',
+    images: [{ mediaType: 'image/jpeg' }, { mediaType: 'image/png' }],
+  });
 });
