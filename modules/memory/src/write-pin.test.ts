@@ -338,7 +338,7 @@ test("it commits the caller's own write in the pin's transaction", async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
     writeInTransaction: async (tx) => {
       await writeRecordsInTransaction(tx, ctx.memory.log, [
-        { kind: 'test.checked', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+        { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
       ]);
     },
   });
@@ -347,11 +347,11 @@ test("it commits the caller's own write in the pin's transaction", async () => {
     .$extendTables<LogTables>()
     .selectFrom('records')
     .select('kind')
-    .where('kind', 'in', ['test.checked', 'memory.pinned'])
+    .where('kind', 'in', ['owner_message', 'memory.pinned'])
     .orderBy('sequence')
     .execute();
 
-  expect(kinds).toStrictEqual([{ kind: 'test.checked' }, { kind: 'memory.pinned' }]);
+  expect(kinds).toStrictEqual([{ kind: 'owner_message' }, { kind: 'memory.pinned' }]);
 });
 
 test("it rolls back the caller's own write when the pin fails", async () => {
@@ -363,7 +363,7 @@ test("it rolls back the caller's own write when the pin fails", async () => {
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
     writeInTransaction: async (tx) => {
       await writeRecordsInTransaction(tx, ctx.memory.log, [
-        { kind: 'test.checked', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+        { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
       ]);
     },
   });
@@ -374,7 +374,7 @@ test("it rolls back the caller's own write when the pin fails", async () => {
     .$extendTables<LogTables>()
     .selectFrom('records')
     .select('kind')
-    .where('kind', '=', 'test.checked')
+    .where('kind', '=', 'owner_message')
     .execute();
 
   expect(pin).rejects.toMatchObject({ code: 'NOT_FOUND' });

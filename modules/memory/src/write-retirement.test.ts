@@ -131,7 +131,7 @@ test("it commits the caller's own write in the retirement's transaction", async 
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
     writeInTransaction: async (tx) => {
       await writeRecordsInTransaction(tx, ctx.memory.log, [
-        { kind: 'test.checked', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+        { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
       ]);
     },
   });
@@ -144,7 +144,7 @@ test("it commits the caller's own write in the retirement's transaction", async 
     .orderBy('sequence')
     .execute();
 
-  expect(kinds).toStrictEqual([{ kind: 'test.checked' }, { kind: 'memory.version_added' }]);
+  expect(kinds).toStrictEqual([{ kind: 'owner_message' }, { kind: 'memory.version_added' }]);
 });
 
 test("it rolls back the caller's own write when the retirement is stale", async () => {
@@ -166,7 +166,7 @@ test("it rolls back the caller's own write when the retirement is stale", async 
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
     writeInTransaction: async (tx) => {
       await writeRecordsInTransaction(tx, ctx.memory.log, [
-        { kind: 'test.checked', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+        { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
       ]);
     },
   });
@@ -177,7 +177,7 @@ test("it rolls back the caller's own write when the retirement is stale", async 
     .$extendTables<LogTables>()
     .selectFrom('records')
     .select('kind')
-    .where('kind', '=', 'test.checked')
+    .where('kind', '=', 'owner_message')
     .execute();
 
   expect(retire).rejects.toMatchObject({ code: 'STALE_VERSION' });
