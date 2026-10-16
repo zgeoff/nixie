@@ -113,12 +113,16 @@ async function collectStreamUsage(
         continue;
       }
       try {
-        const event = JSON.parse(line.slice(6));
+        const event = JSON.parse(line.slice(6)) as {
+          type: string;
+          message: { usage: Record<string, unknown> };
+          usage?: Record<string, unknown>;
+        };
 
         if (event.type === 'message_start') {
           usage = { ...event.message.usage };
         } else if (event.type === 'message_delta' && event.usage !== undefined) {
-          usage = { ...usage, ...event.usage };
+          usage = { ...(usage ?? {}), ...event.usage };
         }
       } catch {
         // not a JSON event

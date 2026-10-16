@@ -5,8 +5,8 @@ const IV_BYTES = 12,
   decoder = new TextDecoder();
 
 export interface Sealed {
-  iv: Uint8Array;
-  data: Uint8Array;
+  iv: Uint8Array<ArrayBuffer>;
+  data: Uint8Array<ArrayBuffer>;
 }
 
 export function createDeploymentKey(): Promise<CryptoKey> {
@@ -25,7 +25,7 @@ export async function encodeItemKey(key: CryptoKey, deploymentKey: CryptoKey): P
 export function decodeItemKey(wrapped: Uint8Array, deploymentKey: CryptoKey): Promise<CryptoKey> {
   return crypto.subtle.unwrapKey(
     'raw',
-    wrapped,
+    wrapped as Uint8Array<ArrayBuffer>,
     deploymentKey,
     'AES-KW',
     { name: 'AES-GCM' },

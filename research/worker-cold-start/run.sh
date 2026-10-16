@@ -5,7 +5,7 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-repo="$(cd "$here/../../../../.." && pwd)"
+repo="$(cd "$here/../.." && pwd)"
 samples="${SPIKE_SAMPLES:-10}"
 phases="${SPIKE_PHASES:-start fetch turn}"
 conversation=spike-wcs-conversation

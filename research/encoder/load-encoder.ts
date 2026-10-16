@@ -155,7 +155,7 @@ async function loadFastembedEncoder(candidate: Candidate): Promise<Embed> {
     cacheDir: MODELS_DIR,
     // fastembed pads every text to maxLength, 512 unless set
     ...(process.env.FASTEMBED_MAX_LENGTH ? { maxLength: Number(process.env.FASTEMBED_MAX_LENGTH) } : {}),
-    model: candidate.model as (typeof EmbeddingModel)[keyof typeof EmbeddingModel],
+    model: candidate.model as never,
   });
   return async (texts) => {
     const rows: Float32Array[] = [];

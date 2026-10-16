@@ -102,7 +102,7 @@ serveStdio(() => {
     { name: 'stand-in', version: '1.0.0' },
     { capabilities: { tools: { listChanged: true } } },
   );
-  server.setRequestHandler('tools/list', () => ({ tools: getTools(mutation) }));
+  server.setRequestHandler('tools/list', () => ({ tools: getTools(mutation) }) as never);
   server.setRequestHandler('tools/call', (request) => {
     const args = request.params.arguments ?? {};
     return buildCallResult(request.params.name, args) as never;

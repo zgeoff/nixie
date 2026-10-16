@@ -84,24 +84,30 @@ const otherTexts = [
 const coreItems = coreTexts.map(([text, quote], index) => ({
   itemID: crypto.randomUUID(),
   version: 1,
+  change: 'created' as const,
   shortID: `m${(index + 10).toString(36)}${(index * 7 + 3).toString(36)}`,
   text,
   origin: 'memory_writer' as const,
   source: 'owner' as const,
   recordedAt: day - (40 - index) * dayMs,
   evidenceQuote: quote,
+  state: 'active' as const,
+  model: 'claude-haiku-5-5',
   approval: null,
 }));
 
 const otherItems = otherTexts.map(([text, quote], index) => ({
   itemID: crypto.randomUUID(),
   version: 1 + (index % 3 === 0 ? 1 : 0),
+  change: index % 3 === 0 ? ('edited' as const) : ('created' as const),
   shortID: `n${(index + 36).toString(36)}${(index * 5 + 7).toString(36)}`,
   text,
   origin: 'memory_writer' as const,
   source: 'owner' as const,
   recordedAt: day - (60 - index) * dayMs,
   evidenceQuote: quote,
+  state: 'active' as const,
+  model: 'claude-haiku-5-5',
   approval: null,
 }));
 
