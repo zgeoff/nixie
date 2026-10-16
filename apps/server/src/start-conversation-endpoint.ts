@@ -6,7 +6,7 @@ import { makeDecisionPoint } from '@heynixie/policy';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildConversationTools } from './build-conversation-tools';
-import type { ToolsOptions } from './start-tools';
+import type { ServerParts } from './types';
 
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
@@ -26,7 +26,7 @@ export interface ConversationEndpoint {
 // reader and the memory tools, and stops it on cleanup. The registry is fixed here, so the memory
 // tools reach the store through readStore.
 export async function startConversationEndpoint(
-  options: ToolsOptions,
+  options: Pick<ServerParts, 'cleanup' | 'config' | 'context'>,
   tools: ConversationEndpointTools,
 ): Promise<ConversationEndpoint> {
   const time = buildTimeTool({

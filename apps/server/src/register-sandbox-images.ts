@@ -1,4 +1,4 @@
-import type { Tools } from './start-tools';
+import type { Tools } from './tools';
 import type { ServerParts } from './types';
 
 type ImageParts = Pick<ServerParts, 'images' | 'log' | 'state'> & {

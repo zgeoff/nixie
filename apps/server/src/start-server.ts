@@ -7,7 +7,7 @@ import type { SandboxImages } from './load-sandbox-manifest';
 import type { Secrets } from './load-secrets';
 import { loadServerInputs } from './load-server-inputs';
 import type { SandboxSettings } from './resolve-sandbox-settings';
-import { startServerParts } from './start-server-parts';
+import { startServerWork } from './start-server-work';
 import type { Cleanup, ServerParts } from './types';
 
 export interface ServerOptions {
@@ -77,7 +77,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
     // the writer starts under the cleanup too, so a writer lock held elsewhere releases the encoder
     const writer = await startLoggedWriter(inputs.config.server.dataDir, inputs.log, cleanup);
 
-    return await startServerParts({ ...options, ...inputs, writer, cleanup });
+    return await startServerWork({ ...options, ...inputs, writer, cleanup });
   } catch (error) {
     await cleanup.stop();
 

@@ -1,13 +1,13 @@
-import type { APIContext, CleanupRecordSessions } from '@heynixie/api';
+import type { APIContext } from '@heynixie/api';
 import type { DefinitionsInForce, DefinitionsSource, SnapshotPolicy } from '@heynixie/definitions';
-import type { Encoder, StartedMemoryStore } from '@heynixie/memory';
+import type { Encoder } from '@heynixie/memory';
 import type { ModelSecrets } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
 import type { TasksContext } from '@heynixie/tasks';
 import type { StartState } from './build-start-state';
 import type { DeploymentConfig } from './deployment-config-schema';
 import type { SandboxImages } from './load-sandbox-manifest';
-import type { Tools } from './start-tools';
+import type { Tools } from './tools';
 
 // The stops of every part the server started, run in reverse on a stop.
 export interface Cleanup {
@@ -30,31 +30,6 @@ export interface InForce {
   readonly set: (inForce: DefinitionsInForce) => void;
 }
 
-// the slot the memory tools and the conversation read the memory store from, empty until it starts
-export interface MemorySlot {
-  readonly read: () => StartedMemoryStore | null;
-  readonly set: (store: StartedMemoryStore) => void;
-}
-
-// the slot the API reads the conversation's session cleanup from, which a record forget runs, empty
-// until the conversation starts
-export interface SessionCleanupSlot {
-  readonly set: (cleanup: CleanupRecordSessions) => void;
-}
-
-// What the server holds once the health endpoint listens.
-export interface ServerBase {
-  readonly apiContext: APIContext;
-  readonly inForce: InForce;
-  readonly sessionCleanup: SessionCleanupSlot;
-  readonly state: StartState;
-  readonly tools: Tools;
-  readonly port: number;
-
-  // refuses every later API call and waits for those in flight, which a reset does first
-  readonly closeAPI: () => Promise<void>;
-}
-
 // Everything the start steps behind the health endpoint use.
 export interface ServerParts {
   readonly config: DeploymentConfig;
@@ -68,7 +43,6 @@ export interface ServerParts {
   readonly source: DefinitionsSource;
   readonly policy: SnapshotPolicy;
   readonly inForce: InForce;
-  readonly sessionCleanup: SessionCleanupSlot;
   readonly modelSecrets: ModelSecrets;
 
   // the encoder the memory store's vector index runs, or null for keyword search alone
@@ -117,3 +91,38 @@ export interface CLIFlags {
 }
 
 export type Command = (flags: CLIFlags, io: CLIIO, args: readonly string[]) => Promise<number>;
+
+// What a part's start reads of the parts the graph started.
+export interface PartReader<Values> {
+  // a started part's value; it throws for a part that has not started
+  readonly get: <Name extends keyof Values>(name: Name) => Values[Name];
+
+  // a started part's value, or null for a part that has not started
+  readonly find: <Name extends keyof Values>(name: Name) => Values[Name] | null;
+
+  // resolves with the part's value once it is ready, and rejects when the start fails before it
+  readonly waitFor: <Name extends keyof Values>(name: Name) => Promise<Values[Name]>;
+}
+
+// One part of a start: the parts it needs, which start before it, and the parts it uses, which it
+// reads only later, such as from a callback, so they may start after it.
+export interface PartDeclaration<Values, Name extends keyof Values> {
+  readonly name: Name;
+  readonly needs: readonly (keyof Values)[];
+  readonly uses?: readonly (keyof Values)[];
+
+  // starts the part and resolves with its value once it is ready, which starts the parts that need it
+  readonly start: (parts: PartReader<Values>) => Promise<Values[Name]>;
+}
+
+export type AnyPartDeclaration<Values> = {
+  [Name in keyof Values]: PartDeclaration<Values, Name>;
+}[keyof Values];
+
+// The parts a graph starts, each read by name.
+export interface PartGraph<Values> {
+  readonly waitFor: PartReader<Values>['waitFor'];
+
+  // resolves once every part is ready, and rejects with the error that ended the start
+  readonly done: Promise<void>;
+}
