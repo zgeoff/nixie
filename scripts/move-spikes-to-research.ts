@@ -77,9 +77,9 @@ async function updateLinks(file: string, movedSpikes: readonly string[]): Promis
   const isMarkdown = file.endsWith('.md');
   const pattern = isMarkdown ? markdownLinkPattern : quotedPathPattern;
 
-  const updated = source.replace(pattern, (whole, ...rest) => {
-    const groups = (rest.at(-1) ?? {}) as Record<string, string | undefined>;
-    const path = groups['path'] ?? '';
+  const updated = source.replace(pattern, (whole: string, ...rest: unknown[]) => {
+    const groups = rest.at(-1);
+    const path = isRecord(groups) && typeof groups['path'] === 'string' ? groups['path'] : '';
     const target = normalize(join(dirname(file), path));
     const newTarget = resolveNewPath(target, movedSpikes);
 
@@ -97,6 +97,10 @@ async function updateLinks(file: string, movedSpikes: readonly string[]): Promis
   if (updated !== source) {
     await writeFile(file, updated);
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 const markdownLinkPattern = /\]\((?<path>\.{0,2}\/?[^)\s#:]+)(?:#[^)\s]*)?\)/gu;
@@ -181,7 +185,8 @@ async function updatePackage(dir: string): Promise<void> {
     return;
   }
 
-  const manifest = (await manifestFile.json()) as Record<string, unknown>;
+  const manifest = await loadManifest(manifestFile);
+
   const updated = buildManifest(manifest, dir.split('/').at(-1) ?? '');
 
   await Bun.write(manifestFile, `${JSON.stringify(updated, null, 2)}\n`);
@@ -202,8 +207,18 @@ async function updateLockfileName(dir: string, from: string, to: string): Promis
   }
 }
 
+async function loadManifest(manifestFile: Bun.BunFile): Promise<Record<string, unknown>> {
+  const manifest: unknown = await manifestFile.json();
+
+  if (!isRecord(manifest)) {
+    throw new Error(`${manifestFile.name ?? 'a package.json'} holds no object`);
+  }
+
+  return manifest;
+}
+
 function buildManifest(manifest: Record<string, unknown>, spike: string): Record<string, unknown> {
-  const scripts = (manifest['scripts'] ?? {}) as Record<string, string>;
+  const scripts = isRecord(manifest['scripts']) ? manifest['scripts'] : {};
 
   return {
     ...manifest,

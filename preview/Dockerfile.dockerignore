@@ -1,5 +1,5 @@
-# The preview image builds from the tracked sources only, and leaves out the docs and the scratch
-# folder too.
+# The preview image builds from the tracked sources only, and leaves out the docs, the spikes and the
+# scratch folder too.
 **/node_modules
 **/dist
 .git
@@ -11,4 +11,5 @@
 **/.env
 **/.env.*
 docs
+research
 e2e
