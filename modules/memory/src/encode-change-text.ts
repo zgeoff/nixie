@@ -1,13 +1,6 @@
-import { encodeSealedJSON } from './encode-sealed-json';
-
-// The free text of a consolidation change, which nixie seals under its first input's key, so a
-// forget of that item makes the change unreadable too.
-export interface ChangeText {
-  // the text the change writes, or null for a retirement
-  readonly text: string | null;
-  readonly reason: string;
-  readonly salt: string;
-}
+import { changeTextSchema } from './change-text-schema';
+import { defineSealedCodec } from './define-sealed-codec';
+import type { ChangeText } from './sealed-types';
 
 // Seals a change's text under its first input's key, with the change ID as additional data, so the
 // ciphertext opens under no other change.
@@ -16,5 +9,7 @@ export function encodeChangeText(
   changeID: string,
   text: ChangeText,
 ): Promise<string> {
-  return encodeSealedJSON(key, `consolidation/${changeID}`, { ...text });
+  return changeText.encode(key, changeID, text);
 }
+
+const changeText = defineSealedCodec('consolidation/', changeTextSchema);

@@ -1,6 +1,7 @@
 import { buildVersionKey } from './build-version-key';
-import { encodeSealedJSON } from './encode-sealed-json';
+import { defineSealedCodec } from './define-sealed-codec';
 import type { VersionRef, VersionText } from './types';
+import { versionTextSchema } from './version-text-schema';
 
 // Seals a version's free text under its item's key. The item ID and version are the additional
 // data, so a ciphertext copied under another item or version does not decrypt.
@@ -9,5 +10,8 @@ export function encodeVersionText(
   ref: VersionRef,
   text: VersionText,
 ): Promise<string> {
-  return encodeSealedJSON(key, buildVersionKey(ref), { ...text });
+  return versionText.encode(key, buildVersionKey(ref), text);
 }
+
+// no prefix: the version key alone is the additional data
+const versionText = defineSealedCodec('', versionTextSchema);

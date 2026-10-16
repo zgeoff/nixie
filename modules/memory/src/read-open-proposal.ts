@@ -1,9 +1,9 @@
 import { decodeProposalText } from './decode-proposal-text';
-import type { ProposalText } from './encode-proposal-text';
 import { findItemKey } from './find-item-key';
 import type { MemoryProposalRow, ProposalAnswer } from './gate-types';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { requirePendingProposal } from './require-pending-proposal';
+import type { ProposalText } from './sealed-types';
 import type { MemoryTables, StoreParts } from './types';
 
 // A pending proposal that an answer may act on, with its sealed text opened.
