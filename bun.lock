@@ -438,7 +438,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.1",
-    "@zgeoff/imp-client": "1.0.0",
+    "@zgeoff/imp-client": "1.6.0",
     "babel-plugin-react-compiler": "1.0.0",
     "elysia": "1.4.30",
     "fake-indexeddb": "6.2.5",
@@ -1222,7 +1222,7 @@
 
     "@zgeoff/format-codemod": ["@zgeoff/format-codemod@0.1.0", "", { "dependencies": { "oxc-parser": "0.137.0" }, "bin": { "format-codemod": "dist/cli.js" } }, "sha512-WVP6d3iuuaKuYrGIuHLkTxjI3W2IQzeAq6TtUiZiz+uw4f2AF2q4GgKQ6czpz/89qgZXauvhl1Pcef1/NZl4Rg=="],
 
-    "@zgeoff/imp-client": ["@zgeoff/imp-client@1.0.0", "", { "dependencies": { "@orpc/client": "^1.14.15", "@orpc/contract": "^1.14.15", "zod": "^4.4.3" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-HIsmtkg+6XE5ZB6KxfmgHe5vEY0fczWxQY8/H54oLKmHlWCKNIzKsoDwBIpqn/DvVKm44J9/y4cys8byUMjV+w=="],
+    "@zgeoff/imp-client": ["@zgeoff/imp-client@1.6.0", "", { "dependencies": { "@orpc/client": "^1.14.15", "@orpc/contract": "^1.14.15", "zod": "^4.4.3" }, "peerDependencies": { "@opentelemetry/api": ">=1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-mm71W+JeCKcvRSeywGzKrbLjRFFPdAC8D6seIBgIKXMCzz82VSJB3ZfVZ2wylgVMNFQkgsHQZAt3Zm7wBbc43A=="],
 
     "@zgeoff/oxlint-config": ["@zgeoff/oxlint-config@0.2.0", "", { "dependencies": { "@stylistic/eslint-plugin": "5.10.0" }, "peerDependencies": { "oxlint": ">=1.71.0" } }, "sha512-wdHEVoGxq447T3Pru4dJ8Up6DB/bhj19ew4XZ8r0kOkw5XmqDdxAAz+mkAwsjRVTMWyD4WJojm2oRYfvV8DlaA=="],
 

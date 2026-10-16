@@ -76,6 +76,45 @@ test('it refuses to read the features of an impd whose version the client does n
   expect(port.readFeatures()).rejects.toThrow(/^impd 0\.39\.0 does not speak imp client /u);
 });
 
+test('it refuses to read the features of an impd past major 2', () => {
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: () => Response.json({ json: { version: '3.0.0', features: {}, egress: {} } }),
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readFeatures()).rejects.toThrow('impd 3.0.0 does not speak imp client 1.6.0');
+});
+
+test('it reads the features of an impd 2.0.3, which kept the wire API of impd 1.6', () => {
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: () =>
+      Response.json({
+        json: {
+          version: '2.0.3',
+          features: { publicEgress: true, backupOptOut: true },
+          egress: { isEnforced: true },
+        },
+      }),
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  expect(port.readFeatures()).resolves.toStrictEqual({
+    publicEgress: true,
+    isEgressEnforced: true,
+    hasBackupOptOut: true,
+  });
+});
+
 test('it reads the backup opt-out among the features of an impd that has it', () => {
   const impd = Bun.serve({
     port: 0,
