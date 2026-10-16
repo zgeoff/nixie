@@ -6,6 +6,7 @@ import type { MatchScores } from './merge-rankings';
 import { parseItemCursor } from './parse-item-cursor';
 import { readDeliverableItems } from './read-deliverable-items';
 import type {
+  MemoryKind,
   MemoryState,
   MemoryTables,
   RecallRequest,
@@ -128,21 +129,65 @@ async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): P
     readCurrentItemIDs(parts, request.excludedVersions ?? []),
   ]);
 
+  // a split by kind ranks every candidate the recall may return, so facts never crowd out the
+  // self-notes before the cut
   const ranked = await findRankedMatches(parts, {
     query: request.query,
-    limit: query.limit,
+    limit: request.selfNoteLimit === undefined ? query.limit : MAX_LIMIT,
     excludedIDs: [...pinned, ...held],
     ...(request.excludedWords === undefined ? {} : { excludedWords: request.excludedWords }),
     ...(request.minScore === undefined ? {} : { minScore: request.minScore }),
     ...(request.minSimilarity === undefined ? {} : { minSimilarity: request.minSimilarity }),
   });
 
+  const itemIDs = ranked.matches.map((match) => match.itemID);
+
   return {
-    itemIDs: ranked.matches.map((match) => match.itemID),
+    itemIDs:
+      request.selfNoteLimit === undefined
+        ? itemIDs
+        : await pickKindLimitedIDs(parts, itemIDs, {
+            fact: query.limit,
+            self: Math.min(request.selfNoteLimit, MAX_LIMIT),
+          }),
     next: null,
     scores: new Map(ranked.matches.map((match) => [match.itemID, match])),
     searchMode: ranked.searchMode,
   };
+}
+
+// the best ranked IDs of each kind, up to that kind's limit, in rank order
+async function pickKindLimitedIDs(
+  parts: StoreParts,
+  itemIDs: readonly string[],
+  limits: Readonly<Record<MemoryKind, number>>,
+): Promise<readonly string[]> {
+  if (itemIDs.length === 0) {
+    return [];
+  }
+
+  const rows = await parts.context.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['item_id', 'kind'])
+    .where('item_id', 'in', itemIDs)
+    .execute();
+
+  const kinds = new Map(rows.map((row) => [row.item_id, row.kind]));
+
+  const taken: Record<MemoryKind, number> = { fact: 0, self: 0 };
+
+  return itemIDs.filter((itemID) => {
+    const kind = kinds.get(itemID);
+
+    if (kind === undefined || taken[kind] >= limits[kind]) {
+      return false;
+    }
+
+    taken[kind] += 1;
+
+    return true;
+  });
 }
 
 async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> {

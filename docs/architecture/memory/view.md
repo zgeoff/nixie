@@ -50,7 +50,10 @@ conversation. The page opens with the memory writer's progress: whether its catc
 conversation from before memory still runs, the record its cursor stands at, how many of the user's
 messages wait, and its last error. The pinned core with its size follows, then the active items or
 the matches of a search, then the retired and the forgotten items, each list apart. Every list draws
-an item through one row, so a control on an item shows in every list.
+an item through one row, so a control on an item shows in every list. The active items and the
+matches show self-notes in a section of their own, apart from the facts, and a self-note's row in
+any other list carries a self-note label. The row never offers a pin of a self-note, because the
+store refuses one.
 
 An item's history loads only when the user opens it, so a long list reads no history it never shows.
 Each version shows the words it changed from the version before as a word diff, and its evidence as

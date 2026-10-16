@@ -1,6 +1,6 @@
 import type { ContentSource, EnvelopeRecord, JSONObject } from '@heynixie/log';
 import { z } from 'zod';
-import type { MemoryChange, MemoryOrigin, QuoteEvidence, VersionState } from './types';
+import type { MemoryChange, MemoryKind, MemoryOrigin, QuoteEvidence, VersionState } from './types';
 
 const quoteEvidence = z.strictObject({
   recordSequence: z.int(),
@@ -29,6 +29,10 @@ const versionAdded = z.strictObject({
   // a created version carries its item's short ID; any other version, and a version from before
   // short IDs, carries none
   shortID: z.string().nullable().default(null),
+
+  // a created version of a self-note carries its item's kind; a fact's version, and a version
+  // from before kinds, carries none
+  itemKind: z.enum(['fact', 'self']).default('fact'),
 });
 
 const pinned = z.strictObject({ itemID: z.string(), isPinned: z.boolean() });
@@ -65,6 +69,9 @@ interface VersionAddedRecord {
 
   // the short ID a created version gives its item, or null
   readonly shortID: string | null;
+
+  // the kind a created version gives its item; no other version changes it
+  readonly itemKind: MemoryKind;
 }
 
 // The memory records the memory projections fold, each with its plain payload. A version's text

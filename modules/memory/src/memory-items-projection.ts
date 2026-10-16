@@ -43,6 +43,7 @@ async function applyMemoryRecord(
 
         // an item from before short IDs takes the one its UUID gives, as the backfill gave it
         short_id: parsed.shortID ?? buildShortIDFromUUID(parsed.itemID),
+        kind: parsed.itemKind,
       })
       .execute();
 

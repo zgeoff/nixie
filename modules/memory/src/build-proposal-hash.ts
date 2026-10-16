@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { MemoryKind } from './types';
 
 export interface ProposalOperation {
   readonly operation: 'remember' | 'retire';
@@ -11,6 +12,10 @@ export interface ProposalOperation {
   // random bytes sealed beside the text, so the hash says nothing about the text once a forget
   // makes the text unreadable
   readonly salt: string;
+
+  // the kind of the item, which only a self-note's hash names, so a fact's hash stays as it was
+  // before kinds
+  readonly itemKind?: MemoryKind;
 }
 
 // The action hash of a memory proposal: SHA-256 over its exact operation in a fixed field order,
@@ -25,6 +30,7 @@ export function buildProposalHash(operation: ProposalOperation): string {
     text: operation.text.normalize('NFC'),
     quote: operation.quote?.normalize('NFC') ?? null,
     salt: operation.salt,
+    ...(operation.itemKind === 'self' ? { itemKind: 'self' } : {}),
   });
 
   return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;

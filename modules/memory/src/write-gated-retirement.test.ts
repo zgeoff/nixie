@@ -55,6 +55,96 @@ test('it retires an item you asked to retire, with your intent quote and the che
   });
 });
 
+test("it retires the conversation's self-note at once, with a notice entry an undo binds to", async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  const note = await memory.store.remember({
+    text: 'I like opening with a question',
+    itemKind: 'self',
+    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
+  });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Morning',
+    spans: [{ start: 0, end: 7, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.retire({
+    target: note,
+    caller: buildMockWriteCaller(),
+  });
+
+  const notices = await memory.store.readNotices('conversation');
+
+  expect(outcome).toStrictEqual({ status: 'applied', itemID: note.itemID, version: 2 });
+
+  expect(notices).toStrictEqual([
+    {
+      noticeKey: `turn/conversation/${String(sequence)}`,
+      thread: 'conversation',
+      remembered: 0,
+      retired: 1,
+      proposed: 0,
+      entries: [{ itemID: note.itemID, change: 'retired', version: 2, proposalID: null }],
+    },
+  ]);
+
+  expect(check).not.toHaveBeenCalled();
+});
+
+test("it brings back a self-note when you undo the conversation's retirement of it", async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like opening with a question',
+    itemKind: 'self',
+    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Morning',
+    spans: [{ start: 0, end: 7, source: 'typed' }],
+  });
+
+  const retired = await memory.store.writes.retire({
+    target: note,
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(retired.status === 'applied');
+
+  const undone = await memory.store.undo({
+    target: { itemID: retired.itemID, version: retired.version },
+    provenance: buildMockProvenance(),
+  });
+
+  const recalled = await memory.store.recall({ itemIDs: [note.itemID] });
+
+  expect(undone).toStrictEqual({ itemID: note.itemID, version: 3 });
+  expect(recalled.items).toMatchObject([{ state: 'active', kind: 'self', change: 'undone' }]);
+});
+
+test("it runs a task's retire of a self-note through the intent gate", async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like opening with a question',
+    itemKind: 'self',
+    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
+  });
+
+  const outcome = await memory.store.writes.retire({
+    target: note,
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'ambiguous_target' });
+});
+
 test('it proposes a retirement of an item the thread never read', async () => {
   const memory = await startTestMemory();
 

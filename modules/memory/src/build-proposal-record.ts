@@ -32,6 +32,9 @@ export function buildProposalRecord(
       model: plan.caller.model,
       noticeKey: plan.group.noticeKey,
       lapseAt: gate.clock.now() + gate.limits.proposalLapseMs,
+
+      // a fact's proposal leaves its kind out, as every proposal from before kinds does
+      ...(plan.itemKind === 'self' ? { itemKind: 'self' } : {}),
     },
   };
 }

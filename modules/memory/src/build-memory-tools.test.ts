@@ -737,6 +737,7 @@ test('it recalls a version with its quote, its model and the line that says wher
       {
         itemID: shortID,
         isPinned: false,
+        kind: 'fact',
         version: 1,
         change: 'created',
         state: 'active',
@@ -782,6 +783,7 @@ test('it recalls a version with no quote or model without them', async () => {
       {
         itemID: shortID,
         isPinned: false,
+        kind: 'fact',
         version: 1,
         change: 'created',
         state: 'active',

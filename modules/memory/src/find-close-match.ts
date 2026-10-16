@@ -2,10 +2,13 @@ import type { Kysely } from 'kysely';
 import type { CloseMatch } from './gate-types';
 import { readDeliverableItems } from './read-deliverable-items';
 import { readRecall } from './read-recall';
-import type { MemoryTables, RecalledItem, StoreParts } from './types';
+import type { MemoryKind, MemoryTables, RecalledItem, StoreParts } from './types';
 
 export interface CloseMatchQuery {
   readonly text: string;
+
+  // the kind of the proposal's item, because a fact never matches a self-note; a fact when unset
+  readonly kind?: MemoryKind;
 
   // a write transaction that holds the delivery lock, which reads the candidates with no recall
   // record; through a recall, which records what it delivered, when unset
@@ -25,8 +28,11 @@ export async function findCloseMatch(
     return null;
   }
 
-  const items = await readCandidates(parts, itemIDs, query.db);
+  const kind = query.kind ?? 'fact';
 
+  const candidates = await readCandidates(parts, itemIDs, query.db);
+
+  const items = candidates.filter((item) => item.kind === kind);
   const words = collectContentWords(query.text);
 
   const scored = items

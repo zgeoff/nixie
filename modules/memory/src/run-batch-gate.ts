@@ -25,11 +25,15 @@ export async function runBatchGate(
   source: SourceMessage,
 ): Promise<BatchGateResult> {
   if (write.op === 'retire') {
-    const itemText = await readItemText(parts, write.target);
+    const retired = await readItemText(parts, write.target);
 
     return {
-      gate: await runBatchRetirementGate(parts, { itemText, quote: write.quote, source }),
-      text: itemText,
+      gate: await runBatchRetirementGate(parts, {
+        itemText: retired.text,
+        quote: write.quote,
+        source,
+      }),
+      text: retired.text,
     };
   }
 

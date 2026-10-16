@@ -72,6 +72,42 @@ test('it publishes an applied write as a version the writer made', async () => {
   ]);
 });
 
+test('it publishes every item the writer creates as a fact, never a self-note', async () => {
+  const ctx = await setupTest();
+
+  const planned = await writePlannedBatch(ctx.memory.log, [
+    'I like it when you keep answers short.',
+  ]);
+
+  await ctx.memory.store.writeBatch({
+    lease: ctx.lease,
+    clock: ctx.clock,
+    bounds: planned.bounds,
+    writes: [
+      {
+        write: {
+          op: 'remember',
+          text: 'You like short answers.',
+          quote: 'keep answers short',
+          sourceSequence: planned.bounds.end,
+          target: null,
+        },
+        verdict: {
+          outcome: 'apply',
+          source: 'owner',
+          checks: { quote: 'exact' },
+          evidence: { recordSequence: planned.bounds.end, start: 19, end: 37 },
+        },
+      },
+    ],
+    buildRecords: () => [],
+  });
+
+  const recalled = await ctx.memory.store.recall({});
+
+  expect(recalled.items).toMatchObject([{ text: 'You like short answers.', kind: 'fact' }]);
+});
+
 test('it publishes a proposal records and counts the proposal', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);

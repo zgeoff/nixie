@@ -83,6 +83,7 @@ async function writeProposalRow(
       created_at: record.recordedAt.getTime(),
       lapse_at: parsed.lapseAt,
       resolved_sequence: null,
+      kind: parsed.itemKind,
     })
     .execute();
 }

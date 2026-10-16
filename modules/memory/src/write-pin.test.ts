@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import type { LogTables } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
+import { SelfNoteError } from './self-note-error';
+import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
 
@@ -9,6 +11,63 @@ async function setupTest() {
 
   return { memory, db: memory.writer.db.$extendTables<MemoryTables>() };
 }
+
+test('it refuses to pin a self-note for you and for the conversation', async () => {
+  const ctx = await setupTest();
+
+  const note = await ctx.memory.store.remember({
+    text: 'I like tidy lists',
+    itemKind: 'self',
+    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
+  });
+
+  const byOwner = ctx.memory.store.pin({
+    itemID: note.itemID,
+    isPinned: true,
+    provenance: buildMockProvenance(),
+  });
+
+  const byConversation = ctx.memory.store.pin({
+    itemID: note.itemID,
+    isPinned: true,
+    version: note.version,
+    provenance: buildMockProvenance({ origin: 'conversation' }),
+  });
+
+  await Promise.allSettled([byOwner, byConversation]);
+
+  const core = await ctx.memory.store.readPinnedCore();
+
+  expect(byOwner).rejects.toThrowWithMessage(
+    SelfNoteError,
+    `memory item ${note.itemID} is a self-note, and a self-note is never pinned`,
+  );
+
+  expect(byConversation).rejects.toThrowWithMessage(
+    SelfNoteError,
+    `memory item ${note.itemID} is a self-note, and a self-note is never pinned`,
+  );
+
+  expect(core).toStrictEqual([]);
+});
+
+test('it unpins a self-note', async () => {
+  const ctx = await setupTest();
+
+  const note = await ctx.memory.store.remember({
+    text: 'I like tidy lists',
+    itemKind: 'self',
+    provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
+  });
+
+  const unpin = ctx.memory.store.pin({
+    itemID: note.itemID,
+    isPinned: false,
+    provenance: buildMockProvenance(),
+  });
+
+  expect(unpin).resolves.toBeUndefined();
+});
 
 test('it pins an active item without adding a version', async () => {
   const ctx = await setupTest();

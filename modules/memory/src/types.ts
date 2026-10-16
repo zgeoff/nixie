@@ -22,6 +22,11 @@ export type MemoryState = 'active' | 'retired' | 'forgetting' | 'forgotten';
 // or forgotten.
 export type VersionState = 'active' | 'retired';
 
+// What an item is about: a fact about you, or a self-note, which nixie writes about itself, such as
+// its tastes or how something landed with it. An item takes its kind when it is created, and no
+// later version changes it.
+export type MemoryKind = 'fact' | 'self';
+
 export type MemoryChange = 'created' | 'edited' | 'retired' | 'restored' | 'undone';
 
 // Who wrote a version: you in the client, the conversation, a task, or the batched memory writer.
@@ -72,6 +77,9 @@ export interface RememberRequest {
   readonly evidenceQuote?: string;
   readonly evidence?: QuoteEvidence;
   readonly isPinned?: boolean;
+
+  // a new item's kind, a fact when unset; an edit keeps the item's own
+  readonly itemKind?: MemoryKind;
 }
 
 // A caller's own write that commits in the change's transaction, before the change, such as a
@@ -160,6 +168,10 @@ export interface RecallRequest {
 
   // whether the recall reads the text of a turn note, which a rating never binds to
   readonly isTurnNote?: boolean;
+
+  // with a query, splits the matches by kind: up to limit facts and up to this many self-notes,
+  // from one ranking and in one recall record; with none, limit covers both kinds
+  readonly selfNoteLimit?: number;
 }
 
 export interface RecalledVersion {
@@ -187,6 +199,9 @@ export interface RecalledItem extends RecalledVersion {
   // the ID the model reads and passes back in place of itemID
   readonly shortID: string;
   readonly isPinned: boolean;
+
+  // a fact about you or a self-note, which the item took when it was created
+  readonly kind: MemoryKind;
 
   // every version, oldest first, when the request asked for history
   readonly history?: readonly RecalledVersion[];
@@ -307,6 +322,7 @@ interface MemoryItemTable {
   // the ID the model reads in place of item_id; null only for an item a release before short IDs
   // made after the backfill, whose short ID its UUID gives
   readonly short_id: string | null;
+  readonly kind: MemoryKind;
 }
 
 interface MemoryVersionTable {

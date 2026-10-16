@@ -11,6 +11,7 @@ import { requireItem } from './require-item';
 import { requireVersionCoreRoom } from './require-version-core-room';
 import type {
   MemoryChange,
+  MemoryKind,
   MemoryTables,
   Provenance,
   QuoteEvidence,
@@ -46,6 +47,9 @@ export interface VersionPlan {
 
   // pins a new item in the same transaction
   readonly isPinned?: boolean;
+
+  // a new item's kind, a fact when unset; a later version keeps the item's own
+  readonly itemKind?: MemoryKind;
 
   // the ID of a new item whose key already exists, as for an approved proposal that created it
   readonly newItemID?: string;
@@ -195,6 +199,11 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
     model: provenance.model ?? null,
     noticeKey: written.plan.noticeKey ?? null,
     ...(written.next.change === 'created' ? { shortID: written.shortID } : {}),
+
+    // a fact's created version leaves its kind out, as every version from before kinds does
+    ...(written.next.change === 'created' && written.plan.itemKind === 'self'
+      ? { itemKind: 'self' }
+      : {}),
   };
 
   const approval = written.plan.approval;

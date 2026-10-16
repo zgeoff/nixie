@@ -33,6 +33,76 @@ test('it applies an approved proposal as proposed, keeping its outside source', 
   expect(remaining).toStrictEqual([]);
 });
 
+test('it creates a self-note when you approve its proposal, and recall reads it as one with its model', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.writes.remember({
+    text: 'Dry jokes land better with the owner than puns',
+    itemKind: 'self',
+    caller: buildMockWriteCaller({ model: 'claude-opus-5-5' }),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approved = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  invariant(approved.status === 'applied');
+
+  const recalled = await memory.store.recall({ itemIDs: [approved.itemID] });
+
+  expect(recalled.items).toMatchObject([
+    {
+      text: 'Dry jokes land better with the owner than puns',
+      kind: 'self',
+      origin: 'conversation',
+      source: 'untrusted',
+      model: 'claude-opus-5-5',
+    },
+  ]);
+});
+
+test('it keeps an item a self-note when you approve an edit of it', async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like short answers in the morning',
+    itemKind: 'self',
+    provenance: {
+      origin: 'conversation',
+      source: 'untrusted',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  const pending = await createProposal(memory.store, {
+    text: 'I like short answers in the morning and the evening',
+    target: note,
+  });
+
+  await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const item = await memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['kind', 'version'])
+    .where('item_id', '=', note.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(item).toStrictEqual({ kind: 'self', version: 2 });
+});
+
 test('it recalls an approved proposal with your approval and its stored source unchanged', async () => {
   const memory = await startTestMemory();
   const pending = await createProposal(memory.store, { text: 'Likes jazz' });
