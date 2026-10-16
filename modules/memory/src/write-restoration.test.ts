@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import type { LogTables } from '@heynixie/log';
+import { writeRecordsInTransaction } from '@heynixie/log';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -90,4 +92,38 @@ test('it rejects a restore of an active item', async () => {
   await restore.catch(() => {});
 
   expect(restore).rejects.toMatchObject({ code: 'WRONG_STATE' });
+});
+
+test("it commits the caller's own write in the restore's transaction", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a spare key with the neighbour',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const retired = await ctx.memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.restore({
+    target: retired,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    writeInTransaction: async (tx) => {
+      await writeRecordsInTransaction(tx, ctx.memory.log, [
+        { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+      ]);
+    },
+  });
+
+  const kinds = await ctx.memory.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('kind')
+    .where('sequence', '>', 2)
+    .orderBy('sequence')
+    .execute();
+
+  expect(kinds).toStrictEqual([{ kind: 'owner_message' }, { kind: 'memory.version_added' }]);
 });

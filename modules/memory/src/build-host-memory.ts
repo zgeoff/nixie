@@ -1,7 +1,7 @@
 import type { ChangeOutcome, ConsolidationDiff, MemoryConsolidations } from './consolidation-types';
 import type { ApprovalResult, MemoryProposal, MemoryProposals } from './gate-types';
-import type { ItemHistory } from './history-types';
 import type { MemoryStore, Provenance, VersionRef } from './types';
+import type { ItemHistory } from './view-types';
 
 // What the host commands reach of the memory store: the pending proposals, the consolidator's
 // diff, and your own changes to an item.

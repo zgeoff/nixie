@@ -86,7 +86,23 @@ export type {
   WriteOutcome,
 } from './gate-types';
 
-export type { HistoryVersion, ItemHistory } from './history-types';
+export type {
+  EvidenceMessage,
+  HistoryVersion,
+  ItemHistory,
+  MemoryView,
+  PinnedCoreView,
+  ViewEvidence,
+  ViewItem,
+  ViewItemDetail,
+  ViewListState,
+  ViewMatch,
+  ViewMatches,
+  ViewPage,
+  ViewPageRequest,
+  ViewText,
+  ViewVersion,
+} from './view-types';
 
 export type {
   CleanupSessions,
@@ -113,6 +129,7 @@ export type {
   UndoRequest,
   VersionRef,
   VersionState,
+  WriteInTransaction,
 } from './types';
 
 export type { BatchPublication, GatedWrite, PublishResult } from './write-memory-batch';

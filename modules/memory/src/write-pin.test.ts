@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import type { LogTables } from '@heynixie/log';
+import { writeRecordsInTransaction } from '@heynixie/log';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
 
@@ -110,6 +112,26 @@ test('it rejects a pin that takes the pinned core past 2,000 tokens, and pins no
 
   expect(pin).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
   expect(row.is_pinned).toBe(0);
+});
+
+test("it runs the caller's own write before it checks the pinned core's room", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a long reading list for winter. '.repeat(240),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const pin = ctx.memory.store.pin({
+    itemID: item.itemID,
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    writeInTransaction: () => Promise.reject(new Error('the action already ran')),
+  });
+
+  await pin.catch(() => {});
+
+  expect(pin).rejects.toThrow('the action already ran');
 });
 
 test('it rejects a new pinned item that takes the pinned core past 2,000 tokens', async () => {
@@ -243,6 +265,120 @@ test('it pins an item that fits the pinned core beside the items already pinned'
     .executeTakeFirstOrThrow();
 
   expect(row.is_pinned).toBe(1);
+});
+
+test('it rejects a pin bound to a version the item moved past, and pins nothing', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Takes the 7:40 train',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Takes the 8:10 train',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const pin = ctx.memory.store.pin({
+    itemID: item.itemID,
+    isPinned: true,
+    version: 1,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await pin.catch(() => {});
+
+  const row = await ctx.db
+    .selectFrom('memory_items')
+    .select('is_pinned')
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(pin).rejects.toMatchObject({ code: 'STALE_VERSION' });
+  expect(row.is_pinned).toBe(0);
+});
+
+test('it pins an item bound to the version it is at', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Takes the 7:40 train',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.pin({
+    itemID: item.itemID,
+    isPinned: true,
+    version: 1,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const row = await ctx.db
+    .selectFrom('memory_items')
+    .select('is_pinned')
+    .where('item_id', '=', item.itemID)
+    .executeTakeFirstOrThrow();
+
+  expect(row.is_pinned).toBe(1);
+});
+
+test("it commits the caller's own write in the pin's transaction", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Takes the 7:40 train',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.pin({
+    itemID: item.itemID,
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    writeInTransaction: async (tx) => {
+      await writeRecordsInTransaction(tx, ctx.memory.log, [
+        { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+      ]);
+    },
+  });
+
+  const kinds = await ctx.memory.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('kind')
+    .where('kind', 'in', ['owner_message', 'memory.pinned'])
+    .orderBy('sequence')
+    .execute();
+
+  expect(kinds).toStrictEqual([{ kind: 'owner_message' }, { kind: 'memory.pinned' }]);
+});
+
+test("it rolls back the caller's own write when the pin fails", async () => {
+  const ctx = await setupTest();
+
+  const pin = ctx.memory.store.pin({
+    itemID: 'no-such-item',
+    isPinned: false,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    writeInTransaction: async (tx) => {
+      await writeRecordsInTransaction(tx, ctx.memory.log, [
+        { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+      ]);
+    },
+  });
+
+  await pin.catch(() => {});
+
+  const checked = await ctx.memory.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('kind')
+    .where('kind', '=', 'owner_message')
+    .execute();
+
+  expect(pin).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  expect(checked).toStrictEqual([]);
 });
 
 test('it rejects a pin of an item that does not exist', async () => {

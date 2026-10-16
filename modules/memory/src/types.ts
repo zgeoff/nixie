@@ -1,18 +1,18 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
 import type { MemoryApproval } from '@heynixie/sessions';
-import type { Selectable } from 'kysely';
+import type { Selectable, Transaction } from 'kysely';
 import type {
   GateContext,
   MemoryForgottenEvidenceTable,
   MemoryNoticeEntryTable,
   MemoryProposalTable,
 } from './gate-types';
-import type { ItemHistory } from './history-types';
 import type { DeliveryLock } from './make-delivery-lock';
 import type { MessageRecallRequest, MessageRecallResult } from './message-recall-types';
 import type { RateRequest } from './rating-types';
 import type { StoreIndexes } from './start-store-indexes';
+import type { ItemHistory, MemoryView } from './view-types';
 
 // Active items reach retrieval and recall. A retired item stays readable with its history. A
 // forgetting item has a forget under way, and a forgotten one has lost its key for good.
@@ -74,9 +74,14 @@ export interface RememberRequest {
   readonly isPinned?: boolean;
 }
 
+// A caller's own write that commits in the change's transaction, before the change, such as a
+// checked action's result. It refuses the change by throwing, and a change that fails rolls it back.
+export type WriteInTransaction = (tx: Transaction<unknown>) => Promise<void>;
+
 export interface RetireRequest {
   readonly target: VersionRef;
   readonly provenance: Provenance;
+  readonly writeInTransaction?: WriteInTransaction;
 
   // your request to retire the item, when one exists
   readonly intentQuote?: string;
@@ -86,6 +91,7 @@ export interface RetireRequest {
 export interface RestoreRequest {
   readonly target: VersionRef;
   readonly provenance: Provenance;
+  readonly writeInTransaction?: WriteInTransaction;
 }
 
 // Undoes the change that made target.version, which must still be the item's current version.
@@ -98,6 +104,11 @@ export interface PinRequest {
   readonly itemID: string;
   readonly isPinned: boolean;
   readonly provenance: Provenance;
+
+  // the version the caller read, so a pin of an item that moved past it fails as stale; a pin
+  // with none applies to whatever version the item is at
+  readonly version?: number;
+  readonly writeInTransaction?: WriteInTransaction;
 }
 
 export interface ForgetRequest {
@@ -219,6 +230,9 @@ export interface MemoryStore {
 
   // keeps the model's ratings of what the thread's latest recall delivered; changes no item
   readonly rate: (request: RateRequest) => Promise<void>;
+
+  // the reads of the memory view, which deliver nothing to a task
+  readonly view: MemoryView;
 }
 
 // What a model's memory tool reaches to turn the short IDs the model reads into item IDs and back.

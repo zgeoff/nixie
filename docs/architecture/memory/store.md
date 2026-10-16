@@ -68,8 +68,9 @@ transaction makes.
   binds to the version it undoes, so an undo after a later edit fails as stale instead of discarding
   that edit. An undo of a first version retires the item, because no earlier text exists.
 - **Pin** changes where the item shows and not its text, so it appends a record and adds no version.
-  Only an active item can be pinned. A pin, or an edit of a pinned item, fails when it would take
-  the pinned core past its budget ([the pinned core](./context.md#the-pinned-core)).
+  A pin that names the version its caller read fails as stale once the item moved past it. Only an
+  active item can be pinned. A pin, or an edit of a pinned item, fails when it would take the pinned
+  core past its budget ([the pinned core](./context.md#the-pinned-core)).
 
 ## Keys
 

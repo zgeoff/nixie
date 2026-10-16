@@ -1,7 +1,7 @@
 import { decodeVersionText } from './decode-version-text';
 import { findItemKey } from './find-item-key';
-import type { HistoryVersion, ItemHistory } from './history-types';
 import type { MemoryTables, MemoryVersionRow, StoreParts } from './types';
+import type { HistoryVersion, ItemHistory } from './view-types';
 
 // Reads an item's state and every version, oldest first, for the memory view. A version whose key
 // is gone reads as shredded, so a forgotten item shows as a dated gap, and one whose key or

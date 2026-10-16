@@ -98,6 +98,8 @@ below, and planned work lives in Linear.
   checks, retirement intent, provenance, memory proposals and notices
 - [Memory consolidation](architecture/memory/consolidation.md) — the weekly diff of merges, rewrites
   and retirements, each change bound to the versions it read, and answers whole or per change
+- [The memory view](architecture/memory/view.md) — lists by state, search, the pinned core against
+  its budget, each version's provenance and evidence, and changes bound to a version
 - [Memory in context](architecture/memory/context.md) — the pinned core in the system prompt, the
   items each turn retrieves, and the session cleanup a forget runs
 

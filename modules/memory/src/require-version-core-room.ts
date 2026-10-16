@@ -1,8 +1,8 @@
 import type { MemoryApproval } from '@heynixie/sessions';
 import type { Kysely } from 'kysely';
 import { buildVersionApproval } from './build-version-approval';
+import type { CorePin } from './count-pinned-core-tokens';
 import { readPinnedItems } from './read-pinned-items';
-import type { CorePin } from './require-pinned-core-room';
 import { requirePinnedCoreRoom } from './require-pinned-core-room';
 import type { MemoryTables, Provenance, StoreParts } from './types';
 
