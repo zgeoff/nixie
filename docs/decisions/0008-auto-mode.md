@@ -3,7 +3,7 @@
 - Date: 2026-10-08
 - Status: decided
 - Research:
-  [auto-mode decision model](https://github.com/zgeoff/auto-mode/blob/main/docs/architecture/decision-model.md)
+  [auto-mode decision model](https://github.com/zgeoff/auto-mode/blob/dfa902449661f9e9cef4bf46fb76d9c1c140fba8/docs/architecture/decision-model.md)
 
 nixie uses auto-mode's core library to decide the actions that its deterministic policy leaves open.
 nixie's own layers decide first: the rules from [0004](0004-rule-engine.md), the always-ask set and
