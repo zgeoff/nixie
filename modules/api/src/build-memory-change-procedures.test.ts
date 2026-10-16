@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import type { PinnedCoreView } from '@heynixie/memory';
 import {
   defaultGateLimits,
   defaultOwnerPronouns,
@@ -328,4 +329,49 @@ test('#memory.pin refuses a pin that takes the pinned core past its budget', asy
   await pin.catch(() => {});
 
   expect(pin).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
+});
+
+test('#memory.pin answers a retry with its first result after the pinned core filled', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  // about 1,100 tokens each, so the core holds one of them and not both
+  const item = await ctx.memory.remember({
+    text: 'Keeps a long packing list for trips. '.repeat(119),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await client.memory.pin({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    version: 1,
+    isPinned: true,
+  });
+
+  await ctx.memory.pin({
+    itemID: item.itemID,
+    isPinned: false,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.remember({
+    text: 'Keeps a long reading list for winter. '.repeat(116),
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const retried = await client.memory.pin({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    version: 1,
+    isPinned: true,
+  });
+
+  expect(retried).toStrictEqual({ itemID: item.itemID, isPinned: true });
+
+  expect(ctx.memory.view.readPinnedCore()).resolves.toSatisfy(
+    (core: PinnedCoreView) => core.items.length === 1 && core.items[0]?.itemID !== item.itemID,
+  );
 });
