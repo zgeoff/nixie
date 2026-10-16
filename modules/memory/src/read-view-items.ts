@@ -55,15 +55,10 @@ export async function readViewItems(
 
   const byID = new Map(rows.map((row) => [row.item_id, row]));
 
-  const items = await Promise.all(
-    itemIDs.map((itemID) => {
-      const row = byID.get(itemID);
+  // the rows in the order of the IDs, without an ID that matched no item
+  const found = itemIDs.flatMap((itemID) => byID.get(itemID) ?? []);
 
-      return row === undefined ? null : buildViewItem(row, keys.get(itemID));
-    }),
-  );
-
-  return items.filter((item) => item !== null);
+  return Promise.all(found.map((row) => buildViewItem(row, keys.get(row.item_id))));
 }
 
 interface ViewItemRow {
