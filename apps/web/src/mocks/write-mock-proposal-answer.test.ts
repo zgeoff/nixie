@@ -285,3 +285,83 @@ test('it refuses edited text for a retirement proposal', async () => {
 
   expect(outcome).toMatchObject({ code: 'RETIREMENT_EDIT', status: 'refused' });
 });
+
+test('it answers a revision of an item that moved past the version the answer names as stale, and writes nothing', async () => {
+  const item = await store.memoryItems.create({
+    versions: [{ text: 'Keeps bees on the roof' }, { text: 'Keeps bees in the garden' }],
+  });
+
+  const proposal = await store.memoryProposals.create({ text: 'keeps bees on the roof' });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(outcome).toStrictEqual({
+    cause: 'moved',
+    proposalID: proposal.proposalID,
+    status: 'stale',
+  });
+
+  expect(stored?.versions).toHaveLength(2);
+  expect(store.records.all()).toStrictEqual([]);
+});
+
+test('it answers a revision of an item that does not exist as stale', async () => {
+  const proposal = await store.memoryProposals.create({});
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: '0b8f1d2e-4c6a-4e9b-8d3f-1a2b3c4d5e6f', version: 1 },
+  });
+
+  expect(outcome).toMatchObject({ cause: 'gone', status: 'stale' });
+});
+
+test('it refuses a revision of an item that is no longer active', async () => {
+  const item = await store.memoryItems.create({
+    state: 'retired',
+    versions: [{ state: 'retired' }],
+  });
+
+  const proposal = await store.memoryProposals.create({});
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  expect(outcome).toMatchObject({ code: 'WRONG_STATE', status: 'refused' });
+});
+
+test('it refuses a revision target for a proposal that already names its item', async () => {
+  const item = await store.memoryItems.create({ versions: [{}] });
+  const other = await store.memoryItems.create({ versions: [{}] });
+  const proposal = await store.memoryProposals.create({ itemID: item.itemID, targetVersion: 1 });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: other.itemID, version: 1 },
+  });
+
+  expect(outcome).toMatchObject({ code: 'REVISION_TARGET', status: 'refused' });
+});

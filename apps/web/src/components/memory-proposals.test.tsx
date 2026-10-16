@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
+import { writeMockMemoryChange } from '../mocks/write-mock-memory-change';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { MemoryProposals } from './memory-proposals';
@@ -270,4 +271,38 @@ test('it revises the item that already says it when you choose', async () => {
   expect(
     store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }))?.versions,
   ).toMatchObject([{ text: 'Keeps bees on the roof' }, { text: 'keeps bees on the roof' }]);
+});
+
+test('it shows a revision of an item that changed after the match as stale', async () => {
+  const ctx = await setupTest();
+
+  const [item] = await Promise.all([
+    store.memoryItems.create({ versions: [{ text: 'Keeps bees on the roof' }] }),
+    store.memoryProposals.create({ text: 'keeps bees on the roof' }),
+  ]);
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', { name: 'keeps bees on the roof' });
+
+  await ctx.user.click(within(card).getByRole('button', { name: 'Approve' }));
+
+  const choice = await within(card).findByRole('group', {
+    name: 'An active item already says this',
+  });
+
+  await writeMockMemoryChange({
+    change: 'retire',
+    clientActionID: '9a3e6c21-4b7d-4f8a-b2c5-1d0e7f9a6b34',
+    itemID: item.itemID,
+    version: 1,
+  });
+
+  await ctx.user.click(within(choice).getByRole('button', { name: 'Revise that item' }));
+
+  const notices = await rendered.findByRole('status', { name: 'Answers that changed nothing' });
+
+  expect(notices).toHaveTextContent(
+    '“keeps bees on the roof”: Nothing changed: the item changed after the proposal was made.',
+  );
 });

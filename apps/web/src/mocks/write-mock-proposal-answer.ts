@@ -131,8 +131,10 @@ async function writeApproval(
   proposal: StoredProposal,
   input: ApprovalInput,
 ): Promise<MockProposalOutcome> {
-  if (proposal.operation === 'retire' && input.editedText !== undefined) {
-    return { code: 'RETIREMENT_EDIT', proposalID: proposal.proposalID, status: 'refused' };
+  const refusal = findApprovalRefusal(proposal, input);
+
+  if (refusal !== null) {
+    return refusal;
   }
 
   const text = input.editedText ?? proposal.text;
@@ -151,6 +153,43 @@ async function writeApproval(
   });
 
   return { proposalID: proposal.proposalID, status: 'applied' };
+}
+
+// what stops an approval before it writes, as nixie's store checks it: a retirement takes no edit,
+// and only a new item's proposal takes a revision target
+function findApprovalRefusal(
+  proposal: StoredProposal,
+  input: ApprovalInput,
+): MockProposalOutcome | null {
+  if (proposal.operation === 'retire' && input.editedText !== undefined) {
+    return { code: 'RETIREMENT_EDIT', proposalID: proposal.proposalID, status: 'refused' };
+  }
+
+  if (input.revisionOf === undefined) {
+    return null;
+  }
+
+  return proposal.targetVersion === null
+    ? findRevisionTargetRefusal(proposal.proposalID, input.revisionOf)
+    : { code: 'REVISION_TARGET', proposalID: proposal.proposalID, status: 'refused' };
+}
+
+// a revision binds to the version of the close match the view showed, which must still be active
+function findRevisionTargetRefusal(
+  proposalID: string,
+  target: NonNullable<ApprovalInput['revisionOf']>,
+): MockProposalOutcome | null {
+  const item = store.memoryItems.findFirst((query) => query.where({ itemID: target.itemID }));
+
+  if (item === undefined || item.state === 'forgetting' || item.state === 'forgotten') {
+    return { cause: 'gone', proposalID, status: 'stale' };
+  }
+
+  if (item.versions.length !== target.version) {
+    return { cause: 'moved', proposalID, status: 'stale' };
+  }
+
+  return item.state === 'active' ? null : { code: 'WRONG_STATE', proposalID, status: 'refused' };
 }
 
 // the active item a new item's text matches, case aside, unless the answer already chose
