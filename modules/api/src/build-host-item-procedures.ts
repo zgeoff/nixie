@@ -4,7 +4,7 @@ import { requireHostMemory } from './require-host-memory';
 import type { ReadHostMemory } from './types';
 
 // Builds the host procedures over one memory item: show it with its history, and write your own
-// change to it, an edit, a retirement, a restore or a pin.
+// change to it, an edit, a retirement, a restore, a pin or a forget.
 export function buildHostItemProcedures(readMemory: ReadHostMemory) {
   const items = hostImplementer.memory.items;
 
@@ -48,6 +48,14 @@ export function buildHostItemProcedures(readMemory: ReadHostMemory) {
     restore: items.restore.handler((options) =>
       requireHostMemory(readMemory, options.errors.MEMORY_NOT_STARTED).restore(options.input),
     ),
+
+    forget: items.forget.handler(async (options) => {
+      const memory = requireHostMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
+
+      await memory.forget(options.input);
+
+      return { itemID: options.input.itemID };
+    }),
 
     pin: items.pin.handler(async (options) => {
       const memory = requireHostMemory(readMemory, options.errors.MEMORY_NOT_STARTED);

@@ -4,10 +4,10 @@ import type { MemoryStore, Provenance, VersionRef } from './types';
 import type { ItemHistory } from './view-types';
 
 // What the host commands reach of the memory store: the pending proposals, the consolidator's
-// diff, and your own changes to an item.
+// diff, and your own changes to an item, its forget included.
 export type HostMemoryStore = Pick<
   MemoryStore,
-  'remember' | 'retire' | 'restore' | 'pin' | 'readHistory'
+  'remember' | 'retire' | 'restore' | 'pin' | 'forget' | 'readHistory'
 > & { readonly proposals: MemoryProposals; readonly consolidations: MemoryConsolidations };
 
 // An answer to a proposal or a change, bound to the action hash the host command showed.
@@ -46,6 +46,10 @@ export interface HostMemory {
   readonly retire: (target: VersionRef) => Promise<VersionRef>;
   readonly restore: (target: VersionRef) => Promise<VersionRef>;
   readonly pin: (itemID: string, isPinned: boolean) => Promise<void>;
+
+  // forgets the item for good, bound to the version memory-show printed; a forget whose cleanup
+  // failed stays pending, and the store's next start completes it
+  readonly forget: (target: VersionRef) => Promise<void>;
   readonly readDiff: () => Promise<ConsolidationDiff | null>;
   readonly approveChanges: (
     answers: readonly HostChangeAnswer[],
@@ -68,6 +72,7 @@ export function buildHostMemory(store: HostMemoryStore): HostMemory {
     retire: (target) => store.retire({ target, provenance: ownerProvenance }),
     restore: (target) => store.restore({ target, provenance: ownerProvenance }),
     pin: (itemID, isPinned) => store.pin({ itemID, isPinned, provenance: ownerProvenance }),
+    forget: (target) => store.forget({ target, provenance: ownerProvenance }),
     readDiff: () => store.consolidations.readPending(),
     approveChanges: (answers) =>
       store.consolidations.approveAll(

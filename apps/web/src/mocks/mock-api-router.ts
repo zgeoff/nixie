@@ -3,6 +3,7 @@ import { renderSessionCookie } from '@heynixie/contract';
 import { withEventMeta } from '@orpc/server';
 import type { ReadonlyDeep } from '../types';
 import { mockImplementer } from './mock-implementer';
+import { mockMemoryForgetProcedures } from './mock-memory-forget-procedures';
 import { mockMemoryProcedures } from './mock-memory-procedures';
 import { mockProposalProcedures } from './mock-proposal-procedures';
 import { requireMockSession } from './require-mock-session';
@@ -123,7 +124,7 @@ export const mockAPIRouter = os.router({
     }),
   },
   log: { follow: followProcedure },
-  memory: { ...mockMemoryProcedures, ...mockProposalProcedures },
+  memory: { ...mockMemoryProcedures, ...mockProposalProcedures, ...mockMemoryForgetProcedures },
   records: { follow: followProcedure },
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {

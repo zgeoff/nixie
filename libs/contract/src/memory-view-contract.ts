@@ -180,6 +180,16 @@ const proposalOutcomeSchema = z.discriminatedUnion('status', [
 
 const proposalOutcomesSchema = z.object({ outcomes: z.array(proposalOutcomeSchema) });
 
+const memoryItemDetailSchema = memoryItemSchema.extend({ versions: z.array(memoryVersionSchema) });
+
+// what a forget destroys beyond the item's own text
+const forgetLossSchema = z.object({
+  evidenceMessages: z.int().nonnegative(),
+  proposals: z.int().nonnegative(),
+});
+
+const forgetPreviewSchema = memoryItemDetailSchema.extend({ lost: forgetLossSchema });
+
 const versionTargetSchema = z.object({
   clientActionID: z.uuid(),
   itemID: itemIDSchema,
@@ -223,7 +233,7 @@ export const memoryViewContract = {
   readItem: memoryView
     .errors({ MEMORY_ITEM_NOT_FOUND: { message: 'No memory item has this ID', status: 404 } })
     .input(z.object({ itemID: itemIDSchema }))
-    .output(memoryItemSchema.extend({ versions: z.array(memoryVersionSchema) })),
+    .output(memoryItemDetailSchema),
 
   // Retires an active item, which leaves recall and the pinned core and keeps its history.
   retire: memoryChange
@@ -234,6 +244,22 @@ export const memoryViewContract = {
   restore: memoryChange
     .input(versionTargetSchema)
     .output(z.object({ itemID: z.string(), version: z.int().positive() })),
+
+  // What a forget of the item at the version the view showed destroys: the item with every version,
+  // and how many messages that backed it leave recall and how many proposals for it lose their
+  // text. It refuses as the forget does, so no confirmation opens for an item that moved on.
+  previewForget: memoryView
+    .errors({
+      MEMORY_ITEM_NOT_FOUND: { message: 'No memory item has this ID', status: 404 },
+      STALE_VERSION: { message: 'The memory item has moved past that version', status: 409 },
+    })
+    .input(z.object({ itemID: itemIDSchema, version: z.int().positive() }))
+    .output(forgetPreviewSchema),
+
+  // Forgets an active or retired item for good, bound to the version its preview showed: the
+  // server deletes its key, drops it from every index and cleans up every session that could hold
+  // it. A retry runs the cleanup again, so a forget whose cleanup failed completes.
+  forget: memoryChange.input(versionTargetSchema).output(z.object({ itemID: z.string() })),
 
   // Puts an active item in the pinned core, or takes an item out of it. A pin adds no version.
   pin: memoryChange

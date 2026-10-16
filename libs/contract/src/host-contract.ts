@@ -219,6 +219,9 @@ export const hostContract = {
         .output(versionRefSchema),
       retire: memory.input(versionTargetSchema).output(versionRefSchema),
       restore: memory.input(versionTargetSchema).output(versionRefSchema),
+
+      // A forget destroys the item for good: its key, its index entries and every session copy.
+      forget: memory.input(versionTargetSchema).output(z.object({ itemID: z.string() })),
       pin: memory
         .input(z.strictObject({ itemID: z.string().min(1), isPinned: z.boolean() }))
         .output(z.object({ itemID: z.string(), isPinned: z.boolean() })),

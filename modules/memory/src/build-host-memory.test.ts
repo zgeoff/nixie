@@ -159,6 +159,24 @@ test('it pins an item into the pinned core', async () => {
   expect(core.map((entry) => entry.itemID)).toStrictEqual([item.itemID]);
 });
 
+test('it forgets an item for good as your own change', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'The gate code is 4417' });
+
+  await ctx.host.forget(item);
+
+  const history = await ctx.memory.store.readHistory(item.itemID);
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(history).toMatchObject({ state: 'forgotten', versions: [{ status: 'shredded' }] });
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'memory.version_added',
+    'memory.forget_started',
+    'memory.forgotten',
+  ]);
+});
+
 test('it approves each named change as the host and leaves the rest pending', async () => {
   const ctx = await setupTest();
 

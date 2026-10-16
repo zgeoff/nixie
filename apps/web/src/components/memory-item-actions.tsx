@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { css } from '../styled-system/css';
 import type { MemoryItem } from '../types';
 import { useNixieClient } from '../use-nixie-client';
+import { MemoryForgetControl } from './memory-forget-control';
 
 export interface MemoryItemActionsProps {
   readonly item: MemoryItem;
@@ -24,9 +25,9 @@ interface PendingChange {
   readonly version: number;
 }
 
-// The checked changes to one item, each bound to the version the row shows: only the confirm
-// changes it, and each confirmation keeps one client action ID, so a confirm that fails and goes
-// again changes the item once.
+// The checked changes to one item, its forget included, each bound to the version the row shows:
+// only the confirm changes it, and each confirmation keeps one client action ID, so a confirm that
+// fails and goes again changes the item once.
 export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
   const [pending, setPending] = useState<PendingChange | null>(null);
   const changes = pickChanges(props.item);
@@ -49,6 +50,7 @@ export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
             {labels[change]}
           </button>
         ))}
+        <MemoryForgetControl item={props.item} onSettled={props.onSettled} />
       </div>
     );
   }

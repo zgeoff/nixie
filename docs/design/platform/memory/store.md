@@ -41,12 +41,9 @@ forgets are rare. Each extension below keeps the same contract and makes it chea
 
 ## Destroying memory beyond one item
 
-The forget of one item, bound to the version its confirmation showed, is built. "Forget that" in the
-conversation retires the item instead, with undo and a link to the checked delete. A forget's
-confirmation shows the item with its history, lists what is lost, and states that the user's
-messages and replies that state the same fact stay under their own record keys, with a link to the
-record-forget action. A forget also deletes the compaction summaries that
-[memory in context](context.md#compaction) deletes with it.
+The forget of one item from the memory view or a host command, with its confirmation, is built
+([the memory view](../../../architecture/memory/view.md#forgetting-an-item)). "Forget that" in the
+conversation retires the item instead, with undo and a link to the checked delete.
 
 ### Bulk deletion of retired memories
 

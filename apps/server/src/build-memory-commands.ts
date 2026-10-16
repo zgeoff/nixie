@@ -4,7 +4,7 @@ import { sendHostRequest } from './send-host-request';
 import type { CLIFlags, CLIIO, Command } from './types';
 
 // The memory host commands: they list the pending memory proposals as JSON or answer one under
-// --hash, and show one item or change it as your own action.
+// --hash, and show one item or change it as your own action, a forget for good included.
 export function buildMemoryCommands(): readonly (readonly [string, Command])[] {
   return [
     ['memory-pending', (flags, io) => runMemoryPending(flags.config, io)],
@@ -14,6 +14,7 @@ export function buildMemoryCommands(): readonly (readonly [string, Command])[] {
     ['memory-edit', runMemoryEdit],
     ['memory-retire', makeMemoryVersionChange('retire')],
     ['memory-restore', makeMemoryVersionChange('restore')],
+    ['memory-forget', makeMemoryVersionChange('forget')],
     ['memory-pin', makeMemoryPin(true)],
     ['memory-unpin', makeMemoryPin(false)],
   ];
@@ -161,8 +162,9 @@ async function runMemoryEdit(flags: CLIFlags, io: CLIIO, args: readonly string[]
   return 0;
 }
 
-// a retirement or a restore binds to the version memory-show printed
-function makeMemoryVersionChange(command: 'retire' | 'restore'): Command {
+// a retirement, a restore or a forget binds to the version memory-show printed, so an item that
+// changed since refuses it as stale
+function makeMemoryVersionChange(command: 'retire' | 'restore' | 'forget'): Command {
   return async (flags, io, args) => {
     const [flag] = args;
     const target = flag === undefined ? null : parseVersionTarget(flag);

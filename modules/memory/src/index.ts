@@ -88,6 +88,7 @@ export type {
 
 export type {
   EvidenceMessage,
+  ForgetPreview,
   HistoryVersion,
   ItemHistory,
   MemoryView,

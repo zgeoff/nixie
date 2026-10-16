@@ -42,6 +42,9 @@ export interface OutboxMessage {
 // A memory item as the memory view lists it, and one version of an item's history.
 export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];
 
+// what a forget's confirmation shows: the item with every version, and what its forget destroys
+export type ForgetPreview = ReadonlyDeep<ContractOutputs['memory']['previewForget']>;
+
 export type MemoryVersion = ReadonlyDeep<ContractOutputs['memory']['readItem']['versions'][number]>;
 
 // A pending memory proposal as the proposals screen lists it, and the outcome of one answer to it.
