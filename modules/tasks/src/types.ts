@@ -1,5 +1,5 @@
 import type { CheckedTables } from '@heynixie/db';
-import type { Definitions, Log, LogRecord, RecordInput } from '@heynixie/log';
+import type { Definitions, Log, LogRecord, RecordInput, RecordKind } from '@heynixie/log';
 
 // The one clock that leases, renewals, timers, retry delays and every wait read, in milliseconds
 // since the epoch. A test build passes a clock the test sets and advances, so no test sleeps to let
@@ -172,7 +172,7 @@ interface LeaseTable {
 interface InboxRecordTable {
   readonly sequence: number;
   readonly thread: string | null;
-  readonly kind: string;
+  readonly kind: RecordKind;
 }
 
 export type TaskRow = TaskTable;

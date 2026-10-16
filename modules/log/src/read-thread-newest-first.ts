@@ -1,5 +1,5 @@
 import { readRecords } from './read-records';
-import type { Log, LogRecord } from './types';
+import type { Log, LogRecord, RecordKind } from './types';
 
 const pageSize = 200;
 
@@ -13,7 +13,7 @@ interface LogContext {
 export async function* readThreadNewestFirst(
   context: LogContext,
   taskID: string,
-  kinds: readonly string[],
+  kinds: readonly RecordKind[],
 ): AsyncGenerator<LogRecord> {
   const page = { before: Number.MAX_SAFE_INTEGER, size: pageSize };
 

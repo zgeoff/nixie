@@ -1,4 +1,4 @@
-import type { Definitions, JSONObject, RecordInput } from '@heynixie/log';
+import type { Definitions, JSONObject, RecordInput, RecordKind } from '@heynixie/log';
 import type { ToolRunModel } from '@heynixie/tools';
 
 export interface ModelRecordSource {
@@ -19,7 +19,7 @@ export interface ModelRecordFields {
 // call, set by nixie and never taken from anything the model sent.
 export function buildModelRecord(
   source: ModelRecordSource,
-  kind: string,
+  kind: RecordKind,
   fields: ModelRecordFields,
 ): RecordInput {
   return {

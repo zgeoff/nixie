@@ -41,6 +41,8 @@ export type {
   ReadFilesystemType,
   RecordAttachments,
   RecordInput,
+  RecordKind,
+  RecordKinds,
   RecordWithChanges,
   Writer,
   WriterLock,

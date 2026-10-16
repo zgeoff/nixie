@@ -1,5 +1,5 @@
 import type { LogRecord as ContractRecord, Span } from '@heynixie/contract';
-import type { JSONObject, JSONValue, LogRecord } from '@heynixie/log';
+import type { JSONObject, JSONValue, LogRecord, RecordKind } from '@heynixie/log';
 
 // Turns a log record into the record a client renders, or null for a record that belongs to no
 // thread, such as a session or a refusal record, which no client view shows. Your message and the
@@ -31,7 +31,7 @@ export function toContractRecord(record: LogRecord): ContractRecord | null {
 }
 
 // your message, and a reply from the conversation's model
-const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
+const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
 
 type Message = NonNullable<ContractRecord['message']>;
 
@@ -103,7 +103,7 @@ function toRetry(payload: LogRecord['payload']): Pick<Task, 'errorLimit' | 'erro
 }
 
 // a tool call, and the result that answers it
-const toolKinds: ReadonlySet<string> = new Set(['tool_called', 'tool_result']);
+const toolKinds: ReadonlySet<RecordKind> = new Set(['tool_called', 'tool_result']);
 
 type ToolCall = NonNullable<ContractRecord['toolCall']>;
 
@@ -286,7 +286,7 @@ function toCompactionFailure(record: LogRecord): CompactionFailure | undefined {
 }
 
 // the start and the end of a forget of your message or a reply
-const forgetKinds: ReadonlySet<string> = new Set(['record.forget_started', 'record.forgotten']);
+const forgetKinds: ReadonlySet<RecordKind> = new Set(['record.forget_started', 'record.forgotten']);
 
 function toForget(record: LogRecord): Pick<ContractRecord, 'forget'> {
   const sequence = record.payload['recordSequence'];

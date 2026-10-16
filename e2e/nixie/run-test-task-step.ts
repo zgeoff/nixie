@@ -1,5 +1,12 @@
 import type { Clock, StepInput, StepResult } from '../../modules/tasks/src/index';
 
+// the record kind the test build's task step writes for each inbox it reads
+declare module '../../modules/log/src/index' {
+  interface RecordKinds {
+    'test.inbox_read': true;
+  }
+}
+
 // The step of every task but the conversation: the first sets a timer an hour on, and each reads
 // its inbox, records what it read, and waits, or finishes on a message that asks it to. The session
 // boundary marks the timer as set, so a rerun sets no second one.

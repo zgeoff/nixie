@@ -5,7 +5,7 @@ test('it builds a default log record', () => {
   expect(buildMockLogRecord()).toStrictEqual({
     sequence: expect.toBeWithin(1, 1_000_001),
     recordedAt: expect.toBeValidDate(),
-    kind: 'owner_message',
+    kind: 'log_reset',
     definitions: {
       snapshotHash: expect.toSatisfy((hash: string) => /^sha256:[\da-f]{64}$/u.test(hash)),
     },

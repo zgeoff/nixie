@@ -1,3 +1,4 @@
+import type { RecordKind } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -94,7 +95,7 @@ function pickSettledForget(state: ForgetState): RecordForgetResult | null {
 }
 
 // the records a forget can remove: your message, and a reply from the conversation's model
-const forgettableKinds = ['owner_message', 'model.reply'];
+const forgettableKinds: readonly RecordKind[] = ['owner_message', 'model.reply'];
 
 // Commits record.forget_started for a message or a reply on the thread and answers its time, or
 // the first start's time when a forget of the record already began, or null when the thread holds

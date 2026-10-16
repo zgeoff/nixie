@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import type { RecordKind } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
@@ -57,7 +58,7 @@ async function setupTest() {
 
       await runNextStep(tasks.context, runner.runStep);
     },
-    readKinds: async (kind: string) => {
+    readKinds: async (kind: RecordKind) => {
       const entries = await readRecords(tasks.context.log, { afterSequence: 0, kinds: [kind] });
 
       return entries.map((entry) => entry.record);

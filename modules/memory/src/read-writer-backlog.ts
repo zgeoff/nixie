@@ -1,4 +1,4 @@
-import type { Log, LogRecord } from '@heynixie/log';
+import type { Log, LogRecord, RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { renderImageMarkers } from '@heynixie/sessions';
 import { conversationTaskID } from '@heynixie/tasks';
@@ -89,7 +89,7 @@ function countOwnerMessages(records: readonly LogRecord[]): number {
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 type WakeTables = Readonly<{
-  records: { sequence: number; thread: string | null; kind: string; payload: string };
+  records: { sequence: number; thread: string | null; kind: RecordKind; payload: string };
 }>;
 
 const wakePayload = z.object({ messageSequence: z.int(), at: z.int() });

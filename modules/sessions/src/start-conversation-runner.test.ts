@@ -672,7 +672,7 @@ test('it rebuilds the session when your next images would pass the images the se
 
   // 10 MiB reads as about 14 MiB in base64, so a session holds one such photo and not two
   const photo = {
-    kind: 'owner_message',
+    kind: 'owner_message' as const,
     definitions: { snapshotHash: 'sha256:test' },
     thread: 'conversation',
     payload: { images: [{ mediaType: 'image/jpeg' }] },
@@ -782,7 +782,7 @@ test('it resumes the session for a photo while the images it holds leave room', 
 
   // 5 MiB reads as about 7 MiB in base64, so a session holds both photos
   const photo = {
-    kind: 'owner_message',
+    kind: 'owner_message' as const,
     definitions: { snapshotHash: 'sha256:test' },
     thread: 'conversation',
     payload: { images: [{ mediaType: 'image/jpeg' }] },

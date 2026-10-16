@@ -12,7 +12,7 @@ test('it runs the conversation step on the message and commits the step result',
       next: 'wait' as const,
       records: [
         {
-          kind: 'test.step_ran',
+          kind: 'model.reply' as const,
           definitions: { snapshotHash: 'sha256:test' },
           payload: {},
         },
@@ -37,7 +37,7 @@ test('it runs the conversation step on the message and commits the step result',
   ).toMatchObject([
     { kind: 'owner_message', erasable: { fields: { text: 'Say a fruit.' } } },
     { kind: 'task.step_started' },
-    { kind: 'test.step_ran' },
+    { kind: 'model.reply' },
     { kind: 'task.step_committed' },
   ]);
 });

@@ -20,7 +20,7 @@ export async function writePlannedBatch(log: Log, texts: readonly string[]): Pro
       payload: { startSequence: 0, at: 1_000_000 },
     },
     ...texts.map((text) => ({
-      kind: 'owner_message',
+      kind: 'owner_message' as const,
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       erasable: { text },

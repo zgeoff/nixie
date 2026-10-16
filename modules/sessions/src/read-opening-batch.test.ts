@@ -79,7 +79,7 @@ test('it opens with the records whose images fit the 100 a session holds, howeve
   const ctx = await setupTest();
 
   const icon = {
-    kind: 'owner_message',
+    kind: 'owner_message' as const,
     definitions: { snapshotHash: 'sha256:test' },
     thread: 'conversation',
     payload: { images: [{ mediaType: 'image/png' }, { mediaType: 'image/png' }] },

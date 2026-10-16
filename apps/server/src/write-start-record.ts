@@ -1,3 +1,4 @@
+import type { RecordKind } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { z } from 'zod';
@@ -64,7 +65,7 @@ export function writeStartRecord(
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 type RecordTables = Readonly<{
-  records: { readonly sequence: number; readonly kind: string; readonly payload: string };
+  records: { readonly sequence: number; readonly kind: RecordKind; readonly payload: string };
 }>;
 
 const givenPayload = z.object({

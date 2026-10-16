@@ -8,12 +8,13 @@ export type LogRecordOverrides = Partial<Omit<LogRecord, 'definitions' | 'payloa
   readonly payload?: JSONObject;
 };
 
-// A record as readRecords returns it: no thread, no step, no erasable fields, and an empty payload.
+// A record as readRecords returns it: the log's own reset kind, which every package's registry
+// holds, no thread, no step, no erasable fields, and an empty payload.
 export function buildMockLogRecord(overrides: LogRecordOverrides = {}): LogRecord {
   return {
     sequence: faker.number.int({ min: 1, max: 1_000_000 }),
     recordedAt: faker.date.recent(),
-    kind: 'owner_message',
+    kind: 'log_reset',
     thread: null,
     stepKey: null,
     parent: null,

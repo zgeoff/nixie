@@ -8,22 +8,21 @@ import type { MessageTimeOptions } from './types';
 
 // Renders an inbox record so the model knows when it arrived and can cite it: your message after
 // its event ID, time and session label, or a fired timer or an action's outcome as a system message
-// whose body leads with the event ID.
+// whose body leads with the event ID. Any other kind, such as a wake, reads as its kind and payload.
 export function renderInboxMessage(record: LogRecord, times: MessageTimeOptions): string {
-  switch (record.kind) {
-    case 'owner_message': {
-      return `[${formatMessageStamp(record, times)}] ${renderOwnerText(record)}`;
-    }
-    case 'timer.fired': {
-      return renderRecordMessage(record, 'timer', times);
-    }
-    case 'action.outcome': {
-      return renderRecordMessage(record, 'outcome', times);
-    }
-    default: {
-      return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;
-    }
+  if (record.kind === 'owner_message') {
+    return `[${formatMessageStamp(record, times)}] ${renderOwnerText(record)}`;
   }
+
+  if (record.kind === 'timer.fired') {
+    return renderRecordMessage(record, 'timer', times);
+  }
+
+  if (record.kind === 'action.outcome') {
+    return renderRecordMessage(record, 'outcome', times);
+  }
+
+  return `A ${record.kind} record arrived: ${JSON.stringify(record.payload)}`;
 }
 
 type RecordMessageType = Extract<SystemMessageType, 'timer' | 'outcome'>;

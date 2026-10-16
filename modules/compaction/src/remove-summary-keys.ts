@@ -1,4 +1,4 @@
-import type { Log } from '@heynixie/log';
+import type { Log, RecordKind } from '@heynixie/log';
 import { removeRecordKey } from '@heynixie/log';
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
@@ -6,7 +6,7 @@ type RecordTables = Readonly<{
   records: {
     readonly sequence: number;
     readonly thread: string | null;
-    readonly kind: string;
+    readonly kind: RecordKind;
     readonly key_id: string | null;
   };
 }>;

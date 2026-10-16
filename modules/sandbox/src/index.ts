@@ -49,3 +49,5 @@ export type {
   ToolTarget,
   ToolTargetResolver,
 } from './types';
+
+export type { SandboxRecordKind } from './sandbox-record-kind';

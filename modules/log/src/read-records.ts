@@ -8,6 +8,7 @@ import type {
   Log,
   LogTables,
   ProjectionChange,
+  RecordKind,
   RecordRow,
   RecordWithChanges,
 } from './types';
@@ -21,7 +22,7 @@ export interface ReadRecordsOptions {
   readonly thread?: string;
 
   // only records of these kinds
-  readonly kinds?: readonly string[];
+  readonly kinds?: readonly RecordKind[];
 
   // newest reads the latest records first, so a limit keeps the most recent ones
   readonly order?: 'oldest' | 'newest';

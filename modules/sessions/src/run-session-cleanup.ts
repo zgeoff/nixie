@@ -1,6 +1,6 @@
 import { removeSummaryKeys } from '@heynixie/compaction';
 import { writeRecords } from '@heynixie/log';
-import type { RecordInput } from '@heynixie/log';
+import type { RecordInput, RecordKind } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import { runGuestPurge } from './run-guest-purge';
 import type { ConversationRun, SessionCleanupCause } from './types';
@@ -27,7 +27,7 @@ export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): 
 
 function buildSessionRecord(
   run: CleanupRun,
-  kind: string,
+  kind: RecordKind,
   cause: SessionCleanupCause,
 ): RecordInput {
   return {

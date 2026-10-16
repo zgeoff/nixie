@@ -18,3 +18,5 @@ export type {
   HostRouterOptions,
   Identity,
 } from './types';
+
+export type { APIRecordKind } from './api-record-kind';

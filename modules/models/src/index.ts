@@ -18,3 +18,5 @@ export type {
   ReasoningEffort,
   ResolvedProfile,
 } from './types';
+
+export type { ModelsRecordKind } from './models-record-kind';

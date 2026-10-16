@@ -23,3 +23,5 @@ export type {
   ToolRun,
   ToolRunModel,
 } from './types';
+
+export type { ToolsRecordKind } from './tools-record-kind';
