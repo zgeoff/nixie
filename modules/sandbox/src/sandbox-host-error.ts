@@ -15,7 +15,7 @@ export class SandboxHostError extends Error {
 
   readonly hostMessage: string;
 
-  constructor(failure: SandboxHostFailure, options?: ErrorOptions) {
+  constructor(failure: SandboxHostFailure, options?: Readonly<ErrorOptions>) {
     super(
       `the sandbox host failed the ${failure.call} with ${failure.code}: ${failure.hostMessage}`,
       options,
