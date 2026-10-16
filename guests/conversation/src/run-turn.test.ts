@@ -58,7 +58,10 @@ test('it gives every query() nixie tools alone, no settings, skills or SDK memor
   );
 
   await runTurn(
-    buildMockTurnFrame({ profile: { baseURL: ctx.model.url }, systemPrompt: 'You are nixie.' }),
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url, cacheTTL: '1h' },
+      systemPrompt: 'You are nixie.',
+    }),
     ctx.deps,
   );
 
@@ -78,6 +81,7 @@ test('it gives every query() nixie tools alone, no settings, skills or SDK memor
         autoCompactEnabled: false,
         precomputeCompactionEnabled: false,
         idleCompaction: false,
+        promptCacheTtl: '1h',
       },
       mcpServers: { nixie: ctx.tools.config },
       systemPrompt: { type: 'custom', prompt: 'You are nixie.', snapshot: false },
