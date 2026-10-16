@@ -61,11 +61,6 @@ test('it yields the records after the sequence, then a new record when the WAL c
     },
   ]);
 
-  // the WAL watcher's settle calls, beside the poll, catch a commit the first call read too early
-  await waitForCondition(() => ctx.clock.countSleepers() === 4);
-
-  ctx.clock.advance(250);
-
   const second = await waiting;
 
   expect(first.value?.record.sequence).toBe(2);

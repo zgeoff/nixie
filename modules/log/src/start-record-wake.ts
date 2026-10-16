@@ -1,3 +1,4 @@
+import { systemClock } from '@heynixie/clock';
 import { subscribeToWAL } from './subscribe-to-wal';
 import type { Writer } from './types';
 
@@ -30,9 +31,11 @@ export function startRecordWake(
     state.waiter = null;
   };
 
+  // the settle delays wait for SQLite to publish a commit, which no test clock hurries, so they run
+  // on the system clock; the poll runs on the writer's clock
   const subscribeToChanges =
     options.subscribeToChanges ??
-    ((dataDir, onChange) => subscribeToWAL(dataDir, writer.clock, onChange));
+    ((dataDir, onChange) => subscribeToWAL(dataDir, systemClock, onChange));
 
   const unsubscribe = subscribeToChanges(writer.dataDir, emitWake);
 
