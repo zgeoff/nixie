@@ -100,7 +100,7 @@ function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
 async function readFeatures(client: ImpClient): ReturnType<ImpPort['readFeatures']> {
   const [check, info] = await Promise.all([client.checkServer(), client.system.info()]);
 
-  if (!check.compatible) {
+  if (!check.compatible && !isRenamedImpd(check.serverVersion)) {
     throw new Error(`impd ${check.serverVersion} does not speak imp client ${check.clientVersion}`);
   }
 
@@ -109,6 +109,14 @@ async function readFeatures(client: ImpClient): ReturnType<ImpPort['readFeatures
     isEgressEnforced: info.egress?.isEnforced === true,
     hasBackupOptOut: info.features?.backupOptOut === true,
   };
+}
+
+// impd 2 renamed imp to impz and kept the wire API of impd 1.6, which this 1.x client speaks; the
+// client's own check refuses any other major, so nixie accepts major 2 until it takes a 2.x client
+const RENAMED_IMPD = /^2\.\d+\.\d+/u;
+
+function isRenamedImpd(serverVersion: string): boolean {
+  return RENAMED_IMPD.test(serverVersion);
 }
 
 // an imp that is gone already counts as removed, so a retried destroy succeeds
