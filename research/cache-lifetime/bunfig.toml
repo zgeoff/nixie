@@ -1,0 +1,2 @@
+# swaps the SDK the conversation guest's turn imports for the cache lifetime override
+preload = ["./register-query-override.ts"]
