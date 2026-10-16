@@ -3,8 +3,8 @@ import { randomBytes } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildTestClock } from '../../libs/testing/src/index';
-import { readRecords, writeRecords } from '../../modules/log/src/index';
+import { readRecords, writeRecords } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { startTestLog } from './start-test-log';
 
 // a fresh data directory, which no nixie holds
