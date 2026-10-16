@@ -43,3 +43,8 @@ export interface OutboxMessage {
 export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];
 
 export type MemoryVersion = ReadonlyDeep<ContractOutputs['memory']['readItem']['versions'][number]>;
+
+// A pending memory proposal as the proposals screen lists it, and the outcome of one answer to it.
+export type MemoryProposal = ContractOutputs['memory']['listProposals']['proposals'][number];
+
+export type ProposalOutcome = ContractOutputs['memory']['approveProposals']['outcomes'][number];
