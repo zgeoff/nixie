@@ -948,6 +948,12 @@
           "minimum": 0,
           "maximum": 100
         },
+        "retrieval_messages": {
+          "default": 3,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
         "retrieval_min_score": {
           "default": 0.25,
           "type": "number",
