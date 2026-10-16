@@ -52,11 +52,12 @@ pre-push:
       run: bun run format:check
     # the job lists the branch's files itself, so it runs on every push; a
     # files: list marks the job skipped when the branch changes no script.
-    # The list is taken before oxlint runs, so a failed git diff fails the job
+    # The merge base is resolved first, so a branch without one fails the job
+    # rather than handing oxlint an empty list
     - name: lint
       run: |
-        files=$(git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.js' '*.mjs' '*.cjs' '*.jsx' '*.ts' '*.mts' '*.cts' '*.tsx') || exit 1
-        [ -z "$files" ] || printf '%s\n' "$files" | tr '\n' '\0' | xargs -0 node_modules/.bin/oxlint --no-error-on-unmatched-pattern
+        base=$(git merge-base origin/main HEAD) || exit 1
+        git diff -z --name-only --diff-filter=ACMR "$base" HEAD -- '*.js' '*.mjs' '*.cjs' '*.jsx' '*.ts' '*.mts' '*.cts' '*.tsx' | xargs -0 -r node_modules/.bin/oxlint --no-error-on-unmatched-pattern
     # the packages the branch affects, one package and one checker at a time:
     # turbo's default 10 at once ran a 2 GiB host out of memory, and tsc's
     # default checkers take apps/server to about 1.2 GiB, one checker to 0.6
