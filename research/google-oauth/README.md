@@ -46,8 +46,9 @@ reached it with no extra setup.
 | Refresh on day 8                       | HTTP 200, and HTTP 200 from each API         |
 
 - A production app with no test users keeps a working refresh token past testing mode's 7-day limit,
-  and needs no setup beyond the 4 steps listed. The script writes nothing back to the vault, so the
-  token that refreshed on day 8 is the one that consent issued on day 0.
+  and needs no Google Cloud setup beyond the 4 steps in [Setup the owner did](#setup-the-owner-did).
+  The script writes nothing back to the vault, so the token that refreshed on day 8 is the one that
+  consent issued on day 0.
 - An unverified production app can hold Gmail's restricted scope for its owner. The third-party
   reports that Google blocks unverified apps from restricted scopes did not hold for the project's
   own account.
