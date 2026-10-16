@@ -5,29 +5,12 @@ import {
   memoryWriterTaskID,
   startMemoryWriter,
 } from '@heynixie/memory';
-import type { ModelSecrets, ModelsConfig, ResolvedProfile } from '@heynixie/models';
-import { resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
-import { makeDecisionPoint } from '@heynixie/policy';
-import type { SandboxAdapter } from '@heynixie/sandbox';
-import { startSessionRunner } from '@heynixie/sessions';
-import type { TasksContext } from '@heynixie/tasks';
-import type { ActionQueue } from '@heynixie/tools';
-import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
-import invariant from 'tiny-invariant';
-import { buildGuestCommand } from './build-guest-command';
+import type { SystemTaskOptions, SystemTaskRunner } from './make-system-task-runner';
+import { makeSystemTaskRunner } from './make-system-task-runner';
+import type { ToolSessionOptions } from './start-tool-session';
+import { startToolSession } from './start-tool-session';
 
-export interface MemoryWriterRunnerOptions {
-  readonly context: TasksContext;
-  readonly models: ModelsConfig;
-  readonly secrets: ModelSecrets;
-  readonly sandboxes: SandboxAdapter;
-
-  // the directory of the tool endpoint's run sockets, which the sandbox adapter's tool route
-  // resolves each sandbox's owner in
-  readonly socketDir: string;
-
-  // the conversation image's name in impd, from the sandbox manifest
-  readonly image: string;
+export interface MemoryWriterRunnerOptions extends SystemTaskOptions, ToolSessionOptions {
   readonly store: StartedMemoryStore;
   readonly gate: WriterGate;
   readonly config: WriterConfig;
@@ -38,114 +21,43 @@ export interface MemoryWriterRunnerOptions {
   // your configured name, which the writer's memories use, or null for "the owner"
   readonly ownerName: string | null;
   readonly onError: (error: unknown) => void;
-
-  // the action queue the server's tool endpoints share, which none of the writer's tools reaches,
-  // since each runs direct
-  readonly queue: ActionQueue;
 }
 
-export interface MemoryWriterRunner extends MemoryWriter {
-  readonly stop: () => Promise<void>;
-}
+export type MemoryWriterRunner = SystemTaskRunner<MemoryWriter>;
 
-// Starts the memory writer on the memory-writer role's profile, in its own long-lived sandbox on
-// the conversation image, never the conversation's. Its tool endpoint serves only the writer's 3
-// staging tools, on the run socket the sandbox adapter resolves for the writer's task.
-export async function startMemoryWriterRunner(
-  options: MemoryWriterRunnerOptions,
-): Promise<MemoryWriterRunner> {
-  const started = new AsyncDisposableStack();
+// Starts the memory writer on the memory-writer role's profile, as a system task with its own
+// session. Its tool endpoint serves only the writer's 3 staging tools.
+export const startMemoryWriterRunner = makeSystemTaskRunner<
+  MemoryWriterRunnerOptions,
+  MemoryWriter
+>({
+  role: 'memory-writer',
+  entry: 'main',
+  start: async (options, session) => {
+    const staging = createWriterStaging();
+    const tools = buildWriterTools(options.store, staging, options.config.topItems);
 
-  try {
-    const writer = await startWriterParts(options, (stop) => {
-      started.defer(stop);
+    const runner = await startToolSession(options, session, { taskID: memoryWriterTaskID, tools });
+
+    const writer = await startMemoryWriter({
+      context: options.context,
+      store: options.store,
+      publish: options.store.writeBatch,
+      staging,
+      model: {
+        model: runner.model.model,
+        profile: runner.model.profile,
+        runSession: runner.runSession,
+      },
+      gate: options.gate,
+      config: options.config,
+      getPersona: options.getPersona,
+      ownerName: options.ownerName,
+      onError: options.onError,
     });
 
-    const stack = started.move();
+    session.defer(() => writer.stop());
 
-    return { ...writer, stop: () => stack.disposeAsync() };
-  } catch (error) {
-    // the server retries a failed start, and each retry opens the run socket again
-    await started.disposeAsync();
-
-    throw error;
-  }
-}
-
-// the endpoint, the session runner and the writer, each deferred to stop in reverse order
-async function startWriterParts(
-  options: MemoryWriterRunnerOptions,
-  defer: (stop: () => Promise<void>) => void,
-): Promise<MemoryWriter> {
-  const staging = createWriterStaging();
-  const tools = buildWriterTools(options.store, staging, options.config.topItems);
-
-  const endpoint = await startWriterEndpoint(options, tools);
-
-  defer(() => endpoint.stop());
-
-  const runner = await startSessionRunner({
-    context: options.context,
-    profile: resolveWriterProfile(options),
-    sandboxes: options.sandboxes,
-    tools: endpoint,
-    toolNames: tools.map((tool) => tool.name),
-    taskID: memoryWriterTaskID,
-    image: options.image,
-    limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
-    command: buildGuestCommand(options.sandboxes),
-  });
-
-  defer(() => runner.stop());
-
-  const writer = await startMemoryWriter({
-    context: options.context,
-    store: options.store,
-    publish: options.store.writeBatch,
-    staging,
-    model: {
-      model: runner.model.model,
-      profile: runner.model.profile,
-      runSession: runner.runSession,
-    },
-    gate: options.gate,
-    config: options.config,
-    getPersona: options.getPersona,
-    ownerName: options.ownerName,
-    onError: options.onError,
-  });
-
-  defer(() => writer.stop());
-
-  return writer;
-}
-
-function resolveWriterProfile(options: MemoryWriterRunnerOptions): ResolvedProfile {
-  const credentials = resolveModelCredentials(options.models, options.secrets);
-  const profile = resolveRoleProfile(options.models, 'memory-writer');
-  const resolved = credentials[profile.id];
-
-  // the credentials resolve for every profile, or resolveModelCredentials throws first
-  invariant(resolved, `the memory writer profile ${profile.id} has no credential`);
-
-  return resolved;
-}
-
-// the writer's own tool endpoint, on the run socket the sandbox adapter resolves for its task
-function startWriterEndpoint(
-  options: MemoryWriterRunnerOptions,
-  tools: ReturnType<typeof buildWriterTools>,
-): ReturnType<typeof startToolEndpoint> {
-  const registry = buildToolRegistry(tools);
-
-  return startToolEndpoint({
-    socketDir: options.socketDir,
-    registry,
-    decide: makeDecisionPoint({
-      findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
-    }),
-    log: options.context.log,
-    definitions: options.context.definitions,
-    queue: options.queue,
-  });
-}
+    return writer;
+  },
+});
