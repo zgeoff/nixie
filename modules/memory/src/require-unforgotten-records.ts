@@ -2,11 +2,12 @@ import type { LogTables } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 import { ForgottenEvidenceError } from './forgotten-evidence-error';
+import type { MemoryTables } from './types';
 
 // Refuses a write once a forget of any of the records has started. It runs inside the write's
 // transaction, so a forget that commits before the key goes still stops the write.
 export async function requireUnforgottenRecords(
-  db: Kysely<unknown>,
+  db: Kysely<MemoryTables>,
   sequences: readonly number[],
 ): Promise<void> {
   const row = await db
