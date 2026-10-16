@@ -11,6 +11,8 @@ import { loadavg, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Options, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { ResultFields } from './build-result-fields.ts';
+import { buildResultFields } from './build-result-fields.ts';
 import { bargeIn, lines, loadCallerLine, longLine } from './caller.ts';
 import type { Heard } from './listen.ts';
 import { listenToCaller, waitUntil } from './listen.ts';
@@ -126,6 +128,7 @@ interface Sentence {
 interface Reply {
   costUSD?: number;
   firstTextAt?: number;
+  isError?: boolean;
   requestingAt?: number;
   resultAt?: number;
   ttftStreamMs?: number;
@@ -225,12 +228,10 @@ const stt = createSpeechToText(control ? 'zipformer' : sttName),
   messages = session[Symbol.asyncIterator]();
 await tts.speak('Hello.');
 
-interface TurnResult {
+interface TurnResult extends ResultFields {
   costUSD: number;
   requestingAt?: number;
   resultAt: number;
-  subtype: string;
-  ttftStreamMs?: number;
 }
 
 let sessionCostUSD = 0;
@@ -256,13 +257,7 @@ async function readTurn(onText: (delta: string, at: number) => void): Promise<Tu
       // total_cost_usd counts the whole session, so each turn keeps the difference.
       const costUSD = message.total_cost_usd - sessionCostUSD;
       sessionCostUSD = message.total_cost_usd;
-      return {
-        costUSD,
-        requestingAt,
-        resultAt: at,
-        subtype: message.subtype,
-        ttftStreamMs: message.subtype === 'success' ? message.ttft_stream_ms : undefined,
-      };
+      return { ...buildResultFields(message), costUSD, requestingAt, resultAt: at };
     }
   }
 }
@@ -328,6 +323,7 @@ function writeTurnRow(kind: string, round: number, index: number, heard: Heard, 
     firstSentenceMs: first ? first.textAt - end : undefined,
     firstTextMs: reply.firstTextAt === undefined ? undefined : reply.firstTextAt - end,
     fullTextMs: reply.resultAt === undefined ? undefined : reply.resultAt - end,
+    isError: reply.isError,
     kind,
     line: index,
     promptMs: heard.transcriptAt - end,
@@ -419,6 +415,7 @@ for (let trial = 0; trial < bargeIns; trial++) {
     detectMs: detectedAt === undefined ? undefined : detectedAt - bargeStartAt,
     heardMs,
     interruptToResultMs: wasWriting ? result.resultAt - interruptedAt : undefined,
+    isError: result.isError,
     kind: 'barge-in',
     replyMs: spoken.playEndAt - playStartAt,
     sentencesReady: sentences.length,
@@ -439,7 +436,14 @@ for (let trial = 0; trial < bargeIns; trial++) {
   sendPrompt(stream, after.transcript);
   const nextResult = await readTurn(next.addText);
   await next.finish();
-  writeRow({ costUSD: nextResult.costUSD, kind: 'after-barge-in', subtype: nextResult.subtype, text: next.reply.text, trial });
+  writeRow({
+    costUSD: nextResult.costUSD,
+    isError: nextResult.isError,
+    kind: 'after-barge-in',
+    subtype: nextResult.subtype,
+    text: next.reply.text,
+    trial,
+  });
 }
 
 stream.closed = true;
