@@ -17,6 +17,7 @@ export type {
   CleanupRecordSessions,
   HostRouterOptions,
   Identity,
+  ReadViewMemory,
 } from './types';
 
 export type { APIRecordKind } from './api-record-kind';

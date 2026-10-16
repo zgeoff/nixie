@@ -48,6 +48,12 @@ message still holds them. A message forgotten on its own reads as a gap beside a
 A retire, a restore, a pin and an unpin from the view each go through the store with the user as
 origin and source, as the host commands' changes do. Each binds to the version the view showed: the
 retire and the restore through their target, and the pin through the version it names, so an item
-that moved on since the user looked fails the change as stale and changes nothing. A caller can add
-its own write to the change's transaction, which runs before the change and rolls back with it, so a
-client action's result commits with the record that the action wrote, or not at all.
+that moved on since the user looked fails the change as stale and changes nothing.
+
+Each change from a device is a checked action
+([checked actions](../channels/api.md#checked-actions)). The store runs a caller's own write inside
+the change's transaction, before the change, and the API puts there its check that the caller's
+session is still live and the action's result. The change and its result therefore commit together
+or not at all. A retry with the same client action ID finds that result and makes no second change,
+even though the item has moved past the version the retry names. The memory store starts after the
+API listens, so every procedure of the view refuses a call until the store starts.

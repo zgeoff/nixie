@@ -1,25 +1,21 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { contract, renderSessionCookie } from '@heynixie/contract';
-import { implement, withEventMeta } from '@orpc/server';
-import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
+import { renderSessionCookie } from '@heynixie/contract';
+import { withEventMeta } from '@orpc/server';
 import type { ReadonlyDeep } from '../types';
-import { readMemoryVersion } from './read-memory-version';
-import { readRatingNote } from './read-rating-note';
+import { mockImplementer } from './mock-implementer';
+import { mockMemoryProcedures } from './mock-memory-procedures';
+import { requireMockSession } from './require-mock-session';
 import { store } from './store';
 import { toLogRecord } from './to-log-record';
 import { writeMockForget } from './write-mock-forget';
 
-interface MockAPIContext extends ResponseHeadersPluginContext {
-  // The device session's token, from the bearer header or the cookie.
-  readonly sessionToken: string | undefined;
-}
-
-const os = implement(contract).$context<MockAPIContext>();
+// The contract's implementer, under the short name oRPC's examples give it.
+const os = mockImplementer;
 
 // The live stream, under its current name and the deprecated one the contract keeps. As the API
 // does, it checks the session before it returns the stream.
 const followProcedure = os.records.follow.handler((options) => {
-  requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+  requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
   return toRecordEvents({ ...options.input, signal: options.signal });
 });
@@ -29,7 +25,7 @@ const followProcedure = os.records.follow.handler((options) => {
 export const mockAPIRouter = os.router({
   conversation: {
     read: os.conversation.read.handler((options) => {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       const limit = options.input.limit ?? 50;
       const before = options.input.beforeSequence ?? Number.POSITIVE_INFINITY;
@@ -55,7 +51,7 @@ export const mockAPIRouter = os.router({
     }),
 
     send: os.conversation.send.handler(async (options) => {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       const input = options.input;
 
@@ -89,7 +85,7 @@ export const mockAPIRouter = os.router({
 
     // an image of a message the store holds, which a forget removes with the message's text
     readImage: os.conversation.readImage.handler((options) => {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       const record = store.records.findFirst((query) =>
         query.where(
@@ -111,7 +107,7 @@ export const mockAPIRouter = os.router({
 
     // forgets your message or a reply as the API's forget leaves the log
     forget: os.conversation.forget.handler(async (options) => {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       const result = await writeMockForget(options.input);
 
@@ -126,35 +122,7 @@ export const mockAPIRouter = os.router({
     }),
   },
   log: { follow: followProcedure },
-  memory: {
-    // the stored text of each named version, and a version the store lacks as missing
-    readVersions: os.memory.readVersions.handler((options) => {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-      return { versions: options.input.versions.map((ref) => readMemoryVersion(ref)) };
-    }),
-
-    readRatingNotes: os.memory.readRatingNotes.handler((options) => {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-      return { notes: options.input.notes.map((ref) => readRatingNote(ref)) };
-    }),
-
-    // a writer that has caught up with every record in the store
-    writerStatus: os.memory.writerStatus.handler((options) => {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-      return {
-        backlog: 0,
-        batches: 0,
-        cursor: Math.max(0, ...store.records.all().map((record) => record.sequence)),
-        failures: 0,
-        isCatchingUp: false,
-        lastError: null,
-        retryAt: null,
-      };
-    }),
-  },
+  memory: mockMemoryProcedures,
   records: { follow: followProcedure },
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {
@@ -177,7 +145,7 @@ export const mockAPIRouter = os.router({
     }),
 
     issueCode: os.sessions.issueCode.handler(async (options) => {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       const code = await store.enrolmentCodes.create({});
 
@@ -185,7 +153,7 @@ export const mockAPIRouter = os.router({
     }),
 
     list: os.sessions.list.handler((options) => {
-      const current = requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+      const current = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
       const live = store.sessions.findMany((query) => query.where({ revokedAt: null }));
 
       return {
@@ -200,7 +168,7 @@ export const mockAPIRouter = os.router({
     }),
 
     revoke: os.sessions.revoke.handler(async (options) => {
-      requireSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
       const session = store.sessions.findFirst((query) =>
         query.where({ sessionID: options.input.sessionID }),
@@ -224,21 +192,6 @@ export const mockAPIRouter = os.router({
 });
 
 type StoredSession = NonNullable<ReturnType<typeof store.sessions.findFirst>>;
-
-function requireSession(
-  sessionToken: string | undefined,
-  buildUnauthorized: () => Error,
-): StoredSession {
-  const session = store.sessions.findFirst((query) =>
-    query.where({ revokedAt: null, token: sessionToken ?? '' }),
-  );
-
-  if (session === undefined) {
-    throw buildUnauthorized();
-  }
-
-  return session;
-}
 
 type StoredRecord = ReadonlyDeep<ReturnType<typeof store.records.all>[number]>;
 

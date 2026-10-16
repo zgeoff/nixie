@@ -3,7 +3,7 @@ import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { Elysia } from 'elysia';
 import { buildAPIRouter } from './build-api-router';
-import type { APIContext, APIRequestContext } from './types';
+import type { APIContext, APIRequestContext, ReadViewMemory } from './types';
 
 interface RouteContext {
   readonly request: Request;
@@ -11,9 +11,9 @@ interface RouteContext {
 
 // Builds the API's Elysia app, which serves every procedure and the live stream under /rpc. A call
 // without the custom client header is refused before any procedure runs, because a cross-site form
-// cannot send one. The server mounts the app and listens.
-export function buildAPIApp(context: APIContext) {
-  const handler = new RPCHandler(buildAPIRouter(context), {
+// cannot send one. The server mounts the app and listens, and fills the memory store once it starts.
+export function buildAPIApp(context: APIContext, readMemory: ReadViewMemory) {
+  const handler = new RPCHandler(buildAPIRouter(context, readMemory), {
     // A quiet live stream carries a keepalive this often, and the web client treats a stream
     // that misses three in a row as dead.
     eventIteratorKeepAliveInterval: 5000,

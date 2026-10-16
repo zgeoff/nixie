@@ -11,11 +11,17 @@ import { apiProjections } from '../api-projections';
 import { buildAPIApp } from '../build-api-app';
 import { defaultAPISettings } from '../default-api-settings';
 
-// the context the app takes, named from its signature to keep the file's imports to ten
+// the context and the memory store the app takes, named from its signature to keep the file's
+// imports to ten
 type APIContext = Parameters<typeof buildAPIApp>[0];
+
+type ViewMemoryStore = NonNullable<ReturnType<Parameters<typeof buildAPIApp>[1]>>;
 
 interface TestAPI {
   readonly dataDir: string;
+
+  // fills the memory store the memory view's procedures reach, which no test API holds at its start
+  readonly setMemory: (store: ViewMemoryStore) => void;
   readonly writer: Writer;
   readonly clock: TestClock;
   readonly context: APIContext;
@@ -42,18 +48,17 @@ export async function startTestAPI(): Promise<TestAPI> {
 
   const context = await buildTestContext(writer);
 
-  const app = buildAPIApp(context).listen({ hostname: '127.0.0.1', port: 0 });
+  const served = startTestApp(context);
 
-  stack.defer(async () => {
-    await app.stop(true);
-  });
+  stack.defer(served.stop);
 
   return {
     dataDir,
     writer,
     clock: context.clock,
     context,
-    url: `http://127.0.0.1:${app.server?.port}`,
+    url: served.url,
+    setMemory: served.setMemory,
   };
 }
 
@@ -87,4 +92,22 @@ async function buildTestContext(
   await createConversationTask(context);
 
   return context;
+}
+
+// listens on a loopback port and serves the memory store once the test sets one
+function startTestApp(
+  context: APIContext,
+): Pick<TestAPI, 'url' | 'setMemory'> & { readonly stop: () => Promise<void> } {
+  const memory: { store: ViewMemoryStore | null } = { store: null };
+  const app = buildAPIApp(context, () => memory.store).listen({ hostname: '127.0.0.1', port: 0 });
+
+  return {
+    stop: async () => {
+      await app.stop(true);
+    },
+    url: `http://127.0.0.1:${app.server?.port}`,
+    setMemory: (store) => {
+      memory.store = store;
+    },
+  };
 }

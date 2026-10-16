@@ -2,6 +2,8 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { clientHeaderName } from '@heynixie/contract';
 import { writeRecords } from '@heynixie/log';
+import { buildTestClient } from './build-test-client';
+import { createDeviceSession } from './create-device-session';
 import { startTestAPI } from './start-test-api';
 
 test('it serves the API on a loopback port', async () => {
@@ -14,6 +16,38 @@ test('it serves the API on a loopback port', async () => {
   });
 
   expect(response.status).toBe(401);
+});
+
+test('it serves no memory store until the test sets one', async () => {
+  const ctx = await startTestAPI();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const read = buildTestClient(ctx.url, laptop.token).memory.readPinnedCore();
+
+  await read.catch(() => {});
+
+  expect(read).rejects.toMatchObject({ code: 'MEMORY_NOT_STARTED' });
+});
+
+test('it serves the memory store the test sets', async () => {
+  const ctx = await startTestAPI();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  ctx.setMemory({
+    retire: () => Promise.reject(new Error('no change runs here')),
+    restore: () => Promise.reject(new Error('no change runs here')),
+    pin: () => Promise.reject(new Error('no change runs here')),
+    view: {
+      readPage: () => Promise.resolve({ items: [], next: null }),
+      findItems: () => Promise.resolve({ items: [], searchMode: 'keyword' }),
+      readPinnedCore: () => Promise.resolve({ items: [], tokens: 0, budget: 750 }),
+      readItem: () => Promise.resolve(null),
+    },
+  });
+
+  const core = await buildTestClient(ctx.url, laptop.token).memory.readPinnedCore();
+
+  expect(core).toStrictEqual({ items: [], tokens: 0, budget: 750 });
 });
 
 test('it starts with the conversation task and the test clock', async () => {

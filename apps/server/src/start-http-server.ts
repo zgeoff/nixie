@@ -1,4 +1,4 @@
-import type { APIContext } from '@heynixie/api';
+import type { APIContext, ReadViewMemory } from '@heynixie/api';
 import { buildAPIApp } from '@heynixie/api';
 import type { Writer } from '@heynixie/log';
 import { buildHealthApp, checkDatabase } from '@heynixie/ops';
@@ -18,12 +18,16 @@ export interface HTTPServerOptions {
   readonly apiContext: APIContext;
   readonly cleanup: Cleanup;
 
+  // the memory store once it starts, which the memory view reads
+  readonly readMemory: ReadViewMemory;
+
   // the gate a reset closes, which every request passes through
   readonly gate: APIGate;
 }
 
 // Serves the health endpoint and the API on the configured address. Liveness holds while the
-// process answers and the database opens; readiness lists the slice 1 parts.
+// process answers and the database opens; readiness lists the slice 1 parts. The memory view reads
+// the memory store once the start sequence fills its slot.
 export async function startHTTPServer(options: HTTPServerOptions): Promise<number> {
   const app = new Elysia()
     .use(
@@ -39,7 +43,7 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
         ),
       }),
     )
-    .use(buildAPIApp(options.apiContext));
+    .use(buildAPIApp(options.apiContext, options.readMemory));
 
   const http = Bun.serve({
     hostname: options.config.server.hostname,
