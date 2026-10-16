@@ -121,12 +121,6 @@ with the other routine items, and the memory view links to them.
 
 ## Export
 
-Export writes every readable item to one JSON file: each item with its state and every version, with
-text, evidence quote and provenance, and a header with the export time, the schema version and the
-snapshot hash. A forgotten item appears as its ID and the time it was forgotten. The schema is
-versioned beside the code. **Why:** any tool reads JSON, and one file keeps the history with its
-items.
-
-The export button is a checked action. The `memory.export` tool asks under the starter rules, so the
-model never exports on its own. The file goes where you pick, and nixie never sends it to an outside
-destination.
+[Memory export](../../../architecture/memory/export.md) covers the export file and the export
+button. The `memory.export` tool asks under the starter rules, so the model never exports on its
+own.

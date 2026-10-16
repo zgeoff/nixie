@@ -1,0 +1,83 @@
+{
+  "header": {
+    "schemaVersion": 1,
+    "exportedAt": "2026-10-14T08:00:00.000Z",
+    "snapshotHash": "sha256:4be1c0"
+  },
+  "items": [
+    {
+      "itemID": "0b7e3c52-6d1f-4a8e-9c2b-5f4d1e7a3b90",
+      "shortID": "k3x9m2p7qa",
+      "state": "active",
+      "isPinned": true,
+      "versions": [
+        {
+          "version": 1,
+          "change": "created",
+          "state": "active",
+          "text": "Rents allotment plot 14",
+          "evidenceQuote": "the allotment plot is number 14",
+          "provenance": {
+            "origin": "memory_writer",
+            "source": "owner",
+            "taskID": "memory-writer",
+            "proposalID": null,
+            "checks": {
+              "quote": "pass",
+              "checker": { "verdict": "asserted", "model": "checker-model-1", "failure": null }
+            },
+            "writerModel": "writer-model-1",
+            "checkerModel": "checker-model-1",
+            "snapshotHash": "sha256:4be1c0",
+            "recordedAt": "2026-10-12T09:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "itemID": "7c1a9e44-2b3d-4f6a-8e5c-0d9b2a6f1c37",
+      "shortID": "w8n4c6t1rb",
+      "state": "retired",
+      "isPinned": false,
+      "versions": [
+        {
+          "version": 1,
+          "change": "created",
+          "state": "active",
+          "text": "Takes the 7:40 ferry to work",
+          "evidenceQuote": null,
+          "provenance": {
+            "origin": "owner",
+            "source": "owner",
+            "taskID": null,
+            "proposalID": null,
+            "checks": null,
+            "writerModel": null,
+            "checkerModel": null,
+            "snapshotHash": "sha256:4be1c0",
+            "recordedAt": "2026-10-12T09:00:00.000Z"
+          }
+        },
+        {
+          "version": 2,
+          "change": "retired",
+          "state": "retired",
+          "text": "Takes the 7:40 ferry to work",
+          "evidenceQuote": null,
+          "provenance": {
+            "origin": "owner",
+            "source": "owner",
+            "taskID": null,
+            "proposalID": null,
+            "checks": null,
+            "writerModel": null,
+            "checkerModel": null,
+            "snapshotHash": "sha256:4be1c0",
+            "recordedAt": "2026-10-13T18:30:00.000Z"
+          }
+        }
+      ]
+    },
+    { "itemID": "e2f84d19-5a7c-4b0e-a3d6-9c1f8b2e4a65", "forgottenAt": "2026-10-13T18:31:00.000Z" }
+  ]
+}

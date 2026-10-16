@@ -50,6 +50,7 @@ test('it serves the memory store the test sets', async () => {
       readItem: () => Promise.resolve(null),
       readProposals: () => Promise.resolve([]),
       readForgetPreview: () => Promise.reject(new Error('no preview runs here')),
+      async *readExport() {},
     },
   });
 

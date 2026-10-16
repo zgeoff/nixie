@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { memoryExportContract } from './memory-export-contract';
 import { reusedIDErrors } from './reused-id-errors';
 import { signedIn } from './signed-in';
 
@@ -291,4 +292,7 @@ export const memoryViewContract = {
       }),
     )
     .output(proposalOutcomesSchema),
+
+  // the export of every item, which its own contract states
+  ...memoryExportContract,
 };

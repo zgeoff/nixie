@@ -22,8 +22,8 @@ export interface ConversationReaders {
 }
 
 // Builds the conversation's tool definitions: the web fetch tool, the time tool, the log reader
-// and the 10 memory tools. The registry exists before the memory store starts, so the memory tools reach the store
-// through readStore. A call before the store starts throws.
+// and the 11 memory tools. The registry exists before the memory store starts, so the memory tools
+// reach the store through readStore. A call before the store starts throws.
 export function buildConversationTools(
   readers: ConversationReaders,
   memory: ConversationMemory,
