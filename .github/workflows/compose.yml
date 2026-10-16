@@ -1,0 +1,82 @@
+# Starts the Compose recipe on every pull request. It checks that each image the recipe pins by tag
+# and digest resolves to that digest under that tag, then starts the recipe with CI's overlay, which
+# swaps nixie's release image for the test build on the test sandbox, because the release image
+# leaves the test sandbox out. It checks that nixie's health URL answers ready through the recipe's
+# origin, and that the enrol service prints a sign-in code.
+name: Compose
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compose-${{ github.ref }}
+  cancel-in-progress: true
+
+# an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
+defaults:
+  run:
+    shell: bash
+    working-directory: deploy/compose
+
+jobs:
+  recipe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check each pinned tag against its digest
+        run: |
+          grep -oE 'image: [^ ]+:[^ @]+@sha256:[0-9a-f]{64}' compose.yaml | sort -u | while read -r _ ref; do
+            name=${ref%@*}
+            pinned=${ref#*@}
+            actual=$(docker buildx imagetools inspect "$name" --format '{{json .Manifest.Digest}}' | tr -d '"')
+            if [[ $actual != "$pinned" ]]; then
+              echo "::error::$name resolves to $actual, and compose.yaml pins $pinned"
+              exit 1
+            fi
+            echo "$name@$pinned" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          # every service in the recipe names its image by tag and digest
+          if grep -E '^\s+image:' compose.yaml | grep -vqE '@sha256:[0-9a-f]{64}$'; then
+            echo '::error::compose.yaml names an image without a tag and digest'
+            exit 1
+          fi
+
+      # a plain secrets file with a throwaway key, which the test build's stand-in for sops reads
+      - name: Write the throwaway secrets
+        run: |
+          umask 077
+          key=$(head -c 32 /dev/urandom | base64)
+          printf 'deployment_key: %s\nmodel_credentials:\n  anthropic: invented-placeholder\n' "$key" > "$RUNNER_TEMP/secrets.yaml"
+          : > "$RUNNER_TEMP/age.key"
+          {
+            echo "NIXIE_SECRETS_FILE=$RUNNER_TEMP/secrets.yaml"
+            echo "NIXIE_AGE_KEY_FILE=$RUNNER_TEMP/age.key"
+          } >> "$GITHUB_ENV"
+
+      - name: Start the recipe
+        run: docker compose -f compose.yaml -f ci/compose.yaml up --build --wait --wait-timeout 300
+
+      - name: Check the health URL
+        run: |
+          curl --fail --silent --show-error http://127.0.0.1:8080/health/ready | tee -a "$GITHUB_STEP_SUMMARY"
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:8080/
+
+      # a code is two groups of five characters, which enrol-code prints on its first line
+      - name: Check the sign-in code
+        run: |
+          docker compose -f compose.yaml -f ci/compose.yaml run --rm enrol | grep -E '^[0-9A-Z]{5}-[0-9A-Z]{5}$'
+
+      - name: Show the logs
+        if: failure()
+        run: docker compose -f compose.yaml -f ci/compose.yaml logs --no-color
+
+      - name: Stop the recipe
+        if: always()
+        run: docker compose -f compose.yaml -f ci/compose.yaml down --volumes

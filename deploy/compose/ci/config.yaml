@@ -1,0 +1,22 @@
+# The recipe's configuration on the test sandbox, which runs every guest as a local process beside
+# nixie, so CI starts the recipe with no impd. It holds invented data only.
+server:
+  data_dir: /data
+  port: 8080
+  secrets_file: /etc/nixie/secrets.yaml
+models:
+  profiles:
+    chat:
+      base_url: https://api.anthropic.com
+      credential: deployment:anthropic
+      auth_header: x-api-key
+      model: claude-haiku-5-5
+      effort: low
+  roles:
+    conversation: chat
+sandbox:
+  adapter: test
+definitions:
+  source:
+    kind: path
+    path: /etc/nixie/definitions

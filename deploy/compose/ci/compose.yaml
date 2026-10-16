@@ -1,0 +1,41 @@
+# CI's overlay on the recipe: it swaps nixie's release image for the preview's test build and selects
+# the test sandbox, so the recipe starts with no impd. The test sandbox runs each guest as a local
+# process with no isolation, so this overlay is never a deployment. CI runs it from the folder above:
+#   docker compose -f compose.yaml -f ci/compose.yaml up --build --wait
+# NIXIE_SECRETS_FILE names a plain secrets file, which the test build's stand-in for sops reads.
+x-test-build: &test-build
+  image: nixie-compose-test:local
+  entrypoint: ['bun', '--define', 'NIXIE_TEST_BUILD=true', '/app/apps/server/src/main.ts']
+
+services:
+  nixie:
+    <<: *test-build
+    build:
+      context: ../..
+      dockerfile: preview/Dockerfile
+    command:
+      - serve
+      - --manifest=/app/preview/sandbox-manifest.json
+      - --sops=/app/preview/run-plain-sops.sh
+      - --encoder=/app/node_modules/.cache/nixie-encoder
+    volumes:
+      - ./ci/config.yaml:/etc/nixie/config.yaml:ro
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'bun',
+          '--define',
+          'NIXIE_TEST_BUILD=true',
+          '/app/apps/server/src/main.ts',
+          'health',
+        ]
+      interval: 5s
+      timeout: 5s
+      start_period: 60s
+      retries: 24
+
+  enrol:
+    <<: *test-build
+    volumes:
+      - ./ci/config.yaml:/etc/nixie/config.yaml:ro

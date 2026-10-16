@@ -1,0 +1,74 @@
+# The reference Compose recipe: nixie and the web client from one release, each named by its version
+# tag and digest, and one Caddy origin in front of both. impd runs on the host as its own stack,
+# outside this file, and nixie reaches it outbound by the URL in config.yaml. Run it from this
+# folder, with the paths of your sops file and your host's age key:
+#   NIXIE_SECRETS_FILE=<sops_file> NIXIE_AGE_KEY_FILE=<age_key_file> docker compose up --wait
+name: nixie
+
+services:
+  nixie:
+    image: ghcr.io/zgeoff/nixie:0.28.0@sha256:61dac2ebd9ecf4c9cbe269b7689b960b17464b8a85ce394e1ca15d440edd8ebd
+    command: ['serve']
+    environment:
+      # sops finds the age key here when nixie decrypts its secrets file at start
+      SOPS_AGE_KEY_FILE: /etc/nixie/age.key
+    # the configuration, the definitions, the encrypted secrets file and its age key, all read-only;
+    # nixie decrypts the file in its own process and keeps the plaintext in memory only
+    volumes:
+      - data:/data
+      - ./config.yaml:/etc/nixie/config.yaml:ro
+      - ./definitions:/etc/nixie/definitions:ro
+      - ${NIXIE_SECRETS_FILE:?set NIXIE_SECRETS_FILE to your sops file}:/etc/nixie/secrets.yaml:ro
+      - ${NIXIE_AGE_KEY_FILE:?set NIXIE_AGE_KEY_FILE to your host's age key}:/etc/nixie/age.key:ro
+    tmpfs:
+      - /tmp:size=16m
+    read_only: true
+    cap_drop: ['ALL']
+    security_opt: ['no-new-privileges:true']
+    restart: unless-stopped
+    # past the runner pools' 30 s grace, so a stop lets the steps in flight commit
+    stop_grace_period: 45s
+
+  # prints a code that signs one device in; start it with docker compose run --rm enrol
+  enrol:
+    image: ghcr.io/zgeoff/nixie:0.28.0@sha256:61dac2ebd9ecf4c9cbe269b7689b960b17464b8a85ce394e1ca15d440edd8ebd
+    command: ['enrol-code']
+    profiles: ['enrol']
+    volumes:
+      - data:/data
+      - ./config.yaml:/etc/nixie/config.yaml:ro
+    read_only: true
+    cap_drop: ['ALL']
+    security_opt: ['no-new-privileges:true']
+    depends_on:
+      nixie:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/zgeoff/nixie-web:0.28.0@sha256:e7b71769279c61638dedae25f2dc2d6d7df34c1d1dec46f6529c23ad6bf19c4d
+    environment:
+      NIXIE_API_URL: http://nixie:8080
+    tmpfs:
+      - /tmp:size=16m
+    read_only: true
+    cap_drop: ['ALL']
+    security_opt: ['no-new-privileges:true']
+    restart: unless-stopped
+    depends_on:
+      nixie:
+        condition: service_healthy
+
+  proxy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    # loopback by default, so only the host reaches the origin; set NIXIE_BIND to a private address
+    ports:
+      - ${NIXIE_BIND:-127.0.0.1}:${NIXIE_PORT:-8080}:8080
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  data:
