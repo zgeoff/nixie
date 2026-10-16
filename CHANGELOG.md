@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/zgeoff/nixie/compare/v0.30.0...v0.31.0) (2026-10-16)
+
+
+### Features
+
+* **geo-1124:** export every memory item to one json file ([#325](https://github.com/zgeoff/nixie/issues/325)) ([73680fa](https://github.com/zgeoff/nixie/commit/73680fab03e9b960e7dbfda7968761140a86df1b))
+
 ## [0.30.0](https://github.com/zgeoff/nixie/compare/v0.29.0...v0.30.0) (2026-10-16)
 
 
