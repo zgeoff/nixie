@@ -29,17 +29,19 @@ test('it prints each sandbox image with the name nixie gives it in impd', async 
 
   expect(exitCode).toBe(0);
 
-  expect(ctx.io.print.mock.calls.map(([text]) => JSON.parse(text))).toStrictEqual([
-    {
-      conversation: {
-        name: 'nixie-conversation-cccccccccccc',
-        ref: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
-      },
-      fetch: {
-        name: 'nixie-fetch-ffffffffffff',
-        ref: `ghcr.io/example/nixie-fetch@sha256:${'f'.repeat(64)}`,
-      },
-    },
+  expect(ctx.io.print.mock.calls).toStrictEqual([
+    [
+      JSON.stringify({
+        conversation: {
+          name: 'nixie-conversation-cccccccccccc',
+          ref: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
+        },
+        fetch: {
+          name: 'nixie-fetch-ffffffffffff',
+          ref: `ghcr.io/example/nixie-fetch@sha256:${'f'.repeat(64)}`,
+        },
+      }),
+    ],
   ]);
 });
 
