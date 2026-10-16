@@ -1,9 +1,30 @@
 import { expect, test } from 'bun:test';
+import { removeRecordKey } from '@heynixie/log';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
   return { memory: await startTestMemory() };
 }
+
+test('it reads a pinned item whose key is gone as a gap that takes no tokens', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Is allergic to peanuts',
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  // each item's key sits in the key store under the item's ID
+  await removeRecordKey(ctx.memory.log, item.itemID);
+
+  const core = await ctx.memory.store.view.readPinnedCore();
+
+  expect(core).toMatchObject({
+    items: [{ itemID: item.itemID, isPinned: true, status: 'shredded' }],
+    tokens: 0,
+  });
+});
 
 test('it reads the pinned items in pin order with the core size against its budget', async () => {
   const ctx = await setupTest();

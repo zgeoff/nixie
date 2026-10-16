@@ -30,7 +30,8 @@ log as a list does. An item that left the active state between the ranking and t
 The view reads the pinned core in the order the user pinned its items, with its size counted as a
 pin counts it: each item as a session's opening renders it, with the owner's name and the widest
 date ([the pinned core](./context.md#the-pinned-core)). The budget beside the size is the one a pin
-must fit.
+must fit. A pinned item whose text fails to open still shows, so the user can unpin it, and it adds
+nothing to the size, because a session's opening leaves it out.
 
 ## An item's history
 
