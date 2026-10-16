@@ -172,6 +172,6 @@ against a limit of 1,000.
 - A session near the compaction window, and the compaction call itself. The projections extend the
   measured growth to the window.
 - The 1-hour cache. The CLI wrote only 5-minute entries, and the spike tried no setting that asks
-  for longer ones. A profile's single cache write price fits the 5-minute rate; a 1-hour entry costs
-  twice the input price. [GEO-890](https://linear.app/zgeoff/issue/GEO-890) tracks the question.
+  for longer ones. The [cache lifetime spike](../cache-lifetime/) finds the setting and measures a
+  turn after a pause under each lifetime.
 - Models other than Anthropic's, whose reasoning effort and caching differ.

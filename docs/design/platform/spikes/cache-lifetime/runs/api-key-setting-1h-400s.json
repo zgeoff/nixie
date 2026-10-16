@@ -1,0 +1,339 @@
+{
+  "arm": "api-key-setting-1h",
+  "authHeader": "x-api-key",
+  "setting": "1h",
+  "model": "claude-opus-5-5",
+  "effort": "medium",
+  "pauseSeconds": 400,
+  "ranAt": "2026-10-15T03:43:11.817Z",
+  "turns": [
+    {
+      "label": "turn-1",
+      "startedAt": "2026-10-15T03:35:32.520Z",
+      "calls": [
+        {
+          "tag": "turn-1",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:35:33.952Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 1875,
+          "cacheRead": 3717,
+          "output": 34
+        },
+        {
+          "tag": "turn-1",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:35:35.496Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 144,
+          "cacheRead": 5592,
+          "output": 213
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-2",
+      "startedAt": "2026-10-15T03:35:37.336Z",
+      "calls": [
+        {
+          "tag": "turn-2",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:35:38.496Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 4,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 576,
+          "cacheRead": 5736,
+          "output": 175
+        },
+        {
+          "tag": "turn-2",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:35:41.194Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 672,
+          "cacheRead": 6312,
+          "output": 299
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-3",
+      "startedAt": "2026-10-15T03:35:44.116Z",
+      "calls": [
+        {
+          "tag": "turn-3",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:35:45.473Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 4,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 368,
+          "cacheRead": 6984,
+          "output": 75
+        },
+        {
+          "tag": "turn-3",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:35:47.121Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 1964,
+          "cacheRead": 7352,
+          "output": 365
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-4",
+      "startedAt": "2026-10-15T03:35:50.341Z",
+      "calls": [
+        {
+          "tag": "turn-4",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:35:51.578Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 4,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 572,
+          "cacheRead": 9316,
+          "output": 136
+        },
+        {
+          "tag": "turn-4",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:35:54.363Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 344,
+          "cacheRead": 9888,
+          "output": 151
+        },
+        {
+          "tag": "turn-4",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:35:57.659Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 215,
+          "cacheRead": 10232,
+          "output": 230
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-5",
+      "startedAt": "2026-10-15T03:35:59.915Z",
+      "calls": [
+        {
+          "tag": "turn-5",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:36:01.009Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 4,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 579,
+          "cacheRead": 10447,
+          "output": 342
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-6",
+      "startedAt": "2026-10-15T03:36:04.682Z",
+      "calls": [
+        {
+          "tag": "turn-6",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:36:06.801Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 4,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 562,
+          "cacheRead": 11026,
+          "output": 147
+        },
+        {
+          "tag": "turn-6",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:36:09.008Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 213,
+          "cacheRead": 11588,
+          "output": 206
+        },
+        {
+          "tag": "turn-6",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:36:12.663Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 812,
+          "cacheRead": 11801,
+          "output": 153
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-7",
+      "startedAt": "2026-10-15T03:42:54.125Z",
+      "calls": [
+        {
+          "tag": "turn-7",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:42:55.472Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 4,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 189,
+          "cacheRead": 12613,
+          "output": 69
+        },
+        {
+          "tag": "turn-7",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:42:56.869Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 520,
+          "cacheRead": 12802,
+          "output": 301
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "turn-8",
+      "startedAt": "2026-10-15T03:42:59.543Z",
+      "calls": [
+        {
+          "tag": "turn-8",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:43:04.130Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 4,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 595,
+          "cacheRead": 13322,
+          "output": 84
+        },
+        {
+          "tag": "turn-8",
+          "model": "claude-opus-5-5",
+          "at": "2026-10-15T03:43:08.878Z",
+          "requestedTTLs": [
+            "1h",
+            "1h",
+            "1h"
+          ],
+          "hasTTLBeta": true,
+          "input": 2,
+          "cacheWrite5m": 0,
+          "cacheWrite1h": 254,
+          "cacheRead": 13917,
+          "output": 264
+        }
+      ],
+      "error": null
+    }
+  ]
+}
