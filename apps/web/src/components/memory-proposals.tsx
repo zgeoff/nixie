@@ -114,7 +114,9 @@ function updateEntry(
   draft: string | null,
 ): Readonly<Record<string, string>> {
   const kept = Object.entries(current).filter(([key]) => key !== proposalID);
-  const entries = draft === null ? kept : [...kept, [proposalID, draft]];
+
+  const entries: readonly (readonly [string, string])[] =
+    draft === null ? kept : [...kept, [proposalID, draft]];
 
   return Object.fromEntries(entries);
 }

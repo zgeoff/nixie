@@ -119,7 +119,10 @@ function mergeOutcomes(
 
   const held = outcomes
     .filter((outcome) => outcome.status !== 'applied' && outcome.status !== 'rejected')
-    .map((outcome) => [outcome.proposalID, { text: texts[outcome.proposalID] ?? '', outcome }]);
+    .map((outcome): readonly [string, ShownOutcome] => [
+      outcome.proposalID,
+      { text: texts[outcome.proposalID] ?? '', outcome },
+    ]);
 
   return Object.fromEntries([...kept, ...held]);
 }
