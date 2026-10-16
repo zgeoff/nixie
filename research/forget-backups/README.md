@@ -4,7 +4,8 @@ This spike checks whether a forget-triggered refresh can remove a deleted memory
 backup repository before the operation reports completion. It tests a candidate backup tool; the
 deployment choice does not adopt restic through this experiment.
 
-- Bun 1.4.2, bundled SQLite, and the encryption helpers from [memory-shred](store.ts).
+- Bun 1.4.2, bundled SQLite, and the encryption helpers in [store.ts](store.ts) and
+  [crypto.ts](crypto.ts), copied from the crypto-shredding spike.
 - restic 0.19.1, from
   `restic/restic:0.19.1@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510`.
 - Synthetic memory, generated test keys, temporary local repositories and no model calls.

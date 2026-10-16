@@ -28,8 +28,8 @@ variables and steps.
 The memory encoder's suites run the real model from `node_modules/.cache/nixie-encoder`, which
 `bun run models` fills with the pinned model files after checking each one. `bun run test` runs it
 before `bun test`. Plain `bun test` skips those suites when the files are missing, and CI, where the
-`CI` variable is set, fails them instead, so a run there never passes without the model. The design
-spikes under `docs/design/` install and run on their own, so the root `bunfig.toml` skips them.
+`CI` variable is set, fails them instead, so a run there never passes without the model. The spikes
+under `research/` and `docs/design/` run by hand, so the root `bunfig.toml` skips them.
 
 The web server's browser suite drives a headless Chrome or Chromium through `Bun.WebView`, so
 `bun test` needs one that Bun finds on `PATH`, in a standard install location, or at

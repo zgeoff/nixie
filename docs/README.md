@@ -340,74 +340,12 @@ The phase 1 brainstorm and the phase 2 research are archived at the
 [`research-archive`](https://github.com/zgeoff/nixie/tree/research-archive/docs) tag. The decisions
 supersede them, and links that cite them as evidence point at that tag.
 
+A spike is deleted once its finding sits in the architecture doc that owns it. The deleted spikes
+are archived at commit
+[`e232631`](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes),
+and links that cite them as evidence point at that commit.
+
 ## Spikes
 
-Throwaway experiments that answer research questions, each runnable, with its output and what it
-left untested. The [spikes index](design/platform/spikes/README.md) describes how they run.
-
-- [A policy mod in the Agent SDK](design/platform/spikes/sdk-mod-policy/) — what a mod can enforce,
-  and the 3 ways it fails open
-- [Hold a tool call for a decision](design/platform/spikes/sdk-long-hold/) — hook time limits, long
-  holds, and `defer` across processes
-- [Messages into a running task](design/platform/spikes/sdk-owner-input/) — when each message
-  priority reaches the model
-- [imp credential broker grants](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/imp-broker/)
-  — what a grant can and cannot limit
-- [Where `query()` runs](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/sdk-placement/)
-  — the SDK on the host with only nixie's tools, and inside an imp
-- [Model choice for chat, memory and tools](../research/model-eval/) — persona, invented memory,
-  tool honesty, cost and latency per model
-- [A personal Google OAuth client](../research/google-oauth/) — an unverified client in production,
-  Gmail's restricted scope, and token refresh past 7 days
-- [Worker start inside an imp](../research/imp-worker-start/) — imp create and wake, and the SDK's
-  first token inside an imp against the host
-- [Worker cold start on the worker image](../research/worker-cold-start/) — first text with the code
-  runtimes in the image, and a fresh fetch sandbox per fetch
-- [Serving nixie's tools](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/tools-endpoint/)
-  — the tool list, the MCP revision and the result the model receives, against a local stand-in for
-  the model API
-- [A pinning MCP proxy](../research/mcp-proxy-pin/) — hash pinning, effect declarations and output
-  checks on the v2 MCP packages
-- [A definitions source](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/definitions-source/)
-  — one content hash for the same definitions from a repo and a local path
-- [Skills and slash commands under nixie's options](design/platform/spikes/sdk-skills/) — planted
-  skills stay out, and a prompt starting with `/` runs a bundled skill until `verbatimPrompts` stops
-  it
-- [Resume a session at a given message](design/platform/spikes/sdk-resume-at/) — `resumeSessionAt`
-  and `forkSession` drop a turn that never committed
-- [The rule engine and prompt scenarios](../research/policy-rules/) — one decision per call whatever
-  the rule order, a stable snapshot hash, a conservative widening check, and prompts by cause
-- [A typed API with a live stream](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/client-rpc/)
-  — one oRPC contract on Bun with checked actions and a stream that resumes by sequence
-- [Paste spans in a text box](../research/paste-spans/) — which spans of a message you pasted, kept
-  right through edits
-- [Tools through a reverse forward](../research/tools-reverse-forward/) — relay overhead, streamed
-  responses, egress isolation and reopening after wake
-- [Retrieval on nixie-shaped memory](../research/memory-retrieval/) — keyword search, BM25 and local
-  embeddings over synthetic memory, and where they part
-- [Crypto-shredding memory items](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-shred/)
-  — a key per item against backups, the key store's freed pages, and a persisted full-text index
-- [The memory write checks](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-checks/)
-  — the quote check and the token check as code over sample messages, and what still needs the
-  checker
-- [A pinned memory core](design/platform/spikes/sdk-pinned-core/) — when a changed system prompt
-  reaches a resumed session, written and not yet run
-- [Batched memory checkpoints](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-batch/)
-  — source-bound quotes, process-kill recovery and a cursor-first failure control without model
-  calls
-- [Forget completion across backups](../research/forget-backups/) — snapshot removal, data pruning
-  and restore with a deleted item key on a local candidate backend
-- [Deploy, back up, restore and roll back](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/deploy-local/)
-  — a digest pin, sops secrets decrypted in the process, the key store in its own restic repo, and a
-  rollback as a revert plus a restore
-- [Replica encryption](../research/replica-encryption/) — Litestream through a host crypt gateway,
-  process outages and a restore without the original database
-- [Paired data and key recovery](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/paired-recovery/)
-  — continuous encrypted data plus Restic keys, stale-key control and a post-forget restore
-- [Token use per turn](../research/turn-tokens/) — input, cache and output tokens per turn for each
-  model role through a counting proxy, and the budget defaults they set
-- [Mastra Connect as a reference](../research/mastra-connect/) — a reading spike with nothing to
-  run, on its connector model, credentials, refresh, tools and errors, with the ideas worth adapting
-  to the connector designs
-- [The model's reasoning through the SDK](design/platform/spikes/sdk-reasoning/) — empty thinking
-  text under nixie's options, a summary with the summarized display, and its storage cost per turn
+The [spikes index](../research/README.md) lists every spike: a throwaway experiment that answers one
+research question, runnable, with its output and what it left untested.

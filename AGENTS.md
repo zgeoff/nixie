@@ -88,9 +88,11 @@ Each folder under `docs/` has one job:
   `Updated` date, and a `## Changes` list at its end gives each change's date and a one-line
   summary. A new record is only for a new decision.
 - `docs/design/<work>/` holds a design for big, speculative work designed well before its code. A
-  design is temporary, and its spikes live in `docs/design/<work>/spikes/<name>/`, each a Bun
-  package whose README gives the question, how to run it and what it found. Product code never
-  imports from a spike. The owner opens a design; an agent never opens one by default.
+  design is temporary. Its spikes live in `research/<name>/`, each a Bun package in the workspace
+  whose README gives the question, how to run it and what it found, and the
+  [spikes index](research/README.md) lists every one. CI typechecks the spikes and never runs them.
+  Product code never imports from a spike. The owner opens a design; an agent never opens one by
+  default.
 - `docs/guides/`, `docs/runbooks/` and `docs/reference/` hold steps a user does, operator and
   contributor procedures, and generated reference. Each arrives with the code it covers.
 
@@ -99,9 +101,9 @@ A plan for work about to be built lives in its Linear issue or its PR, never in 
 ### Docs lifecycle
 
 When work from a design lands, the PR that lands it moves the built part into `docs/architecture/`,
-rewritten to describe the code. The PR deletes the rest of the design's folder, spikes included,
-once nothing in it is still unbuilt. Decision records stay; architecture docs carry the current
-state.
+rewritten to describe the code. The PR deletes the rest of the design's folder once nothing in it is
+still unbuilt. A spike is deleted once its finding sits in the architecture doc that owns it.
+Decision records stay; architecture docs carry the current state.
 
 Load the `docs-writing` and `project-docs-writing` skills before you write any doc. They hold the
 writing rules, the size limits and the README contract.
