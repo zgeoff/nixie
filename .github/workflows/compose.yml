@@ -48,10 +48,10 @@ jobs:
             exit 1
           fi
 
-      # a plain secrets file with a throwaway key, which the test build's stand-in for sops reads
+      # a plain secrets file with a throwaway key, which the test build's stand-in for sops reads; the
+      # container's user differs from the runner's, so the file is readable by every user
       - name: Write the throwaway secrets
         run: |
-          umask 077
           key=$(head -c 32 /dev/urandom | base64)
           printf 'deployment_key: %s\nmodel_credentials:\n  anthropic: invented-placeholder\n' "$key" > "$RUNNER_TEMP/secrets.yaml"
           : > "$RUNNER_TEMP/age.key"

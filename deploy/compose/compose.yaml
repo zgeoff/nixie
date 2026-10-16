@@ -6,6 +6,19 @@
 name: nixie
 
 services:
+  # Docker creates the data volume owned by root, so this gives it to nixie's user before nixie
+  # starts
+  data-owner:
+    image: ghcr.io/zgeoff/nixie:0.28.0@sha256:61dac2ebd9ecf4c9cbe269b7689b960b17464b8a85ce394e1ca15d440edd8ebd
+    user: '0:0'
+    entrypoint: ['chown', '10001:10001', '/data']
+    volumes:
+      - data:/data
+    network_mode: none
+    cap_drop: ['ALL']
+    cap_add: ['CHOWN']
+    restart: 'no'
+
   nixie:
     image: ghcr.io/zgeoff/nixie:0.28.0@sha256:61dac2ebd9ecf4c9cbe269b7689b960b17464b8a85ce394e1ca15d440edd8ebd
     command: ['serve']
@@ -28,6 +41,9 @@ services:
     restart: unless-stopped
     # past the runner pools' 30 s grace, so a stop lets the steps in flight commit
     stop_grace_period: 45s
+    depends_on:
+      data-owner:
+        condition: service_completed_successfully
 
   # prints a code that signs one device in; start it with docker compose run --rm enrol
   enrol:
