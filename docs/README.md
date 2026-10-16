@@ -108,7 +108,11 @@ below, and planned work lives in Linear.
 ### Deployment
 
 - [The server](architecture/deployment/server.md) — configuration and secrets, the start sequence,
-  health per part, envelope-only logs, stopping, host commands and the nixie image
+  health per part, envelope-only logs, stopping and the nixie image
+- [Host commands](architecture/deployment/host-commands.md) — the nixie command on the image's PATH,
+  the commands a deployment runs, the control socket, sessions, the reset and memory
+- [Names in impd](architecture/deployment/impd-names.md) — the names of nixie's imps, sandbox images
+  and model secrets, the token's pattern, and why the sandbox images stay public
 - [The release pipeline](architecture/deployment/release-pipeline.md) — versions, the release
   stages, the sandbox manifest, publishing, attestations and the compatibility checks
 - [Kubernetes](architecture/deployment/kubernetes.md) — the reference manifests, nixie's pod and its

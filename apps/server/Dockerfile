@@ -2,6 +2,7 @@
 # manifest, the sops binary, and the memory encoder's pinned model files with the ONNX Runtime package
 # the bundle leaves external. It holds no Claude Code build, no other node_modules and no backup
 # tools, and runs as a non-root user on a read-only root filesystem, with /data its one writable mount.
+# The nixie command on the PATH runs the server's commands.
 # Build it from the repository root, with the release workflow's sandbox manifest at
 # apps/server/sandbox-manifest.json:
 #   docker build -f apps/server/Dockerfile -t nixie .
@@ -42,6 +43,11 @@ COPY --from=build /out/bin/sops /usr/local/bin/sops
 COPY --from=build /out/app/ /app/
 COPY --from=build /out/encoder/ /app/encoder/
 COPY apps/server/sandbox-manifest.json /app/sandbox-manifest.json
+
+# nixie on the PATH runs a command by its name, so a deployment's scripts call nixie health or nixie
+# enrol-code and never name a file in /app
+RUN printf '#!/bin/sh\nexec bun /app/main.js "$@"\n' > /usr/local/bin/nixie \
+  && chmod 0755 /usr/local/bin/nixie
 RUN groupadd --gid 10001 nixie \
   && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin nixie
 USER 10001:10001
