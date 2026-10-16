@@ -99,14 +99,14 @@ export interface RecordKinds {
 
 export type RecordKind = keyof RecordKinds;
 
-// The payload of one record kind, typed for its writer and its readers. encode gives the payload a
-// writer appends, decode reads one and throws when it does not fit, and tryDecode reads one and
-// gives null when it does not fit, for a reader that skips such a record.
-export interface RecordCodec<Kind extends RecordKind, Payload extends JSONObject> {
+// One record kind's payload, typed for its writer and its readers. tryDecodePartial serves a reader
+// of records from before a field existed: any field may be missing, a present field must fit, and a
+// payload with a field that does not fit gives null.
+export interface RecordCodec<Kind extends RecordKind, Payload, PartialPayload = Partial<Payload>> {
   readonly kind: Kind;
   readonly encode: (payload: Payload) => Payload;
   readonly decode: (payload: JSONObject) => Payload;
-  readonly tryDecode: (payload: JSONObject) => Payload | null;
+  readonly tryDecodePartial: (payload: JSONObject) => PartialPayload | null;
 }
 
 // What a caller appends. The payload holds only structured data: IDs, counts, hashes and states.

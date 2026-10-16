@@ -36,14 +36,20 @@ test('it rejects a payload with a field of the wrong type before a writer append
   expect(() => codec.encode({ words: 1.5 })).toThrow(z.ZodError);
 });
 
-test('it gives null for a payload that lacks a field when a reader tries it', () => {
-  const codec = defineRecordCodec('note_written', z.object({ noteID: z.string() }));
+test('it reads the fields an older payload holds when a reader tries it in part', () => {
+  const codec = defineRecordCodec(
+    'note_written',
+    z.object({ noteID: z.string(), words: z.number() }),
+  );
 
-  expect(codec.tryDecode({ words: 3 })).toBeNull();
+  expect(codec.tryDecodePartial({ words: 3 })).toStrictEqual({ words: 3 });
 });
 
-test('it gives the payload when a reader tries one that fits', () => {
-  const codec = defineRecordCodec('note_written', z.object({ noteID: z.string() }));
+test('it gives null when a field that is present does not fit', () => {
+  const codec = defineRecordCodec(
+    'note_written',
+    z.object({ noteID: z.string(), words: z.number() }),
+  );
 
-  expect(codec.tryDecode({ noteID: 'note-a' })).toStrictEqual({ noteID: 'note-a' });
+  expect(codec.tryDecodePartial({ noteID: 'note-a', words: 'three' })).toBeNull();
 });
