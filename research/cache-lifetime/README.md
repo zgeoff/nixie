@@ -25,6 +25,11 @@ fifth price ([GEO-890](https://linear.app/zgeoff/issue/GEO-890)).
 | Claude Code      | 2.1.290, bundled with the SDK       |
 | Bun              | 1.4.2                               |
 | Model            | `claude-opus-5-5` at medium effort  |
+| nixie            | commit `aaf6be3`                    |
+
+The recorded runs ran against the conversation guest at that commit. The guest's system prompt has
+gained a sentence about dropped images, and the harness compiles against the moved renderers, which
+changes no cache behaviour this spike measures.
 
 ## How the CLI picks a lifetime
 
@@ -78,13 +83,12 @@ the request asked for, whether the request carried the extended cache lifetime b
 
 ## Run it
 
-Install this spike and the token use spike it imports from, then run each arm from this directory on
-a host with a signed-in Claude Code login. The proxy reads the login's access token from the
-credentials file on every request, so the guest only ever holds a placeholder.
+Run `bun install` at the repo root, which installs this spike and the token use spike it imports
+from, then run each arm from this directory on a host with a signed-in Claude Code login. The proxy
+reads the login's access token from the credentials file on every request, so the guest only ever
+holds a placeholder.
 
 ```bash
-bun install
-(cd ../turn-tokens && bun install)
 export MODEL_TOKEN_FILE=~/.claude/.credentials.json
 bun run.ts api-key-default 400
 bun run.ts api-key-setting-1h 400

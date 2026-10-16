@@ -59,9 +59,7 @@ export function startCountProxy(tokenFile: string): CountProxy {
       }
       const sent = {
         tag,
-        model: 'unknown',
         at: new Date().toISOString(),
-        requestedTTLs: [] as string[],
         hasTTLBeta: (request.headers.get('anthropic-beta') ?? '').includes(ttlBeta),
         ...readRequest(body),
       };
@@ -171,7 +169,7 @@ async function collectStreamUsage(
         if (event.type === 'message_start') {
           usage = { ...event.message.usage };
         } else if (event.type === 'message_delta' && event.usage !== undefined) {
-          usage = { ...usage, ...event.usage };
+          usage = { ...(usage ?? {}), ...event.usage };
         }
       } catch {
         // not a JSON event

@@ -10,15 +10,27 @@
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { GuestFrame, InboxMessage } from '../../../../../libs/wire/src/index';
-import { runTurn } from '../../../../../guests/conversation/src/run-turn';
-import { formatMessageTime } from '../../../../../modules/models/src/format-message-time';
-import { renderPinnedMemory } from '../../../../../modules/models/src/render-pinned-memory';
-import { renderRetrievedItems } from '../../../../../modules/models/src/render-retrieved-items';
-import { renderSystemMessage } from '../../../../../modules/models/src/render-system-message';
-import { renderSystemPrompt } from '../../../../../modules/models/src/render-system-prompt';
+// @boundaries-ignore a spike imports the code it measures
+import type { GuestFrame, InboxMessage } from '../../libs/wire/src/index';
+// @boundaries-ignore a spike imports the code it measures
+import { renderSystemMessage } from '../../libs/wire/src/index';
+// @boundaries-ignore the memory module's record kinds, which the memory tools' types need
+import '../../modules/memory/src/memory-record-kind';
+// @boundaries-ignore a spike imports the code it measures
+import { runTurn } from '../../guests/conversation/src/run-turn';
+// @boundaries-ignore a spike imports the code it measures
+import { formatMessageTime } from '../../modules/sessions/src/format-message-time';
+// @boundaries-ignore a spike imports the code it measures
+import { renderPinnedMemory } from '../../modules/sessions/src/render-pinned-memory';
+// @boundaries-ignore a spike imports the code it measures
+import { renderRetrievedItems } from '../../modules/sessions/src/render-retrieved-items';
+// @boundaries-ignore a spike imports the code it measures
+import { renderSystemPrompt } from '../../modules/sessions/src/render-system-prompt';
+// @boundaries-ignore the token use spike's fixtures, tools and tool server, so both spikes measure one context
 import { buildRoleTools } from '../turn-tokens/build-role-tools';
+// @boundaries-ignore the token use spike's fixtures, tools and tool server, so both spikes measure one context
 import { fixtures } from '../turn-tokens/spike-fixtures';
+// @boundaries-ignore the token use spike's fixtures, tools and tool server, so both spikes measure one context
 import { startToolServer } from '../turn-tokens/start-tool-server';
 import type { CallUsage } from './start-count-proxy';
 import { startCountProxy } from './start-count-proxy';

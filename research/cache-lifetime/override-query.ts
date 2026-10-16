@@ -17,7 +17,7 @@ export function query(params: Parameters<typeof querySDK>[0]): ReturnType<typeof
 }
 
 function buildOptions(options: Options): Options {
-  const setting = process.env['SPIKE_TTL_SETTING'];
+  const setting = process.env['SPIKE_TTL_SETTING'] as '5m' | '1h' | undefined;
   const variable = process.env['SPIKE_TTL_ENV'];
 
   return {

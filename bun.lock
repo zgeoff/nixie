@@ -422,6 +422,18 @@
         "@modelcontextprotocol/client": "catalog:",
       },
     },
+    "research/cache-lifetime": {
+      "name": "@heynixie/spike-cache-lifetime",
+      "version": "0.0.0",
+      "dependencies": {
+        "@anthropic-ai/claude-agent-sdk": "0.3.290",
+        "@modelcontextprotocol/server": "2.3.0",
+        "zod": "4.6.5",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.2",
+      },
+    },
     "research/connector-account-pick": {
       "name": "@heynixie/spike-connector-account-pick",
       "version": "0.0.0",
@@ -766,6 +778,8 @@
     "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
 
     "@heynixie/sessions": ["@heynixie/sessions@workspace:modules/sessions"],
+
+    "@heynixie/spike-cache-lifetime": ["@heynixie/spike-cache-lifetime@workspace:research/cache-lifetime"],
 
     "@heynixie/spike-connector-account-pick": ["@heynixie/spike-connector-account-pick@workspace:research/connector-account-pick"],
 
