@@ -23,7 +23,7 @@ async function setupTest() {
 
   const downloads: { name: string; href: string }[] = [];
 
-  const onDocumentClick = (event: MouseEvent): void => {
+  const onDocumentClick = (event: Readonly<MouseEvent>): void => {
     if (event.target instanceof HTMLAnchorElement && event.target.download !== '') {
       event.preventDefault();
       downloads.push({ name: event.target.download, href: event.target.href });
@@ -66,7 +66,9 @@ test('it saves every item to the file the user picks, with a forgotten item as o
 
   expect(files).toStrictEqual([
     {
-      name: expect.stringMatching(/^nixie-memory-\d{4}-\d{2}-\d{2}\.json$/u),
+      name: expect.toSatisfy((name: string) =>
+        /^nixie-memory-\d{4}-\d{2}-\d{2}\.json$/u.test(name),
+      ),
       text: expect.toBeString(),
       ending: 'closed',
     },
@@ -117,7 +119,9 @@ test('it downloads the file in a browser with no save picker', async () => {
 
   expect(ctx.downloads).toStrictEqual([
     {
-      name: expect.stringMatching(/^nixie-memory-\d{4}-\d{2}-\d{2}\.json$/u),
+      name: expect.toSatisfy((name: string) =>
+        /^nixie-memory-\d{4}-\d{2}-\d{2}\.json$/u.test(name),
+      ),
       href: expect.toStartWith('blob:'),
     },
   ]);

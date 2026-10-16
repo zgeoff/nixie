@@ -74,6 +74,7 @@ export function buildStubSaveFilePicker(): StubSaveFilePicker {
 }
 
 // a file's writing ends once
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the update writes the file's ending
 function updateFileEnding(file: OpenFile, ending: Exclude<FileEnding, 'open'>): Promise<void> {
   if (file.ending !== 'open') {
     return Promise.reject(new TypeError('the file is no longer open'));

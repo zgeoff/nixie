@@ -4,6 +4,13 @@ import { readMockMemoryExport } from './read-mock-memory-export';
 import { requireMockSession } from './require-mock-session';
 import { store } from './store';
 
+// the input an export binds its client action ID to, which no memory change uses
+const exportInput = JSON.stringify(['export']);
+
+interface ChunkEvent {
+  readonly chunk: string;
+}
+
 // The export over the mock store, as nixie's API serves it: a checked action that keeps its client
 // action ID, then streams the file a chunk at a time. A retry with the same ID streams it again.
 export const mockMemoryExportProcedures = {
@@ -21,15 +28,19 @@ export const mockMemoryExportProcedures = {
       await store.memoryActions.create({ clientActionID, input: exportInput });
     }
 
-    return toChunkEvents(readMockMemoryExport(new Date()));
+    const chunks = readMockMemoryExport(new Date());
+
+    // a stream of the chunks, which the procedure sends as events as nixie's API does
+    const stream = new ReadableStream<ChunkEvent>({
+      start: (controller: Readonly<ReadableStreamDefaultController<ChunkEvent>>) => {
+        for (const chunk of chunks) {
+          controller.enqueue({ chunk });
+        }
+
+        controller.close();
+      },
+    });
+
+    return stream.values();
   }),
 };
-
-// the input an export binds its client action ID to, which no memory change uses
-const exportInput = JSON.stringify(['export']);
-
-async function* toChunkEvents(chunks: AsyncIterable<string>) {
-  for await (const chunk of chunks) {
-    yield { chunk };
-  }
-}

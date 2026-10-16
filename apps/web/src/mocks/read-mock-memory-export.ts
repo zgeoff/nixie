@@ -1,25 +1,21 @@
 import { store } from './store';
 import type { StoredMemoryItem } from './to-mock-memory-item';
 
-// Reads the mock store into an export file as nixie's memory store streams it, in schema version
-// 1: the header, then each item in the order the store created it, one chunk per item. A forgotten
-// item, and a forgetting one, is only its ID and the time its forget completed.
-export async function* readMockMemoryExport(exportedAt: Date): AsyncGenerator<string> {
+// Reads the mock store into the chunks of an export file as nixie's memory store streams it, in
+// schema version 1: the header, then each item in the order the store created it, one chunk per
+// item. A forgotten item, and a forgetting one, is only its ID and the time its forget completed.
+export function readMockMemoryExport(exportedAt: Date): readonly string[] {
   const header = {
     schemaVersion: 1,
     exportedAt: exportedAt.toISOString(),
     snapshotHash: 'sha256:mock',
   };
 
-  yield `{"header":${JSON.stringify(header)},"items":[`;
-  let separator = '\n';
+  const items = store.memoryItems
+    .all()
+    .map((item, index) => `${index === 0 ? '\n' : ',\n'}${JSON.stringify(toExportItem(item))}`);
 
-  for (const item of store.memoryItems.all()) {
-    yield `${separator}${JSON.stringify(toExportItem(item))}`;
-    separator = ',\n';
-  }
-
-  yield '\n]}\n';
+  return [`{"header":${JSON.stringify(header)},"items":[`, ...items, '\n]}\n'];
 }
 
 function toExportItem(item: StoredMemoryItem) {

@@ -144,7 +144,7 @@ async function writeDownload(
 
 // each chunk goes to the file as it arrives, and a failed export leaves the file unwritten
 async function writePickedFile(
-  handle: FileSystemFileHandle,
+  handle: Readonly<FileSystemFileHandle>,
   client: NixieClient,
   actionID: string,
 ): Promise<void> {

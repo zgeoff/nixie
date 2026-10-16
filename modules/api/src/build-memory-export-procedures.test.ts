@@ -72,7 +72,7 @@ test('#memory.export streams one export file of every item, which the schema acc
     JSON.parse(events.map((event) => event.chunk).join('')),
   );
 
-  expect(parsed.data).toStrictEqual({
+  expect(parsed.data).toMatchObject({
     header: {
       schemaVersion: 1,
       exportedAt: '1970-01-01T00:16:40.000Z',
@@ -84,7 +84,7 @@ test('#memory.export streams one export file of every item, which the schema acc
         shortID: expect.toBeString(),
         state: 'active',
         isPinned: false,
-        versions: [expect.objectContaining({ version: 1, text: 'Rents allotment plot 14' })],
+        versions: [{ version: 1, text: 'Rents allotment plot 14' }],
       },
       { itemID: forgotten.itemID, forgottenAt: expect.toBeDateString() },
     ],

@@ -111,7 +111,7 @@ async function buildExportItems(
             { ...row, state: row.state },
             { key: keys.get(row.item_id), versions: versionsByItem.get(row.item_id) ?? [] },
           )
-        : { itemID: row.item_id, forgottenAt: toISOTime(row.forgotten_at) },
+        : Promise.resolve({ itemID: row.item_id, forgottenAt: toISOTime(row.forgotten_at) }),
     ),
   );
 }

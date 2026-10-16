@@ -48,7 +48,7 @@ export function buildMemoryExportProcedures(context: APIContext, readMemory: Rea
 }
 
 // Each piece of the file's text as one event, in the order the file holds them.
-async function* toChunkEvents(chunks: AsyncIterable<string>) {
+async function* toChunkEvents(chunks: Readonly<AsyncIterable<string>>) {
   for await (const chunk of chunks) {
     yield { chunk };
   }
