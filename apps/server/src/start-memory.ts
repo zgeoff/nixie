@@ -11,7 +11,7 @@ export async function startMemory(
   parts: ServerParts,
   cleanupSessions: CleanupSessions,
 ): Promise<StartedMemoryStore> {
-  const check = await startChecker({
+  const checker = await startChecker({
     models: parts.config.models,
     secrets: parts.modelSecrets,
     sandboxes: parts.tools.adapter,
@@ -20,6 +20,8 @@ export async function startMemory(
     clock: parts.context.clock,
     log: parts.log,
   });
+
+  await parts.cleanup.defer(() => checker.stop());
 
   const store = await startMemoryStore({
     log: parts.context.log,
@@ -37,7 +39,7 @@ export async function startMemory(
           },
         }),
     gate: {
-      check,
+      check: checker.check,
       clock: parts.context.clock,
       findAllowRule: findNoAllowRule,
       limits: parts.config.memory.limits,

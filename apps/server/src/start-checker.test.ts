@@ -18,7 +18,7 @@ async function setupTest() {
 test('it runs each check in the check guest on the checker role profile', async () => {
   const ctx = await setupTest();
 
-  const check = await startChecker({
+  const checker = await startChecker({
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
@@ -50,7 +50,7 @@ test('it runs each check in the check guest on the checker role profile', async 
     toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } },
   });
 
-  const answer = await check({
+  const answer = await checker.check({
     prompt: 'You check one candidate memory.',
     input: '<owner_message>\nI take my coffee black\n</owner_message>',
   });
@@ -72,7 +72,7 @@ test('it logs where each check spent its time', async () => {
 
   const log = mock<Parameters<typeof startChecker>[0]['log']>();
 
-  const check = await startChecker({
+  const checker = await startChecker({
     models: modelsConfigSchema.parse({
       profiles: {
         'chat-direct': {
@@ -104,7 +104,7 @@ test('it logs where each check spent its time', async () => {
     toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } },
   });
 
-  await check({
+  await checker.check({
     prompt: 'You check one candidate memory.',
     input: '<owner_message>\nI take my coffee black\n</owner_message>',
   });
