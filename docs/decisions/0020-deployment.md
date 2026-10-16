@@ -82,7 +82,7 @@ secrets, and the deployment key lives only in nixie's.
 - nixie's single writer stays the one place that decides what a consistent copy is.
 - sops decrypts once at start, and moving it out would put the plaintext on a shared volume or a
   socket between containers. A decrypt sidecar lost its volume in the
-  [deploy spike](../design/platform/spikes/deploy-local/README.md).
+  [deploy spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/deploy-local/README.md).
 
 ## Alternatives
 

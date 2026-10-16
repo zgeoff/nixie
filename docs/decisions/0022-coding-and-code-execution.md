@@ -5,8 +5,9 @@
 - Status: decided
 - Design: [coding](../design/platform/connectors/coding.md),
   [tools](../design/platform/connectors/tools.md)
-- Research: [placement spike](../design/platform/spikes/sdk-placement/),
-  [imp broker spike](../design/platform/spikes/imp-broker/)
+- Research:
+  [placement spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/sdk-placement/),
+  [imp broker spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/imp-broker/)
 
 nixie is not a coding agent; it steers coding agents through adapters. It separates 2 kinds of
 sandboxed work:

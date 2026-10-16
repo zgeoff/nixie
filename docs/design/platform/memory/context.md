@@ -70,11 +70,13 @@ remove the item's entries, cached results and pending deliveries, and a forget c
 that removal.
 
 Neither index is written to disk, exported or backed up, and restart rebuilds them from readable
-records. **Why:** the [shredding spike](../spikes/memory-shred/README.md) found that a persisted
-FTS5 index keeps forgotten words. The [retrieval spike](../spikes/memory-retrieval/README.md) built
-the FTS5 index over 20,000 messages in 62 ms. The [encoder spike](../spikes/encoder/README.md) puts
-a semantic rebuild over 20,000 short texts at about 13 s on 2 cores, and keyword search covers the
-gap while it runs.
+records. **Why:** the
+[shredding spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-shred/README.md)
+found that a persisted FTS5 index keeps forgotten words. The
+[retrieval spike](../../../../research/memory-retrieval/README.md) built the FTS5 index over 20,000
+messages in 62 ms. The [encoder spike](../../../../research/encoder/README.md) puts a semantic
+rebuild over 20,000 short texts at about 13 s on 2 cores, and keyword search covers the gap while it
+runs.
 
 Tool results, worker transcripts and compaction summaries stay out of the index. **Why:** they are
 outside content or model text written from it, and retrieving them would place that text beside your

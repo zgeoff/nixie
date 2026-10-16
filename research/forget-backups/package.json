@@ -1,0 +1,13 @@
+{
+  "name": "@heynixie/spike-forget-backups",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "bun --no-env-file run.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2"
+  }
+}

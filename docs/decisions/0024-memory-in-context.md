@@ -4,7 +4,7 @@
 - Updated: 2026-10-14
 - Status: decided
 - Design: [memory context](../design/platform/memory/context.md)
-- Research: [retrieval spike](../design/platform/spikes/memory-retrieval/),
+- Research: [retrieval spike](../../research/memory-retrieval/),
   [memory notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/memory-models.md)
 
 The conversation runs on the Agent SDK's session, with the stable part of the prompt first so the

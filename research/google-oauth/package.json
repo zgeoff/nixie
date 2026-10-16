@@ -1,0 +1,8 @@
+{
+  "name": "@heynixie/spike-google-oauth",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

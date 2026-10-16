@@ -1,0 +1,14 @@
+{
+  "name": "@heynixie/spike-connector-account-pick",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun --no-env-file run.ts",
+    "report": "bun --no-env-file report.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2"
+  }
+}

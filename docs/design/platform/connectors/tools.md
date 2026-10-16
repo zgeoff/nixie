@@ -44,8 +44,10 @@ Every call runs the same steps on the host:
 
 A tool returns its typed result as MCP `structuredContent`, and the model receives that object as
 JSON. The model never sees a text block beside it, the output schema, the annotations or `_meta`, as
-the [tools endpoint spike](../spikes/tools-endpoint/README.md) found. Every field the model needs is
-therefore in the typed result, free text included, and the declaration lives in nixie's registry.
+the
+[tools endpoint spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/tools-endpoint/README.md)
+found. Every field the model needs is therefore in the typed result, free text included, and the
+declaration lives in nixie's registry.
 
 | Outcome          | Result                                               | Error | Retried in the turn       | Text from            |
 | ---------------- | ---------------------------------------------------- | ----- | ------------------------- | -------------------- |

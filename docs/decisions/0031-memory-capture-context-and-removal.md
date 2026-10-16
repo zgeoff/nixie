@@ -6,7 +6,8 @@
 - Design: [memory store](../design/platform/memory/store.md),
   [memory writes](../design/platform/memory/writes.md),
   [memory context](../design/platform/memory/context.md)
-- Research: [batch spike](../design/platform/spikes/memory-batch/)
+- Research:
+  [batch spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-batch/)
 
 nixie's memory settles these choices. Retrieval is set by [0024](0024-memory-in-context.md), and the
 store by [0010](0010-memory-store.md).

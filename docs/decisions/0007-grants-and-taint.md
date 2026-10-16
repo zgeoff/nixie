@@ -3,7 +3,8 @@
 - Date: 2026-10-07
 - Updated: 2026-10-15
 - Status: decided
-- Research: [imp broker spike](../design/platform/spikes/imp-broker/)
+- Research:
+  [imp broker spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/imp-broker/)
 
 An imp that reads untrusted content holds one grant at most: the model API's credential, because the
 model loop runs in the imp under [0003](0003-sdk-placement.md). That covers the conversation's imp

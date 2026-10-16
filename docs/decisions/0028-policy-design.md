@@ -6,7 +6,7 @@
   [rules](../design/platform/policy/rules.md),
   [proposals and approvals](../design/platform/policy/approvals.md),
   [budgets](../design/platform/policy/budgets.md)
-- Research: [policy rules spike](../design/platform/spikes/policy-rules/)
+- Research: [policy rules spike](../../research/policy-rules/)
 
 nixie's policy design settles these choices:
 

@@ -200,7 +200,7 @@ prompt from your ask rule is one you asked for, so it sits outside the 0-prompt 
 scenario report lists those prompts apart. A prompt because no rule matched is a gap, which
 [rules](rules.md#gaps-and-proposed-rules) turns into a proposed rule.
 
-The scripted scenarios in the [policy rules spike](../spikes/policy-rules/) run fixed calls,
-messages and answers through the decision point with the starter rule set and auto-mode off, and
-fail on any prompt the script does not expect. CI runs them on every change to the starter rule set
-or the pipeline.
+The scripted scenarios in the [policy rules spike](../../../../research/policy-rules/) run fixed
+calls, messages and answers through the decision point with the starter rule set and auto-mode off,
+and fail on any prompt the script does not expect. CI runs them on every change to the starter rule
+set or the pipeline.

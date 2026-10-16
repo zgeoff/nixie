@@ -1,0 +1,10 @@
+{
+  "name": "@heynixie/spike-worker-cold-start",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike": "bash run.sh",
+    "typecheck": "tsc --noEmit"
+  }
+}

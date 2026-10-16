@@ -5,8 +5,9 @@
 - Design: [client](../design/platform/channels/client.md),
   [approvals](../design/platform/channels/approvals.md),
   [channel adapter](../design/platform/channels/channel-adapter.md)
-- Research: [client RPC spike](../design/platform/spikes/client-rpc/),
-  [paste spans spike](../design/platform/spikes/paste-spans/)
+- Research:
+  [client RPC spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/client-rpc/),
+  [paste spans spike](../../research/paste-spans/)
 
 nixie's channels settle these choices:
 

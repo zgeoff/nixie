@@ -162,7 +162,7 @@ A worker holds a subset of its caller's tools, so delegation only narrows. Its t
 records whose parent is the tool call, and nixie destroys the imp when the tool call returns.
 
 A minimal image per kind of work keeps a fresh worker's start short, as the
-[imp worker spike](../spikes/imp-worker-start/README.md) measured.
+[imp worker spike](../../../../research/imp-worker-start/README.md) measured.
 
 A worker run stops at the first of its limits: 10 min of wall time, 25 model turns, 2,000,000 tokens
 or $2 of model cost by default, each settable per tool. **Why:** a worker answers one narrow

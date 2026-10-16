@@ -3,7 +3,7 @@
 - Date: 2026-10-08
 - Status: decided
 - Design: [MCP proxy](../design/platform/connectors/mcp-proxy.md)
-- Research: [proxy spike](../design/platform/spikes/mcp-proxy-pin/),
+- Research: [proxy spike](../../research/mcp-proxy-pin/),
   [MCP notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/mcp.md)
 
 An external server is any MCP server that is not part of nixie's own code, whoever wrote it. Your

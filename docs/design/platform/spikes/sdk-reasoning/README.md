@@ -30,11 +30,11 @@ moment only when the log records it ([GEO-381](https://linear.app/zgeoff/issue/G
 
 The deployment's role map names 3 profiles, all on Anthropic's own endpoint:
 
-| Profile       | Model             | Effort | Roles          |
-| ------------- | ----------------- | ------ | -------------- |
-| `opus-medium` | `claude-opus-5-5` | medium | conversation   |
-| `sonnet-high` | `claude-sonnet-5-5` | high | checker        |
-| `haiku-low`   | `claude-haiku-5-5`  | low  | memory writer  |
+| Profile       | Model               | Effort | Roles         |
+| ------------- | ------------------- | ------ | ------------- |
+| `opus-medium` | `claude-opus-5-5`   | medium | conversation  |
+| `sonnet-high` | `claude-sonnet-5-5` | high   | checker       |
+| `haiku-low`   | `claude-haiku-5-5`  | low    | memory writer |
 
 [`run.ts`](run.ts) builds each turn's options with the conversation guest's own options builder, so
 the CLI gets the production environment, effort and settings. The checker's options set thinking the
@@ -46,12 +46,12 @@ timetable question that needs a few steps of working, under 3 thinking settings:
 - `omitted`: adaptive thinking with the SDK's `omitted` display.
 
 [`start-capture-proxy.ts`](start-capture-proxy.ts) sits between the CLI and the model API, as the
-counting proxy does in [token use per turn](../turn-tokens/README.md). It keeps the thinking setting
-each request sent and rebuilds each response's content blocks from the stream. `run.ts` also keeps
-the content blocks of every assistant message the SDK yielded, the SDK's thinking-token progress
-messages, and the blocks of the session transcript the CLI wrote. Each run file in [`runs/`](runs/)
-holds the readable thinking text and the byte length of each signature, never the signature itself.
-[`report.ts`](report.ts) prints the table below from the run files.
+counting proxy does in [token use per turn](../../../../../research/turn-tokens/README.md). It keeps
+the thinking setting each request sent and rebuilds each response's content blocks from the stream.
+`run.ts` also keeps the content blocks of every assistant message the SDK yielded, the SDK's
+thinking-token progress messages, and the blocks of the session transcript the CLI wrote. Each run
+file in [`runs/`](runs/) holds the readable thinking text and the byte length of each signature,
+never the signature itself. [`report.ts`](report.ts) prints the table below from the run files.
 
 ## Run it
 
@@ -116,12 +116,13 @@ systems flag the reasoning, and an invented timetable question gives them nothin
 ### Recording the summary costs about as much as the reply
 
 The summary came to 0.8 to 1.3 bytes per thinking token, and thinking made up 60 to 85% of a turn's
-output tokens. The Opus conversation turns in [token use per turn](../turn-tokens/README.md) averaged
-409 output tokens, so a summary of about 300 thinking tokens takes about 250 bytes, close to the
-size of a short reply. The [erasable fields](../../../../architecture/core/erasable-fields.md) of a
-record are one JSON object under one key and one IV, so a summary in the reply's erasable fields adds
-its own bytes and a field name, and no key. At 50 conversation turns a day, the summaries add about
-12 KB a day and 5 MB a year. A turn that thinks for 5,000 tokens adds 4 to 7 KB.
+output tokens. The Opus conversation turns in
+[token use per turn](../../../../../research/turn-tokens/README.md) averaged 409 output tokens, so a
+summary of about 300 thinking tokens takes about 250 bytes, close to the size of a short reply. The
+[erasable fields](../../../../architecture/core/erasable-fields.md) of a record are one JSON object
+under one key and one IV, so a summary in the reply's erasable fields adds its own bytes and a field
+name, and no key. At 50 conversation turns a day, the summaries add about 12 KB a day and 5 MB a
+year. A turn that thinks for 5,000 tokens adds 4 to 7 KB.
 
 Recording the signature instead would cost 1.2 to 2.3 KB a turn for bytes nixie cannot read, and the
 CLI's transcript keeps it for the session's next call.
@@ -137,9 +138,9 @@ Record the model's reasoning as an erasable field, and leave the signature out:
 3. The reply record's plain payload keeps the turn's count of thinking tokens, so a projection reads
    the count without a key, and the count outlives a forgotten reply.
 
-The cost is about the size of the reply text the log keeps, and a moment's span then shows
-why the model made a choice and not only what it replied. The summary is a paraphrase written by the
-API, and a span labels it as a summary of the reasoning, never as the reasoning itself.
+The cost is about the size of the reply text the log keeps, and a moment's span then shows why the
+model made a choice and not only what it replied. The summary is a paraphrase written by the API,
+and a span labels it as a summary of the reasoning, never as the reasoning itself.
 
 ## Untested
 

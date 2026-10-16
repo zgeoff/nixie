@@ -1,0 +1,12 @@
+{
+  "name": "@heynixie/spike-paste-spans",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.61.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

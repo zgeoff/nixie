@@ -24,7 +24,9 @@ implements and both clients import as types only. The contract has 3 kinds of pr
   the record's sequence, so a client that reconnects receives exactly the records it missed.
 
 A WebSocket transport stays available behind the same contract for 2-way streaming such as voice.
-The [typed API spike](../spikes/client-rpc/) holds the transport and resume evidence.
+The
+[typed API spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/client-rpc/)
+holds the transport and resume evidence.
 
 ## Two clients, one contract
 
@@ -87,7 +89,8 @@ clipboard chips, stay unknown until the module tells them apart.
 
 Offsets count UTF-16 code units. The server labels a message as unknown throughout when its spans
 are out of order, overlap or leave a gap, so a client that cannot tell fails closed. The spans are
-encrypted with the text. The [paste span spike](../spikes/paste-spans/) holds the browser evidence.
+encrypted with the text. The [paste span spike](../../../../research/paste-spans/) holds the browser
+evidence.
 
 ### Messages into a running task
 

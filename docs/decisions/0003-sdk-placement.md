@@ -5,8 +5,9 @@
 - Status: decided
 - Design: [sandbox adapter](../design/platform/connectors/sandbox-adapter.md),
   [deployment](../design/platform/deployment/deployment.md)
-- Research: [placement spike](../design/platform/spikes/sdk-placement/),
-  [imp worker spike](../design/platform/spikes/imp-worker-start/)
+- Research:
+  [placement spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/sdk-placement/),
+  [imp worker spike](../../research/imp-worker-start/)
 
 Every model loop runs in an imp, and nixie's tools run on the host. The SDK holds only nixie's tools
 for assistant work. `tools: []` removes every built-in tool from the conversation and from workers,
