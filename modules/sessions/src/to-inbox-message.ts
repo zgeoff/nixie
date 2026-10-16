@@ -1,4 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
+import { ownerMessageCodec } from '@heynixie/tasks';
 import type { InboxImage, InboxMessage } from '@heynixie/wire';
 import { encodeInboxUUID } from './encode-inbox-uuid';
 import { renderImageMarkers } from './render-image-markers';
@@ -27,32 +28,14 @@ function buildInboxImages(
   record: LogRecord,
   attachments: readonly Uint8Array[],
 ): readonly InboxImage[] {
-  const types = record.payload['images'];
+  const types = ownerMessageCodec.tryDecodePartial(record.payload)?.images;
 
   return renderImageMarkers(record).flatMap((marker, index) => {
     const bytes = attachments[index];
-    const type: unknown = Array.isArray(types) ? types[index] : undefined;
-    const mediaType = findMediaType(type);
+    const mediaType = types?.[index]?.mediaType;
 
-    return bytes === undefined || mediaType === null
+    return bytes === undefined || mediaType === undefined
       ? []
       : [{ marker, mediaType, data: bytes.toBase64() }];
   });
-}
-
-const mediaTypes: readonly InboxImage['mediaType'][] = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-];
-
-function findMediaType(image: unknown): InboxImage['mediaType'] | null {
-  if (typeof image !== 'object' || image === null || !('mediaType' in image)) {
-    return null;
-  }
-
-  const mediaType = image.mediaType;
-
-  return mediaTypes.find((known) => known === mediaType) ?? null;
 }

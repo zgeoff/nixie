@@ -1,5 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecordAttachments } from '@heynixie/log';
+import { ownerMessageCodec } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
 import { countImages } from './count-images';
 import { isPastImageBudget } from './is-past-image-budget';
@@ -50,7 +51,7 @@ async function readInboxMessage(
   record: LogRecord,
   times: MessageTimeOptions,
 ): Promise<InboxMessage> {
-  if (!Array.isArray(record.payload['images'])) {
+  if (ownerMessageCodec.tryDecodePartial(record.payload)?.images === undefined) {
     return toInboxMessage(record, times);
   }
 

@@ -1,3 +1,4 @@
+import { ownerMessageCodec } from '@heynixie/tasks';
 import { formatMessageStamp } from './format-message-stamp';
 import { formatMessageTime } from './format-message-time';
 import type { HistoryTurn } from './read-recent-turns';
@@ -12,7 +13,10 @@ export function renderHistoryLine(turn: HistoryTurn, times: MessageTimeOptions):
   const record = turn.record;
 
   if (record.kind === 'model.reply') {
-    const time = formatMessageTime(record.recordedAt, turn.answered?.payload['timeZone'], times);
+    const answered =
+      turn.answered === null ? null : ownerMessageCodec.tryDecodePartial(turn.answered.payload);
+
+    const time = formatMessageTime(record.recordedAt, answered?.timeZone, times);
     const text = record.erasable.status === 'readable' ? record.erasable.fields['text'] : undefined;
 
     return `[#${record.sequence} · ${time}] nixie: ${typeof text === 'string' ? text : '[a reply, since forgotten]'}`;
