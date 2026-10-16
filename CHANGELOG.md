@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.30.0](https://github.com/zgeoff/nixie/compare/v0.29.0...v0.30.0) (2026-10-16)
+
+
+### Features
+
+* **geo-1120:** review memory proposals in the web client ([#321](https://github.com/zgeoff/nixie/issues/321)) ([1f75b36](https://github.com/zgeoff/nixie/commit/1f75b36ac774a4f72ec5f550ef00e84c24ea7ee6))
+* **geo-1122:** forget a memory item from the view and the cli ([#323](https://github.com/zgeoff/nixie/issues/323)) ([0371819](https://github.com/zgeoff/nixie/commit/037181917bd7104de829183dcaed0f0da46b85fb))
+* **geo-533:** read memory items for the memory view ([#306](https://github.com/zgeoff/nixie/issues/306)) ([48851bc](https://github.com/zgeoff/nixie/commit/48851bca2314474acebb38288e180189e62f4be1))
+* **geo-533:** retire, restore, pin and unpin from the memory view ([#310](https://github.com/zgeoff/nixie/issues/310)) ([d857622](https://github.com/zgeoff/nixie/commit/d857622e0881f0b7212791128e5d74e07723b589))
+* **geo-533:** serve the memory view through the api ([#307](https://github.com/zgeoff/nixie/issues/307)) ([d1346e3](https://github.com/zgeoff/nixie/commit/d1346e30aea0c2eb7acf372ada75f8214db81506))
+* **geo-533:** show every memory item in a web memory view ([#309](https://github.com/zgeoff/nixie/issues/309)) ([ebc77d5](https://github.com/zgeoff/nixie/commit/ebc77d5e9c38148bcfd68c8ed9176c2bf27e6a93))
+
+
+### Bug Fixes
+
+* **geo-1142:** name the impd error in failed turns, keep nixie routed ([#318](https://github.com/zgeoff/nixie/issues/318)) ([9afa077](https://github.com/zgeoff/nixie/commit/9afa0775c2db896bf6d9c9b6658000ce02c1a8dd))
+* **geo-1146:** answer the 3 unanswered codex p1 findings ([#320](https://github.com/zgeoff/nixie/issues/320)) ([adbfb8b](https://github.com/zgeoff/nixie/commit/adbfb8b553c9ccc8ad8e01b5a16c96ea15374e07))
+* **geo-1156:** keep the conversation page when react restarts its effect ([#324](https://github.com/zgeoff/nixie/issues/324)) ([8c3ac17](https://github.com/zgeoff/nixie/commit/8c3ac176841bb616cb181b9e36a420b28d33e183))
+
 ## [0.29.0](https://github.com/zgeoff/nixie/compare/v0.28.0...v0.29.0) (2026-10-16)
 
 
