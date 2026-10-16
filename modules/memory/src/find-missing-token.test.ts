@@ -76,3 +76,14 @@ test('it finds a BSB and account number that differs from the quoted one', () =>
     findMissingToken('Rent goes to 062-000 87654321', 'Rent goes to 062-000 12345678'),
   ).toMatchObject({ kind: 'account', key: '06200087654321' });
 });
+
+test.each([
+  [
+    'an account number grouped like a BSB',
+    'Account 123456 123456 9876',
+    'Account 123456 123456 1111',
+  ],
+  ['a BSB after another digit group', 'Pays 11 062-000 12345678', 'Pays 22 062-000 12345678'],
+])('it compares the whole of %s', (_label, text, quote) => {
+  expect(findMissingToken(text, quote)).not.toBeNull();
+});

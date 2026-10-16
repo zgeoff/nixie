@@ -69,18 +69,19 @@ const patterns: readonly TokenPattern[] = [
     pattern: /\b[A-Z]{2}\d{2}(?:\s?[A-Z\d]{4}){2,7}(?:\s?[A-Z\d]{1,4})?\b/gu,
   },
 
-  // an Australian BSB and its account number, with an optional account word between them
+  // an Australian BSB and its account number, with an optional account word between them; neither
+  // pattern takes part of a longer run of digit groups, which the phone pattern takes whole
   {
     kind: 'account',
     pattern:
-      /\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+\d{5,9}\b/giu,
+      /(?<!\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+\d{5,9}\b(?![\p{Zs}\t-]?\d)/giu,
   },
 
   // a run of 6 to 17 digits right after an account word, such as "account number is"
   {
     kind: 'account',
     pattern:
-      /(?<=\b(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?|#))?(?:[\p{Zs}\t]+is|[\p{Zs}\t]*[:#])?[\p{Zs}\t]*)\d(?:[\p{Zs}\t-]?\d){5,16}\b/giu,
+      /(?<=\b(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?|#))?(?:[\p{Zs}\t]+is|[\p{Zs}\t]*[:#])?[\p{Zs}\t]*)\d(?:[\p{Zs}\t-]?\d){5,16}\b(?![\p{Zs}\t-]?\d)/giu,
   },
   { kind: 'phone', pattern: /\+?\d[\d\p{Zs}\t().-]{5,}\d/gu },
   { kind: 'domain', pattern: /\b(?:[\p{L}\p{N}-]+\.)+\p{L}{2,63}\b/gu },
