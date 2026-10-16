@@ -3,7 +3,7 @@ import type { MutationState } from '@tanstack/react-query';
 import { useMutation, useMutationState, useQueryClient } from '@tanstack/react-query';
 import { useNixieClient } from './use-nixie-client';
 
-export interface MemoryForgetInput {
+interface MemoryForgetInput {
   readonly clientActionID: string;
   readonly itemID: string;
   readonly version: number;
@@ -11,7 +11,7 @@ export interface MemoryForgetInput {
 
 // How a forget call stands: refused carries the reason the server gave, and failed is any other
 // error, such as a cleanup that failed after the forget began, which a retry finishes.
-export type MemoryForgetCall =
+type MemoryForgetCall =
   | { readonly status: 'pending' | 'applied' | 'failed'; readonly input: MemoryForgetInput }
   | { readonly status: 'refused'; readonly input: MemoryForgetInput; readonly notice: string };
 
