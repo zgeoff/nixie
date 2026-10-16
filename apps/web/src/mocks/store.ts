@@ -104,8 +104,17 @@ const summarySchema = z.object({
 // the sequence a record.forgotten record forgets
 const forgetSchema = z.object({ sequence: z.int() });
 
+// your answer to a memory proposal, which an approval or a rejection record holds
+const answerSchema = z.object({
+  answer: z.enum(['approved', 'edited', 'rejected']),
+  identityID: z.string(),
+  proposalID: z.string(),
+  reason: z.string().optional(),
+});
+
 const records = new Collection({
   schema: z.object({
+    answer: answerSchema.optional(),
     compaction: compactionSchema.optional(),
     context: contextSchema.optional(),
 
@@ -211,12 +220,69 @@ const memoryWriter = new Collection({
   }),
 });
 
-// Each memory change a client action ID applied, with the input it bound to, as nixie's API keeps
-// the first result of each checked action.
+// Each memory change or proposal answer a client action ID applied, with the input it bound to and
+// the outcome that answers its retries, as nixie's API keeps the first result of each checked action.
 const memoryActions = new Collection({
   schema: z.object({
     clientActionID: z.uuid(),
     input: z.string(),
+    result: z.string().optional(),
+  }),
+});
+
+// where a proposal's quote sits in the message it came from, with that message while it is readable
+const proposalEvidenceSchema = z.object({
+  end: z.int().nonnegative(),
+  message: z
+    .object({
+      status: z.enum(['readable', 'shredded', 'unreadable', 'missing']),
+      text: z.string().optional(),
+    })
+    .nullable(),
+  sequence: z.int().nonnegative(),
+  start: z.int().nonnegative(),
+});
+
+// A memory proposal as nixie's memory store holds it: the operation it binds to, the check that
+// sent it to review, and its status once an answer or its lapse closed it.
+const memoryProposals = new Collection({
+  schema: z.object({
+    actionHash: z
+      .string()
+      .default(
+        () => `sha256:${faker.string.hexadecimal({ casing: 'lower', length: 64, prefix: '' })}`,
+      ),
+    createdAt: z.date().default(() => faker.date.recent()),
+    evidence: proposalEvidenceSchema.nullable().default(null),
+    isPinned: z.boolean().default(false),
+    itemID: z.uuid().default(() => faker.string.uuid()),
+    lapseAt: z.date().default(() => faker.date.soon({ days: 7 })),
+    operation: z.enum(['remember', 'retire']).default('remember'),
+    origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']).default('memory_writer'),
+    proposalID: z.uuid().default(() => faker.string.uuid()),
+    quote: z.string().nullable().default(null),
+    reason: z
+      .enum([
+        'no_quote',
+        'quote_not_typed',
+        'quote_in_quoted_block',
+        'invisible_character',
+        'token_missing',
+        'checker_not_asserted',
+        'checker_unsure',
+        'checker_unreachable',
+        'forgotten_evidence',
+        'ambiguous_target',
+        'pinned',
+      ])
+      .default('no_quote'),
+    source: z.enum(['owner', 'owner_data', 'untrusted']).default('untrusted'),
+    status: z.enum(['pending', 'consumed', 'rejected', 'lapsed']).default('pending'),
+
+    // the version of the item a change binds to, or null for a new item
+    targetVersion: z.int().positive().nullable().default(null),
+    text: z.string().default(() => faker.lorem.sentence()),
+    thread: z.string().default('conversation'),
   }),
 });
 
@@ -237,6 +303,7 @@ export const store = {
   forgetActions,
   memoryActions,
   memoryItems,
+  memoryProposals,
   memoryVersions,
   memoryWriter,
   ratingNotes,
@@ -244,15 +311,20 @@ export const store = {
 
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
-    records.clear();
-    forgetActions.clear();
-    memoryActions.clear();
-    memoryItems.clear();
-    memoryWriter.clear();
-    memoryVersions.clear();
-    ratingNotes.clear();
-    enrolmentCodes.clear();
-    sessions.clear();
+    for (const collection of [
+      records,
+      forgetActions,
+      memoryActions,
+      memoryItems,
+      memoryProposals,
+      memoryWriter,
+      memoryVersions,
+      ratingNotes,
+      enrolmentCodes,
+      sessions,
+    ]) {
+      collection.clear();
+    }
 
     counter.lastSequence = 0;
   },

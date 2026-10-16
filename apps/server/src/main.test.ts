@@ -850,6 +850,45 @@ test('it lists a pending memory proposal and approves it through the memory comm
   });
 }, 60_000);
 
+test('it shows the conversation your reason for a proposal you rejected in the web client on its next turn', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'Plays squash daily' } } },
+    { text: 'Noted.' },
+    { text: 'Understood.' },
+  );
+
+  await sendClientMessage(ctx.client, { text: 'I played squash today.' }, 'Noted.');
+
+  const listed = await ctx.client.memory.listProposals();
+
+  const [proposal] = listed.proposals;
+
+  invariant(proposal);
+
+  await ctx.client.memory.rejectProposals({
+    answers: [
+      {
+        clientActionID: crypto.randomUUID(),
+        proposalID: proposal.proposalID,
+        actionHash: proposal.actionHash,
+        reason: 'only on weekends, not every day',
+      },
+    ],
+  });
+
+  await sendClientMessage(ctx.client, { text: 'Did you save the squash thing?' }, 'Understood.');
+
+  const sent = JSON.stringify(
+    ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
+  );
+
+  expect(sent).toInclude(
+    String.raw`rejected your memory proposal ${proposal.proposalID}. Reason: \"only on weekends, not every day\".`,
+  );
+}, 60_000);
+
 test('it writes no info event, its stop included, at the warn level the configuration sets', async () => {
   const nixie = await startTestNixie({ logLevel: 'warn' });
 

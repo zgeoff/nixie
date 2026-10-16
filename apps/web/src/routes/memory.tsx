@@ -31,11 +31,18 @@ function Memory(): ReactNode {
     >
       <MemoryView
         navigation={
-          <Link className={css({ color: 'link', textDecoration: 'underline' })} to="/">
-            Conversation
-          </Link>
+          <nav className={css({ display: 'flex', gap: '3' })}>
+            <Link className={link} to="/memory/proposals">
+              Proposals
+            </Link>
+            <Link className={link} to="/">
+              Conversation
+            </Link>
+          </nav>
         }
       />
     </SignedInPage>
   );
 }
+
+const link = css({ color: 'link', textDecoration: 'underline' });

@@ -78,3 +78,28 @@ onto a version the user did not see, and a confirm that fails in transit and goe
 item once. Every refusal or change reads the lists again, so the row shows the item as it now
 stands. That read can move the item to another list, so the reason for a refusal, such as a stale
 version or a full pinned core, shows at the top of the page and not in the item's row.
+
+## Proposals
+
+The view lists every pending proposal on a page of its own, which the memory page links to. Each
+proposal shows its text, the check that sent it to review, who proposed it and from what source, its
+quote inside the message it came from, and when it lapses. The quote and its message open under the
+item's key, as the proposal's text does, so a forgotten item's proposal drops out of the list whole
+([memory proposals](./writes.md#memory-proposals)).
+
+The user approves a proposal, edits it and approves the edit, or rejects it with an optional reason,
+one at a time or for every selected proposal in one call. Each answer in a call is its own checked
+action with its own client action ID, and the store writes its own approval or rejection record, so
+a call that answers several proposals leaves the same records as the same answers sent one by one.
+The answers run in order, and one that fails leaves the rest to go on. An answer binds to the
+proposal's action hash, and its input hash covers whether the user edited the text or gave a reason,
+never the text or the reason, because a hash of free text would confirm a guess at words a forget
+later shreds.
+
+An answer that meets a proposal that lapsed, was answered, changed or is gone, or an item that moved
+past the version the proposal binds to, comes back stale and writes nothing: the store refuses it
+before the action's own write runs, so no record and no client action result commit. A committed
+answer closes its proposal, so the API looks up the client action ID before it answers, and a retry
+gets its first outcome back instead of a stale one. An edited approval meets the close match check
+on the edited text, and a held approval comes back with the item that matched, which the user then
+revises or leaves for a new item.

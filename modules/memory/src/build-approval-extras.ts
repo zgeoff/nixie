@@ -4,7 +4,8 @@ import type { StoreParts } from './types';
 import type { VersionExtras } from './write-memory-version';
 
 // What an approved version adds inside its transaction: the proposal must still be pending under
-// the hash you saw, and the approval record commits with the version and consumes the proposal.
+// the hash you saw, the caller's own write follows that check, and the approval record commits with
+// the version and consumes the proposal.
 export function buildApprovalExtras(
   parts: StoreParts,
   row: MemoryProposalRow,
@@ -21,6 +22,9 @@ export function buildApprovalExtras(
         now: parts.context.gate.clock.now(),
       });
     },
+    ...(answer.writeInTransaction === undefined
+      ? {}
+      : { writeInTransaction: answer.writeInTransaction }),
     approval: {
       envelope: approval,
       record: {

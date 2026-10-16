@@ -4,6 +4,7 @@ import { withEventMeta } from '@orpc/server';
 import type { ReadonlyDeep } from '../types';
 import { mockImplementer } from './mock-implementer';
 import { mockMemoryProcedures } from './mock-memory-procedures';
+import { mockProposalProcedures } from './mock-proposal-procedures';
 import { requireMockSession } from './require-mock-session';
 import { store } from './store';
 import { toLogRecord } from './to-log-record';
@@ -122,7 +123,7 @@ export const mockAPIRouter = os.router({
     }),
   },
   log: { follow: followProcedure },
-  memory: mockMemoryProcedures,
+  memory: { ...mockMemoryProcedures, ...mockProposalProcedures },
   records: { follow: followProcedure },
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {

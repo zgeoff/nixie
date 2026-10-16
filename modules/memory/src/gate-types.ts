@@ -3,7 +3,13 @@ import type { ContentSource } from '@heynixie/log';
 import type { RunCheck } from '@heynixie/sessions';
 import type { Selectable } from 'kysely';
 import type { reviewReasons } from './review-reasons';
-import type { MemoryChange, MemoryOrigin, QuoteEvidence, VersionRef } from './types';
+import type {
+  MemoryChange,
+  MemoryOrigin,
+  QuoteEvidence,
+  VersionRef,
+  WriteInTransaction,
+} from './types';
 import type { WriterGate } from './writer-types';
 
 export type { ContentGateRequest, ContentGateResult } from './content-gate-types';
@@ -213,6 +219,9 @@ export interface ProposalAnswer {
 
   // applies a new item's proposal as a new item even when an active item closely matches it
   readonly ignoreCloseMatch?: boolean;
+
+  // the caller's own write in the approved version's transaction, such as a checked action's result
+  readonly writeInTransaction?: WriteInTransaction;
 }
 
 // Your rejection of a proposal, with your optional reason, which the conversation reads in its
@@ -222,6 +231,9 @@ export interface ProposalRejection {
   readonly actionHash: string;
   readonly identityID: string;
   readonly reason?: string;
+
+  // the caller's own write in the rejection's transaction, such as a checked action's result
+  readonly writeInTransaction?: WriteInTransaction;
 }
 
 // An approval applied, or held for the active item that closely matches the proposal.

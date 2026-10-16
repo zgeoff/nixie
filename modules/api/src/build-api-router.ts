@@ -1,9 +1,8 @@
 import { apiImplementer } from './api-implementer';
 import { buildConversationProcedures } from './build-conversation-procedures';
 import { buildEnrolProcedure } from './build-enrol-procedure';
-import { buildMemoryChangeProcedures } from './build-memory-change-procedures';
 import { buildMemoryProcedures } from './build-memory-procedures';
-import { buildMemoryViewProcedures } from './build-memory-view-procedures';
+import { buildMemoryViewRouter } from './build-memory-view-router';
 import { buildRecordProcedures } from './build-record-procedures';
 import { buildRevokeProcedure } from './build-revoke-procedure';
 import { buildSessionProcedures } from './build-session-procedures';
@@ -17,8 +16,7 @@ export function buildAPIRouter(context: APIContext, readMemory: ReadViewMemory) 
     conversation: buildConversationProcedures(context),
     memory: {
       ...buildMemoryProcedures(context),
-      ...buildMemoryViewProcedures(context, readMemory),
-      ...buildMemoryChangeProcedures(context, readMemory),
+      ...buildMemoryViewRouter(context, readMemory),
     },
     ...buildRecordProcedures(context),
     sessions: {

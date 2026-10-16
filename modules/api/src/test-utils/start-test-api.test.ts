@@ -37,11 +37,16 @@ test('it serves the memory store the test sets', async () => {
     retire: () => Promise.reject(new Error('no change runs here')),
     restore: () => Promise.reject(new Error('no change runs here')),
     pin: () => Promise.reject(new Error('no change runs here')),
+    proposals: {
+      approve: () => Promise.reject(new Error('no answer runs here')),
+      reject: () => Promise.reject(new Error('no answer runs here')),
+    },
     view: {
       readPage: () => Promise.resolve({ items: [], next: null }),
       findItems: () => Promise.resolve({ items: [], searchMode: 'keyword' }),
       readPinnedCore: () => Promise.resolve({ items: [], tokens: 0, budget: 750 }),
       readItem: () => Promise.resolve(null),
+      readProposals: () => Promise.resolve([]),
     },
   });
 

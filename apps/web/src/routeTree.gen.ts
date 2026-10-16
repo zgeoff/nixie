@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MemoryRouteImport } from './routes/memory'
+import { Route as MemoryProposalsRouteImport } from './routes/memory_.proposals'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const MemoryRoute = MemoryRouteImport.update({
   path: '/memory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MemoryProposalsRoute = MemoryProposalsRouteImport.update({
+  id: '/memory_/proposals',
+  path: '/memory/proposals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/memory': typeof MemoryRoute
+  '/memory/proposals': typeof MemoryProposalsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/memory': typeof MemoryRoute
+  '/memory/proposals': typeof MemoryProposalsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/memory': typeof MemoryRoute
+  '/memory_/proposals': typeof MemoryProposalsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/memory'
+  fullPaths: '/' | '/memory' | '/memory/proposals'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/memory'
-  id: '__root__' | '/' | '/memory'
+  to: '/' | '/memory' | '/memory/proposals'
+  id: '__root__' | '/' | '/memory' | '/memory_/proposals'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MemoryRoute: typeof MemoryRoute
+  MemoryProposalsRoute: typeof MemoryProposalsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/memory_/proposals': {
+      id: '/memory_/proposals'
+      path: '/memory/proposals'
+      fullPath: '/memory/proposals'
+      preLoaderRoute: typeof MemoryProposalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MemoryRoute: MemoryRoute,
+  MemoryProposalsRoute: MemoryProposalsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
