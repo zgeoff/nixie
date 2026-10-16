@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
 import type { MemoryItem } from '../types';
+import { MemoryItemActions } from './memory-item-actions';
 import { MemoryItemList } from './memory-item-list';
 import { MemoryItemRow } from './memory-item-row';
 import { MemorySearchResults } from './memory-search';
@@ -56,7 +57,11 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
 
 // every list renders an item the same way, so a later control joins them all here
 function renderItem(item: MemoryItem): ReactNode {
-  return <MemoryItemRow key={item.itemID} item={item} />;
+  return (
+    <MemoryItemRow key={item.itemID} item={item}>
+      <MemoryItemActions item={item} />
+    </MemoryItemRow>
+  );
 }
 
 const layout = css({
