@@ -51,6 +51,10 @@ export interface OpeningRecord {
   readonly recentRecords: number;
   readonly recentEvents: number;
 
+  // the first sequence of the thread the session holds word for word: the oldest of the recent
+  // turns, or the turn's first inbox record when none; retrieval leaves your messages from it on out
+  readonly heldFrom: number;
+
   // the newest recall before the opening's own, which served the session a lost-session start lost
   readonly recalledThrough: number;
   readonly status: Readonly<Record<string, string | number>>;
@@ -103,6 +107,7 @@ export async function readSessionOpening(
       lostSessionID: query.start.kind === 'rebuild' ? query.start.lostSessionID : null,
       summarySequence: summary?.sequence ?? null,
       recentRecords: recent.length,
+      heldFrom: recent.at(0)?.record.sequence ?? query.beforeSequence,
       recentEvents: replayed?.eventCount ?? 0,
       recalledThrough,
       status: Object.fromEntries(status.map((read) => [read.name, read.line.value])),

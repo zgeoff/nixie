@@ -56,6 +56,7 @@ test('it lists the tools named and reads the memory given at each turn', async (
     memory: () => ({
       readPinnedCore: () => Promise.resolve([]),
       recall,
+      recallMessages: () => Promise.resolve({ messages: [] }),
       readShortIDs: () => Promise.resolve(new Map()),
     }),
   });

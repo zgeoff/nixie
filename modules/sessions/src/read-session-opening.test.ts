@@ -42,6 +42,7 @@ test('it opens a first session with the pinned memory and the status, in that or
     summarySequence: null,
     recentRecords: 0,
     recentEvents: 0,
+    heldFrom: Number.MAX_SAFE_INTEGER,
     recalledThrough: 0,
     status: { start: 'first', model: 'claude-test-1' },
   });
@@ -50,7 +51,7 @@ test('it opens a first session with the pinned memory and the status, in that or
 test('it opens a rebuild with no summary with the pinned memory, the status and the recent turns, in that order', async () => {
   const ctx = await setupTest();
 
-  await writeRecords(ctx.tasks.context.log, [
+  const [asked] = await writeRecords(ctx.tasks.context.log, [
     {
       kind: 'owner_message',
       definitions: { snapshotHash: 'sha256:test' },
@@ -96,6 +97,7 @@ test('it opens a rebuild with no summary with the pinned memory, the status and 
     lostSessionID: 'a-lost-session',
     summarySequence: null,
     recentRecords: 2,
+    heldFrom: asked?.sequence,
     status: { start: 'rebuild:lost' },
   });
 });

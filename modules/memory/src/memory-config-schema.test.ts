@@ -12,6 +12,7 @@ test('it sets the gate, pinned core, retrieval and rebuild defaults', () => {
     checkerTimeoutMs: 20_000,
     pinnedCoreTokens: 2000,
     retrievalItems: 5,
+    retrievalMessages: 3,
     retrievalMinScore: 0.25,
     retrievalMinSimilarity: 0.38,
     rebuildTokens: 30_000,
@@ -22,6 +23,7 @@ test('it takes the values the file names', () => {
   const result = memoryConfigSchema.safeParse({
     pinned_core_tokens: 1500,
     retrieval_items: 3,
+    retrieval_messages: 1,
     retrieval_min_score: 0.5,
     retrieval_min_similarity: 0.45,
     rebuild_tokens: 20_000,
@@ -30,6 +32,7 @@ test('it takes the values the file names', () => {
   expect(result.data).toMatchObject({
     pinnedCoreTokens: 1500,
     retrievalItems: 3,
+    retrievalMessages: 1,
     retrievalMinScore: 0.5,
     retrievalMinSimilarity: 0.45,
     rebuildTokens: 20_000,

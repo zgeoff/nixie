@@ -70,11 +70,39 @@ interface MemoryRetrieval {
   readonly thread: string;
 }
 
+// One turn's search of your past messages: the same text and floors as the items', with the
+// message limit.
+interface MessageRetrieval {
+  readonly query: string;
+  readonly limit: number;
+  readonly minScore: number;
+  readonly minSimilarity: number;
+
+  // the messages the session already holds, by sequence, which stay out before the limit applies
+  readonly excludedSequences: readonly number[];
+  readonly excludedWords: readonly string[];
+}
+
+// One of your past messages that retrieval placed: its record's sequence, thread and time, and its
+// text as the conversation renders it, cut when long.
+export interface PastMessage {
+  readonly sequence: number;
+  readonly thread: string | null;
+  readonly recordedAt: number;
+  readonly text: string;
+  readonly isCut: boolean;
+}
+
 // The memory the conversation reads each turn: the pinned core, and retrieval through recall. The
 // memory store meets it, and the conversation declares it so sessions never imports memory.
 export interface ConversationMemory {
   readonly readPinnedCore: () => Promise<readonly MemoryItem[]>;
   readonly recall: (request: MemoryRetrieval) => Promise<{ readonly items: readonly MemoryItem[] }>;
+
+  // your past messages that match the turn's messages, best first
+  readonly recallMessages: (
+    request: MessageRetrieval,
+  ) => Promise<{ readonly messages: readonly PastMessage[] }>;
 
   // the short ID of each item that exists, by item ID, for an item that left the pinned core
   readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
@@ -84,6 +112,9 @@ export interface ConversationMemory {
 export interface ConversationMemorySettings {
   // the most memory items one turn's retrieval places
   readonly retrievalItems: number;
+
+  // the most past messages one turn's retrieval places beside the items
+  readonly retrievalMessages: number;
 
   // the lowest keyword score a retrieved item keeps
   readonly retrievalMinScore: number;

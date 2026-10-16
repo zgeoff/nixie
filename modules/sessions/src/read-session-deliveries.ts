@@ -4,24 +4,37 @@ import type { TasksContext } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { MemoryRef } from './types';
 
-// Reads the item versions the thread's session still holds: those delivered in a step that ended
-// its turn, since the session's opening record, the last compaction or an invalidation. The memory
-// context doc gives the rules for each record.
-export async function readDeliveredVersions(
+// What retrieval and recall delivered to the thread's session that it still holds: the item
+// versions, and the sequences of your past messages.
+export interface SessionDeliveries {
+  readonly versions: readonly MemoryRef[];
+  readonly messages: readonly number[];
+}
+
+// Reads what the thread's session still holds of what was delivered in a step that ended its turn,
+// since the session's opening record, the last compaction or an invalidation. The memory context
+// doc gives the rules for each record.
+export async function readSessionDeliveries(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
-): Promise<readonly MemoryRef[]> {
+): Promise<SessionDeliveries> {
   const state = { current: emptyState };
 
   for await (const record of readSessionRecords(context, taskID)) {
     state.current = buildSessionState(state.current, record);
   }
 
-  return [...state.current.delivered.values()];
+  return {
+    versions: [...state.current.delivered.values()],
+    messages: [...new Set(state.current.messages)],
+  };
 }
 
 interface SessionState {
   readonly delivered: ReadonlyMap<string, MemoryRef>;
+
+  // the past messages a turn's retrieval placed, by sequence; only a turn's end lists them
+  readonly messages: readonly number[];
 
   // the running step's recalls, which its turn's end keeps up to its last result
   readonly pending: readonly PendingRecall[];
@@ -33,7 +46,12 @@ interface PendingRecall {
   readonly refs: readonly MemoryRef[];
 }
 
-const emptyState: SessionState = { delivered: new Map(), pending: [], isCompacted: false };
+const emptyState: SessionState = {
+  delivered: new Map(),
+  messages: [],
+  pending: [],
+  isCompacted: false,
+};
 
 // A reset commits after its step's recalls and drops them: a compaction summarized those through
 // its mark, and a lost session's opening lists what its turn retrieved. A turn drops a recall after
@@ -60,6 +78,7 @@ function buildSessionState(state: SessionState, record: LogRecord): SessionState
 // summarized it
 function buildTurnEnd(state: SessionState, record: LogRecord): SessionState {
   const retrieved = state.isCompacted ? [] : parseRefs(record.payload['retrieved']);
+  const messages = state.isCompacted ? [] : parseSequences(record.payload['retrievedMessages']);
   const through = parseRecalledThrough(record.payload['recalledThrough']);
 
   const recalled = state.pending
@@ -69,6 +88,7 @@ function buildTurnEnd(state: SessionState, record: LogRecord): SessionState {
   return {
     ...state,
     delivered: mergeRefs(state.delivered, [...recalled, ...retrieved]),
+    messages: [...state.messages, ...messages],
     pending: [],
   };
 }
@@ -87,6 +107,7 @@ function buildSessionReset(state: SessionState, record: LogRecord): SessionState
     return {
       ...state,
       delivered: new Map(),
+      messages: [],
       pending: isLostSession(record)
         ? state.pending.filter((recall) => recall.sequence > parseLostRecallsThrough(record))
         : state.pending,
@@ -99,12 +120,13 @@ function buildSessionReset(state: SessionState, record: LogRecord): SessionState
 
     return {
       delivered: new Map(),
+      messages: [],
       pending: state.pending.filter((recall) => recall.sequence > through),
       isCompacted: true,
     };
   }
 
-  return { ...state, delivered: new Map(), pending: [] };
+  return { ...state, delivered: new Map(), messages: [], pending: [] };
 }
 
 // an opening in place of a session the guest lost, or a rebuild recorded before openings for one
@@ -197,6 +219,15 @@ const refsSchema = z.array(z.object({ itemID: z.string(), version: z.int().posit
 // a record's list of item versions, or none for a list in another shape
 function parseRefs(value: unknown): readonly MemoryRef[] {
   const parsed = refsSchema.safeParse(value);
+
+  return parsed.success ? parsed.data : [];
+}
+
+const sequencesSchema = z.array(z.int().positive());
+
+// a turn's list of past messages, or none for a turn recorded before retrieval placed messages
+function parseSequences(value: unknown): readonly number[] {
+  const parsed = sequencesSchema.safeParse(value);
 
   return parsed.success ? parsed.data : [];
 }

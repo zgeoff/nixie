@@ -39,6 +39,9 @@ export interface VectorIndex {
     options: VectorMatchOptions,
   ) => Promise<readonly VectorMatch[] | null>;
 
+  // whether search reads the vectors, which a rebuild holds off until it ends
+  readonly isReady: () => boolean;
+
   // resolves once every queued encoding has ended
   readonly waitForIdle: () => Promise<void>;
   readonly stop: () => Promise<void>;
@@ -70,6 +73,7 @@ export function startVectorIndex(encoder: Encoder, onError: (error: unknown) => 
       updateGeneration(state, itemID);
     },
     findMatches: (query, options) => findVectorMatches(state, query, options),
+    isReady: () => state.isReady,
     waitForIdle: async () => {
       await state.tail;
     },

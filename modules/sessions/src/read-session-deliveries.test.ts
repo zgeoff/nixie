@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
-import { readDeliveredVersions } from './read-delivered-versions';
+import { readSessionDeliveries } from './read-session-deliveries';
 import { startTestTasks } from './test-utils/start-test-tasks';
 
 async function setupTest() {
@@ -43,9 +43,9 @@ test('it lists every version recalled in a step that ended its turn', async () =
     },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([
+  expect(delivered.versions).toStrictEqual([
     { itemID: 'item-1', version: 1 },
     { itemID: 'item-2', version: 3 },
   ]);
@@ -91,9 +91,9 @@ test('it leaves out a recall from a step that never ended its turn', async () =>
     },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([{ itemID: 'item-2', version: 1 }]);
+  expect(delivered.versions).toStrictEqual([{ itemID: 'item-2', version: 1 }]);
 });
 
 test('it lists nothing that a step delivered before a session opened', async () => {
@@ -137,9 +137,9 @@ test('it lists nothing that a step delivered before a session opened', async () 
     { kind: 'model.turn_ended', definitions, thread: 'conversation', payload: { retrieved: [] } },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([]);
+  expect(delivered.versions).toStrictEqual([]);
 });
 
 test('it keeps what a turn on a session opened in place of a lost one retrieved, and drops the recall for the lost session', async () => {
@@ -184,9 +184,9 @@ test('it keeps what a turn on a session opened in place of a lost one retrieved,
     },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
+  expect(delivered.versions).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
 });
 
 test('it keeps the recalls a lost session opening made after its mark, such as a replayed approval', async () => {
@@ -228,9 +228,9 @@ test('it keeps the recalls a lost session opening made after its mark, such as a
     { kind: 'model.turn_ended', definitions, thread: 'conversation', payload: { retrieved: [] } },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([{ itemID: 'item-3', version: 1 }]);
+  expect(delivered.versions).toStrictEqual([{ itemID: 'item-3', version: 1 }]);
 });
 
 test('it reads a rebuild record from before opening records as the opening of a lost session', async () => {
@@ -273,9 +273,9 @@ test('it reads a rebuild record from before opening records as the opening of a 
     },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
+  expect(delivered.versions).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
 });
 
 test.each([
@@ -305,9 +305,9 @@ test.each([
     { kind: 'model.turn_ended', definitions, thread: 'conversation', payload: { retrieved: [] } },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
+  expect(delivered.versions).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
 });
 
 test('it lists nothing that a step delivered before a compaction in that step', async () => {
@@ -357,9 +357,9 @@ test('it lists nothing that a step delivered before a compaction in that step', 
     },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([]);
+  expect(delivered.versions).toStrictEqual([]);
 });
 
 test('it lists nothing that another thread delivered', async () => {
@@ -382,9 +382,9 @@ test('it lists nothing that another thread delivered', async () => {
     },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([]);
+  expect(delivered.versions).toStrictEqual([]);
 });
 
 test('it leaves out a recall that came after the last result its turn ended at', async () => {
@@ -427,9 +427,9 @@ test('it leaves out a recall that came after the last result its turn ended at',
     },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
+  expect(delivered.versions).toStrictEqual([{ itemID: 'item-1', version: 1 }]);
 });
 
 test('it keeps a recall that came after a compaction in the same step', async () => {
@@ -478,7 +478,66 @@ test('it keeps a recall that came after a compaction in the same step', async ()
     },
   ]);
 
-  const delivered = await readDeliveredVersions(ctx.tasks.context, 'conversation');
+  const delivered = await readSessionDeliveries(ctx.tasks.context, 'conversation');
 
-  expect(delivered).toStrictEqual([{ itemID: 'item-2', version: 2 }]);
+  expect(delivered.versions).toStrictEqual([{ itemID: 'item-2', version: 2 }]);
+});
+
+test('it lists the past messages each ended turn of the session placed', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await createConversationTask(ctx.tasks.context);
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions,
+      thread: 'conversation',
+      payload: { heldFrom: 1 },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions,
+      thread: 'conversation',
+      payload: { retrieved: [], retrievedMessages: [4, 9] },
+    },
+    {
+      kind: 'model.turn_ended',
+      definitions,
+      thread: 'conversation',
+      payload: { retrieved: [], retrievedMessages: [12] },
+    },
+  ]);
+
+  const deliveries = await readSessionDeliveries(ctx.tasks.context, 'conversation');
+
+  expect(deliveries.messages).toStrictEqual([4, 9, 12]);
+});
+
+test('it drops the past messages an earlier session placed once an invalidation ends it', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await createConversationTask(ctx.tasks.context);
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.turn_ended',
+      definitions,
+      thread: 'conversation',
+      payload: { retrieved: [], retrievedMessages: [4, 9] },
+    },
+    {
+      kind: 'model.session_invalidated',
+      definitions,
+      thread: 'conversation',
+    },
+  ]);
+
+  const deliveries = await readSessionDeliveries(ctx.tasks.context, 'conversation');
+
+  expect(deliveries.messages).toStrictEqual([]);
 });

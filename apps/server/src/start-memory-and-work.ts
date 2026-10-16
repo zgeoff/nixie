@@ -25,8 +25,12 @@ export async function startMemoryAndWork(
 
   parts.tools.memory.set(store);
 
-  // the slot fills before the pending forgets are read, so a forget that read it empty is pending
-  parts.sessionCleanup.set(conversation.cleanupSessions);
+  // the slot fills before the pending forgets are read, so a forget that read it empty is pending;
+  // a forgotten message leaves the message indexes before its session cleanup runs
+  parts.sessionCleanup.set(async (cause) => {
+    await store.removeMessages([cause.recordSequence]);
+    await conversation.cleanupSessions(cause);
+  });
 
   await runWithRetry(() => runPendingRecordForgets(parts.apiContext), {
     ...retry,
