@@ -10,7 +10,7 @@ export type ModelRole =
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 // The two prompt cache lifetimes the Claude CLI's promptCacheTtl setting takes.
-export type CacheTTL = '5m' | '1h';
+type CacheTTL = '5m' | '1h';
 
 // Prices per million tokens, in the deployment's currency.
 export interface ModelPrices {
