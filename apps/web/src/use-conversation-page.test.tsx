@@ -1,10 +1,13 @@
 import { expect, test } from 'bun:test';
+import type { ReactNode } from 'react';
+import { Activity } from 'react';
 import { buildBrowserClient } from './build-browser-client';
 import { Conversation } from './components/conversation';
 import { MemoryView } from './components/memory-view';
 import { store } from './mocks/store';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { render } from './test-utils/render';
+import { useConversationPage } from './use-conversation-page';
 
 // the live stream replays the forget soon after the return, so the check reads the first screen
 test('it shows no forgotten text when you come back to the conversation from the memory view', async () => {
@@ -56,3 +59,110 @@ test('it reads a fresh page without the forgotten text when you come back', asyn
 
   expect(list).toHaveTextContent(/^You Forgotten/u);
 });
+
+// a hidden Activity stops the view's effects and keeps the view, as React's StrictMode does once at
+// mount, so a page read again would hold the record that arrived meanwhile
+test('it keeps the page it shows when its effects stop and start again in place', async () => {
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } });
+
+  const rendered = render(
+    <Activity mode="visible">
+      <PageSize label="first" />
+    </Activity>,
+  );
+
+  await rendered.findByText('first: 1 records');
+
+  rendered.rerender(
+    <Activity mode="hidden">
+      <PageSize label="first" />
+    </Activity>,
+  );
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'The tea is ready.' } });
+
+  rendered.rerender(
+    <Activity mode="visible">
+      <PageSize label="first" />
+    </Activity>,
+  );
+
+  const first = await rendered.findByText('first: 1 records');
+
+  expect(first).toBeVisible();
+});
+
+test('it reads the page of the thread that the view moves to', async () => {
+  await createDeviceSession();
+
+  await Promise.all([
+    store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } }),
+    store.records.create({
+      kind: 'owner_message',
+      message: { text: 'Water the tomatoes at six.' },
+      thread: 'task:garden',
+    }),
+  ]);
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await rendered.findByText('Is the kettle on?');
+
+  rendered.rerender(<Conversation thread="task:garden" />);
+
+  await rendered.findByText('Water the tomatoes at six.');
+
+  expect(rendered.container).not.toHaveTextContent('Is the kettle on?');
+});
+
+test('it keeps the newer page that another view read while this one was hidden', async () => {
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } });
+
+  const rendered = render(
+    <Activity mode="visible">
+      <PageSize label="first" />
+    </Activity>,
+  );
+
+  await rendered.findByText('first: 1 records');
+  await store.records.create({ kind: 'owner_message', message: { text: 'The tea is ready.' } });
+
+  rendered.rerender(
+    <>
+      <Activity mode="hidden">
+        <PageSize label="first" />
+      </Activity>
+      <PageSize label="second" />
+    </>,
+  );
+
+  await rendered.findByText('second: 2 records');
+
+  rendered.rerender(
+    <>
+      <Activity mode="visible">
+        <PageSize label="first" />
+      </Activity>
+      <PageSize label="second" />
+    </>,
+  );
+
+  const first = await rendered.findByText('first: 2 records');
+
+  expect(first).toBeVisible();
+});
+
+interface PageSizeProps {
+  readonly label: string;
+}
+
+// shows how many records the conversation's page holds, with no live stream to add to them
+function PageSize(props: PageSizeProps): ReactNode {
+  const page = useConversationPage('conversation');
+
+  return <p>{`${props.label}: ${page.data?.records.length ?? 0} records`}</p>;
+}
