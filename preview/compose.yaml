@@ -49,8 +49,9 @@ services:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    # every interface by default, so the preview host's proxy reaches it; a PC run sets 127.0.0.1
     ports:
-      - ${NIXIE_PREVIEW_BIND:-127.0.0.1}:${NIXIE_PREVIEW_PORT:-8080}:8080
+      - ${NIXIE_PREVIEW_BIND:-0.0.0.0}:${NIXIE_PREVIEW_PORT:-8080}:8080
     # the origin opens once a sign-in code is printed, and up --wait waits for enrol to finish
     depends_on:
       enrol:
