@@ -17,6 +17,7 @@ export async function startMemory(
     sandboxes: parts.tools.adapter,
     image: parts.images.conversation.name,
     timeoutMs: parts.config.memory.checkerTimeoutMs,
+    clock: parts.context.clock,
     log: parts.log,
   });
 

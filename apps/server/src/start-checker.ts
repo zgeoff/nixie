@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import type { Clock } from '@heynixie/clock';
 import type { ModelSecrets, ModelsConfig } from '@heynixie/models';
 import { resolveModelCredentials, resolveRoleProfile } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
@@ -16,6 +17,7 @@ export interface CheckerOptions {
   // the conversation image's name in impd, from the sandbox manifest
   readonly image: string;
   readonly timeoutMs: number;
+  readonly clock: Clock;
   readonly log: Logger;
 }
 
@@ -35,6 +37,7 @@ export function startChecker(options: CheckerOptions): Promise<RunCheck> {
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
     command: buildCheckCommand(options.sandboxes),
     timeoutMs: options.timeoutMs,
+    clock: options.clock,
     log: options.log,
   });
 }

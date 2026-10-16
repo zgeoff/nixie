@@ -1,5 +1,5 @@
+import type { Clock } from '@heynixie/clock';
 import type { JSONObject } from '@heynixie/log';
-import type { Clock } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 import type { MemoryProposal, MemoryProposals } from './gate-types';
 import type { ItemIDStore, MemoryOrigin } from './types';

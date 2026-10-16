@@ -212,7 +212,10 @@ test('it proposes a write when the checker times out', async () => {
       check: makeChecker({
         ask: () => Promise.withResolvers<never>().promise,
         model: 'claude-sonnet-5-5',
-        timeoutMs: 20,
+
+        // a test clock ends a sleep of no time at once, so the check times out without a wait
+        clock: buildTestClock(1_700_000_000_000),
+        timeoutMs: 0,
       }),
     },
   });

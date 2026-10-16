@@ -1,4 +1,4 @@
-import type { Clock } from '@heynixie/tasks';
+import type { Clock } from '@heynixie/clock';
 import type { ToolDefinition } from '@heynixie/tools';
 
 export interface TimeToolOptions {

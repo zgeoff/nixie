@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@heynixie/clock": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "elysia": "catalog:",
     "kysely": "catalog:"

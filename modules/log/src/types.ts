@@ -1,3 +1,4 @@
+import type { Clock } from '@heynixie/clock';
 import type { CheckedTables, MigrationReport } from '@heynixie/db';
 import type { Generated, Kysely, Selectable, Transaction } from 'kysely';
 
@@ -10,6 +11,9 @@ export interface Writer {
   // keys.db, the key store that holds every record key wrapped by the deployment key
   readonly keys: Kysely<unknown>;
   readonly epoch: number;
+
+  // the clock every record's time and every wait in the log reads
+  readonly clock: Clock;
   readonly migration: MigrationReport;
   readonly stop: () => Promise<void>;
 }
@@ -162,7 +166,7 @@ export interface Projection {
 // What appending and reading need: the writer, the deployment key that wraps every record key,
 // and the projections each append updates.
 export interface Log {
-  readonly writer: Pick<Writer, 'dataDir' | 'db' | 'epoch' | 'keys'>;
+  readonly writer: Pick<Writer, 'clock' | 'dataDir' | 'db' | 'epoch' | 'keys'>;
   readonly deploymentKey: CryptoKey;
   readonly projections: readonly Projection[];
 }

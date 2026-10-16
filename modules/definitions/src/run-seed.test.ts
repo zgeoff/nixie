@@ -22,7 +22,12 @@ async function setupTest(config: { readonly projections?: readonly Projection[] 
 
   const root = join(dir, 'definitions');
 
-  const writer = await startWriter({ dataDir: dir });
+  const writer = await startWriter({
+    dataDir: dir,
+
+    // a clock stopped at one instant, so a seed's time shows that it read the writer's clock
+    clock: { now: () => Date.parse('2026-10-16T09:00:00Z'), sleep: () => Promise.resolve() },
+  });
 
   stack.defer(() => writer.stop());
 
@@ -96,7 +101,7 @@ test('it returns the definitions it put in force', async () => {
   const built = buildDefinitionsSnapshot({ persona: '# Persona\n\nWarm, brief.\n', policy });
 
   expect(result.inForce).toStrictEqual({
-    seededAt: expect.toBeValidDate(),
+    seededAt: new Date(ctx.writer.clock.now()),
     sourceID: `path:${ctx.root}`,
     sourceKind: 'path',
     revision: snapshot.revision,

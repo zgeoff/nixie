@@ -147,6 +147,8 @@ Slice 1 also creates these packages:
   `server-only`
 - `libs/wire`, the message formats that cross a sandbox boundary, and later the snapshot set formats
   nixie shares with the backup sidecar
+- `libs/clock`, the one clock that every time and every wait reads, which a test build replaces with
+  a clock the test steps
 - `libs/retry`, the backoff that sets the wait before each retry, so every part that retries backs
   off the same way
 - `libs/testing`, the test helpers and the [crash test harness](core/crash-tests.md#the-harness),

@@ -1,6 +1,6 @@
 import type { RecordInput } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
-import type { Clock, Lease } from '@heynixie/tasks';
+import type { Lease } from '@heynixie/tasks';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import { findReadableWrites } from './find-readable-writes';
@@ -31,7 +31,7 @@ export interface BatchPublication {
 
   // the task clock, which the transaction reads before it checks the lease, so a lease that
   // expired while the publish waited for the delivery lock or the transaction never publishes
-  readonly clock: Pick<Clock, 'now'>;
+  readonly clock: { readonly now: () => number };
   readonly bounds: BatchBounds;
   readonly writes: readonly GatedWrite[];
 

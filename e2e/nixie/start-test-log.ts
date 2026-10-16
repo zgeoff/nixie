@@ -1,9 +1,10 @@
+import type { Clock } from '../../libs/clock/src/index';
 import { actionsProjection } from '../../modules/actions/src/index';
 import { logProjections, startWriter } from '../../modules/log/src/index';
 import type { Writer } from '../../modules/log/src/index';
 import { memoryProjections } from '../../modules/memory/src/index';
 import { sandboxesProjection } from '../../modules/sandbox/src/index';
-import type { Clock, TasksContext } from '../../modules/tasks/src/index';
+import type { TasksContext } from '../../modules/tasks/src/index';
 import { tasksProjections } from '../../modules/tasks/src/index';
 
 interface TestLogOptions {

@@ -5,6 +5,14 @@ import { sql } from 'kysely';
 import { logProjections } from '../log-projections';
 import { startTestLog } from './start-test-log';
 
+test('it starts a writer on its test clock', async () => {
+  const started = await startTestLog();
+
+  started.clock.advance(1000);
+
+  expect(started.writer.clock.now()).toBe(Date.parse('2026-10-16T09:00:01Z'));
+});
+
 test('it starts a writer on a fresh data directory with the log projections', async () => {
   const started = await startTestLog();
   const names = await readdir(started.dataDir);

@@ -91,4 +91,6 @@ shows by how much. The transaction checks the timer again before it fires it, so
 fire a timer twice. The fired record lands in the task's inbox and wakes the task.
 
 Every wait, lease and timer reads one clock that the caller passes in, so a crash test sets and
-advances time instead of sleeping.
+advances time instead of sleeping. The clock lives in a lib below the log, and the writer carries
+it, so a record's time, a definitions seed's time, each wait between start retries and the checker's
+timeout read the same clock as the tasks.

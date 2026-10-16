@@ -1,4 +1,4 @@
-import type { Clock } from './types';
+import type { Clock } from '@heynixie/clock';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
 export interface RunnerPoolOptions<W> {

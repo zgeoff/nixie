@@ -11,11 +11,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@heynixie/clock": "workspace:*",
     "@heynixie/db": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:"
   },
   "devDependencies": {
-    "@faker-js/faker": "catalog:"
+    "@faker-js/faker": "catalog:",
+    "@heynixie/testing": "workspace:*"
   }
 }

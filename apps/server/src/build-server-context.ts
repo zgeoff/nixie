@@ -2,7 +2,6 @@ import type { APIContext, CleanupRecordSessions } from '@heynixie/api';
 import { defaultAPISettings } from '@heynixie/api';
 import { findDefinitionsInForce } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
-import { systemClock } from '@heynixie/tasks';
 import { buildServerLog } from './build-server-log';
 import type { InForce, SessionCleanupSlot } from './types';
 
@@ -12,7 +11,7 @@ export interface ServerContext {
   readonly sessionCleanup: SessionCleanupSlot;
 }
 
-// The context every module writes through: the server's log, the system clock, and the snapshot
+// The context every module writes through: the server's log, the writer's clock, and the snapshot
 // hash of the definitions in force, which the API's context extends with its settings and the
 // conversation's session cleanup, empty until the conversation starts.
 export async function buildServerContext(
@@ -39,7 +38,7 @@ export async function buildServerContext(
     },
     apiContext: {
       log: buildServerLog(writer, deploymentKey),
-      clock: systemClock,
+      clock: writer.clock,
 
       // an empty hash before the first seed, which the log refuses, so nothing writes until a seed
       definitions: () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' }),

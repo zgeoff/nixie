@@ -16,7 +16,7 @@ export async function startMemoryAndWork(
   parts: ServerParts,
   conversation: ConversationImp,
 ): Promise<void> {
-  const retry = { signal: parts.cleanup.signal, log: parts.log };
+  const retry = { signal: parts.cleanup.signal, log: parts.log, clock: parts.context.clock };
 
   const store = await runWithRetry(() => startMemory(parts, conversation.cleanupSessions), {
     ...retry,
