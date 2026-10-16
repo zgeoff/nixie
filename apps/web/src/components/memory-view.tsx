@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
-import type { MemoryItem } from '../types';
-import { MemoryItemActions } from './memory-item-actions';
+import { makeMemoryItemRenderer } from './make-memory-item-renderer';
+import { MemoryExportButton } from './memory-export-button';
 import { MemoryItemList } from './memory-item-list';
-import { MemoryItemRow } from './memory-item-row';
 import { MemorySearchResults } from './memory-search';
 import { MemorySearchForm } from './memory-search-form';
 import { PinnedCorePanel } from './pinned-core-panel';
@@ -15,15 +14,16 @@ export interface MemoryViewProps {
   readonly navigation?: ReactNode;
 }
 
-// Every memory item, to see, search and review: the writer's progress, the pinned core, the active
-// items or the matches of a search, then the retired items and the forgotten ones apart from them.
+// Every memory item, to see, search, review and export: the writer's progress, the pinned core,
+// the export, the active items or the matches of a search, then the retired items and the
+// forgotten ones apart from them.
 export function MemoryView(props: MemoryViewProps): ReactNode {
   const [query, setQuery] = useState<string | null>(null);
 
   // a refused change refreshes the lists and can move its item to another list, so its reason
   // shows at the top of the page, apart from every row
   const [notice, setNotice] = useState<string | null>(null);
-  const renderItem = makeItemRenderer(setNotice);
+  const renderItem = makeMemoryItemRenderer(setNotice);
 
   return (
     <main className={layout}>
@@ -34,6 +34,7 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
       {notice === null ? null : <p role="alert">{notice}</p>}
       <WriterStatusPanel />
       <PinnedCorePanel renderItem={renderItem} />
+      <MemoryExportButton />
       <MemorySearchForm onSearch={setQuery} query={query} />
       {query === null ? (
         <MemoryItemList
@@ -59,24 +60,6 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
       />
     </main>
   );
-}
-
-// every list renders an item the same way, so a control on an item joins every list here
-function makeItemRenderer(onNotice: (notice: string | null) => void) {
-  return (item: MemoryItem): ReactNode => (
-    <MemoryItemRow key={item.itemID} item={item}>
-      <MemoryItemActions
-        item={item}
-        onSettled={(reason) => {
-          onNotice(formatNotice(item.shortID, reason));
-        }}
-      />
-    </MemoryItemRow>
-  );
-}
-
-function formatNotice(shortID: string, reason: string | null): string | null {
-  return reason === null ? null : `Item ${shortID}: ${reason}`;
 }
 
 const layout = css({

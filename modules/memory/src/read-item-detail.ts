@@ -1,6 +1,7 @@
-import type { JSONObject, Log } from '@heynixie/log';
-import { z } from 'zod';
+import type { Log } from '@heynixie/log';
+import { findCheckerModel } from './find-checker-model';
 import { findItemKey } from './find-item-key';
+import { parseChecks } from './parse-checks';
 import { parseEvidence } from './parse-evidence';
 import { readEvidenceMessage } from './read-evidence-message';
 import { readViewItems } from './read-view-items';
@@ -90,19 +91,4 @@ async function readViewVersion(
           },
     ...opened.text,
   };
-}
-
-const checksColumn = z.record(z.string(), z.json());
-
-function parseChecks(column: string): JSONObject {
-  return checksColumn.parse(JSON.parse(column));
-}
-
-// the checks hold the checker's verdict under checker, with the model that gave it
-const checkerVerdict = z.object({ checker: z.object({ model: z.string() }) });
-
-function findCheckerModel(checks: JSONObject | null): string | null {
-  const parsed = checkerVerdict.safeParse(checks);
-
-  return parsed.success ? parsed.data.checker.model : null;
 }

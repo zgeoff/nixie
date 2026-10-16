@@ -100,6 +100,8 @@ below, and planned work lives in Linear.
   and retirements, each change bound to the versions it read, and answers whole or per change
 - [The memory view](architecture/memory/view.md) — lists by state, search, the pinned core against
   its budget, each version's provenance and evidence, and changes bound to a version
+- [Memory export](architecture/memory/export.md) — every item with its history in one versioned JSON
+  file, streamed as a checked action and saved where the user picks, and the denied export tool
 - [Memory in context](architecture/memory/context.md) — the pinned core in the system prompt, the
   items each turn retrieves, and the session cleanup a forget runs
 

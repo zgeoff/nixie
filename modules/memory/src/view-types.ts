@@ -1,5 +1,6 @@
 import type { ContentSource, JSONObject } from '@heynixie/log';
 import type { MemoryProposal } from './gate-types';
+import type { MemoryExportRequest } from './read-memory-export';
 import type {
   MemoryChange,
   MemoryOrigin,
@@ -155,6 +156,9 @@ export interface MemoryView {
   // the forget's confirmation for the item at the version the view showed; it throws as a change
   // does for an item that is gone, moved past that version, or being forgotten
   readonly readForgetPreview: (target: VersionRef) => Promise<ForgetPreview>;
+
+  // the export file's text, header first, which readMemoryExport streams a page of items at a time
+  readonly readExport: (request: MemoryExportRequest) => AsyncIterable<string>;
 }
 
 // A pending proposal as the memory view lists it, with its quote inside the message it came from.

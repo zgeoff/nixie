@@ -6,11 +6,11 @@ import { buildTimeTool } from '@heynixie/connectors';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
 import type { ToolDefinition } from '@heynixie/tools';
-import { buildToolRegistry } from '@heynixie/tools';
+import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import { buildConversationTools } from './build-conversation-tools';
 import { startTestLog } from './test-utils/start-test-log';
 
-// the log reader over a fresh log, which no test here reads
+// the log reader over a fresh log, which takes the records of each tool call a test runs
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
@@ -24,7 +24,7 @@ async function setupTest() {
 
   stack.defer(() => log.writer.stop());
 
-  return { logRead: buildLogReadTool(log) };
+  return { log, logRead: buildLogReadTool(log) };
 }
 
 // the web fetch tool's stand-in: a fetch tool the registry accepts
@@ -74,7 +74,7 @@ function buildWriteStandIn(): ToolDefinition {
   };
 }
 
-test('it lists the web fetch tool, the time tool, the log reader and the 8 memory tools', async () => {
+test('it lists the web fetch tool, the time tool, the log reader and the 11 memory tools', async () => {
   const ctx = await setupTest();
 
   const definitions = buildConversationTools(
@@ -102,6 +102,7 @@ test('it lists the web fetch tool, the time tool, the log reader and the 8 memor
     'memory.answer_offer',
     'memory.diff',
     'memory.comment',
+    'memory.export',
   ]);
 });
 
@@ -136,7 +137,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
   ).rejects.toThrowWithMessage(Error, 'a tool call ran before the memory store started');
 });
 
-test('it allows the time tool, the log reader and each memory tool and denies a write tool under the read-only rule', async () => {
+test('it allows the time tool, the log reader and each memory tool but export, and denies a write tool under the read-only rule', async () => {
   const ctx = await setupTest();
 
   const registry = buildToolRegistry([
@@ -218,4 +219,56 @@ test('it offers no tool that approves, rejects or edits a consolidation change',
   expect(inputs.filter(([, keys]) => keys.includes('changeID'))).toStrictEqual([
     ['memory.comment', ['changeID', 'comment']],
   ]);
+});
+
+test('it denies a model call to memory.export under the read-only rule, so nothing exports', async () => {
+  const ctx = await setupTest();
+
+  const registry = buildToolRegistry(
+    buildConversationTools(
+      { webFetch: buildWebFetchStandIn(), time: buildTimeStandIn(), logRead: ctx.logRead },
+      {
+        readStore: () => null,
+        clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
+        ownerName: null,
+        agentName: null,
+        defaultZone: 'Australia/Sydney',
+      },
+    ),
+  );
+
+  const result = await runToolCall(
+    { tool: 'memory.export', input: {}, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.export'],
+      model: { model: 'claude-test-1', profile: 'chat-direct' },
+    },
+    {
+      registry,
+      decide: makeDecisionPoint({
+        findDeclaration: (name) => registry.findTool(name)?.definition.declaration ?? null,
+      }),
+      log: ctx.log,
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+
+      // a denied call never reaches the queue
+      queue: {
+        enqueue: () => Promise.reject(new Error('a denied call reached the queue')),
+        waitForOutcome: () => Promise.resolve(null),
+      },
+      queuedWaitMs: 1000,
+    },
+  );
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: 'denied: slice1.read-only: Only a tool whose effects are read, fetch or note may run; every other call is denied.',
+      },
+    ],
+    isError: true,
+  });
 });
