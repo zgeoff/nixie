@@ -27,13 +27,19 @@ interface OpenFile {
   ending: FileEnding;
 }
 
-// Stands in for the File System Access API's save picker, which happy-dom lacks. Each file's
-// writable takes string chunks, as the page writes them, and ends once, by close or by abort.
+// Stands in for the File System Access API's save picker, which happy-dom lacks, called on the
+// window as the browser's is. Each file's writable takes string chunks and ends once, by close or
+// by abort.
 export function buildStubSaveFilePicker(): StubSaveFilePicker {
   const files: OpenFile[] = [];
 
   return {
-    showSaveFilePicker: (options) => {
+    showSaveFilePicker(this: unknown, options) {
+      // the browser's picker is a method of the window, and refuses a call with no window as this
+      if (this !== globalThis) {
+        return Promise.reject(new TypeError('Illegal invocation'));
+      }
+
       const file: OpenFile = { name: options.suggestedName, chunks: [], ending: 'open' };
 
       files.push(file);

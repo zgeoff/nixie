@@ -102,8 +102,9 @@ const jsonTypes: readonly FileType[] = [
 function findSaveFilePicker(): ShowSaveFilePicker | null {
   const picker: unknown = Reflect.get(globalThis, 'showSaveFilePicker');
 
+  // the picker is a method of the window, which refuses a call with no window as its receiver
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the DOM types lack the picker
-  return typeof picker === 'function' ? (picker as ShowSaveFilePicker) : null;
+  return typeof picker === 'function' ? (picker.bind(globalThis) as ShowSaveFilePicker) : null;
 }
 
 async function readExportBlob(client: NixieClient, actionID: string): Promise<Blob> {
