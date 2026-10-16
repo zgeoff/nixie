@@ -357,7 +357,6 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/clock": "workspace:*",
-        "@heynixie/tasks": "workspace:*",
         "elysia": "catalog:",
         "kysely": "catalog:",
       },
