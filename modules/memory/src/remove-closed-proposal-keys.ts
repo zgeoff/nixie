@@ -1,4 +1,5 @@
-import { findRecordKeys, removeRecordKey, writeKeyStoreCheckpoint } from '@heynixie/log';
+import { removeRecordKey, writeKeyStoreCheckpoint } from '@heynixie/log';
+import { findHeldRecordKeys } from './find-held-record-keys';
 import type { MemoryTables, StoreParts } from './types';
 
 // Removes each key that a closed new item's proposal left with no item under it, rejected, lapsed or
@@ -25,7 +26,7 @@ export async function removeClosedProposalKeys(parts: StoreParts): Promise<numbe
     )
     .execute();
 
-  const left = await findLeftKeys(parts, [...new Set(rows.map((row) => row.item_id))]);
+  const left = await findHeldRecordKeys(log, [...new Set(rows.map((row) => row.item_id))]);
 
   // one key removal at a time, because each checkpoints the key store
   await left.reduce(
@@ -39,21 +40,4 @@ export async function removeClosedProposalKeys(parts: StoreParts): Promise<numbe
   }
 
   return left.length;
-}
-
-const chunkSize = 500;
-
-// the IDs whose key the key store still holds, looked up a chunk at a time to stay inside the
-// statement's parameter limit
-async function findLeftKeys(
-  parts: StoreParts,
-  itemIDs: readonly string[],
-): Promise<readonly string[]> {
-  const chunks = Array.from({ length: Math.ceil(itemIDs.length / chunkSize) }, (_, index) =>
-    itemIDs.slice(index * chunkSize, (index + 1) * chunkSize),
-  );
-
-  const found = await Promise.all(chunks.map((chunk) => findRecordKeys(parts.context.log, chunk)));
-
-  return found.flatMap((keys) => keys.keys().toArray());
 }
