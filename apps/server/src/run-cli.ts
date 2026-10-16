@@ -2,11 +2,11 @@ import { parseArgs } from 'node:util';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import { buildConsolidationCommands } from './build-consolidation-commands';
+import { buildDeploymentCommands } from './build-deployment-commands';
 import { buildMemoryCommands } from './build-memory-commands';
 import { buildResetCommands } from './build-reset-commands';
 import { buildSessionCommands } from './build-session-commands';
 import { checkEncoder } from './check-encoder';
-import { loadDeploymentConfig } from './load-deployment-config';
 import { startServer } from './start-server';
 import type { CLIFlags, CLIIO, Command } from './types';
 
@@ -49,12 +49,12 @@ const cliOptions = {
   yes: { type: 'boolean', default: false },
 } as const;
 
-// serve runs the server until SIGTERM; health exits 0 when the running server answers ready, or
-// live with --live; check-encoder exits 0 once the encoder loads from --encoder and encodes a text.
+// serve runs the server until SIGTERM; check-encoder exits 0 once the encoder loads from --encoder
+// and encodes a text.
 const commands = new Map<string, Command>([
   ['serve', (flags, io) => runServe(flags, io)],
-  ['health', (flags) => runHealth(flags.config, flags.live)],
   ['check-encoder', (flags, io) => checkEncoder(flags.encoder, io)],
+  ...buildDeploymentCommands(),
   ...buildSessionCommands(),
   ...buildResetCommands(),
   ...buildMemoryCommands(),
@@ -104,18 +104,4 @@ async function waitForReset(reset: Promise<void>): Promise<number> {
   await reset;
 
   return 0;
-}
-
-// the container runtime's check from inside the container, where a wildcard address answers on
-// loopback
-async function runHealth(configPath: string, isLive: boolean): Promise<number> {
-  const config = await loadDeploymentConfig(configPath);
-
-  const isWildcard = ['0.0.0.0', '::'].includes(config.server.hostname);
-  const host = isWildcard ? '127.0.0.1' : config.server.hostname;
-  const path = isLive ? 'live' : 'ready';
-
-  const response = await Bun.fetch(`http://${host}:${config.server.port}/health/${path}`);
-
-  return response.ok ? 0 : 1;
 }

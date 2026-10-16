@@ -83,6 +83,8 @@ again if the forward ended in the meantime.
 
 Each sandbox is one imp, named by its random sandbox ID, and the adapter maps no egress, public
 egress and an allowlist onto imp's matching egress policies.
+[Names in impd](../deployment/impd-names.md) gives the rules for the names of the imps, the images
+and the secrets.
 
 - **Grants.** imp's broker injects each granted secret from the host, so a grant never adds a host
   to the imp's egress policy. The adapter stores a secret with the broker under its name, for one

@@ -92,6 +92,16 @@ jobs:
           cat "$RUNNER_TEMP/carried.json"
           diff <(jq -S . apps/server/sandbox-manifest.json) <(jq -S . "$RUNNER_TEMP/carried.json")
 
+      # the command a deployment's scripts run, through the nixie command on the image's PATH
+      - name: Check that the nixie command prints the sandbox images
+        env:
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+        run: |
+          docker run --rm --network none --read-only --entrypoint nixie "$NIXIE" sandbox-manifest > "$RUNNER_TEMP/printed.json"
+          cat "$RUNNER_TEMP/printed.json"
+          diff <(jq -S 'map_values(.ref)' "$RUNNER_TEMP/printed.json") <(jq -S . apps/server/sandbox-manifest.json)
+          jq -e 'to_entries | all(.key as $kind | .value.name | test("^nixie-\($kind)-[0-9a-f]{12}$"))' "$RUNNER_TEMP/printed.json" > /dev/null
+
       # with no network, so the check passes only on the model files the image carries
       - name: Check that the nixie image loads its encoder offline
         env:
