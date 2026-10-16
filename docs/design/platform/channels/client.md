@@ -99,7 +99,8 @@ priority, and an interrupt control ends the current turn so your message starts 
 passes the record's ID as the SDK message `uuid`, and the SDK stamps it on the assistant message
 that reads it, so the step's commit marks exactly those records read. A crash before the commit
 leaves them unread, and [crash recovery](../core/tasks.md) delivers them again, once. The
-[message input spike](../spikes/sdk-owner-input/) holds the evidence.
+[SDK contract suite](../../../../evals/sdk-contract/README.md#the-probes) checks the `next`
+delivery, the interrupt and the stamped `uuid` on every SDK bump.
 
 ## Deep links
 

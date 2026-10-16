@@ -12,5 +12,9 @@
     "@heynixie/memory": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*",
+    "tiny-invariant": "catalog:"
   }
 }

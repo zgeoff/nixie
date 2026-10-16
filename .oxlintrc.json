@@ -123,6 +123,58 @@
       }
     },
     {
+      // a contract probe drives the session's earlier turns before the one it checks, each turn
+      // depending on the one before it
+      "files": ["evals/sdk-contract/*.test.ts"],
+      "rules": {
+        "max-statements": "off",
+        "max-lines-per-function": "off",
+        "import/max-dependencies": "off"
+      }
+    },
+    {
+      // the SDK contract suite and its helpers drive the Agent SDK itself, to check it
+      "files": [
+        "evals/sdk-contract/**",
+        "evals/test-utils/collect-tool-calls*.ts",
+        "evals/test-utils/run-contract-query*.ts",
+        "evals/test-utils/start-input-stream*.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@zgeoff/imp-client",
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              },
+              {
+                "name": "bun:sqlite",
+                "message": "Only libs/db opens SQLite; use @heynixie/db."
+              },
+              {
+                "name": "node:module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              },
+              {
+                "name": "module",
+                "importNames": ["createRequire"],
+                "message": "A require function escapes no-restricted-imports; use import."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@zgeoff/imp-client/*"],
+                "message": "Only adapters/sandbox-imp imports imp's client."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       // the web client passes browser and React handles, such as an image's File and the events
       // that carry it, which no caller can make readonly
       "files": ["apps/web/**"],

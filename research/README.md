@@ -43,9 +43,5 @@ The Agent SDK spikes sit beside the platform design, in
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | [sdk-first-token](../docs/design/platform/spikes/sdk-first-token/) | the time from the prompt to the first streamed token, on a live and on a new process |
 | [sdk-long-hold](../docs/design/platform/spikes/sdk-long-hold/)     | hook time limits, long holds, and `defer` across processes                           |
-| [sdk-mod-policy](../docs/design/platform/spikes/sdk-mod-policy/)   | what a policy mod can enforce, and the 3 ways it fails open                          |
-| [sdk-owner-input](../docs/design/platform/spikes/sdk-owner-input/) | when each message priority reaches the model during a task                           |
-| [sdk-pinned-core](../docs/design/platform/spikes/sdk-pinned-core/) | when a changed system prompt reaches a resumed session                               |
 | [sdk-reasoning](../docs/design/platform/spikes/sdk-reasoning/)     | what nixie receives of the model's reasoning under its options, and its storage cost |
-| [sdk-resume-at](../docs/design/platform/spikes/sdk-resume-at/)     | whether `resumeSessionAt` and `forkSession` drop a turn that never committed         |
 | [sdk-skills](../docs/design/platform/spikes/sdk-skills/)           | which skills and slash commands reach the model under nixie's options                |
