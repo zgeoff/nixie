@@ -15,7 +15,10 @@
       "guests/*",
       "adapters/*",
       "libs/*",
-      "evals"
+      "evals",
+      "research/*",
+      "!research/fetch-headless",
+      "!research/voice-latency"
     ],
     "catalog": {
       "@anthropic-ai/claude-agent-sdk": "0.3.290",
@@ -76,7 +79,7 @@
     "models": "bun adapters/encoder-onnx/src/run-pinned-download.ts adapters/encoder-onnx/model-files.txt node_modules/.cache/nixie-encoder",
     "postinstall": "bun run --cwd apps/web codegen",
     "prepare": "command -v git > /dev/null 2>&1 && lefthook install --force || true",
-    "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md .claude/skills/code-style ':(glob)docs/**/*.md' .claude/skills/project-docs-writing .claude/skills/project-testing",
+    "prose": "bash .claude/skills/docs-writing/scripts/check-prose.sh README.md AGENTS.md .claude/skills/code-style ':(glob)docs/**/*.md' ':(glob)research/**/*.md' .claude/skills/project-docs-writing .claude/skills/project-testing",
     "test": "bun run models && bun test",
     "typecheck": "tsc --noEmit && turbo run typecheck"
   },
