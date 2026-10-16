@@ -25,15 +25,16 @@ interface RunnerConfig {
   readonly getDefinitions?: Parameters<typeof startConversation>[0]['getDefinitions'];
 }
 
+// the tools the test server's endpoint serves, and the topics of a stub encoder for the memory store
+interface TestOptions {
+  readonly tools?: Parameters<typeof startTestServer>[0];
+  readonly encoderTopics?: readonly (readonly string[])[];
+}
+
 // a test server, the scripted model, a recorder for the server's log, the folder of the process
 // double's sandboxes, a memory store whose forget cleans up the sessions of the runner a test
 // started last, and a start of the conversation that stops the runner before it, as a deploy does
-async function setupTest(
-  options: {
-    readonly tools?: Parameters<typeof startTestServer>[0];
-    readonly encoderTopics?: readonly (readonly string[])[];
-  } = {},
-) {
+async function setupTest(options: TestOptions = {}) {
   const server = await startTestServer(options.tools);
 
   const model = startScriptedModel();

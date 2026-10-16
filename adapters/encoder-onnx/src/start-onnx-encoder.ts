@@ -15,8 +15,8 @@ export async function startONNXEncoder(modelDir: string): Promise<ONNXEncoder> {
   const ort = await import('onnxruntime-node');
 
   const [tokenizerJSON, tokenizerConfig] = await Promise.all([
-    Bun.file(join(modelDir, 'tokenizer.json')).json(),
-    Bun.file(join(modelDir, 'tokenizer_config.json')).json(),
+    readJSONObject(join(modelDir, 'tokenizer.json')),
+    readJSONObject(join(modelDir, 'tokenizer_config.json')),
   ]);
 
   const tokenizer = new Tokenizer(tokenizerJSON, tokenizerConfig);
@@ -86,6 +86,17 @@ function buildModelIDs(ids: readonly number[]): readonly number[] {
     : [...ids.slice(0, maxTokens - 1), last];
 }
 
+async function readJSONObject(path: string): Promise<object> {
+  const value: unknown = await Bun.file(path).json();
+
+  if (typeof value !== 'object' || value === null) {
+    throw new Error(`${path} holds no JSON object`);
+  }
+
+  return value;
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Float32Array has no readonly form
 function normalizeVector(vector: Float32Array): Float32Array {
   const norm = Math.hypot(...vector);
 

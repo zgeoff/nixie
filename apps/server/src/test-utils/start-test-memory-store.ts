@@ -23,7 +23,12 @@ export async function startTestMemoryStore(
     cleanupSessions,
     ...(encoderTopics === undefined
       ? {}
-      : { semanticSearch: { encoder: buildStubEncoder(encoderTopics), onError: mock() } }),
+      : {
+          semanticSearch: {
+            encoder: buildStubEncoder(encoderTopics),
+            onError: mock<(error: unknown) => void>(),
+          },
+        }),
     gate: {
       check: () =>
         Promise.resolve({

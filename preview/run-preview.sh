@@ -14,4 +14,4 @@ fi
 
 exec bun --define NIXIE_TEST_BUILD=true /app/apps/server/src/main.ts "$@" \
   --config /app/preview/config.yaml --manifest /app/preview/sandbox-manifest.json \
-  --sops /app/preview/run-plain-sops.sh
+  --sops /app/preview/run-plain-sops.sh --encoder /app/node_modules/.cache/nixie-encoder

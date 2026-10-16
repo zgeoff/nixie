@@ -193,7 +193,10 @@ test('it rejects a second forget of a forgotten item', async () => {
 
 test('it drops the forgotten item from the vector index, so the next match takes its place', async () => {
   const memory = await startTestMemory({
-    semanticSearch: { encoder: buildStubEncoder([['sister', 'sibling']]), onError: mock() },
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling']]),
+      onError: mock<(error: unknown) => void>(),
+    },
   });
 
   const forgotten = await createMemoryItem(memory.store, { text: 'Ana is my sibling' });

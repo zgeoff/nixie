@@ -73,9 +73,10 @@ export async function startServer(options: ServerOptions): Promise<Server> {
     await cleanup.defer(() => encoder.stop());
   }
 
-  const writer = await startLoggedWriter(inputs.config.server.dataDir, inputs.log, cleanup);
-
   try {
+    // the writer starts under the cleanup too, so a writer lock held elsewhere releases the encoder
+    const writer = await startLoggedWriter(inputs.config.server.dataDir, inputs.log, cleanup);
+
     return await startServerParts({ ...options, ...inputs, writer, cleanup });
   } catch (error) {
     await cleanup.stop();

@@ -1,3 +1,4 @@
+// oxlint-disable typescript/prefer-readonly-parameter-types -- the index's own mutable state, and typed arrays, which have no readonly form
 import type { IndexEntry } from './start-memory-index';
 import type { Encoder } from './types';
 

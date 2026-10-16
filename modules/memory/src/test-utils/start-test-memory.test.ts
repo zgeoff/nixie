@@ -52,7 +52,10 @@ test('it gives the store the definitions snapshot the test passes', async () => 
 
 test('it gives the store the encoder the test passes', async () => {
   const ctx = await startTestMemory({
-    semanticSearch: { encoder: buildStubEncoder([['sister', 'sibling']]), onError: mock() },
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling']]),
+      onError: mock<(error: unknown) => void>(),
+    },
   });
 
   expect(ctx.store.waitForSemanticIndex()).resolves.toBeTrue();

@@ -805,7 +805,7 @@ test('it recalls an item that shares no word with the query through the vector i
   const memory = await startTestMemory({
     semanticSearch: {
       encoder: buildStubEncoder([['sister', 'sibling'], ['leeds'], ['boiler', 'heating']]),
-      onError: mock(),
+      onError: mock<(error: unknown) => void>(),
     },
   });
 
@@ -830,7 +830,7 @@ test('it recalls the keyword matches alone while the vector index rebuilds', asy
   const gated = makeGatedCall(buildStubEncoder([['sister', 'sibling'], ['leeds']]).encode);
 
   const memory = await startNextTestMemory(first, {
-    semanticSearch: { encoder: { encode: gated.call }, onError: mock() },
+    semanticSearch: { encoder: { encode: gated.call }, onError: mock<(error: unknown) => void>() },
   });
 
   await gated.started;
@@ -851,7 +851,7 @@ test('it records each item keyword score and similarity, and how the query searc
   const memory = await startTestMemory({
     semanticSearch: {
       encoder: buildStubEncoder([['sister', 'sibling'], ['leeds']]),
-      onError: mock(),
+      onError: mock<(error: unknown) => void>(),
     },
   });
 
@@ -884,7 +884,10 @@ test('it records each item keyword score and similarity, and how the query searc
 
 test('it leaves the excluded words out of the vector query', async () => {
   const memory = await startTestMemory({
-    semanticSearch: { encoder: buildStubEncoder([['nix'], ['ferns']]), onError: mock() },
+    semanticSearch: {
+      encoder: buildStubEncoder([['nix'], ['ferns']]),
+      onError: mock<(error: unknown) => void>(),
+    },
   });
 
   await createMemoryItem(memory.store, { text: 'Nix waters the ferns on Fridays' });
@@ -900,7 +903,7 @@ test('it leaves out a semantic match below the similarity floor the request sets
   const memory = await startTestMemory({
     semanticSearch: {
       encoder: buildStubEncoder([['sister', 'sibling'], ['leeds']]),
-      onError: mock(),
+      onError: mock<(error: unknown) => void>(),
     },
   });
 
@@ -918,7 +921,10 @@ test('it leaves out a semantic match below the similarity floor the request sets
 
 test('it keeps a pinned item out of the vector matches when the request leaves pinned items out', async () => {
   const memory = await startTestMemory({
-    semanticSearch: { encoder: buildStubEncoder([['sister', 'sibling']]), onError: mock() },
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling']]),
+      onError: mock<(error: unknown) => void>(),
+    },
   });
 
   const pinned = await createMemoryItem(memory.store, { text: 'Ana is my sibling' });
@@ -939,7 +945,10 @@ test('it keeps a pinned item out of the vector matches when the request leaves p
 
 test('it ranks the next semantic match in place of a retired item', async () => {
   const memory = await startTestMemory({
-    semanticSearch: { encoder: buildStubEncoder([['sister', 'sibling']]), onError: mock() },
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling']]),
+      onError: mock<(error: unknown) => void>(),
+    },
   });
 
   const retired = await createMemoryItem(memory.store, { text: 'Ana is my sibling' });
@@ -964,7 +973,7 @@ test('it recalls an edited item by the meaning of its new text', async () => {
         ['sister', 'sibling'],
         ['boiler', 'heating'],
       ]),
-      onError: mock(),
+      onError: mock<(error: unknown) => void>(),
     },
   });
 

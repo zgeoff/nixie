@@ -5,7 +5,7 @@ import { buildStubEncoder } from './test-utils/build-stub-encoder';
 import type { Encoder } from './types';
 
 function setupTest(encoder: Encoder) {
-  const onError = mock();
+  const onError = mock<(error: unknown) => void>();
   const index = startVectorIndex(encoder, onError);
 
   onTestFinished(() => index.stop());

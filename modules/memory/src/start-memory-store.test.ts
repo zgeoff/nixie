@@ -53,7 +53,10 @@ test('it rebuilds the vector index from the active items after it starts', async
   const item = await createMemoryItem(ctx.memory.store, { text: 'Ana is my sister' });
 
   const restarted = await startNextTestMemory(ctx.memory, {
-    semanticSearch: { encoder: buildStubEncoder([['sister', 'sibling']]), onError: mock() },
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling']]),
+      onError: mock<(error: unknown) => void>(),
+    },
   });
 
   const isReady = await restarted.store.waitForSemanticIndex();
@@ -76,7 +79,7 @@ test('it reports a failed rebuild and keeps search on keywords', async () => {
 
   const failure = new Error('the model file is unreadable');
 
-  const onError = mock();
+  const onError = mock<(error: unknown) => void>();
 
   const restarted = await startNextTestMemory(ctx.memory, {
     semanticSearch: { encoder: { encode: () => Promise.reject(failure) }, onError },

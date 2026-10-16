@@ -82,7 +82,7 @@ test.skipIf(isModelMissing)(
     const ctx = await setupTest();
 
     const memory = await startTestMemory({
-      semanticSearch: { encoder: ctx.encoder, onError: mock() },
+      semanticSearch: { encoder: ctx.encoder, onError: mock<(error: unknown) => void>() },
     });
 
     const boiler = await createMemoryItem(memory.store, {
