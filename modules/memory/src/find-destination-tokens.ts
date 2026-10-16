@@ -68,14 +68,33 @@ const patterns: readonly TokenPattern[] = [
     kind: 'account',
     pattern: /\b[A-Z]{2}\d{2}(?:\s?[A-Z\d]{4}){2,7}(?:\s?[A-Z\d]{1,4})?\b/gu,
   },
+
+  // an Australian BSB and its account number, with an optional account word between them
+  {
+    kind: 'account',
+    pattern:
+      /\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+\d{5,9}\b/giu,
+  },
+
+  // a run of 6 to 17 digits right after an account word, such as "account number is"
+  {
+    kind: 'account',
+    pattern:
+      /(?<=\b(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?|#))?(?:[\p{Zs}\t]+is|[\p{Zs}\t]*[:#])?[\p{Zs}\t]*)\d(?:[\p{Zs}\t-]?\d){5,16}\b/giu,
+  },
   { kind: 'phone', pattern: /\+?\d[\d\p{Zs}\t().-]{5,}\d/gu },
   { kind: 'domain', pattern: /\b(?:[\p{L}\p{N}-]+\.)+\p{L}{2,63}\b/gu },
 ];
 
-// Phone and account numbers compare by their digits and letters, a URL by its scheme and host
-// without case and its path, query and fragment exactly, and every other kind without case.
+// Phone numbers and IBANs compare by their digits and letters, a domestic account number by its
+// digits alone, a URL by its scheme and host without case and its path, query and fragment exactly,
+// and every other kind without case.
 function buildTokenKey(kind: DestinationToken['kind'], raw: string): string {
   const cleaned = raw.normalize('NFC').replace(trailing, '');
+
+  if (kind === 'account' && !/^[A-Z]{2}\d{2}/u.test(cleaned)) {
+    return cleaned.replaceAll(/\D/gu, '');
+  }
 
   if (kind === 'phone' || kind === 'account') {
     return cleaned.replaceAll(/[^\d+A-Z]/gu, '');
