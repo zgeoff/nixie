@@ -1,26 +1,26 @@
 import type { ContractInputs } from '@heynixie/contract';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { MemoryProposal, ProposalOutcome } from './types';
+import type { MemoryProposal, NixieClient, ProposalOutcome } from './types';
 import { useNixieClient } from './use-nixie-client';
 
 // An approval of one proposal: as proposed, with your edited text, or after a close match as a
 // revision of the item that matched or as a new item anyway.
-export interface ApprovalRequest {
+interface ApprovalRequest {
   readonly proposal: MemoryProposal;
   readonly editedText?: string;
   readonly revisionOf?: { readonly itemID: string; readonly version: number };
   readonly ignoreCloseMatch?: boolean;
 }
 
-export interface RejectionRequest {
+interface RejectionRequest {
   readonly proposal: MemoryProposal;
   readonly reason?: string;
 }
 
 // The last outcome of an answer that did not apply as asked, with the text of the proposal it
 // answered, which a refreshed list may no longer hold.
-export interface ShownOutcome {
+interface ShownOutcome {
   readonly text: string;
   readonly outcome: ProposalOutcome;
 }
@@ -58,12 +58,9 @@ export function useProposalAnswers(): ProposalAnswers {
   const [outcomes, setOutcomes] = useState<ReadonlyMap<string, ShownOutcome>>(new Map());
 
   const answer = useMutation({
-    mutationFn: (call: AnswerCall) =>
-      call.kind === 'approve'
-        ? nixie.client.memory.approveProposals({ answers: call.answers })
-        : nixie.client.memory.rejectProposals({ answers: call.answers }),
-    onSuccess: (result, call) => {
-      setOutcomes((shown) => mergeOutcomes(shown, call.texts, result.outcomes));
+    mutationFn: (call: AnswerCall) => sendAnswers(nixie.client, call),
+    onSuccess: (sent, call) => {
+      setOutcomes((shown) => mergeOutcomes(shown, call.texts, sent));
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() }),
   });
@@ -84,6 +81,34 @@ export function useProposalAnswers(): ProposalAnswers {
     isError: answer.isError,
     outcomes,
   };
+}
+
+// the most answers one call to the API takes, which the contract sets
+const answersPerCall = 50;
+
+// Sends the answers in calls of at most the contract's limit, one after another. A call that fails
+// stops the rest, and a retry sends every answer again under its own client action ID, so each
+// answer an earlier call committed returns its first outcome.
+async function sendAnswers(
+  client: NixieClient['client'],
+  call: AnswerCall,
+): Promise<readonly ProposalOutcome[]> {
+  const outcomes: ProposalOutcome[] = [];
+
+  for (let start = 0; start < call.answers.length; start += answersPerCall) {
+    // oxlint-disable-next-line no-await-in-loop -- each call runs after the one before it
+    const sent = await (call.kind === 'approve'
+      ? client.memory.approveProposals({
+          answers: call.answers.slice(start, start + answersPerCall),
+        })
+      : client.memory.rejectProposals({
+          answers: call.answers.slice(start, start + answersPerCall),
+        }));
+
+    outcomes.push(...sent.outcomes);
+  }
+
+  return outcomes;
 }
 
 // each answer keeps its own outcome; one that applied as asked clears what showed before

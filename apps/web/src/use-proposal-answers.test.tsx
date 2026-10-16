@@ -102,3 +102,43 @@ test('it sends the answers of a failed call again once you retry', async () => {
     ]);
   });
 });
+
+test('it sends more answers than one call takes over several calls, and approves each', async () => {
+  await setupTest();
+
+  const proposals = await Promise.all(
+    Array.from({ length: 51 }, () => store.memoryProposals.create({})),
+  );
+
+  const hook = renderHook(() => useProposalAnswers());
+
+  act(() => {
+    hook.result.current.approve(
+      proposals.map((proposal) => ({
+        proposal: {
+          actionHash: proposal.actionHash,
+          createdAt: proposal.createdAt,
+          evidence: null,
+          isPinned: false,
+          itemID: proposal.itemID,
+          lapseAt: proposal.lapseAt,
+          operation: 'remember',
+          origin: 'memory_writer',
+          proposalID: proposal.proposalID,
+          quote: null,
+          reason: 'no_quote',
+          source: 'untrusted',
+          sources: [],
+          targetVersion: null,
+          text: proposal.text,
+        },
+      })),
+    );
+  });
+
+  await waitFor(() => {
+    expect(
+      store.records.findMany((query) => query.where({ kind: 'memory.approval_recorded' })),
+    ).toHaveLength(51);
+  });
+});

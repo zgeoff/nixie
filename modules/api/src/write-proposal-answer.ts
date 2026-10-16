@@ -66,7 +66,10 @@ export async function writeProposalAnswer(
 
     return outcome ?? action.committed;
   } catch (error) {
-    return requireErrorOutcome(action.proposalID, error);
+    // an overlapping call with the same ID may have committed first and closed the proposal
+    const committed = await findEarlierOutcome(context.log.writer.db, query);
+
+    return committed ?? requireErrorOutcome(action.proposalID, error);
   }
 }
 

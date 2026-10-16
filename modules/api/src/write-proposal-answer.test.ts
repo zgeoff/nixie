@@ -314,3 +314,36 @@ test('it throws an error the store gives no known code for', async () => {
 
   expect(answered).rejects.toThrow('the disk is full');
 });
+
+test('it answers 2 overlapping calls with one ID with the outcome the first one committed', async () => {
+  const ctx = await setupTest();
+  const proposal = await createProposal(ctx.memory, { text: 'Grows tomatoes on the balcony' });
+
+  const action = {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    procedure: 'memory.approveProposals',
+    proposalID: proposal.proposalID,
+    input: { proposalID: proposal.proposalID, actionHash: proposal.actionHash },
+    committed: { proposalID: proposal.proposalID, status: 'applied' as const },
+    apply: async (writeInTransaction: WriteInTransaction) => {
+      await ctx.memory.proposals.approve({
+        proposalID: proposal.proposalID,
+        actionHash: proposal.actionHash,
+        identityID: ctx.laptop.caller.identityID,
+        writeInTransaction,
+      });
+
+      return null;
+    },
+  };
+
+  const outcomes = await Promise.all([
+    writeProposalAnswer(ctx.context, ctx.laptop.caller, action),
+    writeProposalAnswer(ctx.context, ctx.laptop.caller, action),
+  ]);
+
+  expect(outcomes).toStrictEqual([
+    { proposalID: proposal.proposalID, status: 'applied' },
+    { proposalID: proposal.proposalID, status: 'applied' },
+  ]);
+});
