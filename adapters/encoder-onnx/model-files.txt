@@ -1,0 +1,8 @@
+# The encoder's model files, one per line: the path in the model folder, the download URL at a fixed
+# Hugging Face revision of MongoDB/mdbr-leaf-ir, and the SHA-256. The image build downloads each one
+# and refuses a file whose SHA-256 differs. An update changes the revision in every URL and each
+# checksum together, after checking each large file against the SHA-256 Hugging Face lists for it.
+onnx/model_quantized.onnx https://huggingface.co/MongoDB/mdbr-leaf-ir/resolve/4262131b32c3182bd06e67e92ae69d7bd66e0c5c/onnx/model_quantized.onnx 8c08cb4ecc00bad721b117a85738c537ceb9b85b3eedc52d9c6906fddaa55718
+onnx/model_quantized.onnx_data https://huggingface.co/MongoDB/mdbr-leaf-ir/resolve/4262131b32c3182bd06e67e92ae69d7bd66e0c5c/onnx/model_quantized.onnx_data e77ea96a124230e23e5bac8e26c3ffe5410154973d8635673fa0220b06c13f8b
+tokenizer.json https://huggingface.co/MongoDB/mdbr-leaf-ir/resolve/4262131b32c3182bd06e67e92ae69d7bd66e0c5c/tokenizer.json da0e79933b9ed51798a3ae27893d3c5fa4a201126cef75586296df9b4d2c62a0
+tokenizer_config.json https://huggingface.co/MongoDB/mdbr-leaf-ir/resolve/4262131b32c3182bd06e67e92ae69d7bd66e0c5c/tokenizer_config.json 46ac231e9b955a8af80fc7f23a0ecc65b524f1df84a02c2c82cbca354fb207b4

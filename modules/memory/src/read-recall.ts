@@ -1,13 +1,19 @@
+import type { JSONObject } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { waitAtFaultPoint } from '@heynixie/tasks';
+import { buildVectorQuery } from './build-vector-query';
 import { InvalidCursorError } from './invalid-cursor-error';
+import type { MatchScores } from './merge-rankings';
+import { mergeRankings } from './merge-rankings';
 import { readDeliverableItems } from './read-deliverable-items';
+import type { VectorMatch } from './start-vector-index';
 import type {
   MemoryState,
   MemoryTables,
   RecallRequest,
   RecallResult,
   RecalledItem,
+  SearchMode,
   StoreParts,
   VersionRef,
 } from './types';
@@ -47,9 +53,13 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
       await waitAtFaultPoint('memory.recall.checked', { kind: 'memory', id: null });
     }
 
-    await writeRecallRecord(parts, { request, items, scores: candidates.scores });
+    await writeRecallRecord(parts, { request, items, candidates });
 
-    return { items, next: candidates.next };
+    return {
+      items,
+      next: candidates.next,
+      ...(candidates.searchMode === undefined ? {} : { searchMode: candidates.searchMode }),
+    };
   });
 }
 
@@ -66,8 +76,11 @@ interface Candidates {
   readonly itemIDs: readonly string[];
   readonly next: string | null;
 
-  // each candidate's match score, for a query only
-  readonly scores?: ReadonlyMap<string, number>;
+  // each candidate's keyword score and similarity, for a query only
+  readonly scores?: ReadonlyMap<string, MatchScores>;
+
+  // how a query searched, for a query only
+  readonly searchMode?: SearchMode;
 }
 
 async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise<Candidates> {
@@ -107,28 +120,77 @@ interface QueryCandidates extends CandidateQuery {
 }
 
 // The ranking leaves pinned items and excluded versions out before the limit applies, so they never
-// crowd out the next matches. The delivery drops an item pinned after the ranking, or one whose
-// excluded version is still current after an edit the ranking saw.
+// crowd out the next matches; the delivery drops an item pinned or edited after the ranking. Each
+// index ranks above its own floor, and the keyword matches stand alone while the vectors rebuild.
 async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): Promise<Candidates> {
+  const request = query.request;
+
   const [pinned, held] = await Promise.all([
-    query.request.excludePinned === true ? readPinnedItemIDs(parts) : [],
-    readCurrentItemIDs(parts, query.request.excludedVersions ?? []),
+    request.excludePinned === true ? readPinnedItemIDs(parts) : [],
+    readCurrentItemIDs(parts, request.excludedVersions ?? []),
   ]);
 
-  const matches = await parts.index.findMatches(query.request.query, {
-    limit: query.limit,
-    excludedIDs: [...pinned, ...held],
-    ...(query.request.excludedWords === undefined
-      ? {}
-      : { excludedWords: query.request.excludedWords }),
-    ...(query.request.minScore === undefined ? {} : { minScore: query.request.minScore }),
-  });
+  const excludedIDs = [...pinned, ...held];
+
+  const [keywordMatches, vectorMatches] = await Promise.all([
+    parts.index.findMatches(request.query, {
+      limit: query.limit,
+      excludedIDs,
+      ...(request.excludedWords === undefined ? {} : { excludedWords: request.excludedWords }),
+      ...(request.minScore === undefined ? {} : { minScore: request.minScore }),
+    }),
+    findVectorMatches(parts, { request, limit: query.limit, excludedIDs }),
+  ]);
+
+  const ranked = mergeRankings(keywordMatches, vectorMatches ?? []).slice(0, query.limit);
 
   return {
-    itemIDs: matches.map((match) => match.itemID),
+    itemIDs: ranked.map((match) => match.itemID),
     next: null,
-    scores: new Map(matches.map((match) => [match.itemID, match.score])),
+    scores: new Map(ranked.map((match) => [match.itemID, match])),
+    searchMode: pickSearchMode(parts, vectorMatches),
   };
+}
+
+interface VectorQuery {
+  readonly request: QueryCandidates['request'];
+  readonly limit: number;
+  readonly excludedIDs: readonly string[];
+}
+
+// the vector index's matches for the query less its excluded words, or null while the index
+// rebuilds or with no encoder
+function findVectorMatches(
+  parts: StoreParts,
+  query: VectorQuery,
+): Promise<readonly VectorMatch[] | null> {
+  if (parts.vectors === null) {
+    return Promise.resolve(null);
+  }
+
+  return parts.vectors.findMatches(
+    buildVectorQuery(query.request.query, query.request.excludedWords ?? []),
+    {
+      limit: query.limit,
+      minSimilarity: query.request.minSimilarity ?? defaultMinSimilarity,
+      excludedIDs: query.excludedIDs,
+    },
+  );
+}
+
+// the floor for a recall that sets none, such as the model's own memory.recall; per-turn retrieval
+// sets its own from the configuration
+const defaultMinSimilarity = 0.3;
+
+function pickSearchMode(
+  parts: StoreParts,
+  vectorMatches: readonly VectorMatch[] | null,
+): SearchMode {
+  if (parts.vectors === null) {
+    return 'keyword';
+  }
+
+  return vectorMatches === null ? 'keyword-fallback' : 'hybrid';
 }
 
 async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> {
@@ -198,12 +260,12 @@ function parseCursor(after: string | undefined): number {
 interface RecallRecord {
   readonly request: RecallRequest;
   readonly items: readonly RecalledItem[];
-  readonly scores: ReadonlyMap<string, number> | undefined;
+  readonly candidates: Candidates;
 }
 
 // The record holds references and no text, so a later forget leaves no readable copy of what the
-// recall delivered. A query's record gives each item its match score, so retrieval can be tuned
-// from what each turn was given. A turn note's record says so, so a rating binds past it.
+// recall delivered. A query's scores and search mode let retrieval be tuned from what each turn was
+// given. A turn note's record says so, so a rating binds past it.
 async function writeRecallRecord(parts: StoreParts, recall: RecallRecord): Promise<void> {
   const log = parts.context.log;
   const request = recall.request;
@@ -216,17 +278,29 @@ async function writeRecallRecord(parts: StoreParts, recall: RecallRecord): Promi
         ...(request.thread === undefined ? {} : { thread: request.thread }),
         payload: {
           items: recall.items.flatMap((item) => {
-            const score = recall.scores?.get(item.itemID);
+            const scores = recall.candidates.scores?.get(item.itemID);
 
             return (item.history ?? [item]).map((version) =>
-              score === undefined
-                ? { itemID: item.itemID, version: version.version }
-                : { itemID: item.itemID, version: version.version, score },
+              buildRecalledRef({ itemID: item.itemID, version: version.version }, scores),
             );
           }),
+          ...(recall.candidates.searchMode === undefined
+            ? {}
+            : { searchMode: recall.candidates.searchMode }),
           ...(request.isTurnNote === true ? { isTurnNote: true } : {}),
         },
       },
     ]),
   );
+}
+
+// the delivered version with each score an index gave its item, leaving out an index that did not
+// place it
+function buildRecalledRef(ref: VersionRef, scores: MatchScores | undefined): JSONObject {
+  return {
+    itemID: ref.itemID,
+    version: ref.version,
+    ...(scores?.score === undefined ? {} : { score: scores.score }),
+    ...(scores?.similarity === undefined ? {} : { similarity: scores.similarity }),
+  };
 }

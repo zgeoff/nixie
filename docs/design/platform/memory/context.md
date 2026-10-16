@@ -48,11 +48,14 @@ exact item ID reads the item directly. The encoder and the ranking are configura
 
 ### The index
 
-At start, nixie builds an FTS5 table in an in-memory SQLite database, with the porter tokenizer, and
-a vector index in process memory. Both derive from active memory items and from your messages and
-the model's replies whose keys remain readable. The encoder runs on the host as a text encoder, with
-no tools or grants. nixie rebuilds both in full at start and on an encoder change, and search falls
-back to keywords while a rebuild runs. Each result records its search mode and any fallback.
+Both indexes over memory items are built, as
+[the memory store](../../../architecture/memory/store.md#the-indexes) covers, and past messages join
+them. At start, nixie builds an FTS5 table in an in-memory SQLite database, with the porter
+tokenizer, and a vector index in process memory. Both derive from active memory items and from your
+messages and the model's replies whose keys remain readable. The encoder runs on the host as a text
+encoder, with no tools or grants. nixie rebuilds both in full at start and on an encoder change, and
+search falls back to keywords while a rebuild runs. Each result records its search mode and any
+fallback.
 
 A write commits an invalidation record with the item. The retrieval service then drops the old entry
 and queues the current version for encoding, outside the write transaction. When an encoding
@@ -79,7 +82,7 @@ own words.
 
 ### Per-turn retrieval
 
-Per-turn retrieval of memory items is built for the conversation, with keyword search only, as
+Per-turn retrieval of memory items is built for the conversation, by keyword and by meaning, as
 [memory in context](../../../architecture/memory/context.md#per-turn-retrieval) covers. The design
 adds 3 things to it. On a task's first turn, the search uses the task's brief. Up to 3 past messages
 above the score floor join the items, with past messages already in the session left out. Per-turn

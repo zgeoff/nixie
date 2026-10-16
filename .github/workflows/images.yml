@@ -92,6 +92,12 @@ jobs:
           cat "$RUNNER_TEMP/carried.json"
           diff <(jq -S . apps/server/sandbox-manifest.json) <(jq -S . "$RUNNER_TEMP/carried.json")
 
+      # with no network, so the check passes only on the model files the image carries
+      - name: Check that the nixie image loads its encoder offline
+        env:
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+        run: docker run --rm --network none --read-only "$NIXIE" check-encoder
+
       - name: Pull each sandbox image with no credentials
         env:
           CONVERSATION:

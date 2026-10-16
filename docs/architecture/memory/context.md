@@ -7,8 +7,8 @@ reaches the conversation on its next turn. A forget also cleans up every session
 still hold the item, and the next turn runs on a session rebuilt from the event log.
 [Conversation turns](../core/conversation-turns.md) covers the turn these parts fit into, and
 [session opening](../core/session-opening.md) covers what a new session opens with. The
-[memory in context](../../design/platform/memory/context.md) design covers what is not built:
-semantic search, past messages in retrieval and the recall tools.
+[memory in context](../../design/platform/memory/context.md) design covers what is not built: past
+messages in retrieval and the recall tools.
 
 ## The pinned core
 
@@ -72,16 +72,21 @@ checking an item and not answering with it.
 ## Per-turn retrieval
 
 Before each turn, the conversation searches memory with the readable text of the user's new
-messages. The search is the store's keyword recall over active items, with pinned items left out
-because the session's opening already holds them. It keeps only items whose keyword score clears a
-floor, so a word that half the items hold places nothing. The search leaves out function words such
-as "to", so a message that shares only those with an item places nothing, as
-[the store](./store.md#the-index) explains. The search also leaves out the user's name and the names
-the deployment configuration gives the agent, because nearly every item names one of them, so a
-message that says "Nix" would otherwise place any item that does. The store drops each query word
-that the index stems the same as one of those names, whatever its case. The `memory.recall` tool
-keeps names in its query, because there a name may be the point of the search. The number of items
-and the score floor are configurable.
+messages. The search is the store's recall over active items, by keyword and by meaning, with pinned
+items left out because the session's opening already holds them. A message such as "when is the
+heating engineer coming" therefore places the item about the boiler service, though the two share no
+word. An item places when its keyword score or its similarity clears that index's floor, so a word
+that half the items hold places nothing, and neither does small talk such as a greeting, which sits
+at about the same small distance from every item. The search leaves out function words such as "to",
+so a message that shares only those with an item places nothing, as
+[the store](./store.md#the-indexes) explains. The search also leaves out the user's name and the
+names the deployment configuration gives the agent, because nearly every item names one of them, so
+a message that says "Nix" would otherwise place any item that does. The store drops each query word
+that the index stems the same as one of those names, whatever its case, and leaves the names out of
+the text it encodes. The `memory.recall` tool keeps names in its query, because there a name may be
+the point of the search, and its similarity floor sits lower, because the model asked for memory.
+While the vector index rebuilds after a start, retrieval places keyword matches alone. The number of
+items and both floors are configurable.
 
 The turn places the items in a block before the first message, each with the line that says where it
 came from and how it came up. The recall appends its own record of each item and version it

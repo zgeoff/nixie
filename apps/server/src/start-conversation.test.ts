@@ -25,11 +25,17 @@ interface RunnerConfig {
   readonly getDefinitions?: Parameters<typeof startConversation>[0]['getDefinitions'];
 }
 
+// the tools the test server's endpoint serves, and the topics of a stub encoder for the memory store
+interface TestOptions {
+  readonly tools?: Parameters<typeof startTestServer>[0];
+  readonly encoderTopics?: readonly (readonly string[])[];
+}
+
 // a test server, the scripted model, a recorder for the server's log, the folder of the process
 // double's sandboxes, a memory store whose forget cleans up the sessions of the runner a test
 // started last, and a start of the conversation that stops the runner before it, as a deploy does
-async function setupTest(tools?: Parameters<typeof startTestServer>[0]) {
-  const server = await startTestServer(tools);
+async function setupTest(options: TestOptions = {}) {
+  const server = await startTestServer(options.tools);
 
   const model = startScriptedModel();
   const log = mock<Parameters<typeof startConversation>[0]['log']>();
@@ -44,6 +50,7 @@ async function setupTest(tools?: Parameters<typeof startTestServer>[0]) {
   const memory = await startTestMemoryStore(
     context,
     (cause) => runners.last?.cleanupSessions(cause) ?? Promise.resolve(),
+    options.encoderTopics,
   );
 
   return {
@@ -120,7 +127,7 @@ test('it runs each turn in the conversation guest on the role profile and resume
 test('it resumes the session after a change to the policy alone, and decides the next tool call on the new policy', async () => {
   const notes = buildTestNotesTools('Buy oat milk.');
 
-  const ctx = await setupTest(notes.tools);
+  const ctx = await setupTest({ tools: notes.tools });
 
   const callNotes = { toolUse: { name: 'mcp__nixie__notes_read', input: {} } };
 
@@ -906,6 +913,42 @@ test("it matches your message to an item on its other words and never on the age
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[{ ...bun }]]);
+}, 30_000);
+
+test('it places an item by meaning on a turn whose message shares no word with it', async () => {
+  const ctx = await setupTest({
+    encoderTopics: [['boiler', 'heating', 'engineer'], ['hazelnuts']],
+  });
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const [boiler, runner] = await Promise.all([
+    ctx.memory.remember({ text: 'The boiler service is booked for the 14th', provenance }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
+    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
+  ]);
+
+  await ctx.memory.waitForSemanticIndex();
+
+  ctx.model.addReplies({ text: 'On the 14th.' });
+
+  await sendTestMessage(ctx.context, runner.runStep, 'When is the heating engineer coming?');
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrieved']),
+  ).toStrictEqual([[{ ...boiler }]]);
 }, 30_000);
 
 test("it retrieves nothing for a message that is only the agent's name", async () => {

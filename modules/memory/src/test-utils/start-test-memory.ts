@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Log, Writer } from '@heynixie/log';
 import type { GateContext } from '../gate-types';
 import type { StartedMemoryStore } from '../start-memory-store';
-import type { CleanupSessions, MemoryContext } from '../types';
+import type { CleanupSessions, MemoryContext, SemanticSearch } from '../types';
 import { startTestStore } from './start-test-store';
 
 export interface TestMemory {
@@ -27,6 +27,9 @@ export interface TestMemoryOptions {
   // the gate's checker, clock, allow rule lookup and limits; with none, the checker answers that
   // it failed, the clock is the wall clock, no allow rule exists and the default limits hold
   readonly gate?: Partial<GateContext>;
+
+  // the encoder the vector index runs; with none, search reads keywords only
+  readonly semanticSearch?: SemanticSearch;
 }
 
 // Starts a writer on a fresh data directory with the log's and the memory projections, and a store

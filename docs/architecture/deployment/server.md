@@ -217,8 +217,17 @@ the bundle, because the bundler does not follow a worker's file URL. The release
 the bundle holds a fault point ID, the test rule's ID or a text that only the test sandbox holds,
 and a test proves that a test build holds them, so the check cannot pass by matching nothing.
 
-The nixie image builds in two stages. The build stage runs the release build and downloads each
-pinned binary, sops among them, and checks each against its pinned checksum. The runtime stage holds
-Bun, the bundle, sops and the sandbox manifest: no Claude Code build, no backup tools and no
-`node_modules`. It runs as a fixed non-root user with the data directory as its one volume, so the
-container runs with a read-only root filesystem.
+The nixie image builds in two stages. The build stage runs the release build, downloads each pinned
+binary, sops among them, and the memory encoder's model files at a fixed revision, and checks each
+file against the checksum the repo records, so a file that differs fails the build. The runtime
+stage holds Bun, the bundle, sops, the sandbox manifest, the model files, and ONNX Runtime's package
+with its linux-x64 binary alone. The bundle leaves ONNX Runtime out, because a bundle cannot hold a
+native addon. The image holds no Claude Code build, no backup tools and no other `node_modules`. It
+runs as a fixed non-root user with the data directory as its one volume, so the container runs with
+a read-only root filesystem.
+
+At start, nixie loads the encoder from the image's model folder before it opens the database, and
+the start fails when the model does not load, so a broken image never runs with memory search on
+keywords alone. The loader reads only that folder and fetches nothing. The image's encoder check
+loads the model and encodes one query, and the image rehearsal in pull-request CI runs it with no
+network.

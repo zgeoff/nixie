@@ -29,6 +29,7 @@ export async function startTestStore(
     log,
     definitions: options.definitions ?? (() => ({ snapshotHash: 'sha256:test' })),
     cleanupSessions: options.cleanupSessions ?? (() => Promise.resolve()),
+    ...(options.semanticSearch === undefined ? {} : { semanticSearch: options.semanticSearch }),
     gate: {
       check:
         options.gate?.check ??

@@ -1,6 +1,10 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
+import { makeGatedCall } from '@heynixie/testing';
+import { buildStubEncoder } from './test-utils/build-stub-encoder';
+import { createMemoryItem } from './test-utils/create-memory-item';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
+import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
 
 async function setupTest() {
@@ -41,6 +45,7 @@ test('it returns the items that match a query word for word, with their provenan
       },
     ],
     next: null,
+    searchMode: 'keyword',
   });
 });
 
@@ -642,6 +647,7 @@ test('it records the match score of each item a query delivered', async () => {
       { itemID: both.itemID, version: 1, score: expect.toBePositive() },
       { itemID: one.itemID, version: 1, score: expect.toBePositive() },
     ],
+    searchMode: 'keyword',
   });
 });
 
@@ -792,5 +798,198 @@ test('it never delivers an item that a forget removed while the recall ranked it
   const result = await recall;
 
   expect(ranked).toStrictEqual({ kind: 'memory', id: null });
-  expect(result).toStrictEqual({ items: [], next: null });
+  expect(result).toStrictEqual({ items: [], next: null, searchMode: 'keyword' });
+});
+
+test('it recalls an item that shares no word with the query through the vector index', async () => {
+  const memory = await startTestMemory({
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling'], ['leeds'], ['boiler', 'heating']]),
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  const sister = await createMemoryItem(memory.store, { text: 'Ana is my sister' });
+
+  await createMemoryItem(memory.store, { text: 'The boiler service is on the 14th' });
+
+  await memory.store.waitForSemanticIndex();
+
+  const result = await memory.store.recall({ query: 'who is my sibling' });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([sister.itemID]);
+  expect(result.searchMode).toBe('hybrid');
+});
+
+test('it recalls the keyword matches alone while the vector index rebuilds', async () => {
+  const first = await startTestMemory();
+  const sister = await createMemoryItem(first.store, { text: 'My sister lives in Leeds' });
+
+  await createMemoryItem(first.store, { text: 'Ana is my sibling' });
+
+  const gated = makeGatedCall(buildStubEncoder([['sister', 'sibling'], ['leeds']]).encode);
+
+  const memory = await startNextTestMemory(first, {
+    semanticSearch: { encoder: { encode: gated.call }, onError: mock<(error: unknown) => void>() },
+  });
+
+  await gated.started;
+
+  const result = await memory.store.recall({
+    query: 'where does my sister live now',
+    excludePinned: true,
+    minSimilarity: 0.38,
+  });
+
+  gated.release();
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([sister.itemID]);
+  expect(result.searchMode).toBe('keyword-fallback');
+});
+
+test('it records each item keyword score and similarity, and how the query searched', async () => {
+  const memory = await startTestMemory({
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling'], ['leeds']]),
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  const both = await createMemoryItem(memory.store, { text: 'My sister lives in Leeds' });
+  const meaning = await createMemoryItem(memory.store, { text: 'Ana is my sibling' });
+
+  await createMemoryItem(memory.store, { text: 'The library closes at six on Sundays' });
+
+  await memory.store.waitForSemanticIndex();
+  await memory.store.recall({ query: 'my sister', thread: 'conversation' });
+
+  const [recalled] = await readRecords(memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(recalled?.record.payload).toStrictEqual({
+    items: [
+      {
+        itemID: both.itemID,
+        version: 1,
+        score: expect.toBeNumber(),
+        similarity: expect.toBeWithin(0.7, 0.72),
+      },
+      { itemID: meaning.itemID, version: 1, similarity: expect.toBeWithin(0.99, 1.02) },
+    ],
+    searchMode: 'hybrid',
+  });
+});
+
+test('it leaves the excluded words out of the vector query', async () => {
+  const memory = await startTestMemory({
+    semanticSearch: {
+      encoder: buildStubEncoder([['nix'], ['ferns']]),
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  await createMemoryItem(memory.store, { text: 'Nix waters the ferns on Fridays' });
+
+  await memory.store.waitForSemanticIndex();
+
+  const result = await memory.store.recall({ query: 'Nix?', excludedWords: ['Nix'] });
+
+  expect(result.items).toStrictEqual([]);
+});
+
+test('it leaves out a semantic match below the similarity floor the request sets', async () => {
+  const memory = await startTestMemory({
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling'], ['leeds']]),
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  await createMemoryItem(memory.store, { text: 'Ana is my sibling' });
+
+  await memory.store.waitForSemanticIndex();
+
+  const result = await memory.store.recall({
+    query: 'is my sister in leeds',
+    minSimilarity: 0.8,
+  });
+
+  expect(result.items).toStrictEqual([]);
+});
+
+test('it keeps a pinned item out of the vector matches when the request leaves pinned items out', async () => {
+  const memory = await startTestMemory({
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling']]),
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  const pinned = await createMemoryItem(memory.store, { text: 'Ana is my sibling' });
+  const other = await createMemoryItem(memory.store, { text: 'Ana is my only sibling' });
+
+  await memory.store.pin({
+    itemID: pinned.itemID,
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.waitForSemanticIndex();
+
+  const result = await memory.store.recall({ query: 'my sister', excludePinned: true, limit: 1 });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([other.itemID]);
+});
+
+test('it ranks the next semantic match in place of a retired item', async () => {
+  const memory = await startTestMemory({
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling']]),
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  const retired = await createMemoryItem(memory.store, { text: 'Ana is my sibling' });
+  const kept = await createMemoryItem(memory.store, { text: 'Ana is my only sibling' });
+
+  await memory.store.retire({
+    target: retired,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.waitForSemanticIndex();
+
+  const result = await memory.store.recall({ query: 'my sister', limit: 1 });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([kept.itemID]);
+});
+
+test('it recalls an edited item by the meaning of its new text', async () => {
+  const memory = await startTestMemory({
+    semanticSearch: {
+      encoder: buildStubEncoder([
+        ['sister', 'sibling'],
+        ['boiler', 'heating'],
+      ]),
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  const item = await createMemoryItem(memory.store, { text: 'Ana is my sister' });
+
+  await memory.store.remember({
+    target: item,
+    text: 'The boiler service is on the 14th',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await memory.store.waitForSemanticIndex();
+
+  const result = await memory.store.recall({ query: 'when is the heating looked at' });
+
+  expect(result.items.map((recalled) => [recalled.itemID, recalled.version])).toStrictEqual([
+    [item.itemID, 2],
+  ]);
 });

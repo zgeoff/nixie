@@ -18,6 +18,7 @@
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",
+    "@heynixie/encoder-onnx": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/memory": "workspace:*",
     "@heynixie/models": "workspace:*",

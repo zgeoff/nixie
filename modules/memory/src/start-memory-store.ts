@@ -3,45 +3,64 @@ import type { MemoryGate } from './build-memory-gate';
 import { buildMemoryGate } from './build-memory-gate';
 import { buildMemoryStore } from './build-memory-store';
 import { makeDeliveryLock } from './make-delivery-lock';
-import { readIndexEntries } from './read-index-entries';
 import { removeClosedProposalKeys } from './remove-closed-proposal-keys';
 import { runPendingForgets } from './run-pending-forgets';
-import { startMemoryIndex } from './start-memory-index';
+import { startStoreIndexes } from './start-store-indexes';
 import type { ItemIDStore, MemoryContext, MemoryStore, StoreParts } from './types';
+import type { UpdatedIndexes } from './update-store-indexes';
+import { updateStoreIndexes } from './update-store-indexes';
 import type { BatchPublication, PublishResult } from './write-memory-batch';
 import { writeMemoryBatch } from './write-memory-batch';
 
 export interface StartedMemoryStore extends MemoryStore, MemoryGate, ItemIDStore {
   // publishes one memory writer batch with its cursor in one transaction
   readonly writeBatch: (publication: BatchPublication) => Promise<PublishResult>;
+
+  // resolves once the vector index's start rebuild and every encoding queued so far end: true
+  // when the rebuild finished, and false when it failed, the store stopped or no encoder runs
+  readonly waitForSemanticIndex: () => Promise<boolean>;
   readonly stop: () => Promise<void>;
 }
 
 // Puts memory into service: it resumes every pending forget, removes the key of each closed
-// proposal that a crash left behind, then builds the index from the readable active items. The log must already hold the memory projections.
+// proposal that a crash left behind, then fills the indexes from the readable active items. The log
+// must already hold the memory projections.
 export async function startMemoryStore(context: MemoryContext): Promise<StartedMemoryStore> {
-  const index = await startMemoryIndex();
+  const indexes = await startStoreIndexes(context);
 
-  const parts: StoreParts = { context, index, lock: makeDeliveryLock() };
+  const parts: StoreParts = { context, ...indexes, lock: makeDeliveryLock() };
 
-  try {
-    await runPendingForgets(parts);
-    await removeClosedProposalKeys(parts);
-
-    const entries = await readIndexEntries(context);
-
-    await index.updateAll(entries);
-  } catch (error) {
-    await index.stop();
-
-    throw error;
-  }
+  const updated = await runStartSteps(parts);
 
   return {
     ...buildMemoryStore(parts),
     ...buildItemIDStore(parts),
     ...buildMemoryGate(parts),
     writeBatch: (publication) => writeMemoryBatch(parts, publication),
-    stop: () => parts.lock(() => index.stop()),
+    waitForSemanticIndex: async () => {
+      const isReady = await updated.rebuilt;
+
+      await parts.vectors?.waitForIdle();
+
+      return isReady;
+    },
+    stop: () => parts.lock(() => stopIndexes(parts)),
   };
+}
+
+async function runStartSteps(parts: StoreParts): Promise<UpdatedIndexes> {
+  try {
+    await runPendingForgets(parts);
+    await removeClosedProposalKeys(parts);
+
+    return await updateStoreIndexes(parts);
+  } catch (error) {
+    await stopIndexes(parts);
+
+    throw error;
+  }
+}
+
+async function stopIndexes(parts: StoreParts): Promise<void> {
+  await Promise.all([parts.index.stop(), parts.vectors?.stop()]);
 }

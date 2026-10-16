@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { buildStubEncoder } from './test-utils/build-stub-encoder';
+import { createMemoryItem } from './test-utils/create-memory-item';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { CleanupSessions } from './types';
 
@@ -187,4 +189,27 @@ test('it rejects a second forget of a forgotten item', async () => {
   await forget.catch(() => {});
 
   expect(forget).rejects.toMatchObject({ code: 'NOT_FOUND' });
+});
+
+test('it drops the forgotten item from the vector index, so the next match takes its place', async () => {
+  const memory = await startTestMemory({
+    semanticSearch: {
+      encoder: buildStubEncoder([['sister', 'sibling']]),
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  const forgotten = await createMemoryItem(memory.store, { text: 'Ana is my sibling' });
+  const kept = await createMemoryItem(memory.store, { text: 'Ana is my only sibling' });
+
+  await memory.store.waitForSemanticIndex();
+
+  await memory.store.forget({
+    target: forgotten,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const result = await memory.store.recall({ query: 'my sister', limit: 1 });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([kept.itemID]);
 });

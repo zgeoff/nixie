@@ -13,6 +13,7 @@ test('it sets the gate, pinned core, retrieval and rebuild defaults', () => {
     pinnedCoreTokens: 2000,
     retrievalItems: 5,
     retrievalMinScore: 0.25,
+    retrievalMinSimilarity: 0.38,
     rebuildTokens: 30_000,
   });
 });
@@ -22,6 +23,7 @@ test('it takes the values the file names', () => {
     pinned_core_tokens: 1500,
     retrieval_items: 3,
     retrieval_min_score: 0.5,
+    retrieval_min_similarity: 0.45,
     rebuild_tokens: 20_000,
   });
 
@@ -29,6 +31,7 @@ test('it takes the values the file names', () => {
     pinnedCoreTokens: 1500,
     retrievalItems: 3,
     retrievalMinScore: 0.5,
+    retrievalMinSimilarity: 0.45,
     rebuildTokens: 20_000,
   });
 });
@@ -49,4 +52,10 @@ test('it refuses an unknown key', () => {
   const result = memoryConfigSchema.safeParse({ retrieval_item: 5 });
 
   expect(result.error?.issues).toPartiallyContain({ path: [], keys: ['retrieval_item'] });
+});
+
+test('it refuses a similarity floor above 1', () => {
+  const result = memoryConfigSchema.safeParse({ retrieval_min_similarity: 1.5 });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['retrieval_min_similarity'] });
 });

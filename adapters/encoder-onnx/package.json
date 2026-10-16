@@ -1,0 +1,21 @@
+{
+  "name": "@heynixie/encoder-onnx",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/memory": "workspace:*",
+    "@huggingface/tokenizers": "catalog:",
+    "onnxruntime-node": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/log": "workspace:*"
+  }
+}

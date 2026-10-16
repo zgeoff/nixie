@@ -1,6 +1,6 @@
 import type { APIContext, CleanupRecordSessions } from '@heynixie/api';
 import type { DefinitionsInForce, DefinitionsSource, SnapshotPolicy } from '@heynixie/definitions';
-import type { StartedMemoryStore } from '@heynixie/memory';
+import type { Encoder, StartedMemoryStore } from '@heynixie/memory';
 import type { ModelSecrets } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
 import type { TasksContext } from '@heynixie/tasks';
@@ -71,6 +71,9 @@ export interface ServerParts {
   readonly sessionCleanup: SessionCleanupSlot;
   readonly modelSecrets: ModelSecrets;
 
+  // the encoder the memory store's vector index runs, or null for keyword search alone
+  readonly encoder: Encoder | null;
+
   // a runner failed, such as when another process took the writer
   readonly onFailure: (error: unknown) => void;
 }
@@ -91,6 +94,7 @@ export interface CLIFlags {
   readonly config: string;
   readonly manifest: string;
   readonly sops: string;
+  readonly encoder: string;
   readonly live: boolean;
 
   // the action hash a memory answer binds to
