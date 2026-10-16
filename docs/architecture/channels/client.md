@@ -8,7 +8,8 @@ with its own process and image beside the API, and it renders the conversation f
 grows. [The API](./api.md) covers the server that serves the contract, the
 [client design](../../design/platform/channels/client.md) covers the Android app, and the web
 client's tests run against a mock API built from the contract.
-[The architecture overview](../overview.md#the-client-path) shows where the two servers sit.
+[The architecture overview](../overview.md#the-client-path) shows where the two servers sit. The web
+client's memory page is the [memory view](../memory/view.md#the-web-view).
 
 ## The contract
 

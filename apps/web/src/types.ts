@@ -1,4 +1,4 @@
-import type { ContractClient, Span, buildQueryUtils } from '@heynixie/contract';
+import type { ContractClient, ContractOutputs, Span, buildQueryUtils } from '@heynixie/contract';
 import type { QueryClient } from '@tanstack/react-query';
 
 type QueryUtils = ReturnType<typeof buildQueryUtils>;
@@ -38,3 +38,10 @@ export interface OutboxMessage {
   // without them
   readonly unreadImages?: number | undefined;
 }
+
+// A memory item as the memory view lists it, and one with every version.
+export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];
+
+export type MemoryItemDetail = ContractOutputs['memory']['readItem'];
+
+export type MemoryVersion = MemoryItemDetail['versions'][number];

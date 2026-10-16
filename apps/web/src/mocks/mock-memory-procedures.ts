@@ -5,9 +5,9 @@ import { readMemoryVersion } from './read-memory-version';
 import { readMockMemoryItem } from './read-mock-memory-item';
 import { readMockMemoryPage } from './read-mock-memory-page';
 import { readMockPinnedCore } from './read-mock-pinned-core';
+import { readMockWriterStatus } from './read-mock-writer-status';
 import { readRatingNote } from './read-rating-note';
 import { requireMockSession } from './require-mock-session';
-import { store } from './store';
 import { writeMockMemoryChange } from './write-mock-memory-change';
 
 const memory = mockImplementer.memory;
@@ -32,15 +32,7 @@ export const mockMemoryProcedures = {
   writerStatus: memory.writerStatus.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-    return {
-      backlog: 0,
-      batches: 0,
-      cursor: Math.max(0, ...store.records.all().map((record) => record.sequence)),
-      failures: 0,
-      isCatchingUp: false,
-      lastError: null,
-      retryAt: null,
-    };
+    return readMockWriterStatus();
   }),
 
   listItems: memory.listItems.handler((options) => {

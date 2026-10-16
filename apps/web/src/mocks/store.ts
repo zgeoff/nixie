@@ -188,6 +188,26 @@ const memoryItems = new Collection({
   }),
 });
 
+const writerErrorSchema = z.object({
+  at: z.date(),
+  code: z.string(),
+  message: z.string().nullable(),
+});
+
+// The memory writer's progress as nixie's memory module reports it. The store holds at most one,
+// and without one the writer reads as caught up at the last record.
+const memoryWriter = new Collection({
+  schema: z.object({
+    backlog: z.int().nonnegative().default(0),
+    batches: z.int().nonnegative().default(0),
+    cursor: z.int().nonnegative().default(0),
+    failures: z.int().nonnegative().default(0),
+    isCatchingUp: z.boolean().default(false),
+    lastError: writerErrorSchema.nullable().default(null),
+    retryAt: z.date().nullable().default(null),
+  }),
+});
+
 // Each memory change a client action ID applied, with the input it bound to, as nixie's API keeps
 // the first result of each checked action.
 const memoryActions = new Collection({
@@ -215,6 +235,7 @@ export const store = {
   memoryActions,
   memoryItems,
   memoryVersions,
+  memoryWriter,
   ratingNotes,
   records,
 
@@ -224,6 +245,7 @@ export const store = {
     forgetActions.clear();
     memoryActions.clear();
     memoryItems.clear();
+    memoryWriter.clear();
     memoryVersions.clear();
     ratingNotes.clear();
     enrolmentCodes.clear();
