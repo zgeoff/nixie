@@ -65,3 +65,29 @@ test('it throws when another holder already claimed the conversation task', asyn
 
   expect(sent).rejects.toThrowWithMessage(Error, 'the conversation had no work to claim');
 });
+
+test('it returns the step error of a step that throws', async () => {
+  const server = await startTestServer();
+
+  const failure = new Error('the guest exited before it ended its turn');
+
+  await createConversationTask(server.context);
+
+  const errored = await sendTestMessage(server.context, () => Promise.reject(failure), 'Hi.');
+
+  expect(errored).toMatchObject({ taskID: 'conversation', errors: 1, error: failure });
+});
+
+test('it returns null for a step that commits', async () => {
+  const server = await startTestServer();
+
+  await createConversationTask(server.context);
+
+  const errored = await sendTestMessage(
+    server.context,
+    () => Promise.resolve({ next: 'wait', records: [], acknowledged: [] }),
+    'Hi.',
+  );
+
+  expect(errored).toBeNull();
+});

@@ -1,3 +1,4 @@
+import { SandboxHostError } from '@heynixie/sandbox';
 import type { ImpClient } from '@zgeoff/imp-client';
 import { ORPCError, createImpClient, openReverseForward } from '@zgeoff/imp-client';
 import type { ImpPort } from './types';
@@ -64,10 +65,12 @@ function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
   return {
     readFeatures: () => readFeatures(client),
     createImp: async (input) => {
-      await client.imps.create({
-        ...input,
-        policy: { mode: input.policy.mode, allow: [...input.policy.allow] },
-      });
+      await withHostError('create', () =>
+        client.imps.create({
+          ...input,
+          policy: { mode: input.policy.mode, allow: [...input.policy.allow] },
+        }),
+      );
     },
     readImpBackup: async (name) => {
       try {
@@ -92,7 +95,7 @@ function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
       await client.imps.sleep({ name });
     },
     wakeImp: async (name) => {
-      await client.requireAwake(name);
+      await withHostError('wake', () => client.requireAwake(name));
     },
   };
 }
@@ -117,6 +120,24 @@ const RENAMED_IMPD = /^2\.\d+\.\d+/u;
 
 function isRenamedImpd(serverVersion: string): boolean {
   return RENAMED_IMPD.test(serverVersion);
+}
+
+// impd's error for a call it refuses, such as RAM_BUDGET_EXCEEDED when its memory budget is full,
+// carries its code and its own text, but its name is plain Error, so the call rethrows it as a
+// SandboxHostError that names the call, and a failed turn's step error and log line say why
+async function withHostError(call: string, run: () => Promise<unknown>): Promise<void> {
+  try {
+    await run();
+  } catch (error) {
+    if (error instanceof ORPCError) {
+      throw new SandboxHostError(
+        { call, code: String(error.code), hostMessage: error.message },
+        { cause: error },
+      );
+    }
+
+    throw error;
+  }
 }
 
 // an imp that is gone already counts as removed, so a retried destroy succeeds

@@ -23,7 +23,7 @@ async function setupTest() {
 
 test('it reports the conversation imp unready before it starts', async () => {
   const ctx = await setupTest();
-  const report = await ctx.checks.conversation_imp();
+  const report = await ctx.checks.readiness.conversation_imp();
 
   expect(report).toStrictEqual({
     isReady: false,
@@ -36,7 +36,7 @@ test('it keeps a started conversation imp unready until the runners start', asyn
 
   ctx.state.update({ conversation: { isReady: true, reason: null } });
 
-  const report = await ctx.checks.conversation_imp();
+  const report = await ctx.checks.readiness.conversation_imp();
 
   expect(report).toStrictEqual({
     isReady: false,
@@ -49,23 +49,30 @@ test('it reports the conversation imp ready once the runners start', async () =>
 
   ctx.state.update({ conversation: { isReady: true, reason: null }, areRunnersStarted: true });
 
-  const report = await ctx.checks.conversation_imp();
+  const report = await ctx.checks.readiness.conversation_imp();
 
   expect(report).toStrictEqual({ isReady: true, reason: null });
 });
 
-test('it reports a failing conversation imp unready after the runners start', async () => {
+test('it reports the conversation turns as passing before any turn fails', async () => {
+  const ctx = await setupTest();
+  const report = await ctx.checks.advisory.conversation_turns();
+
+  expect(report).toStrictEqual({ isReady: true, reason: null });
+});
+
+test('it reports failing turns in the advisory part and leaves the conversation imp ready', async () => {
   const ctx = await setupTest();
 
   ctx.state.update({
-    conversation: { isReady: false, reason: 'the last turn failed' },
+    conversation: { isReady: true, reason: null },
     areRunnersStarted: true,
+    turns: { isReady: false, reason: 'the last 3 turns failed' },
   });
 
-  const report = await ctx.checks.conversation_imp();
+  const advisory = await ctx.checks.advisory.conversation_turns();
+  const readiness = await ctx.checks.readiness.conversation_imp();
 
-  expect(report).toStrictEqual({
-    isReady: false,
-    reason: 'the last turn failed',
-  });
+  expect(advisory).toStrictEqual({ isReady: false, reason: 'the last 3 turns failed' });
+  expect(readiness).toStrictEqual({ isReady: true, reason: null });
 });

@@ -7,6 +7,7 @@ import { parseImpConfig } from './parse-imp-config';
 import { resolveProbeURLs } from './test-utils/resolve-probe-urls';
 import { runProbe } from './test-utils/run-probe';
 import { setupIsolationAdapter } from './test-utils/setup-isolation-adapter';
+import { startStubImpd } from './test-utils/start-stub-impd';
 
 // The isolation checks drive the imp adapter through the real port against a real impd, on a host
 // with /dev/kvm; docs/runbooks/imp-isolation-tests.md names the variables that turn them on. Bun
@@ -222,6 +223,67 @@ test('it reads no backup flag for an imp that impd does not hold', () => {
   const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
 
   expect(port.readImpBackup('nixie-a')).resolves.toBeNull();
+});
+
+test("it fails a wake that impd refuses for memory with impd's code and message", () => {
+  const url = startStubImpd({
+    code: 'RAM_BUDGET_EXCEEDED',
+    status: 503,
+    message: 'Not enough RAM budget, even after sleeping idle imps',
+    data: { budgetMib: 8192, usedMib: 7680, requestedMib: 1024 },
+  });
+
+  const port = buildImpPort({ url, token: 'not-a-real-token' });
+
+  expect(port.wakeImp('nixie-a')).rejects.toMatchObject({
+    name: 'SandboxHostError',
+    call: 'wake',
+    code: 'RAM_BUDGET_EXCEEDED',
+    hostMessage: 'Not enough RAM budget, even after sleeping idle imps',
+    message:
+      'the sandbox host failed the wake with RAM_BUDGET_EXCEEDED: Not enough RAM budget, even after sleeping idle imps',
+  });
+});
+
+test("it fails a create that impd refuses with impd's code and message", () => {
+  const url = startStubImpd({
+    code: 'PRECONDITION_FAILED',
+    status: 412,
+    message: 'Not possible on this host',
+  });
+
+  const port = buildImpPort({ url, token: 'not-a-real-token' });
+
+  expect(
+    port.createImp({
+      name: 'nixie-a',
+      image: 'nixie-guest',
+      vcpus: 1,
+      memoryMib: 1024,
+      diskMib: 4096,
+      policy: { mode: 'none', allow: [] },
+      backup: false,
+    }),
+  ).rejects.toMatchObject({
+    name: 'SandboxHostError',
+    call: 'create',
+    code: 'PRECONDITION_FAILED',
+    hostMessage: 'Not possible on this host',
+  });
+});
+
+test('it passes on a failed wake that is no impd error, such as impd not answering', async () => {
+  const probe = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: () => new Response() });
+  const url = probe.url.href;
+
+  await probe.stop(true);
+
+  const port = buildImpPort({ url, token: 'not-a-real-token' });
+
+  expect(port.wakeImp('nixie-a')).rejects.toMatchObject({
+    name: 'TypeError',
+    code: 'ConnectionRefused',
+  });
 });
 
 // A dropped connection waits out curl's whole limit, so each test allows for the imp's boot and

@@ -77,10 +77,11 @@ The conversation never fails, under [0018](../../decisions/0018-the-conversation
 because every deployment needs it to answer. Its wait before each retry doubles with each error in a
 row up to a cap, so a long outage costs one try per cap and a reply follows soon after the cause
 clears. Each error record holds the errors in a row, the limit at which another task fails, and the
-retry time. Once the conversation's errors reach that limit, the server marks the conversation imp
-unready and the web UI says that nixie is failing to answer; the next turn that commits clears both.
-A start makes a failed conversation ready again with its errors cleared, because a failed task never
-wakes and the conversation must.
+retry time. Once the conversation's errors reach that limit, the server marks the conversation turns
+part of its readiness report as failing, an advisory part that never takes nixie out of routing, and
+the web UI says that nixie is failing to answer; the next turn that commits clears both. A start
+makes a failed conversation ready again with its errors cleared, because a failed task never wakes
+and the conversation must.
 
 ## Timers
 

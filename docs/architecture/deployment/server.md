@@ -114,13 +114,13 @@ reason, never an error's message, because a message can quote what the part was 
 Liveness holds when the process answers and the database answers a query. Readiness lists the parts
 this build holds:
 
-| Part             | Ready when                                                              |
-| ---------------- | ----------------------------------------------------------------------- |
-| database         | Migrations finished and the integrity check at start passed             |
-| definitions      | The last seed applied, with no refused snapshot pending                 |
-| imp host         | impd answers, and every image in the manifest is added                  |
-| conversation imp | Its sandbox started, the runners started, and its turns are not failing |
-| disk             | The data volume is under the fill limit                                 |
+| Part             | Ready when                                                  |
+| ---------------- | ----------------------------------------------------------- |
+| database         | Migrations finished and the integrity check at start passed |
+| definitions      | The last seed applied, with no refused snapshot pending     |
+| imp host         | impd answers, and every image in the manifest is added      |
+| conversation imp | Its sandbox started and the runners started                 |
+| disk             | The data volume is under the fill limit                     |
 
 The imp host and disk checks run on each request, and the rest read state that the start sequence
 and the runners keep. The conversation imp stays unready until the runners start, so a start step
@@ -128,6 +128,14 @@ that keeps failing after the conversation imp starts, such as writing the start 
 unready instead of ready with no runner claiming work. Each check runs under a timeout, so a part
 that hangs reports unready instead of holding the endpoint. The image's health check calls the same
 endpoint from inside the container.
+
+Readiness gates routing, so it holds only the parts without which nixie cannot answer a request. The
+readiness report adds advisory parts, which show in its body and never change its status. The
+conversation turns part is advisory: it turns unready once the conversation's errors in a row reach
+the error limit, with the sandbox host's code when the last turn failed there, and the next turn
+that commits clears it. A turn that fails because an imp cannot wake therefore leaves nixie in its
+Service, and the API, the web UI and the health endpoint keep answering while the conversation
+retries.
 
 ## Logs
 
@@ -155,7 +163,9 @@ definitions. A refused seed adds its error's name and message, such as a definit
 is not checked out yet, because the name alone leaves the cause to guesswork. A step error logs the
 task, the step, the errors in a row, the task's next state, its retry time and the error's name, so
 the log shows a failure that a retry hid. The error's message stays on the task's thread, because it
-may quote a provider's reply or the model's input.
+may quote a provider's reply or the model's input. A sandbox host error adds the call that failed,
+the host's code and the host's own message, such as impd refusing a wake because its memory budget
+is full, because that text names the failure and never quotes the turn's work.
 
 ## Stopping
 

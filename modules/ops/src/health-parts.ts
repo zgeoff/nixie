@@ -11,6 +11,13 @@ export const healthParts = [
 
 export type HealthPart = (typeof healthParts)[number];
 
+// The parts that the readiness report shows beside the readiness parts but never waits on, because
+// nixie still answers while they fail: routing to nixie depends only on the parts above, and a
+// failing advisory part shows in the report's body while the status stays ready.
+export const advisoryParts = ['conversation_turns'] as const;
+
+export type AdvisoryPart = (typeof advisoryParts)[number];
+
 // Liveness holds while the process answers and the database opens.
 export const livenessParts = ['process', 'database'] as const;
 
