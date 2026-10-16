@@ -131,7 +131,7 @@ async function withHostError(call: string, run: () => Promise<unknown>): Promise
   } catch (error) {
     if (error instanceof ORPCError) {
       throw new SandboxHostError(
-        { call, code: error.code, hostMessage: error.message },
+        { call, code: String(error.code), hostMessage: error.message },
         { cause: error },
       );
     }
