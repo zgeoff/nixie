@@ -50,10 +50,13 @@ pre-push:
         origin/main; run git fetch origin main"; exit 1; }
     - name: format:check
       run: bun run format:check
+    # the job lists the branch's files itself, so it runs on every push; a
+    # files: list marks the job skipped when the branch changes no script
     - name: lint
-      files: git diff --name-only --diff-filter=ACMR origin/main...HEAD
-      glob: '*.{js,mjs,cjs,ts,mts,cts}'
-      run: node_modules/.bin/oxlint --no-error-on-unmatched-pattern {files}
+      run:
+        git diff --name-only -z --diff-filter=ACMR origin/main...HEAD -- '*.js' '*.mjs' '*.cjs'
+        '*.ts' '*.mts' '*.cts' | xargs -0 -r node_modules/.bin/oxlint
+        --no-error-on-unmatched-pattern
     # the packages the branch affects, one package and one checker at a time:
     # turbo's default 10 at once ran a 2 GiB host out of memory, and tsc's
     # default checkers take apps/server to about 1.2 GiB, one checker to 0.6

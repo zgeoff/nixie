@@ -174,6 +174,7 @@ Never print a token or a secret value, and never write one to a file in the repo
   `audit deadcode format:check lint:full typecheck boundaries prose test`. A change to that list
   changes `bun run check` in the same PR.
 - lefthook runs oxlint, oxfmt and gitleaks before a commit, and commitlint on the message. Before a
-  push it runs one job at a time: the format check, typecheck, boundaries and the prose check over
-  the whole tree, then lint and the tests over what the branch changes. commitlint takes a lowercase
-  Conventional Commit header of at most 72 characters.
+  push it runs one job at a time, so a 2 GiB host can push: the format check, boundaries and the
+  prose check over the whole tree, then lint, typecheck and the tests over what the branch changes.
+  The typecheck checks each package the branch affects, one package and one checker at a time.
+  commitlint takes a lowercase Conventional Commit header of at most 72 characters.
