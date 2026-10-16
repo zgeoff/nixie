@@ -46,9 +46,12 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Last release: ${tag:-none yet}" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Check that the contract check accepts only the breaks it lists
+        run: .github/scripts/check-accepted-breaks.sh
+
       # oasdiff fails on a removed procedure, a removed or retyped output field, a new required input
       # field or a narrowed input type, and allows the removal of a procedure that the last release
-      # marks deprecated
+      # marks deprecated or a break that libs/contract/accepted-breaks.txt names
       - name: Check that the contract only grows
         if: steps.last.outputs.tag != ''
         env:
@@ -56,10 +59,8 @@ jobs:
         run: |
           bun run --cwd libs/contract openapi
           git show "$TAG:libs/contract/openapi.json" > "$RUNNER_TEMP/last-openapi.json"
-          cp libs/contract/openapi.json "$RUNNER_TEMP/openapi.json"
-          docker run --rm -v "$RUNNER_TEMP:/specs:ro" \
-            tufin/oasdiff:v1.33.0@sha256:6263a96dd2ef0726c54e21fea9b8e1607eac4841add0079324b424c1f52b819c \
-            breaking /specs/last-openapi.json /specs/openapi.json --fail-on ERR
+          .github/scripts/check-contract-growth.sh "$RUNNER_TEMP/last-openapi.json" \
+            libs/contract/openapi.json libs/contract/accepted-breaks.txt
 
       - name: Check the migrations since the last release
         env:

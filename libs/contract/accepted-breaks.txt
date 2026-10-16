@@ -1,0 +1,4 @@
+# Breaks of the contract that the compatibility check accepts against the last release. oasdiff
+# reads this file with --err-ignore, and docs/architecture/deployment/release-pipeline.md says when
+# a break belongs here and how to write its line. Each line below names one break, prefixed with
+# the Linear issue that plans it.
