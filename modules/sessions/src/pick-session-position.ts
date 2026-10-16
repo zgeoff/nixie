@@ -6,8 +6,11 @@ import type { SessionPosition } from './types';
 export interface SessionPositionInput {
   readonly marks: Pick<
     SessionMarks,
-    'isInvalidated' | 'hasOpening' | 'isSummarized' | 'lastContext'
+    'isInvalidated' | 'hasOpening' | 'openedPersonaHash' | 'isSummarized' | 'lastContext'
   >;
+
+  // the persona hash of the definitions in force as the step begins
+  readonly personaHash: string;
 
   // the boundary the task's last step committed, or null when no session is open
   readonly boundary: SessionPoint | null;
@@ -16,12 +19,12 @@ export interface SessionPositionInput {
   readonly threshold: number;
 }
 
-// The one resume rule: a session resumes at its boundary only when a forget has not invalidated it
-// since the last turn read its marks, and some session opened with an opening record, which holds
-// the pinned core a resumed turn needs.
+// The one resume rule: a session resumes at its boundary only when no forget invalidated it since
+// the last turn read its marks, and it opened with an opening record under the persona in force.
+// Each tool call reads the policy in force, so a policy change never invalidates a session.
 export function pickSessionPosition(input: SessionPositionInput): SessionPosition {
   if (input.marks.isInvalidated) {
-    return { state: 'invalidated', boundary: input.boundary };
+    return { state: 'invalidated', boundary: input.boundary, cause: 'forget' };
   }
 
   if (input.boundary === null) {
@@ -32,7 +35,19 @@ export function pickSessionPosition(input: SessionPositionInput): SessionPositio
     return { state: 'lost', boundary: input.boundary };
   }
 
+  if (isPersonaChanged(input)) {
+    return { state: 'invalidated', boundary: input.boundary, cause: 'persona' };
+  }
+
   const isDue = isCompactionDue(input.marks.lastContext, input.threshold);
 
   return { state: isDue ? 'compaction-due' : 'resumable', boundary: input.boundary };
+}
+
+// a session opened before openings kept the persona hash resumes, since nothing shows that its
+// persona changed
+function isPersonaChanged(input: SessionPositionInput): boolean {
+  const opened = input.marks.openedPersonaHash;
+
+  return opened !== null && opened !== input.personaHash;
 }

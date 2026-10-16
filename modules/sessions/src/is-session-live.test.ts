@@ -13,9 +13,16 @@ test.each(['resumable', 'compaction-due'] as const)('it reads a %s session as li
   ).toBe(true);
 });
 
-test.each(['fresh', 'summarized', 'invalidated', 'lost'] as const)(
+test.each(['fresh', 'summarized', 'lost'] as const)(
   'it reads a %s session as not live',
   (state) => {
     expect(isSessionLive({ state, boundary: null })).toBe(false);
+  },
+);
+
+test.each(['forget', 'persona'] as const)(
+  'it reads a session that a %s invalidated as not live',
+  (cause) => {
+    expect(isSessionLive({ state: 'invalidated', boundary: null, cause })).toBe(false);
   },
 );

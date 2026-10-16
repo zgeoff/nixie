@@ -2,11 +2,12 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeDecisionPoint } from '@heynixie/policy';
+import type { LogRecord } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { systemClock } from '@heynixie/tasks';
-import type { ToolEndpoint } from '@heynixie/tools';
+import type { ToolDefinition, ToolEndpoint, ToolEndpointOptions } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildTestSandboxes } from './build-test-sandboxes';
 import { startTestLog } from './start-test-log';
@@ -25,12 +26,21 @@ export interface TestServer {
 
   // the ID of each sandbox whose disk the process double holds
   readonly readSandboxIDs: () => Promise<readonly string[]>;
+
+  // the first 1,000 records of the log, oldest first
+  readonly readRecords: () => Promise<readonly LogRecord[]>;
+}
+
+// the direct tools the endpoint serves and the decision point each of their calls passes
+export interface TestServerTools {
+  readonly definitions: readonly ToolDefinition[];
+  readonly decide: ToolEndpointOptions['decide'];
 }
 
 // Starts the parts of a test build the conversation runs on: a writer on a fresh data directory, a
-// tool endpoint with no tools, and the process double that runs each guest as a local process, whose
-// sandboxes a test can retire. It stops them, after every part the test deferred, when it finishes.
-export async function startTestServer(): Promise<TestServer> {
+// tool endpoint with the tools given or none, and the process double whose sandboxes a test can
+// retire. It stops them, after every part the test deferred, when it finishes.
+export async function startTestServer(tools?: TestServerTools): Promise<TestServer> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -49,7 +59,7 @@ export async function startTestServer(): Promise<TestServer> {
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
 
-  const endpoint = await startEmptyToolEndpoint(context, join(dataDir, 'tools'));
+  const endpoint = await startTestToolEndpoint(context, join(dataDir, 'tools'), tools);
 
   stack.defer(() => endpoint.stop());
 
@@ -67,20 +77,34 @@ export async function startTestServer(): Promise<TestServer> {
       stack.defer(stop);
     },
     readSandboxIDs: () => readdir(join(dataDir, 'sandboxes')),
+    readRecords: async () => {
+      const entries = await readRecords(log, { afterSequence: 0, limit: 1000 });
+
+      return entries.map((entry) => entry.record);
+    },
   };
 }
 
-function startEmptyToolEndpoint(context: TasksContext, socketDir: string): Promise<ToolEndpoint> {
+function startTestToolEndpoint(
+  context: TasksContext,
+  socketDir: string,
+  tools: TestServerTools | undefined,
+): Promise<ToolEndpoint> {
   return startToolEndpoint({
     socketDir,
-    registry: buildToolRegistry([]),
-    decide: makeDecisionPoint({ findDeclaration: () => null }),
+    registry: buildToolRegistry(tools?.definitions ?? []),
+    decide:
+      tools?.decide ??
+      (() => ({
+        decision: { outcome: 'deny', stage: 1, rule: null },
+        sentence: 'No tool is registered.',
+      })),
     log: context.log,
     definitions: context.definitions,
 
-    // no tool is registered, so nothing reaches the queue
+    // every tool a test registers runs direct, so nothing reaches the queue
     queue: {
-      enqueue: () => Promise.reject(new Error('no tool is registered, so nothing is queued')),
+      enqueue: () => Promise.reject(new Error('every test tool runs direct, so nothing is queued')),
       waitForOutcome: () => Promise.resolve(null),
     },
   });

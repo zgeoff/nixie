@@ -59,6 +59,7 @@ export type {
   NotedEvent,
   RunCheck,
   SessionCleanupCause,
+  SessionDefinitions,
   TurnNote,
   TurnNoteRange,
 } from './types';

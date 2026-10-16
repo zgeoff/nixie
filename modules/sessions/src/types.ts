@@ -116,6 +116,15 @@ export interface ImageTally {
 // of one forgotten record, such as your message.
 export type SessionCleanupCause = { readonly itemID: string } | { readonly recordSequence: number };
 
+// The definitions a step runs under: the persona's text, which the system prompt renders, and the
+// persona and policy hashes. A new session records both hashes at its opening, and a session
+// resumes only under the persona hash it opened with.
+export interface SessionDefinitions {
+  readonly persona: string;
+  readonly personaHash: string;
+  readonly policyHash: string;
+}
+
 // The conversation's runner as one step sees it: its sandbox, its endpoint and its profile.
 export interface ConversationRun {
   readonly context: TasksContext;
@@ -130,8 +139,8 @@ export interface ConversationRun {
   readonly model: ToolRunModel;
   readonly command: GuestCommand;
 
-  // the persona in force, read at each turn so a new seed reaches the next turn
-  readonly getSystemPrompt: () => string;
+  // the definitions in force, read as each step begins so a new seed reaches the next step
+  readonly getDefinitions: () => SessionDefinitions;
 
   // the note of what happened outside the conversation since its last turn, such as memory changes
   // and events, which goes before the turn's first message, and the sequence it covers; given a
@@ -154,8 +163,8 @@ export interface ConversationRun {
 }
 
 // Where the session stands when a step begins: fresh, summarized after its last opening, resumable
-// or due for compaction at its boundary, invalidated by a forget, or lost because its boundary
-// opened before sessions kept their opening.
+// or due for compaction at its boundary, invalidated by a forget or a persona change, or lost
+// because its boundary opened before sessions kept their opening.
 export type SessionState =
   | 'fresh'
   | 'summarized'
@@ -176,21 +185,30 @@ export interface LiveSessionPosition {
   readonly boundary: SessionPoint;
 }
 
+// what invalidated a session: a forget, or a persona other than the one the session opened with
+type InvalidationCause = 'forget' | 'persona';
+
 // Where the session stands when a step begins: its state, and the boundary the last step committed.
-// Only a live session is sure to hold a boundary.
+// Only a live session is sure to hold a boundary, and an invalidated one names its cause.
 export type SessionPosition =
   | LiveSessionPosition
   | {
-      readonly state: Exclude<SessionState, LiveSessionState>;
+      readonly state: 'invalidated';
+      readonly boundary: SessionPoint | null;
+      readonly cause: InvalidationCause;
+    }
+  | {
+      readonly state: Exclude<SessionState, LiveSessionState | 'invalidated'>;
       readonly boundary: SessionPoint | null;
     };
 
-// One step of the conversation as its parts see it: the run, the step's input, the session marks it
-// read and the session position they give, and the signal that stops it when the lease is lost or a
-// forget invalidates the session.
+// One step of the conversation as its parts see it: the run, the step's input, the definitions it
+// read, the session marks it read and the session position they give, and the signal that stops it
+// when the lease is lost or a forget invalidates the session.
 export interface SessionStep {
   readonly run: ConversationRun;
   readonly input: StepInput;
+  readonly definitions: SessionDefinitions;
   readonly signal: AbortSignal;
   readonly marks: SessionMarks;
   readonly position: SessionPosition;
@@ -221,7 +239,7 @@ export type SessionStart =
   | { readonly kind: 'compaction' }
   | {
       readonly kind: 'rebuild';
-      readonly reason: 'lost' | 'forget' | 'images';
+      readonly reason: 'lost' | InvalidationCause | 'images';
       readonly lostSessionID: string | null;
     };
 

@@ -11,6 +11,7 @@ export async function readSessionTurn(
 ): Promise<SessionTurn> {
   const context = await readTurnContext(step.run, {
     taskID: step.input.taskID,
+    persona: step.definitions.persona,
     batch: step.input.inbox.slice(0, inboxBatchLimit),
     previousCore: step.marks.previousCore,
     isNewSession,
@@ -19,6 +20,7 @@ export async function readSessionTurn(
   return {
     run: step.run,
     input: step.input,
+    definitions: step.definitions,
     signal: step.signal,
     invalidatedThrough: step.marks.invalidatedThrough,
     images: isNewSession ? { bytes: 0, count: 0 } : step.marks.images,

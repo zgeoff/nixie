@@ -18,9 +18,18 @@ interface RunnerConfig {
 
   // a recorder for the server's log, for a test that reads its warnings
   readonly log?: ConversationRunnerOptions['log'];
+
+  // the definitions in force, for a test that changes them between turns
+  readonly getDefinitions?: ConversationRunnerOptions['getDefinitions'];
 }
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
+
+const testDefinitions = {
+  persona: 'You are nixie.',
+  personaHash: 'sha256:persona-test',
+  policyHash: 'sha256:policy-test',
+};
 
 // the stub sandboxes and tool endpoint over a fresh log; sendMessage writes your message, then runs
 // the step that takes it
@@ -58,7 +67,7 @@ async function setupTest() {
         image: 'conversation',
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
         command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
-        getSystemPrompt: () => 'You are nixie.',
+        getDefinitions: config.getDefinitions ?? (() => testDefinitions),
         ...config.memory,
         memory: () => ({
           readPinnedCore: () => Promise.resolve([]),
@@ -793,6 +802,126 @@ test('it resumes the session for a photo while the images it holds leave room', 
     '5e2a9c71-4b0d-4f6e-8a3b-2d7c1e9f0a11',
   );
 }, 60_000);
+
+test('it records the persona and policy hashes in force on the opening of a session', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    getDefinitions: () => ({
+      persona: 'You are Wren, a calm helper.',
+      personaHash: 'sha256:persona-wren',
+      policyHash: 'sha256:policy-read-only',
+    }),
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  const opened = await ctx.readKinds('model.session_opened');
+
+  expect(opened).toMatchObject([
+    {
+      payload: {
+        kind: 'first',
+        personaHash: 'sha256:persona-wren',
+        policyHash: 'sha256:policy-read-only',
+      },
+    },
+  ]);
+});
+
+test('it opens a new session under the new persona on the turn after the persona changes, and records why', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const definitions = {
+    current: {
+      persona: 'You are Wren, a calm helper.',
+      personaHash: 'sha256:persona-wren',
+      policyHash: 'sha256:policy-read-only',
+    },
+  };
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    getDefinitions: () => definitions.current,
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  definitions.current = {
+    persona: 'You are Wren, a cheerful helper.',
+    personaHash: 'sha256:persona-wren-cheerful',
+    policyHash: 'sha256:policy-read-only',
+  };
+
+  await ctx.sendMessage(runner, 'Still there?');
+
+  expect(ctx.sandboxes.turns).toMatchObject([
+    { resume: null, systemPrompt: expect.toInclude('You are Wren, a calm helper.') },
+    { resume: null, systemPrompt: expect.toInclude('You are Wren, a cheerful helper.') },
+  ]);
+
+  const opened = await ctx.readKinds('model.session_opened');
+
+  expect(opened).toMatchObject([
+    { payload: { kind: 'first', personaHash: 'sha256:persona-wren' } },
+    {
+      payload: {
+        kind: 'rebuild',
+        reason: 'persona',
+        lostSessionID: expect.any(String),
+        personaHash: 'sha256:persona-wren-cheerful',
+        policyHash: 'sha256:policy-read-only',
+      },
+    },
+  ]);
+});
+
+test('it resumes the same session on the turn after a change to the policy alone', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const definitions = {
+    current: {
+      persona: 'You are Wren, a calm helper.',
+      personaHash: 'sha256:persona-wren',
+      policyHash: 'sha256:policy-read-only',
+    },
+  };
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    getDefinitions: () => definitions.current,
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  definitions.current = { ...definitions.current, policyHash: 'sha256:policy-allow-send' };
+
+  await ctx.sendMessage(runner, 'Still there?');
+
+  const opened = await ctx.readKinds('model.session_opened');
+
+  expect(ctx.sandboxes.turns).toMatchObject([
+    { resume: null },
+    { resume: { sessionID: expect.any(String) } },
+  ]);
+
+  expect(opened).toMatchObject([
+    { payload: { kind: 'first', policyHash: 'sha256:policy-read-only' } },
+  ]);
+});
 
 test('it opens the first turn on a fresh session with the pinned memory and the status, and records the opening', async () => {
   const ctx = await setupTest();

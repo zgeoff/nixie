@@ -5,12 +5,20 @@ import type { OpeningRecord, SessionOpening } from './read-session-opening';
 import { readSessionOpening } from './read-session-opening';
 import type { TurnContext } from './read-turn-context';
 import { runLiveTurn } from './run-live-turn';
-import type { ConversationRun, ImageTally, MessageTimeOptions, SessionStart } from './types';
+import type {
+  ConversationRun,
+  ImageTally,
+  MessageTimeOptions,
+  SessionDefinitions,
+  SessionStart,
+} from './types';
 
-// One step's turn: the run, the step, what memory adds, and the signal that stops it.
+// One step's turn: the run, the step and the definitions it read, what memory adds, and the signal
+// that stops it.
 export interface SessionTurn {
   readonly run: ConversationRun;
   readonly input: StepInput;
+  readonly definitions: SessionDefinitions;
   readonly context: TurnContext;
 
   // the newest session invalidation the step saw before the turn ran

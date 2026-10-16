@@ -26,6 +26,7 @@ export async function findDefinitionsInForce(
       'definition_seeds.record_sequence',
       'personas.persona_version',
       'personas.instructions',
+      'definition_snapshots.policy_hash',
     ])
     .orderBy('definition_seeds.seed', 'desc')
     .limit(1)
@@ -45,6 +46,7 @@ export async function findDefinitionsInForce(
     snapshotHash: row.snapshot_hash,
     personaVersion: row.persona_version,
     persona: row.instructions,
+    policyHash: row.policy_hash,
     recordSequence: row.record_sequence,
   };
 }

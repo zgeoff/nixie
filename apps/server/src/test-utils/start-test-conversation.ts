@@ -52,7 +52,11 @@ export async function startTestConversation(
     tools: server.endpoint,
     toolNames: [],
     image: 'nixie-conversation-0123456789ab',
-    getSystemPrompt: () => 'You are nixie.',
+    getDefinitions: () => ({
+      persona: 'You are nixie.',
+      personaHash: 'sha256:persona-test',
+      policyHash: 'sha256:policy-test',
+    }),
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
 
     // a memory with no pinned items that recalls nothing, so a turn places no memory
