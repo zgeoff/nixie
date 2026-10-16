@@ -147,3 +147,38 @@ test('it tells the user an export that did not finish, and tries again as the sa
   expect(ctx.picker.readFiles().map((file) => file.ending)).toStrictEqual(['aborted', 'closed']);
   expect(store.memoryActions.all()).toHaveLength(1);
 });
+
+test('it aborts the file and tells the user when the stream ends before the export completes', async () => {
+  const ctx = await setupTest();
+
+  // the header's chunk, then a clean end of the stream with no completion event
+  const header =
+    '{"header":{"schemaVersion":1,"exportedAt":"2026-10-14T08:00:00.000Z","snapshotHash":"sha256:mock"},"items":[';
+
+  server.use(
+    http.post(
+      '*/rpc/memory/export',
+      () =>
+        new HttpResponse(
+          `event: message\ndata: ${JSON.stringify({ json: { chunk: header } })}\n\n`,
+          {
+            headers: { 'content-type': 'text/event-stream' },
+          },
+        ),
+      { once: true },
+    ),
+  );
+
+  const rendered = render(<MemoryView />);
+  const section = rendered.getByRole('region', { name: 'Export' });
+
+  await ctx.user.click(within(section).getByRole('button', { name: 'Export memory' }));
+
+  await within(section).findByRole('alert');
+
+  expect(ctx.picker.readFiles()).toStrictEqual([
+    { name: expect.toBeString(), text: header, ending: 'aborted' },
+  ]);
+
+  expect(within(section).queryByText('Saved the export.')).toBeNull();
+});

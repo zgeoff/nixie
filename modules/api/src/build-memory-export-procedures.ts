@@ -47,9 +47,12 @@ export function buildMemoryExportProcedures(context: APIContext, readMemory: Rea
   };
 }
 
-// Each piece of the file's text as one event, in the order the file holds them.
+// Each piece of the file's text as one event, in the order the file holds them, then the event
+// that marks the file complete, so a client tells a whole file from a stream that ended early.
 async function* toChunkEvents(chunks: Readonly<AsyncIterable<string>>) {
   for await (const chunk of chunks) {
     yield { chunk };
   }
+
+  yield { isComplete: true as const };
 }

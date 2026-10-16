@@ -107,12 +107,28 @@ function findSaveFilePicker(): ShowSaveFilePicker | null {
   return typeof picker === 'function' ? (picker.bind(globalThis) as ShowSaveFilePicker) : null;
 }
 
-async function readExportBlob(client: NixieClient, actionID: string): Promise<Blob> {
-  const chunks: string[] = [];
+// The file's chunks in order. A stream can end cleanly before the file does, so the export counts
+// only once its completion event arrives, and a stream that ends without it throws.
+async function* readExportChunks(client: NixieClient, actionID: string): AsyncGenerator<string> {
+  const events = await client.memory.export({ clientActionID: actionID });
 
-  for await (const event of await client.memory.export({ clientActionID: actionID })) {
-    chunks.push(event.chunk);
+  let isComplete = false;
+
+  for await (const event of events) {
+    if ('chunk' in event) {
+      yield event.chunk;
+    } else {
+      isComplete = true;
+    }
   }
+
+  if (!isComplete) {
+    throw new Error('the export stream ended before the export completed');
+  }
+}
+
+async function readExportBlob(client: NixieClient, actionID: string): Promise<Blob> {
+  const chunks = await Array.fromAsync(readExportChunks(client, actionID));
 
   return new Blob(chunks, { type: 'application/json' });
 }
@@ -142,7 +158,8 @@ async function writeDownload(
   }, 1000);
 }
 
-// each chunk goes to the file as it arrives, and a failed export leaves the file unwritten
+// each chunk goes to the file as it arrives, and a failed or incomplete export leaves the file
+// unwritten
 async function writePickedFile(
   handle: Readonly<FileSystemFileHandle>,
   client: NixieClient,
@@ -151,8 +168,8 @@ async function writePickedFile(
   const file = await handle.createWritable();
 
   try {
-    for await (const event of await client.memory.export({ clientActionID: actionID })) {
-      await file.write(event.chunk);
+    for await (const chunk of readExportChunks(client, actionID)) {
+      await file.write(chunk);
     }
   } catch (error) {
     await file.abort();

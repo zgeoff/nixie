@@ -69,7 +69,7 @@ test('#memory.export streams one export file of every item, which the schema acc
   const events = await Array.fromAsync(stream);
 
   const parsed = memoryExportSchema.safeParse(
-    JSON.parse(events.map((event) => event.chunk).join('')),
+    JSON.parse(events.flatMap((event) => ('chunk' in event ? [event.chunk] : [])).join('')),
   );
 
   expect(parsed.data).toMatchObject({
@@ -89,6 +89,20 @@ test('#memory.export streams one export file of every item, which the schema acc
       { itemID: forgotten.itemID, forgottenAt: expect.toBeDateString() },
     ],
   });
+});
+
+test('#memory.export ends the stream with the event that marks the file complete', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const stream = await buildTestClient(ctx.url, laptop.token).memory.export({
+    clientActionID: '9d4e2b71-3c8a-4f5e-b6d0-1a7c9e3f5b24',
+  });
+
+  const events = await Array.fromAsync(stream);
+
+  expect(events.at(-1)).toStrictEqual({ isComplete: true });
+  expect(events.slice(0, -1)).toSatisfyAll((event: object) => 'chunk' in event);
 });
 
 test('#memory.export records the export as a checked action with its time, schema version and snapshot hash', async () => {
@@ -140,7 +154,9 @@ test('#memory.export streams the file again for a retry with the same client act
 
   const retried = await Array.fromAsync(retry);
 
-  expect(JSON.parse(retried.map((event) => event.chunk).join(''))).toStrictEqual({
+  expect(
+    JSON.parse(retried.flatMap((event) => ('chunk' in event ? [event.chunk] : [])).join('')),
+  ).toStrictEqual({
     header: {
       schemaVersion: 1,
       exportedAt: '1970-01-01T00:16:40.000Z',

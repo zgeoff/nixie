@@ -29,8 +29,10 @@ not part of the file: the file holds memory, and the message stays in the event 
 
 The memory store reads the file a page of items at a time and hands it on as text, the header first,
 so neither the store nor the API ever holds the whole file. The API streams that text to the device
-as server-sent events, one chunk per item. The items are read page by page, so an item created
-during an export lands in the file only when its page has not been read yet.
+as server-sent events, one chunk per item, then one event that marks the file complete. A stream can
+end cleanly before the file does, so the device keeps a file only after that event. The items are
+read page by page, so an item created during an export lands in the file only when its page has not
+been read yet.
 
 ## The checked action
 
@@ -45,9 +47,10 @@ with no file. An ID that another action used is refused.
 
 The web client asks where the file goes before the export starts, while the click still counts as
 the user's, through the browser's save picker, and writes each chunk to that file as it arrives. A
-stream that fails aborts the write, so a failed export leaves no partial file, and the next try
-keeps the same client action ID. A browser with no save picker gathers the file and offers it as a
-download, which the browser saves where its settings say.
+stream that fails, or ends before the completion event, aborts the write and shows an error, so a
+failed export leaves no partial file, and the next try keeps the same client action ID. A browser
+with no save picker gathers the file and offers it as a download, which the browser saves where its
+settings say.
 
 ## The model's export tool
 

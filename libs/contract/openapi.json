@@ -6672,14 +6672,29 @@
                           "const": "message"
                         },
                         "data": {
-                          "type": "object",
-                          "properties": {
-                            "chunk": {
-                              "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "chunk": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "chunk"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "isComplete": {
+                                  "const": true
+                                }
+                              },
+                              "required": [
+                                "isComplete"
+                              ]
                             }
-                          },
-                          "required": [
-                            "chunk"
                           ]
                         },
                         "id": {
