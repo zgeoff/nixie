@@ -114,6 +114,26 @@ test('it rejects a pin that takes the pinned core past 2,000 tokens, and pins no
   expect(row.is_pinned).toBe(0);
 });
 
+test("it runs the caller's own write before it checks the pinned core's room", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a long reading list for winter. '.repeat(240),
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const pin = ctx.memory.store.pin({
+    itemID: item.itemID,
+    isPinned: true,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    writeInTransaction: () => Promise.reject(new Error('the action already ran')),
+  });
+
+  await pin.catch(() => {});
+
+  expect(pin).rejects.toThrow('the action already ran');
+});
+
 test('it rejects a new pinned item that takes the pinned core past 2,000 tokens', async () => {
   const ctx = await setupTest();
 
