@@ -36,7 +36,9 @@ The web server's browser suite drives a headless Chrome or Chromium through `Bun
 `BUN_CHROME_PATH`. GitHub's Ubuntu runners ship Chrome.
 
 Plain `bun test` runs the crash suites in `e2e/crash/`, which spawn the test build of nixie from
-`e2e/nixie/main.ts` as a child process and drive it through the crash harness.
+`e2e/nixie/main.ts` as a child process and drive it through the crash harness. The poisoned page
+journey in `e2e/` runs in process on the server's test harnesses instead, because the fetcher cannot
+reach a local page: it replays a recorded fetcher reply through a turn, then a writer batch.
 
 ## Preloads
 

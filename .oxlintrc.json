@@ -114,8 +114,9 @@
     },
     {
       // a crash test is one journey whose phases depend on the ones before it: start, hold at a
-      // fault point, kill, restart, then the oracle
-      "files": ["e2e/crash/*.test.ts"],
+      // fault point, kill, restart, then the oracle; the poisoned page journey runs a turn, then
+      // the writer batch over the records the turn left
+      "files": ["e2e/crash/*.test.ts", "e2e/poisoned-page.test.ts"],
       "rules": {
         "max-statements": "off",
         "max-lines-per-function": "off"
