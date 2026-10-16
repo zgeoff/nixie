@@ -91,13 +91,13 @@ test('#memory.listItems lists a forgotten item as a dated gap with no text', asy
     state: 'forgotten',
   });
 
-  expect(page.items).toStrictEqual([
-    expect.objectContaining({
+  expect(page.items).toMatchObject([
+    {
       itemID: item.itemID,
       state: 'forgotten',
       status: 'shredded',
       forgottenAt: expect.toBeValidDate(),
-    }),
+    },
   ]);
 
   expect(page.items[0]).not.toContainKey('text');

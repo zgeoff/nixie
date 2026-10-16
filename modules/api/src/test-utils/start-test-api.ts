@@ -48,9 +48,18 @@ export async function startTestAPI(): Promise<TestAPI> {
 
   const context = await buildTestContext(writer);
 
-  const served = startTestApp(context, stack);
+  const served = startTestApp(context);
 
-  return { dataDir, writer, clock: context.clock, context, ...served };
+  stack.defer(served.stop);
+
+  return {
+    dataDir,
+    writer,
+    clock: context.clock,
+    context,
+    url: served.url,
+    setMemory: served.setMemory,
+  };
 }
 
 async function buildTestContext(
@@ -88,16 +97,14 @@ async function buildTestContext(
 // listens on a loopback port and serves the memory store once the test sets one
 function startTestApp(
   context: APIContext,
-  stack: AsyncDisposableStack,
-): Pick<TestAPI, 'url' | 'setMemory'> {
+): Pick<TestAPI, 'url' | 'setMemory'> & { readonly stop: () => Promise<void> } {
   const memory: { store: ViewMemoryStore | null } = { store: null };
   const app = buildAPIApp(context, () => memory.store).listen({ hostname: '127.0.0.1', port: 0 });
 
-  stack.defer(async () => {
-    await app.stop(true);
-  });
-
   return {
+    stop: async () => {
+      await app.stop(true);
+    },
     url: `http://127.0.0.1:${app.server?.port}`,
     setMemory: (store) => {
       memory.store = store;
