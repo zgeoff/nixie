@@ -44,7 +44,8 @@ and never overwrites a name a running sandbox uses.
 ## The start sequence
 
 The server refuses a bad configuration, secrets file or sandbox manifest before it opens anything.
-It then starts the parts in a fixed order, and the health endpoint listens before the slow steps.
+It then starts its parts one at a time, in an order derived from what each part declares it needs,
+and the health endpoint listens before the slow steps.
 
 ```mermaid
 flowchart LR
@@ -87,6 +88,14 @@ container runtime sees why in the readiness report instead of a restart loop. An
 the sequence logs the error and ends the process, so the container runtime restarts it instead of
 leaving it live with no runners. A stop during the sequence ends it at the next step, and waits for
 the step in flight before any part closes.
+
+Each part's declaration names the parts it needs, which start before it, and the parts it uses,
+which it reads only later, such as the tool endpoint that the sandbox adapter resolves when a guest
+connects. Parts that need nothing of each other start in the order the server declares them. A
+declaration that names a part no declaration has, or a cycle of needs, stops the start before any
+part starts, and the error names the parts. A part that reads a used part before it starts finds it
+absent: the API leaves a forget pending until the conversation's session cleanup is ready, and a
+memory host command answers that memory has not started.
 
 A start whose database already holds a seed never waits on the definitions. When its seed is
 refused, the runners start on the definitions in force, the definitions part stays unready, and the

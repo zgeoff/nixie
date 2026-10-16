@@ -1,82 +1,67 @@
 import { toErrorFields } from '@heynixie/ops';
 import { buildCleanup } from './build-cleanup';
-import { buildSeedInputs } from './build-seed-inputs';
-import type { ServerResetControl } from './build-server-reset';
-import { buildServerReset } from './build-server-reset';
-import { runStartSequence } from './run-start-sequence';
-import { startHostCommands } from './start-host-commands';
+import { serverPartDeclarations } from './server-part-declarations';
+import type { ServerPartValues } from './server-part-values';
+import { startPartGraph } from './start-part-graph';
 import type { Server, ServerPartsOptions } from './start-server';
-import type { Cleanup, ServerBase, ServerParts } from './types';
+import type { AnyPartDeclaration, Cleanup, PartGraph } from './types';
 
-// Opens the control socket, then runs the rest of the start in the background. The start registers
-// its parts on a cleanup of its own, so a reset stops them and leaves the writer and the sockets.
-export async function startServerWork(
-  options: ServerPartsOptions,
-  base: ServerBase,
-): Promise<Server> {
+// Starts the server's parts in the order their declarations derive, and returns once the control
+// socket opens. The parts behind it start in the background on a cleanup of their own, so a reset
+// stops them and leaves the writer and the sockets.
+export async function startServerWork(options: ServerPartsOptions): Promise<Server> {
   const failed = Promise.withResolvers<unknown>();
   const work = buildCleanup();
-  const start: { ready: Promise<void> } = { ready: Promise.resolve() };
 
-  const reset = buildServerReset({
-    context: base.apiContext,
-    adapter: base.tools.adapter,
-    work,
-    closeAPI: base.closeAPI,
-    readStart: () => start.ready,
-    log: options.log,
-    onFailure: failed.resolve,
+  const inputs: AnyPartDeclaration<ServerPartValues> = {
+    name: 'inputs',
+    needs: [],
+    start: () => Promise.resolve({ options, work, onFailure: failed.resolve }),
+  };
+
+  const graph = startPartGraph<ServerPartValues>([inputs, ...serverPartDeclarations], {
+    signal: work.signal,
   });
 
-  await startHostCommands(
-    {
-      dataDir: options.config.server.dataDir,
-      apiContext: base.apiContext,
-      memory: base.tools.memory,
-      runReset: reset.run,
-    },
-    options.cleanup,
-  );
+  const reset = await graph.waitFor('reset');
 
+  await graph.waitFor('host_commands');
   await options.cleanup.defer(() => work.stop());
 
-  start.ready = startInBackground({
-    ...options,
-    ...base,
-    ...buildSeedInputs(options.config, base.tools),
-    context: base.apiContext,
-    cleanup: work,
-    modelSecrets: options.secrets.models,
-    onFailure: failed.resolve,
-  });
+  void waitForStartFailure(graph, { work, options, onFailure: failed.resolve });
 
   return {
-    port: base.port,
-    ready: start.ready,
+    port: await graph.waitFor('http'),
+    ready: graph.done,
     failed: failed.promise,
     reset: reset.done,
     log: options.log,
-    stop: makeStop({ cleanup: options.cleanup, work, reset }, options, start.ready),
+    stop: makeStop(
+      { cleanup: options.cleanup, work, waitForReset: reset.waitForSettled },
+      options,
+      graph,
+    ),
   };
 }
 
-// A step that fails outside the retries ends the server, so the container runtime restarts it
-// instead of leaving it live with no runners. A stop that cuts the start short is no failure.
-function startInBackground(parts: ServerParts): Promise<void> {
-  const ready = runStartSequence(parts);
-
-  void waitForStartFailure(ready, parts);
-
-  return ready;
+interface StartFailure {
+  readonly work: Cleanup;
+  readonly options: ServerPartsOptions;
+  readonly onFailure: (error: unknown) => void;
 }
 
-async function waitForStartFailure(ready: Promise<void>, parts: ServerParts): Promise<void> {
+// A part that fails outside the retries ends the server, so the container runtime restarts it
+// instead of leaving it live with no runners. A stop that cuts the start short is no failure.
+async function waitForStartFailure(
+  graph: PartGraph<ServerPartValues>,
+  failure: StartFailure,
+): Promise<void> {
   try {
-    await ready;
+    await graph.done;
   } catch (error) {
-    if (!parts.cleanup.signal.aborted) {
-      parts.log('start.failed', toErrorFields(error));
-      parts.onFailure(error);
+    if (!failure.work.signal.aborted) {
+      failure.options.log('start.failed', toErrorFields(error));
+      failure.onFailure(error);
     }
   }
 }
@@ -84,20 +69,24 @@ async function waitForStartFailure(ready: Promise<void>, parts: ServerParts): Pr
 interface Stops {
   readonly cleanup: Cleanup;
   readonly work: Cleanup;
-  readonly reset: ServerResetControl;
+  readonly waitForReset: () => Promise<void>;
 }
 
-// The stop ends the start sequence and waits for its step in flight, and for a reset in flight, so
-// no part closes under either.
-function makeStop(stops: Stops, options: ServerPartsOptions, ready: Promise<void>): Server['stop'] {
+// The stop ends the start at its next part and waits for its part in flight, and for a reset in
+// flight, so no part closes under either.
+function makeStop(
+  stops: Stops,
+  options: ServerPartsOptions,
+  graph: PartGraph<ServerPartValues>,
+): Server['stop'] {
   return async () => {
     options.log('stopping');
     stops.cleanup.abort();
     stops.work.abort();
 
-    await waitForSettled(ready);
+    await waitForSettled(graph.done);
 
-    await stops.reset.waitForSettled();
+    await stops.waitForReset();
     await stops.cleanup.stop();
 
     options.log('stopped');

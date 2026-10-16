@@ -7,7 +7,7 @@ import type { APIGate } from './build-api-gate';
 import { buildReadinessChecks } from './build-readiness-checks';
 import type { StartState } from './build-start-state';
 import type { DeploymentConfig } from './deployment-config-schema';
-import type { Tools } from './start-tools';
+import type { Tools } from './tools';
 import type { Cleanup } from './types';
 
 export interface HTTPServerOptions {
