@@ -55,6 +55,49 @@ test('it applies a staged memory with the message it cites as its evidence, outs
   });
 });
 
+test('it proposes a staged edit of a self-note with the self-note reason, though the checker would assert it', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  const note = await memory.store.remember({
+    text: 'I like short answers in the morning',
+    itemKind: 'self',
+    provenance: {
+      origin: 'conversation',
+      source: 'untrusted',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'You like short answers in the evening too',
+    spans: [{ start: 0, end: 41, source: 'typed' }],
+  });
+
+  const verdict = await memory.store.writes.batch.check(
+    {
+      op: 'remember',
+      text: 'I like short answers in the morning and the evening',
+      quote: 'You like short answers in the evening too',
+      sourceSequence: sequence,
+      target: note,
+    },
+    {
+      sequence,
+      text: 'You like short answers in the evening too',
+      spans: [{ start: 0, end: 41, source: 'typed' }],
+    },
+    { bounds: { start: 0, end: sequence }, model: 'claude-writer-1' },
+  );
+
+  expect(verdict).toMatchObject({ outcome: 'propose', reason: 'self_note' });
+  expect(check).not.toHaveBeenCalled();
+});
+
 test('it gives the checker the message a staged memory cites, with its quote marked', async () => {
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
 

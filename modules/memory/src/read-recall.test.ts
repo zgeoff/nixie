@@ -55,6 +55,30 @@ test('it returns up to the limit of facts and up to the self-note limit of self-
   ]);
 });
 
+test('it returns a matching self-note when more facts match than the largest recall holds', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ...Array.from({ length: 101 }, (_, index) =>
+      ctx.memory.store.remember({
+        text: `The garden bed ${index} needs water`,
+        provenance: buildMockProvenance(),
+      }),
+    ),
+    ctx.memory.store.remember({
+      text: 'I enjoy hearing about the garden',
+      itemKind: 'self',
+      provenance: buildMockProvenance(),
+    }),
+  ]);
+
+  const result = await ctx.memory.store.recall({ query: 'garden', limit: 100, selfNoteLimit: 1 });
+
+  expect(result.items.filter((item) => item.kind === 'self')).toMatchObject([
+    { text: 'I enjoy hearing about the garden' },
+  ]);
+});
+
 test('it returns up to the limit across both kinds when the recall sets no self-note limit', async () => {
   const ctx = await setupTest();
 

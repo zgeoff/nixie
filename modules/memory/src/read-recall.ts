@@ -1,6 +1,7 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { memoryRecalledCodec } from '@heynixie/sessions';
 import { waitAtFaultPoint } from '@heynixie/tasks';
+import type { RankQuery, RankedMatches } from './find-ranked-matches';
 import { findRankedMatches } from './find-ranked-matches';
 import type { MatchScores } from './merge-rankings';
 import { parseItemCursor } from './parse-item-cursor';
@@ -129,65 +130,82 @@ async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): P
     readCurrentItemIDs(parts, request.excludedVersions ?? []),
   ]);
 
-  // a split by kind ranks every candidate the recall may return, so facts never crowd out the
-  // self-notes before the cut
-  const ranked = await findRankedMatches(parts, {
-    query: request.query,
-    limit: request.selfNoteLimit === undefined ? query.limit : MAX_LIMIT,
-    excludedIDs: [...pinned, ...held],
-    ...(request.excludedWords === undefined ? {} : { excludedWords: request.excludedWords }),
-    ...(request.minScore === undefined ? {} : { minScore: request.minScore }),
-    ...(request.minSimilarity === undefined ? {} : { minSimilarity: request.minSimilarity }),
-  });
+  const excludedIDs = [...pinned, ...held];
+  const selfLimit = request.selfNoteLimit;
 
-  const itemIDs = ranked.matches.map((match) => match.itemID);
+  const ranked =
+    selfLimit === undefined
+      ? await findRankedMatches(parts, buildRankQuery(request, query.limit, excludedIDs))
+      : await findKindRankedMatches(parts, {
+          request,
+          limits: { fact: query.limit, self: Math.min(selfLimit, MAX_LIMIT) },
+          excludedIDs,
+        });
 
   return {
-    itemIDs:
-      request.selfNoteLimit === undefined
-        ? itemIDs
-        : await pickKindLimitedIDs(parts, itemIDs, {
-            fact: query.limit,
-            self: Math.min(request.selfNoteLimit, MAX_LIMIT),
-          }),
+    itemIDs: ranked.matches.map((match) => match.itemID),
     next: null,
     scores: new Map(ranked.matches.map((match) => [match.itemID, match])),
     searchMode: ranked.searchMode,
   };
 }
 
-// the best ranked IDs of each kind, up to that kind's limit, in rank order
-async function pickKindLimitedIDs(
-  parts: StoreParts,
-  itemIDs: readonly string[],
-  limits: Readonly<Record<MemoryKind, number>>,
-): Promise<readonly string[]> {
-  if (itemIDs.length === 0) {
-    return [];
-  }
+function buildRankQuery(
+  request: QueryCandidates['request'],
+  limit: number,
+  excludedIDs: readonly string[],
+): RankQuery {
+  return {
+    query: request.query,
+    limit,
+    excludedIDs,
+    ...(request.excludedWords === undefined ? {} : { excludedWords: request.excludedWords }),
+    ...(request.minScore === undefined ? {} : { minScore: request.minScore }),
+    ...(request.minSimilarity === undefined ? {} : { minSimilarity: request.minSimilarity }),
+  };
+}
 
+interface KindRanking {
+  readonly request: QueryCandidates['request'];
+  readonly limits: Readonly<Record<MemoryKind, number>>;
+  readonly excludedIDs: readonly string[];
+}
+
+// Ranks facts and self-notes apart, each up to its own limit, so a run of matches of one kind
+// never pushes the other kind past the cut. Each ranking leaves out the other kind's items.
+async function findKindRankedMatches(
+  parts: StoreParts,
+  ranking: KindRanking,
+): Promise<RankedMatches> {
   const rows = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
     .select(['item_id', 'kind'])
-    .where('item_id', 'in', itemIDs)
+    .where('state', '=', 'active')
     .execute();
 
-  const kinds = new Map(rows.map((row) => [row.item_id, row.kind]));
+  const selfIDs = rows.filter((row) => row.kind === 'self').map((row) => row.item_id);
+  const factIDs = rows.filter((row) => row.kind === 'fact').map((row) => row.item_id);
 
-  const taken: Record<MemoryKind, number> = { fact: 0, self: 0 };
+  const factQuery = buildRankQuery(ranking.request, ranking.limits.fact, [
+    ...ranking.excludedIDs,
+    ...selfIDs,
+  ]);
 
-  return itemIDs.filter((itemID) => {
-    const kind = kinds.get(itemID);
+  const selfQuery = buildRankQuery(ranking.request, ranking.limits.self, [
+    ...ranking.excludedIDs,
+    ...factIDs,
+  ]);
 
-    if (kind === undefined || taken[kind] >= limits[kind]) {
-      return false;
-    }
+  const [facts, notes] = await Promise.all([
+    findRankedMatches(parts, factQuery),
+    selfQuery.limit === 0 ? null : findRankedMatches(parts, selfQuery),
+  ]);
 
-    taken[kind] += 1;
-
-    return true;
-  });
+  return {
+    matches: [...facts.matches, ...(notes?.matches ?? [])],
+    searchMode: facts.searchMode,
+  };
 }
 
 async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> {

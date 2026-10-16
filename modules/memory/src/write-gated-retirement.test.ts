@@ -142,7 +142,10 @@ test("it runs a task's retire of a self-note through the intent gate", async () 
     caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
   });
 
+  const pending = await memory.store.proposals.listPending();
+
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'ambiguous_target' });
+  expect(pending).toMatchObject([{ operation: 'retire', kind: 'self' }]);
 });
 
 test('it proposes a retirement of an item the thread never read', async () => {

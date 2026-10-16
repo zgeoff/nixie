@@ -2,7 +2,7 @@ import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import type { ProposalRecord } from './parse-proposal-record';
 import { parseProposalRecord } from './parse-proposal-record';
-import type { MemoryTables } from './types';
+import type { MemoryKind, MemoryTables } from './types';
 
 // One row per memory proposal, with its review reason and its status. A proposal waits as pending
 // until your approval consumes it, your rejection closes it, or it lapses. Its text stays sealed
@@ -83,9 +83,28 @@ async function writeProposalRow(
       created_at: record.recordedAt.getTime(),
       lapse_at: parsed.lapseAt,
       resolved_sequence: null,
-      kind: parsed.itemKind,
+      kind: await readProposalKind(db, parsed),
     })
     .execute();
+}
+
+// a proposal for a change to an item takes that item's kind, whoever proposed it, and only a new
+// item's proposal carries its own
+async function readProposalKind(
+  db: Kysely<MemoryTables>,
+  parsed: Extract<ProposalRecord, { readonly kind: 'memory.proposed' }>,
+): Promise<MemoryKind> {
+  if (parsed.isNewItem) {
+    return parsed.itemKind;
+  }
+
+  const item = await db
+    .selectFrom('memory_items')
+    .select('kind')
+    .where('item_id', '=', parsed.itemID)
+    .executeTakeFirst();
+
+  return item?.kind ?? parsed.itemKind;
 }
 
 const statusAfter = {
