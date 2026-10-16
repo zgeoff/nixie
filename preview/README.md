@@ -12,10 +12,11 @@ must not reach, such as an imp of its own.
 
 ## Run it
 
-1. Start the preview from this folder:
+1. Start the preview from this folder. On a PC, keep the origin on the loopback address, so the test
+   sandbox stays off your network:
 
    ```bash
-   docker compose up --build --wait
+   NIXIE_PREVIEW_BIND=127.0.0.1 docker compose up --build --wait
    ```
 
    Expect every service healthy and `enrol` exited 0.
@@ -38,7 +39,9 @@ must not reach, such as an imp of its own.
    docker compose down --volumes
    ```
 
-`NIXIE_PREVIEW_BIND` and `NIXIE_PREVIEW_PORT` set the address and port the origin listens on.
+`NIXIE_PREVIEW_BIND` and `NIXIE_PREVIEW_PORT` set the address and port the origin listens on. The
+address defaults to `0.0.0.0`, every interface, so a preview environment's proxy reaches the origin
+from outside its host.
 
 ## Model calls
 
