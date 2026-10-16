@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.28.0](https://github.com/zgeoff/nixie/compare/v0.27.0...v0.28.0) (2026-10-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **geo-1086:** carry the release rules in the published config schema ([#290](https://github.com/zgeoff/nixie/issues/290))
+
+### Features
+
+* **geo-1009:** check each module's table types against its migrations ([#279](https://github.com/zgeoff/nixie/issues/279)) ([e57fe4c](https://github.com/zgeoff/nixie/commit/e57fe4cd27ec5d13243318ad77988d918cc90b00))
+* **geo-1039:** decide each session step from one transition table ([#293](https://github.com/zgeoff/nixie/issues/293)) ([9a932de](https://github.com/zgeoff/nixie/commit/9a932de4a4bad6fb118c43fa379b4f0915491bb2))
+* **geo-1039:** make nixie's compactor the only compactor ([#291](https://github.com/zgeoff/nixie/issues/291)) ([58c9f55](https://github.com/zgeoff/nixie/commit/58c9f55655cfba3887f2fb3267d13e2951863b31))
+* **geo-1039:** serve the control socket from a typed host contract ([#292](https://github.com/zgeoff/nixie/issues/292)) ([f95f7df](https://github.com/zgeoff/nixie/commit/f95f7df0b37b5a5953fcd8a0d77e8e08b61f4f5f))
+* **geo-1040:** run one action through the queue on every start ([#274](https://github.com/zgeoff/nixie/issues/274)) ([c8001fe](https://github.com/zgeoff/nixie/commit/c8001fecfd7e01dd45097590af3e148f71b93d10))
+* **geo-1041:** publish release.json and a config schema per release ([#278](https://github.com/zgeoff/nixie/issues/278)) ([39783fb](https://github.com/zgeoff/nixie/commit/39783fb0ee28e5b13f46adc9d3ebb2c2181e2a46))
+* **geo-1099:** pin each session to the persona it opened under ([#294](https://github.com/zgeoff/nixie/issues/294)) ([c47e26b](https://github.com/zgeoff/nixie/commit/c47e26b8d619e215a63088f4cdc06b22be97538f))
+* **geo-923:** add a preview recipe that runs nixie on the test sandbox ([#276](https://github.com/zgeoff/nixie/issues/276)) ([4f3016b](https://github.com/zgeoff/nixie/commit/4f3016b3cc6410039134a7fc0bf444689d9e5faa))
+* **geo-923:** select the test sandbox in the configuration ([#273](https://github.com/zgeoff/nixie/issues/273)) ([d0e597f](https://github.com/zgeoff/nixie/commit/d0e597f6142b5d69444ba2ec99c312b8d5f58273))
+
+
+### Bug Fixes
+
+* **geo-1079:** give each start's queue check an action of its own ([#289](https://github.com/zgeoff/nixie/issues/289)) ([c4b7874](https://github.com/zgeoff/nixie/commit/c4b78746f8973d71fd3c2c85c0e9bb5c6bbb8829))
+* **geo-1086:** carry the release rules in the published config schema ([#290](https://github.com/zgeoff/nixie/issues/290)) ([c1330c0](https://github.com/zgeoff/nixie/commit/c1330c02a5dc878347380fb168cff3c8f071a976))
+* **geo-1094:** count an is_error result as a failed bench turn ([#296](https://github.com/zgeoff/nixie/issues/296)) ([fd42d3e](https://github.com/zgeoff/nixie/commit/fd42d3ee55798a1ebf808ef18a1af74c06172669))
+* **geo-1096:** bind the preview origin on every interface by default ([#297](https://github.com/zgeoff/nixie/issues/297)) ([d9bfaca](https://github.com/zgeoff/nixie/commit/d9bfacadb96f35b1450cf99938fa0388ca35e007))
+* **sandbox-imp:** accept impd 2, which kept the 1.6 wire api ([#298](https://github.com/zgeoff/nixie/issues/298)) ([1cf26cd](https://github.com/zgeoff/nixie/commit/1cf26cd528f8bb784822e4c4f41a1894f42563b1))
+
 ## [0.27.0](https://github.com/zgeoff/nixie/compare/v0.26.0...v0.27.0) (2026-10-15)
 
 
