@@ -35,7 +35,8 @@ export async function writeOfferAnswer(
 }
 
 // The quote is your yes then the text it confirmed, and the checks name the offer, so the text never
-// reads as words you typed. The offer record's key goes once the version commits.
+// reads as words you typed. The offer record's key goes once the version commits, and store start
+// removes a key that a crash left behind.
 async function writeConfirmedOffer(
   parts: StoreParts,
   request: OfferAnswerRequest,

@@ -134,14 +134,17 @@ typing the yes. The model never passes the sentence at answer time: it comes fro
 so the version holds exactly what the offer line showed. The version's quote is the user's yes
 followed by the sentence it confirmed, and its checks name the offer record, so the sentence never
 reads as words the user typed. Its source is the user, and the check that runs inside the version's
-transaction saves one offer once. Once the version commits, nixie removes the offer record's key,
-and the offer tool's result record leaves the sentence out, so the sentence lives on only under its
-item's key and in the reply that presented it. A forget of the item therefore leaves no other
-readable copy in the log, and the reply is part of the user's conversation, which a forget of that
-reply removes. An offer that never saves keeps its sentence under the offer record's key until the
-user forgets the image's message: that forget's cleanup removes the key of every offer made for the
-message's images, so a declined or unanswered offer leaves no readable copy either. The cleanup
-covers both through the one forget, because an unanswered offer has no moment at which it closes.
+transaction saves one offer once. Once the version commits, nixie removes the offer record's key.
+The key lives in the key store, a separate database, so no transaction covers both, and a crash
+between the commit and the removal leaves the key behind. Store start therefore removes the key of
+every saved offer that the key store still holds. The offer tool's result record leaves the sentence
+out, so the sentence lives on only under its item's key and in the reply that presented it. A forget
+of the item therefore leaves no other readable copy in the log, and the reply is part of the user's
+conversation, which a forget of that reply removes. An offer that never saves keeps its sentence
+under the offer record's key until the user forgets the image's message: that forget's cleanup
+removes the key of every offer made for the message's images, so a declined or unanswered offer
+leaves no readable copy either. The cleanup covers both through the one forget, because an
+unanswered offer has no moment at which it closes.
 
 ## Provenance
 

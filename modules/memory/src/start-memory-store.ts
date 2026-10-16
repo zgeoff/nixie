@@ -3,7 +3,7 @@ import type { MemoryGate } from './build-memory-gate';
 import { buildMemoryGate } from './build-memory-gate';
 import { buildMemoryStore } from './build-memory-store';
 import { makeDeliveryLock } from './make-delivery-lock';
-import { removeClosedProposalKeys } from './remove-closed-proposal-keys';
+import { removeLeftKeys } from './remove-left-keys';
 import { runPendingForgets } from './run-pending-forgets';
 import { startStoreIndexes } from './start-store-indexes';
 import type { ItemIDStore, MemoryContext, MemoryStore, StoreParts } from './types';
@@ -22,8 +22,8 @@ export interface StartedMemoryStore extends MemoryStore, MemoryGate, ItemIDStore
   readonly stop: () => Promise<void>;
 }
 
-// Puts memory into service: it resumes every pending forget, removes the key of each closed
-// proposal a crash left behind, then fills the indexes from the readable active items and messages.
+// Puts memory into service: it resumes every pending forget, removes each key a crash left behind,
+// then fills the indexes from the readable active items and messages.
 // The log must already hold the memory projections.
 export async function startMemoryStore(context: MemoryContext): Promise<StartedMemoryStore> {
   const indexes = await startStoreIndexes(context);
@@ -51,7 +51,7 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
 async function runStartSteps(parts: StoreParts): Promise<UpdatedIndexes> {
   try {
     await runPendingForgets(parts);
-    await removeClosedProposalKeys(parts);
+    await removeLeftKeys(parts);
 
     return await updateStoreIndexes(parts);
   } catch (error) {
