@@ -89,5 +89,7 @@ test('it keeps the page it shows when its effects stop and start again in place'
     </Activity>,
   );
 
-  expect(await rendered.findByText('Is the kettle on?')).toBeVisible();
+  const message = await rendered.findByText('Is the kettle on?');
+
+  expect(message).toBeVisible();
 });
