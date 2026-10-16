@@ -59,6 +59,7 @@ test('#memory.listItems lists each active item with its text, origin, source and
         shortID: expect.toBeString(),
         state: 'active',
         isPinned: false,
+        kind: 'fact',
         version: 1,
         origin: 'owner',
         source: 'owner',
@@ -101,6 +102,38 @@ test('#memory.listItems lists a forgotten item as a dated gap with no text', asy
   ]);
 
   expect(page.items[0]).not.toContainKey('text');
+});
+
+test('#memory.listItems lists a self-note with its kind', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const item = await ctx.memory.remember({
+    text: 'Finds a well-made timetable oddly satisfying',
+    itemKind: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const page = await buildTestClient(ctx.url, laptop.token).memory.listItems({ state: 'active' });
+
+  expect(page.items).toMatchObject([{ itemID: item.itemID, kind: 'self' }]);
+});
+
+test('#memory.findItems finds a self-note with its kind', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const item = await ctx.memory.remember({
+    text: 'Finds a well-made timetable oddly satisfying',
+    itemKind: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const found = await buildTestClient(ctx.url, laptop.token).memory.findItems({
+    query: 'timetable',
+  });
+
+  expect(found.items).toMatchObject([{ itemID: item.itemID, kind: 'self' }]);
 });
 
 test('#memory.listItems refuses a cursor that no page returned', async () => {

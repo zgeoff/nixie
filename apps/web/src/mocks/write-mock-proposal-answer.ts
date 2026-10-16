@@ -156,7 +156,7 @@ async function writeApproval(
 }
 
 // what stops an approval before it writes, as nixie's store checks it: a retirement takes no edit,
-// and only a new item's proposal takes a revision target
+// and only a new item's proposal takes a revision target, of an item of its own kind
 function findApprovalRefusal(
   proposal: StoredProposal,
   input: ApprovalInput,
@@ -170,15 +170,17 @@ function findApprovalRefusal(
   }
 
   return proposal.targetVersion === null
-    ? findRevisionTargetRefusal(proposal.proposalID, input.revisionOf)
+    ? findRevisionTargetRefusal(proposal, input.revisionOf)
     : { code: 'REVISION_TARGET', proposalID: proposal.proposalID, status: 'refused' };
 }
 
 // a revision binds to the version of the close match the view showed, which must still be active
+// and of the proposal's kind, which nixie's API answers as a revision target it refuses
 function findRevisionTargetRefusal(
-  proposalID: string,
+  proposal: StoredProposal,
   target: NonNullable<ApprovalInput['revisionOf']>,
 ): MockProposalOutcome | null {
+  const proposalID = proposal.proposalID;
   const item = store.memoryItems.findFirst((query) => query.where({ itemID: target.itemID }));
 
   if (item === undefined || item.state === 'forgetting' || item.state === 'forgotten') {
@@ -189,10 +191,17 @@ function findRevisionTargetRefusal(
     return { cause: 'moved', proposalID, status: 'stale' };
   }
 
-  return item.state === 'active' ? null : { code: 'WRONG_STATE', proposalID, status: 'refused' };
+  if (item.state !== 'active') {
+    return { code: 'WRONG_STATE', proposalID, status: 'refused' };
+  }
+
+  return item.kind === proposal.kind
+    ? null
+    : { code: 'REVISION_TARGET', proposalID, status: 'refused' };
 }
 
-// the active item a new item's text matches, case aside, unless the answer already chose
+// the active item of the proposal's kind a new item's text matches, case aside, unless the answer
+// already chose
 function findCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: string) {
   if (
     proposal.targetVersion !== null ||
@@ -206,6 +215,7 @@ function findCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: st
     query.where(
       (stored) =>
         stored.state === 'active' &&
+        stored.kind === proposal.kind &&
         stored.versions.at(-1)?.text.toLowerCase() === text.toLowerCase(),
     ),
   );
@@ -238,7 +248,12 @@ async function applyApproval(
   const item = store.memoryItems.findFirst((query) => query.where({ itemID }));
 
   if (item === undefined) {
-    await store.memoryItems.create({ isPinned: proposal.isPinned, itemID, versions: [version] });
+    await store.memoryItems.create({
+      isPinned: proposal.isPinned,
+      itemID,
+      kind: proposal.kind,
+      versions: [version],
+    });
 
     return;
   }

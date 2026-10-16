@@ -10,15 +10,16 @@ export interface MemoryConfig {
   readonly checkerTimeoutMs: number;
   readonly pinnedCoreTokens: number;
   readonly retrievalItems: number;
+  readonly retrievalSelfNotes: number;
   readonly retrievalMessages: number;
   readonly retrievalMinScore: number;
   readonly retrievalMinSimilarity: number;
   readonly rebuildTokens: number;
 }
 
-// The memory section of the deployment configuration: the write gate's limits, the checker's
-// timeout, the pinned core's token budget, per-turn retrieval's counts of items and past messages
-// and its keyword and similarity floors, and a rebuilt session's history budget. A setting the file leaves out takes its default.
+// The memory section of the deployment configuration: the write gate, the checker's timeout, the
+// pinned core's budget, per-turn retrieval's counts of items, self-notes and past messages and its
+// floors, and a rebuilt session's history budget. A setting left out takes its default.
 export const memoryConfigSchema = z
   .strictObject({
     evidence_window: countSchema.default(defaultGateLimits.evidenceWindow),
@@ -30,6 +31,7 @@ export const memoryConfigSchema = z
     checker_timeout_ms: countSchema.default(20_000),
     pinned_core_tokens: z.int().positive().default(2000),
     retrieval_items: z.int().nonnegative().max(100).default(5),
+    retrieval_self_notes: z.int().nonnegative().max(20).default(2),
     retrieval_messages: z.int().nonnegative().max(20).default(3),
     retrieval_min_score: z.number().nonnegative().default(0.25),
 
@@ -48,6 +50,7 @@ export const memoryConfigSchema = z
     checkerTimeoutMs: config.checker_timeout_ms,
     pinnedCoreTokens: config.pinned_core_tokens,
     retrievalItems: config.retrieval_items,
+    retrievalSelfNotes: config.retrieval_self_notes,
     retrievalMessages: config.retrieval_messages,
     retrievalMinScore: config.retrieval_min_score,
     retrievalMinSimilarity: config.retrieval_min_similarity,

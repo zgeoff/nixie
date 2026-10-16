@@ -14,6 +14,7 @@ test.each([
   ['ambiguous_target', 'It is unclear which item it changes.'],
   ['pinned', 'It changes a pinned item.'],
   ['other', 'A newer release of nixie sent it to review.'],
+  ['self_note', 'nixie wrote it about itself, and every self-note waits for your review.'],
 ] as const)('it describes the review reason %s', (reason, expected) => {
   expect(formatReviewReason(reason)).toBe(expected);
 });

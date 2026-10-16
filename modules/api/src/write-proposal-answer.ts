@@ -154,6 +154,9 @@ const refusalCodes: Readonly<Record<string, RefusalCode | undefined>> = {
   PINNED_CORE_FULL: 'PINNED_CORE_FULL',
   RETIREMENT_EDIT: 'RETIREMENT_EDIT',
   REVISION_TARGET: 'REVISION_TARGET',
+
+  // an approval meets a self-note's refusal only as a revision of an item of the other kind
+  SELF_NOTE_REFUSED: 'REVISION_TARGET',
   WRONG_STATE: 'WRONG_STATE',
 };
 

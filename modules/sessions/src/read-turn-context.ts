@@ -1,13 +1,10 @@
 import type { LogRecord } from '@heynixie/log';
-import type { SystemMessageType } from '@heynixie/wire';
-import { renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from './format-message-time';
 import { readTurnRetrieval } from './read-turn-retrieval';
 import { renderCoreChanges } from './render-core-changes';
 import { renderPinnedMemory } from './render-pinned-memory';
-import { renderRetrievedItems } from './render-retrieved-items';
-import { renderRetrievedMessages } from './render-retrieved-messages';
 import { renderSystemPrompt } from './render-system-prompt';
+import { renderTurnPreamble } from './render-turn-preamble';
 import type {
   ConversationMemory,
   ConversationRun,
@@ -38,7 +35,8 @@ export interface TurnContext {
   // the body of a new session's pinned-memory message, which a resumed session never reads
   readonly pinnedMemory: string;
 
-  // the pinned core's change note, the retrieved items and the past messages, as system messages
+  // the pinned core's change note, the retrieved facts, the retrieved self-notes and the past
+  // messages, as system messages in that order
   readonly preamble: readonly string[];
   readonly pinnedCore: readonly MemoryRef[];
   readonly retrieved: readonly MemoryRef[];
@@ -48,7 +46,8 @@ export interface TurnContext {
 }
 
 // Reads the pinned core and the items and past messages that match your new messages, and renders
-// them for the turn. Recall records the items it placed, and the turn's record lists both.
+// them for the turn, the preamble in the order renderTurnPreamble gives. Recall records the items it
+// placed, self-notes included, and the turn's record lists them all.
 export async function readTurnContext(
   run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings' | 'defaultZone'>,
   query: TurnContextQuery,
@@ -72,17 +71,9 @@ export async function readTurnContext(
   return {
     systemPrompt: renderSystemPrompt(query.persona, lines),
     pinnedMemory,
-    preamble: [
-      renderPreambleMessage('pinned-memory-changes', at, changes),
-      renderPreambleMessage('retrieved-memory', at, renderRetrievedItems(retrieval.items, lines)),
-      renderPreambleMessage(
-        'retrieved-messages',
-        at,
-        renderRetrievedMessages(retrieval.messages, { ...lines, thread: query.taskID }),
-      ),
-    ].filter((block) => block !== null),
+    preamble: renderTurnPreamble({ changes, retrieval, thread: query.taskID, at }, lines),
     pinnedCore: core.map((item) => toMemoryRef(item)),
-    retrieved: retrieval.items.map((item) => toMemoryRef(item)),
+    retrieved: [...retrieval.items, ...retrieval.selfNotes].map((item) => toMemoryRef(item)),
     retrievedMessages: retrieval.messages.map((message) => message.sequence),
   };
 }
@@ -109,14 +100,6 @@ async function readCoreChanges(
   );
 
   return renderCoreChanges(previousCore, pinned.core, { ...pinned.lines, unpinnedShortIDs });
-}
-
-function renderPreambleMessage(
-  type: SystemMessageType,
-  at: string,
-  body: string | null,
-): string | null {
-  return body === null ? null : renderSystemMessage({ type, at, body });
 }
 
 function toMemoryRef(item: MemoryItem): MemoryRef {

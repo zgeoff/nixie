@@ -6,6 +6,7 @@ import { formatReviewReason } from '../format-review-reason';
 import { css } from '../styled-system/css';
 import type { MemoryProposal, ProposalOutcome } from '../types';
 import type { ProposalAnswers } from '../use-proposal-answers';
+import { SelfNoteBadge } from './self-note-badge';
 
 export interface ProposalCardProps {
   readonly proposal: MemoryProposal;
@@ -18,9 +19,9 @@ export interface ProposalCardProps {
   readonly onDraft: (draft: string | null) => void;
 }
 
-// One pending proposal: its text or your edit of it, why it waits for review, its quote inside the
-// message it came from and when it lapses, and your answers to it. An approval an active item
-// closely matches holds, and the card asks how to apply it.
+// One pending proposal: its text or your edit of it, a self-note's mark, why it waits for review,
+// its quote inside the message it came from and when it lapses, and your answers to it. An
+// approval an active item closely matches holds, and the card asks how to apply it.
 export function ProposalCard(props: ProposalCardProps): ReactNode {
   const proposal = props.proposal;
   const shown = props.answers.outcomes[proposal.proposalID]?.outcome;
@@ -76,7 +77,10 @@ function ProposalDetails(props: ProposalDetailsProps): ReactNode {
 
   return (
     <>
-      <p className={meta}>{formatReviewReason(proposal.reason)}</p>
+      <p className={meta}>
+        {proposal.kind === 'self' ? <SelfNoteBadge /> : null}
+        {formatReviewReason(proposal.reason)}
+      </p>
       <p className={meta}>
         Proposed {formatMemoryProvenance(proposal.origin, proposal.source)} · lapses{' '}
         {formatMemoryDate(proposal.lapseAt)}

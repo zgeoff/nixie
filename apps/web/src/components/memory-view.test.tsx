@@ -81,6 +81,80 @@ test('it lists retired items apart from the active ones', async () => {
   ).toBeNull();
 });
 
+test('it lists self-notes apart from facts', async () => {
+  await createDeviceSession();
+
+  await Promise.all([
+    store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] }),
+    store.memoryItems.create({
+      kind: 'self',
+      shortID: 'p7x2rd',
+      versions: [{ origin: 'conversation', text: 'Enjoys a slow morning question' }],
+    }),
+  ]);
+
+  const rendered = render(<MemoryView />);
+  const active = rendered.getByRole('region', { name: 'Active' });
+  const selfNotes = rendered.getByRole('region', { name: 'Self-notes' });
+
+  await within(selfNotes).findByRole('listitem', { name: 'p7x2rd' });
+  await within(active).findByRole('listitem', { name: 'k3m9qa' });
+
+  expect(within(selfNotes).getAllByRole('listitem')).toHaveLength(1);
+  expect(within(active).getAllByRole('listitem')).toHaveLength(1);
+});
+
+test('it finds self-notes apart from facts', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  await Promise.all([
+    store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Walks by the river' }] }),
+    store.memoryItems.create({
+      kind: 'self',
+      shortID: 'p7x2rd',
+      versions: [{ origin: 'conversation', text: 'Likes hearing about the river' }],
+    }),
+  ]);
+
+  const rendered = render(<MemoryView />);
+
+  await user.type(rendered.getByRole('searchbox', { name: 'Search memory' }), 'river');
+  await user.click(rendered.getByRole('button', { name: 'Search' }));
+
+  const results = await rendered.findByRole('region', { name: 'Search results' });
+
+  await within(results).findByRole('listitem', { name: 'k3m9qa' });
+
+  expect(within(results).getAllByRole('listitem')).toHaveLength(1);
+
+  expect(
+    within(rendered.getByRole('region', { name: 'Self-notes' })).getByRole('listitem'),
+  ).toHaveAccessibleName('p7x2rd');
+});
+
+test('it marks a retired self-note with a self-note badge', async () => {
+  await createDeviceSession();
+
+  await store.memoryItems.create({
+    kind: 'self',
+    shortID: 'p7x2rd',
+    state: 'retired',
+    versions: [
+      { origin: 'conversation', text: 'Enjoys a slow morning question' },
+      { change: 'retired', state: 'retired', text: 'Enjoys a slow morning question' },
+    ],
+  });
+
+  const rendered = render(<MemoryView />);
+  const retired = rendered.getByRole('region', { name: 'Retired' });
+
+  const row = await within(retired).findByRole('listitem', { name: 'p7x2rd' });
+
+  expect(within(row).getByText('self-note')).toBeInTheDocument();
+});
+
 test('it shows a forgotten item as a dated gap with no text', async () => {
   setupBrowserTimeZone('UTC');
 

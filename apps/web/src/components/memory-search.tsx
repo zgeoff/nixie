@@ -9,7 +9,8 @@ export interface MemorySearchResultsProps {
   readonly renderItem: (item: MemoryItem) => ReactNode;
 }
 
-// The active items that match a search, best first, ranked as a recall ranks them.
+// The active items that match a search, best first, ranked as a recall ranks them, with the
+// self-notes that match apart from the facts. A failed search says so once.
 export function MemorySearchResults(props: MemorySearchResultsProps): ReactNode {
   const nixie = useNixieClient();
 
@@ -17,25 +18,43 @@ export function MemorySearchResults(props: MemorySearchResultsProps): ReactNode 
     nixie.queryUtils.memory.findItems.queryOptions({ input: { query: props.query } }),
   );
 
+  const items = found.data?.items;
+
   return (
-    <section aria-label="Search results" className={css({ marginBlock: '4' })}>
-      <h2 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>
-        Items that match “{props.query}”
-      </h2>
-      <SearchMatches
-        isError={found.isError}
-        items={found.data?.items}
-        query={props.query}
-        renderItem={props.renderItem}
-      />
-    </section>
+    <>
+      <section aria-label="Search results" className={section}>
+        <h2 className={heading}>Items that match “{props.query}”</h2>
+        <SearchMatches
+          empty={`No active item matches “${props.query}”.`}
+          isError={found.isError}
+          items={items?.filter((item) => item.kind === 'fact')}
+          renderItem={props.renderItem}
+        />
+      </section>
+      {found.isError ? null : (
+        <section aria-label="Self-notes" className={section}>
+          <h2 className={heading}>Self-notes that match “{props.query}”</h2>
+          <SearchMatches
+            empty={`No self-note matches “${props.query}”.`}
+            isError={false}
+            items={items?.filter((item) => item.kind === 'self')}
+            renderItem={props.renderItem}
+          />
+        </section>
+      )}
+    </>
   );
 }
+
+const section = css({ marginBlock: '4' });
+const heading = css({ fontSize: 'lg', fontWeight: 'semibold' });
 
 interface SearchMatchesProps {
   readonly items: readonly MemoryItem[] | undefined;
   readonly isError: boolean;
-  readonly query: string;
+
+  // what the section says when no item of its kind matches
+  readonly empty: string;
   readonly renderItem: (item: MemoryItem) => ReactNode;
 }
 
@@ -49,7 +68,7 @@ function SearchMatches(props: SearchMatchesProps): ReactNode {
   }
 
   if (props.items.length === 0) {
-    return <p className={css({ color: 'textMuted' })}>No active item matches “{props.query}”.</p>;
+    return <p className={css({ color: 'textMuted' })}>{props.empty}</p>;
   }
 
   return <ul>{props.items.map((item) => props.renderItem(item))}</ul>;

@@ -82,6 +82,7 @@ function toContractProposal(proposal: ViewProposal) {
     itemID: proposal.itemID,
     targetVersion: proposal.targetVersion,
     isPinned: proposal.isPinned,
+    kind: proposal.kind,
     reason: proposal.reason,
     actionHash: proposal.actionHash,
     origin: proposal.origin,

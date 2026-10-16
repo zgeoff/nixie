@@ -12,6 +12,7 @@ test('it sets the gate, pinned core, retrieval and rebuild defaults', () => {
     checkerTimeoutMs: 20_000,
     pinnedCoreTokens: 2000,
     retrievalItems: 5,
+    retrievalSelfNotes: 2,
     retrievalMessages: 3,
     retrievalMinScore: 0.25,
     retrievalMinSimilarity: 0.38,
@@ -23,6 +24,7 @@ test('it takes the values the file names', () => {
   const result = memoryConfigSchema.safeParse({
     pinned_core_tokens: 1500,
     retrieval_items: 3,
+    retrieval_self_notes: 0,
     retrieval_messages: 1,
     retrieval_min_score: 0.5,
     retrieval_min_similarity: 0.45,
@@ -32,6 +34,7 @@ test('it takes the values the file names', () => {
   expect(result.data).toMatchObject({
     pinnedCoreTokens: 1500,
     retrievalItems: 3,
+    retrievalSelfNotes: 0,
     retrievalMessages: 1,
     retrievalMinScore: 0.5,
     retrievalMinSimilarity: 0.45,
@@ -61,4 +64,10 @@ test('it refuses a similarity floor above 1', () => {
   const result = memoryConfigSchema.safeParse({ retrieval_min_similarity: 1.5 });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['retrieval_min_similarity'] });
+});
+
+test('it refuses more than 20 self-notes a turn', () => {
+  const result = memoryConfigSchema.safeParse({ retrieval_self_notes: 21 });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['retrieval_self_notes'] });
 });

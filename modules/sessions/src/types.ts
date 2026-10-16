@@ -23,9 +23,15 @@ export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'memory_writer';
 export interface MemoryItem extends MemoryRef {
   // the ID the model reads the item by, in place of itemID
   readonly shortID: string;
+
+  // a fact about the owner, or a self-note, which you wrote about yourself
+  readonly kind: 'fact' | 'self';
   readonly text: string;
   readonly origin: MemoryOrigin;
   readonly source: ContentSource;
+
+  // the model ID of the call that wrote the version, or null for the owner's own action
+  readonly model: string | null;
 
   // when the version was recorded, in milliseconds since the epoch
   readonly recordedAt: number;
@@ -50,10 +56,12 @@ export interface MemoryLineOptions extends MessageTimeOptions {
   readonly ownerName: string | null;
 }
 
-// One turn's retrieval: the text of the user's new messages, with the item limit and score floor.
+// One turn's retrieval: the text of the user's new messages, with the score floor and the limits of
+// facts and of self-notes that one ranking of the matches returns.
 interface MemoryRetrieval {
   readonly query: string;
   readonly limit: number;
+  readonly selfNoteLimit: number;
   readonly minScore: number;
   readonly minSimilarity: number;
 
@@ -112,6 +120,9 @@ export interface ConversationMemory {
 export interface ConversationMemorySettings {
   // the most memory items one turn's retrieval places
   readonly retrievalItems: number;
+
+  // the most self-notes one turn's retrieval places beside the items
+  readonly retrievalSelfNotes: number;
 
   // the most past messages one turn's retrieval places beside the items
   readonly retrievalMessages: number;
@@ -340,24 +351,3 @@ export type EventRegistry = readonly {
   readonly read: (range: TurnNoteRange) => Promise<readonly ReadEvent[]>;
   readonly complete: (events: readonly ReadEvent[]) => Promise<readonly BoundEvent[]>;
 }[];
-
-// A checker's verdict on one question. Only asserted lets the gate that asked go ahead.
-export type CheckerVerdict = 'asserted' | 'not_asserted' | 'unsure';
-
-// One question for the checker: its system prompt, and the input the gate built for it.
-export interface CheckerRequest {
-  readonly prompt: string;
-  readonly input: string;
-}
-
-// The checker's answer, with the model that gave it. A timeout, an error or an unreadable answer
-// reads as unsure, with failure saying which.
-export interface CheckerAnswer {
-  readonly verdict: CheckerVerdict;
-  readonly reason: string;
-  readonly model: string;
-  readonly failure: 'timeout' | 'error' | 'unreadable' | null;
-}
-
-// Asks the checker one question. It never rejects: a failure answers unsure.
-export type RunCheck = (request: CheckerRequest) => Promise<CheckerAnswer>;

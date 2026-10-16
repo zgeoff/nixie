@@ -77,6 +77,7 @@ test('it reads every version of a forgotten item as a gap', async () => {
   expect(history).toStrictEqual({
     itemID: item.itemID,
     state: 'forgotten',
+    kind: 'fact',
     versions: [
       {
         version: 1,

@@ -365,3 +365,39 @@ test('it refuses a revision target for a proposal that already names its item', 
 
   expect(outcome).toMatchObject({ code: 'REVISION_TARGET', status: 'refused' });
 });
+
+test('it refuses a revision of an item of the other kind as a revision target', async () => {
+  const item = await store.memoryItems.create({ versions: [{ text: 'Likes slow mornings' }] });
+  const proposal = await store.memoryProposals.create({ kind: 'self', reason: 'self_note' });
+
+  const outcome = await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+    revisionOf: { itemID: item.itemID, version: 1 },
+  });
+
+  expect(outcome).toMatchObject({ code: 'REVISION_TARGET', status: 'refused' });
+});
+
+test('it approves a self-note proposal as a new self-note', async () => {
+  const proposal = await store.memoryProposals.create({
+    kind: 'self',
+    reason: 'self_note',
+    text: 'Enjoys a slow morning question',
+  });
+
+  await writeMockProposalAnswer({
+    answer: 'approve',
+    actionHash: proposal.actionHash,
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    identityID: 'session-a',
+    proposalID: proposal.proposalID,
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: proposal.itemID }));
+
+  expect(stored?.kind).toBe('self');
+});
