@@ -120,8 +120,9 @@ answers it, so a later yes about something else never saves the offered sentence
 only when that whole message is a plain yes that the user typed, such as "yes" or "yes please",
 under the quote rules. A yes with anything more, such as a correction, saves nothing, because the
 version would then hold something other than what the user agreed to. Every other answer, a no
-included, writes nothing at all: no version, no proposal and no notice. The same holds once the
-image's message or the offer's sentence is forgotten.
+included, writes nothing at all: no version, no proposal and no notice. The same holds once a forget
+of the image's message or the answer has started, because the version's transaction checks for it,
+so a forget that lands while the answer saves still wins.
 
 A saved offer skips the token check and the checker, because the user read the whole sentence before
 typing the yes. The model never passes the sentence at answer time: it comes from the offer record,

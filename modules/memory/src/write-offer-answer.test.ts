@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildMockWriteCaller, startTestMemory } from './test-utils';
 import { readMemoryRows } from './test-utils/read-memory-rows';
@@ -234,6 +234,50 @@ test('it declines once the message that holds the image is forgotten', async () 
   });
 
   await removeMessageKey(ctx.memory.log, photo);
+
+  const outcome = await ctx.memory.store.writes.answerOffer({
+    image: { messageSequence: photo, image: 1 },
+    answerSequence: answer,
+    caller: buildMockWriteCaller(),
+  });
+
+  const rows = await readMemoryRows(ctx.db);
+
+  expect(outcome).toStrictEqual({ status: 'declined' });
+  expect(rows).toStrictEqual({ items: [], versions: [] });
+});
+
+test('it declines once a forget of the image message has started, before its key is gone', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Here is my new bike',
+    spans: [{ start: 0, end: 19, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  await ctx.memory.store.writes.offerImage({
+    image: { messageSequence: photo, image: 1 },
+    text: 'The owner rides a green cargo bike',
+    caller: buildMockWriteCaller(),
+  });
+
+  const answer = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'yes',
+    spans: [{ start: 0, end: 3, source: 'typed' }],
+  });
+
+  // the API commits this record before it removes the message's key
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'record.forget_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { recordSequence: photo },
+    },
+  ]);
 
   const outcome = await ctx.memory.store.writes.answerOffer({
     image: { messageSequence: photo, image: 1 },

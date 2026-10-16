@@ -6,6 +6,7 @@ import type { OfferYes } from './read-offer-answer';
 import { readOfferAnswer } from './read-offer-answer';
 import { requireLiveEvidence } from './require-live-evidence';
 import { requireOpenOffer } from './require-open-offer';
+import { requireUnforgottenRecords } from './require-unforgotten-records';
 import type { StoreParts, VersionRef } from './types';
 import { writeRememberedItem } from './write-remembered-item';
 
@@ -67,6 +68,12 @@ async function writeConfirmedOffer(
       noticeKey: group.noticeKey,
       requireInTransaction: async (db) => {
         await requireLiveEvidence(db, request.answerSequence);
+
+        await requireUnforgottenRecords(db, [
+          request.image.messageSequence,
+          request.answerSequence,
+        ]);
+
         await requireOpenOffer(db, answer.offerSequence);
       },
     },
