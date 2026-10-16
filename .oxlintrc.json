@@ -39,7 +39,10 @@
           },
           { "from": "package", "package": "bun:ffi", "name": ["Pointer"] },
           { "from": "package", "package": "bun:sqlite", "name": ["Database", "SQLQueryBindings"] },
-          { "from": "lib", "name": ["Date", "Error", "Promise", "ReadonlyMap", "Uint8Array"] },
+          {
+            "from": "lib",
+            "name": ["Date", "Error", "EventTarget", "Promise", "ReadonlyMap", "Uint8Array"]
+          },
           {
             "from": "package",
             "package": "bun-types",
@@ -48,6 +51,7 @@
               "Blob",
               "CryptoKey",
               "ErrorEvent",
+              "EventTarget",
               "MessageEvent",
               "ReadableStream",
               "Worker"

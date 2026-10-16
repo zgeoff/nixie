@@ -47,6 +47,7 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
       keys,
       epoch,
       clock: options.clock ?? systemClock,
+      commits: new EventTarget(),
       migration,
       stop: makeStopOnce([db, keys], lock),
     };

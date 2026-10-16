@@ -225,6 +225,7 @@
       "name": "@heynixie/actions",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/clock": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/retry": "workspace:*",
