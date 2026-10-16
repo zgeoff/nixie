@@ -391,16 +391,54 @@ test('it saves one offer once, however often the yes is passed on', async () => 
     caller: buildMockWriteCaller(),
   });
 
-  const again = ctx.memory.store.writes.answerOffer({
+  const again = await ctx.memory.store.writes.answerOffer({
     image: { messageSequence: photo, image: 1 },
     answerSequence: answer,
     caller: buildMockWriteCaller(),
   });
 
-  await again.catch(() => {});
+  const rows = await readMemoryRows(ctx.db);
 
-  expect(again).rejects.toThrowWithMessage(
-    Error,
-    'The owner already said yes to that offer, so it is saved once.',
-  );
+  expect(again).toStrictEqual({ status: 'declined' });
+  expect(rows.versions).toHaveLength(1);
+});
+
+test('it saves one offer once when 2 answers race', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Here is my new bike',
+    spans: [{ start: 0, end: 19, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  await ctx.memory.store.writes.offerImage({
+    image: { messageSequence: photo, image: 1 },
+    text: 'The owner rides a green cargo bike',
+    caller: buildMockWriteCaller(),
+  });
+
+  const answer = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'yes',
+    spans: [{ start: 0, end: 3, source: 'typed' }],
+  });
+
+  await Promise.allSettled([
+    ctx.memory.store.writes.answerOffer({
+      image: { messageSequence: photo, image: 1 },
+      answerSequence: answer,
+      caller: buildMockWriteCaller(),
+    }),
+    ctx.memory.store.writes.answerOffer({
+      image: { messageSequence: photo, image: 1 },
+      answerSequence: answer,
+      caller: buildMockWriteCaller(),
+    }),
+  ]);
+
+  const rows = await readMemoryRows(ctx.db);
+
+  expect(rows.versions).toHaveLength(1);
 });

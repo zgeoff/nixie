@@ -129,7 +129,9 @@ typing the yes. The model never passes the sentence at answer time: it comes fro
 so the version holds exactly what the offer line showed. The version's quote is the user's yes
 followed by the sentence it confirmed, and its checks name the offer record, so the sentence never
 reads as words the user typed. Its source is the user, and the check that runs inside the version's
-transaction saves one offer once.
+transaction saves one offer once. Once the version commits, nixie removes the offer record's key,
+and the offer tool's result record leaves the sentence out, so the sentence lives on only under its
+item's key and a forget of the item leaves no readable copy in the log.
 
 ## Provenance
 

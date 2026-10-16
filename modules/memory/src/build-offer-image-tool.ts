@@ -86,7 +86,9 @@ async function runOfferCall(
       caller: buildWriteCaller(context),
     });
 
-    return { status: 'ok', result: { status: 'offered', line } };
+    // the line repeats the offered text, which a saved offer's item key guards, so the call's
+    // record leaves it out
+    return { status: 'ok', result: { status: 'offered', line }, record: { status: 'offered' } };
   } catch (error) {
     if (error instanceof ImageOfferError) {
       return { status: 'error', message: error.message };

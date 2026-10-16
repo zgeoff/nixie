@@ -4,9 +4,8 @@ import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { OfferAnswerOutcome, OfferAnswerRequest } from './gate-types';
 import type { OfferYes } from './read-offer-answer';
 import { readOfferAnswer } from './read-offer-answer';
-import { requireLiveEvidence } from './require-live-evidence';
-import { requireOpenOffer } from './require-open-offer';
-import { requireUnforgottenRecords } from './require-unforgotten-records';
+import { removeOfferKey } from './remove-offer-key';
+import { requireOfferSources } from './require-offer-sources';
 import type { StoreParts, VersionRef } from './types';
 import { writeRememberedItem } from './write-remembered-item';
 
@@ -36,7 +35,7 @@ export async function writeOfferAnswer(
 }
 
 // The quote is your yes then the text it confirmed, and the checks name the offer, so the text never
-// reads as words you typed.
+// reads as words you typed. The offer record's key goes once the version commits.
 async function writeConfirmedOffer(
   parts: StoreParts,
   request: OfferAnswerRequest,
@@ -48,7 +47,7 @@ async function writeConfirmedOffer(
 
   const group = buildWriteGroup(caller, newest);
 
-  return writeRememberedItem(
+  const ref = await writeRememberedItem(
     parts,
     {
       text: answer.text,
@@ -66,16 +65,11 @@ async function writeConfirmedOffer(
     },
     {
       noticeKey: group.noticeKey,
-      requireInTransaction: async (db) => {
-        await requireLiveEvidence(db, request.answerSequence);
-
-        await requireUnforgottenRecords(db, [
-          request.image.messageSequence,
-          request.answerSequence,
-        ]);
-
-        await requireOpenOffer(db, answer.offerSequence);
-      },
+      requireInTransaction: (db) => requireOfferSources(db, request, answer.offerSequence),
     },
   );
+
+  await removeOfferKey(parts.context.log, answer.offerSequence);
+
+  return ref;
 }

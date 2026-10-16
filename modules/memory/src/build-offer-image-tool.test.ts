@@ -36,6 +36,7 @@ test('it returns the line to say for an image of yours', async () => {
       status: 'offered',
       line: "Want me to remember this? Here's what I'd save: The owner has a beagle puppy",
     },
+    record: { status: 'offered' },
   });
 });
 
