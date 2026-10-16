@@ -531,3 +531,26 @@ test('it applies one of 2 reworded proposals approved at once, and holds the oth
     { status: 'close_match', item: { itemID: item.itemID, version: 1, text: item.text } },
   ]);
 });
+
+test("it applies nothing and leaves the proposal pending when the caller's own write refuses the approval", async () => {
+  const memory = await startTestMemory();
+  const pending = await createProposal(memory.store, { text: 'Keeps bees' });
+
+  const approved = memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+    writeInTransaction: () => Promise.reject(new Error('the caller refused')),
+  });
+
+  await approved.catch(() => {});
+
+  const [history, remaining] = await Promise.all([
+    memory.store.readHistory(pending.itemID),
+    memory.store.proposals.listPending(),
+  ]);
+
+  expect(approved).rejects.toThrow('the caller refused');
+  expect(history).toBeNull();
+  expect(remaining).toMatchObject([{ proposalID: pending.proposalID }]);
+});

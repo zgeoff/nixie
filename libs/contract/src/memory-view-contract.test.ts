@@ -51,3 +51,55 @@ test('it declares an unknown cursor for a page of items', () => {
 test('it declares a missing item for an item read', () => {
   expect(memoryViewContract.readItem['~orpc'].errorMap).toContainKey('MEMORY_ITEM_NOT_FOUND');
 });
+
+test('it refuses an approval without its client action ID', () => {
+  expect(
+    memoryViewContract.approveProposals['~orpc'].inputSchema?.safeParse({
+      answers: [{ actionHash: 'sha256:a1', proposalID: 'proposal-a' }],
+    }).error?.issues,
+  ).toPartiallyContain({ path: ['answers', 0, 'clientActionID'] });
+});
+
+test('it refuses an approval of no proposal', () => {
+  expect(
+    memoryViewContract.approveProposals['~orpc'].inputSchema?.safeParse({ answers: [] }).error
+      ?.issues,
+  ).toPartiallyContain({ path: ['answers'] });
+});
+
+test('it refuses a rejection whose reason is only spaces', () => {
+  expect(
+    memoryViewContract.rejectProposals['~orpc'].inputSchema?.safeParse({
+      answers: [
+        {
+          actionHash: 'sha256:a1',
+          clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+          proposalID: 'proposal-a',
+          reason: '   ',
+        },
+      ],
+    }).error?.issues,
+  ).toPartiallyContain({ path: ['answers', 0, 'reason'] });
+});
+
+test('it refuses a rejection whose reason passes 500 characters', () => {
+  expect(
+    memoryViewContract.rejectProposals['~orpc'].inputSchema?.safeParse({
+      answers: [
+        {
+          actionHash: 'sha256:a1',
+          clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+          proposalID: 'proposal-a',
+          reason: 'x'.repeat(501),
+        },
+      ],
+    }).error?.issues,
+  ).toPartiallyContain({ path: ['answers', 0, 'reason'] });
+});
+
+test('it declares a missing session and a store not started for a proposal list', () => {
+  expect(memoryViewContract.listProposals['~orpc'].errorMap).toContainAllKeys([
+    'UNAUTHORIZED',
+    'MEMORY_NOT_STARTED',
+  ]);
+});

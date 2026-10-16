@@ -1,4 +1,4 @@
-import type { Transaction } from 'kysely';
+import type { Kysely } from 'kysely';
 import type { APITables } from './types';
 
 export interface ClientAction {
@@ -8,9 +8,10 @@ export interface ClientAction {
   readonly result: Readonly<Record<string, unknown>>;
 }
 
-// Finds the first result of a checked action by its client action ID, or null when the ID is new.
+// Finds the first result of a checked action by its client action ID, or null when the ID is new,
+// in a write transaction or on the database handle.
 export async function findClientAction(
-  tx: Transaction<unknown>,
+  tx: Kysely<unknown>,
   clientActionID: string,
 ): Promise<ClientAction | null> {
   const row = await tx

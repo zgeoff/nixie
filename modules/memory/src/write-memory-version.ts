@@ -8,7 +8,7 @@ import { writeVersionInTransaction } from './write-version-in-transaction';
 // check inside the transaction, and the approval the version consumes.
 export type VersionExtras = Pick<
   VersionPlan,
-  'newItemID' | 'noticeKey' | 'requireInTransaction' | 'approval'
+  'newItemID' | 'noticeKey' | 'requireInTransaction' | 'writeInTransaction' | 'approval'
 >;
 
 // Adds one version to an item, or creates the item with its key and first version, under the

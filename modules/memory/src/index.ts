@@ -100,6 +100,7 @@ export type {
   ViewMatches,
   ViewPage,
   ViewPageRequest,
+  ViewProposal,
   ViewText,
   ViewVersion,
 } from './view-types';

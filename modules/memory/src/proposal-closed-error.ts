@@ -5,7 +5,12 @@ export class ProposalClosedError extends Error {
 
   readonly code = 'PROPOSAL_CLOSED';
 
+  // how the proposal closed: consumed, rejected or lapsed
+  readonly status: string;
+
   constructor(proposalID: string, status: string) {
     super(`memory proposal ${proposalID} is ${status}, so it takes no answer`);
+
+    this.status = status;
   }
 }

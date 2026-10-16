@@ -1,4 +1,5 @@
 import type { ContentSource, JSONObject } from '@heynixie/log';
+import type { MemoryProposal } from './gate-types';
 import type {
   MemoryChange,
   MemoryOrigin,
@@ -137,4 +138,12 @@ export interface MemoryView {
 
   // null when no item has the ID
   readonly readItem: (itemID: string) => Promise<ViewItemDetail | null>;
+
+  // the proposals that wait for your answer, oldest first
+  readonly readProposals: () => Promise<readonly ViewProposal[]>;
 }
+
+// A pending proposal as the memory view lists it, with its quote inside the message it came from.
+export type ViewProposal = Omit<MemoryProposal, 'evidence'> & {
+  readonly evidence: ViewEvidence | null;
+};

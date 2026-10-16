@@ -138,3 +138,22 @@ test('it keeps the key of an existing item when you reject an edit of it', async
 
   expect(recalled.items).toMatchObject([{ text: 'Lives on Elm Street' }]);
 });
+
+test("it rejects nothing and leaves the proposal pending when the caller's own write refuses the rejection", async () => {
+  const memory = await startTestMemory();
+  const pending = await createProposal(memory.store, { text: 'Keeps bees' });
+
+  const rejected = memory.store.proposals.reject({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+    writeInTransaction: () => Promise.reject(new Error('the caller refused')),
+  });
+
+  await rejected.catch(() => {});
+
+  const remaining = await memory.store.proposals.listPending();
+
+  expect(rejected).rejects.toThrow('the caller refused');
+  expect(remaining).toMatchObject([{ proposalID: pending.proposalID }]);
+});
