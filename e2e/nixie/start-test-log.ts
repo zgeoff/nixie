@@ -24,7 +24,7 @@ export interface TestLog {
 // the crash tests' oracle share: every slice 1 projection, memory's, the deployment key and the
 // clock.
 export async function startTestLog(options: TestLogOptions): Promise<TestLog> {
-  const writer = await startWriter({ dataDir: options.dataDir });
+  const writer = await startWriter({ dataDir: options.dataDir, clock: options.clock });
 
   const deploymentKey = await crypto.subtle.importKey(
     'raw',
