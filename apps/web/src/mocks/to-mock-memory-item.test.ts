@@ -47,3 +47,17 @@ test('it lists a forgotten item as a gap with no text', async () => {
 
   expect(toMockMemoryItem(item)).not.toContainKey('text');
 });
+
+test('it lists a forgetting item whose key still exists with its text', async () => {
+  const item = await store.memoryItems.create({
+    isShredded: false,
+    state: 'forgetting',
+    versions: [{ text: 'Owes Robin twenty pounds' }],
+  });
+
+  expect(toMockMemoryItem(item)).toMatchObject({
+    state: 'forgetting',
+    status: 'readable',
+    text: 'Owes Robin twenty pounds',
+  });
+});

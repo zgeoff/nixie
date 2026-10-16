@@ -1,10 +1,11 @@
+import { isMockItemShredded } from './is-mock-item-shredded';
 import { store } from './store';
 import type { StoredMemoryItem } from './to-mock-memory-item';
 import { toMockMemoryItem } from './to-mock-memory-item';
 
 // Reads one item with every version as nixie's API does, each version's quote with the message it
-// points into. A forgotten item's versions read as gaps that show no message, and a message the
-// store keeps without its text reads as forgotten. Null when no item has the ID.
+// points into. Once the item's key is gone its versions read as gaps that show no message, and a
+// message the store keeps without its text reads as forgotten. Null when no item has the ID.
 export function readMockMemoryItem(itemID: string) {
   const item = store.memoryItems.findFirst((query) => query.where({ itemID }));
 
@@ -12,7 +13,7 @@ export function readMockMemoryItem(itemID: string) {
     return null;
   }
 
-  const isGone = item.state === 'forgetting' || item.state === 'forgotten';
+  const isGone = isMockItemShredded(item);
 
   return {
     ...toMockMemoryItem(item),
@@ -22,7 +23,7 @@ export function readMockMemoryItem(itemID: string) {
 
 type StoredVersion = StoredMemoryItem['versions'][number];
 
-// one version as nixie's API reads it, as a gap once a forget began
+// one version as nixie's API reads it, as a gap once the item's key is gone
 function toMockVersion(version: StoredVersion, number: number, isGone: boolean) {
   return {
     change: version.change,

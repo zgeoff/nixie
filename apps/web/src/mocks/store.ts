@@ -174,6 +174,10 @@ const memoryItems = new Collection({
     forgottenAt: z.date().nullable().default(null),
     isPinned: z.boolean().default(false),
 
+    // whether the item's key is gone; unset, it follows the state, and false on a forgetting item
+    // is a forget whose cleanup stalled before it removed the key
+    isShredded: z.boolean().optional(),
+
     // the item's place in the pinned core, as the pin's sequence orders it; an item a test pins
     // where it creates it comes before every item the view pins
     pinnedSequence: z.int().nonnegative().default(0),

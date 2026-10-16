@@ -1,5 +1,6 @@
 import type { ContractOutputs } from '@heynixie/contract';
 import type { ReadonlyDeep } from '../types';
+import { isMockItemShredded } from './is-mock-item-shredded';
 import type { store } from './store';
 
 export type StoredMemoryItem = ReadonlyDeep<ReturnType<typeof store.memoryItems.all>[number]>;
@@ -7,7 +8,7 @@ export type StoredMemoryItem = ReadonlyDeep<ReturnType<typeof store.memoryItems.
 type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];
 
 // An item as nixie's API lists it: its current version's text, origin and source, its first and
-// latest version's times, and no text once a forget began.
+// latest version's times, and no text once its key is gone.
 export function toMockMemoryItem(item: StoredMemoryItem): MemoryItem {
   const [first] = item.versions;
   const current = item.versions.at(-1);
@@ -16,7 +17,7 @@ export function toMockMemoryItem(item: StoredMemoryItem): MemoryItem {
     throw new Error(`the mock memory item ${item.itemID} has no version`);
   }
 
-  const isGone = item.state === 'forgetting' || item.state === 'forgotten';
+  const isGone = isMockItemShredded(item);
 
   return {
     changedAt: current.recordedAt,
