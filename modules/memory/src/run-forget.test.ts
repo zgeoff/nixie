@@ -213,3 +213,34 @@ test('it drops the forgotten item from the vector index, so the next match takes
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([kept.itemID]);
 });
+
+test('it commits the caller’s own write with the forget’s start, and its refusal destroys nothing', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'The spare key sits under the blue flowerpot',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const refused = await ctx.memory.store
+    .forget({
+      target: item,
+      provenance: {
+        origin: 'owner',
+        source: 'owner',
+        taskID: null,
+        proposalID: null,
+        checks: null,
+      },
+      writeInTransaction: () => Promise.reject(new Error('the action is settled')),
+    })
+    .catch((error: unknown) => error);
+
+  const detail = await ctx.memory.store.view.readItem(item.itemID);
+  const records = await readRecords(ctx.memory.log, { afterSequence: 0 });
+
+  expect(refused).toMatchObject({ message: 'the action is settled' });
+  expect(ctx.cleanupSessions).not.toHaveBeenCalled();
+  expect(detail).toMatchObject({ state: 'active', status: 'readable' });
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual(['memory.version_added']);
+});

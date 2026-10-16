@@ -1,7 +1,7 @@
+import { buildForgetStore } from './build-forget-store';
 import { buildRecallStore } from './build-recall-store';
 import { readItemHistory } from './read-item-history';
 import { readPinnedCore } from './read-pinned-core';
-import { runForget } from './run-forget';
 import type { MemoryStore, StoreParts } from './types';
 import { writePin } from './write-pin';
 import { writeRememberedItem } from './write-remembered-item';
@@ -13,13 +13,13 @@ import { writeUndo } from './write-undo';
 export function buildMemoryStore(parts: StoreParts): MemoryStore {
   return {
     ...buildRecallStore(parts),
+    ...buildForgetStore(parts),
     remember: (request) => writeRememberedItem(parts, request),
     retire: (request) => writeRetirement(parts, request),
     restore: (request) => writeRestoration(parts, request),
     undo: (request) => writeUndo(parts, request),
     pin: (request) => writePin(parts, request),
     readPinnedCore: () => readPinnedCore(parts),
-    forget: (request) => runForget(parts, request),
     readHistory: (itemID) => readItemHistory(parts, itemID),
   };
 }

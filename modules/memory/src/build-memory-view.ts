@@ -1,4 +1,5 @@
 import { findViewMatches } from './find-view-matches';
+import { readForgetPreview } from './read-forget-preview';
 import { readItemDetail } from './read-item-detail';
 import { readPinnedCoreView } from './read-pinned-core-view';
 import { readViewPage } from './read-view-page';
@@ -17,5 +18,6 @@ export function buildMemoryView(parts: StoreParts): MemoryView {
     readPinnedCore: () => readPinnedCoreView(parts),
     readItem: (itemID) => readItemDetail(log, itemID),
     readProposals: () => readViewProposals(parts),
+    readForgetPreview: (target) => readForgetPreview(log, target),
   };
 }

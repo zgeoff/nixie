@@ -6,6 +6,7 @@ import type {
   MemoryState,
   QuoteEvidence,
   RecalledVersion,
+  VersionRef,
   VersionState,
 } from './types';
 
@@ -127,6 +128,15 @@ export type ViewVersion = ViewText & {
 // One item with every version, oldest first.
 export type ViewItemDetail = ViewItem & { readonly versions: readonly ViewVersion[] };
 
+// What a forget's confirmation shows: the item with every version, and what the forget destroys
+// beyond its text: the messages that backed it leave recall, and its proposals lose their text.
+export type ForgetPreview = ViewItemDetail & {
+  readonly lost: {
+    readonly evidenceMessages: number;
+    readonly proposals: number;
+  };
+};
+
 // What the memory view reads. It delivers nothing to a task, so no read takes the delivery lock or
 // writes a recall record, as the history a host command reads does not.
 export interface MemoryView {
@@ -141,6 +151,10 @@ export interface MemoryView {
 
   // the proposals that wait for your answer, oldest first
   readonly readProposals: () => Promise<readonly ViewProposal[]>;
+
+  // the forget's confirmation for the item at the version the view showed; it throws as a change
+  // does for an item that is gone, moved past that version, or being forgotten
+  readonly readForgetPreview: (target: VersionRef) => Promise<ForgetPreview>;
 }
 
 // A pending proposal as the memory view lists it, with its quote inside the message it came from.

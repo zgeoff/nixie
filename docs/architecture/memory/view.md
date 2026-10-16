@@ -79,6 +79,36 @@ item once. Every refusal or change reads the lists again, so the row shows the i
 stands. That read can move the item to another list, so the reason for a refusal, such as a stale
 version or a full pinned core, shows at the top of the page and not in the item's row.
 
+## Forgetting an item
+
+The view forgets an active or retired item in two steps, a preview and then the forget, and both
+bind to the version the row showed. The preview reads the item with every version, and counts the
+messages that backed any version or proposal and the proposals for the item. It refuses as the
+forget refuses, so no confirmation opens for an item that is gone, moved on or being forgotten. The
+forget runs the store's forget ([forgetting](./store.md#forgetting)) with the user as origin, so an
+item that changed after the preview refuses it as stale and nothing is destroyed.
+
+The forget is a checked action like the other changes, and its result commits in the transaction
+that marks the item forgetting. A retry with the same client action ID therefore finds the result
+and runs the forget's cleanup again, so a forget whose session cleanup failed after its start
+completes on the retry instead of waiting for the store's next start. That rerun touches only an
+item that is still forgetting, so it never deletes the key of an item no forget began.
+
+The web page's confirmation shows the history from the preview, what the forget destroys, and what
+it cannot reach. A disk snapshot that the user took by hand of nixie's host or its volumes still
+holds the item, because no forget reaches a copy that nixie never made. The user's messages and
+nixie's replies that state the same fact stay under their own record keys, so the confirmation links
+to the conversation, where each one has its own forget
+([forgetting a message](../channels/api.md#forgetting-a-message)). Once the forget applies, the item
+shows in the forgotten list as a dated gap. The `memory-forget` host command runs the same store
+forget, bound to the version that `memory-show` printed.
+
+A forget whose start committed and whose cleanup failed lists as forgetting, and any refresh of the
+lists, such as a pin of another item, moves it out of the row that held its confirmation. The page
+therefore keeps each forget call in the query client, apart from every row, and the forgetting
+item's row in the forgotten list offers to finish the forget while its last call failed. That retry
+sends the same client action ID, so the server runs the cleanup again.
+
 ## Proposals
 
 The view lists every pending proposal on a page of its own, which the memory page links to. Each

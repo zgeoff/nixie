@@ -115,6 +115,7 @@ export interface ForgetRequest {
   // the item and the version the confirmation showed
   readonly target: VersionRef;
   readonly provenance: Provenance;
+  readonly writeInTransaction?: WriteInTransaction;
 }
 
 export interface VersionRef {
@@ -226,6 +227,10 @@ export interface MemoryStore {
 
   // completes once the key is gone, the index entries are removed and the sessions are cleaned up
   readonly forget: (request: ForgetRequest) => Promise<void>;
+
+  // runs the cleanup of a pending forget again, so a forget whose cleanup failed completes; a no-op
+  // for an item no forget began and for a completed forget
+  readonly finishForget: (itemID: string) => Promise<void>;
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
 
   // keeps the model's ratings of what the thread's latest recall delivered; changes no item

@@ -58,9 +58,12 @@ export interface HostRouterOptions {
 
 export type ReadHostMemory = () => HostMemoryStore | null;
 
-// What the memory view's procedures reach of the memory store: its reads, the user's changes, and
-// the user's answers to proposals.
-export type ViewMemoryStore = Pick<MemoryStore, 'view' | 'retire' | 'restore' | 'pin'> & {
+// What the memory view's procedures reach of the memory store: its reads, the user's changes, the
+// forget included, and the user's answers to proposals.
+export type ViewMemoryStore = Pick<
+  MemoryStore,
+  'view' | 'retire' | 'restore' | 'pin' | 'forget' | 'finishForget'
+> & {
   readonly proposals: Pick<MemoryProposals, 'approve' | 'reject'>;
 };
 

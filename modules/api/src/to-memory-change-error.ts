@@ -1,7 +1,7 @@
 interface MemoryChangeErrors {
   readonly MEMORY_ITEM_NOT_FOUND: () => Error;
   readonly STALE_VERSION: () => Error;
-  readonly WRONG_STATE: () => Error;
+  readonly WRONG_STATE?: () => Error;
   readonly PINNED_CORE_FULL?: () => Error;
 }
 

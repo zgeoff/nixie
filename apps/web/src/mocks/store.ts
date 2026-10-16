@@ -186,6 +186,10 @@ const memoryItems = new Collection({
     forgottenAt: z.date().nullable().default(null),
     isPinned: z.boolean().default(false),
 
+    // whether the first forget's session cleanup fails after the forget began, as a guest that does
+    // not answer fails it, so the item stays forgetting until a retry of that forget
+    failsForgetCleanup: z.boolean().default(false),
+
     // whether the item's key is gone; unset, it follows the state, and false on a forgetting item
     // is a forget whose cleanup stalled before it removed the key
     isShredded: z.boolean().optional(),
