@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
+import { memoryViewContract } from './memory-view-contract';
+import { reusedIDErrors } from './reused-id-errors';
+import { signedIn } from './signed-in';
 import { taskSchema } from './task-schema';
 import { toolCallSchema } from './tool-call-schema';
 
@@ -170,19 +173,8 @@ const sessionSchema = z.object({
   sessionID: z.uuid(),
 });
 
-// Every procedure except enrol needs a device session, from the cookie or a bearer token.
-const signedIn = oc.errors({
-  UNAUTHORIZED: { message: 'The device session is missing, lapsed or revoked', status: 401 },
-});
-
-// Every checked action refuses a client action ID that arrived before with a different input.
-const reusedIDErrors = {
-  CLIENT_ACTION_ID_REUSED: {
-    message: 'The client action ID belongs to a different action',
-    status: 409,
-  },
-};
-
+// A checked action needs a device session and refuses a client action ID that arrived before with
+// a different input.
 const checkedAction = signedIn.errors(reusedIDErrors);
 
 const followRecords = signedIn
@@ -293,6 +285,7 @@ export const contract = {
         retryAt: z.date().nullable(),
       }),
     ),
+    ...memoryViewContract,
   },
   log: {
     // The live stream under its first name, kept for the clients of earlier releases. A content

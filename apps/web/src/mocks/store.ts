@@ -149,6 +149,46 @@ const ratingNotes = new Collection({
   }),
 });
 
+// One version of a memory item as nixie's memory store holds it, with its provenance and the quote
+// it came from, which points into the message at its sequence.
+const memoryItemVersionSchema = z.object({
+  change: z.enum(['created', 'edited', 'retired', 'restored', 'undone']).default('created'),
+  checkerModel: z.string().nullable().default(null),
+  checks: z.record(z.string(), z.unknown()).nullable().default(null),
+  evidence: z.object({ end: z.int(), sequence: z.int(), start: z.int() }).nullable().default(null),
+  evidenceQuote: z.string().nullable().default(null),
+  origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']).default('owner'),
+  proposalID: z.string().nullable().default(null),
+  recordedAt: z.date().default(() => faker.date.recent()),
+  source: z.enum(['owner', 'owner_data', 'untrusted']).default('owner'),
+  state: z.enum(['active', 'retired']).default('active'),
+  taskID: z.string().nullable().default(null),
+  text: z.string().default(() => faker.lorem.sentence()),
+  writerModel: z.string().nullable().default(null),
+});
+
+// A memory item with every version, oldest first, in the order nixie created them. A forgotten
+// item keeps its versions and their dates, and reads every one as a gap.
+const memoryItems = new Collection({
+  schema: z.object({
+    forgottenAt: z.date().nullable().default(null),
+    isPinned: z.boolean().default(false),
+    itemID: z.uuid().default(() => faker.string.uuid()),
+    shortID: z.string().default(() => faker.string.alphanumeric(6)),
+    state: z.enum(['active', 'retired', 'forgetting', 'forgotten']).default('active'),
+    versions: z.array(memoryItemVersionSchema).min(1),
+  }),
+});
+
+// Each memory change a client action ID applied, with the input it bound to, as nixie's API keeps
+// the first result of each checked action.
+const memoryActions = new Collection({
+  schema: z.object({
+    clientActionID: z.uuid(),
+    input: z.string(),
+  }),
+});
+
 // Each forget a client action ID applied, with the record it named and its answer, as nixie's API
 // keeps the first result of each checked action.
 const forgetActions = new Collection({
@@ -164,6 +204,8 @@ const forgetActions = new Collection({
 export const store = {
   enrolmentCodes,
   forgetActions,
+  memoryActions,
+  memoryItems,
   memoryVersions,
   ratingNotes,
   records,
@@ -172,6 +214,8 @@ export const store = {
   reset: (): void => {
     records.clear();
     forgetActions.clear();
+    memoryActions.clear();
+    memoryItems.clear();
     memoryVersions.clear();
     ratingNotes.clear();
     enrolmentCodes.clear();

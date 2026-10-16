@@ -1,7 +1,7 @@
 import type { ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { RecordKind } from '@heynixie/log';
-import type { HostMemoryStore } from '@heynixie/memory';
+import type { HostMemoryStore, MemoryStore } from '@heynixie/memory';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 
@@ -57,6 +57,12 @@ export interface HostRouterOptions {
 }
 
 export type ReadHostMemory = () => HostMemoryStore | null;
+
+// What the memory view's procedures reach of the memory store: its reads, and the user's changes.
+export type ViewMemoryStore = Pick<MemoryStore, 'view' | 'retire' | 'restore' | 'pin'>;
+
+// the memory store, or null until the start sequence fills it
+export type ReadViewMemory = () => ViewMemoryStore | null;
 
 // What the server reports of a finished reset: when it ran, the last sequence of the old log and
 // how many device sessions it kept.

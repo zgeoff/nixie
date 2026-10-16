@@ -1,0 +1,94 @@
+// oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import type { ViewPageRequest } from '@heynixie/memory';
+import { InvalidCursorError } from '@heynixie/memory';
+import { apiImplementer } from './api-implementer';
+import { requireCaller } from './require-caller';
+import { requireViewMemory } from './require-view-memory';
+import { toContractMemoryItem } from './to-contract-memory-item';
+import { toContractMemoryVersion } from './to-contract-memory-version';
+import type { APIContext, ReadViewMemory } from './types';
+
+// Builds the memory view's reads for a signed-in device: a page of items in one state, a search of
+// the active items, the pinned core against its budget, and one item with every version.
+export function buildMemoryViewProcedures(context: APIContext, readMemory: ReadViewMemory) {
+  const memory = apiImplementer.memory;
+
+  return {
+    listItems: memory.listItems.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const store = requireViewMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
+
+      const page = await store.view
+        .readPage(toPageRequest(options.input))
+        .catch((error: unknown) => {
+          throw error instanceof InvalidCursorError ? options.errors.INVALID_CURSOR() : error;
+        });
+
+      return { items: page.items.map((item) => toContractMemoryItem(item)), next: page.next };
+    }),
+
+    findItems: memory.findItems.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const store = requireViewMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
+
+      const found = await store.view.findItems(options.input.query);
+
+      return {
+        items: found.items.map((match) => ({
+          ...toContractMemoryItem(match),
+          ...(match.score === undefined ? {} : { score: match.score }),
+          ...(match.similarity === undefined ? {} : { similarity: match.similarity }),
+        })),
+        searchMode: found.searchMode,
+      };
+    }),
+
+    readPinnedCore: memory.readPinnedCore.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const store = requireViewMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
+
+      const core = await store.view.readPinnedCore();
+
+      return {
+        items: core.items.map((item) => toContractMemoryItem(item)),
+        tokens: core.tokens,
+        budget: core.budget,
+      };
+    }),
+
+    readItem: memory.readItem.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const store = requireViewMemory(readMemory, options.errors.MEMORY_NOT_STARTED);
+
+      const detail = await store.view.readItem(options.input.itemID);
+
+      if (detail === null) {
+        throw options.errors.MEMORY_ITEM_NOT_FOUND();
+      }
+
+      return {
+        ...toContractMemoryItem(detail),
+        versions: detail.versions.map((version) => toContractMemoryVersion(version)),
+      };
+    }),
+  };
+}
+
+interface PageInput {
+  readonly state: ViewPageRequest['state'];
+  readonly after?: string | undefined;
+  readonly limit?: number | undefined;
+}
+
+// the contract's page input with each field it leaves out absent
+function toPageRequest(input: PageInput): ViewPageRequest {
+  return {
+    state: input.state,
+    ...(input.after === undefined ? {} : { after: input.after }),
+    ...(input.limit === undefined ? {} : { limit: input.limit }),
+  };
+}
