@@ -14,7 +14,8 @@
     "@heynixie/clock": "workspace:*",
     "@heynixie/db": "workspace:*",
     "kysely": "catalog:",
-    "tiny-invariant": "catalog:"
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:",

@@ -99,6 +99,16 @@ export interface RecordKinds {
 
 export type RecordKind = keyof RecordKinds;
 
+// The payload of one record kind, typed for its writer and its readers. encode gives the payload a
+// writer appends, decode reads one and throws when it does not fit, and tryDecode reads one and
+// gives null when it does not fit, for a reader that skips such a record.
+export interface RecordCodec<Kind extends RecordKind, Payload extends JSONObject> {
+  readonly kind: Kind;
+  readonly encode: (payload: Payload) => Payload;
+  readonly decode: (payload: JSONObject) => Payload;
+  readonly tryDecode: (payload: JSONObject) => Payload | null;
+}
+
 // What a caller appends. The payload holds only structured data: IDs, counts, hashes and states.
 // Every free-text field goes in erasable, which nixie encrypts under a key of its own.
 export interface RecordInput {

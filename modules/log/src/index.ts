@@ -1,4 +1,5 @@
 export { claimWriterEpoch } from './claim-writer-epoch';
+export { defineRecordCodec } from './define-record-codec';
 export type { RecordKey } from './create-record-key';
 export { createRecordKey } from './create-record-key';
 export { claimWriterLock } from './claim-writer-lock';
@@ -45,6 +46,7 @@ export type {
   PromptCause,
   ReadFilesystemType,
   RecordAttachments,
+  RecordCodec,
   RecordInput,
   RecordKind,
   RecordKinds,
