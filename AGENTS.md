@@ -47,10 +47,11 @@ The rules a task needs are not repeated here. Load the skill for the work before
 
 ## Review bots
 
-CodeRabbit reviews every PR. Its shared config lives in the zgeoff/coderabbit repo, and a repo-root
-`.coderabbit.yaml` with `inheritance: true` layers repo-specific settings on top. CodeRabbit reads
-this file as its guidelines. A review bot added later is named here with its config, and these rules
-cover it too.
+CodeRabbit reviews every PR with the shared config in the zgeoff/coderabbit repo, because this repo
+has no `.coderabbit.yaml` of its own. A repo-specific setting goes in a repo-root `.coderabbit.yaml`
+with `inheritance: true`, which layers it on top of the shared config. CodeRabbit reads this file as
+its guidelines. A review bot added later is named here with its config, and these rules cover it
+too.
 
 - A PR is ready only after every bot review is read and every finding is answered: a fixed finding's
   reply cites the commit that fixed it; a declined finding's reply states the reason — when a
