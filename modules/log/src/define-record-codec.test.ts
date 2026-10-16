@@ -24,6 +24,13 @@ test('it drops a field the schema does not name when it decodes', () => {
   expect(codec.decode({ noteID: 'note-a', stale: true })).toStrictEqual({ noteID: 'note-a' });
 });
 
+test('it rejects a field the schema does not name before a writer appends it', () => {
+  const codec = defineRecordCodec('note_written', z.object({ noteID: z.string() }));
+  const payload = { noteID: 'note-a', stale: true };
+
+  expect(() => codec.encode(payload)).toThrow(z.ZodError);
+});
+
 test('it rejects a payload that lacks a field', () => {
   const codec = defineRecordCodec('note_written', z.object({ noteID: z.string() }));
 

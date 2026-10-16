@@ -66,19 +66,36 @@ interface EventRecord {
   readonly payload: JSONObject;
 }
 
-// The payload holds IDs, names and states, and each codec drops the event's own name. A grant's env
-// holds placeholders, never a credential.
+// The payload holds IDs, names and states, and never the event's own name, which the kind holds. A
+// grant's env holds placeholders, never a credential.
 function toRecordInput(event: SandboxEvent): EventRecord {
   if (event.event === 'created') {
-    return { kind: sandboxCreatedCodec.kind, payload: sandboxCreatedCodec.encode(event) };
+    return {
+      kind: sandboxCreatedCodec.kind,
+      payload: sandboxCreatedCodec.encode({
+        sandboxID: event.sandboxID,
+        adapter: event.adapter,
+        spec: event.spec,
+      }),
+    };
   }
 
   if (event.event === 'granted') {
-    return { kind: sandboxGrantedCodec.kind, payload: sandboxGrantedCodec.encode(event) };
+    return {
+      kind: sandboxGrantedCodec.kind,
+      payload: sandboxGrantedCodec.encode({
+        sandboxID: event.sandboxID,
+        secret: event.secret,
+        host: event.host,
+      }),
+    };
   }
 
   if (event.event === 'destroyed') {
-    return { kind: sandboxDestroyedCodec.kind, payload: sandboxDestroyedCodec.encode(event) };
+    return {
+      kind: sandboxDestroyedCodec.kind,
+      payload: sandboxDestroyedCodec.encode({ sandboxID: event.sandboxID, reason: event.reason }),
+    };
   }
 
   const codec = event.event === 'slept' ? sandboxSleptCodec : sandboxWokenCodec;

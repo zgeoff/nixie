@@ -18,9 +18,12 @@ export function defineRecordCodec<Kind extends RecordKind, Shape extends z.core.
 > {
   const partial = schema.partial();
 
+  // a writer's key the schema lacks throws, so a field a writer adds never drops unseen
+  const strict = schema.strict();
+
   return {
     kind,
-    encode: (payload) => toReadonlyPayload(schema.parse(payload)),
+    encode: (payload) => toReadonlyPayload(strict.parse(payload)),
     decode: (payload) => toReadonlyPayload(schema.parse(payload)),
     tryDecodePartial: (payload) => {
       const parsed = partial.safeParse(payload);
