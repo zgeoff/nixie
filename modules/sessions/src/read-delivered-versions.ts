@@ -39,43 +39,21 @@ const emptyState: SessionState = { delivered: new Map(), pending: [], isCompacte
 // its mark, and a lost session's opening lists what its turn retrieved. A turn drops a recall after
 // its last result, which reached a session that no turn resumes.
 function buildSessionState(state: SessionState, record: LogRecord): SessionState {
-  switch (record.kind) {
-    case 'memory.recalled': {
-      const recall = { sequence: record.sequence, refs: parseRefs(record.payload['items']) };
+  if (record.kind === 'memory.recalled') {
+    const recall = { sequence: record.sequence, refs: parseRefs(record.payload['items']) };
 
-      return { ...state, pending: [...state.pending, recall] };
-    }
-    case 'model.turn_ended': {
-      return buildTurnEnd(state, record);
-    }
-    case 'task.step_started': {
-      return { ...state, pending: [], isCompacted: false };
-    }
-    case 'model.session_opened':
-    case 'model.session_rebuilt': {
-      return {
-        ...state,
-        delivered: new Map(),
-        pending: isLostSession(record)
-          ? state.pending.filter((recall) => recall.sequence > parseLostRecallsThrough(record))
-          : state.pending,
-      };
-    }
-
-    // a compaction the CLI ran, which a log keeps from releases before the guest turned it off
-    case 'model.compacted': {
-      const through = parseRecalledThrough(record.payload['recalledThrough']);
-
-      return {
-        delivered: new Map(),
-        pending: state.pending.filter((recall) => recall.sequence > through),
-        isCompacted: true,
-      };
-    }
-    default: {
-      return { ...state, delivered: new Map(), pending: [] };
-    }
+    return { ...state, pending: [...state.pending, recall] };
   }
+
+  if (record.kind === 'model.turn_ended') {
+    return buildTurnEnd(state, record);
+  }
+
+  if (record.kind === 'task.step_started') {
+    return { ...state, pending: [], isCompacted: false };
+  }
+
+  return buildSessionReset(state, record);
 }
 
 // the turn keeps its step's recalls through its mark, and what it retrieved unless a compaction
@@ -100,6 +78,33 @@ function mergeRefs(
   added: readonly MemoryRef[],
 ): ReadonlyMap<string, MemoryRef> {
   return new Map([...refs, ...added.map((ref) => [`${ref.itemID}@${ref.version}`, ref] as const)]);
+}
+
+// an opening or a rebuild ends what the session holds and keeps the recalls a lost session never
+// saw, a compaction keeps the recalls after its mark, and an invalidation drops them all
+function buildSessionReset(state: SessionState, record: LogRecord): SessionState {
+  if (record.kind === 'model.session_opened' || record.kind === 'model.session_rebuilt') {
+    return {
+      ...state,
+      delivered: new Map(),
+      pending: isLostSession(record)
+        ? state.pending.filter((recall) => recall.sequence > parseLostRecallsThrough(record))
+        : state.pending,
+    };
+  }
+
+  // a compaction the CLI ran, which a log keeps from releases before the guest turned it off
+  if (record.kind === 'model.compacted') {
+    const through = parseRecalledThrough(record.payload['recalledThrough']);
+
+    return {
+      delivered: new Map(),
+      pending: state.pending.filter((recall) => recall.sequence > through),
+      isCompacted: true,
+    };
+  }
+
+  return { ...state, delivered: new Map(), pending: [] };
 }
 
 // an opening in place of a session the guest lost, or a rebuild recorded before openings for one
