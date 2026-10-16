@@ -1,6 +1,7 @@
 # The nixie image: Bun on a slim base, the server and its SQLite worker bundled with bun build, the sandbox
-# manifest and the sops binary. It holds no Claude Code build, no node_modules and no backup tools,
-# and runs as a non-root user on a read-only root filesystem, with /data its one writable mount.
+# manifest, the sops binary, and the memory encoder's pinned model files with the ONNX Runtime package
+# the bundle leaves external. It holds no Claude Code build, no other node_modules and no backup
+# tools, and runs as a non-root user on a read-only root filesystem, with /data its one writable mount.
 # Build it from the repository root, with the release workflow's sandbox manifest at
 # apps/server/sandbox-manifest.json:
 #   docker build -f apps/server/Dockerfile -t nixie .
@@ -23,9 +24,23 @@ RUN mkdir -p /out/bin \
     || exit 1; \
   done
 
+# the encoder's model files at a fixed revision, each checked against the checksum the repo
+# recorded; the download exits 1 on a file that differs, which fails the build
+RUN bun adapters/encoder-onnx/src/run-pinned-download.ts adapters/encoder-onnx/model-files.txt /out/encoder
+
+# a bundle cannot inline a native addon, so onnxruntime-node sits beside it with its linux-x64
+# binary alone, and onnxruntime-common, the one package it loads
+RUN ORT=$(echo node_modules/.bun/onnxruntime-node@*/node_modules/onnxruntime-node) \
+  && COMMON=$(echo node_modules/.bun/onnxruntime-common@*/node_modules/onnxruntime-common) \
+  && mkdir -p /out/app/node_modules/onnxruntime-node/bin/napi-v6/linux /out/app/node_modules/onnxruntime-common \
+  && cp -r "$ORT/package.json" "$ORT/dist" /out/app/node_modules/onnxruntime-node/ \
+  && cp -r "$ORT/bin/napi-v6/linux/x64" /out/app/node_modules/onnxruntime-node/bin/napi-v6/linux/ \
+  && cp -r "$COMMON/package.json" "$COMMON/dist" /out/app/node_modules/onnxruntime-common/
+
 FROM oven/bun:1.4.2-slim@sha256:cb3bbbb08e13a4a2ff400f24c7a2a1d5efa83f6ef8544d52d95a519631e2fc61
 COPY --from=build /out/bin/sops /usr/local/bin/sops
 COPY --from=build /out/app/ /app/
+COPY --from=build /out/encoder/ /app/encoder/
 COPY apps/server/sandbox-manifest.json /app/sandbox-manifest.json
 RUN groupadd --gid 10001 nixie \
   && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin nixie

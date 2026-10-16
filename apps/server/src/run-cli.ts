@@ -5,12 +5,13 @@ import { buildConsolidationCommands } from './build-consolidation-commands';
 import { buildMemoryCommands } from './build-memory-commands';
 import { buildResetCommands } from './build-reset-commands';
 import { buildSessionCommands } from './build-session-commands';
+import { checkEncoder } from './check-encoder';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { startServer } from './start-server';
 import type { CLIFlags, CLIIO, Command } from './types';
 
 // Runs one of nixie's commands, serve by default, and returns its exit code. --config names the
-// deployment configuration; --manifest and --sops name what the nixie image fixes.
+// deployment configuration; --manifest, --sops and --encoder name what the nixie image fixes.
 export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number> {
   const parsed = parseArgs({ args: [...argv], allowPositionals: true, options: cliOptions });
   const command = parsed.positionals[0] ?? 'serve';
@@ -34,6 +35,9 @@ export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number
 const cliOptions = {
   config: { type: 'string', default: '/etc/nixie/config.yaml' },
   manifest: { type: 'string', default: '/app/sandbox-manifest.json' },
+
+  // an empty value serves with keyword memory search alone, as the tests that run nixie do
+  encoder: { type: 'string', default: '/app/encoder' },
   sops: { type: 'string', default: '/usr/local/bin/sops' },
   live: { type: 'boolean', default: false },
   hash: { type: 'string' },
@@ -46,10 +50,11 @@ const cliOptions = {
 } as const;
 
 // serve runs the server until SIGTERM; health exits 0 when the running server answers ready, or
-// live with --live.
+// live with --live; check-encoder exits 0 once the encoder loads from --encoder and encodes a text.
 const commands = new Map<string, Command>([
   ['serve', (flags, io) => runServe(flags, io)],
   ['health', (flags) => runHealth(flags.config, flags.live)],
+  ['check-encoder', (flags, io) => checkEncoder(flags.encoder, io)],
   ...buildSessionCommands(),
   ...buildResetCommands(),
   ...buildMemoryCommands(),
@@ -64,6 +69,7 @@ async function runServe(flags: CLIFlags, io: CLIIO): Promise<number> {
     configPath: flags.config,
     manifestPath: flags.manifest,
     sopsArgv: [flags.sops],
+    ...(flags.encoder === '' ? {} : { encoderDir: flags.encoder }),
     log: io.log,
   });
 

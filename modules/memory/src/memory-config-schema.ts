@@ -11,11 +11,12 @@ export interface MemoryConfig {
   readonly pinnedCoreTokens: number;
   readonly retrievalItems: number;
   readonly retrievalMinScore: number;
+  readonly retrievalMinSimilarity: number;
   readonly rebuildTokens: number;
 }
 
 // The memory section of the deployment configuration: the write gate's limits, the checker's
-// timeout, the pinned core's token budget, per-turn retrieval's count and score floor, and a rebuilt
+// timeout, the pinned core's token budget, per-turn retrieval's count and its keyword and similarity floors, and a rebuilt
 // session's history budget. A setting the file leaves out takes its default.
 export const memoryConfigSchema = z
   .strictObject({
@@ -29,6 +30,10 @@ export const memoryConfigSchema = z
     pinned_core_tokens: z.int().positive().default(2000),
     retrieval_items: z.int().nonnegative().max(100).default(5),
     retrieval_min_score: z.number().nonnegative().default(0.25),
+
+    // on the encoder spike's items, small talk such as "hello" peaked near 0.38 and two thirds of
+    // the questions placed their item above it
+    retrieval_min_similarity: z.number().min(-1).max(1).default(0.38),
     rebuild_tokens: z.int().nonnegative().default(30_000),
   })
   .transform((config): MemoryConfig => ({
@@ -42,5 +47,6 @@ export const memoryConfigSchema = z
     pinnedCoreTokens: config.pinned_core_tokens,
     retrievalItems: config.retrieval_items,
     retrievalMinScore: config.retrieval_min_score,
+    retrievalMinSimilarity: config.retrieval_min_similarity,
     rebuildTokens: config.rebuild_tokens,
   }));

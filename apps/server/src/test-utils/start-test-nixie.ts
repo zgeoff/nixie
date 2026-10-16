@@ -126,6 +126,11 @@ function buildServeArgs(files: BootFiles): readonly string[] {
     files.manifestPath,
     '--sops',
     files.sopsPath,
+
+    // nixie in a test runs memory search on keywords, since the encoder's model files are no test
+    // input
+    '--encoder',
+    '',
   ];
 }
 

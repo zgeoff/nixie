@@ -8,7 +8,7 @@ import type { Secrets } from './load-secrets';
 import { loadServerInputs } from './load-server-inputs';
 import type { SandboxSettings } from './resolve-sandbox-settings';
 import { startServerParts } from './start-server-parts';
-import type { Cleanup } from './types';
+import type { Cleanup, ServerParts } from './types';
 
 export interface ServerOptions {
   // the deployment configuration, /etc/nixie/config.yaml in a deployment
@@ -19,6 +19,10 @@ export interface ServerOptions {
 
   // the sops command that decrypts the secrets file
   readonly sopsArgv: readonly string[];
+
+  // the folder of the encoder's pinned model files, /app/encoder in the nixie image; with none,
+  // memory search reads keywords only
+  readonly encoderDir?: string;
   readonly log: Logger;
 }
 
@@ -51,15 +55,23 @@ export interface ServerPartsOptions extends ServerOptions {
   readonly sandbox: SandboxSettings;
   readonly writer: Writer;
   readonly cleanup: Cleanup;
+
+  // the encoder the memory store's vector index runs, or null for keyword search alone
+  readonly encoder: ServerParts['encoder'];
 }
 
-// Starts nixie: it refuses an invalid configuration, secrets file or sandbox manifest before it
-// opens anything, then takes the writer lock and a new writer epoch, and copies and migrates the
-// database, before the health endpoint listens.
+// Starts nixie: it refuses an invalid configuration, secrets file or sandbox manifest, and loads
+// the encoder's model, before it opens anything, then takes the writer lock and a new writer epoch,
+// and copies and migrates the database, before the health endpoint listens.
 export async function startServer(options: ServerOptions): Promise<Server> {
   const inputs = await loadServerInputs(options);
 
   const cleanup = buildCleanup();
+  const encoder = inputs.encoder;
+
+  if (encoder !== null) {
+    await cleanup.defer(() => encoder.stop());
+  }
 
   const writer = await startLoggedWriter(inputs.config.server.dataDir, inputs.log, cleanup);
 

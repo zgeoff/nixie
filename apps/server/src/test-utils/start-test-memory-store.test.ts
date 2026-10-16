@@ -37,3 +37,22 @@ test('it runs the session cleanup it was given on a forget', async () => {
 
   expect(cleanupSessions).toHaveBeenCalledExactlyOnceWith({ itemID: item.itemID });
 });
+
+test('it gives the store a stub encoder over the topics the test passes', async () => {
+  const server = await startTestServer();
+
+  const store = await startTestMemoryStore(server.context, () => Promise.resolve(), [
+    ['sister', 'sibling'],
+  ]);
+
+  const item = await store.remember({
+    text: 'Ana is my sister',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await store.waitForSemanticIndex();
+
+  const result = await store.recall({ query: 'who is my sibling' });
+
+  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([item.itemID]);
+});

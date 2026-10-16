@@ -23,8 +23,13 @@ records.
 | imp isolation          | `bun test src/isolation.test.ts` in `adapters/sandbox-imp` | An impd on a host with `/dev/kvm`, and the `NIXIE_IMP_TEST_*` variables |
 
 The [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) gives that run's
-variables and steps. The design spikes under `docs/design/` install and run on their own, so the
-root `bunfig.toml` skips them.
+variables and steps.
+
+The memory encoder's suites run the real model from `node_modules/.cache/nixie-encoder`, which
+`bun run models` fills with the pinned model files after checking each one. `bun run test` runs it
+before `bun test`. Plain `bun test` skips those suites when the files are missing, and CI, where the
+`CI` variable is set, fails them instead, so a run there never passes without the model. The design
+spikes under `docs/design/` install and run on their own, so the root `bunfig.toml` skips them.
 
 The web server's browser suite drives a headless Chrome or Chromium through `Bun.WebView`, so
 `bun test` needs one that Bun finds on `PATH`, in a standard install location, or at

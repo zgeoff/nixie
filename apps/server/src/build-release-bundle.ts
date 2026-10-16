@@ -22,6 +22,9 @@ export async function buildReleaseBundle(
     outdir,
     naming: '[name].[ext]',
     target: 'bun',
+
+    // a bundle cannot inline a native addon, so the image carries the package beside the bundle
+    external: ['onnxruntime-node'],
     define: { NIXIE_TEST_BUILD: String(isTestBuild) },
   });
 

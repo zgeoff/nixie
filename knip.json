@@ -11,6 +11,9 @@
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
     "libs/testing": { "entry": ["src/test-utils/run-stub-*.ts"] },
+    // the image build and `bun run models` run the pinned download by its path, so no import
+    // reaches it
+    "adapters/encoder-onnx": { "entry": ["src/run-pinned-download.ts"] },
     // the nixie image runs the bundle of main.ts, the image build runs the release build, a test
     // spawns the sops stand-in, and the workflows run the config schema check and the release.json
     // script, so no import reaches them

@@ -12,6 +12,7 @@ import type { ItemHistory } from './history-types';
 import type { DeliveryLock } from './make-delivery-lock';
 import type { RateRequest } from './rating-types';
 import type { MemoryIndex } from './start-memory-index';
+import type { VectorIndex } from './start-vector-index';
 
 // Active items reach retrieval and recall. A retired item stays readable with its history. A
 // forgetting item has a forget under way, and a forgotten one has lost its key for good.
@@ -125,8 +126,11 @@ export interface RecallRequest {
   readonly includeRetired?: boolean;
   readonly includeHistory?: boolean;
 
-  // with a query, the lowest score a match keeps; 0 keeps every match
+  // with a query, the lowest keyword score a match keeps; 0 keeps every match
   readonly minScore?: number;
+
+  // with a query, the lowest similarity a semantic match keeps; 0.3 when unset
+  readonly minSimilarity?: number;
 
   // leaves out pinned items, which the session's opening already holds
   readonly excludePinned?: boolean;
@@ -176,11 +180,18 @@ export interface RecalledItem extends RecalledVersion {
   readonly history?: readonly RecalledVersion[];
 }
 
+// How a query searched: both indexes, keywords alone with no encoder, or keywords alone while the
+// vector index rebuilds.
+export type SearchMode = 'hybrid' | 'keyword' | 'keyword-fallback';
+
 export interface RecallResult {
   readonly items: readonly RecalledItem[];
 
   // the cursor for the next page of a listing, or null on the last page and for a query
   readonly next: string | null;
+
+  // how a query searched, for a query only
+  readonly searchMode?: SearchMode;
 }
 
 // The one interface the model's tools and the client reach memory through.
@@ -222,6 +233,21 @@ interface ForgottenItem {
 // must be safe to run again, because a forget that a crash cut short runs it again on resume.
 export type CleanupSessions = (cause: ForgottenItem) => Promise<void>;
 
+// What a text encodes as: a query, which the model reads with its query prefix, or an item's text.
+export type EncodeKind = 'query' | 'document';
+
+// The local text encoder the semantic index runs. It turns each text into a vector at the model's
+// full width, in the order given, and the index cuts and stores each vector itself.
+export interface Encoder {
+  readonly encode: (texts: readonly string[], kind: EncodeKind) => Promise<readonly Float32Array[]>;
+}
+
+// The encoder the vector index runs, and where a failed encoding goes.
+export interface SemanticSearch {
+  readonly encoder: Encoder;
+  readonly onError: (error: unknown) => void;
+}
+
 export interface MemoryContext {
   readonly log: Log;
   readonly definitions: () => Definitions;
@@ -230,12 +256,19 @@ export interface MemoryContext {
 
   // the pinned core's budget in tokens, 2,000 when unset
   readonly pinnedCoreTokens?: number;
+
+  // with none, search reads keywords only
+  readonly semanticSearch?: SemanticSearch;
 }
 
-// What every store operation reaches: the context, the index and the delivery lock.
+// What every store operation reaches: the context, the keyword index, the vector index and the
+// delivery lock.
 export interface StoreParts {
   readonly context: MemoryContext;
   readonly index: MemoryIndex;
+
+  // null when the context names no encoder, and search reads keywords only
+  readonly vectors: VectorIndex | null;
   readonly lock: DeliveryLock;
 }
 

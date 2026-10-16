@@ -90,6 +90,8 @@ export type { HistoryVersion, ItemHistory } from './history-types';
 
 export type {
   CleanupSessions,
+  EncodeKind,
+  Encoder,
   ForgetRequest,
   MemoryChange,
   MemoryContext,
@@ -106,6 +108,8 @@ export type {
   RememberRequest,
   RestoreRequest,
   RetireRequest,
+  SearchMode,
+  SemanticSearch,
   UndoRequest,
   VersionRef,
   VersionState,

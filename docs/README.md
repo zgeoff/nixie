@@ -161,8 +161,8 @@ rests on.
   memories, forget completion with key backups, the memory view and export
 - [Memory writes](design/platform/memory/writes.md) — the memory writer, batched capture, and the
   client's proposal cards and notices
-- [Memory in context](design/platform/memory/context.md) — semantic search, past messages in
-  retrieval, the recall tools, compaction summaries, and the SDK transcript as a cache
+- [Memory in context](design/platform/memory/context.md) — past messages in retrieval, the recall
+  tools, compaction summaries, and the SDK transcript as a cache
 - [Moments](design/platform/memory/moments.md) — kept spans of the event log, their records and
   tools, links from memory items, reading back, and destroying a moment
 

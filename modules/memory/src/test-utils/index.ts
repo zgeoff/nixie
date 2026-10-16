@@ -1,5 +1,6 @@
 export { buildMockCheckerAnswer } from './build-mock-checker-answer';
 export { buildMockWriteCaller } from './build-mock-write-caller';
+export { buildStubEncoder } from './build-stub-encoder';
 export { buildStubGate } from './build-stub-gate';
 export type { DiffRequest } from './create-consolidation-diff';
 export { createConsolidationDiff } from './create-consolidation-diff';
@@ -12,3 +13,4 @@ export { readApprovalRecords } from './read-approval-records';
 export { readItemShortID } from './read-item-short-id';
 export type { TestMemory, TestMemoryOptions } from './start-test-memory';
 export { startTestMemory } from './start-test-memory';
+export { startNextTestMemory } from './start-next-test-memory';

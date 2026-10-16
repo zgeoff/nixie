@@ -3,7 +3,7 @@ import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { MemoryTables, StoreParts } from './types';
 
 // Finishes a forget that memory.forget_started began: it deletes and checkpoints the item's key,
-// drops the index entry, runs the session cleanup and commits memory.forgotten. Every step is safe
+// drops the index entries, runs the session cleanup and commits memory.forgotten. Every step is safe
 // to run again, so a forget that a crash cut short resumes here and completes.
 export async function runForgetCleanup(parts: StoreParts, itemID: string): Promise<void> {
   const log = parts.context.log;
@@ -15,6 +15,9 @@ export async function runForgetCleanup(parts: StoreParts, itemID: string): Promi
   }
 
   await parts.index.remove(itemID);
+
+  parts.vectors?.remove(itemID);
+
   await parts.context.cleanupSessions({ itemID });
 
   await withWriteTransaction(log.writer, async (tx) => {

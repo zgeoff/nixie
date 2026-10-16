@@ -130,3 +130,15 @@ test('it exits 1 when the server fails the reset', async () => {
     message: 'nixie answered the reset request with 500: the runtime refused the destroy',
   });
 });
+
+test('it exits 1 from check-encoder when the encoder folder holds no model', async () => {
+  const ctx = await setupTest();
+  const exitCode = await runCLI(['check-encoder', '--encoder', ctx.dataDir], ctx.io);
+
+  expect(exitCode).toBe(1);
+
+  expect(ctx.io.log).toHaveBeenCalledExactlyOnceWith(
+    'command.failed',
+    expect.objectContaining({ command: 'check-encoder' }),
+  );
+});

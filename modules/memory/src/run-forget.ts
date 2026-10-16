@@ -37,6 +37,8 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
     });
 
     await parts.index.remove(itemID);
+
+    parts.vectors?.remove(itemID);
   });
 
   await runForgetCleanup(parts, itemID);

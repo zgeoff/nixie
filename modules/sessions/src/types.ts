@@ -55,6 +55,7 @@ interface MemoryRetrieval {
   readonly query: string;
   readonly limit: number;
   readonly minScore: number;
+  readonly minSimilarity: number;
 
   // pinned items stay out, because the session's opening holds them
   readonly excludePinned: true;
@@ -86,6 +87,9 @@ export interface ConversationMemorySettings {
 
   // the lowest keyword score a retrieved item keeps
   readonly retrievalMinScore: number;
+
+  // the lowest similarity a semantically retrieved item keeps
+  readonly retrievalMinSimilarity: number;
 
   // the budget, in tokens, of the recent turns a rebuilt session starts with
   readonly rebuildTokens: number;

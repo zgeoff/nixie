@@ -130,6 +130,7 @@ async function readRetrievedItems(
     query: text,
     limit: run.memorySettings.retrievalItems,
     minScore: run.memorySettings.retrievalMinScore,
+    minSimilarity: run.memorySettings.retrievalMinSimilarity,
     excludePinned: true,
     excludedVersions: query.isNewSession
       ? []

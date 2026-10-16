@@ -101,12 +101,17 @@ flowchart LR
 The index and the listing rank candidate IDs and never supply the returned text. Under the delivery
 lock, recall reads each candidate's current row again, drops any that is not in a state the request
 allows or whose key is gone, decrypts the rest, and appends a recall record that lists each item and
-version it delivered. For a query, each item in the record carries its match score from the index,
-so the client can show what each turn was given and how well it matched. The record holds references
-and scores and no text, so a later forget leaves no readable copy of what a recall delivered. A
-client reads a delivered version's text through the API while its key exists.
+version it delivered. For a query, each item in the record carries its keyword score and its
+similarity, each where that index placed it, and the record says how the query searched, so the
+client can show what each turn was given and how well it matched. The record holds references and
+scores and no text, so a later forget leaves no readable copy of what a recall delivered. A client
+reads a delivered version's text through the API while its key exists.
 
-### The index
+A query searches both indexes, each above its own floor, and reciprocal rank fusion merges the two
+rankings, because a BM25 score and a similarity share no scale. The record's search mode is hybrid,
+keyword with no encoder, or keyword fallback while the vector index rebuilds.
+
+### The indexes
 
 The keyword index is an FTS5 table with the porter tokenizer in an in-memory SQLite database. It
 holds the current text of active items only, and nothing writes it to disk, because a persisted
@@ -129,7 +134,21 @@ places nothing, and under a floor above zero a store of 1 or 2 items places noth
 query can also list excluded words. The index stems them with the same tokenizer as the query, and
 drops each query word whose stems all match one of theirs, so "Nixie's" drops with "nixie".
 
-### The delivery lock
+The vector index holds one vector per active item in process memory, and nothing writes it to disk.
+A local text encoder that [0039](../../decisions/0039-local-encoder.md) picks makes each vector, and
+the index keeps the front of each vector, normalised again at one byte a number, and ranks items by
+their dot product with the query's vector. The store leaves the excluded words out of the query text
+it encodes, because a name that nearly every item holds pulls every item toward the query.
+
+The vector index rebuilds after the store starts, in the background, because encoding every item
+takes seconds, and every query searches keywords alone until it ends. After a version's record
+commits, the store drops the item's vector and queues its current text for encoding outside the
+write transaction, and a retire or a forget drops the vector. Each item keeps a generation that
+every change raises, and an encoding that ends after a later change to its item is discarded, so a
+slow encoding never brings back an old text or a forgotten item. A failed rebuild goes to the
+server's log and leaves every query on keywords until the next start.
+
+## The delivery lock
 
 Writes, retire, forget and the last step of every recall share one lock. A forget marks the item
 forgetting and drops its index entry while it holds the lock, and a recall checks each item while it

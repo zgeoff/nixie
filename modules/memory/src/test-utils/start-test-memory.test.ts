@@ -1,6 +1,7 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
 import { readRecords } from '@heynixie/log';
+import { buildStubEncoder } from './build-stub-encoder';
 import { startTestMemory } from './start-test-memory';
 
 test('it starts a store over a log that folds the memory projections, with no record', async () => {
@@ -47,4 +48,12 @@ test('it gives the store the definitions snapshot the test passes', async () => 
     (definitions: unknown) =>
       JSON.stringify(definitions) === JSON.stringify({ snapshotHash: 'sha256:other' }),
   );
+});
+
+test('it gives the store the encoder the test passes', async () => {
+  const ctx = await startTestMemory({
+    semanticSearch: { encoder: buildStubEncoder([['sister', 'sibling']]), onError: mock() },
+  });
+
+  expect(ctx.store.waitForSemanticIndex()).resolves.toBeTrue();
 });
