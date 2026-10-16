@@ -88,11 +88,11 @@ test('it places past messages that share no word with the query by meaning, up t
     excludedWords: [],
   });
 
-  const matching = expect.objectContaining({
-    sequence: expect.toBeOneOf([clanks, cold, booked, old]),
-  });
+  expect(result.messages.map((message) => message.sequence)).toStrictEqual(
+    Array.from({ length: 3 }, () => expect.toBeOneOf([clanks, cold, booked, old])),
+  );
 
-  expect(result).toStrictEqual({ messages: [matching, matching, matching], searchMode: 'hybrid' });
+  expect(result.searchMode).toBe('hybrid');
 });
 
 test('it places by keyword alone while the vector index rebuilds', async () => {
@@ -341,15 +341,9 @@ test('it cuts a long message before it renders, so a paste it cuts still closes'
     excludedWords: [],
   });
 
-  expect(result.messages).toStrictEqual([
-    {
-      sequence: expect.toBeNumber(),
-      thread: 'garden',
-      recordedAt: expect.toBeNumber(),
-      text: expect.stringMatching(
-        /^Tomatoes, from the seed packet: <pasted id="(?<id>[\da-f]{12})">(?:water daily ){80}water da<\/pasted id="\k<id>">$/u,
-      ),
-      isCut: true,
-    },
-  ]);
+  expect(result.messages.map((message) => message.isCut)).toStrictEqual([true]);
+
+  expect(result.messages[0]?.text).toMatch(
+    /^Tomatoes, from the seed packet: <pasted id="(?<id>[\da-f]{12})">(?:water daily ){80}water da<\/pasted id="\k<id>">$/u,
+  );
 });

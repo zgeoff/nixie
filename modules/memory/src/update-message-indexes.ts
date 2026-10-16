@@ -10,7 +10,7 @@ export function updateMessageIndexes(
   const messages = parts.messages;
 
   return messages.lock(async () => {
-    const read = await readMessageEntries(parts.context, messages.cursor.indexedThrough);
+    const read = await readMessageEntries(parts.context, messages.cursor.readThrough());
 
     for (const entry of read.entries) {
       // oxlint-disable-next-line no-await-in-loop -- one connection runs one statement at a time
@@ -19,7 +19,7 @@ export function updateMessageIndexes(
       messages.vectors?.update(entry);
     }
 
-    messages.cursor.indexedThrough = read.through;
+    messages.cursor.updateThrough(read.through);
 
     await removeForgottenEntries(parts, read.entries);
 
@@ -33,9 +33,9 @@ async function removeForgottenEntries(
   parts: Pick<StoreParts, 'messages'>,
   entries: readonly { readonly itemID: string }[],
 ): Promise<void> {
-  const removed = parts.messages.cursor.removed;
+  const cursor = parts.messages.cursor;
 
-  for (const entry of entries.filter((added) => removed.has(Number(added.itemID)))) {
+  for (const entry of entries.filter((added) => cursor.isRemoved(Number(added.itemID)))) {
     // oxlint-disable-next-line no-await-in-loop -- one connection runs one statement at a time
     await parts.messages.index.remove(entry.itemID);
 

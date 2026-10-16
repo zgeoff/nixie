@@ -26,7 +26,7 @@ export async function readSessionDeliveries(
 
   return {
     versions: [...state.current.delivered.values()],
-    messages: [...state.current.messages],
+    messages: [...new Set(state.current.messages)],
   };
 }
 
@@ -34,7 +34,7 @@ interface SessionState {
   readonly delivered: ReadonlyMap<string, MemoryRef>;
 
   // the past messages a turn's retrieval placed, by sequence; only a turn's end lists them
-  readonly messages: ReadonlySet<number>;
+  readonly messages: readonly number[];
 
   // the running step's recalls, which its turn's end keeps up to its last result
   readonly pending: readonly PendingRecall[];
@@ -48,7 +48,7 @@ interface PendingRecall {
 
 const emptyState: SessionState = {
   delivered: new Map(),
-  messages: new Set(),
+  messages: [],
   pending: [],
   isCompacted: false,
 };
@@ -88,7 +88,7 @@ function buildTurnEnd(state: SessionState, record: LogRecord): SessionState {
   return {
     ...state,
     delivered: mergeRefs(state.delivered, [...recalled, ...retrieved]),
-    messages: new Set([...state.messages, ...messages]),
+    messages: [...state.messages, ...messages],
     pending: [],
   };
 }
@@ -107,7 +107,7 @@ function buildSessionReset(state: SessionState, record: LogRecord): SessionState
     return {
       ...state,
       delivered: new Map(),
-      messages: new Set(),
+      messages: [],
       pending: isLostSession(record)
         ? state.pending.filter((recall) => recall.sequence > parseLostRecallsThrough(record))
         : state.pending,
@@ -120,13 +120,13 @@ function buildSessionReset(state: SessionState, record: LogRecord): SessionState
 
     return {
       delivered: new Map(),
-      messages: new Set(),
+      messages: [],
       pending: state.pending.filter((recall) => recall.sequence > through),
       isCompacted: true,
     };
   }
 
-  return { ...state, delivered: new Map(), messages: new Set(), pending: [] };
+  return { ...state, delivered: new Map(), messages: [], pending: [] };
 }
 
 // an opening in place of a session the guest lost, or a rebuild recorded before openings for one

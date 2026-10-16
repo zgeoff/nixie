@@ -1,17 +1,12 @@
 import type { DeliveryLock } from './make-delivery-lock';
 import { makeDeliveryLock } from './make-delivery-lock';
+import type { MessageCursor } from './make-message-cursor';
+import { makeMessageCursor } from './make-message-cursor';
 import type { MemoryIndex } from './start-memory-index';
 import { startMemoryIndex } from './start-memory-index';
 import type { VectorIndex } from './start-vector-index';
 import { startVectorIndex } from './start-vector-index';
 import type { MemoryContext } from './types';
-
-// How far the message indexes have read the log, and the messages forgotten since start, which a
-// catch-up that read one before its forget drops again.
-interface MessageCursor {
-  indexedThrough: number;
-  readonly removed: Set<number>;
-}
 
 // The indexes of your past messages, each entry keyed by its record's sequence, apart from the
 // items' indexes so a recall of items never ranks a message.
@@ -47,7 +42,7 @@ export async function startStoreIndexes(context: MemoryContext): Promise<StoreIn
     messages: {
       index: messageIndex,
       vectors: semantic === undefined ? null : startVectorIndex(semantic.encoder, semantic.onError),
-      cursor: { indexedThrough: 0, removed: new Set() },
+      cursor: makeMessageCursor(),
       lock: makeDeliveryLock(),
     },
   };

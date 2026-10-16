@@ -19,7 +19,7 @@ export async function updateStoreIndexes(parts: StoreParts): Promise<UpdatedInde
   await parts.index.updateAll(entries);
   await parts.messages.index.updateAll(messages.entries);
 
-  parts.messages.cursor.indexedThrough = messages.through;
+  parts.messages.cursor.updateThrough(messages.through);
 
   return { rebuilt: runVectorRebuilds(parts, { items: entries, messages: messages.entries }) };
 }

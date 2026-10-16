@@ -8,7 +8,7 @@ export async function removeMessageEntries(
   sequences: readonly number[],
 ): Promise<void> {
   for (const sequence of sequences) {
-    parts.messages.cursor.removed.add(sequence);
+    parts.messages.cursor.addRemoved(sequence);
 
     // oxlint-disable-next-line no-await-in-loop -- one connection runs one statement at a time
     await parts.messages.index.remove(String(sequence));
