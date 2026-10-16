@@ -3,6 +3,8 @@ import { writeRecords } from '@heynixie/log';
 import type { DecisionPoint, PolicyDecision } from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
+import { toolCalledCodec } from './tool-called-codec';
+import { toolResultCodec } from './tool-result-codec';
 import type {
   ActionQueue,
   RegisteredTool,
@@ -104,7 +106,12 @@ function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions
           kind: 'tool_called',
           definitions,
           thread: run.thread,
-          payload: { ...ids, tool: call.tool, model: run.model.model, profile: run.model.profile },
+          payload: toolCalledCodec.encode({
+            ...ids,
+            tool: call.tool,
+            model: run.model.model,
+            profile: run.model.profile,
+          }),
           erasable: { input: recordInput?.(call.input) ?? call.input },
           ...(policy === null ? {} : { decision: policy.decision }),
         },
@@ -123,12 +130,12 @@ function makeCallRecorder(call: ToolCall, run: ToolRun, options: ToolCallOptions
           definitions,
           thread: run.thread,
           parent: callSequence,
-          payload: {
+          payload: toolResultCodec.encode({
             ...ids,
             outcome: settled.outcome,
             actionID: settled.actionID,
             sources: settled.sources,
-          },
+          }),
           erasable: settled.content,
           ...(contentSource === null ? {} : { contentSource }),
         },
