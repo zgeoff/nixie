@@ -33,7 +33,9 @@ async function setupTest() {
     cleanup,
   );
 
-  return { gate, client: buildHostClient(join(dataDir, 'run', 'control.sock')) };
+  const socketPath = join(dataDir, 'run', 'control.sock');
+
+  return { gate, socketPath, client: buildHostClient(socketPath) };
 }
 
 test('it answers a host command while the gate is open', async () => {
@@ -59,4 +61,17 @@ test('it runs the reset itself once the gate is closed', async () => {
   const reset = await ctx.client.reset();
 
   expect(reset).toStrictEqual({ resetAt: new Date(2_000_000), lastSequence: 12, keptSessions: 1 });
+});
+
+test('it runs a reset sent with a trailing slash once the gate is closed, as oRPC routes it to the reset', async () => {
+  const ctx = await setupTest();
+
+  await ctx.gate.close();
+
+  const response = await Bun.fetch('http://localhost/rpc/reset/', {
+    method: 'POST',
+    unix: ctx.socketPath,
+  });
+
+  expect(response.status).toBe(200);
 });

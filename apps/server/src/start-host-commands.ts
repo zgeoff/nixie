@@ -42,8 +42,9 @@ export async function startHostCommands(
 }
 
 // The reset itself never passes the gate: the reset closes the gate and waits for the calls in
-// flight, so a reset counted among them would wait for itself.
+// flight, so a reset counted among them would wait for itself. oRPC drops a trailing slash before it
+// finds the procedure, so /rpc/reset/ is the reset too.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
 function isResetCall(request: Request): boolean {
-  return new URL(request.url).pathname === '/rpc/reset';
+  return new URL(request.url).pathname.replace(/\/$/u, '') === '/rpc/reset';
 }
