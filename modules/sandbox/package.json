@@ -14,7 +14,8 @@
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/wire": "workspace:*",
-    "kysely": "catalog:"
+    "kysely": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:"

@@ -410,6 +410,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
