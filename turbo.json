@@ -2,6 +2,9 @@
   "$schema": "./node_modules/turbo/schema.json",
   // turbo otherwise writes a guidance block into the generated AGENTS.md
   "agentGuidance": false,
+  // every package's tsconfig extends one of these, so the pre-push hook's --affected typecheck
+  // checks every package when one changes
+  "globalDependencies": ["tsconfig.base.json", "research/tsconfig.base.json"],
   "tasks": {
     "typecheck": {
       // a package typechecks against its dependencies' source, which its own hash leaves out

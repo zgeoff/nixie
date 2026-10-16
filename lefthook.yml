@@ -42,14 +42,26 @@ pre-push:
   # one job at a time, to bound memory on a small host
   piped: true
   jobs:
+    # lefthook skips a job whose files command fails and still exits 0, so a
+    # missing base ref would pass the push without linting anything
+    - name: base ref
+      run:
+        git rev-parse --verify --quiet origin/main > /dev/null || { echo "pre-push needs
+        origin/main; run git fetch origin main"; exit 1; }
     - name: format:check
       run: bun run format:check
     - name: lint
       files: git diff --name-only --diff-filter=ACMR origin/main...HEAD
       glob: '*.{js,mjs,cjs,ts,mts,cts}'
       run: node_modules/.bin/oxlint --no-error-on-unmatched-pattern {files}
+    # the packages the branch affects, one package and one checker at a time:
+    # turbo's default 10 at once ran a 2 GiB host out of memory, and tsc's
+    # default checkers take apps/server to about 1.2 GiB, one checker to 0.6
     - name: typecheck
-      run: bun run typecheck
+      run:
+        node_modules/.bin/tsc --noEmit --checkers 1 && TURBO_SCM_BASE=origin/main
+        node_modules/.bin/turbo run typecheck --affected --concurrency=1 --output-logs=errors-only
+        -- --checkers 1
     - name: boundaries
       run: bun run boundaries
     - name: prose
