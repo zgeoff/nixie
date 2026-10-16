@@ -157,6 +157,9 @@ const memoryItemVersionSchema = z.object({
   checks: z.record(z.string(), z.unknown()).nullable().default(null),
   evidence: z.object({ end: z.int(), sequence: z.int(), start: z.int() }).nullable().default(null),
   evidenceQuote: z.string().nullable().default(null),
+
+  // a version whose key fails to unwrap, which nixie reads as unreadable
+  isUnreadable: z.boolean().default(false),
   origin: z.enum(['owner', 'conversation', 'task', 'memory_writer']).default('owner'),
   proposalID: z.string().nullable().default(null),
   recordedAt: z.date().default(() => faker.date.recent()),

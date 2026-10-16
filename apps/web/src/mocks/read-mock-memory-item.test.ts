@@ -91,6 +91,28 @@ test('it reads a forgotten item as gaps that show no message and no quote', asyn
   });
 });
 
+test('it reads a version whose text fails to open as unreadable, with no message and no quote', async () => {
+  const message = await store.records.create({ message: { text: 'I owe Robin twenty pounds.' } });
+
+  const item = await store.memoryItems.create({
+    versions: [
+      {
+        evidence: { end: 25, sequence: message.sequence, start: 0 },
+        evidenceQuote: 'I owe Robin twenty pounds',
+        isUnreadable: true,
+      },
+    ],
+  });
+
+  const detail = readMockMemoryItem(item.itemID);
+
+  expect(detail?.versions[0]).toMatchObject({
+    evidence: { message: null },
+    evidenceQuote: null,
+    status: 'unreadable',
+  });
+});
+
 test('it reads an item that does not exist as null', () => {
   expect(readMockMemoryItem('no-such-item')).toBeNull();
 });

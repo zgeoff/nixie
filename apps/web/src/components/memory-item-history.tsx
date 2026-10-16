@@ -70,7 +70,9 @@ function VersionEntry(props: VersionEntryProps): ReactNode {
       {version.status === 'readable' ? (
         <VersionText previous={props.previous} version={version} />
       ) : (
-        <p className={meta}>(forgotten)</p>
+        <p className={meta}>
+          {version.status === 'shredded' ? '(forgotten)' : '(text unavailable)'}
+        </p>
       )}
       <VersionEvidence version={version} />
       <VersionProvenance version={version} />

@@ -125,3 +125,19 @@ test('it shows each version of a forgotten item as a gap', async () => {
   expect(within(version).getByText('(forgotten)')).toBeVisible();
   expect(rendered.queryByText(/cello/u)).toBeNull();
 });
+
+test('it shows a version whose text fails to open as unavailable, not as forgotten', async () => {
+  await createDeviceSession();
+
+  await store.memoryItems.create({
+    itemID: '6f0c2d4e-8a1b-4c3d-9e5f-7a2b1c0d9e8f',
+    versions: [{ isUnreadable: true, text: 'Plays the cello on Thursdays' }],
+  });
+
+  const rendered = render(<MemoryItemHistory itemID="6f0c2d4e-8a1b-4c3d-9e5f-7a2b1c0d9e8f" />);
+
+  const version = await rendered.findByRole('listitem', { name: 'Version 1' });
+
+  expect(within(version).getByText('(text unavailable)')).toBeVisible();
+  expect(within(version).queryByText('(forgotten)')).toBeNull();
+});
