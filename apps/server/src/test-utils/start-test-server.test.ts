@@ -164,3 +164,36 @@ test('it reads the records of its log, oldest first', async () => {
 
   expect(records.map((record) => record.kind)).toStrictEqual(['owner_message', 'model.reply']);
 });
+
+test('it records your typed messages on a thread and returns their sequences', async () => {
+  const server = await startTestServer();
+  const sequences = await server.writeOwnerMessages('garden', ['Water the beans', 'Stake them']);
+  const records = await server.readRecords();
+
+  expect(records.map((record) => record.sequence)).toStrictEqual([...sequences]);
+
+  expect(
+    records.map((record) => ({
+      kind: record.kind,
+      thread: record.thread,
+      erasable: record.erasable,
+    })),
+  ).toStrictEqual([
+    {
+      kind: 'owner_message',
+      thread: 'garden',
+      erasable: {
+        status: 'readable',
+        fields: { text: 'Water the beans', spans: [{ start: 0, end: 15, source: 'typed' }] },
+      },
+    },
+    {
+      kind: 'owner_message',
+      thread: 'garden',
+      erasable: {
+        status: 'readable',
+        fields: { text: 'Stake them', spans: [{ start: 0, end: 10, source: 'typed' }] },
+      },
+    },
+  ]);
+});

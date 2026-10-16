@@ -16,15 +16,15 @@ export interface StartedMemoryStore extends MemoryStore, MemoryGate, ItemIDStore
   // publishes one memory writer batch with its cursor in one transaction
   readonly writeBatch: (publication: BatchPublication) => Promise<PublishResult>;
 
-  // resolves once the vector index's start rebuild and every encoding queued so far end: true
+  // resolves once the vector indexes' start rebuild and every encoding queued so far end: true
   // when the rebuild finished, and false when it failed, the store stopped or no encoder runs
   readonly waitForSemanticIndex: () => Promise<boolean>;
   readonly stop: () => Promise<void>;
 }
 
 // Puts memory into service: it resumes every pending forget, removes the key of each closed
-// proposal that a crash left behind, then fills the indexes from the readable active items. The log
-// must already hold the memory projections.
+// proposal a crash left behind, then fills the indexes from the readable active items and messages.
+// The log must already hold the memory projections.
 export async function startMemoryStore(context: MemoryContext): Promise<StartedMemoryStore> {
   const indexes = await startStoreIndexes(context);
 
@@ -40,7 +40,7 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
     waitForSemanticIndex: async () => {
       const isReady = await updated.rebuilt;
 
-      await parts.vectors?.waitForIdle();
+      await Promise.all([parts.vectors?.waitForIdle(), parts.messages.vectors?.waitForIdle()]);
 
       return isReady;
     },
@@ -62,5 +62,10 @@ async function runStartSteps(parts: StoreParts): Promise<UpdatedIndexes> {
 }
 
 async function stopIndexes(parts: StoreParts): Promise<void> {
-  await Promise.all([parts.index.stop(), parts.vectors?.stop()]);
+  await Promise.all([
+    parts.index.stop(),
+    parts.vectors?.stop(),
+    parts.messages.index.stop(),
+    parts.messages.vectors?.stop(),
+  ]);
 }

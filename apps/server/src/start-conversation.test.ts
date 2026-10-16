@@ -1026,3 +1026,71 @@ test('it retrieves nothing for a message that is only your name', async () => {
       .map((record) => record.payload['retrieved']),
   ).toStrictEqual([[]]);
 }, 30_000);
+
+test('it places at most 3 of your past messages that match a new message by meaning, each with its thread and day', async () => {
+  const ctx = await setupTest({
+    encoderTopics: [['boiler', 'heating', 'radiator', 'furnace', 'engineer'], ['hazelnuts']],
+  });
+
+  const [runner] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  const [clanks, cold, booked, old] = await ctx.writeOwnerMessages('garden', [
+    'The boiler clanks at night',
+    'The radiator in the hall stays cold',
+    'Booked the furnace check for Friday',
+    'Our boiler is fifteen years old',
+    'Allergic to hazelnuts',
+  ]);
+
+  await ctx.memory.waitForSemanticIndex();
+
+  ctx.model.addReplies({ text: 'On Friday.' });
+
+  await sendTestMessage(ctx.context, runner.runStep, 'When is the heating engineer coming?');
+
+  const records = await ctx.readRecords();
+
+  const matching = expect.toBeOneOf([clanks, cold, booked, old]);
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrievedMessages']),
+  ).toStrictEqual([[matching, matching, matching]]);
+
+  expect(JSON.stringify(ctx.readLastRequest()?.messages)).toMatch(
+    /<system-message type=\\"retrieved-messages\\" id=\\"(?<blockID>[\da-f]{12})\\" at=\\"[^"\\]+\\">\\nEarlier messages from the owner [^\\]+\\n- \d{1,2} [A-Z][a-z]{2} · thread garden · event \d+\\n {2}[^\\]+\\n- [^<]+<\/system-message id=\\"\k<blockID>\\">/u,
+  );
+}, 30_000);
+
+test('it leaves out a past message that the session already holds and places the next match', async () => {
+  const ctx = await setupTest({
+    encoderTopics: [['boiler', 'heating', 'furnace', 'engineer'], ['hazelnuts']],
+  });
+
+  const [runner] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
+    createConversationTask(ctx.context),
+  ]);
+
+  await ctx.memory.waitForSemanticIndex();
+
+  ctx.model.addReplies({ text: 'That sounds loud.' }, { text: 'On Friday.' });
+
+  await sendTestMessage(ctx.context, runner.runStep, 'The boiler clanks at night');
+
+  const booked = await ctx.writeOwnerMessages('garden', ['Booked the furnace check for Friday']);
+
+  await sendTestMessage(ctx.context, runner.runStep, 'When is the heating engineer coming?');
+
+  const records = await ctx.readRecords();
+
+  expect(
+    records
+      .filter((record) => record.kind === 'model.turn_ended')
+      .map((record) => record.payload['retrievedMessages']),
+  ).toStrictEqual([[], booked]);
+}, 30_000);

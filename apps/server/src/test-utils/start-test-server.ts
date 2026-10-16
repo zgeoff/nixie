@@ -3,7 +3,7 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { LogRecord } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { systemClock } from '@heynixie/tasks';
@@ -29,6 +29,13 @@ export interface TestServer {
 
   // the first 1,000 records of the log, oldest first
   readonly readRecords: () => Promise<readonly LogRecord[]>;
+
+  // records your messages on the thread, oldest first and each typed in full, outside any inbox,
+  // and returns their sequences
+  readonly writeOwnerMessages: (
+    thread: string,
+    texts: readonly string[],
+  ) => Promise<readonly number[]>;
 }
 
 // the direct tools the endpoint serves and the decision point each of their calls passes
@@ -87,6 +94,19 @@ export async function startTestServer(
       const entries = await readRecords(log, { afterSequence: 0, limit: 1000 });
 
       return entries.map((entry) => entry.record);
+    },
+    writeOwnerMessages: async (thread, texts) => {
+      const records = await writeRecords(
+        log,
+        texts.map((text) => ({
+          kind: 'owner_message',
+          definitions: { snapshotHash: 'sha256:test' },
+          thread,
+          erasable: { text, spans: [{ start: 0, end: text.length, source: 'typed' }] },
+        })),
+      );
+
+      return records.map((record) => record.sequence);
     },
   };
 }

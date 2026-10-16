@@ -28,6 +28,9 @@ interface TurnMemoryRefs {
   readonly pinnedCore: readonly MemoryRef[];
   readonly retrieved: readonly MemoryRef[];
 
+  // the sequences of the past messages the turn's retrieval placed
+  readonly retrievedMessages: readonly number[];
+
   // the newest session invalidation the turn saw before it ran
   readonly invalidatedThrough: number;
 }
@@ -89,6 +92,7 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
         ...buildTurnSummary(completed.turn),
         pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
         retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
+        retrievedMessages: [...completed.memory.retrievedMessages],
         invalidatedThrough: completed.memory.invalidatedThrough,
         sessionImageBytes: completed.images.bytes,
         sessionImageCount: completed.images.count,

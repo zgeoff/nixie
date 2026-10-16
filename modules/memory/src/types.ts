@@ -10,9 +10,9 @@ import type {
 } from './gate-types';
 import type { ItemHistory } from './history-types';
 import type { DeliveryLock } from './make-delivery-lock';
+import type { MessageRecallRequest, MessageRecallResult } from './message-recall-types';
 import type { RateRequest } from './rating-types';
-import type { MemoryIndex } from './start-memory-index';
-import type { VectorIndex } from './start-vector-index';
+import type { StoreIndexes } from './start-store-indexes';
 
 // Active items reach retrieval and recall. A retired item stays readable with its history. A
 // forgetting item has a forget under way, and a forgotten one has lost its key for good.
@@ -197,6 +197,13 @@ export interface RecallResult {
 // The one interface the model's tools and the client reach memory through.
 export interface MemoryStore {
   readonly recall: (request: RecallRequest) => Promise<RecallResult>;
+
+  // your readable past messages that match the query best first, none of them forgotten or behind
+  // a forgotten item
+  readonly recallMessages: (request: MessageRecallRequest) => Promise<MessageRecallResult>;
+
+  // drops your forgotten messages at the sequences from the message indexes, for a record forget
+  readonly removeMessages: (sequences: readonly number[]) => Promise<void>;
   readonly remember: (request: RememberRequest) => Promise<VersionRef>;
   readonly retire: (request: RetireRequest) => Promise<VersionRef>;
   readonly restore: (request: RestoreRequest) => Promise<VersionRef>;
@@ -261,14 +268,10 @@ export interface MemoryContext {
   readonly semanticSearch?: SemanticSearch;
 }
 
-// What every store operation reaches: the context, the keyword index, the vector index and the
-// delivery lock.
-export interface StoreParts {
+// What every store operation reaches: the context, the indexes of items and of your past messages,
+// and the delivery lock.
+export interface StoreParts extends StoreIndexes {
   readonly context: MemoryContext;
-  readonly index: MemoryIndex;
-
-  // null when the context names no encoder, and search reads keywords only
-  readonly vectors: VectorIndex | null;
   readonly lock: DeliveryLock;
 }
 

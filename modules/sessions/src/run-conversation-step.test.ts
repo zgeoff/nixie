@@ -43,6 +43,7 @@ async function setupTest() {
         memory: () => ({
           readPinnedCore: () => Promise.resolve([]),
           recall: () => Promise.resolve({ items: [], next: null }),
+          recallMessages: () => Promise.resolve({ messages: [] }),
           readShortIDs: () => Promise.resolve(new Map()),
         }),
         compaction: { summaryTokens },

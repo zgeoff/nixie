@@ -1,14 +1,14 @@
 # Memory in context
 
 Memory reaches the conversation in 2 ways: the pinned core opens each new session in its first
-message, and the items that match the user's new messages go before those messages in the turn. Both
-come from the [memory store](./store.md) at the start of each turn, so a pin, an edit or a forget
-reaches the conversation on its next turn. A forget also cleans up every session copy that could
-still hold the item, and the next turn runs on a session rebuilt from the event log.
+message, and the items and past messages that match the user's new messages go before those messages
+in the turn. Both come from the [memory store](./store.md) at the start of each turn, so a pin, an
+edit or a forget reaches the conversation on its next turn. A forget also cleans up every session
+copy that could still hold the item, and the next turn runs on a session rebuilt from the event log.
 [Conversation turns](../core/conversation-turns.md) covers the turn these parts fit into, and
 [session opening](../core/session-opening.md) covers what a new session opens with. The
-[memory in context](../../design/platform/memory/context.md) design covers what is not built: past
-messages in retrieval and the recall tools.
+[memory in context](../../design/platform/memory/context.md) design covers what is not built: a
+search of a task's brief on its first turn, and a tool that searches past messages by meaning.
 
 ## The pinned core
 
@@ -110,8 +110,43 @@ version, which the session has not seen, so an edited item matches again. A reca
 calls itself excludes nothing.
 
 The blocks before the first message keep one order: a new session's opening, the pinned-core change
-note, the retrieved items, then [the events block](../core/conversation-turns.md#the-events-block).
-The user's own words come last, so the model reads each block as context for them.
+note, the retrieved items, the past messages, then
+[the events block](../core/conversation-turns.md#the-events-block). The user's own words come last,
+so the model reads each block as context for them.
+
+## Past messages in retrieval
+
+Each turn's retrieval also searches the user's past messages, so an earlier exchange that matches
+the new message reaches the model without a tool call. The search takes the same text, excluded
+names and floors as the item search, and places up to a configurable number of messages in their own
+block after the retrieved items. Each message shows the day it was sent, its thread and its event
+ID, so a memory write can quote it as it quotes a message from a log read.
+
+The store keeps a keyword index and a vector index over the user's messages, built as the item
+indexes are, with each entry keyed by the message's record sequence. Both live in process memory,
+and each start rebuilds them from every readable message, so a forgotten message's words never
+outlive the process. The indexes hold the user's messages on every thread, and never a reply, a tool
+result or a summary, because those are model text or outside content. Before each search, the store
+indexes the messages recorded since the last one. While the vector index is ready, it waits for
+their vectors, so the message one turn sent matches by meaning on the next. While the vector index
+rebuilds after a start, the search places keyword matches alone and never waits for the rebuild.
+
+The indexes rank sequences and never supply the text. Under the delivery lock, the store reads each
+candidate again and leaves out a message whose key is gone or that backed a forgotten item, so a
+forget keeps the message out of retrieval even before its entry leaves the index. A forget of one
+message drops its entries before the session cleanup runs, and the store's forget of an item drops
+the entries of each message that backed it. A message renders as a rebuilt session's recent turns
+show it, with each paste in its own block. The store cuts a long message before it renders, so a cut
+never leaves a paste block open.
+
+Retrieval leaves out each past message the session already holds word for word, so a message never
+takes a slot to repeat what the model can read. A session holds the conversation's messages from the
+oldest of the recent turns its opening placed, and the opening record keeps that message's sequence.
+A new session's first turn reads the recent turns as its opening will. A session that opened before
+openings kept the sequence counts every message of the conversation as held. Retrieval also leaves
+out each message that an earlier turn of the session placed, which the turn-ended record lists by
+sequence. A compaction, an invalidation or a new opening empties that list, as it empties the item
+versions the session holds.
 
 ## Reading the log
 

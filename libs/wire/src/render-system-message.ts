@@ -9,6 +9,7 @@ export type SystemMessageType =
   | 'recent-turns'
   | 'events'
   | 'retrieved-memory'
+  | 'retrieved-messages'
   | 'pinned-memory-changes'
   | 'timer'
   | 'outcome';
