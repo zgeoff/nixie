@@ -877,7 +877,7 @@ test('it opens a new session under the new persona on the turn after the persona
       payload: {
         kind: 'rebuild',
         reason: 'persona',
-        lostSessionID: expect.any(String),
+        lostSessionID: expect.toBeString(),
         personaHash: 'sha256:persona-wren-cheerful',
         policyHash: 'sha256:policy-read-only',
       },
@@ -915,7 +915,7 @@ test('it resumes the same session on the turn after a change to the policy alone
 
   expect(ctx.sandboxes.turns).toMatchObject([
     { resume: null },
-    { resume: { sessionID: expect.any(String) } },
+    { resume: { sessionID: expect.toBeString() } },
   ]);
 
   expect(opened).toMatchObject([
