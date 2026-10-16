@@ -173,6 +173,10 @@ const memoryItems = new Collection({
   schema: z.object({
     forgottenAt: z.date().nullable().default(null),
     isPinned: z.boolean().default(false),
+
+    // the item's place in the pinned core, as the pin's sequence orders it; an item a test pins
+    // where it creates it comes before every item the view pins
+    pinnedSequence: z.int().nonnegative().default(0),
     itemID: z.uuid().default(() => faker.string.uuid()),
     shortID: z.string().default(() => faker.string.alphanumeric(6)),
     state: z.enum(['active', 'retired', 'forgetting', 'forgotten']).default('active'),

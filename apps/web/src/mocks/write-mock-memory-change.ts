@@ -76,14 +76,14 @@ function hasCoreRoom(text: string): boolean {
 }
 
 async function applyChange(input: MemoryChangeInput): Promise<void> {
+  if (input.change === 'pin') {
+    await applyPin(input);
+
+    return;
+  }
+
   await store.memoryItems.update((query) => query.where({ itemID: input.itemID }), {
     data(draft) {
-      if (input.change === 'pin') {
-        draft.isPinned = input.isPinned === true;
-
-        return;
-      }
-
       const current = draft.versions.at(-1);
 
       if (current === undefined) {
@@ -104,4 +104,20 @@ async function applyChange(input: MemoryChangeInput): Promise<void> {
       draft.isPinned &&= state === 'active';
     },
   });
+}
+
+async function applyPin(input: MemoryChangeInput): Promise<void> {
+  const pinnedSequence = findNextPinnedSequence();
+
+  await store.memoryItems.update((query) => query.where({ itemID: input.itemID }), {
+    data(draft) {
+      draft.isPinned = input.isPinned === true;
+      draft.pinnedSequence = pinnedSequence;
+    },
+  });
+}
+
+// a pin takes the place after every pin before it
+function findNextPinnedSequence(): number {
+  return Math.max(0, ...store.memoryItems.all().map((item) => item.pinnedSequence)) + 1;
 }
