@@ -7,6 +7,16 @@ test('it leaves out an excluded word, its possessive and the punctuation beside 
   );
 });
 
+test('it leaves out each word of a two-word name', () => {
+  expect(buildVectorQuery('Avery Smith?', ['Avery Smith'])).toBe('');
+});
+
+test('it leaves out either word of a two-word name when the query holds one', () => {
+  expect(buildVectorQuery("is Smith's sister in Leeds", ['Avery Smith'])).toBe(
+    'is sister in Leeds',
+  );
+});
+
 test('it keeps a word that only starts with an excluded word', () => {
   expect(buildVectorQuery('Nixon and Samantha', ['Nix', 'Sam'])).toBe('Nixon and Samantha');
 });
