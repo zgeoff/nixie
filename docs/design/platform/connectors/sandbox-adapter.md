@@ -103,8 +103,8 @@ an allow entry:** an allow entry in imp admits a whole address, so an imp allowe
 endpoint on the host also reaches imp's management API on that address.
 
 A sleep ends the forward, and the adapter opens it again after the wake. The
-[reverse-forward spike](../spikes/tools-reverse-forward/README.md) has the added latency, the tool
-calls through the stream, the isolation control and the reopen after sleep.
+[reverse-forward spike](../../../../research/tools-reverse-forward/README.md) has the added latency,
+the tool calls through the stream, the isolation control and the reopen after sleep.
 
 ## Running a command
 

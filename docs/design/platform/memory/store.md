@@ -80,7 +80,7 @@ cleanly does not prove the keys are gone. Staging files, restore samples and bac
 recoverable copies. A key backend must allow removal of every historical copy it holds, so a backend
 with unmanaged versioning or immutable retention cannot hold keys.
 [Backup and restore](../deployment/backup-and-restore.md) covers the backup tools, and the
-[forget backups spike](../spikes/forget-backups/) tests one local backend.
+[forget backups spike](../../../../research/forget-backups/) tests one local backend.
 
 ## Operations
 

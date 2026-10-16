@@ -161,8 +161,8 @@ credential, such as an app password or an API key, skips the first 2 steps.
 
 The first connector covers Gmail, Google Calendar and Google Drive on one OAuth client you register,
 with the scopes `gmail.modify`, `calendar.events` and `drive.file`. The
-[Google spike](../spikes/google-oauth/README.md) has the setup steps and the consent results. The
-app is published to production, because testing status expires consent after 7 days.
+[Google spike](../../../../research/google-oauth/README.md) has the setup steps and the consent
+results. The app is published to production, because testing status expires consent after 7 days.
 
 - `drive.file` covers files nixie creates and files you select for it, not your whole Drive.
 - `gmail.modify` reads, labels, archives, trashes and sends mail, and cannot delete a message for

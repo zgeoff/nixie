@@ -5,7 +5,7 @@
 - Status: decided
 - Design: [decision point](../design/platform/policy/decision-point.md),
   [rules](../design/platform/policy/rules.md)
-- Research: [policy rules spike](../design/platform/spikes/policy-rules/),
+- Research: [policy rules spike](../../research/policy-rules/),
   [approval notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/approvals.md),
   [taint in practice](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.3-notes/taint-in-practice.md)
 

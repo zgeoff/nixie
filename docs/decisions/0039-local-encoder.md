@@ -3,7 +3,7 @@
 - Date: 2026-10-11
 - Status: decided
 - Design: [memory context](../design/platform/memory/context.md#retrieval)
-- Research: [encoder spike](../design/platform/spikes/encoder/)
+- Research: [encoder spike](../../research/encoder/)
 
 The retrieval service from [0024](0024-memory-in-context.md) encodes text with `mdbr-leaf-ir`, using
 its int8 ONNX weights. nixie runs the model through `onnxruntime-node` directly, with

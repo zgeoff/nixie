@@ -56,10 +56,11 @@ Each batch runs one fresh model session in the writer's own worker sandbox on th
 image, never the conversation's sandbox, because the replies it reads can carry outside content. A
 fresh session keeps one batch's reading from steering the next. The system prompt holds the persona
 in force before the writer's rules, so the writer frames what it stores the way the assistant speaks
-of the user. The [batch model spike](../../design/platform/spikes/memory-batch-model/README.md)
-found the persona costs no capture. The writer's rules ask for each memory as one plain factual
-sentence that names the user by the name in the owner section of the deployment configuration, or
-calls the user "the owner" when the section sets none, so the writer's items read like the ones the
+of the user. The persona costs no capture: a rerun of the same live batches with and without it
+stored the same facts and applied no bad candidate either way. It costs input only, because every
+batch sends the persona again. The writer's rules ask for each memory as one plain factual sentence
+that names the user by the name in the owner section of the deployment configuration, or calls the
+user "the owner" when the section sets none, so the writer's items read like the ones the
 conversation saves. The rules keep the user's own distinctive words where those words carry the
 meaning, because a generic paraphrase loses what made the fact worth saving.
 

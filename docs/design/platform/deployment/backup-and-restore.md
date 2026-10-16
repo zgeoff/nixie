@@ -7,7 +7,8 @@ nixie backs up its SQLite database and its key store every hour by default. nixi
 `VACUUM INTO`, and the backup sidecar sends the copies to 2 restic repos that hold only ciphertext.
 The data repo keeps long retention, and the key repo keeps one snapshot. A new host restores from
 the 2 repos, the deployment repo and your recovery key. The
-[deploy spike](../spikes/deploy-local/README.md) ran every step here on local containers.
+[deploy spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/deploy-local/README.md)
+ran every step here on local containers.
 
 ## What a backup holds
 
@@ -101,7 +102,8 @@ write-ahead log. A forget then stages a key set at once instead of waiting for t
 
 1. The sidecar uploads the set's key snapshot, which lacks the deleted keys, forgets every other key
    snapshot, and prunes their unused data. Forgetting snapshots without a prune left a blob that
-   still decrypted the item in the [key-backup spike](../spikes/forget-backups/README.md).
+   still decrypted the item in the
+   [key-backup spike](../../../../research/forget-backups/README.md).
 2. The sidecar checks the remaining repository data and fetches every surviving key snapshot and an
    older data snapshot into a check directory. nixie opens those copies read-only and confirms that
    the forgotten items stay unreadable. nixie never opens a check copy for writing, so the check
@@ -143,10 +145,11 @@ run on one kernel. The replica stage's spike sets nixie's checkpoint settings be
 Litestream never replicates `keys.db`, because its retained history would keep deleted keys. Hourly
 key snapshots alone would leave new encrypted items unrecoverable for up to an hour after host loss,
 so the replica ships with the key snapshot trigger that [the recovery bound](#the-recovery-bound)
-describes. The [paired recovery spike](../spikes/paired-recovery/README.md) restores new content
-once the matching key snapshot exists. The
-[replica encryption spike](../spikes/replica-encryption/README.md) tests the gateway through process
-outages. Neither tests a cloud provider.
+describes. The
+[paired recovery spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/paired-recovery/README.md)
+restores new content once the matching key snapshot exists. The
+[replica encryption spike](../../../../research/replica-encryption/README.md) tests the gateway
+through process outages. Neither tests a cloud provider.
 
 ### The recovery bound
 
@@ -162,7 +165,8 @@ of new memories into one snapshot, and the cap holds the bound while keys keep c
 key set stays as a fallback.
 
 The bound counts until the key set is published, not until it is staged, so the cap holds it only
-while publication takes seconds. The [paired recovery spike](../spikes/paired-recovery/README.md)
+while publication takes seconds. The
+[paired recovery spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/paired-recovery/README.md)
 published a key set in under a second on a local backend, and
 [GEO-273](https://linear.app/zgeoff/issue/GEO-273) measures a real backend. A slow upload or an
 earlier set ahead in the sequence can push publication past the bound, so nixie sends a push when a

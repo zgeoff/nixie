@@ -34,8 +34,11 @@ libs/       shared code that belongs to no domain
 - **A guest** holds the code a sandbox image runs. It speaks to nixie only through the wire formats
   in `libs/wire`, over the sandbox's route back to nixie.
 
-The workspace globs are `apps/*`, `modules/*`, `guests/*`, `adapters/*` and `libs/*`. Spikes under
-`docs/design/` stay outside the workspace, and each spike installs on its own.
+The workspace globs are `apps/*`, `modules/*`, `guests/*`, `adapters/*` and `libs/*`. The spikes in
+`research/` join the workspace so that CI typechecks them, and they stand outside the package rules
+here: a spike pins the exact versions it ran against, imports product files by path with a
+`@boundaries-ignore` comment, and has no tests that CI runs. The Agent SDK spikes under
+`docs/design/` stay outside the workspace, and each installs on its own.
 
 `deploy/` sits outside the workspace and holds the deployment artifacts nixie ships:
 `deploy/compose/` holds the Compose recipe, and `deploy/kubernetes/` holds the

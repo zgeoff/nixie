@@ -53,8 +53,10 @@ its rules:
 
 The tool list shows the model each listed tool's name, description and input schema, and nothing
 else. The output schema and the declaration stay in the registry, because Claude Code shows the
-model only those three fields, as the
-[tools endpoint spike](../../design/platform/spikes/tools-endpoint/README.md) found.
+model only those three fields. A run against a stand-in for the model API showed it on the
+in-process transport and on Streamable HTTP servers built on both major versions of the MCP SDK: the
+tool's `_meta`, its MCP annotations and its output schema reached Claude Code in the tool list and
+never reached the model.
 
 ## The call steps
 
@@ -74,7 +76,9 @@ show the model that the tool exists and what it takes. The action queue is an in
 tools module declares and its caller passes in, so tools never imports actions.
 
 A typed result reaches the model as structured content with no content blocks, and every other
-outcome as one text block:
+outcome as one text block. Claude Code serializes structured content as JSON for the model and drops
+any content blocks beside it, so a tool cannot send the model a typed object and a different text
+rendering of it:
 
 | Outcome           | What the model receives                   | Error |
 | ----------------- | ----------------------------------------- | ----- |

@@ -5,9 +5,9 @@
 - Status: decided
 - Design: [backup and restore](../design/platform/deployment/backup-and-restore.md),
   [deployment](../design/platform/deployment/deployment.md)
-- Research: [replica encryption spike](../design/platform/spikes/replica-encryption/),
-  [paired recovery spike](../design/platform/spikes/paired-recovery/),
-  [forget backups spike](../design/platform/spikes/forget-backups/)
+- Research: [replica encryption spike](../../research/replica-encryption/),
+  [paired recovery spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/paired-recovery/),
+  [forget backups spike](../../research/forget-backups/)
 
 Restic holds scheduled encrypted snapshots of the data store and the wrapped key store, in separate
 repositories. Litestream replicates the data database offsite to S3-compatible storage, and never

@@ -13,5 +13,5 @@ answer in the client, and budgets bound what nixie spends.
   approval, "always allow" and the approval digest
 - [Budgets](budgets.md) — budgets, lifting rules, model cost and the hard spending stop
 
-The [policy rules spike](../spikes/policy-rules/README.md) prototypes the decision point, the
-snapshot hash, the widening check and the scripted scenarios.
+The [policy rules spike](../../../../research/policy-rules/README.md) prototypes the decision point,
+the snapshot hash, the widening check and the scripted scenarios.

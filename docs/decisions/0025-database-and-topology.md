@@ -2,7 +2,8 @@
 
 - Date: 2026-10-09
 - Status: decided
-- Research: [event log spike](../design/platform/spikes/event-log-db/)
+- Research:
+  [event log spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/event-log-db/)
 
 nixie stores the event log, task state, approvals, the action queue and memory in one SQLite
 database on one host. Every transaction that reads and then writes opens with `BEGIN IMMEDIATE`, and

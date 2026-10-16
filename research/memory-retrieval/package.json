@@ -1,0 +1,16 @@
+{
+  "name": "@heynixie/spike-memory-retrieval",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike": "bun run.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.1"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2"
+  }
+}

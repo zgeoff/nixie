@@ -43,10 +43,12 @@ test process, outside the nixie process that a test kills, so their records surv
    on. The test then sends `SIGKILL` to the nixie process, or releases the runner. A test that wants
    the kill after a transaction names the point after its commit.
 2. **The scripted model.** The test points the model profile at a local mock of the Messages API, as
-   the [tools endpoint spike](../spikes/tools-endpoint/README.md) does. The mock answers each
-   request from a script, such as "call `test.send` with these arguments, then end the turn", and
-   records every request it receives. The real SDK resumes and forks the session, so a test covers
-   both the core and the SDK half of a rerun. No test calls a real model.
+   the
+   [tools endpoint spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/tools-endpoint/README.md)
+   does. The mock answers each request from a script, such as "call `test.send` with these
+   arguments, then end the turn", and records every request it receives. The real SDK resumes and
+   forks the session, so a test covers both the core and the SDK half of a rerun. No test calls a
+   real model.
 3. **The sandbox double.** nixie runs every sandbox through `adapters/sandbox-process`, which starts
    each guest as a local child process with no isolation. The conversation guest runs the real SDK
    against the scripted model and reaches nixie's tool endpoint over a local route. **Why:** CI then
@@ -212,6 +214,7 @@ Each later slice adds its crash tests in this doc before it starts, on the same 
 | A stale writer epoch             | none                                              | CI      |
 | The rollout keeps one writer     | none                                              | live    |
 
-A random kill soak repeats the [event log spike](../spikes/event-log-db/README.md) from slice 2:
-many runners, kills at random times, and the same oracle. It finds faults the named points miss, and
-it never gates a slice on its own.
+A random kill soak repeats the
+[event log spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/event-log-db/README.md)
+from slice 2: many runners, kills at random times, and the same oracle. It finds faults the named
+points miss, and it never gates a slice on its own.

@@ -55,7 +55,8 @@ A declaration no longer fits when an argument it names, such as a destination, i
 current input schema, so the proxy checks every declaration on every listing. The client shows a
 changed tool's old and new form side by side, and allowing it pins the new hash. A server can still
 change what a tool does without changing its listing, so the effect declaration assumes the worst
-for an external tool. The [MCP proxy spike](../spikes/mcp-proxy-pin/README.md) ran these rules.
+for an external tool. The [MCP proxy spike](../../../../research/mcp-proxy-pin/README.md) ran these
+rules.
 
 ### A failed listing
 

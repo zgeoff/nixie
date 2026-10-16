@@ -22,6 +22,7 @@ pre-commit:
         - 'apps/web/src/routeTree.gen.ts'
         - 'apps/web/src/styled-system/**'
         - 'docs/design/**/spikes/**'
+        - 'research/**'
         - '**/dist/**'
         - '**/coverage/**'
         - '.worktrees/**'

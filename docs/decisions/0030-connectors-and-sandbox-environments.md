@@ -6,10 +6,9 @@
   [tools](../design/platform/connectors/tools.md),
   [sandbox adapter](../design/platform/connectors/sandbox-adapter.md),
   [credentials](../design/platform/connectors/credentials.md)
-- Research: [reverse forward spike](../design/platform/spikes/tools-reverse-forward/),
-  [Google OAuth spike](../design/platform/spikes/google-oauth/),
-  [proxy spike](../design/platform/spikes/mcp-proxy-pin/),
-  [endpoint spike](../design/platform/spikes/tools-endpoint/)
+- Research: [reverse forward spike](../../research/tools-reverse-forward/),
+  [Google OAuth spike](../../research/google-oauth/), [proxy spike](../../research/mcp-proxy-pin/),
+  [endpoint spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/tools-endpoint/)
 
 nixie's connectors and sandboxes settle these choices. nixie's host application is Bun and
 TypeScript.

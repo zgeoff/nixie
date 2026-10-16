@@ -34,8 +34,9 @@ end of speech to the reply before the model's share.
 neutral working directory per run, and a 1-sentence persona as the whole system prompt. With tools,
 an in-process SDK MCP server offers 3 stub tools, and a chat prompt never calls them. Haiku 5.5 and
 Sonnet 5.5 run at `effort: 'low'`, the chat setting from the
-[model-eval spike](../model-eval/README.md). Haiku 4.5 runs at its default, which has extended
-thinking on. Each run keeps Claude Code's config folder in a temp directory, never in `~/.claude`.
+[model-eval spike](../../../../../research/model-eval/README.md). Haiku 4.5 runs at its default,
+which has extended thinking on. Each run keeps Claude Code's config folder in a temp directory,
+never in `~/.claude`.
 
 [`bench.ts`](bench.ts) starts a turn in 6 ways. The clock starts when nixie hands the SDK the
 prompt.

@@ -3,7 +3,7 @@
 - Date: 2026-10-08
 - Status: decided
 - Design: [credentials](../design/platform/connectors/credentials.md)
-- Research: [Google OAuth spike](../design/platform/spikes/google-oauth/),
+- Research: [Google OAuth spike](../../research/google-oauth/),
   [connector notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.6-notes/connectors.md)
 
 Each deployment registers its own OAuth clients with each provider, and nixie ships no central OAuth

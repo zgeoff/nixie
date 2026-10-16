@@ -22,9 +22,9 @@ Load the shared `docs-writing` skill first. Where the two skills disagree, this 
   date and a one-line summary. The `## Changes` list is the one place a record holds history.
 - **`docs/design/<work>/`** holds a design for big, speculative work, written well before its code.
   A design doc states contracts: what each part does, its interfaces, its guarantees, and the reason
-  for each one. Evidence lives in the design's spikes, in `docs/design/<work>/spikes/<name>/`, and
-  the doc links the spike instead of repeating its numbers or its method. The owner opens a design;
-  an agent never opens one by default.
+  for each one. Evidence lives in spikes, in `research/<name>/`, and the doc links the spike instead
+  of repeating its numbers or its method. The owner opens a design; an agent never opens one by
+  default.
 - **`docs/guides/`, `docs/runbooks/` and `docs/reference/`** hold steps a user does, operator and
   contributor procedures, and generated reference only.
 
@@ -33,8 +33,9 @@ open choices and later stages live in the nixie Linear project, and a doc links 
 restating the question.
 
 When work from a design lands, its PR moves the built part into `docs/architecture/`, rewritten to
-describe the code, and deletes the rest of the design folder, spikes included, once nothing in it is
-unbuilt.
+describe the code, and deletes the rest of the design folder once nothing in it is unbuilt. A spike
+is deleted once its finding sits in the architecture doc that owns it, and a link that cites a
+deleted spike points at the commit that last held it.
 
 ## Size
 

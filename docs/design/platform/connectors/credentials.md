@@ -98,7 +98,8 @@ The store refuses 2 grants whatever a rule says:
 
 - **A grant on a token endpoint.** imp's broker returns the response body unchanged, so a guest that
   calls a granted token endpoint receives live tokens, as the
-  [imp broker spike](../spikes/imp-broker/README.md) found.
+  [imp broker spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/imp-broker/README.md)
+  found.
 - **A grant of an OAuth client's secret,** which serves only the token endpoint.
 
 Each grant is a record with the sandbox, the credential's reference and fingerprint, and the host.

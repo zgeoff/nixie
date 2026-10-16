@@ -4,7 +4,8 @@
 - Updated: 2026-10-15
 - Status: decided
 - Design: [memory writes](../design/platform/memory/writes.md)
-- Research: [memory checks spike](../design/platform/spikes/memory-checks/),
+- Research:
+  [memory checks spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-checks/),
   [memory notes](https://github.com/zgeoff/nixie/blob/research-archive/docs/research/2.4-notes/memory-models.md)
 
 A memory write applies at once, with a notice and undo, only when all 3 checks pass:

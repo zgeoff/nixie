@@ -28,14 +28,16 @@ triggers, its sandbox, its sessions and how it publishes.
 A write whose text matches an active item exactly returns that item and writes nothing. A
 near-duplicate is the model's job: the writer sees the items retrieval found and revises one instead
 of adding a second. A fact that replaces another, such as a new address, revises or retires the old
-item. **Why:** the [retrieval spike](../spikes/memory-retrieval/README.md) found that no ranking
-separates a current fact from the one it superseded, so the store never holds both as active.
+item. **Why:** the [retrieval spike](../../../../research/memory-retrieval/README.md) found that no
+ranking separates a current fact from the one it superseded, so the store never holds both as
+active.
 
 ### Batch boundaries and recovery
 
 [The memory writer](../../../architecture/memory/writer.md#publishing) describes how a batch
 publishes in one transaction and how a crash at any point leaves it published once. The
-[offline batch spike](../spikes/memory-batch/) tested this cursor under process kills.
+[offline batch spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-batch/)
+tested this cursor under process kills.
 
 ## The gate for writer batches
 

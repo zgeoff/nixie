@@ -52,7 +52,7 @@ A host runs nixie, the imp host and the backups. It needs:
 - **Docker Engine with Compose v2,** or a Kubernetes node.
 - **Memory for the imps.** The conversation imp stays awake, and each running worker holds an imp.
   nixie runs at most 3 workers at once by default, which the
-  [imp worker spike](../spikes/imp-worker-start/README.md) sizes at about 8 GiB for imps.
+  [imp worker spike](../../../../research/imp-worker-start/README.md) sizes at about 8 GiB for imps.
 - **An encrypted disk,** such as LUKS or the provider's volume encryption. SQLite and restic leave
   the live files unencrypted at rest, and nixie's own encryption covers erasable fields and memory
   only.
@@ -141,8 +141,10 @@ the backends.
 Each container decrypts its sops file inside its own process at start, with the host key mounted
 read-only, and keeps the plaintext in memory. A container restart decrypts again, so the restart
 policy brings nixie back after a reboot. **Why:** a decrypt-to-tmpfs sidecar lost its volume when
-the sidecar exited in the [deploy spike](../spikes/deploy-local/README.md), and a Compose secret or
-an environment variable puts the plaintext on disk or in the container's configuration.
+the sidecar exited in the
+[deploy spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/deploy-local/README.md),
+and a Compose secret or an environment variable puts the plaintext on disk or in the container's
+configuration.
 
 You change a secret by editing the file with `sops`, committing and deploying. `sops updatekeys`
 replaces the host key. A nixie command rewraps every key in the key store in one transaction when
