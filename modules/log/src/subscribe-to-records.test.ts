@@ -1,10 +1,12 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
+import { waitForCondition } from '@heynixie/testing';
 import { makeWALSubscription } from './make-wal-subscription';
 import { startKeyStore } from './start-key-store';
 import { subscribeToRecords } from './subscribe-to-records';
 import { startTestLog } from './test-utils/start-test-log';
+import { withReadSnapshot } from './test-utils/with-read-snapshot';
 import { writeRecords } from './write-records';
 
 async function setupTest() {
@@ -31,7 +33,7 @@ async function setupTest() {
     deploymentKey: started.log.deploymentKey,
   };
 
-  return { log: started.log, reader, clock: started.clock, signal: abort.signal };
+  return { log: started.log, reader, readerDB, clock: started.clock, signal: abort.signal };
 }
 
 test('it yields the records after the sequence, then a new record on the next commit, without polling', async () => {
@@ -75,24 +77,37 @@ test('it yields the records after the sequence, then a new record on the next co
   expect(ctx.clock.countSleepers()).toBe(0);
 });
 
-test('it wakes a reader in another process when the WAL changes', async () => {
+test('it yields a new record to a reader in another process on the poll when the commit shows after the WAL settles', async () => {
   const ctx = await setupTest();
 
-  // an hour-long poll leaves the WAL watcher as the only wake that can arrive in time
   const stream = subscribeToRecords(ctx.reader, {
     afterSequence: 0,
-    subscribeToChanges: makeWALSubscription(ctx.reader.writer, { pollMs: 3_600_000 }),
+    subscribeToChanges: makeWALSubscription(ctx.reader.writer, { pollMs: 1000 }),
     signal: ctx.signal,
   });
 
   const waiting = stream.next();
 
-  await writeRecords(ctx.log, [
-    { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
-  ]);
+  // the reader's snapshot hides the commit from every read the WAL watcher wakes, as a slow disk
+  // sync does when it publishes the commit late
+  const statusWhileHidden = await withReadSnapshot(ctx.readerDB, async () => {
+    await writeRecords(ctx.log, [
+      { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
+    ]);
+
+    // the injected delay: the commit stays hidden for 500 ms, past the last 250 ms settle wake
+    await Bun.sleep(500);
+
+    return Bun.peek.status(waiting);
+  });
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
+  ctx.clock.advance(1000);
 
   const next = await waiting;
 
+  expect(statusWhileHidden).toBe('pending');
   expect(next.value?.record.sequence).toBe(1);
 });
 
