@@ -25,6 +25,7 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'memory.recall.ranked': 'memory.recall.ranked',
   'memory.recall.checked': 'memory.recall.checked',
   'memory.forget.key_removed': 'memory.forget.key_removed',
+  'memory.offer.saved': 'memory.offer.saved',
   'writer.batch.planned': 'writer.batch.planned',
   'writer.batch.extracted': 'writer.batch.extracted',
   'writer.batch.gated': 'writer.batch.gated',
