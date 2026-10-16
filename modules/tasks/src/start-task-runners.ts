@@ -1,4 +1,5 @@
 import { claimTask } from './claim-task';
+import { DEFAULT_MAX_STEP_ERRORS } from './default-max-step-errors';
 import { runDueTimers } from './run-due-timers';
 import { runTaskStep } from './run-task-step';
 import type { RunnerPool } from './start-runner-pool';
@@ -79,7 +80,6 @@ const DEFAULT_SIZE = 3;
 // task within a minute.
 const DEFAULT_LEASE_MS = 60_000;
 const DEFAULT_POLL_MS = 1000;
-const DEFAULT_MAX_STEP_ERRORS = 3;
 const DEFAULT_RETRY_DELAY_MS = 30_000;
 
 // Why: 5 min keeps a long outage to one try every 5 min, and a reply waits at most that long once
