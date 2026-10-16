@@ -37,10 +37,16 @@ export interface TestServerTools {
   readonly decide: ToolEndpointOptions['decide'];
 }
 
+// Builds the endpoint's tools from the server's own context, for a tool such as the log reader that
+// needs the log the server starts.
+export type BuildTestServerTools = (context: TasksContext) => TestServerTools;
+
 // Starts the parts of a test build the conversation runs on: a writer on a fresh data directory, a
-// tool endpoint with the tools given or none, and the process double whose sandboxes a test can
-// retire. It stops them, after every part the test deferred, when it finishes.
-export async function startTestServer(tools?: TestServerTools): Promise<TestServer> {
+// tool endpoint with the tools given or built, or none, and the process double whose sandboxes a
+// test can retire. It stops them, after every part the test deferred, when it finishes.
+export async function startTestServer(
+  tools?: TestServerTools | BuildTestServerTools,
+): Promise<TestServer> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -88,8 +94,10 @@ export async function startTestServer(tools?: TestServerTools): Promise<TestServ
 function startTestToolEndpoint(
   context: TasksContext,
   socketDir: string,
-  tools: TestServerTools | undefined,
+  given: TestServerTools | BuildTestServerTools | undefined,
 ): Promise<ToolEndpoint> {
+  const tools = typeof given === 'function' ? given(context) : given;
+
   return startToolEndpoint({
     socketDir,
     registry: buildToolRegistry(tools?.definitions ?? []),

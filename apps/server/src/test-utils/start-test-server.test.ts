@@ -4,6 +4,7 @@ import { writeRecords } from '@heynixie/log';
 import type { DecisionPoint } from '@heynixie/policy';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import type { BuildTestServerTools } from './start-test-server';
 import { startTestServer } from './start-test-server';
 
 test('it starts a log with the tasks, sandboxes and memory projections, an endpoint and the process double', async () => {
@@ -135,6 +136,20 @@ test('it serves the tools it is given, and passes each call through the decision
   expect(records.find((record) => record.kind === 'tool_called')?.decision).toMatchObject({
     outcome: 'deny',
   });
+});
+
+test('it builds its tools from its own context, the log the tools write to included', async () => {
+  const buildTools = mock<BuildTestServerTools>(() => ({
+    definitions: [],
+    decide: () => ({
+      decision: { outcome: 'deny', stage: 1, rule: null },
+      sentence: 'No tool is registered.',
+    }),
+  }));
+
+  const server = await startTestServer(buildTools);
+
+  expect(buildTools).toHaveBeenCalledExactlyOnceWith(server.context);
 });
 
 test('it reads the records of its log, oldest first', async () => {
