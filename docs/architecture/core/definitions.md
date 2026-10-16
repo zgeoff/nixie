@@ -56,8 +56,10 @@ refuses one that turned into a link. No file from outside the definitions ever r
 The content hash covers a format version line, then each file in path order with its path, its byte
 length and its own hash. Every source turns CRLF line endings into LF before it hashes, and git
 metadata, mode bits and file times never enter the hash. A git commit and a checkout of it, on any
-platform, therefore give the same hash, as the
-[definitions source spike](../../design/platform/spikes/definitions-source/README.md) showed.
+platform, therefore give the same hash. A run that read one set of definitions from a git commit and
+from a local directory got one hash from both, and a persona file saved with CRLF endings hashed the
+same as its LF copy once normalised. Without that step a Windows checkout with `core.autocrlf` on
+would give the commit a second hash.
 
 ## The definitions format
 

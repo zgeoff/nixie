@@ -115,20 +115,21 @@ keyword with no encoder, or keyword fallback while the vector index rebuilds.
 
 The keyword index is an FTS5 table with the porter tokenizer in an in-memory SQLite database. It
 holds the current text of active items only, and nothing writes it to disk, because a persisted
-full-text index keeps forgotten words after their key is gone, as the
-[shredding spike](../../design/platform/spikes/memory-shred/README.md) found. Each start rebuilds it
-from the readable active items. A version's record is the index's invalidation record: after the
-record commits, still under the delivery lock, the store replaces the item's entry with its current
-text or drops an item that left the active state. A query matches any of its words, and the store
-quotes each word, so no character a caller sends reads as FTS5 syntax. The index leaves function
-words, such as "to" and "a", out of both the query and the text it stores. BM25 weighs a word by how
-few items hold it and not by what it means, so a function word that one item holds would score as
-high as a topic word and bring back an item the query says nothing about. The filter covers the
-stored text too, because the porter tokenizer stems some content words to a function word, such as
-"one" to "on". A word in capitals, such as "US", is an acronym and stays. A query can also set a
-score floor, which drops each match whose BM25 score falls below it, and can leave pinned items out.
-BM25 gives no weight to a word that half the items hold, so in an index of 1 or 2 items every match
-scores about zero, and a floor above zero drops every match.
+full-text index keeps forgotten words after their key is gone. FTS5 records a delete as a marker
+until its segments merge, so under its default settings a deleted row's words stay in the database
+file even after `VACUUM`, and no setting removes them from a backup taken before the forget. Each
+start rebuilds the keyword index from the readable active items. A version's record is the index's
+invalidation record: after the record commits, still under the delivery lock, the store replaces the
+item's entry with its current text or drops an item that left the active state. A query matches any
+of its words, and the store quotes each word, so no character a caller sends reads as FTS5 syntax.
+The index leaves function words, such as "to" and "a", out of both the query and the text it stores.
+BM25 weighs a word by how few items hold it and not by what it means, so a function word that one
+item holds would score as high as a topic word and bring back an item the query says nothing about.
+The filter covers the stored text too, because the porter tokenizer stems some content words to a
+function word, such as "one" to "on". A word in capitals, such as "US", is an acronym and stays. A
+query can also set a score floor, which drops each match whose BM25 score falls below it, and can
+leave pinned items out. BM25 gives no weight to a word that half the items hold, so in an index of 1
+or 2 items every match scores about zero, and a floor above zero drops every match.
 [Per-turn retrieval](./context.md#per-turn-retrieval) uses both, so a word that half the items share
 places nothing, and under a floor above zero a store of 1 or 2 items places nothing per turn. A
 query can also list excluded words. The index stems them with the same tokenizer as the query, and
