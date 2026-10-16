@@ -85,7 +85,7 @@ function findRefusalNotice(error: unknown): string | null {
   return null;
 }
 
-type CallState = Pick<MutationState<unknown, Error, unknown>, 'status' | 'variables' | 'error'>;
+type CallState = Pick<MutationState, 'status' | 'variables' | 'error'>;
 
 // a call that has not sent, or whose input is not a forget's, stands nowhere
 function toCall(state: CallState): MemoryForgetCall | null {
