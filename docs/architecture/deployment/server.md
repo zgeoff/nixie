@@ -133,9 +133,12 @@ Readiness gates routing, so it holds only the parts without which nixie cannot a
 readiness report adds advisory parts, which show in its body and never change its status. The
 conversation turns part is advisory: it turns unready once the conversation's errors in a row reach
 the error limit, with the sandbox host's code when the last turn failed there, and the next turn
-that commits clears it. A turn that fails because an imp cannot wake therefore leaves nixie in its
-Service, and the API, the web UI and the health endpoint keep answering while the conversation
-retries.
+that commits clears it. The start sequence reads the conversation's stored errors in a row once the
+database passes its check at start, so a restart while turns fail keeps the part unready instead of
+reporting turns that no run has checked. A database that fails its check leaves the part unready,
+because the start reads nothing from it. A turn that fails because an imp cannot wake therefore
+leaves nixie in its Service, and the API, the web UI and the health endpoint keep answering while
+the conversation retries.
 
 ## Logs
 

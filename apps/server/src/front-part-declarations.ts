@@ -1,9 +1,8 @@
-import { checkDatabaseIntegrity } from '@heynixie/ops';
 import { buildAPIGate } from './build-api-gate';
 import { buildSeedInputs } from './build-seed-inputs';
 import { buildServerContext } from './build-server-context';
 import { buildServerReset } from './build-server-reset';
-import { buildStartState } from './build-start-state';
+import { loadStartState } from './load-start-state';
 import type { ServerPartValues } from './server-part-values';
 import { startHostCommands } from './start-host-commands';
 import { startHTTPServer } from './start-http-server';
@@ -16,11 +15,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'state',
     needs: ['inputs'],
-    start: async (parts) => {
-      const database = await checkDatabaseIntegrity(parts.get('inputs').options.writer.db);
-
-      return buildStartState(database);
-    },
+    start: (parts) => loadStartState(parts.get('inputs').options.writer),
   },
   {
     name: 'context',
