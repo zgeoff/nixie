@@ -1,47 +1,34 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import type { ActionsTables } from '@heynixie/actions';
-import { actionsProjection, claimAction, runActionAttempt } from '@heynixie/actions';
-import { logProjections, startWriter } from '@heynixie/log';
-import type { TasksContext } from '@heynixie/tasks';
-import { buildStepRunID, tasksProjections } from '@heynixie/tasks';
-import { buildTestClock } from '@heynixie/testing';
+import { expect, test } from 'bun:test';
+import type { StepInput } from '@heynixie/tasks';
+import { buildStepRunID } from '@heynixie/tasks';
 import { buildActionQueue } from './build-action-queue';
+import { claimAction } from './claim-action';
+import { runActionAttempt } from './run-action-attempt';
 import { createTestStep } from './test-utils/create-test-step';
+import { startTestActions } from './test-utils/start-test-actions';
+import type { ActionsTables } from './types';
 
 // a writer with the tasks and actions projections on a test clock, and a task whose first step a
 // runner claimed, as the step input a task runner passes
 async function setupTest() {
-  const stack = new AsyncDisposableStack();
+  const actions = await startTestActions();
+  const claim = await createTestStep(actions.context);
 
-  onTestFinished(() => stack.disposeAsync());
-
-  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-action-queue-'));
-
-  stack.defer(() => rm(dataDir, { recursive: true, force: true }));
-
-  const writer = await startWriter({ dataDir });
-
-  stack.defer(() => writer.stop());
-
-  const context: TasksContext = {
-    log: {
-      writer,
-      deploymentKey: await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
-        'wrapKey',
-        'unwrapKey',
-      ]),
-      projections: [...logProjections, ...tasksProjections, actionsProjection],
-    },
-    clock: buildTestClock(1_000_000),
-    definitions: () => ({ snapshotHash: 'sha256:test' }),
+  const step: StepInput = {
+    taskID: claim.lease.workID,
+    stepKey: claim.stepKey,
+    lease: claim.lease,
+    inbox: [],
+    sessionBoundary: null,
+    signal: new AbortController().signal,
   };
 
-  const step = await createTestStep(context);
-
-  return { context, db: writer.db.$extendTables<ActionsTables>(), taskID: step.taskID, step };
+  return {
+    context: actions.context,
+    db: actions.writer.db.$extendTables<ActionsTables>(),
+    taskID: step.taskID,
+    step,
+  };
 }
 
 test('it queues a call that a step makes under that step and returns its action ID', async () => {

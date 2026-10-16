@@ -18,7 +18,6 @@
         "oxfmt": "0.71.0",
         "oxlint": "1.86.0",
         "oxlint-tsgolint": "7.0.2003",
-        "tiny-invariant": "catalog:",
         "turbo": "2.11.7",
         "typescript": "7.0.2",
       },
@@ -138,6 +137,27 @@
         "vite": "catalog:",
       },
     },
+    "e2e": {
+      "name": "@heynixie/e2e",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/actions": "workspace:*",
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/memory": "workspace:*",
+        "@heynixie/models": "workspace:*",
+        "@heynixie/policy": "workspace:*",
+        "@heynixie/sandbox": "workspace:*",
+        "@heynixie/server": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/testing": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "tiny-invariant": "catalog:",
+      },
+    },
     "evals": {
       "name": "@heynixie/evals",
       "version": "0.0.0",
@@ -236,6 +256,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/retry": "workspace:*",
         "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
         "zod": "catalog:",
       },
@@ -777,6 +798,8 @@
     "@heynixie/db": ["@heynixie/db@workspace:libs/db"],
 
     "@heynixie/definitions": ["@heynixie/definitions@workspace:modules/definitions"],
+
+    "@heynixie/e2e": ["@heynixie/e2e@workspace:e2e"],
 
     "@heynixie/encoder-onnx": ["@heynixie/encoder-onnx@workspace:adapters/encoder-onnx"],
 

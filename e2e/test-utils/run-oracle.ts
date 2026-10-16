@@ -1,9 +1,9 @@
-import { buildTestClock } from '../../libs/testing/src/index';
-import { writeUnknownOutcomes } from '../../modules/actions/src/index';
-import type { Log, Writer } from '../../modules/log/src/index';
-import { runProjectionRebuild } from '../../modules/log/src/index';
-import type { TasksContext } from '../../modules/tasks/src/index';
-import { runRecovery } from '../../modules/tasks/src/index';
+import { writeUnknownOutcomes } from '@heynixie/actions';
+import type { Log, Writer } from '@heynixie/log';
+import { runProjectionRebuild } from '@heynixie/log';
+import type { TasksContext } from '@heynixie/tasks';
+import { runRecovery } from '@heynixie/tasks';
+import { buildTestClock } from '@heynixie/testing';
 import { startTestLog } from '../nixie/start-test-log';
 import type { RecoveredState, TestNixie } from './start-test-nixie';
 

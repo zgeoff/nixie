@@ -4,7 +4,8 @@ A crash test runs nixie as a child process, holds one of its runners at a named 
 the process with `SIGKILL`, and starts it again on the same data directory. When the scenario ends,
 the test checks the event log and the projections against one oracle. Every test ends with the same
 oracle, so each one proves the same thing: a crash at that point loses nothing and repeats nothing.
-The suites live in the root `e2e/` folder, and the harness parts live in `libs/testing`.
+The suites live in the root `e2e/` folder, a workspace package that imports nixie's packages by name
+as the server does, and the harness parts live in `libs/testing`.
 [Leases and recovery](./leases-and-recovery.md) covers the fault points and the recovery that a
 restart runs. [Actions](./actions.md) covers the action queue whose repeats the tests look for.
 

@@ -16,6 +16,7 @@
     "@heynixie/log": "workspace:*",
     "@heynixie/retry": "workspace:*",
     "@heynixie/tasks": "workspace:*",
+    "@heynixie/tools": "workspace:*",
     "kysely": "catalog:",
     "zod": "catalog:"
   },

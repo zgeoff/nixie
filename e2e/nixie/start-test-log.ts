@@ -1,11 +1,11 @@
-import type { Clock } from '../../libs/clock/src/index';
-import { actionsProjection } from '../../modules/actions/src/index';
-import { logProjections, startWriter } from '../../modules/log/src/index';
-import type { Writer } from '../../modules/log/src/index';
-import { memoryProjections } from '../../modules/memory/src/index';
-import { sandboxesProjection } from '../../modules/sandbox/src/index';
-import type { TasksContext } from '../../modules/tasks/src/index';
-import { tasksProjections } from '../../modules/tasks/src/index';
+import { actionsProjection } from '@heynixie/actions';
+import type { Clock } from '@heynixie/clock';
+import { logProjections, startWriter } from '@heynixie/log';
+import type { Writer } from '@heynixie/log';
+import { memoryProjections } from '@heynixie/memory';
+import { sandboxesProjection } from '@heynixie/sandbox';
+import type { TasksContext } from '@heynixie/tasks';
+import { tasksProjections } from '@heynixie/tasks';
 
 interface TestLogOptions {
   readonly dataDir: string;

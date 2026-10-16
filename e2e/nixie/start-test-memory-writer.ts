@@ -1,16 +1,13 @@
 import { join } from 'node:path';
-import type { MemoryWriterRunner } from '../../apps/server/src/index';
-import {
-  buildActionQueue,
-  buildSandboxAdapter,
-  startMemoryWriterRunner,
-} from '../../apps/server/src/index';
-import type { StartedMemoryStore } from '../../modules/memory/src/index';
-import { writerConfigSchema } from '../../modules/memory/src/index';
-import { buildStubGate } from '../../modules/memory/src/test-utils/index';
-import { modelsConfigSchema } from '../../modules/models/src/index';
-import { buildSandboxRecorder } from '../../modules/sandbox/src/index';
-import type { TasksContext } from '../../modules/tasks/src/index';
+import { buildActionQueue } from '@heynixie/actions';
+import type { StartedMemoryStore } from '@heynixie/memory';
+import { writerConfigSchema } from '@heynixie/memory';
+import { buildStubGate } from '@heynixie/memory/test-utils';
+import { modelsConfigSchema } from '@heynixie/models';
+import { buildSandboxRecorder } from '@heynixie/sandbox';
+import type { MemoryWriterRunner } from '@heynixie/server';
+import { buildSandboxAdapter, startMemoryWriterRunner } from '@heynixie/server';
+import type { TasksContext } from '@heynixie/tasks';
 import type { TestTools } from './start-test-tools';
 
 export interface TestWriterOptions {

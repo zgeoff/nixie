@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { waitForCondition } from '../../libs/testing/src/index';
+import { waitForCondition } from '@heynixie/testing';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 

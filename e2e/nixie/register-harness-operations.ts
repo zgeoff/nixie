@@ -1,7 +1,7 @@
 import { closeSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
-import type { HarnessLink } from '../../libs/testing/src/index';
-import type { TasksContext } from '../../modules/tasks/src/index';
-import { createTask, writeInboxRecords } from '../../modules/tasks/src/index';
+import type { TasksContext } from '@heynixie/tasks';
+import { createTask, writeInboxRecords } from '@heynixie/tasks';
+import type { HarnessLink } from '@heynixie/testing';
 
 // Registers the operations a crash test asks the test build of nixie to run, by name. Each write
 // returns the sequence or the ID it made, and releaseWriterLock is the stale writer test's hook.

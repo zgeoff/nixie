@@ -1,5 +1,5 @@
-import { buildTestClock } from '../../libs/testing/src/index';
-import { writeRecords } from '../../modules/log/src/index';
+import { writeRecords } from '@heynixie/log';
+import { buildTestClock } from '@heynixie/testing';
 import { startTestLog } from '../nixie/start-test-log';
 import type { TestNixie } from './start-test-nixie';
 

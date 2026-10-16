@@ -1,9 +1,10 @@
-import type { ModelView } from '@heynixie/actions';
-import { createAllowedAction, waitForActionOutcome } from '@heynixie/actions';
 import type { RunStep, TaskClaim, TasksContext } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
 import type { ActionOutcome, ActionQueue } from '@heynixie/tools';
 import { buildActionHash } from './build-action-hash';
+import { createAllowedAction } from './create-allowed-action';
+import type { ModelView } from './types';
+import { waitForActionOutcome } from './wait-for-action-outcome';
 
 export interface ActionQueueBridge {
   readonly queue: ActionQueue;

@@ -36,8 +36,13 @@
       "eval": {
         "dependencies": { "allow": ["module", "guest", "lib"] }
       },
+      // the crash suites run the test build of the server as a child process, and nothing depends
+      // on them
+      "e2e": {
+        "dependencies": { "allow": ["app", "module", "adapter", "lib"] }
+      },
       "server-only": {
-        "dependents": { "allow": ["app", "module", "adapter", "server-only", "eval"] }
+        "dependents": { "allow": ["app", "module", "adapter", "server-only", "eval", "e2e"] }
       }
     }
   }
