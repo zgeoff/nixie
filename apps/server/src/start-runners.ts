@@ -9,7 +9,7 @@ import type { ServerParts } from './types';
 
 // Starts the queue check, then the task and action runners, which stop together, so the steps and
 // attempts in flight share one grace, 30 s by default, to commit. Each step error logs a line with no
-// message, and the conversation's errors at the limit mark the conversation imp unready.
+// message, and the conversation's errors at the limit mark its turns as failing.
 export async function startRunners(parts: ServerParts, runStep: RunStep): Promise<void> {
   const onError = (error: unknown) => {
     parts.log('runner.failed', toErrorFields(error));

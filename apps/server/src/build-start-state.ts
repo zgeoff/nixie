@@ -11,8 +11,12 @@ interface StartReports {
   // every image in the sandbox manifest is added
   readonly areImagesAdded: boolean;
 
-  // the conversation's sandbox stands, and its last turn did not fail
+  // the conversation's sandbox stands
   readonly conversation: PartReport;
+
+  // the conversation's turns are not failing: unready once its errors in a row reach the limit,
+  // until a turn succeeds. Readiness reports it as an advisory part, which routing never waits on.
+  readonly turns: PartReport;
 
   // the runners claim work, which every start step before them holds back
   readonly areRunnersStarted: boolean;
@@ -31,6 +35,7 @@ export function buildStartState(database: PartReport): StartState {
       definitions: { isReady: false, reason: 'no seed has applied yet' },
       areImagesAdded: false,
       conversation: { isReady: false, reason: 'the conversation imp has not started' },
+      turns: { isReady: true, reason: null },
       areRunnersStarted: false,
     },
   };

@@ -10,10 +10,12 @@ export interface PartReport {
 // A check of one part, which the health endpoint runs on each request.
 export type PartCheck = () => Promise<PartReport>;
 
-// The answer of a liveness or a readiness request: ready only when every part is ready.
+// The answer of a liveness or a readiness request: ready only when every part is ready. A readiness
+// answer adds the advisory parts, which never change its status.
 export interface HealthReport {
   readonly status: 'ready' | 'unready';
   readonly parts: Readonly<Record<string, PartReport>>;
+  readonly advisory?: Readonly<Record<string, PartReport>>;
 }
 
 // A JSON log line's fields beside its event: envelope values only, such as IDs, kinds, counts and

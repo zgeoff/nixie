@@ -1,16 +1,29 @@
-import type { HealthPart, PartCheck } from '@heynixie/ops';
+import type { HealthChecks } from '@heynixie/ops';
 import { checkDisk } from '@heynixie/ops';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { StartState } from './build-start-state';
 
-// The readiness checks of the slice 1 parts: each reads the start state, and the imp host and
-// disk parts check impd and the data volume on every request. The conversation imp stays unready
-// until the runners start, so a start step that fails and retries after it keeps nixie unready.
+// The readiness checks of the slice 1 parts, and the advisory part that shows failing turns without
+// taking nixie out of routing. The conversation imp stays unready until the runners start, so a
+// start step that fails and retries after it keeps nixie unready.
 export function buildReadinessChecks(
   state: StartState,
   adapter: Pick<SandboxAdapter, 'checkRuntime'>,
   dataDir: string,
-): Readonly<Record<HealthPart, PartCheck>> {
+): Pick<HealthChecks, 'readiness' | 'advisory'> {
+  return {
+    readiness: buildReadinessParts(state, adapter, dataDir),
+    advisory: {
+      conversation_turns: () => Promise.resolve(state.read().turns),
+    },
+  };
+}
+
+function buildReadinessParts(
+  state: StartState,
+  adapter: Pick<SandboxAdapter, 'checkRuntime'>,
+  dataDir: string,
+): HealthChecks['readiness'] {
   return {
     database: () => Promise.resolve(state.read().database),
     definitions: () => Promise.resolve(state.read().definitions),

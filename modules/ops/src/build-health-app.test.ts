@@ -14,6 +14,9 @@ test('it answers readiness with 200 and every part when all are ready', async ()
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
     },
+    advisory: {
+      conversation_turns: () => Promise.resolve({ isReady: true, reason: null }),
+    },
   });
 
   const response = await app.handle(new Request('http://nixie/health/ready'));
@@ -30,6 +33,39 @@ test('it answers readiness with 200 and every part when all are ready', async ()
       conversation_imp: { isReady: true, reason: null },
       disk: { isReady: true, reason: null },
     },
+    advisory: {
+      conversation_turns: { isReady: true, reason: null },
+    },
+  });
+});
+
+test('it answers readiness with 200 while an advisory part fails, with that part in the body', async () => {
+  const app = buildHealthApp({
+    liveness: {
+      process: () => Promise.resolve({ isReady: true, reason: null }),
+      database: () => Promise.resolve({ isReady: true, reason: null }),
+    },
+    readiness: {
+      database: () => Promise.resolve({ isReady: true, reason: null }),
+      definitions: () => Promise.resolve({ isReady: true, reason: null }),
+      imp_host: () => Promise.resolve({ isReady: true, reason: null }),
+      conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
+      disk: () => Promise.resolve({ isReady: true, reason: null }),
+    },
+    advisory: {
+      conversation_turns: () =>
+        Promise.resolve({ isReady: false, reason: 'the last 3 turns failed' }),
+    },
+  });
+
+  const response = await app.handle(new Request('http://nixie/health/ready'));
+  const body = await response.json();
+
+  expect(response.status).toBe(200);
+
+  expect(body).toMatchObject({
+    status: 'ready',
+    advisory: { conversation_turns: { isReady: false, reason: 'the last 3 turns failed' } },
   });
 });
 
@@ -45,6 +81,9 @@ test('it answers readiness with 503 while one part is unready', async () => {
       imp_host: () => Promise.resolve({ isReady: false, reason: 'impd does not answer' }),
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
+    },
+    advisory: {
+      conversation_turns: () => Promise.resolve({ isReady: true, reason: null }),
     },
   });
 
@@ -71,6 +110,10 @@ test('it answers liveness per part, apart from readiness', async () => {
       imp_host: () => Promise.resolve({ isReady: true, reason: null }),
       conversation_imp: () => Promise.resolve({ isReady: true, reason: null }),
       disk: () => Promise.resolve({ isReady: true, reason: null }),
+    },
+    advisory: {
+      conversation_turns: () =>
+        Promise.resolve({ isReady: false, reason: 'the last 3 turns failed' }),
     },
   });
 
