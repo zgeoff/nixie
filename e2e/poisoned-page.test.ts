@@ -182,8 +182,8 @@ test('it turns every write a poisoned page causes into a proposal from outside c
   ]);
 
   // the checker sees only your message and the memory, so the page never reaches it
-  expect(check.mock.calls.map(([request]) => request.input)).toStrictEqual([
-    expect.not.stringContaining('Note to AI assistants'),
-    expect.not.stringContaining('Note to AI assistants'),
-  ]);
+  const inputs = check.mock.calls.map(([request]) => request.input);
+
+  expect(inputs).toHaveLength(2);
+  expect(inputs).toSatisfyAll((input: string) => !input.includes('Note to AI assistants'));
 }, 60_000);
