@@ -55,7 +55,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
   };
 }
 
-test('it declares read for recall, pending and diff and note for remember, edit, retire, comment and rate', async () => {
+test('it declares read for recall, pending and diff and note for remember, edit, retire, the image offer, comment and rate', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -64,6 +64,8 @@ test('it declares read for recall, pending and diff and note for remember, edit,
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'memory.offer_image',
+    'memory.answer_offer',
     'memory.diff',
     'memory.comment',
     'memory.rate',
@@ -75,6 +77,8 @@ test('it declares read for recall, pending and diff and note for remember, edit,
     ['memory.remember', ['note']],
     ['memory.edit', ['note']],
     ['memory.retire', ['note']],
+    ['memory.offer_image', ['note']],
+    ['memory.answer_offer', ['note']],
     ['memory.diff', ['read']],
     ['memory.comment', ['note']],
     ['memory.rate', ['note']],
@@ -982,6 +986,65 @@ test('it gives the model a recalled item and leaves no readable copy once the it
   });
 
   expect(JSON.stringify(entries)).not.toInclude('Leeds');
+});
+
+test('it saves an image offer on a typed yes and leaves no readable copy of its text once the item is forgotten', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Our new puppy',
+    spans: [{ start: 0, end: 13, source: 'typed' }],
+    images: ['image/webp'],
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'conversation',
+    tools: ['memory.offer_image', 'memory.answer_offer'],
+    model: { model: 'test-model', profile: 'standard' },
+  };
+
+  await runToolCall(
+    {
+      tool: 'memory.offer_image',
+      input: { eventID: String(photo), image: 1, text: 'The owner has a beagle called Biscuit' },
+      toolUseID: null,
+    },
+    run,
+    ctx.toolCallOptions,
+  );
+
+  const answer = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'yes',
+    spans: [{ start: 0, end: 3, source: 'typed' }],
+  });
+
+  await runToolCall(
+    {
+      tool: 'memory.answer_offer',
+      input: { eventID: String(photo), image: 1, answerEventID: String(answer) },
+      toolUseID: null,
+    },
+    run,
+    ctx.toolCallOptions,
+  );
+
+  const item = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('item_id')
+    .executeTakeFirstOrThrow();
+
+  await ctx.memory.store.forget({
+    target: { itemID: item.item_id, version: 1 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  expect(JSON.stringify(entries)).not.toInclude('Biscuit');
 });
 
 test('it applies a remembered fact and leaves no readable copy of its text once it is forgotten', async () => {

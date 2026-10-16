@@ -1,13 +1,11 @@
 import { buildMemoryConsolidations } from './build-memory-consolidations';
 import { buildMemoryProposals } from './build-memory-proposals';
-import { buildWriterGate } from './build-writer-gate';
+import { buildMemoryWrites } from './build-memory-writes';
 import type { MemoryConsolidations } from './consolidation-types';
 import type { MemoryNotice, MemoryProposals, MemoryWrites, ReviewReason } from './gate-types';
 import { readMemoryNotices } from './read-memory-notices';
 import { renderReviewReason } from './render-review-reason';
 import type { StoreParts } from './types';
-import { writeGatedRemember } from './write-gated-remember';
-import { writeGatedRetirement } from './write-gated-retirement';
 
 export interface MemoryGate {
   // the gated write paths of the model and the memory writer
@@ -26,11 +24,7 @@ export interface MemoryGate {
 // diffs and the notices.
 export function buildMemoryGate(parts: StoreParts): MemoryGate {
   return {
-    writes: {
-      remember: (request) => writeGatedRemember(parts, request),
-      retire: (request) => writeGatedRetirement(parts, request),
-      batch: buildWriterGate(parts),
-    },
+    writes: buildMemoryWrites(parts),
     proposals: buildMemoryProposals(parts),
     consolidations: buildMemoryConsolidations(parts),
     readNotices: (thread) => readMemoryNotices(parts, thread),

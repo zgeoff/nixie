@@ -121,10 +121,41 @@ export type WriteOutcome =
       readonly merged: boolean;
     };
 
+// One image of a message of yours, by the message's sequence and the image's number in it, from 1.
+export interface ImageRef {
+  readonly messageSequence: number;
+  readonly image: number;
+}
+
+// The model's offer to remember what an image of yours shows, with the text it would save.
+export interface ImageOfferRequest {
+  readonly image: ImageRef;
+  readonly text: string;
+  readonly caller: WriteCaller;
+}
+
+// Your answer to an offer, as the sequence of your message that answers it.
+export interface OfferAnswerRequest {
+  readonly image: ImageRef;
+  readonly answerSequence: number;
+  readonly caller: WriteCaller;
+}
+
+// An answer applied the offered text at once, or declined it and wrote nothing.
+export type OfferAnswerOutcome =
+  | { readonly status: 'applied'; readonly itemID: string; readonly version: number }
+  | { readonly status: 'declined' };
+
 // The write paths of the model and the memory writer, each behind its gate.
 export interface MemoryWrites {
   readonly remember: (request: GatedRememberRequest) => Promise<WriteOutcome>;
   readonly retire: (request: GatedRetireRequest) => Promise<WriteOutcome>;
+
+  // records the one offer an image takes, and returns the line the model says to you
+  readonly offerImage: (request: ImageOfferRequest) => Promise<string>;
+
+  // applies an offered text on your typed yes, and writes nothing on any other answer
+  readonly answerOffer: (request: OfferAnswerRequest) => Promise<OfferAnswerOutcome>;
 
   // the gate each write of a memory writer batch passes before its batch publishes
   readonly batch: WriterGate;
@@ -133,7 +164,7 @@ export interface MemoryWrites {
 // The model's own write paths, which its memory tools call, and the sentence each review reason
 // reads as in their results. A writer batch's gate stays out of the model's reach.
 export interface ModelWriteStore {
-  readonly writes: Pick<MemoryWrites, 'remember' | 'retire'>;
+  readonly writes: Pick<MemoryWrites, 'remember' | 'retire' | 'offerImage' | 'answerOffer'>;
   readonly renderReviewReason: (reason: ReviewReason) => string;
 }
 

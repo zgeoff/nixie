@@ -183,18 +183,20 @@ one the server passes in from the conversation, and
 
 ## The model's tools
 
-The model reaches memory through 8 tools over the same interface:
+The model reaches memory through 10 tools over the same interface:
 
-| Tool              | Effect | Does                                                       |
-| ----------------- | ------ | ---------------------------------------------------------- |
-| `memory.recall`   | `read` | Recalls items by query, by ID or a page at a time          |
-| `memory.pending`  | `read` | Lists the proposals that wait for the user's review        |
-| `memory.remember` | `note` | Creates an item, with a quote                              |
-| `memory.edit`     | `note` | Edits an item at a version it read, with a quote           |
-| `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote |
-| `memory.diff`     | `read` | Shows the pending consolidation diff                       |
-| `memory.comment`  | `note` | Leaves a comment on one change of that diff                |
-| `memory.rate`     | `note` | Rates how the items of the thread's latest recall worked   |
+| Tool                  | Effect | Does                                                       |
+| --------------------- | ------ | ---------------------------------------------------------- |
+| `memory.recall`       | `read` | Recalls items by query, by ID or a page at a time          |
+| `memory.pending`      | `read` | Lists the proposals that wait for the user's review        |
+| `memory.remember`     | `note` | Creates an item, with a quote                              |
+| `memory.edit`         | `note` | Edits an item at a version it read, with a quote           |
+| `memory.retire`       | `note` | Retires an item at a version it read, with an intent quote |
+| `memory.offer_image`  | `note` | Offers to remember what an image of the user's shows       |
+| `memory.answer_offer` | `note` | Passes on the user's answer to that offer                  |
+| `memory.diff`         | `read` | Shows the pending consolidation diff                       |
+| `memory.comment`      | `note` | Leaves a comment on one change of that diff                |
+| `memory.rate`         | `note` | Rates how the items of the thread's latest recall worked   |
 
 Creating and editing are separate tools because the tool list is where the model learns what it can
 do, and a model that finds editing only in the description of a create tool can miss it. Rating has
@@ -230,8 +232,8 @@ the words the conversation reads ([how an item reads](./context.md#how-an-item-r
 description tells the model to reach for it when a half-remembered detail would change an answer. A
 past version's line names the version that replaced or retired it. A stale version, a missing item
 or a wrong state returns to the model as the tool's refusal, so the model reads the item again. The
-model can retire an item and can never restore, undo or forget one. The server registers the 8 tools
-beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
+model can retire an item and can never restore, undo or forget one. The server registers the 10
+tools beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
 because they declare `read` and `note` and run direct.
 
 `memory.pending` lists every pending proposal, the model's own and the note-taker's, so the model
