@@ -6,6 +6,7 @@ import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
+import { runMemoryForget } from '../test-utils/run-memory-forget';
 import { MemoryView } from './memory-view';
 
 async function setupTest() {
@@ -225,23 +226,11 @@ test('it shows the reason in place of the preview when the item moved on before 
 test('it keeps the confirmation open to retry once the forget start commits and its cleanup fails', async () => {
   const ctx = await setupTest();
 
-  const created = await store.memoryItems.create({
+  await store.memoryItems.create({
+    failsForgetCleanup: true,
     shortID: 'k3m9qa',
     versions: [{ text: 'Keeps bees' }],
   });
-
-  // the API commits the forget's start, so the item lists as forgetting, and then its cleanup fails
-  server.use(
-    http.post('*/rpc/memory/forget', async () => {
-      await store.memoryItems.update((query) => query.where({ itemID: created.itemID }), {
-        data(draft) {
-          draft.state = 'forgetting';
-        },
-      });
-
-      return HttpResponse.error();
-    }),
-  );
 
   const rendered = render(<MemoryView />);
 
@@ -250,15 +239,78 @@ test('it keeps the confirmation open to retry once the forget start commits and 
     { name: 'k3m9qa' },
   );
 
-  await ctx.user.click(within(item).getByRole('button', { name: 'Forget' }));
-
-  await within(item).findByRole('list', { name: 'What the forget destroys' });
-
-  await ctx.user.click(within(item).getByRole('button', { name: 'Forget for good' }));
-
+  await runMemoryForget(ctx.user, item);
   await within(item).findByText('The forget did not finish. Try again.');
 
   expect(within(item).getByRole('button', { name: 'Forget for good' })).toBeEnabled();
+});
+
+test('it offers to finish a forget whose cleanup failed once a refresh moves the item to the forgotten list', async () => {
+  const ctx = await setupTest();
+
+  await store.memoryItems.create({
+    failsForgetCleanup: true,
+    shortID: 'k3m9qa',
+    versions: [{ text: 'Keeps bees' }],
+  });
+
+  const rendered = render(<MemoryView />);
+
+  const item = await within(rendered.getByRole('region', { name: 'Active' })).findByRole(
+    'listitem',
+    { name: 'k3m9qa' },
+  );
+
+  await runMemoryForget(ctx.user, item);
+  await within(item).findByText('The forget did not finish. Try again.');
+
+  // a remount reads every list again and drops each row's own state, as a refresh after a pin does
+  rendered.rerender(<MemoryView key="refreshed" />);
+
+  const finish = await within(rendered.getByRole('region', { name: 'Forgotten' })).findByRole(
+    'button',
+    { name: 'Finish the forget' },
+  );
+
+  expect(finish).toBeEnabled();
+});
+
+test('it completes a forget whose cleanup failed when the user finishes it from the forgotten list', async () => {
+  const ctx = await setupTest();
+
+  await store.memoryItems.create({
+    failsForgetCleanup: true,
+    shortID: 'k3m9qa',
+    versions: [{ text: 'Keeps bees' }],
+  });
+
+  const rendered = render(<MemoryView />);
+
+  const item = await within(rendered.getByRole('region', { name: 'Active' })).findByRole(
+    'listitem',
+    { name: 'k3m9qa' },
+  );
+
+  await runMemoryForget(ctx.user, item);
+  await within(item).findByText('The forget did not finish. Try again.');
+
+  rendered.rerender(<MemoryView key="refreshed" />);
+
+  const finish = await within(rendered.getByRole('region', { name: 'Forgotten' })).findByRole(
+    'button',
+    { name: 'Finish the forget' },
+  );
+
+  await ctx.user.click(finish);
+
+  // the gap shows its forget's date, and no control once the forget completed
+  await waitFor(() => {
+    const forgotten = rendered.getByRole('region', { name: 'Forgotten' });
+
+    expect(within(forgotten).getByRole('listitem', { name: 'k3m9qa' })).toHaveTextContent(
+      /^Forgotten item · created .+ · forgotten .+$/u,
+    );
+  });
 });
 
 test('it forgets the item once a failed confirm goes again', async () => {
@@ -312,7 +364,7 @@ test('it keeps the item when the user keeps it', async () => {
   );
 });
 
-test('it offers no forget for an item a forget began, even while its text still opens', async () => {
+test('it offers no forget for an item whose forget began elsewhere, even while its text still opens', async () => {
   await setupTest();
 
   await store.memoryItems.create({

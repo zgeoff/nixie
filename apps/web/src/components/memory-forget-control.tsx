@@ -1,9 +1,10 @@
 import { ORPCError } from '@orpc/client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
 import type { ForgetPreview as ForgetPreviewData, MemoryItem } from '../types';
+import { useMemoryForget } from '../use-memory-forget';
 import { useNixieClient } from '../use-nixie-client';
 import { MemoryVersionList } from './memory-version-list';
 
@@ -22,11 +23,15 @@ interface PendingForget {
   readonly version: number;
 }
 
-// The forget of one active or retired item for good. The first press opens a confirmation bound to
-// the version the row shows, which reads what the forget destroys; only its confirm forgets, and it
-// keeps one client action ID, so a confirm that fails and goes again forgets once.
+// The forget of one active or retired item for good, through a confirmation bound to the version
+// the row shows that keeps one client action ID, so a confirm that goes again forgets once. An item
+// whose forget began on this page offers to finish it.
 export function MemoryForgetControl(props: MemoryForgetControlProps): ReactNode {
   const [pending, setPending] = useState<PendingForget | null>(null);
+
+  if (props.item.state === 'forgetting') {
+    return <ForgetFinish {...props} />;
+  }
 
   if (props.item.state !== 'active' && props.item.state !== 'retired') {
     return null;
@@ -176,65 +181,57 @@ interface ForgetButtonsProps extends ForgetConfirmationProps {
 }
 
 function ForgetButtons(props: ForgetButtonsProps): ReactNode {
-  const nixie = useNixieClient();
-  const queryClient = useQueryClient();
-
-  const forget = useMutation({
-    mutationFn: () =>
-      nixie.client.memory.forget({
-        clientActionID: props.actionID,
-        itemID: props.itemID,
-        version: props.version,
-      }),
-
-    // A refusal reads the lists again. Any other failure keeps them as they are, because a refresh
-    // would move an item whose forget began out of this row, and the retry needs this action ID.
-    onError: async (error) => {
-      const notice = findForgetNotice(error);
-
-      if (notice !== null) {
-        props.onSettled(notice);
-
-        await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
-      }
-    },
-    onSuccess: async () => {
-      props.onSettled(null);
-
-      await queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() });
-    },
-  });
+  const forget = useMemoryForget(props.itemID, props.onSettled);
+  const isPending = forget.own?.status === 'pending';
 
   return (
     <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
       <button
-        disabled={!props.canForget || forget.isPending}
+        disabled={!props.canForget || isPending}
         onClick={() => {
-          forget.mutate();
+          forget.send({
+            clientActionID: props.actionID,
+            itemID: props.itemID,
+            version: props.version,
+          });
         }}
         type="button"
       >
         Forget for good
       </button>
-      <button disabled={forget.isPending} onClick={props.onCancel} type="button">
+      <button disabled={isPending} onClick={props.onCancel} type="button">
         Keep it
       </button>
-      {forget.isError ? <p role="alert">The forget did not finish. Try again.</p> : null}
+      {forget.own?.status === 'failed' ? (
+        <p role="alert">The forget did not finish. Try again.</p>
+      ) : null}
     </div>
   );
 }
 
-const forgetNotices: Readonly<Record<string, string>> = {
-  MEMORY_ITEM_NOT_FOUND: 'This item is gone. It was forgotten after the list loaded.',
-  STALE_VERSION:
-    'This item changed after you opened it, so nothing was forgotten. Check it, then try again.',
-};
+// The finish of a forget that began on this page and whose last call failed, such as on a cleanup
+// that failed after its start committed. It sends that call again with its client action ID, so the
+// server runs the cleanup again; a forget that began elsewhere finishes at the store's next start.
+function ForgetFinish(props: MemoryForgetControlProps): ReactNode {
+  const forget = useMemoryForget(props.item.itemID, props.onSettled);
+  const last = forget.last;
 
-// a refusal closes the confirmation with its reason; any other failure keeps it open to retry
-function findForgetNotice(error: unknown): string | null {
-  if (error instanceof ORPCError && typeof error.code === 'string') {
-    return forgetNotices[error.code] ?? null;
+  if (last === null || (last.status !== 'failed' && last.status !== 'pending')) {
+    return null;
   }
 
-  return null;
+  return (
+    <div aria-label="Finish the forget" className={css({ fontSize: 'sm' })} role="group">
+      {last.status === 'failed' ? <p role="alert">The forget did not finish.</p> : null}
+      <button
+        disabled={last.status === 'pending'}
+        onClick={() => {
+          forget.send(last.input);
+        }}
+        type="button"
+      >
+        Finish the forget
+      </button>
+    </div>
+  );
 }

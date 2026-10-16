@@ -179,7 +179,6 @@ const proposalOutcomeSchema = z.discriminatedUnion('status', [
 ]);
 
 const proposalOutcomesSchema = z.object({ outcomes: z.array(proposalOutcomeSchema) });
-
 const memoryItemDetailSchema = memoryItemSchema.extend({ versions: z.array(memoryVersionSchema) });
 
 // what a forget destroys beyond the item's own text

@@ -32,8 +32,9 @@ export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
   const [pending, setPending] = useState<PendingChange | null>(null);
   const changes = pickChanges(props.item);
 
+  // an item a forget began takes no change, and only the forget can still finish
   if (pending === null && changes.length === 0) {
-    return null;
+    return <MemoryForgetControl item={props.item} onSettled={props.onSettled} />;
   }
 
   if (pending === null) {

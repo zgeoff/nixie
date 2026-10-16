@@ -99,3 +99,44 @@ test('it refuses an item a forget began', async () => {
 
   expect(result).toStrictEqual({ status: 'not_found' });
 });
+
+test('it leaves an item forgetting when its cleanup fails after the forget began', async () => {
+  const item = await store.memoryItems.create({
+    failsForgetCleanup: true,
+    isPinned: true,
+    versions: [{ text: 'The shed padlock code is 2291' }],
+  });
+
+  const result = await writeMockMemoryForget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    version: 1,
+  });
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(result).toStrictEqual({ status: 'cleanup_failed' });
+  expect(stored).toMatchObject({ forgottenAt: null, isPinned: false, state: 'forgetting' });
+});
+
+test('it completes a forget whose cleanup failed on the retry with the same ID and input', async () => {
+  const item = await store.memoryItems.create({
+    failsForgetCleanup: true,
+    versions: [{ text: 'The shed padlock code is 2291' }],
+  });
+
+  const input = {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    itemID: item.itemID,
+    version: 1,
+  };
+
+  await writeMockMemoryForget(input);
+
+  const retried = await writeMockMemoryForget(input);
+
+  const stored = store.memoryItems.findFirst((query) => query.where({ itemID: item.itemID }));
+
+  expect(retried).toStrictEqual({ status: 'applied' });
+  expect(stored).toMatchObject({ forgottenAt: expect.toBeValidDate(), state: 'forgotten' });
+});

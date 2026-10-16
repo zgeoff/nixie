@@ -7,12 +7,12 @@ interface MemoryForgetInput {
 }
 
 interface MemoryForgetResult {
-  readonly status: 'applied' | 'reused' | 'not_found' | 'stale';
+  readonly status: 'applied' | 'reused' | 'not_found' | 'stale' | 'cleanup_failed';
 }
 
 // Forgets an item in the mock store as nixie's API does: once per client action ID, bound to the
-// version the preview showed. The item keeps its versions and their dates, reads every one as a
-// gap, leaves the pinned core, and carries the forget's time.
+// version the preview showed. A forget whose cleanup fails leaves the item forgetting with its
+// action kept, and a retry with the same ID and input completes it.
 export async function writeMockMemoryForget(input: MemoryForgetInput): Promise<MemoryForgetResult> {
   const bound = JSON.stringify(['forget', input.itemID, input.version]);
 
@@ -21,7 +21,7 @@ export async function writeMockMemoryForget(input: MemoryForgetInput): Promise<M
   );
 
   if (earlier !== undefined) {
-    return { status: earlier.input === bound ? 'applied' : 'reused' };
+    return earlier.input === bound ? writeForgetCompletion(input.itemID) : { status: 'reused' };
   }
 
   const refusal = findRefusal(input);
@@ -30,19 +30,9 @@ export async function writeMockMemoryForget(input: MemoryForgetInput): Promise<M
     return { status: refusal };
   }
 
-  await store.memoryItems.update((query) => query.where({ itemID: input.itemID }), {
-    data(draft) {
-      draft.state = 'forgotten';
-
-      draft.forgottenAt = new Date();
-
-      draft.isPinned = false;
-    },
-  });
-
   await store.memoryActions.create({ clientActionID: input.clientActionID, input: bound });
 
-  return { status: 'applied' };
+  return writeForgetStart(input.itemID);
 }
 
 // an item that is gone or being forgotten, or one that moved past the version the preview showed
@@ -54,4 +44,36 @@ function findRefusal(input: MemoryForgetInput): 'not_found' | 'stale' | null {
   }
 
   return item.versions.length === input.version ? null : 'stale';
+}
+
+// the forget's start, and its cleanup unless the item fails it
+async function writeForgetStart(itemID: string): Promise<MemoryForgetResult> {
+  const item = store.memoryItems.findFirst((query) => query.where({ itemID }));
+
+  if (item?.failsForgetCleanup === true) {
+    await store.memoryItems.update((query) => query.where({ itemID }), {
+      data(draft) {
+        draft.state = 'forgetting';
+        draft.isPinned = false;
+      },
+    });
+
+    return { status: 'cleanup_failed' };
+  }
+
+  return writeForgetCompletion(itemID);
+}
+
+// the cleanup of a forget that began, which a completed forget needs no more
+async function writeForgetCompletion(itemID: string): Promise<MemoryForgetResult> {
+  await store.memoryItems.update((query) => query.where({ itemID }), {
+    data(draft) {
+      draft.forgottenAt ??= new Date();
+
+      draft.state = 'forgotten';
+      draft.isPinned = false;
+    },
+  });
+
+  return { status: 'applied' };
 }

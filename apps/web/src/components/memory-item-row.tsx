@@ -14,7 +14,8 @@ export interface MemoryItemRowProps {
 }
 
 // One item as a list shows it: its text, who wrote its current version and from what, when it was
-// created, and its history, which loads when opened. A forgotten item shows as a dated gap.
+// created, and its history, which loads when opened. A forgotten item shows as a dated gap, with
+// the controls that can still finish its forget.
 export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
   const item = props.item;
 
@@ -27,6 +28,7 @@ export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
             ? ' · forgetting'
             : ` · forgotten ${formatMemoryDate(item.forgottenAt)}`}
         </p>
+        {props.children}
       </li>
     );
   }
