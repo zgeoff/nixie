@@ -5797,8 +5797,7 @@
                             ]
                           },
                           "reason": {
-                            "type": "string",
-                            "x-extensible-enum": [
+                            "enum": [
                               "no_quote",
                               "quote_not_typed",
                               "quote_in_quoted_block",
@@ -5812,7 +5811,8 @@
                               "pinned",
                               "other",
                               "self_note"
-                            ]
+                            ],
+                            "type": "string"
                           },
                           "source": {
                             "enum": [

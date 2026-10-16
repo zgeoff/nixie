@@ -86,9 +86,7 @@ const memoryVersionSchema = z.object({
   writerModel: z.string().nullable(),
 });
 
-// the set of review reasons grows, so the OpenAPI document marks it extensible and the contract
-// check lets a later release add one
-export const reviewReasonSchema = z.enum([
+const reviewReasonSchema = z.enum([
   'no_quote',
   'quote_not_typed',
   'quote_in_quoted_block',
