@@ -48,6 +48,7 @@ test.skipIf(!isContractRun)(
     const ctx = await setupTest();
 
     const ownerUUID = randomUUID();
+    const owner = { sent: false };
 
     ctx.input.send(
       'Run these two shell commands with the Bash tool, one tool call per command, one after ' +
@@ -58,12 +59,15 @@ test.skipIf(!isContractRun)(
       prompt: ctx.input.messages,
       options: ctx.options,
 
-      // the owner speaks while the first command runs, and the run ends at the first result
+      // the owner speaks once, while the first command runs, and the run ends at the first result
       onMessage: (message) => {
         if (
           message.type === 'assistant' &&
-          message.message.content.some((block) => block.type === 'tool_use')
+          message.message.content.some((block) => block.type === 'tool_use') &&
+          !owner.sent
         ) {
+          owner.sent = true;
+
           ctx.input.send('Owner message: include the word PINEAPPLE in your next reply.', {
             uuid: ownerUUID,
             priority: 'next',
