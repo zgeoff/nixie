@@ -87,8 +87,10 @@ The conversation view merges three sources into one list:
 - the records the live stream delivers after that page, each sequence shown once
 - the messages this device sent that the list does not show yet, from the outbox
 
-The page never refetches: the live stream keeps it current from the sequence it was read at, and a
-dropped stream reconnects from the last sequence it delivered.
+The page never refetches while the view shows: the live stream keeps it current from the sequence it
+was read at, and a dropped stream reconnects from the last sequence it delivered. Leaving the view
+drops the page with the stream's records, so a return reads a fresh page and never shows the text of
+a message forgotten in between.
 
 A live stream can die without the browser seeing it close, as when a phone sleeps or a proxy loses
 its upstream, so the client watches for that. The API writes a keepalive into a quiet stream, and
