@@ -5,6 +5,6 @@ export { checkDatabaseIntegrity } from './check-database-integrity';
 export type { ReadDiskStats } from './check-disk';
 export { checkDisk } from './check-disk';
 export { checkParts } from './check-parts';
-export type { HealthPart, LivenessPart } from './health-parts';
-export { healthParts, livenessParts } from './health-parts';
+export type { AdvisoryPart, HealthPart, LivenessPart } from './health-parts';
+export { advisoryParts, healthParts, livenessParts } from './health-parts';
 export type { HealthReport, PartCheck, PartReport } from './types';

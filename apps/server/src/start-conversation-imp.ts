@@ -15,7 +15,7 @@ import { toSessionDefinitions } from './to-session-definitions';
 import type { ServerParts } from './types';
 
 export interface ConversationImp {
-  // marks the conversation imp ready again after each turn that succeeds
+  // clears the failing mark on the conversation's turns after each turn that succeeds
   readonly runStep: RunStep;
 
   // the session cleanup a forget runs, which the memory store and the record forget take

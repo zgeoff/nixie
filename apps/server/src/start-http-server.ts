@@ -26,8 +26,8 @@ export interface HTTPServerOptions {
 }
 
 // Serves the health endpoint and the API on the configured address. Liveness holds while the
-// process answers and the database opens; readiness lists the slice 1 parts. The memory view reads
-// the memory store once the start sequence fills its slot.
+// process answers and the database opens; readiness lists the slice 1 parts and the advisory ones.
+// The memory view reads the memory store once the start sequence fills its slot.
 export async function startHTTPServer(options: HTTPServerOptions): Promise<number> {
   const app = new Elysia()
     .use(
@@ -36,7 +36,7 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
           process: () => Promise.resolve({ isReady: true, reason: null }),
           database: () => checkDatabase(options.writer.db),
         },
-        readiness: buildReadinessChecks(
+        ...buildReadinessChecks(
           options.state,
           options.tools.adapter,
           options.config.server.dataDir,
