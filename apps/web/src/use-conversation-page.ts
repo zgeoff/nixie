@@ -25,8 +25,9 @@ export function useConversationPage(thread: string) {
     const kept = dropped.current;
 
     // StrictMode at mount and a hidden Activity stop and start the effect of a view that stays, so
-    // that view puts back the page it dropped; a view that left never starts again
-    if (kept?.thread === thread) {
+    // that view puts back the page it dropped unless another read a page since; a view that left
+    // never starts again
+    if (kept?.thread === thread && queryClient.getQueryData(queryKey) === undefined) {
       queryClient.setQueryData(queryKey, kept.page, { updatedAt: kept.readAt });
     }
 
