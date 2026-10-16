@@ -10,9 +10,14 @@ export function useConversationPage(thread: string) {
   const queryUtils = useNixieClient().queryUtils;
   const queryClient = useQueryClient();
 
-  // the page this view dropped when its effect last stopped, and when it was read
+  // the page this view dropped when its effect last stopped, when it was read, and its thread
   const dropped = useRef<
-    { readonly page: ContractOutputs['conversation']['read']; readonly readAt: number } | undefined
+    | {
+        readonly page: ContractOutputs['conversation']['read'];
+        readonly readAt: number;
+        readonly thread: string;
+      }
+    | undefined
   >(undefined);
 
   useEffect(() => {
@@ -21,7 +26,7 @@ export function useConversationPage(thread: string) {
 
     // StrictMode at mount and a hidden Activity stop and start the effect of a view that stays, so
     // that view puts back the page it dropped; a view that left never starts again
-    if (kept !== undefined) {
+    if (kept?.thread === thread) {
       queryClient.setQueryData(queryKey, kept.page, { updatedAt: kept.readAt });
     }
 
@@ -31,7 +36,9 @@ export function useConversationPage(thread: string) {
       const state = queryClient.getQueryState(queryKey);
 
       dropped.current =
-        state?.data === undefined ? undefined : { page: state.data, readAt: state.dataUpdatedAt };
+        state?.data === undefined
+          ? undefined
+          : { page: state.data, readAt: state.dataUpdatedAt, thread };
 
       queryClient.removeQueries({ exact: true, queryKey });
     };

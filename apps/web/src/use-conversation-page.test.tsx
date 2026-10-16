@@ -93,3 +93,26 @@ test('it keeps the page it shows when its effects stop and start again in place'
 
   expect(message).toBeVisible();
 });
+
+test('it reads the page of the thread that the view moves to', async () => {
+  await createDeviceSession();
+
+  await Promise.all([
+    store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } }),
+    store.records.create({
+      kind: 'owner_message',
+      message: { text: 'Water the tomatoes at six.' },
+      thread: 'task:garden',
+    }),
+  ]);
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await rendered.findByText('Is the kettle on?');
+
+  rendered.rerender(<Conversation thread="task:garden" />);
+
+  await rendered.findByText('Water the tomatoes at six.');
+
+  expect(rendered.container).not.toHaveTextContent('Is the kettle on?');
+});
