@@ -15,7 +15,7 @@ export async function* subscribeToRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   options: SubscribeToRecordsOptions,
 ): AsyncGenerator<RecordWithChanges, void, undefined> {
-  const wake = startRecordWake(log.writer.dataDir, options);
+  const wake = startRecordWake(log.writer, options);
   const cursor = { after: options.afterSequence };
 
   try {

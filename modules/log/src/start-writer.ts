@@ -1,5 +1,7 @@
 import { statfsSync } from 'node:fs';
 import { join } from 'node:path';
+import type { Clock } from '@heynixie/clock';
+import { systemClock } from '@heynixie/clock';
 import type { BuildSchema } from '@heynixie/db';
 import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { claimWriterEpoch } from './claim-writer-epoch';
@@ -14,6 +16,9 @@ export interface StartWriterOptions {
   readonly dataDir: string;
   readonly schema?: BuildSchema;
   readonly readFilesystemType?: ReadFilesystemType;
+
+  // the system clock by default; a test build passes the clock its test steps
+  readonly clock?: Clock;
 }
 
 // Makes this process the database's one writer, in the order a release on the host needs: refuse a
@@ -41,6 +46,7 @@ export async function startWriter(options: StartWriterOptions): Promise<Writer> 
       db,
       keys,
       epoch,
+      clock: options.clock ?? systemClock,
       migration,
       stop: makeStopOnce([db, keys], lock),
     };

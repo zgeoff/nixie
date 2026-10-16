@@ -1,9 +1,10 @@
+import type { Clock } from '../../libs/clock/src/index';
 import { actionsProjection } from '../../modules/actions/src/index';
 import { logProjections, startWriter } from '../../modules/log/src/index';
 import type { Writer } from '../../modules/log/src/index';
 import { memoryProjections } from '../../modules/memory/src/index';
 import { sandboxesProjection } from '../../modules/sandbox/src/index';
-import type { Clock, TasksContext } from '../../modules/tasks/src/index';
+import type { TasksContext } from '../../modules/tasks/src/index';
 import { tasksProjections } from '../../modules/tasks/src/index';
 
 interface TestLogOptions {
@@ -23,7 +24,7 @@ export interface TestLog {
 // the crash tests' oracle share: every slice 1 projection, memory's, the deployment key and the
 // clock.
 export async function startTestLog(options: TestLogOptions): Promise<TestLog> {
-  const writer = await startWriter({ dataDir: options.dataDir });
+  const writer = await startWriter({ dataDir: options.dataDir, clock: options.clock });
 
   const deploymentKey = await crypto.subtle.importKey(
     'raw',

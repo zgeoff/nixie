@@ -1,6 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { modelsConfigSchema } from '@heynixie/models';
-import { startScriptedModel } from '@heynixie/testing';
+import { buildTestClock, startScriptedModel } from '@heynixie/testing';
 import { startChecker } from './start-checker';
 import { startTestServer } from './test-utils/start-test-server';
 
@@ -42,6 +42,7 @@ test('it runs each check in the check guest on the checker role profile', async 
     sandboxes: ctx.sandboxes,
     image: 'nixie-conversation-0123456789ab',
     timeoutMs: 60_000,
+    clock: buildTestClock(1_700_000_000_000),
     log: () => {},
   });
 
@@ -95,6 +96,7 @@ test('it logs where each check spent its time', async () => {
     sandboxes: ctx.sandboxes,
     image: 'nixie-conversation-0123456789ab',
     timeoutMs: 60_000,
+    clock: buildTestClock(1_700_000_000_000),
     log,
   });
 

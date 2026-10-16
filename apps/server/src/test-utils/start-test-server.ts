@@ -6,7 +6,6 @@ import type { LogRecord } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
-import { systemClock } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint, ToolEndpointOptions } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildTestSandboxes } from './build-test-sandboxes';
@@ -68,7 +67,7 @@ export async function startTestServer(
 
   const context = {
     log,
-    clock: systemClock,
+    clock: log.writer.clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
 

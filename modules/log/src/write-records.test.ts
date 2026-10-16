@@ -42,7 +42,7 @@ test('it writes every envelope field and returns each record with its sequence',
 
   expect(records.at(1)).toStrictEqual({
     sequence: 2,
-    recordedAt: expect.toBeValidDate(),
+    recordedAt: new Date(ctx.clock.now()),
     kind: 'tool_called',
     definitions: { snapshotHash: 'sha256:aa11', personaVersion: 'p3', jobVersion: 'j7' },
     thread: 'conversation',

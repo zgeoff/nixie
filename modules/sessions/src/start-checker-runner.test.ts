@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import { buildTestClock } from '@heynixie/testing';
 import { startCheckerRunner } from './start-checker-runner';
 
 test('it starts the checker in a checker sandbox with a model grant, no egress and no tool route', async () => {
@@ -12,6 +13,7 @@ test('it starts the checker in a checker sandbox with a model grant, no egress a
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: {} },
+    clock: buildTestClock(1_700_000_000_000),
     log: () => {},
   });
 
@@ -37,6 +39,7 @@ test('it keeps the checker sandbox when its spec still matches', async () => {
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: {} },
+    clock: buildTestClock(1_700_000_000_000),
     log: () => {},
   });
 
@@ -46,6 +49,7 @@ test('it keeps the checker sandbox when its spec still matches', async () => {
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: {} },
+    clock: buildTestClock(1_700_000_000_000),
     log: () => {},
   });
 
@@ -63,6 +67,7 @@ test('it replaces the checker sandbox when the image changed', async () => {
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: {} },
+    clock: buildTestClock(1_700_000_000_000),
     log: () => {},
   });
 
@@ -72,6 +77,7 @@ test('it replaces the checker sandbox when the image changed', async () => {
     image: 'nixie-conversation-ba9876543210',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '/app/guests/conversation/src/check.ts'], env: {} },
+    clock: buildTestClock(1_700_000_000_000),
     log: () => {},
   });
 

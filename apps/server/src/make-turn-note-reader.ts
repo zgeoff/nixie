@@ -1,3 +1,4 @@
+import type { Clock } from '@heynixie/clock';
 import type { Log } from '@heynixie/log';
 import type { AnswerQuoteSource, StartedMemoryStore } from '@heynixie/memory';
 import {
@@ -8,7 +9,6 @@ import {
 } from '@heynixie/memory';
 import type { TurnNote, TurnNoteRange } from '@heynixie/sessions';
 import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/sessions';
-import type { Clock } from '@heynixie/tasks';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';
 

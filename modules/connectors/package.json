@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@heynixie/clock": "workspace:*",
     "@heynixie/contract": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/sandbox": "workspace:*",

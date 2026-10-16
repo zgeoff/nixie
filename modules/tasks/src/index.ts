@@ -27,7 +27,6 @@ export { startRunnerPool } from './start-runner-pool';
 export type { TaskRunnersOptions } from './start-task-runners';
 export { startTaskRunners } from './start-task-runners';
 export { StepAlreadyCommittedError } from './step-already-committed-error';
-export { systemClock } from './system-clock';
 export type { TasksConfig } from './tasks-config-schema';
 export { tasksConfigSchema } from './tasks-config-schema';
 export { tasksProjection } from './tasks-projection';
@@ -35,7 +34,6 @@ export { tasksProjections } from './tasks-projections';
 export { timersProjection } from './timers-projection';
 
 export type {
-  Clock,
   FaultPointContext,
   FaultPointHandler,
   FaultPointID,

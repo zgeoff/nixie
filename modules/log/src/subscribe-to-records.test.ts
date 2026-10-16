@@ -1,6 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
+import { waitForCondition } from '@heynixie/testing';
 import { startKeyStore } from './start-key-store';
 import { subscribeToRecords } from './subscribe-to-records';
 import { startTestLog } from './test-utils/start-test-log';
@@ -30,7 +31,7 @@ async function setupTest() {
     deploymentKey: started.log.deploymentKey,
   };
 
-  return { log: started.log, reader, signal: abort.signal };
+  return { log: started.log, reader, clock: started.clock, signal: abort.signal };
 }
 
 test('it yields the records after the sequence, then a new record when the WAL changes', async () => {
@@ -48,9 +49,8 @@ test('it yields the records after the sequence, then a new record when the WAL c
     signal: ctx.signal,
   });
 
-  const first = await stream.next();
-
-  const waiting = stream.next();
+  // the second pull starts once the first returned, so it waits for the next commit
+  const [first, waiting] = [await stream.next(), stream.next()];
 
   await writeRecords(ctx.log, [
     {
@@ -82,7 +82,7 @@ test('it wakes by polling when no WAL change arrives', async () => {
 
   const stream = subscribeToRecords(ctx.reader, {
     afterSequence: 0,
-    pollMs: 20,
+    pollMs: 1000,
     subscribeToChanges: () => () => {},
     signal: ctx.signal,
   });
@@ -92,6 +92,10 @@ test('it wakes by polling when no WAL change arrives', async () => {
   await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
   ]);
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
+  ctx.clock.advance(1000);
 
   const next = await waiting;
 

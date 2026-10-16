@@ -1,5 +1,5 @@
+import type { Clock } from '@heynixie/clock';
 import { planBackoffDelay } from '@heynixie/retry';
-import type { Clock } from '@heynixie/tasks';
 
 export interface DefinitionsProbe {
   // the token differs from the one the last good seed ran for, so a seed follows

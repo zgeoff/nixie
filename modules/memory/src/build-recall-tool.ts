@@ -1,7 +1,7 @@
+import type { Clock } from '@heynixie/clock';
 import type { JSONObject } from '@heynixie/log';
 import type { MemoryLineOptions, NextVersion } from '@heynixie/sessions';
 import { renderMemoryLine } from '@heynixie/sessions';
-import type { Clock } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { makeInputRecorder } from './make-input-recorder';

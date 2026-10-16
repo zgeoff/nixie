@@ -1,9 +1,7 @@
-// The clock a test sets and advances, so leases, timers and retry delays pass without a sleep. It
-// has the shape of the Clock that modules/tasks reads; a lib cannot import a module's type.
-export interface TestClock {
-  readonly now: () => number;
-  readonly sleep: (ms: number, signal?: AbortSignal) => Promise<void>;
+import type { Clock } from '@heynixie/clock';
 
+// The clock a test sets and advances, so leases, timers and retry delays pass without a sleep.
+export interface TestClock extends Clock {
   // moves time forward and wakes every sleeper whose due time it passed, earliest first
   readonly advance: (ms: number) => void;
 

@@ -99,7 +99,7 @@ async function applySeed(
   options: SeedOptions,
   plan: SeedPlan,
 ): Promise<SeedResult> {
-  const seededAt = Date.now();
+  const seededAt = options.log.writer.clock.now();
 
   await writeSnapshotRows(tx, plan, seededAt);
 

@@ -1,3 +1,4 @@
+import type { Clock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/ops';
 import { toErrorFields } from '@heynixie/ops';
 import { planBackoffDelay } from '@heynixie/retry';
@@ -9,6 +10,9 @@ export interface RetryOptions {
   // aborts on a stop, which ends the retries with the signal's reason
   readonly signal: AbortSignal;
   readonly log: Logger;
+
+  // the clock each wait between attempts runs on
+  readonly clock: Clock;
 
   // the first wait after a failure, which doubles up to maxDelayMs: 1 s and 30 s by default
   readonly firstDelayMs?: number;
@@ -46,25 +50,8 @@ export async function runWithRetry<T>(
         ...toErrorFields(error),
       });
 
-      // oxlint-disable-next-line no-await-in-loop -- the wait between attempts
-      await waitForDelay(delayMs, options.signal);
+      // oxlint-disable-next-line no-await-in-loop -- the wait between attempts, which a stop ends
+      await options.clock.sleep(delayMs, options.signal);
     }
   }
-}
-
-function waitForDelay(ms: number, signal: AbortSignal): Promise<void> {
-  const waited = Promise.withResolvers<void>();
-  const timer = setTimeout(waited.resolve, ms);
-
-  signal.addEventListener(
-    'abort',
-    () => {
-      clearTimeout(timer);
-
-      waited.reject(signal.reason);
-    },
-    { once: true },
-  );
-
-  return waited.promise;
 }

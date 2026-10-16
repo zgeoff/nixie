@@ -1,3 +1,4 @@
+import type { Clock } from '@heynixie/clock';
 import { buildModelGrant, deriveModelSecret } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
 import type { Logger } from '@heynixie/ops';
@@ -21,6 +22,9 @@ export interface CheckerRunnerOptions {
   readonly limits: SandboxLimits;
   readonly command: GuestCommand;
   readonly timeoutMs?: number;
+
+  // the clock each check's timeout runs on
+  readonly clock: Clock;
 
   // takes each check's timings
   readonly log: Logger;
@@ -48,6 +52,7 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
 
   return makeChecker({
     model: profile.model,
+    clock: options.clock,
     ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     ask: (request, signal) =>
       runSandboxCheck({

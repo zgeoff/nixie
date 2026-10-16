@@ -1,5 +1,5 @@
-import type { Clock } from '@heynixie/tasks';
-import { systemClock } from '@heynixie/tasks';
+import type { Clock } from '@heynixie/clock';
+import { systemClock } from '@heynixie/clock';
 import type { HealthReport, PartCheck, PartReport } from './types';
 
 // Runs every part's check at once and reports each part, with a check that throws or outlasts

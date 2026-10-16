@@ -1,4 +1,5 @@
 import type { Log, LogTables } from '@heynixie/log';
+import type { TasksRecordKind } from '@heynixie/tasks';
 import { sql } from 'kysely';
 
 // Finds the time zone of the newest owner message that carries one, in any thread, or null when no
@@ -11,7 +12,7 @@ export async function findMessageTimeZone(log: Pick<Log, 'writer'>): Promise<str
     .$extendTables<LogTables>()
     .selectFrom('records')
     .select(timeZone.as('timeZone'))
-    .where('kind', '=', 'owner_message')
+    .where('kind', '=', ownerMessageKind)
     .where(timeZone, 'is not', null)
     .orderBy('sequence', 'desc')
     .limit(1)
@@ -19,3 +20,6 @@ export async function findMessageTimeZone(log: Pick<Log, 'writer'>): Promise<str
 
   return row?.timeZone ?? null;
 }
+
+// the tasks module registers the owner message's kind with the log, as an inbox kind
+const ownerMessageKind: TasksRecordKind = 'owner_message';

@@ -22,7 +22,12 @@ export async function startWork(parts: ServerParts, runStep: RunStep): Promise<v
         tools: parts.tools.definitions.map((definition) => definition.name),
         personaVersion: parts.inForce.read()?.personaVersion ?? null,
       }),
-    { signal: parts.cleanup.signal, log: parts.log, step: 'start_record' },
+    {
+      signal: parts.cleanup.signal,
+      log: parts.log,
+      clock: parts.context.clock,
+      step: 'start_record',
+    },
   );
 
   await createConversationTask(parts.context);

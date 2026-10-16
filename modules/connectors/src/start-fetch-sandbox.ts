@@ -1,8 +1,8 @@
 // oxlint-disable typescript/prefer-readonly-parameter-types -- the fetch sandbox's own state, and stream handles, which have no readonly form
+import type { Clock } from '@heynixie/clock';
+import { systemClock } from '@heynixie/clock';
 import type { ExecStream, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
 import { buildSandboxSpec } from '@heynixie/sandbox';
-import type { Clock } from '@heynixie/tasks';
-import { systemClock } from '@heynixie/tasks';
 import type { FetchLimits, FetchReply } from '@heynixie/wire';
 import { decodeFetchReply, encodeFetchMessage } from '@heynixie/wire';
 

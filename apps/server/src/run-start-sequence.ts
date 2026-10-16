@@ -10,7 +10,7 @@ import type { ServerParts } from './types';
 // the memory writer, the seed, then the runners, so a pending forget finds its session cleanup. A
 // failed step runs again, so nixie stays live and unready until impd answers or the seed applies.
 export async function runStartSequence(parts: ServerParts): Promise<void> {
-  const retry = { signal: parts.cleanup.signal, log: parts.log };
+  const retry = { signal: parts.cleanup.signal, log: parts.log, clock: parts.context.clock };
 
   // every record carries a snapshot hash, so a first start seeds before anything else writes
   if (parts.inForce.read() === null) {

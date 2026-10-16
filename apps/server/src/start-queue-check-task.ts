@@ -11,6 +11,7 @@ export async function startQueueCheckTask(parts: ServerParts, runStep: RunStep):
   await runWithRetry(() => createQueueCheckWake(parts), {
     signal: parts.cleanup.signal,
     log: parts.log,
+    clock: parts.context.clock,
     step: 'queue_check',
   });
 

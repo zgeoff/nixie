@@ -1,6 +1,6 @@
+import type { Clock } from '@heynixie/clock';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildMemoryTools } from '@heynixie/memory';
-import type { Clock } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 
 // What the memory tools reach: the store through readStore, which returns null until it starts,

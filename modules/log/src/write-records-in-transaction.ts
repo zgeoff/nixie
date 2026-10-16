@@ -85,7 +85,7 @@ async function writeRecord(
   const row = await tx
     .$extendTables<LogTables>()
     .insertInto('records')
-    .values(buildRecordValues(pending))
+    .values(buildRecordValues(pending, log.writer.clock.now()))
     .returningAll()
     .executeTakeFirstOrThrow();
 
@@ -113,12 +113,12 @@ async function writeAttachments(
     .execute();
 }
 
-function buildRecordValues(pending: PendingRecord) {
+function buildRecordValues(pending: PendingRecord, recordedAt: number) {
   const input = pending.input;
   const sealed = pending.sealed;
 
   return {
-    recorded_at: Date.now(),
+    recorded_at: recordedAt,
     kind: input.kind,
     thread: input.thread ?? null,
     step_key: input.stepKey ?? null,
