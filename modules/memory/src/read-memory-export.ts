@@ -5,6 +5,7 @@ import { getItemShortID } from './get-item-short-id';
 import type { MemoryExport, MemoryExportItem } from './memory-export-schema';
 import { memoryExportSchemaVersion } from './memory-export-schema-version';
 import { parseChecks } from './parse-checks';
+import { readPages } from './read-pages';
 import { readViewText } from './read-view-text';
 import type { MemoryContext, MemoryState, MemoryTables, MemoryVersionRow } from './types';
 
@@ -29,7 +30,7 @@ export async function* readMemoryExport(
   yield `{"header":${JSON.stringify(header)},"items":[`;
   let separator = '\n';
 
-  for await (const item of readExportItems(context.log, 0)) {
+  for await (const item of readExportItems(context.log)) {
     yield `${separator}${JSON.stringify(item)}`;
     separator = ',\n';
   }
@@ -39,21 +40,20 @@ export async function* readMemoryExport(
 
 type ExportLog = Pick<Log, 'deploymentKey' | 'writer'>;
 
-// every item created after the sequence, a page at a time, then the pages after it
-async function* readExportItems(
-  log: ExportLog,
-  after: number,
-): AsyncGenerator<MemoryExportItem, void, undefined> {
-  const rows = await readItemRows(log, after);
+// every item in the order it was created, a page at a time, each page read after the last
+// sequence of the page before it
+function readExportItems(log: ExportLog): AsyncGenerator<MemoryExportItem, void, undefined> {
+  return readPages(async (after) => {
+    const rows = await readItemRows(log, after);
 
-  const page = rows.slice(0, pageSize);
+    const page = rows.slice(0, pageSize);
+    const last = page.at(-1);
 
-  yield* await buildExportItems(log, page);
-  const last = page.at(-1);
-
-  if (rows.length > pageSize && last !== undefined) {
-    yield* readExportItems(log, last.created_sequence);
-  }
+    return {
+      items: await buildExportItems(log, page),
+      next: rows.length > pageSize && last !== undefined ? last.created_sequence : null,
+    };
+  });
 }
 
 const pageSize = 100;
