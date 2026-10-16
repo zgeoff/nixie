@@ -23,7 +23,7 @@ export function MemoryProposals(props: MemoryProposalsProps): ReactNode {
   const listed = useQuery(nixie.queryUtils.memory.listProposals.queryOptions());
   const answers = useProposalAnswers();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const [drafts, setDrafts] = useState<ReadonlyMap<string, string>>(new Map());
+  const [drafts, setDrafts] = useState<Readonly<Record<string, string>>>({});
   const proposals = listed.data?.proposals ?? [];
 
   return (
@@ -47,7 +47,7 @@ export function MemoryProposals(props: MemoryProposalsProps): ReactNode {
           <ProposalCard
             key={proposal.proposalID}
             answers={answers}
-            draft={drafts.get(proposal.proposalID) ?? null}
+            draft={drafts[proposal.proposalID] ?? null}
             isSelected={selected.has(proposal.proposalID)}
             onDraft={(draft) => {
               setDrafts((current) => updateEntry(current, proposal.proposalID, draft));
@@ -79,7 +79,7 @@ interface AnswerNoticesProps {
 // what stopped each answer that changed nothing, by the proposal's text, since a stale proposal
 // leaves the list; a failed call keeps its answers to send again
 function AnswerNotices(props: AnswerNoticesProps): ReactNode {
-  const notices = [...props.answers.outcomes].flatMap(([proposalID, shown]) => {
+  const notices = Object.entries(props.answers.outcomes).flatMap(([proposalID, shown]) => {
     const notice = formatProposalOutcome(shown.outcome);
 
     return notice === null || shown.outcome.status === 'close_match'
@@ -109,19 +109,14 @@ function AnswerNotices(props: AnswerNoticesProps): ReactNode {
 }
 
 function updateEntry(
-  current: ReadonlyMap<string, string>,
+  current: Readonly<Record<string, string>>,
   proposalID: string,
   draft: string | null,
-): ReadonlyMap<string, string> {
-  const next = new Map(current);
+): Readonly<Record<string, string>> {
+  const kept = Object.entries(current).filter(([key]) => key !== proposalID);
+  const entries = draft === null ? kept : [...kept, [proposalID, draft]];
 
-  if (draft === null) {
-    next.delete(proposalID);
-  } else {
-    next.set(proposalID, draft);
-  }
-
-  return next;
+  return Object.fromEntries(entries);
 }
 
 function toggleEntry(

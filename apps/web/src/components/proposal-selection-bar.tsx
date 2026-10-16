@@ -13,7 +13,7 @@ export interface ProposalSelectionBarProps {
   readonly onSelect: (selected: ReadonlySet<string>) => void;
 
   // your edited text of each proposal you edit, by its ID
-  readonly drafts: ReadonlyMap<string, string>;
+  readonly drafts: Readonly<Record<string, string>>;
 }
 
 // The answers to every selected proposal at once, each its own checked action: approve them, each
@@ -106,8 +106,8 @@ function SelectAll(props: SelectAllProps): ReactNode {
 }
 
 // an edit that leaves the text as proposed approves the proposal as it is
-function buildApproval(proposal: MemoryProposal, drafts: ReadonlyMap<string, string>) {
-  const draft = drafts.get(proposal.proposalID);
+function buildApproval(proposal: MemoryProposal, drafts: Readonly<Record<string, string>>) {
+  const draft = drafts[proposal.proposalID];
 
   return draft === undefined || draft === proposal.text
     ? { proposal }

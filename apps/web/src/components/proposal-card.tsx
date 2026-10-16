@@ -23,7 +23,7 @@ export interface ProposalCardProps {
 // closely matches holds, and the card asks how to apply it.
 export function ProposalCard(props: ProposalCardProps): ReactNode {
   const proposal = props.proposal;
-  const shown = props.answers.outcomes.get(proposal.proposalID)?.outcome;
+  const shown = props.answers.outcomes[proposal.proposalID]?.outcome;
 
   return (
     <li aria-label={proposal.text} className={card}>

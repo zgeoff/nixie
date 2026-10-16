@@ -47,7 +47,7 @@ test('it keeps the outcome of an answer that changed nothing, with the text of i
   });
 
   await waitFor(() => {
-    expect(hook.result.current.outcomes.get(proposal.proposalID)).toStrictEqual({
+    expect(hook.result.current.outcomes[proposal.proposalID]).toStrictEqual({
       outcome: { cause: 'lapsed', proposalID: proposal.proposalID, status: 'stale' },
       text: 'Keeps bees on the roof',
     });

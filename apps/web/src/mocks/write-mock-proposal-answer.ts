@@ -1,4 +1,5 @@
 import type { ContractOutputs } from '@heynixie/contract';
+import type { ReadonlyDeep } from '../types';
 import { store } from './store';
 
 export type MockProposalOutcome = ContractOutputs['memory']['approveProposals']['outcomes'][number];
@@ -21,7 +22,7 @@ export type MockProposalAnswer =
     })
   | (MockAnswerBase & { readonly answer: 'reject'; readonly reason?: string | undefined });
 
-type StoredProposal = NonNullable<ReturnType<typeof store.memoryProposals.findFirst>>;
+type StoredProposal = ReadonlyDeep<NonNullable<ReturnType<typeof store.memoryProposals.findFirst>>>;
 
 // Answers a memory proposal in the mock store as nixie's API does: once per client action ID, bound
 // to the action hash the view showed, holding a new item for an active item with the same text.
@@ -154,7 +155,11 @@ async function writeApproval(
 
 // the active item a new item's text matches, case aside, unless the answer already chose
 function findCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: string) {
-  if (proposal.targetVersion !== null || input.revisionOf !== undefined || input.ignoreCloseMatch) {
+  if (
+    proposal.targetVersion !== null ||
+    input.revisionOf !== undefined ||
+    input.ignoreCloseMatch === true
+  ) {
     return null;
   }
 
@@ -219,11 +224,11 @@ async function applyApproval(
   });
 }
 
-type Answer = NonNullable<ReturnType<typeof store.records.all>[number]['answer']>;
+type Answer = ReadonlyDeep<NonNullable<ReturnType<typeof store.records.all>[number]['answer']>>;
 
 // closes the proposal with the answer's own record in its thread
 async function writeClosedProposal(proposal: StoredProposal, answer: Answer): Promise<void> {
-  await store.memoryProposals.update(proposal, {
+  await store.memoryProposals.update((query) => query.where({ proposalID: proposal.proposalID }), {
     data(draft) {
       draft.status = answer.answer === 'rejected' ? 'rejected' : 'consumed';
     },

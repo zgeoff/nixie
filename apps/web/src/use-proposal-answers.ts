@@ -1,7 +1,7 @@
 import type { ContractInputs } from '@heynixie/contract';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { MemoryProposal, NixieClient, ProposalOutcome } from './types';
+import type { MemoryProposal, NixieClient, ProposalOutcome, ReadonlyDeep } from './types';
 import { useNixieClient } from './use-nixie-client';
 
 // An approval of one proposal: as proposed, with your edited text, or after a close match as a
@@ -35,27 +35,23 @@ export interface ProposalAnswers {
   readonly isError: boolean;
 
   // by proposal ID
-  readonly outcomes: ReadonlyMap<string, ShownOutcome>;
+  readonly outcomes: Readonly<Record<string, ShownOutcome>>;
 }
 
 // one call's answers, with the text of each proposal they answer by its ID
-type AnswerCall = { readonly texts: ReadonlyMap<string, string> } & (
-  | {
-      readonly kind: 'approve';
-      readonly answers: ContractInputs['memory']['approveProposals']['answers'];
-    }
-  | {
-      readonly kind: 'reject';
-      readonly answers: ContractInputs['memory']['rejectProposals']['answers'];
-    }
-);
+type AnswerCall = ReadonlyDeep<
+  { texts: Record<string, string> } & (
+    | { kind: 'approve'; answers: ContractInputs['memory']['approveProposals']['answers'] }
+    | { kind: 'reject'; answers: ContractInputs['memory']['rejectProposals']['answers'] }
+  )
+>;
 
 // Your answers to pending proposals, one or several in one call, each its own checked action with
 // a client action ID of its own. Every answer refreshes the memory view's lists.
 export function useProposalAnswers(): ProposalAnswers {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
-  const [outcomes, setOutcomes] = useState<ReadonlyMap<string, ShownOutcome>>(new Map());
+  const [outcomes, setOutcomes] = useState<Readonly<Record<string, ShownOutcome>>>({});
 
   const answer = useMutation({
     mutationFn: (call: AnswerCall) => sendAnswers(nixie.client, call),
@@ -113,21 +109,19 @@ async function sendAnswers(
 
 // each answer keeps its own outcome; one that applied as asked clears what showed before
 function mergeOutcomes(
-  shown: ReadonlyMap<string, ShownOutcome>,
-  texts: ReadonlyMap<string, string>,
+  shown: Readonly<Record<string, ShownOutcome>>,
+  texts: Readonly<Record<string, string>>,
   outcomes: readonly ProposalOutcome[],
-): ReadonlyMap<string, ShownOutcome> {
-  const merged = new Map(shown);
+): Readonly<Record<string, ShownOutcome>> {
+  const answered = new Set(outcomes.map((outcome) => outcome.proposalID));
 
-  for (const outcome of outcomes) {
-    if (outcome.status === 'applied' || outcome.status === 'rejected') {
-      merged.delete(outcome.proposalID);
-    } else {
-      merged.set(outcome.proposalID, { text: texts.get(outcome.proposalID) ?? '', outcome });
-    }
-  }
+  const kept = Object.entries(shown).filter(([proposalID]) => !answered.has(proposalID));
 
-  return merged;
+  const held = outcomes
+    .filter((outcome) => outcome.status !== 'applied' && outcome.status !== 'rejected')
+    .map((outcome) => [outcome.proposalID, { text: texts[outcome.proposalID] ?? '', outcome }]);
+
+  return Object.fromEntries([...kept, ...held]);
 }
 
 function buildApprovalCall(requests: readonly ApprovalRequest[]): AnswerCall {
@@ -162,6 +156,8 @@ function buildRejectionCall(requests: readonly RejectionRequest[]): AnswerCall {
 
 function buildTexts(
   requests: readonly { readonly proposal: MemoryProposal }[],
-): ReadonlyMap<string, string> {
-  return new Map(requests.map((request) => [request.proposal.proposalID, request.proposal.text]));
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    requests.map((request) => [request.proposal.proposalID, request.proposal.text]),
+  );
 }
