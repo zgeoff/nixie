@@ -1,11 +1,12 @@
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { removeImageOfferKeys } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
 import { findRecordForget } from './find-record-forget';
 import type { APIContext, APITables } from './types';
 
-// Finishes a forget that record.forget_started began: it deletes the record's key, runs the session
-// cleanup and commits record.forgotten, each step safe to run again. Before the conversation starts
-// the forget stays begun with its key gone, and the start sequence finishes it.
+// Finishes a forget that record.forget_started began: it deletes the record's key and each key of an
+// image offer for it, runs the session cleanup and commits record.forgotten, each safe to rerun.
+// Before the conversation starts the forget stays begun, and the start sequence finishes it.
 export async function runRecordForgetCleanup(
   context: APIContext,
   recordSequence: number,
@@ -17,6 +18,8 @@ export async function runRecordForgetCleanup(
   }
 
   const thread = await removeForgottenKey(context, recordSequence);
+
+  await removeImageOfferKeys(context.log, recordSequence);
 
   const cleanupSessions = context.readSessionCleanup();
 
