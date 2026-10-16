@@ -11,6 +11,7 @@ test('it accepts a summarize frame that resumes the session at a point', () => {
       effort: 'medium',
       authHeader: 'x-api-key',
       contextTokens: null,
+      cacheTTL: '5m',
     },
     resume: {
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
@@ -32,6 +33,7 @@ test('it refuses a summarize frame with no session to resume', () => {
       effort: 'medium',
       authHeader: 'x-api-key',
       contextTokens: null,
+      cacheTTL: '5m',
     },
     resume: null,
     systemPrompt: 'You are nixie.',
@@ -50,6 +52,7 @@ test('it refuses a summarize frame with an empty instruction', () => {
       effort: 'medium',
       authHeader: 'x-api-key',
       contextTokens: null,
+      cacheTTL: '5m',
     },
     resume: {
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',

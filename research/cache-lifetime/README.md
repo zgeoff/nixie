@@ -62,10 +62,13 @@ preamble places them. Turns 1 to 6 follow each other at once, the run waits a se
 runs and turn 8 follows it at once. Each run ends its system prompt with its own random ID, so no
 run reads a cache entry that another run wrote.
 
-The production query options pass neither the setting nor the variable, so
+The production query options at the recorded commit passed neither the setting nor the variable, so
 [`register-query-override.ts`](register-query-override.ts) rewrites the guest turn's import of the
 Agent SDK to [`override-query.ts`](override-query.ts) when Bun loads it. That module adds the arm's
-setting or variable to the options the production builder made, and changes nothing else.
+setting or variable to the options the production builder made, and changes nothing else. The
+production query options now pass the profile's cache lifetime as the setting, so the run sets that
+lifetime to the arm's setting, or to 5 minutes for an arm without one; a rerun of a default arm
+therefore asks for `5m` where the recorded run asked for no lifetime.
 
 [`start-count-proxy.ts`](start-count-proxy.ts) stands in for the counting proxy and the credential
 grant. The profile's base URL points at it, and it swaps the guest's placeholder for the signed-in

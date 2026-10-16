@@ -152,6 +152,7 @@ async function runGuestTurn(
           effort,
           authHeader: arm!.authHeader,
           contextTokens: null,
+          cacheTTL: arm!.setting ?? '5m',
         },
         tools: { url: server.config.url, token: 'unused' },
         resume: session.resume,

@@ -13,6 +13,7 @@ test('it builds a conversation role on one profile at the model URL, with no con
         effort: 'low',
         providerPin: null,
         contextTokens: null,
+        cacheTTL: '5m',
         prices: null,
       },
     },

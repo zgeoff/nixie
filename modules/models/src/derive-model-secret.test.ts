@@ -13,6 +13,7 @@ test('it derives the frozen secret for a profile host and header, named by the p
       effort: 'low',
       providerPin: null,
       contextTokens: null,
+      cacheTTL: '5m',
       prices: null,
     },
     credential: 'not-a-real-token',

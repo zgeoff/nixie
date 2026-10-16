@@ -199,6 +199,24 @@ test('it sends the guest the profile context tokens with every turn', async () =
   expect(ctx.sandboxes.turns.map((turn) => turn.profile.contextTokens)).toStrictEqual([400_000]);
 });
 
+test('it sends the guest the profile cache lifetime with every turn', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig({
+      profiles: { 'chat-direct': { model: 'claude-test-1', cacheTTL: '1h' } },
+    }),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  expect(ctx.sandboxes.turns.map((turn) => turn.profile.cacheTTL)).toStrictEqual(['1h']);
+});
+
 test("it gives each turn a step token of the step's run identity, and stops it once the turn ends", async () => {
   const ctx = await setupTest();
 

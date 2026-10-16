@@ -22,6 +22,7 @@ export function buildMockTurnFrame(overrides: TurnFrameOverrides = {}): TurnFram
       effort: 'medium',
       authHeader: 'x-api-key',
       contextTokens: null,
+      cacheTTL: '5m',
       ...overrides.profile,
     },
     tools: {

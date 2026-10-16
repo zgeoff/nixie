@@ -105,6 +105,23 @@ test('it starts each session fresh with the prompt as its one message', async ()
   ]);
 });
 
+test('it keeps 5-minute cache entries on a profile that sets a 1-hour lifetime', async () => {
+  const ctx = await setupTest();
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig({ profiles: { 'chat-direct': { cacheTTL: '1h' } } }),
+    credential: 'not-a-real-key',
+  });
+
+  await runner.runSession({
+    systemPrompt: 'You write memory.',
+    prompt: 'Read the batch.',
+    signal: new AbortController().signal,
+  });
+
+  expect(ctx.sandboxes.turns.map((turn) => turn.profile.cacheTTL)).toStrictEqual(['5m']);
+});
+
 test('it throws when the guest fails the session', async () => {
   const ctx = await setupTest();
 

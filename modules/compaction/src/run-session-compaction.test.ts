@@ -21,6 +21,7 @@ async function setupTest() {
       effort: 'medium',
       authHeader: 'x-api-key',
       contextTokens: null,
+      cacheTTL: '5m',
     },
     sandbox,
     command: { argv: ['guest'], env: {} },

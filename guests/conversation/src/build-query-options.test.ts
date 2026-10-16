@@ -74,6 +74,18 @@ test('it turns off every CLI compaction, the automatic one and the manual one', 
   expect(options.env).toContainEntry(['DISABLE_COMPACT', '1']);
 });
 
+test.each([['5m'], ['1h']] as const)(
+  'it passes a %s profile cache lifetime as the CLI promptCacheTtl setting',
+  (cacheTTL) => {
+    const options = buildQueryOptions(buildMockTurnFrame({ profile: { cacheTTL } }), {
+      env: { HOME: '/home/guest', ANTHROPIC_API_KEY: 'imp-placeholder' },
+      toolServer: { type: 'http', url: 'http://127.0.0.1:8901/mcp' },
+    });
+
+    expect(options.settings).toContainEntry(['promptCacheTtl', cacheTTL]);
+  },
+);
+
 test('it resumes at the boundary on a fork of the session', () => {
   const options = buildQueryOptions(
     buildMockTurnFrame({
