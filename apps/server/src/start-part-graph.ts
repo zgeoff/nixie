@@ -1,7 +1,7 @@
 import { MissingPartError } from './missing-part-error';
 import { PartCycleError } from './part-cycle-error';
 import { PartNotStartedError } from './part-not-started-error';
-import type { AnyPartDeclaration, PartGraph, PartReader } from './types';
+import type { AnyPartDeclaration, PartDeclaration, PartGraph, PartReader } from './types';
 
 export interface PartGraphOptions {
   // checked before each part starts, so a stop ends the start at the next part
@@ -70,33 +70,46 @@ function pickNextPart<Values>(
   return next;
 }
 
+// the started parts and the waiter for each part, read and changed only through these functions
 interface GraphState<Values> {
-  readonly started: Map<keyof Values, unknown>;
+  readonly readStarted: <Name extends keyof Values>(
+    name: Name,
+  ) => { readonly value: Values[Name] } | undefined;
+  readonly setStarted: <Name extends keyof Values>(name: Name, value: Values[Name]) => void;
   readonly readWaiter: <Name extends keyof Values>(
     name: Name,
   ) => PromiseWithResolvers<Values[Name]>;
 }
 
 function buildGraphState<Values>(order: readonly AnyPartDeclaration<Values>[]): GraphState<Values> {
-  const waiters = new Map<keyof Values, PromiseWithResolvers<unknown>>(
-    order.map((declaration) => [declaration.name, Promise.withResolvers<unknown>()]),
-  );
+  const started: { [Name in keyof Values]?: { readonly value: Values[Name] } } = {};
+  const waiters: { [Name in keyof Values]?: PromiseWithResolvers<Values[Name]> } = {};
 
-  for (const waiter of waiters.values()) {
+  const createWaiter = <Name extends keyof Values>(name: Name): void => {
+    const waiter = Promise.withResolvers<Values[Name]>();
+
     // a caller that never waits on a part leaves its rejection unread
     void waitForSettled(waiter.promise);
+    waiters[name] = waiter;
+  };
+
+  for (const declaration of order) {
+    createWaiter(declaration.name);
   }
 
   return {
-    started: new Map(),
-    readWaiter: <Name extends keyof Values>(name: Name) => {
-      const waiter = waiters.get(name);
+    readStarted: (name) => started[name],
+    setStarted: (name, value) => {
+      started[name] = { value };
+    },
+    readWaiter: (name) => {
+      const waiter = waiters[name];
 
       if (waiter === undefined) {
         throw new MissingPartError('the caller', String(name));
       }
 
-      return waiter as PromiseWithResolvers<Values[Name]>;
+      return waiter;
     },
   };
 }
@@ -111,10 +124,7 @@ async function runParts<Values>(
       options.signal?.throwIfAborted();
 
       // oxlint-disable-next-line no-await-in-loop -- each part starts after the parts it needs
-      const value = await declaration.start(buildPartReader(declaration, state));
-
-      state.started.set(declaration.name, value);
-      state.readWaiter(declaration.name).resolve(value);
+      await startPart(declaration, state);
     }
   } catch (error) {
     for (const declaration of order) {
@@ -125,9 +135,19 @@ async function runParts<Values>(
   }
 }
 
+async function startPart<Values, Name extends keyof Values>(
+  declaration: PartDeclaration<Values, Name>,
+  state: GraphState<Values>,
+): Promise<void> {
+  const value = await declaration.start(buildPartReader(declaration, state));
+
+  state.setStarted(declaration.name, value);
+  state.readWaiter(declaration.name).resolve(value);
+}
+
 // the reader a part's start gets, which reads only the parts its declaration names
-function buildPartReader<Values>(
-  declaration: AnyPartDeclaration<Values>,
+function buildPartReader<Values, Name extends keyof Values>(
+  declaration: PartDeclaration<Values, Name>,
   state: GraphState<Values>,
 ): PartReader<Values> {
   const declared = new Set<keyof Values>([...declaration.needs, ...(declaration.uses ?? [])]);
@@ -142,16 +162,18 @@ function buildPartReader<Values>(
     find: (name) => {
       requireDeclared(name);
 
-      return state.started.has(name) ? (state.started.get(name) as Values[typeof name]) : null;
+      return state.readStarted(name)?.value ?? null;
     },
     get: (name) => {
       requireDeclared(name);
 
-      if (!state.started.has(name)) {
+      const started = state.readStarted(name);
+
+      if (started === undefined) {
         throw new PartNotStartedError(String(name));
       }
 
-      return state.started.get(name) as Values[typeof name];
+      return started.value;
     },
     waitFor: (name) => {
       requireDeclared(name);

@@ -106,7 +106,7 @@ export interface PartReader<Values> {
 
 // One part of a start: the parts it needs, which start before it, and the parts it uses, which it
 // reads only later, such as from a callback, so they may start after it.
-interface PartDeclaration<Values, Name extends keyof Values> {
+export interface PartDeclaration<Values, Name extends keyof Values> {
   readonly name: Name;
   readonly needs: readonly (keyof Values)[];
   readonly uses?: readonly (keyof Values)[];
