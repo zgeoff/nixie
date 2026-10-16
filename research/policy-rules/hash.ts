@@ -250,6 +250,3 @@ function runHash(): void {
 }
 
 runHash();
-
-// planted to show that CI typechecks the research workspace; the next commit reverts it
-export const planted: number = 'not a number';
