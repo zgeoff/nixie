@@ -62,7 +62,10 @@ acknowledgement of 2 to 4 words that never claims an outcome or makes a promise,
 or 3 spoken sentences. An untimed first turn starts the process, because its start-up is per call,
 not per turn. Each later turn hears a line, sends the transcript, splits the streamed text at each
 sentence end, and speaks each sentence in order on one synthesis queue. A row holds the time to each
-milestone from the end of speech, and the turn's cost.
+milestone from the end of speech, the turn's cost, and its result's subtype and `is_error` flag. A
+failed API request ends the turn with the subtype `success` and the flag set, so the report counts a
+turn as failed when either shows an error. A failed turn produces no reply to time, so the report
+leaves it out of the timing tables.
 
 The barge-in trials ask for the long reply. Once its first sentence is ready to play, the caller's
 barge-in line starts, either at once or 1.5 s later. A second detector listens for its onset, and
@@ -89,15 +92,18 @@ bun report.ts results/stages.jsonl results/calls.jsonl
 ```
 
 `--silence-ms` sets the pause that ends a turn, and `--barge-in-after-ms` sets when the barge-in
-starts. Git ignores `models/` and `results/`.
+starts. `bun test` checks how the report counts a failed turn. Git ignores `models/` and `results/`.
 
 ## Results
 
 The run had 3 parts. The first ran 4 pairs of recognizer and voice for 20 turns each, with barge-ins
 1.5 s into the reply. The second alternated the 2 fastest pairs over 5 calls each, 100 turns, with
 barge-ins at the first audio. The third alternated 3 calls of control turns with 3 calls of
-`zipformer` and `piper`. Every turn ended in `success`. The 304 turns cost $0.023 by the SDK's own
-count. Each cell holds the median and the 90th percentile, in ms.
+`zipformer` and `piper`. Every turn's result had the subtype `success`. The run did not record the
+`is_error` flag, so its rows cannot rule out a failed API request. All 100 `zipformer` and `piper`
+turns had both audio times, so no failed turn entered that pair's figures; for the other pairs, the
+spike kept no count of turns without audio. The 304 turns cost $0.023 by the SDK's own count. Each
+cell holds the median and the 90th percentile, in ms.
 
 ### Speech-to-text on its own
 
@@ -178,7 +184,8 @@ writing the first sentence of the answer.
 The detector reports the caller's speech 288 ms after it starts. That is the detector's 200 ms
 minimum speech length plus its windows. Playback stops at that moment. When the model is still
 writing, `interrupt()` ends the turn within 20 ms at the 90th percentile, and the next turn runs on
-the same process. Every next turn ended in `success`, with a reply such as "Sure, I'll stop there."
+the same process. Every next turn's result had the subtype `success`, with a reply such as "Sure,
+I'll stop there."
 
 At 1.5 s into a long reply, the model had always finished writing. The caller heard 1.8 s of a reply
 that runs 12 to 21 s, and the session still holds the whole reply as said.

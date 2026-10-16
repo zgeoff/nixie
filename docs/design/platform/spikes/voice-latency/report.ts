@@ -2,6 +2,7 @@
 // as Markdown tables.
 // Usage: report.ts results/stages.jsonl results/calls.jsonl [more call files...]
 import { readFileSync } from 'node:fs';
+import { isFailedTurn } from './is-failed-turn.ts';
 
 type Row = Record<string, unknown>;
 
@@ -89,7 +90,9 @@ console.log(
   renderTable(['Voice', 'Sentences', 'Acknowledgement', 'Answer sentence', 'Real-time factor'], ttsRows),
 );
 
-const turns = calls.filter((row) => row.kind === 'turn'),
+// A failed turn produced no reply to time, so the timing tables leave it out and the last line
+// counts it.
+const turns = calls.filter((row) => row.kind === 'turn' && !isFailedTurn(row)),
   cellOf = (row: Row): string => `${String(row.stt)} + ${String(row.tts)}`,
   cells = splitBy(turns, cellOf);
 console.log('\n### End to end, from the end of speech\n');
@@ -147,5 +150,5 @@ console.log(
 
 const cost = collectNumbers(calls, 'costUSD').reduce((a, b) => a + b, 0),
   // An interrupted turn ends without success by design, so only whole turns count as failures.
-  failed = calls.filter((row) => row.kind !== 'barge-in' && row.subtype !== 'success').length;
+  failed = calls.filter((row) => row.kind !== 'barge-in' && isFailedTurn(row)).length;
 console.log(`\nModel cost: $${cost.toFixed(4)} over ${calls.length} turns; ${failed} turns did not end in success.`);
