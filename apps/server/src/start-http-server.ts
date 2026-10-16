@@ -1,4 +1,4 @@
-import type { APIContext } from '@heynixie/api';
+import type { APIContext, ReadViewMemory } from '@heynixie/api';
 import { buildAPIApp } from '@heynixie/api';
 import type { Writer } from '@heynixie/log';
 import { buildHealthApp, checkDatabase } from '@heynixie/ops';
@@ -17,6 +17,9 @@ export interface HTTPServerOptions {
   readonly tools: Tools;
   readonly apiContext: APIContext;
   readonly cleanup: Cleanup;
+
+  // the memory store once it starts, which the memory view reads
+  readonly readMemory: ReadViewMemory;
 
   // the gate a reset closes, which every request passes through
   readonly gate: APIGate;
@@ -40,7 +43,7 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
         ),
       }),
     )
-    .use(buildAPIApp(options.apiContext, () => options.tools.memory.read()));
+    .use(buildAPIApp(options.apiContext, options.readMemory));
 
   const http = Bun.serve({
     hostname: options.config.server.hostname,

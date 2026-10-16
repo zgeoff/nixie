@@ -9,8 +9,9 @@ import { startHostCommands } from './start-host-commands';
 import { startHTTPServer } from './start-http-server';
 import type { AnyPartDeclaration } from './types';
 
-// The parts the server starts before it answers. The API reads the conversation's session cleanup,
-// and the host commands read the memory store, once each starts behind the health endpoint.
+// The parts the server starts before it answers. The API reads the conversation's session cleanup
+// and the memory store, and the host commands read the memory store, once each starts behind the
+// health endpoint.
 export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
     name: 'state',
@@ -41,6 +42,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'http',
     needs: ['inputs', 'state', 'context', 'tools', 'api_gate'],
+    uses: ['memory'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -50,6 +52,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         tools: parts.get('tools'),
         apiContext: parts.get('context').apiContext,
         gate: parts.get('api_gate'),
+        readMemory: () => parts.find('memory'),
       });
 
       options.log('http.listening', { port });
