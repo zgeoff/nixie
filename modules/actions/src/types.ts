@@ -5,30 +5,6 @@ import type { TaskClaim, TasksTables } from '@heynixie/tasks';
 // The 4 outcomes of an action. pending covers both a queued action and one waiting for a retry.
 export type ActionStatus = 'pending' | 'done' | 'failed' | 'unknown';
 
-// A provider's answer to one attempt, as the connector reads it: success, a refusal with no effect,
-// a refusal with no effect that can clear, or a timeout, dropped connection or other ambiguity.
-export type ProviderResponse =
-  | { readonly kind: 'success'; readonly result: JSONObject }
-  | { readonly kind: 'refused'; readonly reason: string }
-  | { readonly kind: 'refused_retryable'; readonly reason: string; readonly retryAfterMs?: number }
-  | { readonly kind: 'ambiguous'; readonly reason: string };
-
-// One attempt of an action. The action ID is the idempotency key, so a provider that takes one
-// applies the action once however many attempts reach it.
-export interface ActionCall {
-  readonly actionID: string;
-  readonly tool: string;
-  readonly arguments: JSONObject;
-  readonly attempt: number;
-  readonly idempotencyKey: string;
-}
-
-// What runs an action against its provider. retryDelaysMs overrides the default retry schedule.
-export interface ActionConnector {
-  readonly run: (call: ActionCall) => Promise<ProviderResponse>;
-  readonly retryDelaysMs?: readonly number[];
-}
-
 // Why an action failed, went unknown or waits for a retry, as a code with no free text.
 export type OutcomeReason =
   | 'refused'

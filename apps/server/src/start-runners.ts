@@ -1,5 +1,5 @@
 import { startActionRunners } from '@heynixie/actions';
-import { toErrorFields } from '@heynixie/ops';
+import { toErrorFields } from '@heynixie/logger';
 import type { RunStep } from '@heynixie/tasks';
 import { startTaskRunners } from '@heynixie/tasks';
 import { makeConversationFailureMarker } from './make-conversation-failure-marker';

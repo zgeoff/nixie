@@ -1,5 +1,5 @@
-import type { ActionConnector } from '@heynixie/actions';
-import type { Logger } from '@heynixie/ops';
+import type { ActionConnector } from '@heynixie/connectors';
+import type { Logger } from '@heynixie/logger';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ActionQueueBridge } from './build-action-queue';
 import { buildActionQueue } from './build-action-queue';

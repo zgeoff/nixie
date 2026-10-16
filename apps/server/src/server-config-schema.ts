@@ -1,5 +1,5 @@
-import type { LogLevel } from '@heynixie/ops';
-import { logLevels } from '@heynixie/ops';
+import type { LogLevel } from '@heynixie/logger';
+import { logLevels } from '@heynixie/logger';
 import { z } from 'zod';
 
 // The server section of the deployment configuration: the data volume's mount root, where the API

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { LogFields } from '@heynixie/ops';
+import type { LogFields } from '@heynixie/logger';
 import { buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
 import { startFakeImp } from '@heynixie/sandbox-imp/test-utils';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';

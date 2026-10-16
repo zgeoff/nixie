@@ -1,4 +1,4 @@
-import { toErrorFields } from '@heynixie/ops';
+import { toErrorFields } from '@heynixie/logger';
 import { buildCleanup } from './build-cleanup';
 import { serverPartDeclarations } from './server-part-declarations';
 import type { ServerPartValues } from './server-part-values';

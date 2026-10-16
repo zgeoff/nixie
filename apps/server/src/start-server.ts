@@ -1,6 +1,6 @@
 import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
-import type { Logger } from '@heynixie/ops';
+import type { Logger } from '@heynixie/logger';
 import { buildCleanup } from './build-cleanup';
 import type { DeploymentConfig } from './deployment-config-schema';
 import type { SandboxImages } from './load-sandbox-manifest';

@@ -1,8 +1,8 @@
+import type { ActionConnector } from '@heynixie/connectors';
 import type { RunnerPool, TasksContext } from '@heynixie/tasks';
 import { startRunnerPool } from '@heynixie/tasks';
 import { claimAction } from './claim-action';
 import { runActionAttempt } from './run-action-attempt';
-import type { ActionConnector } from './types';
 
 export interface ActionRunnersOptions {
   readonly connectors: ReadonlyMap<string, ActionConnector>;

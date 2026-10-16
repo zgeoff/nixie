@@ -1,11 +1,12 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import type { ProviderResponse } from '@heynixie/connectors';
 import { waitForCondition } from '@heynixie/testing';
 import { createAllowedAction } from './create-allowed-action';
 import { startActionRunners } from './start-action-runners';
 import { buildStubConnector } from './test-utils/build-stub-connector';
 import { createTestStep } from './test-utils/create-test-step';
 import { startTestActions } from './test-utils/start-test-actions';
-import type { ActionsTables, ProviderResponse } from './types';
+import type { ActionsTables } from './types';
 
 // the step that makes the tool calls, claimed by its task runner
 async function setupTest() {

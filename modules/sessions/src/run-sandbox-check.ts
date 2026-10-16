@@ -1,4 +1,4 @@
-import type { Logger } from '@heynixie/ops';
+import type { Logger } from '@heynixie/logger';
 import type { ExecStream, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { CheckReply, CheckRequest } from '@heynixie/wire';
 import { checkReplySchema, decodeTurnFrame, turnFrameLimitBytes } from '@heynixie/wire';

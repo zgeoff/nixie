@@ -1,6 +1,6 @@
 import type { ONNXEncoder } from '@heynixie/encoder-onnx';
 import { startONNXEncoder } from '@heynixie/encoder-onnx';
-import { makeThresholdLogger } from '@heynixie/ops';
+import { makeThresholdLogger } from '@heynixie/logger';
 import { loadDeploymentConfig } from './load-deployment-config';
 import { loadSandboxManifest } from './load-sandbox-manifest';
 import { loadSecrets } from './load-secrets';

@@ -1,5 +1,5 @@
+import type { Logger } from '@heynixie/logger';
 import { buildModelGrant } from '@heynixie/models';
-import type { Logger } from '@heynixie/ops';
 import type {
   GuestCommand,
   Sandbox,

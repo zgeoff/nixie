@@ -1,5 +1,5 @@
 import type { Clock } from '@heynixie/clock';
-import type { Logger } from '@heynixie/ops';
+import type { Logger } from '@heynixie/logger';
 import type { RunCheck } from '@heynixie/sessions';
 import { startCheckerRunner } from '@heynixie/sessions';
 import type { SystemTaskOptions } from './make-system-task-runner';

@@ -1,4 +1,4 @@
-import type { Logger } from '@heynixie/ops';
+import type { Logger } from '@heynixie/logger';
 import type { StepErrored } from '@heynixie/tasks';
 
 // Makes the callback that logs each step error as task.step_errored: the task, the step, the

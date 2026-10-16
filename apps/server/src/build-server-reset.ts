@@ -1,5 +1,5 @@
-import type { Logger } from '@heynixie/ops';
-import { toErrorFields } from '@heynixie/ops';
+import type { Logger } from '@heynixie/logger';
+import { toErrorFields } from '@heynixie/logger';
 import type { ServerReset, ServerResetOptions } from './run-server-reset';
 import { runServerReset } from './run-server-reset';
 import type { Cleanup } from './types';

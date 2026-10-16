@@ -1,7 +1,7 @@
 import type { Clock } from '@heynixie/clock';
+import type { Logger } from '@heynixie/logger';
 import { buildModelGrant, deriveModelSecret } from '@heynixie/models';
 import type { ResolvedProfile } from '@heynixie/models';
-import type { Logger } from '@heynixie/ops';
 import type {
   GuestCommand,
   Sandbox,

@@ -9,8 +9,6 @@ export { createAllowedAction } from './create-allowed-action';
 export { pickOutcome } from './pick-outcome';
 
 export type {
-  ActionCall,
-  ActionConnector,
   ActionRow,
   ActionStatus,
   ActionsTables,
@@ -18,7 +16,6 @@ export type {
   ModelView,
   Outcome,
   OutcomeReason,
-  ProviderResponse,
 } from './types';
 
 export type { ActionAttemptOptions } from './run-action-attempt';

@@ -1,6 +1,31 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolCall, ToolDefinition } from '@heynixie/tools';
 
+// A provider's answer to one attempt, as the connector reads it: success, a refusal with no effect,
+// a refusal with no effect that can clear, or a timeout, dropped connection or other ambiguity.
+export type ProviderResponse =
+  | { readonly kind: 'success'; readonly result: JSONObject }
+  | { readonly kind: 'refused'; readonly reason: string }
+  | { readonly kind: 'refused_retryable'; readonly reason: string; readonly retryAfterMs?: number }
+  | { readonly kind: 'ambiguous'; readonly reason: string };
+
+// One attempt of an action. The action ID is the idempotency key, so a provider that takes one
+// applies the action once however many attempts reach it.
+export interface ActionAttempt {
+  readonly actionID: string;
+  readonly tool: string;
+  readonly arguments: JSONObject;
+  readonly attempt: number;
+  readonly idempotencyKey: string;
+}
+
+// What the action queue runs an action's attempts against its provider with. retryDelaysMs
+// overrides the default retry schedule.
+export interface ActionConnector {
+  readonly run: (attempt: ActionAttempt) => Promise<ProviderResponse>;
+  readonly retryDelaysMs?: readonly number[];
+}
+
 // How the action queue reconciles an action whose outcome is unknown: the provider's idempotency
 // key and how long the provider keeps it, a read-only check and how long to wait before trusting a
 // negative answer, or neither.

@@ -1,18 +1,18 @@
-import type { ActionCall, ActionConnector, ProviderResponse } from '../types';
+import type { ActionAttempt, ActionConnector, ProviderResponse } from '@heynixie/connectors';
 
 interface StubConnector {
   readonly connector: ActionConnector;
 
   // every call the provider received, in order, with its idempotency key
-  readonly calls: readonly ActionCall[];
+  readonly calls: readonly ActionAttempt[];
 }
 
 // Builds a connector over a provider double that records every call and answers each with the
 // response the test set. A respond that throws stands for a dropped connection.
 export function buildStubConnector(
-  respond: (call: ActionCall) => ProviderResponse | Promise<ProviderResponse>,
+  respond: (call: ActionAttempt) => ProviderResponse | Promise<ProviderResponse>,
 ): StubConnector {
-  const calls: ActionCall[] = [];
+  const calls: ActionAttempt[] = [];
 
   return {
     connector: {

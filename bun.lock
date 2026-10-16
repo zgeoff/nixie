@@ -73,6 +73,7 @@
         "@heynixie/definitions": "workspace:*",
         "@heynixie/encoder-onnx": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/ops": "workspace:*",
@@ -199,6 +200,10 @@
         "zod": "catalog:",
       },
     },
+    "libs/logger": {
+      "name": "@heynixie/logger",
+      "version": "0.0.0",
+    },
     "libs/retry": {
       "name": "@heynixie/retry",
       "version": "0.0.0",
@@ -226,6 +231,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/clock": "workspace:*",
+        "@heynixie/connectors": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/retry": "workspace:*",
@@ -395,8 +401,8 @@
         "@heynixie/compaction": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
-        "@heynixie/ops": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
@@ -779,6 +785,8 @@
     "@heynixie/fetch": ["@heynixie/fetch@workspace:guests/fetch"],
 
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
+
+    "@heynixie/logger": ["@heynixie/logger@workspace:libs/logger"],
 
     "@heynixie/memory": ["@heynixie/memory@workspace:modules/memory"],
 
