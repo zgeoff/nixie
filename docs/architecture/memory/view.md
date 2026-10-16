@@ -71,3 +71,10 @@ session is still live and the action's result. The change and its result therefo
 or not at all. A retry with the same client action ID finds that result and makes no second change,
 even though the item has moved past the version the retry names. The memory store starts after the
 API listens, so every procedure of the view refuses a call until the store starts.
+
+The web page asks before each change, and the confirmation keeps the version and the client action
+ID it opened with. A list that refreshes under an open confirmation therefore never moves the change
+onto a version the user did not see, and a confirm that fails in transit and goes again changes the
+item once. Every refusal or change reads the lists again, so the row shows the item as it now
+stands. That read can move the item to another list, so the reason for a refusal, such as a stale
+version or a full pinned core, shows at the top of the page and not in the item's row.
