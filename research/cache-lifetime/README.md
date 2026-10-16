@@ -76,6 +76,8 @@ Claude login's token before it forwards each request. For each model call it rec
 the request asked for, whether the request carried the extended cache lifetime beta, and the
 5-minute and 1-hour cache writes from the response.
 
+The recorded runs used these arms, and the lifetime option is the one each recorded run passed:
+
 | Arm                  | Auth header | Lifetime option                   | Pauses         |
 | -------------------- | ----------- | --------------------------------- | -------------- |
 | `api-key-default`    | `x-api-key` | none                              | 400 s          |
