@@ -1,8 +1,8 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { z } from 'zod';
 import { decodeRatingNote } from './decode-rating-note';
 import { findItemKey } from './find-item-key';
+import { memoryRatedCodec } from './memory-rated-codec';
 
 // One rated item's note, named by the sequence of its memory.rated record and the item's ID.
 export interface RatingNoteRef {
@@ -84,13 +84,12 @@ async function findSealedNote(
     limit: 1,
   });
 
-  const payload = ratedPayload.safeParse(entry?.record.payload);
-  const rating = payload.data?.ratings.find((candidate) => candidate.itemID === ref.itemID);
+  const payload =
+    entry === undefined ? null : memoryRatedCodec.tryDecodePartial(entry.record.payload);
 
-  return payload.data === undefined || rating?.sealedNote === undefined
+  const rating = payload?.ratings?.find((candidate) => candidate.itemID === ref.itemID);
+
+  return payload?.ratingID === undefined || rating?.sealedNote === undefined
     ? null
-    : { ratingID: payload.data.ratingID, itemID: ref.itemID, sealedNote: rating.sealedNote };
+    : { ratingID: payload.ratingID, itemID: ref.itemID, sealedNote: rating.sealedNote };
 }
-
-const ratedItem = z.object({ itemID: z.string(), sealedNote: z.string().optional() });
-const ratedPayload = z.object({ ratingID: z.string(), ratings: z.array(ratedItem) });

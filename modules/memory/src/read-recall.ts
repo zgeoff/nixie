@@ -1,5 +1,5 @@
-import type { JSONObject } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { memoryRecalledCodec } from '@heynixie/sessions';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import { buildVectorQuery } from './build-vector-query';
 import { InvalidCursorError } from './invalid-cursor-error';
@@ -273,10 +273,10 @@ async function writeRecallRecord(parts: StoreParts, recall: RecallRecord): Promi
   await withWriteTransaction(log.writer, (tx) =>
     writeRecordsInTransaction(tx, log, [
       {
-        kind: 'memory.recalled',
+        kind: memoryRecalledCodec.kind,
         definitions: parts.context.definitions(),
         ...(request.thread === undefined ? {} : { thread: request.thread }),
-        payload: {
+        payload: memoryRecalledCodec.encode({
           items: recall.items.flatMap((item) => {
             const scores = recall.candidates.scores?.get(item.itemID);
 
@@ -288,15 +288,17 @@ async function writeRecallRecord(parts: StoreParts, recall: RecallRecord): Promi
             ? {}
             : { searchMode: recall.candidates.searchMode }),
           ...(request.isTurnNote === true ? { isTurnNote: true } : {}),
-        },
+        }),
       },
     ]),
   );
 }
 
+type RecalledRef = ReturnType<typeof memoryRecalledCodec.decode>['items'][number];
+
 // the delivered version with each score an index gave its item, leaving out an index that did not
 // place it
-function buildRecalledRef(ref: VersionRef, scores: MatchScores | undefined): JSONObject {
+function buildRecalledRef(ref: VersionRef, scores: MatchScores | undefined): RecalledRef {
   return {
     itemID: ref.itemID,
     version: ref.version,

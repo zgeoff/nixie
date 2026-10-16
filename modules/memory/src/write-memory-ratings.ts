@@ -1,13 +1,12 @@
-import type { JSONObject } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { encodeRatingNote } from './encode-rating-note';
 import { findItemIDs } from './find-item-ids';
-import { findItemKey } from './find-item-key';
+import { memoryRatedCodec } from './memory-rated-codec';
 import { MemoryRatingError } from './memory-rating-error';
 import type { MemoryRating, RateRequest } from './rating-types';
 import { readLatestRecall } from './read-latest-recall';
 import { readShortIDs } from './read-short-ids';
+import { requireSealedNote } from './require-sealed-note';
 import type { StoreParts } from './types';
 
 // Keeps the model's ratings as one memory.rated record bound to the thread's latest recall, each at
@@ -33,16 +32,16 @@ export async function writeMemoryRatings(parts: StoreParts, request: RateRequest
   await withWriteTransaction(log.writer, (tx) =>
     writeRecordsInTransaction(tx, log, [
       {
-        kind: 'memory.rated',
+        kind: memoryRatedCodec.kind,
         definitions: parts.context.definitions(),
         thread: request.thread,
-        payload: {
+        payload: memoryRatedCodec.encode({
           ratingID,
           recalledSequence: recall.sequence,
           runID: request.runID,
           ...(request.ratedBy === null ? {} : { ratedBy: request.ratedBy }),
           ratings,
-        },
+        }),
       },
     ]),
   );
@@ -135,7 +134,9 @@ interface RatingParts extends RecalledItems {
 
 // The rating as its record holds it: the item ID and version, never the ID the model passed, and a
 // note only as the ciphertext under the item's key.
-async function buildRatingJSON(parts: StoreParts, rating: RatingParts): Promise<JSONObject> {
+type Rating = ReturnType<typeof memoryRatedCodec.decode>['ratings'][number];
+
+async function buildRatingJSON(parts: StoreParts, rating: RatingParts): Promise<Rating> {
   const itemID = getItemID(rating, rating.rating);
   const version = rating.versions.get(itemID);
 
@@ -144,29 +145,16 @@ async function buildRatingJSON(parts: StoreParts, rating: RatingParts): Promise<
   const base = { itemID, version, verdict: rating.rating.verdict };
   const note = rating.rating.note;
 
-  return note === undefined || note === ''
-    ? base
-    : { ...base, sealedNote: await requireSealedNote(parts, rating, { itemID, note }) };
-}
-
-interface ItemNote {
-  readonly itemID: string;
-  readonly note: string;
-}
-
-// the note sealed under its item's key, which a forget since the recall has removed
-async function requireSealedNote(
-  parts: StoreParts,
-  rating: RatingParts,
-  note: ItemNote,
-): Promise<string> {
-  const key = await findItemKey(parts.context.log, note.itemID);
-
-  if (key === null || key === undefined) {
-    throw new MemoryRatingError(
-      `${getShortID(rating, note.itemID)} was forgotten, so a note on it can't be kept.`,
-    );
+  if (note === undefined || note === '') {
+    return base;
   }
 
-  return encodeRatingNote(key, { ratingID: rating.ratingID, itemID: note.itemID }, note.note);
+  const sealedNote = await requireSealedNote(parts.context.log, {
+    ratingID: rating.ratingID,
+    itemID,
+    shortID: getShortID(rating, itemID),
+    note,
+  });
+
+  return { ...base, sealedNote };
 }
