@@ -1,4 +1,5 @@
 import type { EnvelopeRecord } from '@heynixie/log';
+import { identityRefusedCodec } from './identity-refused-codec';
 
 interface RefusalRecord {
   readonly channel: string;
@@ -11,23 +12,23 @@ interface RefusalRecord {
 export function parseRefusalRecord(
   record: Pick<EnvelopeRecord, 'kind' | 'payload'>,
 ): RefusalRecord | null {
-  if (record.kind !== 'identity.refused') {
+  if (record.kind !== identityRefusedCodec.kind) {
     return null;
   }
 
-  const payload = record.payload;
+  const payload = identityRefusedCodec.tryDecodePartial(record.payload);
 
   if (
-    typeof payload['channel'] !== 'string' ||
-    typeof payload['externalID'] !== 'string' ||
-    typeof payload['refusedAt'] !== 'number'
+    payload?.channel === undefined ||
+    payload.externalID === undefined ||
+    payload.refusedAt === undefined
   ) {
     return null;
   }
 
   return {
-    channel: payload['channel'],
-    externalID: payload['externalID'],
-    refusedAt: payload['refusedAt'],
+    channel: payload.channel,
+    externalID: payload.externalID,
+    refusedAt: payload.refusedAt,
   };
 }

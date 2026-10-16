@@ -1,5 +1,5 @@
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { removeImageOfferKeys } from '@heynixie/memory';
+import { recordForgottenCodec, removeImageOfferKeys } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
 import { findRecordForget } from './find-record-forget';
 import type { APIContext, APITables } from './types';
@@ -72,10 +72,10 @@ function writeRecordForgotten(context: APIContext, target: ForgottenTarget): Pro
 
     await writeRecordsInTransaction(tx, context.log, [
       {
-        kind: 'record.forgotten',
+        kind: recordForgottenCodec.kind,
         definitions: context.definitions(),
         thread: target.thread,
-        payload: { recordSequence: target.recordSequence },
+        payload: recordForgottenCodec.encode({ recordSequence: target.recordSequence }),
       },
     ]);
   });

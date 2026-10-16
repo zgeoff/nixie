@@ -4,6 +4,7 @@ import { buildInputHash } from './build-input-hash';
 import type { ClientAction } from './find-client-action';
 import { findClientAction } from './find-client-action';
 import { isLiveIdentity } from './is-live-identity';
+import { sessionRevokedCodec } from './session-revoked-codec';
 import type { APIContext, APITables, Identity } from './types';
 import { writeClientAction } from './write-client-action';
 
@@ -114,9 +115,12 @@ async function updateRevokedAt(
 
   await writeRecordsInTransaction(tx, context.log, [
     {
-      kind: 'session.revoked',
+      kind: sessionRevokedCodec.kind,
       definitions: context.definitions(),
-      payload: { identityID: revocation.sessionID, revokedBy: revocation.caller.identityID },
+      payload: sessionRevokedCodec.encode({
+        identityID: revocation.sessionID,
+        revokedBy: revocation.caller.identityID,
+      }),
     },
   ]);
 

@@ -1,5 +1,5 @@
-import { imageLimits } from '@heynixie/contract';
 import { readRecordAttachments, readRecords } from '@heynixie/log';
+import { ownerMessageCodec } from '@heynixie/tasks';
 import type { APIContext } from './types';
 
 interface OwnerImageInput {
@@ -45,24 +45,12 @@ async function findStoredMediaType(
 
   const record = entry?.record;
 
-  return record?.sequence === input.sequence
-    ? findMediaType(record.payload['images'], input.position)
-    : null;
-}
-
-// the payload names each image's type, which writeOwnerMessage took from the image's bytes
-function findMediaType(images: unknown, position: number): string | null {
-  if (!Array.isArray(images)) {
+  if (record?.sequence !== input.sequence) {
     return null;
   }
 
-  const image: unknown = images[position];
+  // the payload names each image's type, which writeOwnerMessage took from the image's bytes
+  const images = ownerMessageCodec.tryDecodePartial(record.payload)?.images;
 
-  if (typeof image !== 'object' || image === null || !('mediaType' in image)) {
-    return null;
-  }
-
-  const mediaType = image.mediaType;
-
-  return imageLimits.mediaTypes.find((known) => known === mediaType) ?? null;
+  return images?.[input.position]?.mediaType ?? null;
 }

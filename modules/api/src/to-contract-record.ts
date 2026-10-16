@@ -1,23 +1,42 @@
 import type { LogRecord as ContractRecord, Span } from '@heynixie/contract';
 import type { JSONObject, JSONValue, LogRecord, RecordKind } from '@heynixie/log';
+import { memoryRatedCodec, recordForgetStartedCodec, recordForgottenCodec } from '@heynixie/memory';
+import {
+  modelCompactedCodec,
+  modelCompactionFailedCodec,
+  modelSessionSummarizedCodec,
+  modelTurnEndedCodec,
+} from '@heynixie/models';
+import { memoryRecalledCodec } from '@heynixie/sessions';
+import {
+  ownerMessageCodec,
+  taskCreatedCodec,
+  taskLeaseExpiredCodec,
+  taskRevivedCodec,
+  taskStepCommittedCodec,
+  taskStepErroredCodec,
+  taskStepInterruptedCodec,
+  taskStepStartedCodec,
+} from '@heynixie/tasks';
+import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
 
-// Turns a log record into the record a client renders, or null for a record that belongs to no
-// thread, such as a session or a refusal record, which no client view shows. Your message and the
-// model's reply carry their text while its key exists; a forgotten one keeps its place with none.
+// Turns a log record into the record a client renders, or null for one in no thread, which no
+// client view shows. A forgotten message or reply keeps its place with no text, and a payload that
+// does not fit its kind's codec gives none of its fields.
 export function toContractRecord(record: LogRecord): ContractRecord | null {
   if (record.thread === null) {
     return null;
   }
 
   const message = messageKinds.has(record.kind) ? toMessage(record) : undefined;
-  const task = record.kind.startsWith('task.') ? toTask(record) : undefined;
-  const toolCall = toolKinds.has(record.kind) ? toToolCall(record) : undefined;
+  const task = toTask(record);
+  const toolCall = toToolCall(record);
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
 
   return {
     ...toSessionFields(record),
-    ...(forgetKinds.has(record.kind) ? toForget(record) : {}),
+    ...toForget(record),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
     ...(rating === undefined ? {} : { rating }),
@@ -41,7 +60,9 @@ function toMessage(record: LogRecord): Message | undefined {
   }
 
   const text = record.erasable.fields['text'];
-  const clientMessageId = record.payload['clientMessageId'];
+
+  const owner =
+    record.kind === 'owner_message' ? ownerMessageCodec.tryDecodePartial(record.payload) : null;
 
   if (typeof text !== 'string') {
     return undefined;
@@ -50,12 +71,9 @@ function toMessage(record: LogRecord): Message | undefined {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- writeOwnerMessage wrote the spans
   const spans = record.erasable.fields['spans'] as readonly Span[] | undefined;
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- writeOwnerMessage wrote the images
-  const images = record.payload['images'] as Message['images'];
-
   return {
-    ...(typeof clientMessageId === 'string' ? { clientMessageId } : {}),
-    ...(images === undefined ? {} : { images: [...images] }),
+    ...(owner?.clientMessageId === undefined ? {} : { clientMessageId: owner.clientMessageId }),
+    ...(owner?.images === undefined ? {} : { images: [...owner.images] }),
     ...(spans === undefined ? {} : { spans: [...spans] }),
     text,
   };
@@ -63,58 +81,77 @@ function toMessage(record: LogRecord): Message | undefined {
 
 type Task = NonNullable<ContractRecord['task']>;
 
+// the task records that name their task, which a wake does not
+const taskCodecs = [
+  taskCreatedCodec,
+  taskRevivedCodec,
+  taskStepStartedCodec,
+  taskStepCommittedCodec,
+  taskStepInterruptedCodec,
+  taskStepErroredCodec,
+  taskLeaseExpiredCodec,
+];
+
+interface TaskFields {
+  readonly taskID?: string | undefined;
+  readonly stepKey?: string | undefined;
+}
+
 // A step's start names its step in the payload, and its commit in the record's own step key. A
 // failed step's record holds the error's message as its one erasable field, and a forgotten one
 // keeps its task, step and retry with no error.
 function toTask(record: LogRecord): Task | undefined {
-  const taskID = record.payload['taskID'];
-  const payloadKey = record.payload['stepKey'];
-  const stepKey = typeof payloadKey === 'string' ? payloadKey : record.stepKey;
+  const codec = taskCodecs.find((candidate) => candidate.kind === record.kind);
+  const fields: TaskFields | null | undefined = codec?.tryDecodePartial(record.payload);
+  const stepKey = fields?.stepKey ?? record.stepKey;
 
   const error =
     record.kind === 'task.step_errored' && record.erasable.status === 'readable'
       ? record.erasable.fields['message']
       : undefined;
 
-  if (typeof taskID !== 'string') {
+  if (fields?.taskID === undefined) {
     return undefined;
   }
 
   return {
     ...(typeof error === 'string' ? { error } : {}),
     ...(record.kind === 'task.step_errored' ? toRetry(record.payload) : {}),
-    ...(typeof stepKey === 'string' ? { stepKey } : {}),
-    taskID,
+    ...(stepKey === null ? {} : { stepKey }),
+    taskID: fields.taskID,
   };
 }
 
 // A failed step's errors in a row, the limit in force, which a record from before the limit was
 // recorded lacks, and the time its task tries again.
-function toRetry(payload: LogRecord['payload']): Pick<Task, 'errorLimit' | 'errors' | 'retryAt'> {
-  const errors = payload['errors'];
-  const errorLimit = payload['errorLimit'];
-  const claimableAt = payload['claimableAt'];
+function toRetry(payload: JSONObject): Pick<Task, 'errorLimit' | 'errors' | 'retryAt'> {
+  const retry = taskStepErroredCodec.tryDecodePartial(payload);
 
   return {
-    ...(typeof errorLimit === 'number' ? { errorLimit } : {}),
-    ...(typeof errors === 'number' ? { errors } : {}),
-    ...(typeof claimableAt === 'number' ? { retryAt: new Date(claimableAt) } : {}),
+    ...(retry?.errorLimit === undefined ? {} : { errorLimit: retry.errorLimit }),
+    ...(retry?.errors === undefined ? {} : { errors: retry.errors }),
+    ...(retry?.claimableAt === undefined ? {} : { retryAt: new Date(retry.claimableAt) }),
   };
 }
 
-// a tool call, and the result that answers it
-const toolKinds: ReadonlySet<RecordKind> = new Set(['tool_called', 'tool_result']);
-
 type ToolCall = NonNullable<ContractRecord['toolCall']>;
+
+// a tool call, and the result that answers it
+const toolCodecs = [toolCalledCodec, toolResultCodec];
+
+interface ToolFields {
+  readonly callID?: string | undefined;
+  readonly tool?: string | undefined;
+  readonly outcome?: string | undefined;
+}
 
 // The call's record holds its input as its one erasable field, and the result's record holds the
 // content the tool returned. A forgotten call keeps its tool and outcome with no content.
 function toToolCall(record: LogRecord): ToolCall | undefined {
-  const callID = record.payload['callID'];
-  const tool = record.payload['tool'];
-  const outcome = record.payload['outcome'];
+  const codec = toolCodecs.find((candidate) => candidate.kind === record.kind);
+  const call: ToolFields | null | undefined = codec?.tryDecodePartial(record.payload);
 
-  if (typeof callID !== 'string') {
+  if (call?.callID === undefined) {
     return undefined;
   }
 
@@ -123,85 +160,54 @@ function toToolCall(record: LogRecord): ToolCall | undefined {
   const content = record.kind === 'tool_result' ? fields : undefined;
 
   return {
-    callID,
+    callID: call.callID,
     ...(content === undefined ? {} : { content: { ...content } }),
     ...(isJSONObject(input) ? { input: { ...input } } : {}),
-    ...(typeof outcome === 'string' ? { outcome } : {}),
-    ...(typeof tool === 'string' ? { tool } : {}),
+    ...(call.outcome === undefined ? {} : { outcome: call.outcome }),
+    ...(call.tool === undefined ? {} : { tool: call.tool }),
   };
 }
 
 type Recall = NonNullable<ContractRecord['recall']>;
 
-type RecallItem = Recall['items'][number];
-
 // A recall's record lists the versions it delivered, each with its match score when a query ranked
-// it, and holds no text. An item without an ID and a version is left out.
+// it, and holds no text.
 function toRecall(record: LogRecord): Recall {
-  const items = record.payload['items'];
+  const items = memoryRecalledCodec.tryDecodePartial(record.payload)?.items ?? [];
 
-  return { items: isJSONArray(items) ? items.flatMap((item) => toRecallItem(item)) : [] };
+  return { items: items.map((item) => toRecallItem(item)) };
 }
 
-function toRecallItem(item: JSONValue): readonly RecallItem[] {
-  if (!isJSONObject(item)) {
-    return [];
-  }
+type RecallItem = Recall['items'][number];
 
-  const itemID = item['itemID'];
-  const version = item['version'];
-  const score = item['score'];
-
-  if (typeof itemID !== 'string' || typeof version !== 'number') {
-    return [];
-  }
-
-  return [{ itemID, version, ...(typeof score === 'number' ? { score } : {}) }];
+// the delivered version and its match score, never the similarity a client does not show
+function toRecallItem(item: RecallItem & { readonly similarity?: number }): RecallItem {
+  return item.score === undefined
+    ? { itemID: item.itemID, version: item.version }
+    : { itemID: item.itemID, version: item.version, score: item.score };
 }
 
 type Rating = NonNullable<ContractRecord['rating']>;
 
-type RatingItem = Rating['items'][number];
-
 // A rating's record names the recall it rates and each item's verdict, and holds each note sealed,
-// which memory.readRatingNotes opens. A record that names no recall gives no rating, and an item
-// without an ID, a version and a known verdict is left out.
+// which memory.readRatingNotes opens. A record that names no recall gives no rating.
 function toRating(record: LogRecord): Rating | undefined {
-  const recalledSequence = record.payload['recalledSequence'];
-  const ratedBy = record.payload['ratedBy'];
-  const items = record.payload['ratings'];
+  const rated = memoryRatedCodec.tryDecodePartial(record.payload);
 
-  if (typeof recalledSequence !== 'number') {
+  if (rated?.recalledSequence === undefined) {
     return undefined;
   }
 
   return {
-    items: isJSONArray(items) ? items.flatMap((item) => toRatingItem(item)) : [],
-    ...(typeof ratedBy === 'string' ? { ratedBy } : {}),
-    recalledSequence,
+    items: (rated.ratings ?? []).map((item) => ({
+      hasNote: item.sealedNote !== undefined,
+      itemID: item.itemID,
+      verdict: item.verdict,
+      version: item.version,
+    })),
+    ...(rated.ratedBy === undefined ? {} : { ratedBy: rated.ratedBy }),
+    recalledSequence: rated.recalledSequence,
   };
-}
-
-const verdicts: ReadonlySet<string> = new Set(['helpful', 'noise', 'misleading']);
-
-function toRatingItem(item: JSONValue): readonly RatingItem[] {
-  if (!isJSONObject(item)) {
-    return [];
-  }
-
-  const itemID = item['itemID'];
-  const version = item['version'];
-  const verdict = item['verdict'];
-
-  if (typeof itemID !== 'string' || typeof version !== 'number' || !isVerdict(verdict)) {
-    return [];
-  }
-
-  return [{ hasNote: typeof item['sealedNote'] === 'string', itemID, verdict, version }];
-}
-
-function isVerdict(value: JSONValue | undefined): value is RatingItem['verdict'] {
-  return typeof value === 'string' && verdicts.has(value);
 }
 
 type SessionFields = Pick<
@@ -232,10 +238,11 @@ type Context = NonNullable<ContractRecord['context']>;
 // A turn end names the context its last model call read and the window it compacts within; one
 // from before nixie recorded them has neither.
 function toContext(record: LogRecord): Context | undefined {
-  const size = record.payload['contextSize'];
-  const window = record.payload['contextWindow'];
+  const turn = modelTurnEndedCodec.tryDecodePartial(record.payload);
 
-  return typeof size === 'number' && typeof window === 'number' ? { size, window } : undefined;
+  return turn?.contextSize === undefined || turn.contextWindow === undefined
+    ? undefined
+    : { size: turn.contextSize, window: turn.contextWindow };
 }
 
 type Compaction = NonNullable<ContractRecord['compaction']>;
@@ -243,15 +250,19 @@ type Compaction = NonNullable<ContractRecord['compaction']>;
 // A compaction's record holds its trigger and its token counts, and a null after count when the
 // session reported none.
 function toCompaction(record: LogRecord): Compaction | undefined {
-  const trigger = record.payload['trigger'];
-  const preTokens = record.payload['preTokens'];
-  const postTokens = record.payload['postTokens'];
+  const compacted = modelCompactedCodec.tryDecodePartial(record.payload);
 
-  if ((trigger !== 'manual' && trigger !== 'auto') || typeof preTokens !== 'number') {
+  if (compacted?.trigger === undefined || compacted.preTokens === undefined) {
     return undefined;
   }
 
-  return { ...(typeof postTokens === 'number' ? { postTokens } : {}), preTokens, trigger };
+  const postTokens = compacted.postTokens ?? null;
+
+  return {
+    ...(postTokens === null ? {} : { postTokens }),
+    preTokens: compacted.preTokens,
+    trigger: compacted.trigger,
+  };
 }
 
 type Summary = NonNullable<ContractRecord['summary']>;
@@ -259,20 +270,18 @@ type Summary = NonNullable<ContractRecord['summary']>;
 // A summary's record holds what asked for it and its sizes, and its text while its key exists. A
 // summary a forget erased keeps its place with no text.
 function toSummary(record: LogRecord): Summary | undefined {
-  const trigger = record.payload['trigger'];
-  const contextSize = record.payload['contextSize'];
-  const summaryTokens = record.payload['summaryTokens'];
+  const summary = modelSessionSummarizedCodec.tryDecodePartial(record.payload);
   const text = record.erasable.status === 'readable' ? record.erasable.fields['text'] : undefined;
 
-  if ((trigger !== 'threshold' && trigger !== 'overflow') || typeof summaryTokens !== 'number') {
+  if (summary?.trigger === undefined || summary.summaryTokens === undefined) {
     return undefined;
   }
 
   return {
-    ...(typeof contextSize === 'number' ? { contextSize } : {}),
-    summaryTokens,
+    ...(summary.contextSize === undefined ? {} : { contextSize: summary.contextSize }),
+    summaryTokens: summary.summaryTokens,
     ...(typeof text === 'string' ? { text } : {}),
-    trigger,
+    trigger: summary.trigger,
   };
 }
 
@@ -280,22 +289,19 @@ type CompactionFailure = NonNullable<ContractRecord['compactionFailure']>;
 
 // A failed compaction's record counts the failures in a row; its error stays out of the client.
 function toCompactionFailure(record: LogRecord): CompactionFailure | undefined {
-  const failures = record.payload['failures'];
+  const failures = modelCompactionFailedCodec.tryDecodePartial(record.payload)?.failures;
 
-  return typeof failures === 'number' && failures > 0 ? { failures } : undefined;
+  return failures === undefined ? undefined : { failures };
 }
 
 // the start and the end of a forget of your message or a reply
-const forgetKinds: ReadonlySet<RecordKind> = new Set(['record.forget_started', 'record.forgotten']);
+const forgetCodecs = [recordForgetStartedCodec, recordForgottenCodec];
 
 function toForget(record: LogRecord): Pick<ContractRecord, 'forget'> {
-  const sequence = record.payload['recordSequence'];
+  const codec = forgetCodecs.find((candidate) => candidate.kind === record.kind);
+  const sequence = codec?.tryDecodePartial(record.payload)?.recordSequence;
 
-  return typeof sequence === 'number' ? { forget: { sequence } } : {};
-}
-
-function isJSONArray(value: JSONValue | undefined): value is readonly JSONValue[] {
-  return Array.isArray(value);
+  return sequence === undefined ? {} : { forget: { sequence } };
 }
 
 function isJSONObject(value: JSONValue | undefined): value is JSONObject {

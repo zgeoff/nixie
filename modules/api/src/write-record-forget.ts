@@ -1,15 +1,12 @@
-import type { RecordKind } from '@heynixie/log';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { Transaction } from 'kysely';
-import invariant from 'tiny-invariant';
+import { withWriteTransaction } from '@heynixie/log';
 import { buildInputHash } from './build-input-hash';
 import type { ClientAction } from './find-client-action';
 import { findClientAction } from './find-client-action';
-import { findRecordForget } from './find-record-forget';
 import { isLiveIdentity } from './is-live-identity';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
-import type { APIContext, APITables, Identity } from './types';
+import type { APIContext, Identity } from './types';
 import { writeClientAction } from './write-client-action';
+import { writeForgetStart } from './write-forget-start';
 
 interface RecordForgetInput {
   readonly clientActionID: string;
@@ -92,51 +89,4 @@ function pickSettledForget(state: ForgetState): RecordForgetResult | null {
     state.earlier.inputHash === state.inputHash
     ? { status: 'forgotten', forgottenAt: Number(state.earlier.result['forgottenAt']) }
     : { status: 'reused' };
-}
-
-// the records a forget can remove: your message, and a reply from the conversation's model
-const forgettableKinds: readonly RecordKind[] = ['owner_message', 'model.reply'];
-
-// Commits record.forget_started for a message or a reply on the thread and answers its time, or
-// the first start's time when a forget of the record already began, or null when the thread holds
-// no such record at the sequence.
-async function writeForgetStart(
-  tx: Transaction<unknown>,
-  context: APIContext,
-  input: RecordForgetInput,
-): Promise<number | null> {
-  const target = await tx
-    .$extendTables<APITables>()
-    .selectFrom('records')
-    .select('sequence')
-    .where('sequence', '=', input.sequence)
-    .where('thread', '=', input.thread)
-    .where('kind', 'in', forgettableKinds)
-    .executeTakeFirst();
-
-  if (target === undefined) {
-    return null;
-  }
-
-  const begun = await findRecordForget(tx, {
-    kind: 'record.forget_started',
-    sequence: input.sequence,
-  });
-
-  if (begun !== null) {
-    return begun.recordedAt;
-  }
-
-  const [record] = await writeRecordsInTransaction(tx, context.log, [
-    {
-      kind: 'record.forget_started',
-      definitions: context.definitions(),
-      thread: input.thread,
-      payload: { recordSequence: input.sequence },
-    },
-  ]);
-
-  invariant(record, 'the log wrote no record.forget_started record');
-
-  return record.recordedAt.getTime();
 }

@@ -2,7 +2,7 @@ import type { Span } from '@heynixie/contract';
 import { isTimeZone } from '@heynixie/contract';
 import type { JSONObject, LogRecord } from '@heynixie/log';
 import { readRecordAttachments, readRecords, withWriteTransaction } from '@heynixie/log';
-import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
+import { ownerMessageCodec, writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import { findClientAction } from './find-client-action';
@@ -96,17 +96,17 @@ async function writeMessage(
 
   const [record] = await writeInboxRecordsInTransaction(tx, context, [
     {
-      kind: 'owner_message',
+      kind: ownerMessageCodec.kind,
       definitions: context.definitions(),
       thread: input.thread,
       contentSource: 'owner',
-      payload: {
+      payload: ownerMessageCodec.encode({
         clientMessageId: input.clientMessageId,
         identityID: pending.caller.identityID,
         spans: spans.labelled,
         ...pickTimeZone(input.timeZone),
         ...pickImageTypes(input.images ?? []),
-      },
+      }),
       erasable: { text: input.text, spans: spans.spans.map(toSpanJSON), sessionLabel },
       attachments: (input.images ?? []).map((image) => image.bytes),
     },
@@ -151,7 +151,9 @@ function pickTimeZone(zone: string | undefined): { readonly timeZone?: string } 
 
 // The payload names each image's type, which a reader needs without a key; the bytes are sealed.
 // A message with no images names none.
-function pickImageTypes(images: readonly OwnerImage[]): { readonly images?: JSONObject[] } {
+type OwnerMessagePayload = Parameters<typeof ownerMessageCodec.encode>[0];
+
+function pickImageTypes(images: readonly OwnerImage[]): Pick<OwnerMessagePayload, 'images'> {
   return images.length === 0
     ? {}
     : { images: images.map((image) => ({ mediaType: image.mediaType })) };
@@ -193,9 +195,9 @@ async function hasSameImages(
   record: LogRecord,
   images: readonly OwnerImage[],
 ): Promise<boolean> {
-  const sent = record.payload['images'];
+  const sent = ownerMessageCodec.tryDecodePartial(record.payload)?.images ?? [];
 
-  if ((Array.isArray(sent) ? sent.length : 0) !== images.length) {
+  if (sent.length !== images.length) {
     return false;
   }
 

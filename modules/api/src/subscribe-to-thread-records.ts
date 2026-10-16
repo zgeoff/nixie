@@ -1,6 +1,7 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import { subscribeToRecords } from '@heynixie/log';
 import { sql } from 'kysely';
+import { sessionRevokedCodec } from './session-revoked-codec';
 import { toContractRecord } from './to-contract-record';
 import type { APIContext, APITables, Identity } from './types';
 
@@ -37,7 +38,10 @@ export async function* subscribeToThreadRecords(
   for await (const entry of entries) {
     const record = entry.record;
 
-    if (record.kind === 'session.revoked' && record.payload['identityID'] === caller.identityID) {
+    if (
+      record.kind === sessionRevokedCodec.kind &&
+      sessionRevokedCodec.decode(record.payload).identityID === caller.identityID
+    ) {
       throw options.buildUnauthorized();
     }
 
