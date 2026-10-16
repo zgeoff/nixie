@@ -29,11 +29,16 @@ interface PendingChange {
 // again changes the item once.
 export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
   const [pending, setPending] = useState<PendingChange | null>(null);
+  const changes = pickChanges(props.item);
+
+  if (pending === null && changes.length === 0) {
+    return null;
+  }
 
   if (pending === null) {
     return (
       <div className={controls}>
-        {pickChanges(props.item).map((change) => (
+        {changes.map((change) => (
           <button
             key={change}
             onClick={() => {
@@ -66,8 +71,13 @@ export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
   );
 }
 
-// the changes an item's state allows; a retire takes an item out of the pinned core
+// the changes an item's state allows: none once a forget began, even while its text still opens,
+// and a retire takes an item out of the pinned core
 function pickChanges(item: MemoryItem): readonly MemoryChange[] {
+  if (item.state === 'forgetting' || item.state === 'forgotten') {
+    return [];
+  }
+
   if (item.state === 'retired') {
     return item.isPinned ? ['restore', 'unpin'] : ['restore'];
   }

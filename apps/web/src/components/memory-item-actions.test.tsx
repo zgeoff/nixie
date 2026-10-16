@@ -360,3 +360,25 @@ test('it keeps the reason for a refusal after the refreshed item moves to anothe
     'Item k3m9qa: This item is gone. It was forgotten after the list loaded.',
   );
 });
+
+test('it offers no change for an item a forget began, even while its text still opens', async () => {
+  await setupTest();
+
+  await store.memoryItems.create({
+    isShredded: false,
+    shortID: 'k3m9qa',
+    state: 'forgetting',
+    versions: [{ text: 'Plays the cello' }],
+  });
+
+  const rendered = render(<MemoryView />);
+
+  const item = await within(rendered.getByRole('region', { name: 'Forgotten' })).findByRole(
+    'listitem',
+    { name: 'k3m9qa' },
+  );
+
+  expect(
+    within(item).queryByRole('button', { name: /^(?:Retire|Restore|Pin|Unpin)$/u }),
+  ).toBeNull();
+});
