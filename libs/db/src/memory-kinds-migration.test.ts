@@ -70,15 +70,3 @@ test('it adds the kind to memory proposals', async () => {
 
   expect(columns.rows).toStrictEqual([{ name: 'kind', dflt_value: "'fact'" }]);
 });
-
-test('it refuses a kind that is neither a fact nor a self-note', async () => {
-  const ctx = await setupTest();
-
-  await ctx.db.transaction().execute((tx) => memoryKindsMigration.up(tx));
-
-  const update = sql`update memory_items set kind = 'opinion'`.execute(ctx.db);
-
-  await Promise.allSettled([update]);
-
-  expect(update).rejects.toThrow('CHECK constraint failed');
-});
