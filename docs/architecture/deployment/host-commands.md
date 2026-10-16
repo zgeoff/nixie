@@ -15,8 +15,10 @@ sandbox images and the model secrets take.
 ## The commands a deployment runs
 
 A deployment's scripts call these commands, each through `nixie <command>` inside nixie's container.
-A command that changes nothing prints its answer on stdout and exits 0, and a command that fails
-exits non-zero with a `command.failed` log line that holds the reason.
+Each command prints its answer on stdout. A command that cannot reach the server, or that the server
+refuses, exits non-zero with a `command.failed` log line that holds the reason. The health command
+is the one exception: a server that answers not ready makes it print the report and exit 1 with no
+log line, so a deployment's check reads the report and not the log.
 
 | Command                         | What it prints                                                        | Exits 0 when                         |
 | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------ |

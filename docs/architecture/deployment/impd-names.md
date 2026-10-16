@@ -38,7 +38,7 @@ would run an image the manifest never pinned.
 
 The sandbox images stay publicly pullable, because impd pulls an image with no registry credentials.
 GHCR creates each package private, so each sandbox image's package is set public once, and the
-release fails its pull check until it is
+release fails its pull check until the package is public
 ([publishing](release-pipeline.md#build-settings-and-publishing)). The images hold no personal data.
 
 ## Model secrets
