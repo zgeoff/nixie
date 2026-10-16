@@ -79,10 +79,19 @@ export interface Approval {
   readonly actionHash: string;
 }
 
+// The record kinds the log holds: its own reset record, and the kinds each module merges in from the
+// <module>-record-kind.ts its index exports, so a kind no module registered fails type-checking
+// wherever a record is written, read or matched.
+export interface RecordKinds {
+  log_reset: true;
+}
+
+export type RecordKind = keyof RecordKinds;
+
 // What a caller appends. The payload holds only structured data: IDs, counts, hashes and states.
 // Every free-text field goes in erasable, which nixie encrypts under a key of its own.
 export interface RecordInput {
-  readonly kind: string;
+  readonly kind: RecordKind;
   readonly definitions: Definitions;
   readonly thread?: string;
   readonly stepKey?: string;
@@ -104,7 +113,7 @@ export interface RecordInput {
 export interface EnvelopeRecord {
   readonly sequence: number;
   readonly recordedAt: Date;
-  readonly kind: string;
+  readonly kind: RecordKind;
   readonly definitions: Definitions;
   readonly thread: string | null;
   readonly stepKey: string | null;
@@ -162,7 +171,7 @@ export interface Log {
 interface RecordTable {
   readonly sequence: Generated<number>;
   readonly recorded_at: number;
-  readonly kind: string;
+  readonly kind: RecordKind;
   readonly thread: string | null;
   readonly step_key: string | null;
   readonly parent: number | null;

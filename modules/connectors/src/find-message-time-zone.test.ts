@@ -27,7 +27,7 @@ test('it finds the zone of the newest owner message that carries one, in any thr
     },
     { kind: 'owner_message', definitions, thread: 'conversation', payload: {} },
     {
-      kind: 'model.reply',
+      kind: 'action.outcome',
       definitions,
       thread: 'conversation',
       payload: { timeZone: 'America/Lima' },

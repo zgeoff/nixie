@@ -1,0 +1,32 @@
+// The record kinds the memory module registers with the log. A record forget is written by the api
+// and read by memory, so memory, the lower of the two, registers it.
+export type MemoryRecordKind =
+  | 'memory.approval_recorded'
+  | 'memory.batch_planned'
+  | 'memory.batch_published'
+  | 'memory.consolidation_approved'
+  | 'memory.consolidation_commented'
+  | 'memory.consolidation_lapsed'
+  | 'memory.consolidation_proposed'
+  | 'memory.consolidation_rejected'
+  | 'memory.consolidation_summarized'
+  | 'memory.forget_started'
+  | 'memory.forgotten'
+  | 'memory.image_offered'
+  | 'memory.notice'
+  | 'memory.pinned'
+  | 'memory.proposal_lapsed'
+  | 'memory.proposal_merged'
+  | 'memory.proposal_rejected'
+  | 'memory.proposed'
+  | 'memory.rated'
+  | 'memory.version_added'
+  | 'memory.writer_failed'
+  | 'memory.writer_started'
+  | 'record.forget_started'
+  | 'record.forgotten';
+
+declare module '@heynixie/log' {
+  // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry
+  interface RecordKinds extends Record<MemoryRecordKind, true> {}
+}

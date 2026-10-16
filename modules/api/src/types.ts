@@ -1,5 +1,6 @@
 import type { ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
+import type { RecordKind } from '@heynixie/log';
 import type { HostMemoryStore } from '@heynixie/memory';
 import type { TasksContext } from '@heynixie/tasks';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
@@ -125,7 +126,7 @@ interface TaskRow {
 interface RecordRow {
   readonly sequence: number;
   readonly thread: string | null;
-  readonly kind: string;
+  readonly kind: RecordKind;
   readonly recorded_at: number;
   readonly payload: string;
   readonly key_id: string | null;

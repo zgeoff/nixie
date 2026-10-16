@@ -1,4 +1,4 @@
-import type { LogRecord } from '@heynixie/log';
+import type { LogRecord, RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { z } from 'zod';
@@ -119,14 +119,20 @@ function parseLostRecallsThrough(record: LogRecord): number {
 
 // the records that end what a session holds; session_rebuilt is the opening record that logs from
 // before session_opened still hold
-const resetKinds = [
+const resetKinds: readonly RecordKind[] = [
   'model.compacted',
   'model.session_opened',
   'model.session_rebuilt',
   'model.session_invalidated',
 ];
 
-const replayKinds = ['memory.recalled', 'model.turn_ended', 'task.step_started', ...resetKinds];
+const replayKinds: readonly RecordKind[] = [
+  'memory.recalled',
+  'model.turn_ended',
+  'task.step_started',
+  ...resetKinds,
+];
+
 const pageSize = 200;
 
 // The thread's records from the start of the step that wrote its newest reset, oldest first, so the

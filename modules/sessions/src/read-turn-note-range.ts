@@ -1,4 +1,4 @@
-import type { Log } from '@heynixie/log';
+import type { Log, RecordKind } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { TurnNoteRange } from './types';
@@ -34,7 +34,7 @@ type RecordTables = Readonly<{
   records: {
     readonly sequence: number;
     readonly thread: string | null;
-    readonly kind: string;
+    readonly kind: RecordKind;
     readonly payload: string;
   };
 }>;

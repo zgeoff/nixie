@@ -63,3 +63,5 @@ export type {
   TurnNote,
   TurnNoteRange,
 } from './types';
+
+export type { SessionsRecordKind } from './sessions-record-kind';

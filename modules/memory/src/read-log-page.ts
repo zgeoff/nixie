@@ -1,4 +1,11 @@
-import type { JSONObject, Log, LogRecord, LogTables, RecordWithChanges } from '@heynixie/log';
+import type {
+  JSONObject,
+  Log,
+  LogRecord,
+  LogTables,
+  RecordKind,
+  RecordWithChanges,
+} from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { renderImageMarkers, renderOwnerText } from '@heynixie/sessions';
 import { z } from 'zod';
@@ -55,7 +62,7 @@ export async function readLogPage(
 }
 
 // the kinds a thread's reader sees: your messages, the replies, and each tool's result
-const entryKinds = ['owner_message', 'model.reply', 'tool_result'];
+const entryKinds: readonly RecordKind[] = ['owner_message', 'model.reply', 'tool_result'];
 const batchSize = 100;
 const scanLimit = 500;
 const textLimit = 2000;

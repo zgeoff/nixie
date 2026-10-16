@@ -27,7 +27,7 @@ test('it reads back sandbox records alone', async () => {
   const ctx = await setupTestRecorder();
 
   await writeRecords(ctx.log, [
-    { kind: 'task.created', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+    { kind: 'log_reset', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
   ]);
 
   await ctx.writeEvents([{ event: 'slept', sandboxID: 'nixie-a' }]);

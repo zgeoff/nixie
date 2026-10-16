@@ -20,6 +20,13 @@ the kind's free text, encrypted under a key of the record's own.
 
 - **Sequence.** SQLite allows one writer, so the sequence grows in commit order, and a reader that
   asks for the records after a sequence misses none.
+- **Kind.** The log types a kind as a key of its kind registry, which holds the log's own reset
+  record. Each module merges its kinds into the registry from a file its package entry exports, so a
+  misspelled kind, or one no module registered, fails type-checking wherever code writes, reads or
+  matches it. A kind that several modules name registers in the lowest of them, because a package
+  sees only the kinds of the packages it imports. The memory recall record is one case: the memory
+  module writes it and the session replay reads it, and memory depends on sessions, so the sessions
+  module registers it.
 - **Thread.** A record belongs to the conversation, a task, or no thread at all. A task's inbox is
   the records of certain kinds on its thread ([tasks](./tasks.md#the-inbox)).
 - **Step key.** The step key is unique across the log, so a task step commits once even when two

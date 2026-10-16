@@ -167,7 +167,7 @@ test('it commits nothing of a turn still running at the end of the stop grace', 
       next: 'wait' as const,
       records: [
         {
-          kind: 'model.reply',
+          kind: 'model.reply' as const,
           definitions: { snapshotHash: 'sha256:test' },
           thread: 'conversation',
           erasable: { text: 'Your dentist is booked.' },

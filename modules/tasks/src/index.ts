@@ -59,3 +59,4 @@ export { writeInboxRecordsInTransaction } from './write-inbox-records-in-transac
 export { writeStepCommit } from './write-step-commit';
 export type { StepErrorOptions } from './write-step-error';
 export { writeStepError } from './write-step-error';
+export type { TasksRecordKind } from './tasks-record-kind';

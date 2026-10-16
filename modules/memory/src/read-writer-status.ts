@@ -1,4 +1,4 @@
-import type { Log } from '@heynixie/log';
+import type { Log, RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { conversationTaskID } from '@heynixie/tasks';
 import { memoryWriterTaskID } from './memory-writer-task-id';
@@ -30,7 +30,7 @@ export async function readWriterStatus(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
 ): Promise<WriterStatus> {
   const db = log.writer.db.$extendTables<
-    WriterTables & { records: { sequence: number; thread: string | null; kind: string } }
+    WriterTables & { records: { sequence: number; thread: string | null; kind: RecordKind } }
   >();
 
   const row = await db

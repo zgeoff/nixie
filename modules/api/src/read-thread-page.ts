@@ -1,4 +1,5 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
+import type { RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { sql } from 'kysely';
 import { toContractRecord } from './to-contract-record';
@@ -132,4 +133,8 @@ async function readLastStepEnd(
   return record === undefined ? null : toContractRecord(record);
 }
 
-const stepEndKinds = ['task.step_committed', 'task.step_errored', 'task.revived'];
+const stepEndKinds: readonly RecordKind[] = [
+  'task.step_committed',
+  'task.step_errored',
+  'task.revived',
+];

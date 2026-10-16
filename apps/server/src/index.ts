@@ -15,3 +15,4 @@ export type { SandboxImages } from './load-sandbox-manifest';
 export { loadSandboxManifest } from './load-sandbox-manifest';
 export type { WebFetch, WebFetchOptions } from './start-web-fetch';
 export { fetchImageArgv, startWebFetch } from './start-web-fetch';
+export type { ServerRecordKind } from './server-record-kind';

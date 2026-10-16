@@ -30,3 +30,4 @@ export type {
 } from './types';
 
 export { writeResetSeed } from './write-reset-seed';
+export type { DefinitionsRecordKind } from './definitions-record-kind';

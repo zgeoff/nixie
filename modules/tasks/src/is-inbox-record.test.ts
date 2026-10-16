@@ -9,6 +9,16 @@ test.each([
   ['turn_finished', 'task-1', false],
   ['task.step_committed', 'task-1', false],
   ['owner_message', null, false],
-])('it reads a %s record on thread %s as inbox: %p', (kind, thread, expected) => {
+] as const)('it reads a %s record on thread %s as inbox: %p', (kind, thread, expected) => {
   expect(isInboxRecord({ kind, thread })).toBe(expected);
+});
+
+test('it reads a record of a kind no module registered as outside the inbox', () => {
+  expect(
+    isInboxRecord({
+      // @ts-expect-error -- a misspelled kind is no registered kind, so it fails type-checking
+      kind: 'timer.fird',
+      thread: 'task-1',
+    }),
+  ).toBe(false);
 });

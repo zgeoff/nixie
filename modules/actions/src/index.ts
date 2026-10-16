@@ -28,3 +28,4 @@ export { startActionRunners } from './start-action-runners';
 export type { WaitForActionOutcomeOptions } from './wait-for-action-outcome';
 export { waitForActionOutcome } from './wait-for-action-outcome';
 export { writeUnknownOutcomes } from './write-unknown-outcomes';
+export type { ActionsRecordKind } from './actions-record-kind';

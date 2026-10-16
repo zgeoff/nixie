@@ -1,4 +1,4 @@
-import type { EnvelopeRecord } from '@heynixie/log';
+import type { EnvelopeRecord, RecordKind } from '@heynixie/log';
 
 // A record is in a task's inbox when its thread names the task and its kind is task input: your
 // message, a fired timer, an action outcome, or a wake that tells a system task such as the memory
@@ -7,7 +7,7 @@ export function isInboxRecord(record: Pick<EnvelopeRecord, 'kind' | 'thread'>): 
   return record.thread !== null && inboxKinds.has(record.kind);
 }
 
-const inboxKinds: ReadonlySet<string> = new Set([
+const inboxKinds: ReadonlySet<RecordKind> = new Set([
   'owner_message',
   'timer.fired',
   'action.outcome',

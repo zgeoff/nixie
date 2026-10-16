@@ -1,3 +1,4 @@
+import type { RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
@@ -68,7 +69,7 @@ async function writeStepStart(
   const stepKey = `${taskID}:${task.committed_steps + 1}`;
   const definitions = context.definitions();
 
-  const interrupted =
+  const interrupted: readonly RecordInput[] =
     task.started_step_key === null
       ? []
       : [
