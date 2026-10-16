@@ -13,8 +13,9 @@ export interface APIGate {
 
 /* oxlint-enable typescript/prefer-readonly-parameter-types */
 
-// Builds the gate in front of the HTTP server that a reset closes before it removes anything, so
-// a device's call during the reset is refused instead of committing a write the reset then deletes.
+// Builds the gate in front of the HTTP server and the control socket that a reset closes before it
+// removes anything, so a device's call or a host command during the reset is refused instead of
+// committing a write the reset then deletes.
 export function buildAPIGate(): APIGate {
   const calls: APICalls = { isClosed: false, inFlight: 0, waiters: [] };
 

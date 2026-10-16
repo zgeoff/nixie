@@ -106,7 +106,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   },
   {
     name: 'host_commands',
-    needs: ['inputs', 'context', 'reset'],
+    needs: ['inputs', 'context', 'reset', 'api_gate'],
     uses: ['memory'],
     start: (parts) => {
       const options = parts.get('inputs').options;
@@ -117,6 +117,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           apiContext: parts.get('context').apiContext,
           readMemory: () => parts.find('memory'),
           runReset: parts.get('reset').run,
+          gate: parts.get('api_gate'),
         },
         options.cleanup,
       );
