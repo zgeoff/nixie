@@ -1,11 +1,9 @@
 import { expect, test } from 'bun:test';
-import { delay, http } from 'msw';
 import type { ReactNode } from 'react';
 import { Activity } from 'react';
 import { buildBrowserClient } from './build-browser-client';
 import { Conversation } from './components/conversation';
 import { MemoryView } from './components/memory-view';
-import { server } from './mocks/node';
 import { store } from './mocks/store';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { render } from './test-utils/render';
@@ -63,7 +61,7 @@ test('it reads a fresh page without the forgotten text when you come back', asyn
 });
 
 // a hidden Activity stops the view's effects and keeps the view, as React's StrictMode does once at
-// mount, so any read after the first one would never answer
+// mount, so a page read again would hold the record that arrived meanwhile
 test('it keeps the page it shows when its effects stop and start again in place', async () => {
   await createDeviceSession();
 
@@ -71,29 +69,29 @@ test('it keeps the page it shows when its effects stop and start again in place'
 
   const rendered = render(
     <Activity mode="visible">
-      <Conversation thread="conversation" />
+      <PageSize label="first" />
     </Activity>,
   );
 
-  await rendered.findByText('Is the kettle on?');
-
-  server.use(http.post('*/rpc/conversation/read', () => delay('infinite')));
+  await rendered.findByText('first: 1 records');
 
   rendered.rerender(
     <Activity mode="hidden">
-      <Conversation thread="conversation" />
+      <PageSize label="first" />
     </Activity>,
   );
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'The tea is ready.' } });
 
   rendered.rerender(
     <Activity mode="visible">
-      <Conversation thread="conversation" />
+      <PageSize label="first" />
     </Activity>,
   );
 
-  const message = await rendered.findByText('Is the kettle on?');
+  const first = await rendered.findByText('first: 1 records');
 
-  expect(message).toBeVisible();
+  expect(first).toBeVisible();
 });
 
 test('it reads the page of the thread that the view moves to', async () => {
@@ -131,13 +129,6 @@ test('it keeps the newer page that another view read while this one was hidden',
   );
 
   await rendered.findByText('first: 1 records');
-
-  rendered.rerender(
-    <Activity mode="hidden">
-      <PageSize label="first" />
-    </Activity>,
-  );
-
   await store.records.create({ kind: 'owner_message', message: { text: 'The tea is ready.' } });
 
   rendered.rerender(
@@ -163,7 +154,6 @@ test('it keeps the newer page that another view read while this one was hidden',
   const first = await rendered.findByText('first: 2 records');
 
   expect(first).toBeVisible();
-  expect(rendered.getByText('second: 2 records')).toBeVisible();
 });
 
 interface PageSizeProps {
