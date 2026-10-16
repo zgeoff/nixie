@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
-import type { Logger } from '@heynixie/ops';
-import { toErrorFields } from '@heynixie/ops';
+import type { Logger } from '@heynixie/logger';
+import { toErrorFields } from '@heynixie/logger';
 import { buildConsolidationCommands } from './build-consolidation-commands';
 import { buildMemoryCommands } from './build-memory-commands';
 import { buildResetCommands } from './build-reset-commands';

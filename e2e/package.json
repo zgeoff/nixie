@@ -1,0 +1,26 @@
+{
+  "name": "@heynixie/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/actions": "workspace:*",
+    "@heynixie/clock": "workspace:*",
+    "@heynixie/connectors": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/logger": "workspace:*",
+    "@heynixie/memory": "workspace:*",
+    "@heynixie/models": "workspace:*",
+    "@heynixie/policy": "workspace:*",
+    "@heynixie/sandbox": "workspace:*",
+    "@heynixie/server": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "@heynixie/testing": "workspace:*",
+    "@heynixie/tools": "workspace:*",
+    "tiny-invariant": "catalog:"
+  }
+}

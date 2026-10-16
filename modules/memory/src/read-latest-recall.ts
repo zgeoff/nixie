@@ -1,6 +1,6 @@
-import type { LogTables } from '@heynixie/log';
+import type { JSONObject, LogTables } from '@heynixie/log';
+import { memoryRecalledCodec } from '@heynixie/sessions';
 import { sql } from 'kysely';
-import { z } from 'zod';
 import { MemoryRatingError } from './memory-rating-error';
 import type { StoreParts } from './types';
 
@@ -34,12 +34,12 @@ export async function readLatestRecall(parts: StoreParts, thread: string): Promi
 
   const versions = new Map<string, number>();
 
-  for (const item of recalledPayload.parse(JSON.parse(newest.payload)).items) {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the log wrote a JSONObject, which the codec then checks
+  const payload = JSON.parse(newest.payload) as JSONObject;
+
+  for (const item of memoryRecalledCodec.decode(payload).items) {
     versions.set(item.itemID, Math.max(item.version, versions.get(item.itemID) ?? 0));
   }
 
   return { sequence: newest.sequence, versions };
 }
-
-const recalledItem = z.object({ itemID: z.string(), version: z.int() });
-const recalledPayload = z.object({ items: z.array(recalledItem) });

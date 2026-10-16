@@ -1,5 +1,7 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { conversationTaskID } from './conversation-task-id';
+import { taskCreatedCodec } from './task-created-codec';
+import { taskRevivedCodec } from './task-revived-codec';
 import type { TasksContext, TasksTables } from './types';
 
 // Creates the conversation's task on first start and leaves it be on every start after. It has no
@@ -22,7 +24,7 @@ export async function createConversationTask(
           kind: 'task.revived',
           definitions: context.definitions(),
           thread: conversationTaskID,
-          payload: { taskID: conversationTaskID },
+          payload: taskRevivedCodec.encode({ taskID: conversationTaskID }),
         },
       ]);
 
@@ -38,7 +40,11 @@ export async function createConversationTask(
         kind: 'task.created',
         definitions: context.definitions(),
         thread: conversationTaskID,
-        payload: { taskID: conversationTaskID, isConversation: true, state: 'waiting' },
+        payload: taskCreatedCodec.encode({
+          taskID: conversationTaskID,
+          isConversation: true,
+          state: 'waiting',
+        }),
       },
     ]);
   });

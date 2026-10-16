@@ -1,11 +1,11 @@
 import { join } from 'node:path';
-import type { ActionQueueBridge } from '../../apps/server/src/index';
-import { buildActionQueue } from '../../apps/server/src/index';
-import type { ActionConnector } from '../../modules/actions/src/index';
-import { makeDecisionPoint } from '../../modules/policy/src/index';
-import type { TasksContext } from '../../modules/tasks/src/index';
-import type { ToolEndpoint } from '../../modules/tools/src/index';
-import { buildToolRegistry, startToolEndpoint } from '../../modules/tools/src/index';
+import type { ActionQueueBridge } from '@heynixie/actions';
+import { buildActionQueue } from '@heynixie/actions';
+import type { ActionConnector } from '@heynixie/connectors';
+import { makeDecisionPoint } from '@heynixie/policy';
+import type { TasksContext } from '@heynixie/tasks';
+import type { ToolEndpoint } from '@heynixie/tools';
+import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildTestConnector } from './build-test-connector';
 import { buildTestSendTool } from './build-test-send-tool';
 

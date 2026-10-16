@@ -18,7 +18,6 @@
         "oxfmt": "0.71.0",
         "oxlint": "1.86.0",
         "oxlint-tsgolint": "7.0.2003",
-        "tiny-invariant": "catalog:",
         "turbo": "2.11.7",
         "typescript": "7.0.2",
       },
@@ -73,6 +72,7 @@
         "@heynixie/definitions": "workspace:*",
         "@heynixie/encoder-onnx": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
         "@heynixie/ops": "workspace:*",
@@ -137,6 +137,27 @@
         "vite": "catalog:",
       },
     },
+    "e2e": {
+      "name": "@heynixie/e2e",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/actions": "workspace:*",
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
+        "@heynixie/memory": "workspace:*",
+        "@heynixie/models": "workspace:*",
+        "@heynixie/policy": "workspace:*",
+        "@heynixie/sandbox": "workspace:*",
+        "@heynixie/server": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/testing": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "tiny-invariant": "catalog:",
+      },
+    },
     "evals": {
       "name": "@heynixie/evals",
       "version": "0.0.0",
@@ -199,6 +220,10 @@
         "zod": "catalog:",
       },
     },
+    "libs/logger": {
+      "name": "@heynixie/logger",
+      "version": "0.0.0",
+    },
     "libs/retry": {
       "name": "@heynixie/retry",
       "version": "0.0.0",
@@ -226,10 +251,12 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/clock": "workspace:*",
+        "@heynixie/connectors": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/retry": "workspace:*",
         "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
         "zod": "catalog:",
       },
@@ -246,11 +273,15 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
+        "@heynixie/models": "workspace:*",
+        "@heynixie/sessions": "workspace:*",
         "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
         "@orpc/server": "catalog:",
         "elysia": "catalog:",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
@@ -310,6 +341,7 @@
         "@heynixie/db": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
@@ -382,6 +414,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
@@ -395,8 +428,8 @@
         "@heynixie/compaction": "workspace:*",
         "@heynixie/contract": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/logger": "workspace:*",
         "@heynixie/models": "workspace:*",
-        "@heynixie/ops": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
@@ -414,6 +447,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/clock": "workspace:*",
+        "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/retry": "workspace:*",
@@ -434,6 +468,7 @@
         "@heynixie/sandbox": "workspace:*",
         "@modelcontextprotocol/server": "catalog:",
         "tiny-invariant": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
@@ -772,6 +807,8 @@
 
     "@heynixie/definitions": ["@heynixie/definitions@workspace:modules/definitions"],
 
+    "@heynixie/e2e": ["@heynixie/e2e@workspace:e2e"],
+
     "@heynixie/encoder-onnx": ["@heynixie/encoder-onnx@workspace:adapters/encoder-onnx"],
 
     "@heynixie/evals": ["@heynixie/evals@workspace:evals"],
@@ -779,6 +816,8 @@
     "@heynixie/fetch": ["@heynixie/fetch@workspace:guests/fetch"],
 
     "@heynixie/log": ["@heynixie/log@workspace:modules/log"],
+
+    "@heynixie/logger": ["@heynixie/logger@workspace:libs/logger"],
 
     "@heynixie/memory": ["@heynixie/memory@workspace:modules/memory"],
 

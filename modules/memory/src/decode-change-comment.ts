@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { decodeSealedJSON } from './decode-sealed-json';
+import { defineSealedCodec } from './define-sealed-codec';
+import { sealedTextSchema } from './sealed-text-schema';
 
 // Opens what encodeChangeComment sealed. A wrong key, another change's ID or a changed byte rejects.
 export async function decodeChangeComment(
@@ -7,9 +7,9 @@ export async function decodeChangeComment(
   changeID: string,
   sealed: string,
 ): Promise<string> {
-  const value = await decodeSealedJSON(key, `consolidation-comment/${changeID}`, sealed);
+  const comment = await changeComment.decode(key, changeID, sealed);
 
-  return changeComment.parse(value).text;
+  return comment.text;
 }
 
-const changeComment = z.strictObject({ text: z.string() });
+const changeComment = defineSealedCodec('consolidation-comment/', sealedTextSchema);

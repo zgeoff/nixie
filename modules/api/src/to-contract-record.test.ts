@@ -516,7 +516,6 @@ test('it carries the versions a recall delivered with their scores, and no text'
       items: [
         { itemID: 'item-a', version: 2, score: 0.61 },
         { itemID: 'item-b', version: 1 },
-        { itemID: 'item-c' },
       ],
     },
     erasable: { status: 'none' },
@@ -536,6 +535,19 @@ test('it carries the versions a recall delivered with their scores, and no text'
   });
 });
 
+test('it carries no versions for a recall whose items do not fit its codec', () => {
+  const record = buildMockLogRecord({
+    sequence: 11,
+    recordedAt: new Date('2026-10-10T12:00:02Z'),
+    kind: 'memory.recalled',
+    thread: 'conversation',
+    payload: { items: [{ itemID: 'item-a', version: 2 }, { itemID: 'item-c' }] },
+    erasable: { status: 'none' },
+  });
+
+  expect(toContractRecord(record)?.recall).toStrictEqual({ items: [] });
+});
+
 test('it carries each rating with its verdict and whether a note waits, and never the sealed note', () => {
   const record = buildMockLogRecord({
     sequence: 14,
@@ -550,7 +562,6 @@ test('it carries each rating with its verdict and whether a note waits, and neve
       ratings: [
         { itemID: 'item-a', version: 2, verdict: 'noise', sealedNote: 'c2VhbGVk' },
         { itemID: 'item-b', version: 1, verdict: 'helpful' },
-        { itemID: 'item-c', version: 1, verdict: 'missing' },
       ],
     },
     erasable: { status: 'none' },
@@ -566,6 +577,29 @@ test('it carries each rating with its verdict and whether a note waits, and neve
       ratedBy: 'Pip',
       recalledSequence: 11,
     },
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    sequence: 14,
+    thread: 'conversation',
+  });
+});
+
+test('it gives no rating for a rating record with a verdict outside the scale', () => {
+  const record = buildMockLogRecord({
+    sequence: 14,
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    kind: 'memory.rated',
+    thread: 'conversation',
+    payload: {
+      ratingID: 'rating-a',
+      recalledSequence: 11,
+      runID: 'run-1',
+      ratings: [{ itemID: 'item-c', version: 1, verdict: 'missing' }],
+    },
+    erasable: { status: 'none' },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'memory.rated',
     recordedAt: new Date('2026-10-10T12:00:05Z'),
     sequence: 14,
     thread: 'conversation',

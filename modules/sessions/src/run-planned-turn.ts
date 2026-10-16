@@ -1,4 +1,5 @@
 import type { StepInput } from '@heynixie/tasks';
+import { ownerMessageCodec } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
 import type { CompletedTurn } from './build-step-result';
 import type { OpeningRecord, SessionOpening } from './read-session-opening';
@@ -90,7 +91,12 @@ function readOpening(
 
 // the zone your newest message in the inbox carries, as its send time shows
 function findNewestZone(inbox: StepInput['inbox']): string | null {
-  const zone = inbox.findLast((record) => record.kind === 'owner_message')?.payload['timeZone'];
+  const message = inbox.findLast((record) => record.kind === 'owner_message');
 
-  return typeof zone === 'string' ? zone : null;
+  const zone =
+    message === undefined
+      ? undefined
+      : ownerMessageCodec.tryDecodePartial(message.payload)?.timeZone;
+
+  return zone ?? null;
 }

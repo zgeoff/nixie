@@ -1,5 +1,11 @@
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
+import { sandboxCreatedCodec } from './sandbox-created-codec';
+import { sandboxDestroyedCodec } from './sandbox-destroyed-codec';
+import { sandboxGrantedCodec } from './sandbox-granted-codec';
+import type { SandboxRecordKind } from './sandbox-record-kind';
+import { sandboxSleptCodec } from './sandbox-slept-codec';
+import { sandboxWokenCodec } from './sandbox-woken-codec';
 import { sandboxesProjection } from './sandboxes-projection';
 import type {
   SandboxEvent,
@@ -32,11 +38,7 @@ export function buildSandboxRecorder(options: SandboxRecorderOptions): SandboxRe
   return {
     write: async (event) => {
       await writeRecords(options.log, [
-        {
-          kind: `sandbox.${event.event}`,
-          definitions: options.definitions(),
-          payload: toPayload(event),
-        },
+        { ...toRecordInput(event), definitions: options.definitions() },
       ]);
     },
     findRow: async (adapter, sandboxID) => {
@@ -59,12 +61,46 @@ export function buildSandboxRecorder(options: SandboxRecorderOptions): SandboxRe
   };
 }
 
-// The payload holds IDs, names and states. A grant's env holds placeholders, never a credential.
-function toPayload(event: SandboxEvent): JSONObject {
-  const { event: _kind, ...fields } = event;
+interface EventRecord {
+  readonly kind: SandboxRecordKind;
+  readonly payload: JSONObject;
+}
 
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every event field is plain JSON
-  return fields as unknown as JSONObject;
+// The payload holds IDs, names and states, and never the event's own name, which the kind holds. A
+// grant's env holds placeholders, never a credential.
+function toRecordInput(event: SandboxEvent): EventRecord {
+  if (event.event === 'created') {
+    return {
+      kind: sandboxCreatedCodec.kind,
+      payload: sandboxCreatedCodec.encode({
+        sandboxID: event.sandboxID,
+        adapter: event.adapter,
+        spec: event.spec,
+      }),
+    };
+  }
+
+  if (event.event === 'granted') {
+    return {
+      kind: sandboxGrantedCodec.kind,
+      payload: sandboxGrantedCodec.encode({
+        sandboxID: event.sandboxID,
+        secret: event.secret,
+        host: event.host,
+      }),
+    };
+  }
+
+  if (event.event === 'destroyed') {
+    return {
+      kind: sandboxDestroyedCodec.kind,
+      payload: sandboxDestroyedCodec.encode({ sandboxID: event.sandboxID, reason: event.reason }),
+    };
+  }
+
+  const codec = event.event === 'slept' ? sandboxSleptCodec : sandboxWokenCodec;
+
+  return { kind: codec.kind, payload: codec.encode({ sandboxID: event.sandboxID }) };
 }
 
 interface Row {

@@ -70,7 +70,7 @@ test("it reads the thread's newest step end when newer records push it off the p
         kind: 'task.step_started',
         definitions: { snapshotHash: 'sha256:test' },
         thread: 'conversation',
-        payload: { taskID: 'conversation', stepKey: 'conversation:1' },
+        payload: { taskID: 'conversation', stepKey: 'conversation:1', generation: 1 },
       },
     ]),
   );

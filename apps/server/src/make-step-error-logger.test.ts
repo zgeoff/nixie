@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import type { Logger } from '@heynixie/ops';
+import type { Logger } from '@heynixie/logger';
 import { makeStepErrorLogger } from './make-step-error-logger';
 
 test('it logs a step error with its task, step, count, next state and error name', () => {

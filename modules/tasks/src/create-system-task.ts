@@ -1,4 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { taskCreatedCodec } from './task-created-codec';
 import type { TasksContext, TasksTables } from './types';
 
 // Creates a system task under its fixed ID on first start and leaves it be on every start after.
@@ -25,7 +26,7 @@ export async function createSystemTask(
         kind: 'task.created',
         definitions: context.definitions(),
         thread: taskID,
-        payload: { taskID, isConversation: false, state: 'ready' },
+        payload: taskCreatedCodec.encode({ taskID, isConversation: false, state: 'ready' }),
       },
     ]);
   });

@@ -1,4 +1,5 @@
 import { writeRecords } from '@heynixie/log';
+import { taskCreatedCodec } from './task-created-codec';
 import type { TasksContext } from './types';
 
 // Creates a task with its brief, ready for a runner to claim. The brief is free text, so it sits in
@@ -14,7 +15,7 @@ export async function createTask(
       kind: 'task.created',
       definitions: context.definitions(),
       thread: taskID,
-      payload: { taskID, isConversation: false, state: 'ready' },
+      payload: taskCreatedCodec.encode({ taskID, isConversation: false, state: 'ready' }),
       erasable: { brief },
     },
   ]);

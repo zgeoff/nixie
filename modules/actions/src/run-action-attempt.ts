@@ -1,3 +1,4 @@
+import type { ActionConnector, ProviderResponse } from '@heynixie/connectors';
 import type { JSONObject, RecordInput } from '@heynixie/log';
 import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { planBackoffDelay } from '@heynixie/retry';
@@ -11,7 +12,7 @@ import {
 } from '@heynixie/tasks';
 import { isJSONObject } from './is-json-object';
 import { pickOutcome } from './pick-outcome';
-import type { ActionConnector, ActionRow, ActionsTables, Outcome, ProviderResponse } from './types';
+import type { ActionRow, ActionsTables, Outcome } from './types';
 
 export interface ActionAttemptOptions {
   readonly connectors: ReadonlyMap<string, ActionConnector>;

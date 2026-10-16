@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '../../modules/tools/src/index';
+import type { ToolDefinition } from '@heynixie/tools';
 
 // The test connector's one action, test.send: a send to a destination with a free-text body. A send
 // reaches outside nixie, so the tool runs queued, and only the test rule test.allow-send allows it.

@@ -1,4 +1,4 @@
-import { toErrorFields } from '@heynixie/ops';
+import { toErrorFields } from '@heynixie/logger';
 import { runDefinitionsSeed } from './run-definitions-seed';
 import { startDefinitionsPoll } from './start-definitions-poll';
 import type { ServerParts } from './types';

@@ -1,5 +1,5 @@
-import type { ActionConnector } from '@heynixie/actions';
-import type { Logger } from '@heynixie/ops';
+import type { ActionConnector } from '@heynixie/connectors';
+import type { Logger } from '@heynixie/logger';
 import type { ToolDefinition } from '@heynixie/tools';
 
 // The log-only connector: one queued tool, and the connector the action runners run it with.

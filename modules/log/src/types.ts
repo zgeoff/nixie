@@ -99,6 +99,16 @@ export interface RecordKinds {
 
 export type RecordKind = keyof RecordKinds;
 
+// One record kind's payload, typed for its writer and its readers. tryDecodePartial serves a reader
+// of records from before a field existed: any field may be missing, a present field must fit, and a
+// payload with a field that does not fit gives null.
+export interface RecordCodec<Kind extends RecordKind, Payload, PartialPayload = Partial<Payload>> {
+  readonly kind: Kind;
+  readonly encode: (payload: Payload) => Payload;
+  readonly decode: (payload: JSONObject) => Payload;
+  readonly tryDecodePartial: (payload: JSONObject) => PartialPayload | null;
+}
+
 // What a caller appends. The payload holds only structured data: IDs, counts, hashes and states.
 // Every free-text field goes in erasable, which nixie encrypts under a key of its own.
 export interface RecordInput {

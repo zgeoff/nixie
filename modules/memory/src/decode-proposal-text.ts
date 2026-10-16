@@ -1,22 +1,15 @@
-import { z } from 'zod';
-import { decodeSealedJSON } from './decode-sealed-json';
-import type { ProposalText } from './encode-proposal-text';
+import { defineSealedCodec } from './define-sealed-codec';
+import { proposalTextSchema } from './proposal-text-schema';
+import type { ProposalText } from './sealed-types';
 
 // Opens what encodeProposalText sealed. A wrong key, another proposal's ID or a changed byte
 // rejects.
-export async function decodeProposalText(
+export function decodeProposalText(
   key: CryptoKey,
   proposalID: string,
   sealed: string,
 ): Promise<ProposalText> {
-  const value = await decodeSealedJSON(key, `proposal/${proposalID}`, sealed);
-
-  return proposalText.parse(value);
+  return proposalText.decode(key, proposalID, sealed);
 }
 
-const proposalText = z.strictObject({
-  text: z.string(),
-  quote: z.string().nullable(),
-  checkerReason: z.string().nullable(),
-  salt: z.string(),
-});
+const proposalText = defineSealedCodec('proposal/', proposalTextSchema);

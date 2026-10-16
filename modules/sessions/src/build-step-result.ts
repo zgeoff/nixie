@@ -1,6 +1,6 @@
-import type { JSONObject, RecordInput } from '@heynixie/log';
+import type { RecordInput } from '@heynixie/log';
 import type { ModelRecordSource } from '@heynixie/models';
-import { buildModelRecord } from '@heynixie/models';
+import { buildModelRecord, modelReplyCodec, modelTurnEndedCodec } from '@heynixie/models';
 import type { StepResult } from '@heynixie/tasks';
 import { decodeInboxUUID } from './decode-inbox-uuid';
 import { isContextOverflow } from './is-context-overflow';
@@ -82,12 +82,12 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
     ...completed.turn.assistants
       .filter((assistant) => assistant.text !== '')
       .map((assistant) =>
-        buildModelRecord(source, 'model.reply', {
+        buildModelRecord(source, modelReplyCodec, {
           payload: { messageID: assistant.messageID },
           text: assistant.text,
         }),
       ),
-    buildModelRecord(source, 'model.turn_ended', {
+    buildModelRecord(source, modelTurnEndedCodec, {
       payload: {
         ...buildTurnSummary(completed.turn),
         pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
@@ -107,10 +107,23 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
 
 type EndedFrame = GuestTurn['ended'][number];
 
+type TurnSummary = Pick<
+  ReturnType<typeof modelTurnEndedCodec.decode>,
+  | 'stopReason'
+  | 'terminalReason'
+  | 'turns'
+  | 'inputTokens'
+  | 'outputTokens'
+  | 'cacheReadTokens'
+  | 'cacheWriteTokens'
+  | 'contextSize'
+  | 'contextWindow'
+>;
+
 // The turn's model turns and token counts over every result, the SDK's reason for the last end, and
 // the context the last reported model call read with the window nixie compacts within. The counts
 // are totals; the context size is the one figure that shows how full the context stands.
-function buildTurnSummary(turn: GuestTurn): JSONObject {
+function buildTurnSummary(turn: GuestTurn): TurnSummary {
   const buildTotal = (pick: (frame: EndedFrame) => number) =>
     turn.ended.reduce((total, frame) => total + pick(frame), 0);
 

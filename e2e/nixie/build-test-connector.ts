@@ -1,5 +1,5 @@
-import type { ActionConnector, ProviderResponse } from '../../modules/actions/src/index';
-import type { JSONObject } from '../../modules/log/src/index';
+import type { ActionConnector, ProviderResponse } from '@heynixie/connectors';
+import type { JSONObject } from '@heynixie/log';
 
 // The test connector: it sends each attempt of test.send to the provider double at providerURL,
 // with the action ID as the Idempotency-Key header, and reads the double's answer as the provider's

@@ -1,8 +1,9 @@
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
-import { decodeSealedJSON } from './decode-sealed-json';
-import type { SealedSummary, SummaryShare } from './encode-consolidation-summary';
-import { summaryKeyBytes } from './encode-consolidation-summary';
+import { defineSealedCodec } from './define-sealed-codec';
+import { sealedTextSchema } from './sealed-text-schema';
+import type { SealedSummary, SummaryShare } from './sealed-types';
+import { summaryKeyBytes } from './summary-key-bytes';
 
 // Opens what encodeConsolidationSummary sealed, with the key of every item that holds a share. A
 // wrong key, another run's diff ID, a missing share or a changed byte rejects.
@@ -13,12 +14,12 @@ export async function decodeConsolidationSummary(
 ): Promise<string> {
   const summaryKey = await decodeSummaryKey(diffID, summary.shares, keys);
   const key = await crypto.subtle.importKey('raw', summaryKey, 'AES-GCM', false, ['decrypt']);
-  const value = await decodeSealedJSON(key, `consolidation-summary/${diffID}`, summary.sealed);
+  const value = await summaryText.decode(key, diffID, summary.sealed);
 
-  return summaryText.parse(value).text;
+  return value.text;
 }
 
-const summaryText = z.strictObject({ text: z.string() });
+const summaryText = defineSealedCodec('consolidation-summary/', sealedTextSchema);
 
 // the summary's key: the XOR of every share, each opened under its item's key
 async function decodeSummaryKey(
@@ -34,16 +35,15 @@ async function decodeSummaryKey(
     invariant(itemKey !== undefined, 'the reader opens a summary only with every share key');
 
     // oxlint-disable-next-line no-await-in-loop -- each share folds into the one key in turn
-    const value = await decodeSealedJSON(
-      itemKey,
-      `consolidation-summary/${diffID}/${share.itemID}`,
-      share.sealed,
-    );
+    const value = await summaryShare.decode(itemKey, `${diffID}/${share.itemID}`, share.sealed);
 
-    for (const [index, byte] of Buffer.from(z.base64().parse(value), 'base64').entries()) {
+    for (const [index, byte] of Buffer.from(value, 'base64').entries()) {
       summaryKey[index] = (summaryKey[index] ?? 0) ^ byte;
     }
   }
 
   return summaryKey;
 }
+
+// a share of the summary's key, as base64
+const summaryShare = defineSealedCodec('consolidation-summary/', z.base64());

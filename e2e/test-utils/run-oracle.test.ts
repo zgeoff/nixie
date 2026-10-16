@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
-import { startDatabase } from '../../libs/db/src/index';
-import type { TasksTables } from '../../modules/tasks/src/index';
+import { startDatabase } from '@heynixie/db';
+import type { TasksTables } from '@heynixie/tasks';
 import { runOracle } from './run-oracle';
 import { startTestNixie } from './start-test-nixie';
 

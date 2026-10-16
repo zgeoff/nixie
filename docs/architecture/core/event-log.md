@@ -27,6 +27,11 @@ the kind's free text, encrypted under a key of the record's own.
   sees only the kinds of the packages it imports. The memory recall record is one case: the memory
   module writes it and the session replay reads it, and memory depends on sessions, so the sessions
   module registers it.
+- **Payload.** The module that registers a kind owns its payload codec, a zod schema that every
+  writer encodes through and every reader decodes with, so a changed field fails type-checking in
+  each reader rather than a check at run time. A reader of old records decodes each field as
+  optional, because a record from before a field existed lacks it, and a payload with a field in
+  another shape gives none of its fields.
 - **Thread.** A record belongs to the conversation, a task, or no thread at all. A task's inbox is
   the records of certain kinds on its thread ([tasks](./tasks.md#the-inbox)).
 - **Step key.** The step key is unique across the log, so a task step commits once even when two

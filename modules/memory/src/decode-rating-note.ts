@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { decodeSealedJSON } from './decode-sealed-json';
-import type { RatingNotePlace } from './encode-rating-note';
+import { defineSealedCodec } from './define-sealed-codec';
+import { sealedTextSchema } from './sealed-text-schema';
+import type { RatingNotePlace } from './sealed-types';
 
 // Opens what encodeRatingNote sealed. A wrong key, another rating's or item's ID, or a changed byte
 // rejects.
@@ -9,13 +9,9 @@ export async function decodeRatingNote(
   place: RatingNotePlace,
   sealed: string,
 ): Promise<string> {
-  const value = await decodeSealedJSON(
-    key,
-    `rating-note/${place.ratingID}/${place.itemID}`,
-    sealed,
-  );
+  const note = await ratingNote.decode(key, `${place.ratingID}/${place.itemID}`, sealed);
 
-  return ratingNote.parse(value).text;
+  return note.text;
 }
 
-const ratingNote = z.strictObject({ text: z.string() });
+const ratingNote = defineSealedCodec('rating-note/', sealedTextSchema);

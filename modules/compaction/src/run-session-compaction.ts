@@ -1,7 +1,11 @@
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { ModelRecordSource } from '@heynixie/models';
-import { buildModelRecord } from '@heynixie/models';
+import {
+  buildModelRecord,
+  modelCompactionFailedCodec,
+  modelSessionSummarizedCodec,
+} from '@heynixie/models';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { SessionPoint, TurnProfile } from '@heynixie/wire';
 import { countTextTokens } from './count-text-tokens';
@@ -72,7 +76,7 @@ export async function runSessionCompaction(
 
     return {
       isSummarized: true,
-      record: buildModelRecord(source, 'model.session_summarized', {
+      record: buildModelRecord(source, modelSessionSummarizedCodec, {
         payload: {
           throughSequence,
           boundary: { ...request.resume },
@@ -181,7 +185,7 @@ function buildFailedRecord(
   request: CompactionRequest,
   error: unknown,
 ): RecordInput {
-  const record = buildModelRecord(source, 'model.compaction_failed', {
+  const record = buildModelRecord(source, modelCompactionFailedCodec, {
     payload: {
       trigger: request.trigger,
       failures: request.failures + 1,

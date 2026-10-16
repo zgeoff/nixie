@@ -1,9 +1,9 @@
 import { join } from 'node:path';
-import { buildSandboxAdapter, startConversation } from '../../apps/server/src/index';
-import { modelsConfigSchema } from '../../modules/models/src/index';
-import { makeLogger } from '../../modules/ops/src/index';
-import { buildSandboxRecorder } from '../../modules/sandbox/src/index';
-import type { TasksContext } from '../../modules/tasks/src/index';
+import { makeLogger } from '@heynixie/logger';
+import { modelsConfigSchema } from '@heynixie/models';
+import { buildSandboxRecorder } from '@heynixie/sandbox';
+import { buildSandboxAdapter, startConversation } from '@heynixie/server';
+import type { TasksContext } from '@heynixie/tasks';
 import type { TestTools } from './start-test-tools';
 
 // Starts the conversation on a profile that points at the scripted model, in the process sandbox

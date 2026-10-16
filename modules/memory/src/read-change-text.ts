@@ -1,9 +1,9 @@
 import type { Log } from '@heynixie/log';
 import type { ConsolidationChangeRow } from './consolidation-types';
 import { decodeChangeText } from './decode-change-text';
-import type { ChangeText } from './encode-change-text';
 import { findItemKey } from './find-item-key';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
+import type { ChangeText } from './sealed-types';
 
 // Opens a consolidation change's text under its first input's key, and throws when a forget of
 // that item took the key, because nothing is left to apply.

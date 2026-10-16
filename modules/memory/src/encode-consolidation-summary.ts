@@ -1,17 +1,9 @@
 import invariant from 'tiny-invariant';
-import { encodeSealedJSON } from './encode-sealed-json';
-
-// A consolidation summary as the store keeps it: the text sealed under a fresh key, and that key
-// split into one share for each item the session was shown, each share sealed under its item's key.
-export interface SealedSummary {
-  readonly sealed: string;
-  readonly shares: readonly SummaryShare[];
-}
-
-export interface SummaryShare {
-  readonly itemID: string;
-  readonly sealed: string;
-}
+import { z } from 'zod';
+import { defineSealedCodec } from './define-sealed-codec';
+import { sealedTextSchema } from './sealed-text-schema';
+import type { SealedSummary } from './sealed-types';
+import { summaryKeyBytes } from './summary-key-bytes';
 
 // Seals a run's summary so that it opens only while every item the session was shown keeps its
 // key, because it can hold any of their words. The diff ID binds the summary and each share to the
@@ -29,13 +21,13 @@ export async function encodeConsolidationSummary(
   const key = await crypto.subtle.importKey('raw', summaryKey, 'AES-GCM', false, ['encrypt']);
 
   return {
-    sealed: await encodeSealedJSON(key, `consolidation-summary/${diffID}`, { text }),
+    sealed: await summaryText.encode(key, diffID, { text }),
     shares: await Promise.all(
       [...keys].map(async ([itemID, itemKey], index) => ({
         itemID,
-        sealed: await encodeSealedJSON(
+        sealed: await summaryShare.encode(
           itemKey,
-          `consolidation-summary/${diffID}/${itemID}`,
+          `${diffID}/${itemID}`,
           Buffer.from(shares[index] ?? new Uint8Array()).toString('base64'),
         ),
       })),
@@ -43,7 +35,10 @@ export async function encodeConsolidationSummary(
   };
 }
 
-export const summaryKeyBytes = 32;
+const summaryText = defineSealedCodec('consolidation-summary/', sealedTextSchema);
+
+// a share of the summary's key, as base64
+const summaryShare = defineSealedCodec('consolidation-summary/', z.base64());
 
 // n random shares whose XOR is the key, so every share is needed and any n - 1 reveal nothing
 function splitSummaryKey(summaryKey: Uint8Array, count: number): readonly Uint8Array[] {

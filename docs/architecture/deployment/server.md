@@ -6,8 +6,8 @@ others. Modules never import adapters, so the server picks each adapter, such as
 adapter, and passes it to the modules that take its interface. The server starts its parts in a
 fixed order behind a health endpoint, reports each part's readiness, and stops by letting the steps
 in flight commit. The repo ships it as the nixie image, which runs the release bundle as a non-root
-user on a read-only root filesystem. `apps/server` holds the wiring, and `modules/ops` holds the
-health checks and the logger.
+user on a read-only root filesystem. `apps/server` holds the wiring, `modules/ops` holds the health
+checks, and `libs/logger` holds the logger, so a module that logs needs none of the health code.
 
 [The database](../core/database.md) covers the writer lock, the epoch and migrations.
 [Leases and recovery](../core/leases-and-recovery.md) covers runner pools and crash recovery, and

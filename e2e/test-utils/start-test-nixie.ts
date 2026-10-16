@@ -3,19 +3,15 @@ import { randomBytes } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startDatabase } from '../../libs/db/src/index';
+import { startDatabase } from '@heynixie/db';
 import type {
   CrashHarness,
   FaultPointArrival,
   NixieProcess,
   ProviderDouble,
   ScriptedModel,
-} from '../../libs/testing/src/index';
-import {
-  startCrashHarness,
-  startProviderDouble,
-  startScriptedModel,
-} from '../../libs/testing/src/index';
+} from '@heynixie/testing';
+import { startCrashHarness, startProviderDouble, startScriptedModel } from '@heynixie/testing';
 import { buildAdvanceHelpers } from './build-advance-helpers';
 import type { AdvanceSteps, MatchRecord, RecoveredState, TestRecord, TestRow } from './types';
 import { waitForMatch } from './wait-for-match';

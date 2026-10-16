@@ -1,8 +1,8 @@
-import type { Clock } from '../../libs/clock/src/index';
-import type { StepInput, StepResult } from '../../modules/tasks/src/index';
+import type { Clock } from '@heynixie/clock';
+import type { StepInput, StepResult } from '@heynixie/tasks';
 
 // the record kind the test build's task step writes for each inbox it reads
-declare module '../../modules/log/src/index' {
+declare module '@heynixie/log' {
   interface RecordKinds {
     'test.inbox_read': true;
   }

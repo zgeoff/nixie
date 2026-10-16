@@ -1,6 +1,6 @@
 import type { Log, LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { conversationTaskID } from '@heynixie/tasks';
+import { conversationTaskID, taskStepErroredCodec } from '@heynixie/tasks';
 import type { EventKind, NotedEvent } from './types';
 
 // A conversation turn that threw, which the task runs again, with the error's text when the log
@@ -26,7 +26,9 @@ export function buildRetriedTurnKind(
       });
 
       return records.flatMap((entry) =>
-        entry.record.payload['nextState'] === 'ready' ? [buildRetriedTurn(entry.record)] : [],
+        taskStepErroredCodec.tryDecodePartial(entry.record.payload)?.nextState === 'ready'
+          ? [buildRetriedTurn(entry.record)]
+          : [],
       );
     },
     render: (detail) =>

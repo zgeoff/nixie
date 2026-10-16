@@ -12,5 +12,6 @@
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force"
-  }
+  },
+  "files": ["../nixie-test-build.d.ts"]
 }

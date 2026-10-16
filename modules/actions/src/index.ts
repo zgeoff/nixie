@@ -1,6 +1,8 @@
 export type { ActionsConfig } from './actions-config-schema';
 export { actionsConfigSchema } from './actions-config-schema';
 export { actionsProjection } from './actions-projection';
+export type { ActionQueueBridge } from './build-action-queue';
+export { buildActionQueue } from './build-action-queue';
 export { buildModelView } from './build-model-view';
 export type { ClaimActionOptions } from './claim-action';
 export { claimAction } from './claim-action';
@@ -9,8 +11,6 @@ export { createAllowedAction } from './create-allowed-action';
 export { pickOutcome } from './pick-outcome';
 
 export type {
-  ActionCall,
-  ActionConnector,
   ActionRow,
   ActionStatus,
   ActionsTables,
@@ -18,7 +18,6 @@ export type {
   ModelView,
   Outcome,
   OutcomeReason,
-  ProviderResponse,
 } from './types';
 
 export type { ActionAttemptOptions } from './run-action-attempt';

@@ -9,6 +9,7 @@ export { createSystemTask } from './create-system-task';
 export { createTask } from './create-task';
 export { isInboxRecord } from './is-inbox-record';
 export { LeaseLostError } from './lease-lost-error';
+export { ownerMessageCodec } from './owner-message-codec';
 export { planReadCursor } from './plan-read-cursor';
 export { readInbox } from './read-inbox';
 export { readSessionBoundary } from './read-session-boundary';
@@ -27,10 +28,18 @@ export { startRunnerPool } from './start-runner-pool';
 export type { TaskRunnersOptions } from './start-task-runners';
 export { startTaskRunners } from './start-task-runners';
 export { StepAlreadyCommittedError } from './step-already-committed-error';
+export { taskCreatedCodec } from './task-created-codec';
+export { taskLeaseExpiredCodec } from './task-lease-expired-codec';
+export { taskRevivedCodec } from './task-revived-codec';
+export { taskStepCommittedCodec } from './task-step-committed-codec';
+export { taskStepErroredCodec } from './task-step-errored-codec';
+export { taskStepInterruptedCodec } from './task-step-interrupted-codec';
+export { taskStepStartedCodec } from './task-step-started-codec';
 export type { TasksConfig } from './tasks-config-schema';
 export { tasksConfigSchema } from './tasks-config-schema';
 export { tasksProjection } from './tasks-projection';
 export { tasksProjections } from './tasks-projections';
+export { timerFiredCodec } from './timer-fired-codec';
 export { timersProjection } from './timers-projection';
 
 export type {

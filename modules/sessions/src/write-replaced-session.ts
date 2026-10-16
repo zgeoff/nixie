@@ -1,4 +1,4 @@
-import type { Logger } from '@heynixie/ops';
+import type { Logger } from '@heynixie/logger';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID, readSessionBoundary } from '@heynixie/tasks';

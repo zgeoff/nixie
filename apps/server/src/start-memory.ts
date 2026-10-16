@@ -1,6 +1,6 @@
+import { toErrorFields } from '@heynixie/logger';
 import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
 import { findNoAllowRule, startLapseSweep, startMemoryStore } from '@heynixie/memory';
-import { toErrorFields } from '@heynixie/ops';
 import { startChecker } from './start-checker';
 import type { ServerParts } from './types';
 

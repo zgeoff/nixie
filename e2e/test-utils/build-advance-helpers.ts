@@ -1,5 +1,5 @@
 import { setTimeout } from 'node:timers/promises';
-import type { CrashHarness, FaultPointArrival } from '../../libs/testing/src/index';
+import type { CrashHarness, FaultPointArrival } from '@heynixie/testing';
 import type { TestNixie } from './start-test-nixie';
 import type { MatchRecord, TestRecord } from './types';
 import { waitForMatch } from './wait-for-match';

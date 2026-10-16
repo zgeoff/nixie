@@ -1,5 +1,5 @@
+import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { waitForCondition } from '../../libs/testing/src/index';
 import type { MatchRecord, TestRecord } from './types';
 
 // Waits for the first record that matches, reading the log each poll, and throws once timeoutMs

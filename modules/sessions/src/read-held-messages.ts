@@ -1,8 +1,8 @@
 import { findSessionSummary } from '@heynixie/compaction';
 import type { LogTables } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { modelSessionOpenedCodec } from '@heynixie/models';
 import type { TasksContext } from '@heynixie/tasks';
-import { z } from 'zod';
 import { readRecentTurns } from './read-recent-turns';
 import type { MessageTimeOptions } from './types';
 
@@ -71,7 +71,11 @@ async function readOpenedFrom(context: Pick<TasksContext, 'log'>, taskID: string
     limit: 1,
   });
 
-  const parsed = z.int().nonnegative().safeParse(opened?.record.payload['heldFrom']);
+  // a rebuild record comes from before openings kept the mark
+  const payload =
+    opened?.record.kind === 'model.session_opened'
+      ? modelSessionOpenedCodec.tryDecodePartial(opened.record.payload)
+      : null;
 
-  return parsed.success ? parsed.data : 0;
+  return payload?.heldFrom ?? 0;
 }

@@ -14,7 +14,8 @@
     "@heynixie/policy": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@modelcontextprotocol/server": "catalog:",
-    "tiny-invariant": "catalog:"
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:",

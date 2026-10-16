@@ -1,5 +1,6 @@
 import type { LogRecord } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { ownerMessageCodec } from '@heynixie/tasks';
 import { findImageOfferSequence } from './find-image-offer-sequence';
 import type { ImageOfferRequest, ImageRef } from './gate-types';
 import { ImageOfferError } from './image-offer-error';
@@ -63,13 +64,15 @@ const invisible = /\p{Cf}/u;
 
 // Refuses an image that is not one of your readable messages' images in the thread.
 function requireOwnerImage(message: LogRecord | null, image: ImageRef): void {
-  const images = message?.payload['images'];
+  const images =
+    message?.kind === 'owner_message'
+      ? ownerMessageCodec.tryDecodePartial(message.payload)?.images
+      : undefined;
 
   if (
     message === null ||
-    message.kind !== 'owner_message' ||
     message.erasable.status !== 'readable' ||
-    !Array.isArray(images) ||
+    images === undefined ||
     image.image > images.length
   ) {
     throw new ImageOfferError(

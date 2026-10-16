@@ -1,5 +1,6 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely } from 'kysely';
+import { identityRefusedCodec } from './identity-refused-codec';
 import type { APIContext, APITables } from './types';
 
 interface RefusedEvent {
@@ -29,13 +30,13 @@ export async function writeRefusal(context: APIContext, event: RefusedEvent): Pr
 
     await writeRecordsInTransaction(tx, context.log, [
       {
-        kind: 'identity.refused',
+        kind: identityRefusedCodec.kind,
         definitions: context.definitions(),
-        payload: {
+        payload: identityRefusedCodec.encode({
           channel: event.channel,
           externalID: event.externalID,
           refusedAt: context.clock.now(),
-        },
+        }),
       },
     ]);
 

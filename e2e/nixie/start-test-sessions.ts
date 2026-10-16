@@ -4,9 +4,9 @@ import {
   findNoAllowRule,
   memoryWriterTaskID,
   startMemoryStore,
-} from '../../modules/memory/src/index';
-import type { RunStep, TasksContext } from '../../modules/tasks/src/index';
-import { conversationTaskID } from '../../modules/tasks/src/index';
+} from '@heynixie/memory';
+import type { RunStep, TasksContext } from '@heynixie/tasks';
+import { conversationTaskID } from '@heynixie/tasks';
 import { startTestConversation } from './start-test-conversation';
 import { startTestMemoryWriter } from './start-test-memory-writer';
 import type { TestTools } from './start-test-tools';

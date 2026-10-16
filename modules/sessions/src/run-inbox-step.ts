@@ -1,4 +1,5 @@
 import { isCompactionDue, removeSummaryKeys } from '@heynixie/compaction';
+import { modelTurnEndedCodec } from '@heynixie/models';
 import type { StepResult } from '@heynixie/tasks';
 import { isSessionLive } from './is-session-live';
 import { pickSessionStart } from './pick-session-start';
@@ -45,12 +46,16 @@ async function runSessionTurn(step: SessionStep, plan: InboxPlan): Promise<StepR
 // whether the turn the result commits ended with its context past the threshold
 function isResultPastThreshold(run: ConversationRun, result: StepResult): boolean {
   const ended = result.records.find((record) => record.kind === 'model.turn_ended');
-  const size = ended?.payload?.['contextSize'];
-  const window = ended?.payload?.['contextWindow'];
+
+  const turn =
+    ended?.payload === undefined ? null : modelTurnEndedCodec.tryDecodePartial(ended.payload);
+
+  const size = turn?.contextSize;
+  const window = turn?.contextWindow;
 
   return (
-    typeof size === 'number' &&
-    typeof window === 'number' &&
+    size !== undefined &&
+    window !== undefined &&
     isCompactionDue({ size, window }, run.compaction.threshold)
   );
 }

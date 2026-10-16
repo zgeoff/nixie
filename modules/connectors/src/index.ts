@@ -8,11 +8,14 @@ export type { DefaultLabelOptions } from './pick-default-label';
 export { pickDefaultLabel } from './pick-default-label';
 
 export type {
+  ActionAttempt,
   ActionCall,
+  ActionConnector,
   ActionResponse,
   Connector,
   ConnectorAction,
   HealthReport,
+  ProviderResponse,
   Reconcile,
 } from './types';
 

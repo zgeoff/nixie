@@ -1,13 +1,13 @@
-import { collectDescendants, startHarnessLink, stopProcesses } from '../../libs/testing/src/index';
-import { startActionRunners, writeUnknownOutcomes } from '../../modules/actions/src/index';
-import { StaleWriterError, subscribeToRecords } from '../../modules/log/src/index';
-import type { RunnerPool, StepInput, StepResult } from '../../modules/tasks/src/index';
+import { startActionRunners, writeUnknownOutcomes } from '@heynixie/actions';
+import { StaleWriterError, subscribeToRecords } from '@heynixie/log';
+import type { RunnerPool, StepInput, StepResult } from '@heynixie/tasks';
 import {
   createConversationTask,
   runRecovery,
   setFaultPointHandler,
   startTaskRunners,
-} from '../../modules/tasks/src/index';
+} from '@heynixie/tasks';
+import { collectDescendants, startHarnessLink, stopProcesses } from '@heynixie/testing';
 import { readNixieEnv } from './read-nixie-env';
 import { registerHarnessOperations } from './register-harness-operations';
 import { runTestTaskStep } from './run-test-task-step';

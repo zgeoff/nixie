@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
+import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { waitForCondition } from '../../libs/testing/src/index';
 import { runOracle } from '../test-utils/run-oracle';
 import { startTestNixie } from '../test-utils/start-test-nixie';
 

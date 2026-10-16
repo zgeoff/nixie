@@ -1,6 +1,6 @@
 import { join } from 'node:path';
+import { toErrorFields } from '@heynixie/logger';
 import type { StartedMemoryStore } from '@heynixie/memory';
-import { toErrorFields } from '@heynixie/ops';
 import type { RunStep } from '@heynixie/tasks';
 import { startMemoryConsolidatorRunner } from './start-memory-consolidator-runner';
 import type { ServerParts } from './types';

@@ -1,6 +1,6 @@
 import type { Clock } from '@heynixie/clock';
-import type { Logger } from '@heynixie/ops';
-import { toErrorFields } from '@heynixie/ops';
+import type { Logger } from '@heynixie/logger';
+import { toErrorFields } from '@heynixie/logger';
 import { planBackoffDelay } from '@heynixie/retry';
 
 export interface RetryOptions {

@@ -1,7 +1,13 @@
 import type { LogRecord, RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import {
+  modelCompactedCodec,
+  modelSessionOpenedCodec,
+  modelSessionRebuiltCodec,
+  modelTurnEndedCodec,
+} from '@heynixie/models';
 import type { TasksContext } from '@heynixie/tasks';
-import { z } from 'zod';
+import { memoryRecalledCodec } from './memory-recalled-codec';
 import type { MemoryRef } from './types';
 
 // What retrieval and recall delivered to the thread's session that it still holds: the item
@@ -58,7 +64,8 @@ const emptyState: SessionState = {
 // its last result, which reached a session that no turn resumes.
 function buildSessionState(state: SessionState, record: LogRecord): SessionState {
   if (record.kind === 'memory.recalled') {
-    const recall = { sequence: record.sequence, refs: parseRefs(record.payload['items']) };
+    const items = memoryRecalledCodec.tryDecodePartial(record.payload)?.items;
+    const recall = { sequence: record.sequence, refs: toRefs(items) };
 
     return { ...state, pending: [...state.pending, recall] };
   }
@@ -77,9 +84,10 @@ function buildSessionState(state: SessionState, record: LogRecord): SessionState
 // the turn keeps its step's recalls through its mark, and what it retrieved unless a compaction
 // summarized it
 function buildTurnEnd(state: SessionState, record: LogRecord): SessionState {
-  const retrieved = state.isCompacted ? [] : parseRefs(record.payload['retrieved']);
-  const messages = state.isCompacted ? [] : parseSequences(record.payload['retrievedMessages']);
-  const through = parseRecalledThrough(record.payload['recalledThrough']);
+  const turn = modelTurnEndedCodec.tryDecodePartial(record.payload);
+  const retrieved = state.isCompacted ? [] : toRefs(turn?.retrieved);
+  const messages = state.isCompacted ? [] : (turn?.retrievedMessages ?? []);
+  const through = turn?.recalledThrough ?? Number.MAX_SAFE_INTEGER;
 
   const recalled = state.pending
     .filter((recall) => recall.sequence <= through)
@@ -116,7 +124,8 @@ function buildSessionReset(state: SessionState, record: LogRecord): SessionState
 
   // a compaction the CLI ran, which a log keeps from releases before the guest turned it off
   if (record.kind === 'model.compacted') {
-    const through = parseRecalledThrough(record.payload['recalledThrough']);
+    const compacted = modelCompactedCodec.tryDecodePartial(record.payload);
+    const through = compacted?.recalledThrough ?? Number.MAX_SAFE_INTEGER;
 
     return {
       delivered: new Map(),
@@ -131,7 +140,7 @@ function buildSessionReset(state: SessionState, record: LogRecord): SessionState
 
 // an opening in place of a session the guest lost, or a rebuild recorded before openings for one
 function isLostSession(record: LogRecord): boolean {
-  const reason = record.payload['reason'];
+  const reason = decodeOpening(record)?.reason;
 
   return reason === 'lost' || reason === 'missing';
 }
@@ -139,9 +148,18 @@ function isLostSession(record: LogRecord): boolean {
 // the recalls that served the lost session: through the opening's mark, or every one before a
 // rebuild recorded without it
 function parseLostRecallsThrough(record: LogRecord): number {
-  const parsed = z.int().nonnegative().safeParse(record.payload['recalledThrough']);
+  return decodeOpening(record)?.recalledThrough ?? Number.MAX_SAFE_INTEGER;
+}
 
-  return parsed.success ? parsed.data : Number.MAX_SAFE_INTEGER;
+interface Opening {
+  readonly reason?: string | null | undefined;
+  readonly recalledThrough?: number | undefined;
+}
+
+function decodeOpening(record: LogRecord): Opening | null {
+  return record.kind === 'model.session_opened'
+    ? modelSessionOpenedCodec.tryDecodePartial(record.payload)
+    : modelSessionRebuiltCodec.tryDecodePartial(record.payload);
 }
 
 // the records that end what a session holds; session_rebuilt is the opening record that logs from
@@ -214,27 +232,9 @@ async function readReplayStart(
   return started === undefined ? 0 : started.record.sequence - 1;
 }
 
-const refsSchema = z.array(z.object({ itemID: z.string(), version: z.int().positive() }));
-
-// a record's list of item versions, or none for a list in another shape
-function parseRefs(value: unknown): readonly MemoryRef[] {
-  const parsed = refsSchema.safeParse(value);
-
-  return parsed.success ? parsed.data : [];
-}
-
-const sequencesSchema = z.array(z.int().positive());
-
-// a turn's list of past messages, or none for a turn recorded before retrieval placed messages
-function parseSequences(value: unknown): readonly number[] {
-  const parsed = sequencesSchema.safeParse(value);
-
-  return parsed.success ? parsed.data : [];
-}
-
-// a turn or compaction recorded before it kept the mark took every recall of its step
-function parseRecalledThrough(value: unknown): number {
-  const parsed = z.int().nonnegative().safeParse(value);
-
-  return parsed.success ? parsed.data : Number.MAX_SAFE_INTEGER;
+// A record's item versions, or none for a record from before it kept them. A turn or compaction
+// recorded before it kept its recall mark took every recall of its step, and a turn recorded
+// before retrieval placed past messages placed none.
+function toRefs(refs: readonly MemoryRef[] | undefined): readonly MemoryRef[] {
+  return (refs ?? []).map((ref) => ({ itemID: ref.itemID, version: ref.version }));
 }

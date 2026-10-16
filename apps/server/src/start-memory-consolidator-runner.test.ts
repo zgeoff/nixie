@@ -1,10 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { buildActionQueue } from '@heynixie/actions';
 import { buildMemoryTools, consolidationConfigSchema } from '@heynixie/memory';
 import { createMemoryItem } from '@heynixie/memory/test-utils';
 import { modelsConfigSchema } from '@heynixie/models';
 import type { ScriptedReply } from '@heynixie/testing';
 import { buildTestClock, startScriptedModel } from '@heynixie/testing';
-import { buildActionQueue } from './build-action-queue';
 import { startMemoryConsolidatorRunner } from './start-memory-consolidator-runner';
 import { runTaskSteps } from './test-utils/run-task-steps';
 import { startTestMemoryStore } from './test-utils/start-test-memory-store';

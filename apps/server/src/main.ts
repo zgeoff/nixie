@@ -1,6 +1,6 @@
 // nixie's entry point, which the release bundle starts as PID 1: it runs one command and exits with
 // its code, so a stop that leaves a step past its grace still ends the process.
-import { makeLogger } from '@heynixie/ops';
+import { makeLogger } from '@heynixie/logger';
 import { runCLI } from './run-cli';
 
 // The handlers exist before the command starts, so a signal during the start, such as one that

@@ -1,8 +1,12 @@
 import type { ContextSize } from '@heynixie/compaction';
 import type { LogRecord, ReadRecordsOptions } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import {
+  modelCompactionFailedCodec,
+  modelSessionOpenedCodec,
+  modelTurnEndedCodec,
+} from '@heynixie/models';
 import type { TasksContext } from '@heynixie/tasks';
-import { z } from 'zod';
 import { sessionImageBudget } from './session-image-budget';
 import type { ImageTally, MemoryRef } from './types';
 
@@ -55,21 +59,23 @@ export async function readSessionMarks(
   ]);
 
   const [turn] = lastTurns;
+  const ended = turn === undefined ? null : modelTurnEndedCodec.tryDecodePartial(turn.payload);
   const invalidatedThrough = invalidated.at(0)?.sequence ?? 0;
   const openedThrough = opened.at(0)?.sequence ?? 0;
   const summarizedThrough = summarized.at(0)?.sequence ?? 0;
 
   return {
-    previousCore: turn === undefined ? null : parseCore(turn.payload['pinnedCore']),
-    isInvalidated: invalidatedThrough > (turn === undefined ? 0 : parseTurnThrough(turn)),
+    // a turn recorded before the pinned core reached the prompt ran with no core
+    previousCore: turn === undefined ? null : (ended?.pinnedCore ?? []),
+    isInvalidated: invalidatedThrough > (turn === undefined ? 0 : getTurnThrough(turn, ended)),
     invalidatedThrough,
 
     hasOpening: openedThrough > (cliCompacted.at(0)?.sequence ?? 0),
-    openedPersonaHash: parsePersonaHash(opened.at(0)),
-    lastContext: turn === undefined ? null : parseContext(turn),
+    openedPersonaHash: findPersonaHash(opened.at(0)),
+    lastContext: toContext(ended),
     isSummarized: summarizedThrough > openedThrough,
     compactionFailures: countFailures(failed.at(0), Math.max(openedThrough, summarizedThrough)),
-    images: turn === undefined ? { bytes: 0, count: 0 } : parseImages(turn),
+    images: toImages(ended),
   };
 }
 
@@ -82,66 +88,41 @@ async function readNewest(
   return entries.map((entry) => entry.record);
 }
 
-// a turn recorded before turns kept the marks they read saw every invalidation before it
-function parseTurnThrough(turn: LogRecord): number {
-  const parsed = z.int().nonnegative().safeParse(turn.payload['invalidatedThrough']);
+type TurnEnd = ReturnType<typeof modelTurnEndedCodec.tryDecodePartial>;
 
-  return parsed.success ? parsed.data : turn.sequence;
+// a turn recorded before turns kept the marks they read saw every invalidation before it
+function getTurnThrough(turn: LogRecord, ended: TurnEnd): number {
+  return ended?.invalidatedThrough ?? turn.sequence;
 }
 
 // an opening recorded before openings kept their persona hash names none
-function parsePersonaHash(opened: LogRecord | undefined): string | null {
-  const parsed = z.string().safeParse(opened?.payload['personaHash']);
+function findPersonaHash(opened: LogRecord | undefined): string | null {
+  const payload =
+    opened === undefined ? null : modelSessionOpenedCodec.tryDecodePartial(opened.payload);
 
-  return parsed.success ? parsed.data : null;
+  return payload?.personaHash ?? null;
 }
-
-const coreSchema = z.array(z.object({ itemID: z.string(), version: z.int().positive() }));
-
-// a turn recorded before the pinned core reached the prompt ran with no core
-function parseCore(value: unknown): readonly MemoryRef[] {
-  const parsed = coreSchema.safeParse(value);
-
-  return parsed.success ? parsed.data : [];
-}
-
-const contextSchema = z.object({
-  contextSize: z.int().nonnegative(),
-  contextWindow: z.int().positive(),
-});
 
 // a turn whose model calls reported no usage, or one recorded before turns kept their context,
 // gives none
-function parseContext(turn: LogRecord): ContextSize | null {
-  const parsed = contextSchema.safeParse(turn.payload);
-
-  return parsed.success
-    ? { size: parsed.data.contextSize, window: parsed.data.contextWindow }
-    : null;
+function toContext(ended: TurnEnd): ContextSize | null {
+  return ended?.contextSize === undefined || ended.contextWindow === undefined
+    ? null
+    : { size: ended.contextSize, window: ended.contextWindow };
 }
-
-const tallySchema = z.int().nonnegative();
 
 // a turn recorded before turns kept their session's images ran on a session with no images; one
 // recorded before they kept the count reads as holding the most images a session takes, so a
 // message with images rebuilds the session rather than risk the count
-function parseImages(turn: LogRecord): ImageTally {
-  const bytes = tallySchema.safeParse(turn.payload['sessionImageBytes']);
+function toImages(ended: TurnEnd): ImageTally {
+  const bytes = ended?.sessionImageBytes;
 
-  if (!bytes.success) {
+  if (bytes === undefined) {
     return { bytes: 0, count: 0 };
   }
 
-  const count = tallySchema.safeParse(turn.payload['sessionImageCount']);
-
-  if (count.success) {
-    return { bytes: bytes.data, count: count.data };
-  }
-
-  return { bytes: bytes.data, count: bytes.data > 0 ? sessionImageBudget.count : 0 };
+  return { bytes, count: ended?.sessionImageCount ?? (bytes > 0 ? sessionImageBudget.count : 0) };
 }
-
-const failuresSchema = z.object({ failures: z.int().positive() });
 
 // the newest failure counts the failures in a row before it, unless a summary or a session opened
 // after it
@@ -150,7 +131,5 @@ function countFailures(failed: LogRecord | undefined, resetThrough: number): num
     return 0;
   }
 
-  const parsed = failuresSchema.safeParse(failed.payload);
-
-  return parsed.success ? parsed.data.failures : 1;
+  return modelCompactionFailedCodec.tryDecodePartial(failed.payload)?.failures ?? 1;
 }
