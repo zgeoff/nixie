@@ -162,7 +162,8 @@ credential, such as an app password or an API key, skips the first 2 steps.
 The first connector covers Gmail, Google Calendar and Google Drive on one OAuth client you register,
 with the scopes `gmail.modify`, `calendar.events` and `drive.file`. The
 [Google spike](../../../../research/google-oauth/README.md) has the setup steps and the consent
-results. The app is published to production, because testing status expires consent after 7 days.
+results. The app is published to production, because testing status expires consent after 7 days,
+and the spike's production client kept a working refresh token past that limit.
 
 - `drive.file` covers files nixie creates and files you select for it, not your whole Drive.
 - `gmail.modify` reads, labels, archives, trashes and sends mail, and cannot delete a message for
@@ -170,9 +171,6 @@ results. The app is published to production, because testing status expires cons
   which also grants IMAP access, and the trash keeps a message restorable for 30 days.
 - The Gmail poll uses the history ID as its cursor. Each sent message carries the action ID in a
   header, so a check after an unknown outcome searches the Sent folder for it.
-
-If a production client's token does not outlive 7 days, mail falls back to IMAP with an app
-password, and Calendar and Drive keep OAuth, because Google's CalDAV refuses passwords.
 
 ## Search
 

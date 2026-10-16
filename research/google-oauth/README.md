@@ -37,14 +37,18 @@ reached it with no extra setup.
 
 ## Answer
 
-| Check                                  | Result                                               |
-| -------------------------------------- | ---------------------------------------------------- |
-| Consent to `gmail.modify`, unverified  | Granted, with all 3 scopes                           |
-| "Google hasn't verified this app" page | Not shown to the owner, who owns the project         |
-| Refresh on day 0                       | HTTP 200                                             |
-| Gmail, Calendar and Drive calls        | HTTP 200 each, once each API was enabled             |
-| Refresh on day 8                       | Pending: run `bun refresh.ts` on or after 2026-10-16 |
+| Check                                  | Result                                       |
+| -------------------------------------- | -------------------------------------------- |
+| Consent to `gmail.modify`, unverified  | Granted, with all 3 scopes                   |
+| "Google hasn't verified this app" page | Not shown to the owner, who owns the project |
+| Refresh on day 0                       | HTTP 200                                     |
+| Gmail, Calendar and Drive calls        | HTTP 200 each, once each API was enabled     |
+| Refresh on day 8                       | HTTP 200, and HTTP 200 from each API         |
 
+- A production app with no test users keeps a working refresh token past testing mode's 7-day limit,
+  and needs no Google Cloud setup beyond the 4 steps in [Setup the owner did](#setup-the-owner-did).
+  The script writes nothing back to the vault, so the token that refreshed on day 8 is the one that
+  consent issued on day 0.
 - An unverified production app can hold Gmail's restricted scope for its owner. The third-party
   reports that Google blocks unverified apps from restricted scopes did not hold for the project's
   own account.
@@ -55,6 +59,5 @@ reached it with no extra setup.
 
 ## Untested
 
-- The refresh on day 8, which shows whether the token outlives testing mode's 7-day limit.
 - Consent from an account that does not own the project, which would see the warning page.
 - Whether Google later asks the app for verification, or caps it, as usage grows.
