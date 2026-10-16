@@ -17,6 +17,7 @@
       "libs/*",
       "evals",
       "research/*",
+      "!research/encoder",
       "!research/fetch-headless",
       "!research/voice-latency"
     ],

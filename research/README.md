@@ -6,6 +6,10 @@ gives the question, how to run it, the output it produced and what it left untes
 workspace installs the spikes, and CI typechecks each one, so a spike that a later design reruns
 still compiles. CI runs no spike and no spike test, and product code never imports from a spike.
 
+A spike whose pins the root install refuses, because a pin has an open advisory or is younger than
+the minimum release age, stays out of the workspace and installs on its own. The root package.json
+names each such spike in the workspace globs.
+
 Spikes that call the model read a token from the repo's `.env`, which git ignores; `.env.example`
 lists the variable.
 
