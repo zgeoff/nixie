@@ -7,10 +7,12 @@ import { defaultGateLimits } from './default-gate-limits';
 import type { TestMemoryOptions } from './test-utils';
 import {
   buildMockCheckerAnswer,
+  buildMockWriteCaller,
   createProposal,
   makeToolAllowRule,
   readItemShortID,
   startTestMemory,
+  writeModelReplyRecord,
 } from './test-utils';
 import { buildMockToolContext } from './test-utils/build-mock-tool-context';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
@@ -998,22 +1000,25 @@ test('it saves an image offer on a typed yes and leaves no readable copy of its 
     images: ['image/webp'],
   });
 
-  const run = {
-    runID: 'run-1',
-    thread: 'conversation',
-    tools: ['memory.offer_image', 'memory.answer_offer'],
-    model: { model: 'test-model', profile: 'standard' },
-  };
-
   await runToolCall(
     {
       tool: 'memory.offer_image',
       input: { eventID: String(photo), image: 1, text: 'The owner has a beagle called Biscuit' },
       toolUseID: null,
     },
-    run,
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.offer_image'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
     ctx.toolCallOptions,
   );
+
+  await writeModelReplyRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "Want me to remember this? Here's what I'd save: The owner has a beagle called Biscuit",
+  });
 
   const answer = await writeOwnerMessageRecord(ctx.memory.log, {
     thread: 'conversation',
@@ -1021,30 +1026,26 @@ test('it saves an image offer on a typed yes and leaves no readable copy of its 
     spans: [{ start: 0, end: 3, source: 'typed' }],
   });
 
-  await runToolCall(
-    {
-      tool: 'memory.answer_offer',
-      input: { eventID: String(photo), image: 1, answerEventID: String(answer) },
-      toolUseID: null,
-    },
-    run,
-    ctx.toolCallOptions,
-  );
+  // the answer's records hold no text, so the answer goes straight to the store
+  const outcome = await ctx.memory.store.writes.answerOffer({
+    image: { messageSequence: photo, image: 1 },
+    answerSequence: answer,
+    caller: buildMockWriteCaller(),
+  });
 
-  const item = await ctx.memory.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_items')
-    .select('item_id')
-    .executeTakeFirstOrThrow();
+  invariant(outcome.status === 'applied');
 
   await ctx.memory.store.forget({
-    target: { itemID: item.item_id, version: 1 },
+    target: { itemID: outcome.itemID, version: outcome.version },
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
+  // the reply that presented the offer is the conversation's own record, which its own forget removes
   const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
 
-  expect(JSON.stringify(entries)).not.toInclude('Biscuit');
+  expect(
+    JSON.stringify(entries.filter((entry) => entry.record.kind !== 'model.reply')),
+  ).not.toInclude('Biscuit');
 });
 
 test('it applies a remembered fact and leaves no readable copy of its text once it is forgotten', async () => {
