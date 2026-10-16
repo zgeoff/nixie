@@ -142,7 +142,6 @@
       "version": "0.0.0",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "catalog:",
-        "@heynixie/clock": "workspace:*",
         "@heynixie/conversation": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/sessions": "workspace:*",
