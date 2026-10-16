@@ -12,10 +12,14 @@ export async function removeSavedOfferKeys(parts: StoreParts): Promise<void> {
   const rows = await log.writer.db
     .$extendTables<MemoryTables & LogTables>()
     .selectFrom('memory_versions')
-    .innerJoin(
-      'records',
-      'records.sequence',
-      sql<number>`json_extract(memory_versions.checks, '$.offer.sequence')`,
+    .innerJoin('records', (join) =>
+      join.on((eb) =>
+        eb(
+          'records.sequence',
+          '=',
+          sql<number>`json_extract(memory_versions.checks, '$.offer.sequence')`,
+        ),
+      ),
     )
     .select('records.key_id')
     .where('records.kind', '=', 'memory.image_offered')
