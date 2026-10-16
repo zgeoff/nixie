@@ -341,6 +341,39 @@ test('it declines once a forget of the image message has started, before its key
   expect(rows).toStrictEqual({ items: [], versions: [] });
 });
 
+test('it applies an offer whose text ends with a space on a yes to the line said word for word', async () => {
+  const ctx = await setupTest();
+
+  const photo = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'Here is my new bike',
+    spans: [{ start: 0, end: 19, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const line = await ctx.memory.store.writes.offerImage({
+    image: { messageSequence: photo, image: 1 },
+    text: 'The owner rides a green cargo bike ',
+    caller: buildMockWriteCaller(),
+  });
+
+  await writeModelReplyRecord(ctx.memory.log, { thread: 'conversation', text: line });
+
+  const answer = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'yes',
+    spans: [{ start: 0, end: 3, source: 'typed' }],
+  });
+
+  const outcome = await ctx.memory.store.writes.answerOffer({
+    image: { messageSequence: photo, image: 1 },
+    answerSequence: answer,
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toStrictEqual({ status: 'applied', itemID: expect.toBeString(), version: 1 });
+});
+
 test('it declines a yes to a reply that showed other text than the offer holds', async () => {
   const ctx = await setupTest();
 

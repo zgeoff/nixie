@@ -49,7 +49,7 @@ export async function findOfferPresentation(
     .map((line) => line.trim())
     .findLast((line) => line !== '');
 
-  return lastLine === renderOfferLine(query.text) ? row.sequence : null;
+  return lastLine === renderOfferLine(query.text).trim() ? row.sequence : null;
 }
 
 const replyFields = z.object({ text: z.string() });
