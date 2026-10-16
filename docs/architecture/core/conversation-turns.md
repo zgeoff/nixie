@@ -112,9 +112,15 @@ cleanup invalidates the session
 turn-ended record keeps the newest session-invalidated record the turn saw before it ran. The step
 resumes no session when a newer invalidation exists, so a step that commits after an invalidation it
 never saw leaves the session invalid. When the guest instead reports the session lost, the step runs
-the turn again on a new session. A session from before opening records holds the pinned core only in
-its old system prompt, and an older guest's CLI compaction dropped the opening from its session's
-transcript, so the step opens a new session in place of either.
+the turn again on a new session. A persona change invalidates the session as well, because the
+persona sits in the system prompt that a resumed session keeps. The session-opened record keeps the
+persona hash and the policy hash in force at the opening, and the step resumes the session only
+while its persona hash matches the persona in force. A change to the policy alone keeps the session
+and its cached prompt, because each tool call reads the policy in force at the call, so the policy
+hash on the record serves audit. A session opened before openings kept the persona hash resumes,
+since nothing shows that its persona changed. A session from before opening records holds the pinned
+core only in its old system prompt, and an older guest's CLI compaction dropped the opening from its
+session's transcript, so the step opens a new session in place of either.
 
 Each step reads the session's state from the log once, before it acts, and one transition table
 gives the events each state allows: open, resume or compact. Both step paths ask the table, so the

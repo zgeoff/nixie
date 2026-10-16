@@ -23,6 +23,9 @@ export interface SessionMarks {
   // the context the last turn ended with and its window, or null when it reported none
   readonly lastContext: ContextSize | null;
 
+  // the persona hash the newest session opened under, or null for one opened before openings kept it
+  readonly openedPersonaHash: string | null;
+
   // whether a summary committed after the last session opened, so the next one opens from it
   readonly isSummarized: boolean;
 
@@ -62,6 +65,7 @@ export async function readSessionMarks(
     invalidatedThrough,
 
     hasOpening: openedThrough > (cliCompacted.at(0)?.sequence ?? 0),
+    openedPersonaHash: parsePersonaHash(opened.at(0)),
     lastContext: turn === undefined ? null : parseContext(turn),
     isSummarized: summarizedThrough > openedThrough,
     compactionFailures: countFailures(failed.at(0), Math.max(openedThrough, summarizedThrough)),
@@ -83,6 +87,13 @@ function parseTurnThrough(turn: LogRecord): number {
   const parsed = z.int().nonnegative().safeParse(turn.payload['invalidatedThrough']);
 
   return parsed.success ? parsed.data : turn.sequence;
+}
+
+// an opening recorded before openings kept their persona hash names none
+function parsePersonaHash(opened: LogRecord | undefined): string | null {
+  const parsed = z.string().safeParse(opened?.payload['personaHash']);
+
+  return parsed.success ? parsed.data : null;
 }
 
 const coreSchema = z.array(z.object({ itemID: z.string(), version: z.int().positive() }));

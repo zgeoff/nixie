@@ -18,6 +18,9 @@ import type {
 export interface TurnContextQuery {
   readonly taskID: string;
 
+  // the persona's text the step read, which the system prompt renders
+  readonly persona: string;
+
   // the inbox records the turn takes
   readonly batch: readonly LogRecord[];
   readonly previousCore: readonly MemoryRef[] | null;
@@ -44,10 +47,7 @@ export interface TurnContext {
 // Retrieval searches your messages' text less your name and the agent's, which most items hold,
 // leaves out pinned items and versions the session holds, and records what it placed through recall.
 export async function readTurnContext(
-  run: Pick<
-    ConversationRun,
-    'context' | 'memory' | 'memorySettings' | 'getSystemPrompt' | 'defaultZone'
-  >,
+  run: Pick<ConversationRun, 'context' | 'memory' | 'memorySettings' | 'defaultZone'>,
   query: TurnContextQuery,
 ): Promise<TurnContext> {
   const memory = run.memory();
@@ -67,7 +67,7 @@ export async function readTurnContext(
   const changes = await readCoreChanges(memory, query, { core, lines });
 
   return {
-    systemPrompt: renderSystemPrompt(run.getSystemPrompt(), lines),
+    systemPrompt: renderSystemPrompt(query.persona, lines),
     pinnedMemory,
     preamble: [
       renderPreambleMessage('pinned-memory-changes', at, changes),

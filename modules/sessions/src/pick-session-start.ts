@@ -15,7 +15,7 @@ export function pickSessionStart(
 
   return {
     kind: 'rebuild',
-    reason: position.state === 'invalidated' ? 'forget' : 'lost',
+    reason: position.state === 'invalidated' ? position.cause : 'lost',
     lostSessionID: position.boundary?.sessionID ?? null,
   };
 }

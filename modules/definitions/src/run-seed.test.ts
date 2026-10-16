@@ -105,6 +105,7 @@ test('it returns the definitions it put in force', async () => {
     snapshotHash: built.snapshotHash,
     personaVersion: built.personaVersion,
     persona: '# Persona\n\nWarm, brief.\n',
+    policyHash: built.policyHash,
     recordSequence: 1,
   });
 });

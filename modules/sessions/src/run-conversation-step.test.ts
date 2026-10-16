@@ -34,7 +34,11 @@ async function setupTest() {
         image: 'conversation',
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
         command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
-        getSystemPrompt: () => 'You are nixie.',
+        getDefinitions: () => ({
+          persona: 'You are nixie.',
+          personaHash: 'sha256:persona-test',
+          policyHash: 'sha256:policy-test',
+        }),
         memory: () => ({
           readPinnedCore: () => Promise.resolve([]),
           recall: () => Promise.resolve({ items: [], next: null }),

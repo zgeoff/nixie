@@ -1,10 +1,10 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
 import type { ScriptedModelRequest } from '@heynixie/testing';
 import { startScriptedModel } from '@heynixie/testing';
 import { startConversation } from './start-conversation';
 import { buildTestModelsConfig } from './test-utils/build-test-models-config';
+import { buildTestNotesTools } from './test-utils/build-test-notes-tools';
 import { collectFilesWithText } from './test-utils/collect-files-with-text';
 import { sendTestMessage } from './test-utils/send-test-message';
 import { startTestMemoryStore } from './test-utils/start-test-memory-store';
@@ -19,13 +19,17 @@ interface RunnerConfig {
   readonly image: string;
   readonly contextTokens?: number;
   readonly memorySettings?: Parameters<typeof startConversation>[0]['memorySettings'];
+
+  // the conversation's tool list and the definitions in force, for a test that calls a tool
+  readonly toolNames?: readonly string[];
+  readonly getDefinitions?: Parameters<typeof startConversation>[0]['getDefinitions'];
 }
 
 // a test server, the scripted model, a recorder for the server's log, the folder of the process
 // double's sandboxes, a memory store whose forget cleans up the sessions of the runner a test
 // started last, and a start of the conversation that stops the runner before it, as a deploy does
-async function setupTest() {
-  const server = await startTestServer();
+async function setupTest(tools?: Parameters<typeof startTestServer>[0]) {
+  const server = await startTestServer(tools);
 
   const model = startScriptedModel();
   const log = mock<Parameters<typeof startConversation>[0]['log']>();
@@ -59,19 +63,20 @@ async function setupTest() {
         secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
         sandboxes: server.sandboxes,
         tools: server.endpoint,
-        toolNames: [],
+        toolNames: config.toolNames ?? [],
         image: config.image,
-        getSystemPrompt: () => 'You are nixie.',
+        getDefinitions:
+          config.getDefinitions ??
+          (() => ({
+            persona: 'You are nixie.',
+            personaHash: 'sha256:persona-test',
+            policyHash: 'sha256:policy-test',
+          })),
         memory: () => memory,
         log,
       });
 
       return runners.last;
-    },
-    readRecords: async () => {
-      const entries = await readRecords(context.log, { afterSequence: 0, limit: 1000 });
-
-      return entries.map((entry) => entry.record);
     },
     readLastRequest: () =>
       model.requests.findLast((request) => request.path === '/v1/messages')?.body ?? null,
@@ -110,6 +115,51 @@ test('it runs each turn in the conversation guest on the role profile and resume
   ]);
 
   expect(JSON.stringify(ctx.readLastRequest()?.messages)).toInclude('APPLE');
+}, 30_000);
+
+test('it resumes the session after a change to the policy alone, and decides the next tool call on the new policy', async () => {
+  const notes = buildTestNotesTools('Buy oat milk.');
+
+  const ctx = await setupTest(notes.tools);
+
+  const callNotes = { toolUse: { name: 'mcp__nixie__notes_read', input: {} } };
+
+  const [runner] = await Promise.all([
+    ctx.startRunner({
+      image: 'nixie-conversation-0123456789ab',
+      toolNames: ['notes_read'],
+      getDefinitions: () => ({
+        persona: 'You are nixie.',
+        personaHash: 'sha256:persona-test',
+        policyHash: notes.getPolicyHash(),
+      }),
+    }),
+    createConversationTask(ctx.context),
+  ]);
+
+  ctx.model.addReplies(callNotes, { text: 'It says oat milk.' }, callNotes, { text: 'I may not.' });
+
+  await sendTestMessage(ctx.context, runner.runStep, 'What did my note say?');
+
+  notes.setEffects(['send']);
+
+  await sendTestMessage(ctx.context, runner.runStep, 'Read it again.');
+
+  const records = await ctx.readRecords();
+
+  // only the resumed transcript holds the first turn's tool result
+  expect({
+    opened: records.filter((record) => record.kind === 'model.session_opened'),
+    decisions: records.filter((record) => record.kind === 'tool_called').map((r) => r.decision),
+    isResumed: JSON.stringify(ctx.readLastRequest()?.messages).includes('Buy oat milk.'),
+  }).toMatchObject({
+    opened: [{ payload: { kind: 'first', policyHash: 'policy:read' } }],
+    decisions: [
+      { outcome: 'allow', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
+      { outcome: 'deny', stage: 3, rule: { id: 'slice1.read-only', revision: 1 } },
+    ],
+    isResumed: true,
+  });
 }, 30_000);
 
 test('it opens a session and runs a turn on a profile whose context cap is at the window the CLI assumes', async () => {

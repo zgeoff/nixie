@@ -40,7 +40,11 @@ export function startTestConversation(
     tools: tools.endpoint,
     toolNames: tools.toolNames,
     image: 'nixie-conversation-test',
-    getSystemPrompt: () => 'You are nixie.',
+    getDefinitions: () => ({
+      persona: 'You are nixie.',
+      personaHash: 'sha256:persona-test',
+      policyHash: 'sha256:policy-test',
+    }),
 
     // the crash tests hold no memory, so each turn reads an empty core and recalls nothing
     memory: () => ({

@@ -17,8 +17,8 @@ export interface Opening {
 }
 
 // Runs the turn on a new session, which opens with the same slots whatever started it, and records
-// the opening: the start, the summary it used, the turns and events it carried again, and the status
-// values. Retrieval counts what the session holds from this record.
+// the opening, with the persona and policy hashes it opened under. Retrieval counts what the session
+// holds from this record, and the resume rule reads its persona hash.
 export async function runOpenedTurn(turn: SessionTurn, opening: Opening): Promise<StepResult> {
   const source = opening.source;
 
@@ -35,7 +35,13 @@ export async function runOpenedTurn(turn: SessionTurn, opening: Opening): Promis
     },
     [
       ...opening.before,
-      buildModelRecord(source, 'model.session_opened', { payload: { ...opened.opening } }),
+      buildModelRecord(source, 'model.session_opened', {
+        payload: {
+          ...opened.opening,
+          personaHash: turn.definitions.personaHash,
+          policyHash: turn.definitions.policyHash,
+        },
+      }),
     ],
   );
 }

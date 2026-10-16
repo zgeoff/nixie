@@ -11,6 +11,7 @@ import { buildVersionStatus } from './build-version-status';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';
 import { makeTurnNoteReader } from './make-turn-note-reader';
 import { startConversation } from './start-conversation';
+import { toSessionDefinitions } from './to-session-definitions';
 import type { ServerParts } from './types';
 
 export interface ConversationImp {
@@ -36,7 +37,7 @@ export async function startConversationImp(
     tools: parts.tools.endpoint,
     toolNames: parts.tools.definitions.map((definition) => definition.name),
     image: parts.images.conversation.name,
-    getSystemPrompt: () => parts.inForce.read()?.persona ?? '',
+    getDefinitions: () => toSessionDefinitions(parts.inForce.read()),
     readTurnNote: makeTurnNoteReader(
       {
         log: parts.context.log,

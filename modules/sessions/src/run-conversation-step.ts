@@ -13,16 +13,18 @@ import type { ConversationRun } from './types';
 export function runConversationStep(run: ConversationRun, input: StepInput): Promise<StepResult> {
   return run.session.withTurn(async (invalidated) => {
     const signal = AbortSignal.any([input.signal, invalidated]);
+    const definitions = run.getDefinitions();
 
     const marks = await readSessionMarks(run.context, input.taskID);
 
     const position = pickSessionPosition({
       marks,
+      personaHash: definitions.personaHash,
       boundary: parseSessionBoundary(input.sessionBoundary),
       threshold: run.compaction.threshold,
     });
 
-    const step = { run, input, signal, marks, position };
+    const step = { run, input, signal, definitions, marks, position };
 
     if (isSessionLive(position) && canSessionTake(position.state, 'compact')) {
       return runCompactionStep(step, position.boundary);

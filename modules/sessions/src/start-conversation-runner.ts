@@ -32,8 +32,8 @@ export interface ConversationRunnerOptions {
   readonly limits: ConversationSandboxSpec['limits'];
   readonly command: ConversationRun['command'];
 
-  // the persona in force, read at each turn so a new seed reaches the next turn
-  readonly getSystemPrompt: () => string;
+  // the definitions in force, read as each step begins so a new seed reaches the next step
+  readonly getDefinitions: ConversationRun['getDefinitions'];
   readonly readTurnNote?: NonNullable<ConversationRun['readTurnNote']>;
 
   // the lines of a new session's status, in order; the kind of start, the start time and the model

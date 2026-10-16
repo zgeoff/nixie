@@ -82,6 +82,9 @@ export interface DefinitionsInForce {
   readonly snapshotHash: string;
   readonly personaVersion: string;
   readonly persona: string;
+
+  // the hash of the policy the snapshot holds, which a conversation session records at its opening
+  readonly policyHash: string;
   readonly recordSequence: number;
 }
 

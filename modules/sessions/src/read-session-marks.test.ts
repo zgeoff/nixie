@@ -16,6 +16,7 @@ test('it reads no earlier core and no invalidation before the first turn', async
     isInvalidated: false,
     invalidatedThrough: 0,
     hasOpening: false,
+    openedPersonaHash: null,
     lastContext: null,
     isSummarized: false,
     compactionFailures: 0,
@@ -396,4 +397,44 @@ test('it reads the session as valid after the invalidation when the last turn ke
   const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
 
   expect(marks.isInvalidated).toBe(false);
+});
+
+test('it reads the persona hash the newest session opened under', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { kind: 'first', personaHash: 'sha256:persona-calm' },
+    },
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { kind: 'rebuild', personaHash: 'sha256:persona-cheerful' },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.openedPersonaHash).toBe('sha256:persona-cheerful');
+});
+
+test('it reads no persona hash from an opening recorded before openings kept it', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { kind: 'first' },
+    },
+  ]);
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect(marks.openedPersonaHash).toBeNull();
 });

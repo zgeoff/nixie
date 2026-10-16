@@ -115,6 +115,7 @@ async function applySeed(
     snapshotHash: plan.built.snapshotHash,
     personaVersion: plan.built.personaVersion,
     persona: plan.built.persona,
+    policyHash: plan.built.policyHash,
     recordSequence: record.sequence,
   };
 

@@ -23,6 +23,11 @@ test.each([
     'Start: a rebuild after a forget. The forget erased the summary of earlier sessions, so the gap is deliberate. Earlier history is in the event log.',
   ],
   [
+    { kind: 'rebuild', reason: 'persona', lostSessionID: 'an-earlier-session' } as const,
+    'rebuild:persona',
+    'Start: a rebuild, because the persona changed after the earlier session opened. Earlier history is in the event log.',
+  ],
+  [
     { kind: 'rebuild', reason: 'images', lostSessionID: 'a-full-session' } as const,
     'rebuild:images',
     'Start: a rebuild, because the earlier session held as many images as a session takes. Earlier history is in the event log.',

@@ -26,8 +26,8 @@ export interface ConversationOptions {
   // the conversation image's name in impd, from the sandbox manifest
   readonly image: string;
 
-  // the persona in force, read at each turn
-  readonly getSystemPrompt: () => string;
+  // the persona in force and the persona and policy hashes, read as each step begins
+  readonly getDefinitions: ConversationRunnerOptions['getDefinitions'];
 
   // the note of memory changes made outside the conversation, read before each turn
   readonly readTurnNote?: ConversationRunnerOptions['readTurnNote'];
@@ -68,7 +68,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     image: options.image,
     limits: { vcpus: 2, memoryMiB: 2048, diskMiB: 4096 },
     command: buildGuestCommand(options.sandboxes),
-    getSystemPrompt: options.getSystemPrompt,
+    getDefinitions: options.getDefinitions,
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
     ...(options.status === undefined ? {} : { status: options.status }),
     memory: options.memory,

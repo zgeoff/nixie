@@ -1,6 +1,9 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
+import { writeRecords } from '@heynixie/log';
+import type { DecisionPoint } from '@heynixie/policy';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { startTestServer } from './start-test-server';
 
 test('it starts a log with the tasks, sandboxes and memory projections, an endpoint and the process double', async () => {
@@ -73,4 +76,76 @@ test('it reads the ID of each sandbox the process double holds', async () => {
   const ids = await server.readSandboxIDs();
 
   expect(ids).toStrictEqual([sandbox.id]);
+});
+
+test('it serves the tools it is given, and passes each call through the decision point it is given', async () => {
+  const decide = mock<DecisionPoint>(() => ({
+    decision: { outcome: 'deny', stage: 3, rule: null },
+    sentence: 'Notes are closed today.',
+  }));
+
+  const server = await startTestServer({
+    definitions: [
+      {
+        name: 'notes_read',
+        description: 'Reads the note you kept last.',
+        input: { type: 'object', properties: {}, additionalProperties: false },
+        output: { type: 'object', properties: {}, additionalProperties: false },
+        declaration: {
+          effects: ['read'],
+          destinations: [],
+          amount: null,
+          content: [],
+          results: {},
+        },
+        execution: 'direct',
+        run: () => Promise.resolve({ status: 'ok', result: {} }),
+      },
+    ],
+    decide,
+  });
+
+  const run = await server.endpoint.startRun({
+    runID: 'run-1',
+    thread: 'conversation',
+    tools: ['notes_read'],
+    model: { model: 'claude-test-1', profile: 'chat-direct' },
+  });
+
+  const client = new Client(
+    { name: 'nixie-test', version: '0.0.0' },
+    { versionNegotiation: { mode: { pin: '2026-07-28' } } },
+  );
+
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL('http://localhost/mcp'), {
+      fetch: (url, init) => Bun.fetch(url, { ...init, unix: run.socketPath }),
+      requestInit: { headers: { authorization: `Bearer ${run.token}` } },
+    }),
+  );
+
+  onTestFinished(() => client.close());
+
+  await client.callTool({ name: 'notes_read', arguments: {} });
+
+  const records = await server.readRecords();
+
+  expect(decide).toHaveBeenCalledWith({ tool: 'notes_read', toolList: ['notes_read'] });
+
+  expect(records.find((record) => record.kind === 'tool_called')?.decision).toMatchObject({
+    outcome: 'deny',
+  });
+});
+
+test('it reads the records of its log, oldest first', async () => {
+  const server = await startTestServer();
+
+  await writeRecords(server.context.log, [
+    { kind: 'owner_message', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
+    { kind: 'model.reply', definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation' },
+  ]);
+
+  const records = await server.readRecords();
+
+  expect(records.map((record) => record.kind)).toStrictEqual(['owner_message', 'model.reply']);
 });
