@@ -8,6 +8,10 @@ import { useNixieClient } from '../use-nixie-client';
 
 export interface MemoryItemActionsProps {
   readonly item: MemoryItem;
+
+  // tells the view how a confirmed change ended: what to tell the user when it was refused, or
+  // null when it applied
+  readonly onSettled: (notice: string | null) => void;
 }
 
 type MemoryChange = 'retire' | 'restore' | 'pin' | 'unpin';
@@ -25,7 +29,6 @@ interface PendingChange {
 // again changes the item once.
 export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
   const [pending, setPending] = useState<PendingChange | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   if (pending === null) {
     return (
@@ -34,7 +37,6 @@ export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
           <button
             key={change}
             onClick={() => {
-              setNotice(null);
               setPending({ actionID: crypto.randomUUID(), change, version: props.item.version });
             }}
             type="button"
@@ -42,7 +44,6 @@ export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
             {labels[change]}
           </button>
         ))}
-        {notice === null ? null : <p role="alert">{notice}</p>}
       </div>
     );
   }
@@ -53,9 +54,13 @@ export function MemoryItemActions(props: MemoryItemActionsProps): ReactNode {
       change={pending.change}
       itemID={props.item.itemID}
       version={pending.version}
-      onClose={(closingNotice) => {
+      onCancel={() => {
         setPending(null);
-        setNotice(closingNotice);
+      }}
+      onSettled={(notice) => {
+        setPending(null);
+
+        props.onSettled(notice);
       }}
     />
   );
@@ -93,8 +98,10 @@ interface ChangeConfirmationProps {
   readonly change: MemoryChange;
   readonly actionID: string;
 
-  // closes the confirmation, with what to tell the user when the change was refused
-  readonly onClose: (notice: string | null) => void;
+  readonly onCancel: () => void;
+
+  // closes the confirmation once the change applied or was refused, with the refusal's reason
+  readonly onSettled: (notice: string | null) => void;
 }
 
 function ChangeConfirmation(props: ChangeConfirmationProps): ReactNode {
@@ -107,14 +114,14 @@ function ChangeConfirmation(props: ChangeConfirmationProps): ReactNode {
       const notice = findRefusalNotice(error);
 
       if (notice !== null) {
-        props.onClose(notice);
+        props.onSettled(notice);
       }
     },
 
     // a change or a refusal leaves the item in a state the lists may not show yet
     onSettled: () => queryClient.invalidateQueries({ queryKey: nixie.queryUtils.memory.key() }),
     onSuccess: () => {
-      props.onClose(null);
+      props.onSettled(null);
     },
   });
 
@@ -130,13 +137,7 @@ function ChangeConfirmation(props: ChangeConfirmationProps): ReactNode {
       >
         {labels[props.change]}
       </button>
-      <button
-        disabled={change.isPending}
-        onClick={() => {
-          props.onClose(null);
-        }}
-        type="button"
-      >
+      <button disabled={change.isPending} onClick={props.onCancel} type="button">
         Keep as it is
       </button>
       {change.isError ? <p role="alert">The change did not finish. Try again.</p> : null}

@@ -181,10 +181,10 @@ test('it changes nothing and says why when the item changed after the confirmati
     }),
   );
 
-  const alert = await within(item).findByRole('alert');
+  const alert = await rendered.findByRole('alert');
 
   expect(alert).toHaveTextContent(
-    'This item changed after you opened it, so nothing changed. Check it, then try again.',
+    'Item k3m9qa: This item changed after you opened it, so nothing changed. Check it, then try again.',
   );
 
   expect(store.memoryItems.findFirst((query) => query.where({ shortID: 'k3m9qa' }))?.state).toBe(
@@ -319,9 +319,44 @@ test('it says the pinned core is full when a pin finds no room', async () => {
     }),
   );
 
-  const alert = await within(item).findByRole('alert');
+  const alert = await rendered.findByRole('alert');
 
   expect(alert).toHaveTextContent(
-    'The pinned core has no room for this item. Unpin another item first.',
+    'Item k3m9qa: The pinned core has no room for this item. Unpin another item first.',
+  );
+});
+
+test('it keeps the reason for a refusal after the refreshed item moves to another list', async () => {
+  const ctx = await setupTest();
+
+  await store.memoryItems.create({ shortID: 'k3m9qa', versions: [{ text: 'Plays the cello' }] });
+
+  const rendered = render(<MemoryView />);
+
+  const item = await within(rendered.getByRole('region', { name: 'Active' })).findByRole(
+    'listitem',
+    { name: 'k3m9qa' },
+  );
+
+  await ctx.user.click(within(item).getByRole('button', { name: 'Retire' }));
+
+  await store.memoryItems.update((query) => query.where({ shortID: 'k3m9qa' }), {
+    data(draft) {
+      draft.state = 'forgotten';
+    },
+  });
+
+  await ctx.user.click(
+    within(within(item).getByRole('group', { name: 'Retire this item' })).getByRole('button', {
+      name: 'Retire',
+    }),
+  );
+
+  await within(rendered.getByRole('region', { name: 'Forgotten' })).findByRole('listitem', {
+    name: 'k3m9qa',
+  });
+
+  expect(rendered.getByRole('alert')).toHaveTextContent(
+    'Item k3m9qa: This item is gone. It was forgotten after the list loaded.',
   );
 });
