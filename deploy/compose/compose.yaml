@@ -6,17 +6,37 @@
 name: nixie
 
 services:
-  # Docker creates the data volume owned by root, so this gives it to nixie's user before nixie
-  # starts
-  data-owner:
+  # Gives the data volume to nixie's user, and copies the sops file and the age key into a volume
+  # that only that user reads, mode 0400. Docker creates each volume owned by root, and the host's
+  # files keep their host owner and mode, so nixie's user could otherwise read neither. It runs on
+  # every start, so a changed file on the host reaches nixie at the next up.
+  setup:
     image: ghcr.io/zgeoff/nixie:0.28.0@sha256:61dac2ebd9ecf4c9cbe269b7689b960b17464b8a85ce394e1ca15d440edd8ebd
     user: '0:0'
-    entrypoint: ['chown', '10001:10001', '/data']
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        chown 10001:10001 /data
+        chown 0:10001 /secrets
+        chmod 0750 /secrets
+        umask 077
+        for name in secrets.yaml age.key; do
+          rm -f "/secrets/$$name"
+          cp "/host/$$name" "/secrets/$$name"
+          chmod 0400 "/secrets/$$name"
+          chown 10001:10001 "/secrets/$$name"
+        done
     volumes:
       - data:/data
+      - secrets:/secrets
+      - ${NIXIE_SECRETS_FILE:?set NIXIE_SECRETS_FILE to your sops file}:/host/secrets.yaml:ro
+      - ${NIXIE_AGE_KEY_FILE:?set NIXIE_AGE_KEY_FILE to your host's age key}:/host/age.key:ro
     network_mode: none
+    # CHOWN gives each file to nixie's user, and DAC_READ_SEARCH reads host files that root does
+    # not own
     cap_drop: ['ALL']
-    cap_add: ['CHOWN']
+    cap_add: ['CHOWN', 'DAC_READ_SEARCH']
     restart: 'no'
 
   nixie:
@@ -24,15 +44,14 @@ services:
     command: ['serve']
     environment:
       # sops finds the age key here when nixie decrypts its secrets file at start
-      SOPS_AGE_KEY_FILE: /etc/nixie/age.key
-    # the configuration, the definitions, the encrypted secrets file and its age key, all read-only;
-    # nixie decrypts the file in its own process and keeps the plaintext in memory only
+      SOPS_AGE_KEY_FILE: /etc/nixie/secrets/age.key
+    # the configuration, the definitions, and setup's copies of the sops file and its age key, all
+    # read-only; nixie decrypts the file in its own process and keeps the plaintext in memory only
     volumes:
       - data:/data
       - ./config.yaml:/etc/nixie/config.yaml:ro
       - ./definitions:/etc/nixie/definitions:ro
-      - ${NIXIE_SECRETS_FILE:?set NIXIE_SECRETS_FILE to your sops file}:/etc/nixie/secrets.yaml:ro
-      - ${NIXIE_AGE_KEY_FILE:?set NIXIE_AGE_KEY_FILE to your host's age key}:/etc/nixie/age.key:ro
+      - secrets:/etc/nixie/secrets:ro
     tmpfs:
       - /tmp:size=16m
     read_only: true
@@ -42,7 +61,7 @@ services:
     # past the runner pools' 30 s grace, so a stop lets the steps in flight commit
     stop_grace_period: 45s
     depends_on:
-      data-owner:
+      setup:
         condition: service_completed_successfully
 
   # prints a code that signs one device in; start it with docker compose run --rm enrol
@@ -88,3 +107,4 @@ services:
 
 volumes:
   data:
+  secrets:

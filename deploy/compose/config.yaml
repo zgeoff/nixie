@@ -4,7 +4,7 @@
 server:
   data_dir: /data
   port: 8080
-  secrets_file: /etc/nixie/secrets.yaml
+  secrets_file: /etc/nixie/secrets/secrets.yaml
   # the lowest level of event the log writes: debug, info, warn or error
   log_level: info
 models:

@@ -48,13 +48,15 @@ jobs:
             exit 1
           fi
 
-      # a plain secrets file with a throwaway key, which the test build's stand-in for sops reads; the
-      # container's user differs from the runner's, so the file is readable by every user
+      # a plain secrets file with a throwaway key, which the test build's stand-in for sops reads, and
+      # an invented age key; each is mode 0600 and owned by the runner's user, as a host's files are,
+      # so the start proves that setup hands both to nixie's user
       - name: Write the throwaway secrets
         run: |
+          umask 077
           key=$(head -c 32 /dev/urandom | base64)
           printf 'deployment_key: %s\nmodel_credentials:\n  anthropic: invented-placeholder\n' "$key" > "$RUNNER_TEMP/secrets.yaml"
-          : > "$RUNNER_TEMP/age.key"
+          echo 'invented-age-key-for-the-compose-check' > "$RUNNER_TEMP/age.key"
           {
             echo "NIXIE_SECRETS_FILE=$RUNNER_TEMP/secrets.yaml"
             echo "NIXIE_AGE_KEY_FILE=$RUNNER_TEMP/age.key"
@@ -67,6 +69,12 @@ jobs:
         run: |
           curl --fail --silent --show-error http://127.0.0.1:8080/health/ready | tee -a "$GITHUB_STEP_SUMMARY"
           curl --fail --silent --show-error --output /dev/null http://127.0.0.1:8080/
+
+      # nixie's user reads the age key that sops would read, and setup gave it to that user alone
+      - name: Check the age key
+        run: |
+          docker compose -f compose.yaml -f ci/compose.yaml exec -T nixie cat /etc/nixie/secrets/age.key | cmp - "$NIXIE_AGE_KEY_FILE"
+          docker compose -f compose.yaml -f ci/compose.yaml exec -T nixie stat -c '%a %u' /etc/nixie/secrets/age.key | grep -Fx '400 10001'
 
       # a code is two groups of five characters, which enrol-code prints on its first line
       - name: Check the sign-in code
