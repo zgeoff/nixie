@@ -232,8 +232,8 @@ the words the conversation reads ([how an item reads](./context.md#how-an-item-r
 description tells the model to reach for it when a half-remembered detail would change an answer. A
 past version's line names the version that replaced or retired it. A stale version, a missing item
 or a wrong state returns to the model as the tool's refusal, so the model reads the item again. The
-model can retire an item and can never restore, undo or forget one. The server registers the 8 tools
-beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
+model can retire an item and can never restore, undo or forget one. The server registers the 10
+tools beside web fetch, and the conversation's tool list names them. The read-only rule allows them,
 because they declare `read` and `note` and run direct.
 
 `memory.pending` lists every pending proposal, the model's own and the note-taker's, so the model
