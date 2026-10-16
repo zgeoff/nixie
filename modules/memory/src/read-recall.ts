@@ -1,12 +1,10 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { memoryRecalledCodec } from '@heynixie/sessions';
 import { waitAtFaultPoint } from '@heynixie/tasks';
-import { buildVectorQuery } from './build-vector-query';
-import { InvalidCursorError } from './invalid-cursor-error';
+import { findRankedMatches } from './find-ranked-matches';
 import type { MatchScores } from './merge-rankings';
-import { mergeRankings } from './merge-rankings';
+import { parseItemCursor } from './parse-item-cursor';
 import { readDeliverableItems } from './read-deliverable-items';
-import type { VectorMatch } from './start-vector-index';
 import type {
   MemoryState,
   MemoryTables,
@@ -101,7 +99,7 @@ async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise
     .selectFrom('memory_items')
     .select(['item_id', 'created_sequence'])
     .where('state', 'in', query.states)
-    .where('created_sequence', '>', parseCursor(request.after))
+    .where('created_sequence', '>', parseItemCursor(request.after))
     .orderBy('created_sequence')
     .limit(query.limit + 1)
     .execute();
@@ -130,67 +128,21 @@ async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): P
     readCurrentItemIDs(parts, request.excludedVersions ?? []),
   ]);
 
-  const excludedIDs = [...pinned, ...held];
-
-  const [keywordMatches, vectorMatches] = await Promise.all([
-    parts.index.findMatches(request.query, {
-      limit: query.limit,
-      excludedIDs,
-      ...(request.excludedWords === undefined ? {} : { excludedWords: request.excludedWords }),
-      ...(request.minScore === undefined ? {} : { minScore: request.minScore }),
-    }),
-    findVectorMatches(parts, { request, limit: query.limit, excludedIDs }),
-  ]);
-
-  const ranked = mergeRankings(keywordMatches, vectorMatches ?? []).slice(0, query.limit);
+  const ranked = await findRankedMatches(parts, {
+    query: request.query,
+    limit: query.limit,
+    excludedIDs: [...pinned, ...held],
+    ...(request.excludedWords === undefined ? {} : { excludedWords: request.excludedWords }),
+    ...(request.minScore === undefined ? {} : { minScore: request.minScore }),
+    ...(request.minSimilarity === undefined ? {} : { minSimilarity: request.minSimilarity }),
+  });
 
   return {
-    itemIDs: ranked.map((match) => match.itemID),
+    itemIDs: ranked.matches.map((match) => match.itemID),
     next: null,
-    scores: new Map(ranked.map((match) => [match.itemID, match])),
-    searchMode: pickSearchMode(parts, vectorMatches),
+    scores: new Map(ranked.matches.map((match) => [match.itemID, match])),
+    searchMode: ranked.searchMode,
   };
-}
-
-interface VectorQuery {
-  readonly request: QueryCandidates['request'];
-  readonly limit: number;
-  readonly excludedIDs: readonly string[];
-}
-
-// the vector index's matches for the query less its excluded words, or null while the index
-// rebuilds or with no encoder
-function findVectorMatches(
-  parts: StoreParts,
-  query: VectorQuery,
-): Promise<readonly VectorMatch[] | null> {
-  if (parts.vectors === null) {
-    return Promise.resolve(null);
-  }
-
-  return parts.vectors.findMatches(
-    buildVectorQuery(query.request.query, query.request.excludedWords ?? []),
-    {
-      limit: query.limit,
-      minSimilarity: query.request.minSimilarity ?? defaultMinSimilarity,
-      excludedIDs: query.excludedIDs,
-    },
-  );
-}
-
-// the floor for a recall that sets none, such as the model's own memory.recall; per-turn retrieval
-// sets its own from the configuration
-const defaultMinSimilarity = 0.3;
-
-function pickSearchMode(
-  parts: StoreParts,
-  vectorMatches: readonly VectorMatch[] | null,
-): SearchMode {
-  if (parts.vectors === null) {
-    return 'keyword';
-  }
-
-  return vectorMatches === null ? 'keyword-fallback' : 'hybrid';
 }
 
 async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> {
@@ -242,19 +194,6 @@ function buildVersionKeys(refs: readonly VersionRef[]): ReadonlySet<string> {
 
 function buildVersionKey(ref: VersionRef): string {
   return `${ref.itemID}@${ref.version}`;
-}
-
-// a cursor is the creation sequence of the last item on a page
-function parseCursor(after: string | undefined): number {
-  if (after === undefined) {
-    return 0;
-  }
-
-  if (!/^\d+$/u.test(after) || !Number.isSafeInteger(Number(after))) {
-    throw new InvalidCursorError(after);
-  }
-
-  return Number(after);
 }
 
 interface RecallRecord {

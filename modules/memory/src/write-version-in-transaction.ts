@@ -18,6 +18,7 @@ import type {
   VersionRef,
   VersionState,
   VersionText,
+  WriteInTransaction,
 } from './types';
 
 // The version an operation adds, built from the versions of the item before it.
@@ -55,6 +56,9 @@ export interface VersionPlan {
   // checks that the operation may still run, inside the version's transaction
   readonly requireInTransaction?: (db: Kysely<MemoryTables>) => Promise<void>;
 
+  // the caller's own write in the version's transaction, after that check
+  readonly writeInTransaction?: WriteInTransaction;
+
   // the approval the version consumes: its envelope, and the record that holds your answer
   readonly approval?: {
     readonly envelope: Approval;
@@ -78,7 +82,7 @@ export async function writeVersionInTransaction(
 ): Promise<WrittenVersion> {
   const db = tx.$extendTables<MemoryTables>();
 
-  await plan.requireInTransaction?.(db);
+  await runCallerSteps(plan, tx);
 
   const item = plan.requirement === null ? null : await requireItem(db, plan.requirement);
   const current = item?.version ?? 0;
@@ -108,6 +112,12 @@ export async function writeVersionInTransaction(
   );
 
   return { ref, next };
+}
+
+// the plan's own check that the operation may still run, then the caller's own write
+async function runCallerSteps(plan: VersionPlan, tx: Transaction<unknown>): Promise<void> {
+  await plan.requireInTransaction?.(tx.$extendTables<MemoryTables>());
+  await plan.writeInTransaction?.(tx);
 }
 
 interface PinnableVersion {

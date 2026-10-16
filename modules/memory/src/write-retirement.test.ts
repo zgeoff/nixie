@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import type { LogTables } from '@heynixie/log';
+import { writeRecordsInTransaction } from '@heynixie/log';
 import { startTestMemory } from './test-utils/start-test-memory';
 import type { MemoryTables } from './types';
 
@@ -114,4 +116,70 @@ test('it rejects a retirement of a retired item', async () => {
   await retire.catch(() => {});
 
   expect(retire).rejects.toMatchObject({ code: 'WRONG_STATE' });
+});
+
+test("it commits the caller's own write in the retirement's transaction", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a spare key with the neighbour',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    writeInTransaction: async (tx) => {
+      await writeRecordsInTransaction(tx, ctx.memory.log, [
+        { kind: 'test.checked', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+      ]);
+    },
+  });
+
+  const kinds = await ctx.memory.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('kind')
+    .where('sequence', '>', 1)
+    .orderBy('sequence')
+    .execute();
+
+  expect(kinds).toStrictEqual([{ kind: 'test.checked' }, { kind: 'memory.version_added' }]);
+});
+
+test("it rolls back the caller's own write when the retirement is stale", async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a spare key with the neighbour',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Keeps a spare key in the shed',
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const retire = ctx.memory.store.retire({
+    target: item,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    writeInTransaction: async (tx) => {
+      await writeRecordsInTransaction(tx, ctx.memory.log, [
+        { kind: 'test.checked', definitions: { snapshotHash: 'sha256:test' }, payload: {} },
+      ]);
+    },
+  });
+
+  await retire.catch(() => {});
+
+  const checked = await ctx.memory.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('kind')
+    .where('kind', '=', 'test.checked')
+    .execute();
+
+  expect(retire).rejects.toMatchObject({ code: 'STALE_VERSION' });
+  expect(checked).toStrictEqual([]);
 });

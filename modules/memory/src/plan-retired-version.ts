@@ -8,6 +8,9 @@ export function planRetiredVersion(request: RetireRequest): VersionPlan {
   return {
     requirement: { target: request.target, operation: 'retire', states: ['active'] },
     provenance: request.provenance,
+    ...(request.writeInTransaction === undefined
+      ? {}
+      : { writeInTransaction: request.writeInTransaction }),
     buildVersion: async (readEarlier, current) => {
       const before = await readEarlier(current);
 

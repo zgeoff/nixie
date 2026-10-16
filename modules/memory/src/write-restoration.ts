@@ -7,6 +7,9 @@ export function writeRestoration(parts: StoreParts, request: RestoreRequest): Pr
   return writeMemoryVersion(parts, {
     requirement: { target: request.target, operation: 'restore', states: ['retired'] },
     provenance: request.provenance,
+    ...(request.writeInTransaction === undefined
+      ? {}
+      : { writeInTransaction: request.writeInTransaction }),
     buildVersion: async (readEarlier, current) => {
       const before = await readEarlier(current);
 

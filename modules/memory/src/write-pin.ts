@@ -4,6 +4,7 @@ import { MemoryStateError } from './memory-state-error';
 import { readDeliverableItems } from './read-deliverable-items';
 import { readPinnedItems } from './read-pinned-items';
 import { requirePinnedCoreRoom } from './require-pinned-core-room';
+import { StaleVersionError } from './stale-version-error';
 import type { MemoryTables, PinRequest, StoreParts } from './types';
 
 // Puts an active item in the pinned core or takes an item out of it. A pin adds no version, because
@@ -18,15 +19,24 @@ export function writePin(parts: StoreParts, request: PinRequest): Promise<void> 
     }
 
     await withWriteTransaction(log.writer, async (tx) => {
+      await request.writeInTransaction?.(tx);
+
       const item = await tx
         .$extendTables<MemoryTables>()
         .selectFrom('memory_items')
-        .select('state')
+        .select(['state', 'version'])
         .where('item_id', '=', request.itemID)
         .executeTakeFirst();
 
       if (item === undefined || item.state === 'forgetting' || item.state === 'forgotten') {
         throw new MemoryItemNotFoundError(request.itemID);
+      }
+
+      if (request.version !== undefined && request.version !== item.version) {
+        throw new StaleVersionError(
+          { itemID: request.itemID, version: request.version },
+          item.version,
+        );
       }
 
       if (request.isPinned && item.state !== 'active') {
