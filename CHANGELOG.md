@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.29.0](https://github.com/zgeoff/nixie/compare/v0.28.0...v0.29.0) (2026-10-16)
+
+
+### Features
+
+* **geo-1007:** type record kinds through a registry each module fills ([#302](https://github.com/zgeoff/nixie/issues/302)) ([bdf2c86](https://github.com/zgeoff/nixie/commit/bdf2c86680fd69688c3e4c591e01791557586388))
+* **geo-1033:** wake in-process readers on a commit bus, not a poll ([#308](https://github.com/zgeoff/nixie/issues/308)) ([0b3259c](https://github.com/zgeoff/nixie/commit/0b3259cea7d0fb1f18af35114d2ff71b06663e28))
+* **geo-1073:** retrieve memory items by meaning with a local encoder ([#295](https://github.com/zgeoff/nixie/issues/295)) ([ad08b15](https://github.com/zgeoff/nixie/commit/ad08b154298c62f391c5e881414ee9b0bc215de0))
+* **geo-1126:** place matching past messages beside memory items ([#304](https://github.com/zgeoff/nixie/issues/304)) ([9a1c0ad](https://github.com/zgeoff/nixie/commit/9a1c0ad432ee83b09c199c61e919b82916033fbe))
+* **geo-496:** add a compose reference recipe for the released images ([#315](https://github.com/zgeoff/nixie/issues/315)) ([24990f5](https://github.com/zgeoff/nixie/commit/24990f54943f942480b859d7de1c025472771036))
+* **geo-927:** offer to remember an image and save it on a typed yes ([#299](https://github.com/zgeoff/nixie/issues/299)) ([e232631](https://github.com/zgeoff/nixie/commit/e232631a587680970a5c8804455415e7f97140bc))
+
 ## [0.28.0](https://github.com/zgeoff/nixie/compare/v0.27.0...v0.28.0) (2026-10-16)
 
 
