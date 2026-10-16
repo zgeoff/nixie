@@ -3,8 +3,11 @@
 // binary page has no text, so its textChars is null.
 //   bun read-plain.ts <url>
 import { readFile } from 'node:fs/promises';
+// @boundaries-ignore a spike imports the code it measures
 import { makeAddressCheck } from '../../guests/fetch/src/make-address-check';
+// @boundaries-ignore a spike imports the code it measures
 import { readPage } from '../../guests/fetch/src/read-page';
+// @boundaries-ignore a spike imports the code it measures
 import { resolveHostAddresses } from '../../guests/fetch/src/resolve-host-addresses';
 
 const [url = ''] = process.argv.slice(2);

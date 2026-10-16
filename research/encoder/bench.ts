@@ -3,10 +3,12 @@
 // and recall on both question sets. run.ts spawns one process per candidate so each peak RSS is its
 // own.
 import { CANDIDATES } from './candidates.ts';
+// @boundaries-ignore a spike imports the code it measures
 import { ITEMS } from '../memory-retrieval/items.ts';
 import { loadEncoder } from './load-encoder.ts';
 import type { Embed } from './load-encoder.ts';
 import { DISTRACTORS, PAIRS } from './pairs.ts';
+// @boundaries-ignore a spike imports the code it measures
 import { QUESTIONS } from '../memory-retrieval/questions.ts';
 
 const candidate = CANDIDATES.find((entry) => entry.id === process.argv[2]);

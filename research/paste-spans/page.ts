@@ -2,8 +2,11 @@
 // Runs in the page: follows a textarea through beforeinput and input with the shipped span logic,
 // the way the web client's composer does, and logs each event. Served by device.ts, it posts each
 // log entry to the server.
+// @boundaries-ignore a spike imports the code it measures
 import { buildPendingInput } from '../../libs/contract/src/build-pending-input.ts';
+// @boundaries-ignore a spike imports the code it measures
 import { buildSpanState } from '../../libs/contract/src/build-span-state.ts';
+// @boundaries-ignore a spike imports the code it measures
 import type { PendingInput, SpanState } from '../../libs/contract/src/types.ts';
 
 interface LogEntry {

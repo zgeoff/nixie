@@ -4,6 +4,7 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+// @boundaries-ignore a spike imports the code it measures
 import { buildOptions, readFlag } from '../options.ts';
 
 interface Call {

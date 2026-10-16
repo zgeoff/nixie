@@ -3,7 +3,9 @@
 // each sample goes to results/<phase>.jsonl.
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+// @boundaries-ignore a spike imports the code it measures
 import { decodeFetchReply, encodeFetchMessage, encodeFrame } from '../../libs/wire/src';
+// @boundaries-ignore a spike imports the code it measures
 import type { FetchRequest } from '../../libs/wire/src';
 
 // oxlint-disable no-await-in-loop -- samples run one at a time, in timed order

@@ -8,28 +8,51 @@
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// @boundaries-ignore a spike imports the code it measures
 import type { LogRecord } from '../../modules/log/src/index';
+// @boundaries-ignore a spike imports the code it measures
 import type { GuestFrame, InboxMessage } from '../../libs/wire/src/index';
+// @boundaries-ignore a spike imports the code it measures
 import { runCheckQuery } from '../../guests/conversation/src/run-check-query';
+// @boundaries-ignore a spike imports the code it measures
 import { runTurn } from '../../guests/conversation/src/run-turn';
+// @boundaries-ignore a spike imports the code it measures
 import { renderConsolidatorPrompt } from '../../modules/memory/src/render-consolidator-prompt';
+// @boundaries-ignore a spike imports the code it measures
 import { renderConsolidatorSystemPrompt } from '../../modules/memory/src/render-consolidator-system-prompt';
+// @boundaries-ignore a spike imports the code it measures
 import { renderMemoryCheckerPrompt } from '../../modules/memory/src/render-memory-checker-prompt';
+// @boundaries-ignore a spike imports the code it measures
 import { renderWriterPrompt } from '../../modules/memory/src/render-writer-prompt';
+// @boundaries-ignore a spike imports the code it measures
 import { renderWriterSystemPrompt } from '../../modules/memory/src/render-writer-system-prompt';
+// @boundaries-ignore a spike imports the code it measures
 import { encodeInboxUUID } from '../../modules/sessions/src/encode-inbox-uuid';
+// @boundaries-ignore a spike imports the code it measures
 import { renderInboxMessage } from '../../modules/sessions/src/render-inbox-message';
+// @boundaries-ignore a spike imports the code it measures
 import { buildModelStatus } from '../../modules/sessions/src/build-model-status';
+// @boundaries-ignore a spike imports the code it measures
 import { buildStartStatus } from '../../modules/sessions/src/build-start-status';
+// @boundaries-ignore a spike imports the code it measures
 import { buildStartTimeStatus } from '../../modules/sessions/src/build-start-time-status';
+// @boundaries-ignore a spike imports the code it measures
 import { buildStatusRegistry } from '../../modules/sessions/src/build-status-registry';
+// @boundaries-ignore a spike imports the code it measures
 import { formatMessageTime } from '../../modules/sessions/src/format-message-time';
+// @boundaries-ignore a spike imports the code it measures
 import { renderPinnedMemory } from '../../modules/sessions/src/render-pinned-memory';
+// @boundaries-ignore a spike imports the code it measures
 import { renderSystemMessage } from '../../libs/wire/src/index';
+// @boundaries-ignore a spike imports the code it measures
 import { buildVersionStatus } from '../../apps/server/src/build-version-status';
+// @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedItems } from '../../modules/sessions/src/render-retrieved-items';
+// @boundaries-ignore a spike imports the code it measures
 import { renderSystemPrompt } from '../../modules/sessions/src/render-system-prompt';
+// @boundaries-ignore a spike imports the code it measures
 import { buildCheckerEvalInput } from '../../evals/test-utils/build-checker-eval-input';
+// @boundaries-ignore a spike imports the code it measures
 import { loadCheckerCorpus } from '../../evals/test-utils/load-checker-corpus';
 import type { ToolSet } from './build-role-tools';
 import { buildRoleTools } from './build-role-tools';

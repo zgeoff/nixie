@@ -8,6 +8,7 @@ import type { ContractRouterClient } from '@orpc/contract';
 import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { getCookie } from '@tanstack/react-start/server';
+// @boundaries-ignore a spike imports the code it measures
 import type { contract } from '../contract.ts';
 
 const getLink = createIsomorphicFn()

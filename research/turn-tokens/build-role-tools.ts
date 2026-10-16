@@ -1,11 +1,17 @@
 // The tool definitions each role's model sees, built by the production builders with stand-in
 // stores. The model reads only each tool's name, description and input schema, and the spike's
 // tool server answers every call from a script, so no store is ever reached.
+// @boundaries-ignore a spike imports the code it measures
 import { buildTimeTool } from '../../modules/connectors/src/build-time-tool';
+// @boundaries-ignore a spike imports the code it measures
 import { buildWebFetchTool } from '../../modules/connectors/src/build-web-fetch-tool';
+// @boundaries-ignore a spike imports the code it measures
 import { buildConsolidatorTools } from '../../modules/memory/src/build-consolidator-tools';
+// @boundaries-ignore a spike imports the code it measures
 import { buildLogReadTool } from '../../modules/memory/src/build-log-read-tool';
+// @boundaries-ignore a spike imports the code it measures
 import { buildMemoryTools } from '../../modules/memory/src/build-memory-tools';
+// @boundaries-ignore a spike imports the code it measures
 import { buildWriterTools } from '../../modules/memory/src/build-writer-tools';
 import type { ListedTool } from './start-tool-server';
 

@@ -24,6 +24,7 @@ import type {
   SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+// @boundaries-ignore a spike imports the code it measures
 import { buildOptions, readFlag } from '../options.ts';
 
 interface Config {
