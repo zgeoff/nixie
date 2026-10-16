@@ -40,8 +40,8 @@ test('it takes no kind on any write tool, so the writer cannot stage a self-note
 
   expect(inputs).toStrictEqual([
     ['memory.remember', ['text', 'quote', 'sourceID'], false],
-    ['memory.edit', expect.not.arrayContaining(['kind']), false],
-    ['memory.retire', expect.not.arrayContaining(['kind']), false],
+    ['memory.edit', ['itemID', 'text', 'quote', 'sourceID'], false],
+    ['memory.retire', ['itemID', 'quote', 'sourceID'], false],
   ]);
 });
 

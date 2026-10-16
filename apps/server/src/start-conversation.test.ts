@@ -1136,7 +1136,7 @@ test("it lists the self-notes it places beside the facts in the recall record an
       .map((record) => record.payload['items']),
   ).toStrictEqual([
     expect.toIncludeSameMembers(
-      [smell, calming, ...facts.slice(0, 5)].map((ref) => expect.objectContaining(ref)),
+      [smell, calming, ...facts.slice(0, 5)].map((ref): unknown => expect.objectContaining(ref)),
     ),
   ]);
 }, 30_000);
