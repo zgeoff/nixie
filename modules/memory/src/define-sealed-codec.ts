@@ -7,13 +7,18 @@ import type { SealedCodec } from './sealed-types';
 // sides, so a sealed value of another shape rejects.
 export function defineSealedCodec<Value extends JSONValue>(
   prefix: string,
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a zod schema has no readonly form
   schema: z.ZodType<Value>,
 ): SealedCodec<Value> {
   return {
+    // async, so a value the schema refuses rejects the promise rather than throwing
     encode: async (key, place, value) => {
       const parsed = schema.parse(value);
 
-      return await encodeSealedJSON(key, `${prefix}${place}`, parsed);
+      const sealed = await encodeSealedJSON(key, `${prefix}${place}`, parsed);
+
+      return sealed;
     },
     decode: async (key, place, sealed) => {
       const value = await decodeSealedJSON(key, `${prefix}${place}`, sealed);

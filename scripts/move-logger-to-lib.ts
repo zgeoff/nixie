@@ -159,7 +159,8 @@ await updateDependencies('apps/server/package.json', []);
 async function updateDependencies(path: string, removed: readonly string[]): Promise<void> {
   const text = await readFile(path, 'utf8');
 
-  const manifest: { dependencies: Record<string, string> } = JSON.parse(text);
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- each manifest it edits names its dependencies
+  const manifest = JSON.parse(text) as { dependencies: Record<string, string> };
 
   const dependencies = Object.entries({
     ...manifest.dependencies,

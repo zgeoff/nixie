@@ -27,12 +27,10 @@ export function buildModelRecord<Kind extends RecordKind, Payload extends ModelF
   codec: RecordCodec<Kind, Payload, unknown>,
   fields: ModelRecordFields<Payload>,
 ): RecordInput {
+  const full = { ...fields.payload, model: source.model.model, profile: source.model.profile };
+
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the payload less the model fields, with them added back, is the payload, which TypeScript cannot see through the generic
-  const payload = {
-    ...fields.payload,
-    model: source.model.model,
-    profile: source.model.profile,
-  } as Payload;
+  const payload = full as Payload;
 
   return {
     kind: codec.kind,

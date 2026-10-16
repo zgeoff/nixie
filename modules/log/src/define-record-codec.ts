@@ -6,22 +6,42 @@ import type { JSONObject, RecordCodec, RecordKind } from './types';
 // the schema checks the value at both ends at run time.
 export function defineRecordCodec<Kind extends RecordKind, Shape extends z.core.$ZodShape>(
   kind: Kind,
+
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a zod schema has no readonly form
   schema: z.ZodObject<Shape> & z.ZodType<JSONObject>,
 ): RecordCodec<
   Kind,
-  z.output<z.ZodObject<Shape>>,
-  z.output<z.ZodObject<{ -readonly [Key in keyof Shape]: z.ZodOptional<Shape[Key]> }>>
+  ReadonlyPayload<z.output<z.ZodObject<Shape>>>,
+  ReadonlyPayload<
+    z.output<z.ZodObject<{ -readonly [Key in keyof Shape]: z.ZodOptional<Shape[Key]> }>>
+  >
 > {
   const partial = schema.partial();
 
   return {
     kind,
-    encode: (payload) => schema.parse(payload),
-    decode: (payload) => schema.parse(payload),
+    encode: (payload) => toReadonlyPayload(schema.parse(payload)),
+    decode: (payload) => toReadonlyPayload(schema.parse(payload)),
     tryDecodePartial: (payload) => {
       const parsed = partial.safeParse(payload);
 
-      return parsed.success ? parsed.data : null;
+      return parsed.success ? toReadonlyPayload(parsed.data) : null;
     },
   };
 }
+
+// a parsed value as its readonly form, which every value fits, though TypeScript cannot see it
+// through the deferred conditional type
+function toReadonlyPayload<Value>(value: Value): ReadonlyPayload<Value> {
+  const parsed: unknown = value;
+
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a value fits its readonly form
+  return parsed as ReadonlyPayload<Value>;
+}
+
+// a decoded payload, readonly all the way down, as a record's payload is
+type ReadonlyPayload<Value> = Value extends readonly (infer Item)[]
+  ? readonly ReadonlyPayload<Item>[]
+  : Value extends object
+    ? { readonly [Key in keyof Value]: ReadonlyPayload<Value[Key]> }
+    : Value;
