@@ -14,8 +14,9 @@ test.each([
   expect(findDestinationTokens(text).filter((token) => token.kind === 'account')).toStrictEqual([]);
 });
 
-test('it finds a BSB and account number as one account token', () => {
+test('it finds a BSB and account number as one token and the account number as another', () => {
   expect(findDestinationTokens('Pay BSB 062-000 account no. 12345678 today')).toStrictEqual([
     { kind: 'account', key: '06200012345678', raw: '062-000 account no. 12345678' },
+    { kind: 'account', key: '12345678', raw: '12345678' },
   ]);
 });

@@ -26,6 +26,11 @@ test.each([
     'Account number: 4821 7730',
     'my acct is 48217730',
   ],
+  [
+    'an account number that a quoted BSB and account number holds',
+    'Account number is 12345678',
+    'BSB 062-000 account number: 12345678',
+  ],
 ])('it finds no missing token for %s', (_label, text, quote) => {
   expect(findMissingToken(text, quote)).toBeNull();
 });
@@ -86,4 +91,11 @@ test.each([
   ['a BSB after another digit group', 'Pays 11 062-000 12345678', 'Pays 22 062-000 12345678'],
 ])('it compares the whole of %s', (_label, text, quote) => {
   expect(findMissingToken(text, quote)).not.toBeNull();
+});
+
+test('it finds a BSB that the quote lacks beside a quoted account number', () => {
+  expect(findMissingToken('Pays 062-000 12345678', 'account number: 12345678')).toMatchObject({
+    kind: 'account',
+    key: '06200012345678',
+  });
 });

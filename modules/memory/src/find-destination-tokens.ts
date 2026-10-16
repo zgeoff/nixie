@@ -30,8 +30,8 @@ interface TokenPattern {
   readonly pattern: RegExp;
 }
 
-// a match that overlaps a token an earlier pattern took is part of that token, and a phone number
-// needs at least 7 digits
+// a match that overlaps a token an earlier pattern took is part of that token, a phone number needs
+// at least 7 digits, and a BSB and account number is a second token for the account number alone
 function collectPatternTokens(
   text: string,
   entry: TokenPattern,
@@ -48,13 +48,15 @@ function collectPatternTokens(
 
     taken.push(range);
 
-    return [
-      {
-        kind: entry.kind,
-        key: buildTokenKey(entry.kind, match[0]),
-        raw: match[0].replace(trailing, ''),
-      },
-    ];
+    const token = {
+      kind: entry.kind,
+      key: buildTokenKey(entry.kind, match[0]),
+      raw: match[0].replace(trailing, ''),
+    };
+
+    const part = match.groups?.['account'];
+
+    return part === undefined ? [token] : [token, { kind: entry.kind, key: part, raw: part }];
   });
 }
 
@@ -74,7 +76,7 @@ const patterns: readonly TokenPattern[] = [
   {
     kind: 'account',
     pattern:
-      /(?<!\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+\d{5,9}\b(?![\p{Zs}\t-]?\d)/giu,
+      /(?<!\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+(?<account>\d{5,9})\b(?![\p{Zs}\t-]?\d)/giu,
   },
 
   // a run of 6 to 17 digits right after an account word, such as "account number is"
