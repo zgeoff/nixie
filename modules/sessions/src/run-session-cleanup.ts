@@ -1,6 +1,6 @@
 import { removeSummaryKeys } from '@heynixie/compaction';
 import { writeRecords } from '@heynixie/log';
-import type { RecordInput, RecordKind } from '@heynixie/log';
+import { modelSessionCleanupCompletedCodec, modelSessionInvalidatedCodec } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
 import { runGuestPurge } from './run-guest-purge';
 import type { ConversationRun, SessionCleanupCause } from './types';
@@ -13,27 +13,24 @@ type CleanupRun = Pick<ConversationRun, 'context' | 'sandbox' | 'command' | 'ses
 export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): Promise<void> {
   return run.session.withInvalidation(async () => {
     await writeRecords(run.context.log, [
-      buildSessionRecord(run, 'model.session_invalidated', cause),
+      {
+        kind: modelSessionInvalidatedCodec.kind,
+        definitions: run.context.definitions(),
+        thread: conversationTaskID,
+        payload: modelSessionInvalidatedCodec.encode(cause),
+      },
     ]);
 
     await removeSummaryKeys(run.context.log, conversationTaskID);
     await runGuestPurge(run);
 
     await writeRecords(run.context.log, [
-      buildSessionRecord(run, 'model.session_cleanup_completed', cause),
+      {
+        kind: modelSessionCleanupCompletedCodec.kind,
+        definitions: run.context.definitions(),
+        thread: conversationTaskID,
+        payload: modelSessionCleanupCompletedCodec.encode(cause),
+      },
     ]);
   });
-}
-
-function buildSessionRecord(
-  run: CleanupRun,
-  kind: RecordKind,
-  cause: SessionCleanupCause,
-): RecordInput {
-  return {
-    kind,
-    definitions: run.context.definitions(),
-    thread: conversationTaskID,
-    payload: { ...cause },
-  };
 }
