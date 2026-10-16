@@ -1,0 +1,13 @@
+# One origin for nixie: the API and nixie's health endpoint go to nixie, and every other path to the
+# web client, so the browser's session cookie reaches both. HTTPS terminates in front of this origin.
+:8080 {
+	handle /rpc* {
+		reverse_proxy nixie:8080
+	}
+	handle /health/* {
+		reverse_proxy nixie:8080
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

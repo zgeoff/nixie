@@ -1,0 +1,33 @@
+# nixie's deployment configuration, which nixie reads once at start from /etc/nixie/config.yaml and
+# refuses when its schema does. It holds no secret: model credentials are deployment:<name>
+# references into the secrets file. Every value below is a placeholder for your own deployment.
+server:
+  data_dir: /data
+  port: 8080
+  secrets_file: /etc/nixie/secrets/secrets.yaml
+  # the lowest level of event the log writes: debug, info, warn or error
+  log_level: info
+models:
+  profiles:
+    chat:
+      base_url: https://api.anthropic.com
+      credential: deployment:anthropic
+      auth_header: x-api-key
+      model: claude-opus-5-5
+      effort: medium
+  roles:
+    conversation: chat
+imp:
+  # impd runs on the host as its own stack, and nixie's container reaches it by this URL
+  url: https://impd.example.com
+  # every address of the host that runs impd; 192.0.2.0/24 is a documentation range
+  host_addresses:
+    - 192.0.2.10/32
+  # the ranges Docker gives its networks by default, which hold nixie's containers
+  egress_deny:
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+definitions:
+  source:
+    kind: path
+    path: /etc/nixie/definitions
