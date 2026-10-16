@@ -1,5 +1,8 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { NotNull } from 'kysely';
 import { runDueTimers } from './run-due-timers';
+import { taskLeaseExpiredCodec } from './task-lease-expired-codec';
+import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
 import type { SandboxCleanup, TasksContext, TasksTables } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
@@ -73,7 +76,7 @@ async function resetStaleLeases(context: TasksContext): Promise<void> {
         kind: 'task.lease_expired',
         definitions: context.definitions(),
         thread: task.task_id,
-        payload: { taskID: task.task_id },
+        payload: taskLeaseExpiredCodec.encode({ taskID: task.task_id }),
       })),
     );
   });
@@ -87,6 +90,7 @@ async function writeInterruptedSteps(context: TasksContext): Promise<void> {
       .selectFrom('tasks')
       .select(['task_id', 'started_step_key'])
       .where('started_step_key', 'is not', null)
+      .$narrowType<{ started_step_key: NotNull }>()
       .orderBy('task_id')
       .execute();
 
@@ -97,7 +101,10 @@ async function writeInterruptedSteps(context: TasksContext): Promise<void> {
         kind: 'task.step_interrupted',
         definitions: context.definitions(),
         thread: task.task_id,
-        payload: { taskID: task.task_id, stepKey: task.started_step_key },
+        payload: taskStepInterruptedCodec.encode({
+          taskID: task.task_id,
+          stepKey: task.started_step_key,
+        }),
       })),
     );
   });

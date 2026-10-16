@@ -2,6 +2,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { planBackoffDelay } from '@heynixie/retry';
 import { requireLease } from './require-lease';
 import { resetLease } from './reset-lease';
+import { taskStepErroredCodec } from './task-step-errored-codec';
 import type { StepErrored, TaskClaim, TasksContext, TasksTables } from './types';
 
 export interface StepErrorOptions {
@@ -43,14 +44,14 @@ export function writeStepError(
         kind: 'task.step_errored',
         definitions: context.definitions(),
         thread: taskID,
-        payload: {
+        payload: taskStepErroredCodec.encode({
           taskID,
           stepKey: claim.stepKey,
           nextState: retry.nextState,
           errors,
           errorLimit: failure.maxStepErrors,
           claimableAt: retryAt,
-        },
+        }),
         erasable: { message: formatError(failure.error) },
       },
     ]);

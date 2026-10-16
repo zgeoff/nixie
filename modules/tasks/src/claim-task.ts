@@ -3,6 +3,8 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import { claimLease } from './claim-lease';
+import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
+import { taskStepStartedCodec } from './task-step-started-codec';
 import type { Lease, TaskClaim, TasksContext, TasksTables } from './types';
 
 export interface ClaimTaskOptions {
@@ -77,7 +79,7 @@ async function writeStepStart(
             kind: 'task.step_interrupted',
             definitions,
             thread: taskID,
-            payload: { taskID, stepKey: task.started_step_key },
+            payload: taskStepInterruptedCodec.encode({ taskID, stepKey: task.started_step_key }),
           },
         ];
 
@@ -87,7 +89,7 @@ async function writeStepStart(
       kind: 'task.step_started',
       definitions,
       thread: taskID,
-      payload: { taskID, stepKey, generation: lease.generation },
+      payload: taskStepStartedCodec.encode({ taskID, stepKey, generation: lease.generation }),
     },
   ]);
 

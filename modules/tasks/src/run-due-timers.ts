@@ -1,4 +1,5 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { timerFiredCodec } from './timer-fired-codec';
 import type { TasksContext, TasksTables } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
@@ -59,12 +60,12 @@ async function writeTimerFired(context: TasksContext, timer: DueTimer): Promise<
         kind: 'timer.fired',
         definitions: context.definitions(),
         thread: timer.task_id,
-        payload: {
+        payload: timerFiredCodec.encode({
           timerID: timer.timer_id,
           taskID: timer.task_id,
           dueAt: timer.due_at,
           firedAt: context.clock.now(),
-        },
+        }),
       },
     ]);
 

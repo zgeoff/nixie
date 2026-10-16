@@ -1,182 +1,80 @@
-import type { EnvelopeRecord, JSONObject, JSONValue } from '@heynixie/log';
-import type { TaskState } from './types';
+import type { EnvelopeRecord, JSONObject, RecordKind } from '@heynixie/log';
+import { taskCreatedCodec } from './task-created-codec';
+import { taskLeaseExpiredCodec } from './task-lease-expired-codec';
+import { taskRevivedCodec } from './task-revived-codec';
+import { taskStepCommittedCodec } from './task-step-committed-codec';
+import { taskStepErroredCodec } from './task-step-errored-codec';
+import { taskStepInterruptedCodec } from './task-step-interrupted-codec';
+import { taskStepStartedCodec } from './task-step-started-codec';
+import { timerFiredCodec } from './timer-fired-codec';
+
+// a record of one kind with the payload its codec decodes
+type DecodedRecord<
+  Codec extends { readonly kind: RecordKind; readonly decode: (payload: JSONObject) => JSONObject },
+> = {
+  readonly kind: Codec['kind'];
+} & ReturnType<Codec['decode']>;
 
 // The task records the tasks and timers projections fold, each with its plain payload.
 export type TaskRecord =
-  | {
-      readonly kind: 'task.created';
-      readonly taskID: string;
-      readonly isConversation: boolean;
-      readonly state: TaskState;
-    }
-  | { readonly kind: 'task.step_started'; readonly taskID: string; readonly stepKey: string }
-  | {
-      readonly kind: 'task.step_committed';
-      readonly taskID: string;
-      readonly nextState: TaskState;
-      readonly readCursor: number;
-      readonly sessionBoundary: string | null;
-      readonly timers: readonly { readonly timerID: string; readonly dueAt: number }[];
-    }
-  | { readonly kind: 'task.step_interrupted'; readonly taskID: string; readonly stepKey: string }
-  | {
-      readonly kind: 'task.step_errored';
-      readonly taskID: string;
-      readonly nextState: TaskState;
-      readonly errors: number;
-      readonly claimableAt: number;
-    }
-  | { readonly kind: 'task.lease_expired'; readonly taskID: string }
-  | { readonly kind: 'task.revived'; readonly taskID: string }
-  | {
-      readonly kind: 'timer.fired';
-      readonly taskID: string;
-      readonly timerID: string;
-      readonly dueAt: number;
-      readonly firedAt: number;
-    };
+  | DecodedRecord<typeof taskCreatedCodec>
+  | DecodedRecord<typeof taskStepStartedCodec>
+  | DecodedRecord<typeof taskStepCommittedCodec>
+  | DecodedRecord<typeof taskStepInterruptedCodec>
+  | DecodedRecord<typeof taskStepErroredCodec>
+  | DecodedRecord<typeof taskLeaseExpiredCodec>
+  | DecodedRecord<typeof taskRevivedCodec>
+  | DecodedRecord<typeof timerFiredCodec>;
 
-// Reads a task record's payload into its typed shape, or null for a record of another kind. A task
-// record whose payload lacks a field throws, so a fold never writes a half-read row.
+// Reads a task record's payload into its typed shape through its kind's codec, or null for a record
+// of another kind. A task record whose payload does not fit its codec throws with the record's
+// sequence, so a fold never writes a half-read row.
 export function parseTaskRecord(record: EnvelopeRecord): TaskRecord | null {
-  const parse = taskRecordParsers.get(record.kind);
+  const kind = record.kind;
 
-  if (parse === undefined) {
+  if (!isTaskRecordKind(kind)) {
     return null;
   }
 
-  return parse((key) => {
-    const value = record.payload[key];
-
-    if (value === undefined) {
-      throw new Error(`record ${record.sequence} of kind ${record.kind} lacks ${key}`);
-    }
-
-    return value;
-  });
-}
-
-type GetField = (key: string) => JSONValue;
-
-const taskRecordParsers: ReadonlyMap<string, (getField: GetField) => TaskRecord> = new Map<
-  string,
-  (getField: GetField) => TaskRecord
->([
-  [
-    'task.created',
-    (getField) => ({
-      kind: 'task.created',
-      taskID: toString(getField('taskID')),
-      isConversation: getField('isConversation') === true,
-      state: toTaskState(getField('state')),
-    }),
-  ],
-  [
-    'task.step_started',
-    (getField) => ({
-      kind: 'task.step_started',
-      taskID: toString(getField('taskID')),
-      stepKey: toString(getField('stepKey')),
-    }),
-  ],
-  [
-    'task.step_committed',
-    (getField) => ({
-      kind: 'task.step_committed',
-      taskID: toString(getField('taskID')),
-      nextState: toTaskState(getField('nextState')),
-      readCursor: toNumber(getField('readCursor')),
-      sessionBoundary: toNullableString(getField('sessionBoundary')),
-      timers: toTimers(getField('timers')),
-    }),
-  ],
-  [
-    'task.step_interrupted',
-    (getField) => ({
-      kind: 'task.step_interrupted',
-      taskID: toString(getField('taskID')),
-      stepKey: toString(getField('stepKey')),
-    }),
-  ],
-  [
-    'task.step_errored',
-    (getField) => ({
-      kind: 'task.step_errored',
-      taskID: toString(getField('taskID')),
-      nextState: toTaskState(getField('nextState')),
-      errors: toNumber(getField('errors')),
-      claimableAt: toNumber(getField('claimableAt')),
-    }),
-  ],
-  [
-    'task.lease_expired',
-    (getField) => ({ kind: 'task.lease_expired', taskID: toString(getField('taskID')) }),
-  ],
-  ['task.revived', (getField) => ({ kind: 'task.revived', taskID: toString(getField('taskID')) })],
-  [
-    'timer.fired',
-    (getField) => ({
-      kind: 'timer.fired',
-      taskID: toString(getField('taskID')),
-      timerID: toString(getField('timerID')),
-      dueAt: toNumber(getField('dueAt')),
-      firedAt: toNumber(getField('firedAt')),
-    }),
-  ],
-]);
-
-function toString(value: JSONValue): string {
-  if (typeof value !== 'string') {
-    throw new TypeError(`expected a string, got ${JSON.stringify(value)}`);
+  try {
+    return taskRecordDecoders[kind](record.payload);
+  } catch (error) {
+    throw new Error(`record ${record.sequence} of kind ${kind} does not fit its payload`, {
+      cause: error,
+    });
   }
-
-  return value;
 }
 
-function toNumber(value: JSONValue): number {
-  if (typeof value !== 'number') {
-    throw new TypeError(`expected a number, got ${JSON.stringify(value)}`);
-  }
-
-  return value;
+function isTaskRecordKind(kind: RecordKind): kind is TaskRecord['kind'] {
+  return Object.hasOwn(taskRecordDecoders, kind);
 }
 
-function toNullableString(value: JSONValue): string | null {
-  return value === null ? null : toString(value);
-}
-
-function toTaskState(value: JSONValue): TaskState {
-  const state = toString(value);
-
-  if (!isTaskState(state)) {
-    throw new TypeError(`expected a task state, got ${state}`);
-  }
-
-  return state;
-}
-
-function isTaskState(value: string): value is TaskState {
-  return taskStates.some((state) => state === value);
-}
-
-const taskStates: readonly TaskState[] = ['ready', 'running', 'waiting', 'failed', 'done'];
-
-function toTimers(
-  value: JSONValue,
-): readonly { readonly timerID: string; readonly dueAt: number }[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError(`expected a list of timers, got ${JSON.stringify(value)}`);
-  }
-
-  return value.map((timer: JSONValue) => {
-    if (!isJSONObject(timer)) {
-      throw new TypeError(`expected a timer, got ${JSON.stringify(timer)}`);
-    }
-
-    return { timerID: toString(timer['timerID'] ?? null), dueAt: toNumber(timer['dueAt'] ?? null) };
-  });
-}
-
-function isJSONObject(value: JSONValue): value is JSONObject {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+const taskRecordDecoders: {
+  readonly [Kind in TaskRecord['kind']]: (
+    payload: JSONObject,
+  ) => Extract<TaskRecord, { readonly kind: Kind }>;
+} = {
+  'task.created': (payload) => ({ kind: 'task.created', ...taskCreatedCodec.decode(payload) }),
+  'task.step_started': (payload) => ({
+    kind: 'task.step_started',
+    ...taskStepStartedCodec.decode(payload),
+  }),
+  'task.step_committed': (payload) => ({
+    kind: 'task.step_committed',
+    ...taskStepCommittedCodec.decode(payload),
+  }),
+  'task.step_interrupted': (payload) => ({
+    kind: 'task.step_interrupted',
+    ...taskStepInterruptedCodec.decode(payload),
+  }),
+  'task.step_errored': (payload) => ({
+    kind: 'task.step_errored',
+    ...taskStepErroredCodec.decode(payload),
+  }),
+  'task.lease_expired': (payload) => ({
+    kind: 'task.lease_expired',
+    ...taskLeaseExpiredCodec.decode(payload),
+  }),
+  'task.revived': (payload) => ({ kind: 'task.revived', ...taskRevivedCodec.decode(payload) }),
+  'timer.fired': (payload) => ({ kind: 'timer.fired', ...timerFiredCodec.decode(payload) }),
+};

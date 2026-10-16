@@ -1,12 +1,11 @@
 import { DatabaseError } from '@heynixie/db';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { Transaction } from 'kysely';
-import { isInboxRecord } from './is-inbox-record';
-import { planReadCursor } from './plan-read-cursor';
+import { readStepCursor } from './read-step-cursor';
 import { requireLease } from './require-lease';
 import { resetLease } from './reset-lease';
 import { StepAlreadyCommittedError } from './step-already-committed-error';
-import type { StepResult, TaskClaim, TaskState, TasksContext, TasksTables } from './types';
+import { taskStepCommittedCodec } from './task-step-committed-codec';
+import type { StepResult, TaskClaim, TaskState, TasksContext } from './types';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
 // Commits a step: its records, the moved inbox cursor, its timers and the task's next state, in
@@ -38,7 +37,7 @@ export async function writeStepCommit(
         definitions: context.definitions(),
         thread: taskID,
         stepKey: claim.stepKey,
-        payload: {
+        payload: taskStepCommittedCodec.encode({
           taskID,
           nextState: pickNextState(result.next, cursor.hasUnread),
           readCursor: cursor.readCursor,
@@ -47,7 +46,7 @@ export async function writeStepCommit(
             timerID: crypto.randomUUID(),
             dueAt: timer.dueAt,
           })),
-        },
+        }),
       },
     ]);
 
@@ -59,42 +58,6 @@ export async function writeStepCommit(
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('step.commit.after', faultContext);
   }
-}
-
-interface StepCursor {
-  readonly readCursor: number;
-  readonly hasUnread: boolean;
-}
-
-// where the step's acknowledgements move the read cursor, and whether input stays unread after it
-async function readStepCursor(
-  tx: Transaction<unknown>,
-  taskID: string,
-  acknowledged: readonly number[],
-): Promise<StepCursor> {
-  const db = tx.$extendTables<TasksTables>();
-
-  const task = await db
-    .selectFrom('tasks')
-    .select(['read_cursor', 'last_inbox_sequence'])
-    .where('task_id', '=', taskID)
-    .executeTakeFirstOrThrow();
-
-  const unread = await db
-    .selectFrom('records')
-    .select(['sequence', 'kind', 'thread'])
-    .where('thread', '=', taskID)
-    .where('sequence', '>', task.read_cursor)
-    .orderBy('sequence')
-    .execute();
-
-  const readCursor = planReadCursor(
-    unread.filter((record) => isInboxRecord(record)).map((record) => record.sequence),
-    task.read_cursor,
-    acknowledged,
-  );
-
-  return { readCursor, hasUnread: task.last_inbox_sequence > readCursor };
 }
 
 // only the commit record carries the step key, which the log holds unique, and a timer's due time
