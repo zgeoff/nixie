@@ -16,7 +16,7 @@ async function setupTest() {
   return { ...actions, step };
 }
 
-test('it returns the outcome once the action settles within the wait', async () => {
+test('it returns the outcome on the commit that settles the action, without polling', async () => {
   const ctx = await setupTest();
 
   const queued = await createAllowedAction(ctx.context, {
@@ -41,10 +41,7 @@ test('it returns the outcome once the action settles within the wait', async () 
     leaseMs: 60_000,
   });
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
-
-  ctx.clock.advance(250);
-
+  // the test clock never advances, so only the commit can end the wait
   const view = await waiting;
 
   expect(view).toStrictEqual({
@@ -52,6 +49,8 @@ test('it returns the outcome once the action settles within the wait', async () 
     actionID: queued.actionID,
     result: { messageID: 'm-1' },
   });
+
+  expect(ctx.clock.countSleepers()).toBe(0);
 });
 
 test('it returns "queued as" with the action ID once 10 s pass with the action pending', async () => {
@@ -67,12 +66,9 @@ test('it returns "queued as" with the action ID once 10 s pass with the action p
 
   const waiting = waitForActionOutcome(ctx.context, queued.actionID);
 
-  for (let polls = 0; polls < 40; polls += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- each poll sleeps before time moves on
-    await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
-    ctx.clock.advance(250);
-  }
+  ctx.clock.advance(10_000);
 
   const view = await waiting;
 

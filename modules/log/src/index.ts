@@ -3,6 +3,8 @@ export type { RecordKey } from './create-record-key';
 export { createRecordKey } from './create-record-key';
 export { claimWriterLock } from './claim-writer-lock';
 export { KeyStoreBusyError } from './key-store-busy-error';
+export type { WALSubscriptionOptions } from './make-wal-subscription';
+export { makeWALSubscription } from './make-wal-subscription';
 export { logProjections } from './log-projections';
 export { findRecordKeys } from './find-record-keys';
 export { MissingDefinitionsError } from './missing-definitions-error';
@@ -19,6 +21,9 @@ export { runProjectionRebuild } from './run-projection-rebuild';
 export { StaleWriterError } from './stale-writer-error';
 export type { StartWriterOptions } from './start-writer';
 export { startWriter } from './start-writer';
+export type { RecordWake, RecordWakeOptions } from './start-record-wake';
+export { startRecordWake } from './start-record-wake';
+export { subscribeToCommits } from './subscribe-to-commits';
 export type { SubscribeToRecordsOptions } from './subscribe-to-records';
 export { subscribeToRecords } from './subscribe-to-records';
 export { threadsProjection } from './threads-projection';
@@ -44,6 +49,7 @@ export type {
   RecordKind,
   RecordKinds,
   RecordWithChanges,
+  SubscribeToChanges,
   Writer,
   WriterLock,
 } from './types';

@@ -1,21 +1,31 @@
 import { readRecords } from './read-records';
-import type { RecordWake, RecordWakeOptions } from './start-record-wake';
+import type { RecordWake } from './start-record-wake';
 import { startRecordWake } from './start-record-wake';
-import type { Log, RecordWithChanges } from './types';
+import { subscribeToCommits } from './subscribe-to-commits';
+import type { Log, RecordWithChanges, SubscribeToChanges } from './types';
 
-export interface SubscribeToRecordsOptions extends RecordWakeOptions {
+export interface SubscribeToRecordsOptions {
   readonly afterSequence: number;
   readonly thread?: string;
+  readonly signal?: AbortSignal;
+
+  // the writer's commit bus by default; a reader in another process passes the WAL subscription
+  readonly subscribeToChanges?: SubscribeToChanges;
 }
 
 // Yields every record after a sequence, with its changed projection rows, then waits for the next
-// wake and reads again. The stream ends once the signal aborts. A wake during a read makes the next
-// read run at once, so no commit goes unread.
+// commit and reads again. The stream ends once the signal aborts. A commit during a read makes the
+// next read run at once, so no commit goes unread.
 export async function* subscribeToRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   options: SubscribeToRecordsOptions,
 ): AsyncGenerator<RecordWithChanges, void, undefined> {
-  const wake = startRecordWake(log.writer, options);
+  const wake = startRecordWake({
+    subscribeToChanges:
+      options.subscribeToChanges ?? ((onChange) => subscribeToCommits(log.writer, onChange)),
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+  });
+
   const cursor = { after: options.afterSequence };
 
   try {

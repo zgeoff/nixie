@@ -57,13 +57,16 @@ test('it commits the raise in one transaction that waits for a write already in 
 
   const raise: { pending: Promise<number> | null } = { pending: null };
 
-  const settledDuringWrite = await withWriteTransaction({ db: ctx.db, epoch }, async (tx) => {
-    raise.pending = claimWriterEpoch(ctx.other);
+  const settledDuringWrite = await withWriteTransaction(
+    { db: ctx.db, epoch, commits: new EventTarget() },
+    async (tx) => {
+      raise.pending = claimWriterEpoch(ctx.other);
 
-    await sql`insert into notes (id) values ('before the raise')`.execute(tx);
+      await sql`insert into notes (id) values ('before the raise')`.execute(tx);
 
-    return Promise.race([raise.pending, Promise.resolve('pending')]);
-  });
+      return Promise.race([raise.pending, Promise.resolve('pending')]);
+    },
+  );
 
   const raised = await raise.pending;
   const notes = await sql`select id from notes`.execute(ctx.other);

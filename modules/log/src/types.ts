@@ -14,9 +14,16 @@ export interface Writer {
 
   // the clock every record's time and every wait in the log reads
   readonly clock: Clock;
+
+  // the commit bus, which fires a commit event after each write transaction commits, so a reader
+  // in this process wakes without a poll
+  readonly commits: EventTarget;
   readonly migration: MigrationReport;
   readonly stop: () => Promise<void>;
 }
+
+// Attaches onChange to a source of commit wakes and returns the call that detaches it.
+export type SubscribeToChanges = (onChange: () => void) => () => void;
 
 // The exclusive flock on the data directory, held until release or until the process dies.
 export interface WriterLock {
@@ -166,7 +173,7 @@ export interface Projection {
 // What appending and reading need: the writer, the deployment key that wraps every record key,
 // and the projections each append updates.
 export interface Log {
-  readonly writer: Pick<Writer, 'clock' | 'dataDir' | 'db' | 'epoch' | 'keys'>;
+  readonly writer: Pick<Writer, 'clock' | 'commits' | 'dataDir' | 'db' | 'epoch' | 'keys'>;
   readonly deploymentKey: CryptoKey;
   readonly projections: readonly Projection[];
 }

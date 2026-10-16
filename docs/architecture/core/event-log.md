@@ -80,13 +80,15 @@ its cursor, stays consistent at every step. A record whose key is gone reads as 
 whose key or ciphertext fails to decrypt reads as unreadable, both with the envelope intact, so
 neither stops a reader at its sequence.
 
-A subscription yields the same entries, then waits for one of three wakes:
+A subscription yields the same entries, then waits for the next commit. The writer holds a commit
+bus, an event target in its own process that fires after each write transaction commits, so a reader
+in that process wakes on the commit itself and never polls. The abort signal ends the subscription
+and detaches it from the bus at once.
 
-- **A change to the database's write-ahead log.** SQLite writes a commit's frames before it
-  publishes the commit, so the subscription rechecks a few times on a short backoff after each
-  change.
-- **A poll.** It catches a change the watcher misses, and covers a filesystem that cannot watch.
-- **The abort signal.** It ends the subscription and stops the watcher and the poll at once.
+A reader in another process never sees that bus, so it subscribes through the database's write-ahead
+log (WAL) instead. SQLite writes a commit's frames before it publishes the commit, so that reader
+rechecks a few times on a short backoff after each change to the WAL file, and a poll on the clock
+covers a change the watcher misses and a filesystem that cannot watch.
 
 The subscription marks every earlier wake as seen before each read, never after, so a commit that
 lands while a read runs wakes the next read at once.

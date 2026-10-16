@@ -84,12 +84,13 @@ attempt.
 
 ## What the model sees
 
-The model's turn waits a bounded time for the outcome, then sees one of four views: done with the
-connector's result, failed with the reason, pending with the action ID, or unknown with a message
-that says the user was asked whether it happened. The
-[actions design](../../design/platform/core/actions.md) covers how the user's answer settles an
-unknown action. A result whose key was forgotten reads as no result, never as an empty success. The
-model has no tool that retries an action or sets an outcome, so only the queue settles one.
+The model's turn waits a bounded time for the outcome, reading the action again after each commit on
+the writer's commit bus, then sees one of four views: done with the connector's result, failed with
+the reason, pending with the action ID, or unknown with a message that says the user was asked
+whether it happened. The [actions design](../../design/platform/core/actions.md) covers how the
+user's answer settles an unknown action. A result whose key was forgotten reads as no result, never
+as an empty success. The model has no tool that retries an action or sets an outcome, so only the
+queue settles one.
 
 Action attempts run in a runner pool of their own, apart from the task runners, so a send goes out
 while every task runner is busy with a long turn.

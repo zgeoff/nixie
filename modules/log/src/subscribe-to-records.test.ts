@@ -1,7 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { startDatabase } from '@heynixie/db';
-import { waitForCondition } from '@heynixie/testing';
+import { makeWALSubscription } from './make-wal-subscription';
 import { startKeyStore } from './start-key-store';
 import { subscribeToRecords } from './subscribe-to-records';
 import { startTestLog } from './test-utils/start-test-log';
@@ -27,14 +27,14 @@ async function setupTest() {
   onTestFinished(() => readerKeys.destroy());
 
   const reader = {
-    writer: { ...started.writer, db: readerDB, keys: readerKeys },
+    writer: { ...started.writer, db: readerDB, keys: readerKeys, commits: new EventTarget() },
     deploymentKey: started.log.deploymentKey,
   };
 
   return { log: started.log, reader, clock: started.clock, signal: abort.signal };
 }
 
-test('it yields the records after the sequence, then a new record when the WAL changes', async () => {
+test('it yields the records after the sequence, then a new record on the next commit, without polling', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
@@ -42,12 +42,8 @@ test('it yields the records after the sequence, then a new record when the WAL c
     { kind: 'turn_finished', definitions: { snapshotHash: 'sha256:aa11' }, thread: 'conversation' },
   ]);
 
-  // an hour-long poll leaves the WAL watcher as the only wake that can arrive in time
-  const stream = subscribeToRecords(ctx.reader, {
-    afterSequence: 1,
-    pollMs: 3_600_000,
-    signal: ctx.signal,
-  });
+  // the writer's test clock never advances, so only the commit bus can wake the stream
+  const stream = subscribeToRecords(ctx.log, { afterSequence: 1, signal: ctx.signal });
 
   // the second pull starts once the first returned, so it waits for the next commit
   const [first, waiting] = [await stream.next(), stream.next()];
@@ -75,15 +71,17 @@ test('it yields the records after the sequence, then a new record when the WAL c
       },
     ],
   });
+
+  expect(ctx.clock.countSleepers()).toBe(0);
 });
 
-test('it wakes by polling when no WAL change arrives', async () => {
+test('it wakes a reader in another process when the WAL changes', async () => {
   const ctx = await setupTest();
 
+  // an hour-long poll leaves the WAL watcher as the only wake that can arrive in time
   const stream = subscribeToRecords(ctx.reader, {
     afterSequence: 0,
-    pollMs: 1000,
-    subscribeToChanges: () => () => {},
+    subscribeToChanges: makeWALSubscription(ctx.reader.writer, { pollMs: 3_600_000 }),
     signal: ctx.signal,
   });
 
@@ -92,10 +90,6 @@ test('it wakes by polling when no WAL change arrives', async () => {
   await writeRecords(ctx.log, [
     { kind: 'owner_message', definitions: { snapshotHash: 'sha256:aa11' } },
   ]);
-
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
-
-  ctx.clock.advance(1000);
 
   const next = await waiting;
 
@@ -107,12 +101,7 @@ test('it finishes the stream once the signal aborts', async () => {
 
   const abort = new AbortController();
 
-  const stream = subscribeToRecords(ctx.reader, {
-    afterSequence: 0,
-    pollMs: 3_600_000,
-    signal: abort.signal,
-  });
-
+  const stream = subscribeToRecords(ctx.log, { afterSequence: 0, signal: abort.signal });
   const waiting = stream.next();
 
   abort.abort();
@@ -122,7 +111,7 @@ test('it finishes the stream once the signal aborts', async () => {
   expect(next).toStrictEqual({ done: true, value: undefined });
 });
 
-test('it stops watching once the signal aborts, even when no consumer pulls again', async () => {
+test('it stops its subscription once the signal aborts, even when no consumer pulls again', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.log, [
@@ -133,9 +122,8 @@ test('it stops watching once the signal aborts, even when no consumer pulls agai
 
   const abort = new AbortController();
 
-  const stream = subscribeToRecords(ctx.reader, {
+  const stream = subscribeToRecords(ctx.log, {
     afterSequence: 0,
-    pollMs: 3_600_000,
     subscribeToChanges: () => unsubscribe,
     signal: abort.signal,
   });
