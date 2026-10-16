@@ -85,12 +85,16 @@ function buildGraphState<Values>(order: readonly AnyPartDeclaration<Values>[]): 
   const started: { [Name in keyof Values]?: { readonly value: Values[Name] } } = {};
   const waiters: { [Name in keyof Values]?: PromiseWithResolvers<Values[Name]> } = {};
 
-  const createWaiter = <Name extends keyof Values>(name: Name): void => {
+  const createWaiter = <Name extends keyof Values>(
+    name: Name,
+  ): PromiseWithResolvers<Values[Name]> => {
     const waiter = Promise.withResolvers<Values[Name]>();
 
     // a caller that never waits on a part leaves its rejection unread
     void waitForSettled(waiter.promise);
     waiters[name] = waiter;
+
+    return waiter;
   };
 
   for (const declaration of order) {
