@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readDataFiles } from './read-data-files';
@@ -22,4 +22,31 @@ test('it reads each file at the root as text and leaves out the sandboxes direct
   const files = await readDataFiles(ctx.dir);
 
   expect(files).toStrictEqual([{ name: 'nixie.db', text: '\u0000Aÿ' }]);
+});
+
+test('it skips a file that is removed between the directory read and the file read', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dir, 'nixie.db'), 'Fennel-page-3RX8');
+  await writeFile(join(ctx.dir, 'nixie.db-journal'), 'Sorrel-page-9KD2');
+
+  const files = await readDataFiles(ctx.dir, async (path) => {
+    await rm(join(ctx.dir, 'nixie.db-journal'), { force: true });
+
+    return readFile(path);
+  });
+
+  expect(files).toStrictEqual([{ name: 'nixie.db', text: 'Fennel-page-3RX8' }]);
+});
+
+test('it fails on a read error other than a missing file', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.dir, 'nixie.db'), 'Fennel-page-3RX8');
+
+  expect(
+    readDataFiles(ctx.dir, () =>
+      Promise.reject(Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' })),
+    ),
+  ).rejects.toMatchObject({ code: 'EACCES' });
 });
