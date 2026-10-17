@@ -61,6 +61,9 @@ docs/
 
 ## Packages
 
+These rules cover every workspace package except the spikes in `research/`. A spike pins the exact
+versions it ran against, and imports product files by path.
+
 Dependencies:
 
 - Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
