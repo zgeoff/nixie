@@ -1,5 +1,5 @@
 # The fetch image: a minimal base with Bun and the fetcher bundled into one file. Build it into impd
-# from the repo root: impz image build . --file=guests/fetch/Dockerfile --name=<name>. impd refuses
+# from the repo root, as docs/runbooks/imp-isolation-tests.md describes. impd refuses
 # a FROM that names its image with a variable, so each FROM writes out the Bun version in
 # .bun-version.
 
