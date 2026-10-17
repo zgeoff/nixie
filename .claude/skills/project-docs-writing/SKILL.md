@@ -44,8 +44,8 @@ deleted spike points at the commit that last held it.
 - The root README is a plain repo README: about 50 lines, and never more than 60. It holds one
   paragraph, a quick start, the checks, the layout and a docs link, and never flags, config keys or
   tables of states.
-- `docs/README.md` is the one index. An area of `docs/architecture/` gets a subfolder once it passes
-  about 6 docs.
+- [`docs/README.md`](../../../docs/README.md) is the one index. An area of `docs/architecture/` gets
+  a subfolder once it passes about 6 docs.
 
 ## Voice
 
