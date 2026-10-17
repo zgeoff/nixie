@@ -8,12 +8,12 @@ the parts built so far.
 
 The rules a task needs are not repeated here. Load the skill for the work before starting it.
 
-| Skill                  | Load before                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------- |
-| `code-style`           | writing, reviewing, or renaming any TypeScript — the function-verb taxonomy lives there |
-| `testing`              | designing, writing, or reviewing tests                                                  |
-| `docs-writing`         | writing or editing any committed prose: `docs/`, READMEs, this file, skills             |
-| `project-docs-writing` | the same, beside `docs-writing` — nixie's own prose rules                               |
+| Skill                  | Load before                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| `code-style`           | writing, reviewing, or renaming any TypeScript — the shared function-verb taxonomy |
+| `testing`              | designing, writing, or reviewing tests                                             |
+| `docs-writing`         | writing or editing any committed prose: `docs/`, READMEs, this file, skills        |
+| `project-docs-writing` | the same, beside `docs-writing` — nixie's own prose rules                          |
 
 ## Repo structure
 

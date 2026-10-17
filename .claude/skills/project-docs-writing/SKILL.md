@@ -1,51 +1,37 @@
 ---
 name: project-docs-writing
 description:
-  nixie's own rules for repo prose, on top of the shared docs-writing skill. Use with docs-writing
-  whenever you write, edit, or review prose in this repo.
+  nixie's own rules for repo prose, on top of the shared docs-writing skill — decision records
+  edited in place, spikes under research/, the Linear project, the architecture areas, and the
+  voice. Use with docs-writing whenever you write, edit, or review prose in this repo.
 ---
 
 # Project docs writing
 
-Load the shared `docs-writing` skill first. Where the two skills disagree, this one wins.
+Load the shared `docs-writing` skill first. This skill holds only what nixie adds to it, and where
+the two disagree, this one wins.
 
-## What each docs folder holds
+## Decision records
 
-- **`docs/architecture/`** explains what is built, so a reader can build a working model of it: the
-  parts, how they fit, which part owns which state, the mechanisms that cross packages, and the
-  rules that hold, with each reason in the sentence beside its fact. Its areas follow the design's:
-  `core/`, `policy/`, `connectors/` and `channels/`, beside the architecture overview.
-- **`docs/decisions/`** holds permanent records. A record states the choice, the alternatives it
-  rejected and why, and keeps its date in the header. It never describes how the system works now. A
-  changed decision is edited in place: the record keeps its number and states the decision as it now
-  stands, its header gains an `Updated` date, and a `## Changes` list at its end gives each change's
-  date and a one-line summary. The `## Changes` list is the one place a record holds history.
-- **`docs/design/<work>/`** holds a design for big, speculative work, written well before its code.
-  A design doc states contracts: what each part does, its interfaces, its guarantees, and the reason
-  for each one. Evidence lives in spikes, in `research/<name>/`, and the doc links the spike instead
-  of repeating its numbers or its method. The owner opens a design; an agent never opens one by
-  default.
-- **`docs/guides/`, `docs/runbooks/` and `docs/reference/`** hold steps a user does, operator and
-  contributor procedures, and generated reference only.
+A changed decision is edited in place, not superseded by a new record. The record keeps its number
+and states the decision as it now stands, its header gains an `Updated` date, and a `## Changes`
+list at its end gives each change's date and a one-line summary. The `## Changes` list is the one
+place a record holds history.
 
-A plan for work about to be built lives in its Linear issue or PR, never in `docs/`. Planned work,
-open choices and later stages live in the nixie Linear project, and a doc links the issue instead of
-restating the question.
+## Spikes and open work
 
-When work from a design lands, its PR moves the built part into `docs/architecture/`, rewritten to
-describe the code, and deletes the rest of the design folder once nothing in it is unbuilt. A spike
-is deleted once its finding sits in the architecture doc that owns it, and a link that cites a
-deleted spike points at the commit that last held it.
+A design's evidence lives in a spike under `research/<name>/`, and the design doc links the spike
+instead of repeating its numbers or its method. A spike is deleted once its finding sits in the
+architecture doc that owns it, and a link that cites a deleted spike points at the commit that last
+held it.
 
-## Size
+Planned work, open choices and later stages live in the nixie Linear project, and a doc links the
+issue instead of restating the question.
 
-- A doc past 250 lines, or 300 for a runbook: cut points first, then split it at a real code
-  boundary. If it is still over, say so in the PR body. Never compress sentences to fit.
-- The root README is a plain repo README: about 50 lines, and never more than 60. It holds one
-  paragraph, a quick start, the checks, the layout and a docs link, and never flags, config keys or
-  tables of states.
-- `docs/README.md` is the one index. An area of `docs/architecture/` gets a subfolder once it passes
-  about 6 docs.
+## Architecture areas
+
+The areas of `docs/architecture/` follow the design's: `core/`, `policy/`, `connectors/` and
+`channels/`, beside the architecture overview.
 
 ## Voice
 
