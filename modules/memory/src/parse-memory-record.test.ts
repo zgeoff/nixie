@@ -38,56 +38,7 @@ test('it reads a version record into its typed shape', () => {
     model: null,
     noticeKey: null,
     shortID: null,
-    itemKind: 'fact',
   });
-});
-
-test('it reads the self-note kind of a created version record', () => {
-  const record = buildMockLogRecord({
-    kind: 'memory.version_added',
-    payload: {
-      itemID: 'item-a',
-      version: 1,
-      change: 'created',
-      state: 'active',
-      sealed: 'c2VhbGVk',
-      evidence: null,
-      intentEvidence: null,
-      origin: 'conversation',
-      source: 'untrusted',
-      taskID: 'conversation',
-      proposalID: null,
-      checks: null,
-      shortID: 'q4wz8n2kpa',
-      itemKind: 'self',
-    },
-  });
-
-  expect(parseMemoryRecord(record)).toMatchObject({ change: 'created', itemKind: 'self' });
-});
-
-test('it refuses a version record whose kind is neither a fact nor a self-note', () => {
-  const record = buildMockLogRecord({
-    kind: 'memory.version_added',
-    payload: {
-      itemID: 'item-a',
-      version: 1,
-      change: 'created',
-      state: 'active',
-      sealed: 'c2VhbGVk',
-      evidence: null,
-      intentEvidence: null,
-      origin: 'conversation',
-      source: 'untrusted',
-      taskID: 'conversation',
-      proposalID: null,
-      checks: null,
-      shortID: 'q4wz8n2kpa',
-      itemKind: 'opinion',
-    },
-  });
-
-  expect(() => parseMemoryRecord(record)).toThrow();
 });
 
 test('it reads the short ID of a created version record', () => {

@@ -67,6 +67,55 @@ test('it creates a self-note when you approve its proposal, and recall reads it 
   ]);
 });
 
+test('it marks a self-note in records of their own, so its proposal and version records hold only the keys the release before reads', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.writes.remember({
+    text: 'Dry jokes land better with the owner than puns',
+    itemKind: 'self',
+    caller: buildMockWriteCaller({ model: 'claude-opus-5-5' }),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approved = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  invariant(approved.status === 'applied');
+
+  const records = await readRecords(memory.log, {
+    afterSequence: 0,
+    kinds: [
+      'memory.proposed',
+      'memory.proposal_self_noted',
+      'memory.version_added',
+      'memory.self_noted',
+    ],
+  });
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'memory.proposed',
+    'memory.proposal_self_noted',
+    'memory.version_added',
+    'memory.self_noted',
+  ]);
+
+  expect(records.map((entry) => entry.record.payload)).toSatisfyAll(
+    (payload: object) => !('itemKind' in payload),
+  );
+
+  expect(records.map((entry) => entry.record.payload).slice(1, 4)).toMatchObject([
+    { proposalID: pending.proposalID },
+    { itemID: approved.itemID },
+    { itemID: approved.itemID },
+  ]);
+});
+
 test('it keeps an item a self-note when you approve an edit of it', async () => {
   const memory = await startTestMemory();
 

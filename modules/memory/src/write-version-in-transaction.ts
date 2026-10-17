@@ -199,11 +199,6 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
     model: provenance.model ?? null,
     noticeKey: written.plan.noticeKey ?? null,
     ...(written.next.change === 'created' ? { shortID: written.shortID } : {}),
-
-    // a fact's created version leaves its kind out, as every version from before kinds does
-    ...(written.next.change === 'created' && written.plan.itemKind === 'self'
-      ? { itemKind: 'self' }
-      : {}),
   };
 
   const approval = written.plan.approval;
@@ -227,7 +222,14 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
         ]
       : [];
 
-  return [...(approval === undefined ? [] : [approval.record]), version, ...pinned];
+  // a created self-note's mark follows its version as a record of its own, which the release
+  // before skips
+  const selfNoted: readonly RecordInput[] =
+    written.next.change === 'created' && written.plan.itemKind === 'self'
+      ? [{ ...base, kind: 'memory.self_noted', payload: { itemID: written.ref.itemID } }]
+      : [];
+
+  return [...(approval === undefined ? [] : [approval.record]), version, ...selfNoted, ...pinned];
 }
 
 function toJSONEvidence(evidence: QuoteEvidence | null): JSONObject | null {

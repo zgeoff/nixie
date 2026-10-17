@@ -1,6 +1,7 @@
 import { buildShortIDFromUUID } from '@heynixie/db';
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import { parseKindRecord } from './parse-kind-record';
 import type { MemoryRecord } from './parse-memory-record';
 import { parseMemoryRecord } from './parse-memory-record';
 import type { MemoryTables } from './types';
@@ -11,6 +12,20 @@ export const memoryItemsProjection: Projection = {
   table: 'memory_items',
   keyColumn: 'item_id',
   fold: async (tx, record) => {
+    const marked = parseKindRecord(record);
+
+    // a self-note's mark follows its created version, and changes only the item's kind
+    if (marked?.kind === 'memory.self_noted') {
+      await tx
+        .$extendTables<MemoryTables>()
+        .updateTable('memory_items')
+        .set({ kind: 'self' })
+        .where('item_id', '=', marked.itemID)
+        .execute();
+
+      return [marked.itemID];
+    }
+
     const parsed = parseMemoryRecord(record);
 
     if (parsed === null) {
@@ -43,7 +58,7 @@ async function applyMemoryRecord(
 
         // an item from before short IDs takes the one its UUID gives, as the backfill gave it
         short_id: parsed.shortID ?? buildShortIDFromUUID(parsed.itemID),
-        kind: parsed.itemKind,
+        kind: 'fact',
       })
       .execute();
 

@@ -1,5 +1,6 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Kysely } from 'kysely';
+import { parseKindRecord } from './parse-kind-record';
 import type { ProposalRecord } from './parse-proposal-record';
 import { parseProposalRecord } from './parse-proposal-record';
 import type { MemoryKind, MemoryTables } from './types';
@@ -11,6 +12,20 @@ export const memoryProposalsProjection: Projection = {
   table: 'memory_proposals',
   keyColumn: 'proposal_id',
   fold: async (tx, record) => {
+    const marked = parseKindRecord(record);
+
+    // a new self-note's mark follows its proposal, and changes only the proposal's kind
+    if (marked?.kind === 'memory.proposal_self_noted') {
+      await tx
+        .$extendTables<MemoryTables>()
+        .updateTable('memory_proposals')
+        .set({ kind: 'self' })
+        .where('proposal_id', '=', marked.proposalID)
+        .execute();
+
+      return [marked.proposalID];
+    }
+
     const parsed = parseProposalRecord(record);
 
     if (parsed === null) {
@@ -88,14 +103,14 @@ async function writeProposalRow(
     .execute();
 }
 
-// a proposal for a change to an item takes that item's kind, whoever proposed it, and only a new
-// item's proposal carries its own
+// a proposal for a change to an item takes that item's kind, whoever proposed it; a new item's
+// proposal starts as a fact, and a self-note's mark that follows it changes that
 async function readProposalKind(
   db: Kysely<MemoryTables>,
   parsed: Extract<ProposalRecord, { readonly kind: 'memory.proposed' }>,
 ): Promise<MemoryKind> {
   if (parsed.isNewItem) {
-    return parsed.itemKind;
+    return 'fact';
   }
 
   const item = await db
@@ -104,7 +119,7 @@ async function readProposalKind(
     .where('item_id', '=', parsed.itemID)
     .executeTakeFirst();
 
-  return item?.kind ?? parsed.itemKind;
+  return item?.kind ?? 'fact';
 }
 
 const statusAfter = {

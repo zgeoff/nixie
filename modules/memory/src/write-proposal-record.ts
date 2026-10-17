@@ -1,6 +1,6 @@
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import { buildProposalRecord } from './build-proposal-record';
+import { buildProposalRecords } from './build-proposal-records';
 import { ProposalCapError } from './proposal-cap-error';
 import type { MemoryTables, StoreParts } from './types';
 import type { ProposalPlan } from './write-memory-proposal';
@@ -40,5 +40,5 @@ export async function writeProposalRecord(
     throw new ProposalCapError(limits.proposalCap);
   }
 
-  await writeRecordsInTransaction(tx, parts.context.log, [buildProposalRecord(parts, pending)]);
+  await writeRecordsInTransaction(tx, parts.context.log, buildProposalRecords(parts, pending));
 }

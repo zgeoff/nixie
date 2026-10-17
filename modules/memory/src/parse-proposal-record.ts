@@ -1,6 +1,6 @@
 import type { ContentSource, EnvelopeRecord, JSONObject } from '@heynixie/log';
 import { z } from 'zod';
-import type { MemoryKind, MemoryOrigin, QuoteEvidence } from './types';
+import type { MemoryOrigin, QuoteEvidence } from './types';
 
 const proposed = z.strictObject({
   proposalID: z.string(),
@@ -24,9 +24,6 @@ const proposed = z.strictObject({
   model: z.string().nullable(),
   noticeKey: z.string().nullable(),
   lapseAt: z.int(),
-
-  // a self-note's proposal carries its kind; a fact's, and one from before kinds, carries none
-  itemKind: z.enum(['fact', 'self']).default('fact'),
 });
 
 const approvalRecorded = z.strictObject({
@@ -74,9 +71,6 @@ interface ProposedRecord {
 
   // when the proposal lapses, in milliseconds since the epoch
   readonly lapseAt: number;
-
-  // the kind of the item the proposal creates or changes
-  readonly itemKind: MemoryKind;
 }
 
 // A later write that proposed the same change as a pending proposal, and merged into it.
