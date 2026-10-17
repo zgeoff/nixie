@@ -19,8 +19,8 @@ export interface ProposedChange {
 }
 
 // Finds the oldest pending remember proposal that makes the same change: the same target, or a new
-// item for both, the same kind, the same pin, and the same text once normalized. Each proposal's text is sealed
-// under its own item's key, so the search opens each candidate's text. A retirement never matches.
+// item of the same kind for both, the same pin, and the same text once normalized. Each text is
+// sealed under its own item's key, so the search opens each one. A retirement never matches.
 export async function findMatchingProposal(
   db: Kysely<MemoryTables>,
   parts: Pick<StoreParts, 'context'>,
@@ -39,12 +39,13 @@ export async function findMatchingProposal(
     .where('status', '=', 'pending')
     .where('lapse_at', '>', parts.context.gate.clock.now())
     .where('operation', '=', 'remember')
-    .where('is_pinned', '=', isPinned)
-    .where('kind', '=', change.itemKind ?? 'fact');
+    .where('is_pinned', '=', isPinned);
 
+  // a proposal for an edit takes its item's kind whoever proposed it, so the target alone decides,
+  // and only a new item's proposal is matched by the kind the write asks for
   const sameTarget =
     target === null
-      ? pending.where('is_new_item', '=', 1)
+      ? pending.where('is_new_item', '=', 1).where('kind', '=', change.itemKind ?? 'fact')
       : pending.where('item_id', '=', target.itemID).where('target_version', '=', target.version);
 
   const rows = await sameTarget.orderBy('created_sequence').execute();
