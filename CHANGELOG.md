@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.32.0](https://github.com/zgeoff/nixie/compare/v0.31.0...v0.32.0) (2026-10-17)
+
+
+### Features
+
+* **geo-1035:** add the nixie command and document impd names ([#329](https://github.com/zgeoff/nixie/issues/329)) ([a0df5ba](https://github.com/zgeoff/nixie/commit/a0df5ba55cbb13ff505788b1badbe15463d64404))
+* **geo-1108:** retry unsent messages and stamp late ones ([#356](https://github.com/zgeoff/nixie/issues/356)) ([5928589](https://github.com/zgeoff/nixie/commit/5928589738b24d6442f5d4475464122abb32cf7d))
+* **geo-724:** recognise domestic account numbers in the token check ([#333](https://github.com/zgeoff/nixie/issues/333)) ([68b5380](https://github.com/zgeoff/nixie/commit/68b5380041c07db80490d3e36a25e43def1b0bfb))
+* **geo-857:** mark a reset in the conversation ([#358](https://github.com/zgeoff/nixie/issues/358)) ([2929e67](https://github.com/zgeoff/nixie/commit/2929e67f618427440bd44e110dc9eaa21415c61b))
+* **geo-913:** pass the profile cache lifetime to the conversation cli ([#335](https://github.com/zgeoff/nixie/issues/335)) ([8da18d3](https://github.com/zgeoff/nixie/commit/8da18d3e301c28a5d5b56ba260cb9b546909d2e4))
+
+
+### Bug Fixes
+
+* **geo-1151:** seed the conversation turns part from stored errors ([#337](https://github.com/zgeoff/nixie/issues/337)) ([69bacad](https://github.com/zgeoff/nixie/commit/69bacad6eba313e69645dcfeb35fea20ed9b4bbf))
+* **geo-1153:** skip a data file that is gone by the time it is read ([#339](https://github.com/zgeoff/nixie/issues/339)) ([5d05b4b](https://github.com/zgeoff/nixie/commit/5d05b4b1115fd9424aa1d7450be92903c9c50d83))
+* **geo-1155:** remove a saved offer's key at start after a crash ([#327](https://github.com/zgeoff/nixie/issues/327)) ([4e37520](https://github.com/zgeoff/nixie/commit/4e37520afdd373a6ee6fe6e3eea3bdbae8964cae))
+* **geo-1167:** accept a bsb pair whose account digits group otherwise ([#341](https://github.com/zgeoff/nixie/issues/341)) ([0e80430](https://github.com/zgeoff/nixie/commit/0e8043098bbbe1dcb74a8ccaef32828afbf161fb))
+* **geo-1215:** fail a turn when the model refuses its credential ([#355](https://github.com/zgeoff/nixie/issues/355)) ([8412a4f](https://github.com/zgeoff/nixie/commit/8412a4f63791ddb834860bcab073c14a2268e62c))
+* **geo-1218:** send the preview's model credential as a bearer header ([#350](https://github.com/zgeoff/nixie/issues/350)) ([950488c](https://github.com/zgeoff/nixie/commit/950488c9fe80159fa441e873592707ecf78b2c90))
+* **geo-1219:** restart the preview server after a reset ([#359](https://github.com/zgeoff/nixie/issues/359)) ([6fc205e](https://github.com/zgeoff/nixie/commit/6fc205eca9b99a14b317f5fc85cc9a486678af20))
+* **geo-1228:** keep the preview's model calls on the broker after any compose command ([#364](https://github.com/zgeoff/nixie/issues/364)) ([a33783c](https://github.com/zgeoff/nixie/commit/a33783c77c514ac18f8e09eb7d98d5406f059c38))
+* **geo-556:** read a review reason a later release wrote as other ([#343](https://github.com/zgeoff/nixie/issues/343)) ([e1febca](https://github.com/zgeoff/nixie/commit/e1febcae000f7b0b98d76f71655d4cb0cabcbcca))
+* **geo-877:** drop the cached step end a reset removed ([#365](https://github.com/zgeoff/nixie/issues/365)) ([54713d4](https://github.com/zgeoff/nixie/commit/54713d4ae4beb256c270c6b9fd11b1d456833554))
+
+
+### Performance Improvements
+
+* **geo-1162:** walk the memory export's pages in one loop ([#338](https://github.com/zgeoff/nixie/issues/338)) ([58701c1](https://github.com/zgeoff/nixie/commit/58701c1117fbeddc1f9436f42b2c9a45881b07ed))
+
 ## [0.31.0](https://github.com/zgeoff/nixie/compare/v0.30.0...v0.31.0) (2026-10-16)
 
 
