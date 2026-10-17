@@ -8,7 +8,8 @@ export interface ConversationRecords {
   readonly status: 'pending' | 'failed' | 'ready';
   readonly records: readonly LiveRecord[];
 
-  // the end of the newest step at the time of the page, which the page's records may not reach
+  // the end of the newest step at the time of the page, which the page's records may not reach, and
+  // null once a later reset removed that step
   readonly lastStepEnd: LiveRecord | null | undefined;
 
   // whether the live stream failed several attempts in a row, until it connects again
@@ -42,7 +43,7 @@ export function useConversationRecords(thread: string): ConversationRecords {
   return {
     status: 'ready',
     records: merged.records,
-    lastStepEnd: page.data.lastStepEnd,
+    lastStepEnd: findStepEndAfterReset(page.data.lastStepEnd, merged.records),
     unavailable: live.unavailable,
     forgottenClientMessageIDs: merged.forgottenClientMessageIDs,
     liveResetSequence: live.records.findLast((record) => record.kind === 'log_reset')?.sequence,
@@ -123,4 +124,18 @@ function toErasedSummary(record: LiveRecord): LiveRecord {
   const { text: _erased, ...summary } = record.summary;
 
   return { ...record, summary };
+}
+
+// A reset removed every step that ended before its log_reset record, so a step end that a page
+// read before the reset names is gone, even when the read again after the reset fails.
+function findStepEndAfterReset(
+  stepEnd: LiveRecord | null | undefined,
+  records: readonly LiveRecord[],
+): LiveRecord | null | undefined {
+  const reset = records.findLast((record) => record.kind === 'log_reset');
+  const sequence = stepEnd?.sequence;
+
+  return reset !== undefined && sequence !== undefined && sequence < reset.sequence
+    ? null
+    : stepEnd;
 }
