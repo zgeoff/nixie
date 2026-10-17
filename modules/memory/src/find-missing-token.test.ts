@@ -27,6 +27,26 @@ test.each([
     'my acct is 48217730',
   ],
   [
+    'a BSB and account number whose account digits the quote groups otherwise',
+    'Pay 062-000 12345678',
+    'Pay 062-000 1234 5678',
+  ],
+  [
+    'a BSB and account number whose account digits the memory groups otherwise',
+    'Pay 062-000 1234 5678',
+    'Pay 062-000 12345678',
+  ],
+  [
+    'an international phone number that the quote groups like a BSB',
+    'Call +420777123456',
+    'Call +420 777 123 456',
+  ],
+  [
+    'an international phone number that the memory groups like a BSB',
+    'Call +420 777 123 456',
+    'Call +420777123456',
+  ],
+  [
     'an account number that a quoted BSB and account number holds',
     'Account number is 12345678',
     'BSB 062-000 account number: 12345678',
@@ -95,6 +115,13 @@ test.each([
 
 test('it finds a BSB that the quote lacks beside a quoted account number', () => {
   expect(findMissingToken('Pays 062-000 12345678', 'account number: 12345678')).toMatchObject({
+    kind: 'account',
+    key: '06200012345678',
+  });
+});
+
+test('it finds a BSB that the quote lacks beside a grouped account number after an account word', () => {
+  expect(findMissingToken('Pay 062-000 account 1234 5678', 'Pay account 12345678')).toMatchObject({
     kind: 'account',
     key: '06200012345678',
   });

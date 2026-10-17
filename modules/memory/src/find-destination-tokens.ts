@@ -1,10 +1,12 @@
 // oxlint-disable typescript/prefer-readonly-parameter-types -- the scan's own list of taken ranges, and a RegExp, which has no readonly form
 
-// A destination-like token in a text, with the form it compares in.
+// A destination-like token in a text, with the form it compares in. A BSB and account number also
+// carries the account number alone as its part.
 export interface DestinationToken {
   readonly kind: 'account' | 'domain' | 'email' | 'handle' | 'phone' | 'url';
   readonly key: string;
   readonly raw: string;
+  readonly part?: string;
 }
 
 // Finds the destination-like tokens in a text. A URL is found before an email inside it, and an
@@ -31,7 +33,7 @@ interface TokenPattern {
 }
 
 // a match that overlaps a token an earlier pattern took is part of that token, a phone number needs
-// at least 7 digits, and a BSB and account number is a second token for the account number alone
+// at least 7 digits, and a BSB and account number keeps the account number alone as its part
 function collectPatternTokens(
   text: string,
   entry: TokenPattern,
@@ -54,9 +56,9 @@ function collectPatternTokens(
       raw: match[0].replace(trailing, ''),
     };
 
-    const part = match.groups?.['account'];
+    const part = match.groups?.['account']?.replaceAll(/\D/gu, '');
 
-    return part === undefined ? [token] : [token, { kind: entry.kind, key: part, raw: part }];
+    return part === undefined ? [token] : [{ ...token, part }];
   });
 }
 
@@ -71,12 +73,13 @@ const patterns: readonly TokenPattern[] = [
     pattern: /\b[A-Z]{2}\d{2}(?:\s?[A-Z\d]{4}){2,7}(?:\s?[A-Z\d]{1,4})?\b/gu,
   },
 
-  // an Australian BSB and its account number, with an optional account word between them; neither
-  // pattern takes part of a longer run of digit groups, which the phone pattern takes whole
+  // an Australian BSB and its account number, whose digits may sit in groups, with an optional
+  // account word between them; neither pattern takes part of a longer run of digit groups or of an
+  // international number, which the phone pattern takes whole
   {
     kind: 'account',
     pattern:
-      /(?<!\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+(?<account>\d{5,9})\b(?![\p{Zs}\t-]?\d)/giu,
+      /(?<!\+[\p{Zs}\t]?|\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+(?<account>\d(?:[\p{Zs}\t]?\d){4,8})\b(?![\p{Zs}\t-]?\d)/giu,
   },
 
   // a run of 6 to 17 digits right after an account word, such as "account number is"

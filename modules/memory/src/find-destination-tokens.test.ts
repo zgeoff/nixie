@@ -10,13 +10,24 @@ test.each([
   ['a mobile number', 'Call 0412 345 678'],
   ['a number in 3, 3 and 4 digit groups', 'Call 212 555 0147'],
   ['a phone number with a country code', 'Call +61 412 345 678'],
+  ['a phone number with a country code grouped like a BSB', 'Call +420 777 123 456'],
 ])('it finds no account number in %s', (_label, text) => {
   expect(findDestinationTokens(text).filter((token) => token.kind === 'account')).toStrictEqual([]);
 });
 
-test('it finds a BSB and account number as one token and the account number as another', () => {
+test('it finds a BSB and account number as one token whose part is the account number', () => {
   expect(findDestinationTokens('Pay BSB 062-000 account no. 12345678 today')).toStrictEqual([
-    { kind: 'account', key: '06200012345678', raw: '062-000 account no. 12345678' },
-    { kind: 'account', key: '12345678', raw: '12345678' },
+    {
+      kind: 'account',
+      key: '06200012345678',
+      raw: '062-000 account no. 12345678',
+      part: '12345678',
+    },
+  ]);
+});
+
+test('it finds a BSB and grouped account number as one token whose part joins the groups', () => {
+  expect(findDestinationTokens('Pay 062-000 account 1234 5678')).toStrictEqual([
+    { kind: 'account', key: '06200012345678', raw: '062-000 account 1234 5678', part: '12345678' },
   ]);
 });
