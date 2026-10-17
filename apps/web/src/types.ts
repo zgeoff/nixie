@@ -31,6 +31,10 @@ export interface OutboxMessage {
   // the browser's IANA time zone when you wrote the message, so a retry carries the same zone
   readonly timeZone?: string | undefined;
 
+  // when you wrote the message, as an ISO 8601 UTC time, kept through every retry and reload; a
+  // message stored before the outbox kept it lacks it
+  readonly writtenAt?: string | undefined;
+
   // the images attached to the message, each already scaled and re-encoded on the device
   readonly images?: readonly File[] | undefined;
 

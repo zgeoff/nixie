@@ -13,10 +13,13 @@ async function setupTest() {
   // every send needs a signed-in browser
   await createDeviceSession();
 
-  // the stored outbox runs inside the outbox, which is how the page uses it
-  const rendered = renderHook(() => useOutbox([]));
+  // the page's clock reads half a minute after each stored message was written
+  const options = { now: () => Date.parse('2026-10-17T09:00:30.000Z') };
 
-  return { rendered };
+  // the stored outbox runs inside the outbox, which is how the page uses it
+  const rendered = renderHook(() => useOutbox([], options));
+
+  return { options, rendered };
 }
 
 test('it keeps the images of an unsent message across a reload, and sends them with it', async () => {
@@ -47,7 +50,7 @@ test('it keeps the images of an unsent message across a reload, and sends them w
   ctx.rendered.unmount();
   server.resetHandlers();
 
-  const reloaded = renderHook(() => useOutbox([]));
+  const reloaded = renderHook(() => useOutbox([], ctx.options));
 
   await waitFor(() => {
     expect(reloaded.result.current.entries[0]?.status).toBe('sent');
@@ -78,6 +81,7 @@ test('it keeps a stored message unsent when its images do not read back after a 
         spans: [{ end: 16, source: 'typed', start: 0 }],
         text: 'Two hallway rugs',
         thread: 'conversation',
+        writtenAt: '2026-10-17T09:00:00.000Z',
       },
     ]),
   );
@@ -105,6 +109,7 @@ test('it sends a stored message with its images on a retry once they read back',
         spans: [{ end: 9, source: 'typed', start: 0 }],
         text: 'A doormat',
         thread: 'conversation',
+        writtenAt: '2026-10-17T09:00:00.000Z',
       },
     ]),
   );
@@ -146,6 +151,7 @@ test('it sends a stored message with images before one you send while its images
         spans: [{ end: 9, source: 'typed', start: 0 }],
         text: 'A doormat',
         thread: 'conversation',
+        writtenAt: '2026-10-17T09:00:00.000Z',
       },
     ]),
   );
@@ -204,6 +210,7 @@ test('it keeps the images out of localStorage, which holds only the text and the
       text: 'A doormat',
       thread: 'conversation',
       timeZone: expect.toBeString(),
+      writtenAt: '2026-10-17T09:00:30.000Z',
     },
   ]);
 });
@@ -230,4 +237,65 @@ test('it removes the kept images once the server confirms the message', async ()
 
     expect(kept).toStrictEqual([]);
   });
+});
+
+test('it keeps when you wrote an unsent message across a reload', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error()));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+      spans: [{ end: 9, source: 'typed', start: 0 }],
+      text: 'A doormat',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  ctx.rendered.unmount();
+
+  const reloaded = renderHook(() => useOutbox([], ctx.options));
+
+  await waitFor(() => {
+    expect(reloaded.result.current.entries[0]?.message.writtenAt).toBe('2026-10-17T09:00:30.000Z');
+  });
+});
+
+test('it loads a stored message with no written time, and holds it as stale', async () => {
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+        spans: [{ end: 9, source: 'typed', start: 0 }],
+        text: 'A doormat',
+        thread: 'conversation',
+        timeZone: 'Europe/Lisbon',
+      },
+    ]),
+  );
+
+  const ctx = await setupTest();
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries).toStrictEqual([
+      {
+        message: {
+          clientMessageId: '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+          spans: [{ end: 9, source: 'typed', start: 0 }],
+          text: 'A doormat',
+          thread: 'conversation',
+          timeZone: 'Europe/Lisbon',
+        },
+        status: 'held',
+      },
+    ]);
+  });
+
+  expect(store.records.count()).toBe(0);
 });

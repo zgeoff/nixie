@@ -99,9 +99,9 @@ text, its spans and the label of the session it came from sit in the record's er
 one key, so forgetting the message forgets how it arrived too. The message keeps the label its
 session had when it was sent, so a new label reaches the next message and leaves the earlier ones as
 they were. The payload holds the client message ID, the identity row it came through, whether the
-spans are the client's own, and the sending device's time zone when the client sent one the server
-knows, which [time](../connectors/time.md) covers. A send to a thread whose task does not exist or
-has ended gets `THREAD_NOT_FOUND`.
+spans are the client's own, the sending device's time zone when the client sent one the server
+knows, and the time the device says the user wrote the message, which [time](../connectors/time.md)
+covers. A send to a thread whose task does not exist or has ended gets `THREAD_NOT_FOUND`.
 
 The API keeps the spans only when they run from the start of the text to its end in order, each
 non-empty, with no gap and no overlap, counted in UTF-16 code units. Otherwise the whole message

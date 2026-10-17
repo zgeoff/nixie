@@ -34,6 +34,15 @@ both sides of the conversation read on one clock. A reply carries no zone, so it
 the newest message before it that is not still waiting in the inbox, or the default zone when none
 comes before it.
 
+A message that reached nixie long after the user wrote it, such as one that waited on a phone with
+no signal, shows both times, such as `[#48213 · typed 08:12, sent Wed 14 Oct, 18:36, Sydney]`, so
+the model knows the words are older than their arrival. The web client keeps the time the user wrote
+each message through every retry and reload, and the API stores it with the message. The stamp shows
+both times only when the written time and the arrival time differ by more than the late limit, and
+the written time shows its day only when it falls on an earlier day than the arrival. The written
+time comes from the device's clock, so a device whose clock is wrong by more than the late limit
+shows both times on every message.
+
 The stamp ends with the label of the device session the message came from, such as
 `[#48213 · Tue 14 Oct, 14:05, Sydney · phone]`, so the model can fit its reply to the screen the
 user reads it on. [The API](../channels/api.md#device-sessions) covers where the label comes from. A

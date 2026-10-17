@@ -105,6 +105,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@heynixie/contract": "workspace:*",
+        "@heynixie/retry": "workspace:*",
         "@orpc/client": "catalog:",
         "@tanstack/react-query": "catalog:",
         "@tanstack/react-router": "catalog:",

@@ -47,7 +47,12 @@ export function Conversation(props: ConversationProps): ReactNode {
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <CompactionFailureNotice records={records} />
       <ConversationScroller arrivals={records.length + outbox.entries.length} sends={sends}>
-        <ConversationList entries={outbox.entries} onRetry={outbox.retry} records={records} />
+        <ConversationList
+          entries={outbox.entries}
+          onDiscard={outbox.discard}
+          onRetry={outbox.retry}
+          records={records}
+        />
       </ConversationScroller>
       <div className={composerBar}>
         <Composer

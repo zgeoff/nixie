@@ -11,6 +11,7 @@ import { StepGroup } from './step-group';
 
 export interface ConversationListProps {
   readonly entries: readonly OutboxEntry[];
+  readonly onDiscard: (clientMessageID: string) => void;
   readonly onRetry: (message: OutboxMessage) => Promise<void>;
   readonly records: readonly LiveRecord[];
 }
@@ -34,14 +35,19 @@ export function ConversationList(props: ConversationListProps): ReactNode {
           ),
         )}
         {unshown.map((entry) => (
-          <OutboxItem entry={entry} key={entry.message.clientMessageId} onRetry={props.onRetry} />
+          <OutboxItem
+            entry={entry}
+            key={entry.message.clientMessageId}
+            onDiscard={props.onDiscard}
+            onRetry={props.onRetry}
+          />
         ))}
       </ol>
       {/* the spinner's slot keeps its height when the spinner goes, so the messages never jump */}
       <div className={css(column, { height: '6' })}>
         {isWorking(
           activity,
-          unshown.some((entry) => entry.status !== 'failed'),
+          unshown.some((entry) => entry.status === 'sending' || entry.status === 'sent'),
         ) ? (
           <span aria-label="nixie is working" className={spinner} role="progressbar" />
         ) : null}

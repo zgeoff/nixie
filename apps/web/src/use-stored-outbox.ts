@@ -2,6 +2,7 @@ import { contract } from '@heynixie/contract';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import { isOutboxMessageStale } from './is-outbox-message-stale';
 import { loadOutboxImages } from './load-outbox-images';
 import { removeStaleOutboxImages } from './remove-stale-outbox-images';
 import type { OutboxMessage, ReadonlyDeep } from './types';
@@ -13,6 +14,9 @@ export interface StoredOutboxOptions {
 
   // a forgotten message never goes back to storage, whatever status a stale render gives it
   readonly forgottenClientMessageIDs: readonly string[];
+
+  // the time in milliseconds since the epoch, which decides whether a stored message is stale
+  readonly now: () => number;
   readonly sendEntry: (message: OutboxMessage) => Promise<void>;
   readonly setEntries: Dispatch<SetStateAction<readonly OutboxEntry[]>>;
 }
@@ -20,10 +24,11 @@ export interface StoredOutboxOptions {
 const storageKey = 'nixie.outbox';
 
 // Keeps the outbox's unconfirmed messages in device storage: the text in localStorage, and each
-// message's images in IndexedDB under its client message ID. Storage exists only in the browser, so
-// the outbox loads after hydration and sends again whatever an earlier page left unsent.
+// message's images in IndexedDB under its client message ID. The outbox loads after hydration, and
+// sends again a message an earlier page left unsent under 2 minutes ago, holding any older one.
 export function useStoredOutbox(options: StoredOutboxOptions): void {
   const [loaded, setLoaded] = useState(false);
+  const now = options.now;
   const sendEntry = options.sendEntry;
   const setEntries = options.setEntries;
 
@@ -31,12 +36,21 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
   const writtenImages = useRef(new Set<string>());
 
   useEffect(() => {
-    const stored = readStoredMessages();
+    const stored = readStoredMessages().map((message) => ({
+      message,
+      isStale: isOutboxMessageStale(message, now()),
+    }));
 
-    setEntries(stored.map((message) => ({ message, status: 'sending' })));
+    setEntries(
+      stored.map((entry) => ({
+        message: entry.message,
+        status: entry.isStale ? 'held' : 'sending',
+      })),
+    );
+
     setLoaded(true);
     sendStoredMessages(stored, { sendEntry, setEntries, written: writtenImages.current });
-  }, [sendEntry, setEntries]);
+  }, [now, sendEntry, setEntries]);
 
   useEffect(() => {
     if (loaded) {
@@ -63,18 +77,27 @@ interface StoredSend {
   readonly written: Set<string>;
 }
 
-// Each stored message takes its place in the send queue at once, in the order it was written, so a
-// message you send while the images load goes after it; the send reads the images back in its turn.
-// A message whose images do not read back fails, and keeps its place in storage for a retry.
+interface StoredMessage {
+  readonly message: OutboxMessage;
+  readonly isStale: boolean;
+}
+
+// Each fresh stored message takes its place in the send queue at once, in the order it was written,
+// so a message you send while the images load goes after it; the send reads the images back in its
+// turn. A message whose images do not read back fails, and keeps its place in storage for a retry.
 function sendStoredMessages(
-  stored: readonly OutboxMessage[],
+  stored: readonly StoredMessage[],
 
   send: StoredSend,
 ): void {
-  for (const message of stored) {
-    send.written.add(message.clientMessageId);
-    void send.sendEntry(message);
-    void loadStoredImages(message, send.setEntries);
+  for (const entry of stored) {
+    send.written.add(entry.message.clientMessageId);
+
+    if (!entry.isStale) {
+      void send.sendEntry(entry.message);
+    }
+
+    void loadStoredImages(entry.message, send.setEntries);
   }
 }
 
@@ -191,6 +214,7 @@ function toStoredText(message: OutboxMessage): StoredText {
     text: message.text,
     thread: message.thread,
     ...(message.timeZone === undefined ? {} : { timeZone: message.timeZone }),
+    ...(message.writtenAt === undefined ? {} : { writtenAt: message.writtenAt }),
     ...(imageCount === 0 ? {} : { imageCount }),
   };
 }

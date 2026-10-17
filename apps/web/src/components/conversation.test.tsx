@@ -1,7 +1,8 @@
 import { expect, mock, test } from 'bun:test';
-import { waitFor } from '@testing-library/react';
+import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
+import invariant from 'tiny-invariant';
 import { server } from '../mocks/node';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -313,6 +314,7 @@ test('it retries an unsent message with its first client message ID', async () =
       text: 'hello',
       thread: 'conversation',
       timeZone: 'Europe/Lisbon',
+      writtenAt: expect.toBeDateString(),
     },
   });
 });
@@ -355,12 +357,14 @@ test('it sends stored messages in the order you sent them', async () => {
         spans: [{ end: 5, source: 'typed', start: 0 }],
         text: 'first',
         thread: 'conversation',
+        writtenAt: new Date().toISOString(),
       },
       {
         clientMessageId: '0b9d6c1e-2f4a-4e7b-9c3d-8a5f1e2b7c64',
         spans: [{ end: 6, source: 'typed', start: 0 }],
         text: 'second',
         thread: 'conversation',
+        writtenAt: new Date().toISOString(),
       },
     ]),
   );
@@ -387,4 +391,116 @@ test('it sends stored messages in the order you sent them', async () => {
       .findMany((query) => query.where({ kind: 'owner_message' }), { orderBy: { sequence: 'asc' } })
       .map((record) => record.message?.text),
   ).toStrictEqual(['first', 'second']);
+});
+
+test('it sends a stored message written under 2 minutes ago, and holds an older one until you send it', async () => {
+  const ctx = await setupTest();
+
+  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const halfAMinuteAgo = new Date(Date.now() - 30 * 1000).toISOString();
+
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '6c1e3a5f-7b9d-4f2a-8c4e-0d2f4a6c8e17',
+        spans: [{ end: 15, source: 'typed', start: 0 }],
+        text: 'Lock the garage',
+        thread: 'conversation',
+        writtenAt: threeHoursAgo,
+      },
+      {
+        clientMessageId: '1f3b5d7a-9c2e-4a6b-8d0f-2e4c6a8b0d39',
+        spans: [{ end: 14, source: 'typed', start: 0 }],
+        text: 'Order more tea',
+        thread: 'conversation',
+        writtenAt: halfAMinuteAgo,
+      },
+    ]),
+  );
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await waitFor(() => {
+    expect(store.records.count()).toBe(1);
+  });
+
+  const held = await rendered.findByText('Lock the garage').then((text) => text.closest('li'));
+
+  expect(
+    store.records.findFirst((query) => query.where({ kind: 'owner_message' }))?.message?.text,
+  ).toBe('Order more tea');
+
+  expect(held).toHaveTextContent('Not sent · written 3 h ago');
+
+  invariant(held, 'the held message shows in no list item');
+
+  await ctx.user.click(within(held).getByRole('button', { name: 'Send' }));
+
+  await waitFor(() => {
+    expect(store.records.count()).toBe(2);
+  });
+
+  expect(
+    store.records
+      .findMany((query) => query.where({ kind: 'owner_message' }), { orderBy: { sequence: 'asc' } })
+      .map((record) => record.message?.text),
+  ).toStrictEqual(['Order more tea', 'Lock the garage']);
+});
+
+test('it holds a stored message from before the outbox kept when you wrote it', async () => {
+  await setupTest();
+
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '6c1e3a5f-7b9d-4f2a-8c4e-0d2f4a6c8e17',
+        spans: [{ end: 15, source: 'typed', start: 0 }],
+        text: 'Lock the garage',
+        thread: 'conversation',
+        timeZone: 'Europe/Lisbon',
+      },
+    ]),
+  );
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const status = await rendered.findByText(/^Not sent/u);
+
+  expect(status).toHaveTextContent('Not sent · written earlier');
+  expect(rendered.getByRole('button', { name: 'Discard' })).toBeInTheDocument();
+  expect(store.records.count()).toBe(0);
+});
+
+test('it removes a held message you discard from the page and device storage', async () => {
+  const ctx = await setupTest();
+
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '6c1e3a5f-7b9d-4f2a-8c4e-0d2f4a6c8e17',
+        spans: [{ end: 15, source: 'typed', start: 0 }],
+        text: 'Lock the garage',
+        thread: 'conversation',
+        writtenAt: tenMinutesAgo,
+      },
+    ]),
+  );
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const discard = await rendered.findByRole('button', { name: 'Discard' });
+
+  await ctx.user.click(discard);
+
+  await waitFor(() => {
+    expect(rendered.queryByText('Lock the garage')).toBeNull();
+  });
+
+  expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
+  expect(store.records.count()).toBe(0);
 });
