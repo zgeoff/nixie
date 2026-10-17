@@ -59,7 +59,7 @@ test('#memory.listProposals lists a proposal whose review reason a later release
   await ctx.context.log.writer.db
     .$extendTables<{ memory_proposals: { review_reason: string } }>()
     .updateTable('memory_proposals')
-    .set({ review_reason: 'self_note' })
+    .set({ review_reason: 'quote_too_old' })
     .execute();
 
   const listed = await ctx.client.memory.listProposals();

@@ -19,7 +19,7 @@ test('it folds a proposal record whose review reason a later release wrote, keep
         operation: 'remember',
         targetVersion: null,
         isPinned: false,
-        reviewReason: 'self_note',
+        reviewReason: 'quote_too_old',
         actionHash: 'hash-a',
         sealed: 'c2VhbGVk',
         evidence: null,
@@ -42,6 +42,6 @@ test('it folds a proposal record whose review reason a later release wrote, keep
     .execute();
 
   expect(rows).toStrictEqual([
-    { proposal_id: 'proposal-a', review_reason: 'self_note', status: 'pending' },
+    { proposal_id: 'proposal-a', review_reason: 'quote_too_old', status: 'pending' },
   ]);
 });

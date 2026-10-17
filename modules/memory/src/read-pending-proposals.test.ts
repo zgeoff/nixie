@@ -15,7 +15,7 @@ test('it lists a pending proposal whose review reason a later release wrote with
   await memory.log.writer.db
     .$extendTables<MemoryTables>()
     .updateTable('memory_proposals')
-    .set({ review_reason: 'self_note' })
+    .set({ review_reason: 'quote_too_old' })
     .execute();
 
   const pending = await memory.store.proposals.listPending();

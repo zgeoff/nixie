@@ -12,7 +12,7 @@ test('it keeps a review reason this release does not know word for word', () => 
       operation: 'remember',
       targetVersion: null,
       isPinned: false,
-      reviewReason: 'self_note',
+      reviewReason: 'quote_too_old',
       actionHash: 'hash-a',
       sealed: 'c2VhbGVk',
       evidence: null,
@@ -29,7 +29,7 @@ test('it keeps a review reason this release does not know word for word', () => 
 
   expect(parseProposalRecord(record)).toMatchObject({
     kind: 'memory.proposed',
-    reviewReason: 'self_note',
+    reviewReason: 'quote_too_old',
   });
 });
 
