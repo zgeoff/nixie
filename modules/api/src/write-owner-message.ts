@@ -17,6 +17,7 @@ interface OwnerMessageInput {
   readonly text: string;
   readonly spans: readonly Span[];
   readonly timeZone?: string | undefined;
+  readonly writtenAt?: string | undefined;
 
   // the images readOwnerImages checked, in the order sent
   readonly images?: readonly OwnerImage[] | undefined;
@@ -105,6 +106,7 @@ async function writeMessage(
         identityID: pending.caller.identityID,
         spans: spans.labelled,
         ...pickTimeZone(input.timeZone),
+        ...pickWrittenAt(input.writtenAt),
         ...pickImageTypes(input.images ?? []),
       }),
       erasable: { text: input.text, spans: spans.spans.map(toSpanJSON), sessionLabel },
@@ -147,6 +149,15 @@ async function readSessionLabel(tx: Transaction<unknown>, identityID: string): P
 // a key. A zone the server does not know is left out.
 function pickTimeZone(zone: string | undefined): { readonly timeZone?: string } {
   return zone !== undefined && isTimeZone(zone) ? { timeZone: zone } : {};
+}
+
+// The payload holds when the device says you wrote the message, beside the time the record keeps of
+// when it arrived, so a reader sees a message that waited on the device. A time that does not parse
+// is left out.
+function pickWrittenAt(writtenAt: string | undefined): { readonly writtenAt?: string } {
+  const at = writtenAt === undefined ? Number.NaN : Date.parse(writtenAt);
+
+  return Number.isNaN(at) ? {} : { writtenAt: new Date(at).toISOString() };
 }
 
 // The payload names each image's type, which a reader needs without a key; the bytes are sealed.

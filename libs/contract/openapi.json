@@ -961,6 +961,10 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100
+                  },
+                  "writtenAt": {
+                    "type": "string",
+                    "format": "date-time"
                   }
                 },
                 "required": [
@@ -1033,6 +1037,10 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100
+                  },
+                  "writtenAt": {
+                    "type": "string",
+                    "format": "date-time"
                   }
                 },
                 "required": [

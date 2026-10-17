@@ -175,10 +175,25 @@ memoizes by hand.
 
 ## The outbox
 
-Every message gets its client message ID when the user sends it, and the outbox keeps it in local
-storage until the server confirms it. A message whose send failed shows as not sent with a retry
-control, and goes again under the same ID. A page load sends every stored message again. The server
-writes a message once per client message ID, so no retry can write it twice.
+Every message gets its client message ID and its written time when the user sends it, and the outbox
+keeps it in local storage until the server confirms it. A send that the API refused shows as not
+sent with a retry control, and goes again under the same ID. The server writes a message once per
+client message ID, so no retry can write it twice.
+
+A send that the API did not answer, because the network or the server is down, retries on its own
+under the same ID. The pause before each try doubles with each failure in a row up to a cap, and the
+message shows when the next try goes, beside the retry control. A browser that comes back online, or
+a page that becomes visible again, retries each waiting send at once, because a phone that slept can
+miss the moment the API came back.
+
+A message older than the stale limit never goes on its own, because what it says may no longer hold.
+A page load sends each stored message under the limit, and holds an older one as not sent, with how
+long ago the user wrote it and a choice to send or discard it. Each send checks the message's age
+again when its turn in the queue comes, and holds a message that passed the limit while it waited. A
+message the user chose to send keeps retrying whatever its age. A stored message from before the
+outbox kept the written time counts as stale. Discarding a message removes it from memory, local
+storage and IndexedDB, as a forget does. Tabs share the list of discarded messages, so a send that
+waits in any tab's queue never sends a discarded message.
 
 The outbox sends one message at a time, in the order the user sent them, because the API writes
 records in arrival order and two sends at once could land out of order. Every tab shares the

@@ -1,9 +1,11 @@
 import { expect, mock, test } from 'bun:test';
 import { act, waitFor } from '@testing-library/react';
-import { http } from 'msw';
+import { HttpResponse, http } from 'msw';
 import invariant from 'tiny-invariant';
 import { server } from './mocks/node';
 import { store } from './mocks/store';
+import { readOutboxImages } from './read-outbox-images';
+import { buildStubTimer } from './test-utils/build-stub-timer';
 import { createDeviceSession } from './test-utils/create-device-session';
 import { renderHook } from './test-utils/render-hook';
 import { setupBrowserTimeZone } from './test-utils/setup-browser-time-zone';
@@ -27,11 +29,18 @@ async function setupTest() {
   // the conversation names the messages a forget dropped, and a test names them through
   // setForgotten, which the next render reads
   let forgotten: readonly string[] = [];
-  const rendered = renderHook(() => useOutbox(forgotten));
+
+  // the page's clock stands still unless a test moves it, and each retry waits on a stub timer
+  const clock = { now: Date.parse('2026-10-17T09:00:00.000Z') };
+  const timer = buildStubTimer();
+  const options = { now: () => clock.now, startTimer: timer.startTimer };
+  const rendered = renderHook(() => useOutbox(forgotten, options));
 
   return {
+    clock,
     sent,
     rendered,
+    timer,
     setForgotten: (clientMessageIDs: readonly string[]) => {
       forgotten = clientMessageIDs;
     },
@@ -63,6 +72,7 @@ test("it sends a message with the browser's time zone", async () => {
       text: 'Just landed',
       thread: 'conversation',
       timeZone: 'America/Sao_Paulo',
+      writtenAt: '2026-10-17T09:00:00.000Z',
     },
   });
 });
@@ -195,4 +205,323 @@ test('it keeps a message that another tab left unsent', async () => {
   expect(globalThis.localStorage.getItem('nixie.outbox')).toInclude(
     '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
   );
+});
+
+test('it retries a send the API did not answer after growing pauses, and sends it once the API answers', async () => {
+  const ctx = await setupTest();
+
+  setupBrowserTimeZone('Asia/Tokyo');
+
+  server.use(
+    ...Array.from({ length: 3 }, () =>
+      http.post('*/rpc/conversation/send', () => Response.error(), { once: true }),
+    ),
+  );
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  const pauses = [
+    await ctx.timer.advanceToNext(),
+    await ctx.timer.advanceToNext(),
+    await ctx.timer.advanceToNext(),
+  ];
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('sent');
+  });
+
+  expect(pauses).toStrictEqual([2000, 4000, 8000]);
+  expect(store.records.count()).toBe(1);
+
+  expect(ctx.sent).toHaveBeenCalledExactlyOnceWith({
+    json: {
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+      timeZone: 'Asia/Tokyo',
+      writtenAt: '2026-10-17T09:00:00.000Z',
+    },
+  });
+});
+
+test('it shows when a failed send tries again on its own', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  expect(ctx.rendered.result.current.entries[0]).toMatchObject({
+    failures: 1,
+    retryAt: Date.parse('2026-10-17T09:00:02.000Z'),
+  });
+});
+
+test('it retries a waiting send at once when the browser comes back online', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(1);
+  });
+
+  act(() => {
+    globalThis.dispatchEvent(new Event('online'));
+  });
+
+  await waitFor(() => {
+    expect(store.records.count()).toBe(1);
+  });
+
+  expect(ctx.timer.countPending()).toBe(0);
+});
+
+test('it retries a waiting send at once when the page becomes visible', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(1);
+  });
+
+  act(() => {
+    globalThis.document.dispatchEvent(new Event('visibilitychange'));
+  });
+
+  await waitFor(() => {
+    expect(store.records.count()).toBe(1);
+  });
+
+  expect(ctx.timer.countPending()).toBe(0);
+});
+
+test('it leaves a send the API refused for you to retry', async () => {
+  const ctx = await setupTest();
+
+  server.use(
+    http.post('*/rpc/conversation/send', () =>
+      HttpResponse.json(
+        {
+          json: {
+            code: 'THREAD_NOT_FOUND',
+            defined: true,
+            message: 'No thread has this ID',
+            status: 404,
+          },
+        },
+        { status: 404 },
+      ),
+    ),
+  );
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  expect(ctx.rendered.result.current.entries[0]?.retryAt).toBeUndefined();
+  expect(ctx.timer.countPending()).toBe(0);
+});
+
+test('it holds a message that passed 2 minutes old while its send waited, instead of retrying it', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(1);
+  });
+
+  // the phone slept with the page open, and its clock moved on while the retry waited
+  ctx.clock.now = Date.parse('2026-10-17T09:05:00.000Z');
+
+  await act(() => ctx.timer.advanceToNext());
+
+  expect(ctx.rendered.result.current.entries[0]?.status).toBe('held');
+  expect(store.records.count()).toBe(0);
+});
+
+test('it keeps retrying on its own a held message you chose to send', async () => {
+  const ctx = await setupTest();
+
+  server.use(
+    ...Array.from({ length: 2 }, () =>
+      http.post('*/rpc/conversation/send', () => Response.error(), { once: true }),
+    ),
+  );
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(1);
+  });
+
+  ctx.clock.now = Date.parse('2026-10-17T09:05:00.000Z');
+
+  await act(() => ctx.timer.advanceToNext());
+
+  const [held] = ctx.rendered.result.current.entries;
+
+  invariant(held, 'the outbox holds no message');
+
+  await act(() => ctx.rendered.result.current.retry(held.message));
+  await act(() => ctx.timer.advanceToNext());
+
+  await waitFor(() => {
+    expect(store.records.count()).toBe(1);
+  });
+});
+
+test('it discards a held message from memory, device storage and its kept images', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      images: [new File([new Uint8Array([0x89, 0x50])], 'image.png', { type: 'image/png' })],
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(async () => {
+    const kept = await readOutboxImages('9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13');
+
+    expect(kept).toHaveLength(1);
+  });
+
+  ctx.clock.now = Date.parse('2026-10-17T09:05:00.000Z');
+
+  await act(() => ctx.timer.advanceToNext());
+
+  expect(ctx.rendered.result.current.entries[0]?.status).toBe('held');
+
+  act(() => {
+    ctx.rendered.result.current.discard('9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13');
+  });
+
+  expect(ctx.rendered.result.current.entries).toStrictEqual([]);
+  expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
+
+  await waitFor(async () => {
+    const kept = await readOutboxImages('9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13');
+
+    expect(kept).toStrictEqual([]);
+  });
+
+  expect(store.records.count()).toBe(0);
+});
+
+test('it starts no retry for a send that fails after the page leaves the conversation', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(1);
+  });
+
+  const [entry] = ctx.rendered.result.current.entries;
+
+  invariant(entry, 'the outbox holds no message');
+
+  // the next send waits until the test lets it fail, after the page has left
+  const left = Promise.withResolvers<undefined>();
+
+  server.use(
+    http.post(
+      '*/rpc/conversation/send',
+      async () => {
+        await left.promise;
+
+        return Response.error();
+      },
+      { once: true },
+    ),
+  );
+
+  const sending = ctx.rendered.result.current.retry(entry.message);
+
+  ctx.rendered.unmount();
+  left.resolve(undefined);
+
+  await sending;
+
+  expect(ctx.timer.countPending()).toBe(0);
+  expect(store.records.count()).toBe(0);
 });

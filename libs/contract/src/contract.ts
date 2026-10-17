@@ -228,6 +228,10 @@ export const contract = {
           // The sending device's IANA time zone, such as Europe/London. The server stores a zone
           // it knows with the message and drops one it does not, and the message still sends.
           timeZone: z.string().min(1).max(100).optional(),
+
+          // When you wrote the message, by the sending device's clock, as an ISO 8601 UTC time. A
+          // retry carries the first one, so the server keeps it beside when the message arrived.
+          writtenAt: z.iso.datetime().optional(),
         }),
       )
       .output(z.object({ duplicate: z.boolean(), sequence: sequenceSchema })),
