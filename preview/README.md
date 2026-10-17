@@ -48,18 +48,15 @@ from outside its host.
 The preview's model profile names a placeholder credential, and the first start writes it into a
 plain secrets file beside the throwaway key. A model call reaches the model's API only through a
 host credential broker that adds the real credential on the way out, so no key enters the preview.
-On a host with a broker, such as an imp, add the broker file:
 
-```bash
-HTTPS_PROXY=<broker_proxy_url> BROKER_CA_FILE=<broker_ca_path> \
-  docker compose -f compose.yaml -f compose.broker.yaml up --build --wait
-```
-
-Without a broker, nixie starts and reports ready, and each turn fails at its model call.
+`compose.yaml` reads the broker from the host's environment: `HTTPS_PROXY` names the broker's proxy,
+and `SSL_CERT_FILE` the CA bundle that holds the certificate its proxy signs with. An imp sets both,
+so every `docker compose` command there, `docker compose run --rm enrol` too, keeps the broker in
+place. Without them, nixie starts and reports ready, and each turn fails at its model call.
 
 ## Files
 
-- `compose.yaml` runs nixie, the `enrol` service, the web client and the Caddy origin. CI runs it on
-  every pull request.
+- `compose.yaml` runs nixie, the `enrol` service, the web client and the Caddy origin, and routes
+  nixie's model calls through a host's broker. CI runs it on every pull request.
 - `config.yaml` selects the test sandbox and the preview's model profile.
 - `run-preview.sh` writes the throwaway secrets file on the first start, then runs nixie.

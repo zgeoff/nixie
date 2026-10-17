@@ -10,9 +10,20 @@ services:
       context: ..
       dockerfile: preview/Dockerfile
     image: nixie-preview:local
+    # On a host with a credential broker, such as an imp, the model calls go through the broker's
+    # proxy, which adds the credential on the way out. The proxy and its CA bundle come from the
+    # host's environment, so every compose command here builds the same container. A host without
+    # them leaves each variable empty: Bun ignores an empty one, and nixie passes none to a guest.
+    environment:
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      NO_PROXY: localhost,127.0.0.1,::1
+      NODE_USE_ENV_PROXY: '1'
+      SSL_CERT_FILE: ${SSL_CERT_FILE:+/etc/nixie-preview/broker-ca.pem}
+      NODE_EXTRA_CA_CERTS: ${SSL_CERT_FILE:+/etc/nixie-preview/broker-ca.pem}
     volumes:
       - data:/data
       - secrets:/var/lib/nixie-preview
+      - ${SSL_CERT_FILE:-/dev/null}:/etc/nixie-preview/broker-ca.pem:ro
     healthcheck:
       test: ['CMD', '/app/preview/run-preview.sh', 'health']
       interval: 5s
