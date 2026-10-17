@@ -7,6 +7,7 @@ import { loadOutboxImages } from './load-outbox-images';
 import type { StartTimer } from './start-platform-timer';
 import { startPlatformTimer } from './start-platform-timer';
 import type { OutboxMessage } from './types';
+import { updateDiscardedOutboxIDs } from './update-discarded-outbox-ids';
 import { useNixieClient } from './use-nixie-client';
 import { useStoredOutbox } from './use-stored-outbox';
 
@@ -45,6 +46,9 @@ export function useOutbox(
   const queue = useRef<Promise<void>>(Promise.resolve());
   const retries = useRef(new Map<string, () => void>());
 
+  // whether the page still shows the outbox, so a send that ends after it goes starts no retry
+  const isMounted = useRef(false);
+
   // the messages you chose to send, which keep retrying on their own whatever their age
   const chosen = useRef(new Set<string>());
 
@@ -69,7 +73,7 @@ export function useOutbox(
     (clientMessageID: string): void => {
       const entry = findEntry(latest.current, clientMessageID);
 
-      if (entry === undefined) {
+      if (!isMounted.current || entry?.status !== 'failed') {
         return;
       }
 
@@ -127,8 +131,8 @@ export function useOutbox(
           }),
         );
 
-        // a message that left the outbox while its send ran tries no more
-        if (findEntry(latest.current, clientMessageID) !== undefined) {
+        // a message that left the outbox, or an outbox that left the page, tries no more
+        if (isMounted.current && findEntry(latest.current, clientMessageID) !== undefined) {
           retries.current.set(
             clientMessageID,
             startTimer(() => {
@@ -175,14 +179,34 @@ export function useOutbox(
     [sendEntry],
   );
 
-  // a discarded message leaves memory and device storage, with its images, as a forgotten one does
+  // A discarded message leaves memory and device storage, with its images, as a forgotten one does.
+  // The shared discard list keeps every other tab from storing it again.
   const discard = useCallback(
     (clientMessageID: string) => {
       stopRetry(clientMessageID);
-      setDiscarded((current) => [...current, clientMessageID]);
+      setDiscarded(updateDiscardedOutboxIDs(now(), clientMessageID));
     },
-    [stopRetry],
+    [now, stopRetry],
   );
+
+  // a message that another tab discarded leaves this tab too
+  useEffect(() => {
+    const readDiscards = (): void => {
+      const listed = updateDiscardedOutboxIDs(now());
+
+      setDiscarded((current) =>
+        listed.every((clientMessageID) => current.includes(clientMessageID))
+          ? current
+          : [...new Set([...current, ...listed])],
+      );
+    };
+
+    globalThis.addEventListener('storage', readDiscards);
+
+    return () => {
+      globalThis.removeEventListener('storage', readDiscards);
+    };
+  }, [now]);
 
   const removed = useMemo(
     () => [...forgottenClientMessageIDs, ...discarded],
@@ -249,7 +273,11 @@ export function useOutbox(
   useEffect(() => {
     const pending = retries.current;
 
+    isMounted.current = true;
+
     return () => {
+      isMounted.current = false;
+
       for (const stop of pending.values()) {
         stop();
       }

@@ -6,6 +6,7 @@ import { isOutboxMessageStale } from './is-outbox-message-stale';
 import { loadOutboxImages } from './load-outbox-images';
 import { removeStaleOutboxImages } from './remove-stale-outbox-images';
 import type { OutboxMessage, ReadonlyDeep } from './types';
+import { updateDiscardedOutboxIDs } from './update-discarded-outbox-ids';
 import type { OutboxEntry } from './use-outbox';
 import { writeOutboxImages } from './write-outbox-images';
 
@@ -36,10 +37,14 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
   const writtenImages = useRef(new Set<string>());
 
   useEffect(() => {
-    const stored = readStoredMessages().map((message) => ({
-      message,
-      isStale: isOutboxMessageStale(message, now()),
-    }));
+    const discarded = new Set(updateDiscardedOutboxIDs(now()));
+
+    const stored = readStoredMessages()
+      .filter((message) => !discarded.has(message.clientMessageId))
+      .map((message) => ({
+        message,
+        isStale: isOutboxMessageStale(message, now()),
+      }));
 
     setEntries(
       stored.map((entry) => ({
@@ -54,7 +59,11 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
 
   useEffect(() => {
     if (loaded) {
-      const forgotten = new Set(options.forgottenClientMessageIDs);
+      // a message another tab discarded stays out of storage even before this tab hears of it
+      const forgotten = new Set([
+        ...options.forgottenClientMessageIDs,
+        ...updateDiscardedOutboxIDs(now()),
+      ]);
 
       const merged = mergeStoredMessages(readStoredMessages(), options.entries).filter(
         (message) => !forgotten.has(message.clientMessageId),
@@ -68,7 +77,7 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
         () => new Set(readStoredMessages().map((message) => message.clientMessageId)),
       );
     }
-  }, [loaded, options.entries, options.forgottenClientMessageIDs]);
+  }, [loaded, now, options.entries, options.forgottenClientMessageIDs]);
 }
 
 interface StoredSend {

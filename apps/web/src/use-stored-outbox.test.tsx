@@ -299,3 +299,65 @@ test('it loads a stored message with no written time, and holds it as stale', as
 
   expect(store.records.count()).toBe(0);
 });
+
+test('it keeps a message that another tab discarded out of storage and out of this tab', async () => {
+  await createDeviceSession();
+
+  const options = { now: () => Date.parse('2026-10-17T09:10:00.000Z') };
+
+  await writeOutboxImages('7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20', [
+    new File([new Uint8Array([0x89, 0x50])], 'image.png', { type: 'image/png' }),
+  ]);
+
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+        imageCount: 1,
+        spans: [{ end: 9, source: 'typed', start: 0 }],
+        text: 'A doormat',
+        thread: 'conversation',
+        writtenAt: '2026-10-17T09:00:00.000Z',
+      },
+    ]),
+  );
+
+  // two tabs hold the same stale message
+  const first = renderHook(() => useOutbox([], options));
+  const second = renderHook(() => useOutbox([], options));
+
+  await waitFor(() => {
+    expect(second.result.current.entries[0]?.status).toBe('held');
+  });
+
+  act(() => {
+    first.result.current.discard('7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20');
+  });
+
+  // the second tab writes storage before it hears of the discard
+  act(() => {
+    second.result.current.add({
+      clientMessageId: '2d6f8a1c-3e5b-4c7d-9f0a-b1c2d3e4f5a6',
+      spans: [{ end: 11, source: 'typed', start: 0 }],
+      text: 'And a mat?',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(store.records.count()).toBe(1);
+  });
+
+  expect(globalThis.localStorage.getItem('nixie.outbox') ?? '').not.toInclude(
+    '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+  );
+
+  act(() => {
+    globalThis.dispatchEvent(new StorageEvent('storage', { key: 'nixie.outbox.discarded' }));
+  });
+
+  expect(second.result.current.entries.map((entry) => entry.message.clientMessageId)).toStrictEqual(
+    ['2d6f8a1c-3e5b-4c7d-9f0a-b1c2d3e4f5a6'],
+  );
+});

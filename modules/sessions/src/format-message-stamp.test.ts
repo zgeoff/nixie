@@ -136,3 +136,20 @@ test('it shows only the send time for a message that arrived within 2 minutes of
     }),
   ).toBe('#48213 · Wed 14 Oct, 14:05, Sydney');
 });
+
+test('it shows only the send time for a written time after the arrival, from a device clock that runs fast', () => {
+  const record = buildMockLogRecord({
+    sequence: 48_213,
+    kind: 'owner_message',
+    recordedAt: new Date('2026-10-14T03:05:00Z'),
+    payload: { timeZone: 'Australia/Sydney', writtenAt: '2026-10-14T03:15:00.000Z' },
+    erasable: { status: 'readable', fields: { text: 'Buy milk.' } },
+  });
+
+  expect(
+    formatMessageStamp(record, {
+      defaultZone: 'Australia/Sydney',
+      now: new Date('2026-10-14T05:00:00Z'),
+    }),
+  ).toBe('#48213 · Wed 14 Oct, 14:05, Sydney');
+});

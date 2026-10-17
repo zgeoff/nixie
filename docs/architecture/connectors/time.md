@@ -38,10 +38,10 @@ A message that reached nixie long after the user wrote it, such as one that wait
 no signal, shows both times, such as `[#48213 · typed 08:12, sent Wed 14 Oct, 18:36, Sydney]`, so
 the model knows the words are older than their arrival. The web client keeps the time the user wrote
 each message through every retry and reload, and the API stores it with the message. The stamp shows
-both times only when the written time and the arrival time differ by more than the late limit, and
-the written time shows its day only when it falls on an earlier day than the arrival. The written
-time comes from the device's clock, so a device whose clock is wrong by more than the late limit
-shows both times on every message.
+both times only when the message arrived more than the late limit after the written time, and the
+written time shows its day only when it falls on an earlier day than the arrival. The written time
+comes from the device's clock, so a device whose clock runs slow by more than the late limit shows
+both times on every message, and a written time after the arrival shows only the arrival.
 
 The stamp ends with the label of the device session the message came from, such as
 `[#48213 · Tue 14 Oct, 14:05, Sydney · phone]`, so the model can fit its reply to the screen the

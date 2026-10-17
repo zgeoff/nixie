@@ -210,6 +210,8 @@ test('it keeps a message that another tab left unsent', async () => {
 test('it retries a send the API did not answer after growing pauses, and sends it once the API answers', async () => {
   const ctx = await setupTest();
 
+  setupBrowserTimeZone('Asia/Tokyo');
+
   server.use(
     ...Array.from({ length: 3 }, () =>
       http.post('*/rpc/conversation/send', () => Response.error(), { once: true }),
@@ -239,7 +241,14 @@ test('it retries a send the API did not answer after growing pauses, and sends i
   expect(store.records.count()).toBe(1);
 
   expect(ctx.sent).toHaveBeenCalledExactlyOnceWith({
-    json: expect.objectContaining({ clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13' }),
+    json: {
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+      timeZone: 'Asia/Tokyo',
+      writtenAt: '2026-10-17T09:00:00.000Z',
+    },
   });
 });
 
@@ -466,5 +475,53 @@ test('it discards a held message from memory, device storage and its kept images
     expect(kept).toStrictEqual([]);
   });
 
+  expect(store.records.count()).toBe(0);
+});
+
+test('it starts no retry for a send that fails after the page leaves the conversation', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9a3c5e7b-1d2f-4b6a-8c0e-2f4a6b8d0c13',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Water the ferns.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.timer.countPending()).toBe(1);
+  });
+
+  const [entry] = ctx.rendered.result.current.entries;
+
+  invariant(entry, 'the outbox holds no message');
+
+  // the next send waits until the test lets it fail, after the page has left
+  const left = Promise.withResolvers<undefined>();
+
+  server.use(
+    http.post(
+      '*/rpc/conversation/send',
+      async () => {
+        await left.promise;
+
+        return Response.error();
+      },
+      { once: true },
+    ),
+  );
+
+  const sending = ctx.rendered.result.current.retry(entry.message);
+
+  ctx.rendered.unmount();
+  left.resolve(undefined);
+
+  await sending;
+
+  expect(ctx.timer.countPending()).toBe(0);
   expect(store.records.count()).toBe(0);
 });

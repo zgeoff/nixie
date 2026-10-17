@@ -28,14 +28,15 @@ export function formatMessageStamp(record: LogRecord, times: MessageTimeOptions)
     : time;
 }
 
-// A message that reached nixie over 2 minutes from when you typed it shows both times, as in
+// A message that reached nixie over 2 minutes after you typed it shows both times, as in
 // typed 08:12, sent Wed 14 Oct, 18:36, Sydney, so the model knows it waited on the device.
 const lateAfterMs = 2 * 60 * 1000;
 
 function findLateTypedTime(recordedAt: Date, writtenAt: string | undefined): Date | null {
   const typed = writtenAt === undefined ? Number.NaN : Date.parse(writtenAt);
 
-  return Number.isNaN(typed) || Math.abs(recordedAt.getTime() - typed) <= lateAfterMs
+  // a written time after the arrival comes from a device clock that runs fast, and shows nothing
+  return Number.isNaN(typed) || recordedAt.getTime() - typed <= lateAfterMs
     ? null
     : new Date(typed);
 }
