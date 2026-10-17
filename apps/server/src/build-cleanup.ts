@@ -32,13 +32,11 @@ export function buildCleanup(): Cleanup {
   };
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the cleanup's own list
 async function runStops(stops: (() => Promise<void> | void)[]): Promise<void> {
   const errors: unknown[] = [];
 
   for (const stop of stops.toReversed()) {
     try {
-      // oxlint-disable-next-line no-await-in-loop -- each part stops after the parts that use it
       await stop();
     } catch (error) {
       errors.push(error);

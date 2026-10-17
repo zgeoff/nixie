@@ -5,7 +5,6 @@ export interface TestSiteOptions {
   // the names the site's certificate covers
   readonly names: readonly string[];
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
   readonly fetch: (request: Request) => Response | Promise<Response>;
 }
 

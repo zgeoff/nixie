@@ -142,7 +142,6 @@ async function writeGrantRecords(
   spec: SandboxSpec,
 ): Promise<void> {
   for (const grant of spec.grants) {
-    // oxlint-disable-next-line no-await-in-loop -- one record per grant, in order
     await recorder.write({
       event: 'granted',
       sandboxID: id,

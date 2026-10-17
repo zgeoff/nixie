@@ -130,7 +130,6 @@ test("it doubles the conversation's retry delay with each error until the delay 
 
   // each error's retry comes due before the next claim, so the clock reads the last retry time
   for (let errors = 1; errors <= 5; errors += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- each error frees the step the next claim takes
     const errored = await writeStepError(ctx.context, claims.next, {
       error: new Error('the provider is overloaded'),
       maxStepErrors: 3,
@@ -140,7 +139,6 @@ test("it doubles the conversation's retry delay with each error until the delay 
 
     ctx.clock.advance(errored.retryAt - ctx.clock.now());
 
-    // oxlint-disable-next-line no-await-in-loop -- each claim takes the step the last error freed
     const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
     invariant(claim);

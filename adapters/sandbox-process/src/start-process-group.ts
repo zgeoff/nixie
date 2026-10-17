@@ -101,7 +101,6 @@ async function waitForProcessExit(leader: Leader, stop: GroupStop): Promise<Exec
   return leader.readExit();
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a subprocess handle has no readonly form
 function toExecExit(child: Bun.Subprocess): ExecExit {
   return { code: child.signalCode === null ? child.exitCode : null, signal: child.signalCode };
 }
@@ -124,7 +123,6 @@ async function waitForGroupExit(pid: number, deadline: Promise<void>): Promise<v
   void waitForReapLimit();
 
   while (hasGroup(pid) && !limit.isReached) {
-    // oxlint-disable-next-line no-await-in-loop -- polls the group until it is gone
     await Bun.sleep(20);
   }
 }

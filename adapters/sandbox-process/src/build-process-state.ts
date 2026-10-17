@@ -55,7 +55,6 @@ export function buildProcessState(): ProcessState {
   };
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the state's own set
 async function removeOnExit(groups: Set<ProcessGroup>, group: ProcessGroup): Promise<void> {
   await group.exit;
 

@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- the fake's own call log, sleep state and forwards have no readonly form
 import { setImmediate as waitForTurn } from 'node:timers/promises';
 import type { ImpForward } from '../types';
 

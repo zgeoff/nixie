@@ -37,7 +37,6 @@ export async function writeUnknownOutcomes(context: TasksContext): Promise<void>
 
   if (NIXIE_TEST_BUILD) {
     for (const action of settled) {
-      // oxlint-disable-next-line no-await-in-loop -- the harness holds each arrival in turn
       await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: action.task_id });
     }
   }

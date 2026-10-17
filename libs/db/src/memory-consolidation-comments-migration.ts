@@ -41,7 +41,6 @@ async function writeShortIDs(tx: Transaction<unknown>): Promise<void> {
     select change_id from memory_consolidation_changes where short_id is null`.execute(tx);
 
   for (const change of changes.rows) {
-    // oxlint-disable-next-line no-await-in-loop -- one transaction runs one statement at a time
     await sql`update memory_consolidation_changes
       set short_id = ${buildShortIDFromUUID(change.change_id)}
       where change_id = ${change.change_id}`.execute(tx);

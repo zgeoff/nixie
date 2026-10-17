@@ -18,7 +18,6 @@ export async function requireProposedTargets(
     const requirement = buildTargetRequirement(gated.write);
 
     if (gated.verdict.outcome === 'propose' && requirement !== null) {
-      // oxlint-disable-next-line no-await-in-loop -- the transaction reads one row at a time
       await requireItem(db, requirement);
     }
   }

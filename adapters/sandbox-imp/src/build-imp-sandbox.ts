@@ -151,12 +151,10 @@ async function writeGuestFiles(ctx: ImpSandboxContext, files: readonly FileSpec[
   for (const file of files) {
     requireGuestPath(file.path);
 
-    // oxlint-disable-next-line no-await-in-loop -- writes in order, so a later file wins
     const io = await startImpProcess(ctx, {
       argv: ['sh', '-c', 'mkdir -p "$(dirname "$1")" && cat > "$1"', 'sh', file.path],
     });
 
-    // oxlint-disable-next-line no-await-in-loop -- writes in order, so a later file wins
     const result = await runCommand(io, file.content, undefined);
 
     requireSuccess(result, `copy into ${file.path}`);

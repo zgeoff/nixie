@@ -119,7 +119,6 @@ type NixieChild = ReturnType<typeof startChild>;
 
 type OnExit = (exit: NixieExit) => void;
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a subprocess has no readonly form
 async function waitForExit(child: NixieChild, onExit: OnExit): Promise<NixieExit> {
   await child.exited;
 

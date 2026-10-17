@@ -159,7 +159,6 @@ const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply
 
 // Adds one record to the groups: a message stands alone, a forgotten one too, and any other record
 // joins the open step.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fold updates its own state
 function applyRecord(state: ActivityState, record: LiveRecord): void {
   if (record.message !== undefined || messageKinds.has(record.kind)) {
     state.items.push({ kind: 'message', record });
@@ -186,7 +185,6 @@ function applyRecord(state: ActivityState, record: LiveRecord): void {
 
 // With no step open, a record waits for the next step. A page can start partway through a step, so
 // a step's end closes the waiting records as that step, with the status the end records.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fold updates its own state
 function applyRecordOutsideStep(state: ActivityState, record: LiveRecord): void {
   const endStatus = stepEnds[record.kind];
 

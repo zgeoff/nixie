@@ -23,7 +23,6 @@ async function setupTest() {
 
   const downloads: { name: string; href: string }[] = [];
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a DOM event is mutable
   const onDocumentClick = (event: MouseEvent): void => {
     if (event.target instanceof HTMLAnchorElement && event.target.download !== '') {
       event.preventDefault();

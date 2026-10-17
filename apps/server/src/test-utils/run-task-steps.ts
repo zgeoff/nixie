@@ -23,14 +23,12 @@ export async function runTaskSteps(
   options: TaskStepsOptions,
 ): Promise<number> {
   for (let steps = 0; steps < options.maxSteps; steps += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- each step sees what the step before it wrote
     const didRun = await runNextStep(context, options);
 
     if (!didRun) {
       return steps;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- the check reads what the step wrote
     const isDone = await isRunDone(options);
 
     if (isDone) {

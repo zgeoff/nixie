@@ -49,22 +49,18 @@ test('it resumes the retry schedule across a restart and fails the action on the
   const attemptTimes: number[] = [1_000_000];
 
   for (const attempt of [2, 3, 4, 5]) {
-    // oxlint-disable-next-line no-await-in-loop -- each attempt follows the one before it
     const rows = await ctx.nixie.readRows('actions');
 
     const dueAt = Number(rows[0]?.['next_attempt_at']);
 
-    // oxlint-disable-next-line no-await-in-loop -- as above
     await ctx.nixie.harness.advance(dueAt - 1 - ctx.nixie.harness.now(), { settle: true });
 
     callsBeforeDue.push(ctx.nixie.provider.calls.length);
 
-    // oxlint-disable-next-line no-await-in-loop -- as above
     await ctx.nixie.harness.advance(1000);
 
     attemptTimes.push(ctx.nixie.harness.now());
 
-    // oxlint-disable-next-line no-await-in-loop -- as above
     await ctx.nixie.waitForRecord(
       (record) =>
         ['action.retry_scheduled', 'action.outcome'].includes(record.kind) &&

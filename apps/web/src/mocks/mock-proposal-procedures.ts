@@ -80,7 +80,6 @@ async function writeMockAnswers(
   const outcomes: MockProposalOutcome[] = [];
 
   for (const answer of answers) {
-    // oxlint-disable-next-line no-await-in-loop -- each answer runs after the one before it
     const outcome = await writeMockProposalAnswer(answer);
 
     outcomes.push(outcome);

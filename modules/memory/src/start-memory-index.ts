@@ -80,7 +80,6 @@ export async function startMemoryIndex(): Promise<MemoryIndex> {
         await sql`delete from memory_index`.execute(tx);
 
         for (const entry of entries) {
-          // oxlint-disable-next-line no-await-in-loop -- one connection runs one statement at a time
           await writeEntry(tx, entry);
         }
       }),

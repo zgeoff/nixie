@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
 import type { ExecStream, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { GuestFrame, HostFrame } from '@heynixie/wire';
 import {

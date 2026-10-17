@@ -60,7 +60,6 @@ export function writeMemoryBatch(
     }
 
     for (const version of result.written) {
-      // oxlint-disable-next-line no-await-in-loop -- the index takes one entry at a time
       await updateVersionIndex(parts, version.ref.itemID, version.next);
     }
 

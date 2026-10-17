@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- a RegExp match has no readonly form
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, normalize, relative } from 'node:path';
 import { $ } from 'bun';
@@ -57,7 +56,6 @@ async function updateAllLinks(movedSpikes: readonly string[]): Promise<void> {
   const tracked = listing.split('\n').filter((path) => path !== '' && !isRemovedPath(path));
 
   for (const file of tracked) {
-    // oxlint-disable-next-line no-await-in-loop -- each file is read and written once
     await updateLinks(file, movedSpikes);
   }
 }
@@ -144,17 +142,14 @@ function buildRelativePath(from: string, to: string, style: LinkStyle): string {
 
 async function applyCopies(): Promise<void> {
   for (const [from, to] of copiedFiles) {
-    // oxlint-disable-next-line no-await-in-loop -- one copy at a time
     const source = await readFile(join(spikesRoot, from), 'utf8');
 
-    // oxlint-disable-next-line no-await-in-loop -- one copy at a time
     await writeFile(join(spikesRoot, to), source);
   }
 }
 
 async function applyRemovals(): Promise<void> {
   for (const name of removedSpikes) {
-    // oxlint-disable-next-line no-await-in-loop -- git takes one removal at a time
     await $`git rm -r -q ${join(spikesRoot, name)}`;
   }
 }
@@ -163,10 +158,7 @@ async function applyMoves(movedSpikes: readonly string[]): Promise<void> {
   await mkdir(researchRoot, { recursive: true });
 
   for (const name of movedSpikes) {
-    // oxlint-disable-next-line no-await-in-loop -- git takes one move at a time
     await $`git mv ${join(spikesRoot, name)} ${join(researchRoot, name)}`;
-
-    // oxlint-disable-next-line no-await-in-loop -- one package at a time
     await updatePackage(join(researchRoot, name));
   }
 
@@ -242,7 +234,6 @@ async function updateRepoPaths(movedSpikes: readonly string[]): Promise<void> {
   const files = listing.split('\n').filter((path) => path !== '');
 
   for (const file of files) {
-    // oxlint-disable-next-line no-await-in-loop -- each file is read and written once
     const source = await readFile(file, 'utf8');
 
     const updated = movedSpikes.reduce(
@@ -251,7 +242,6 @@ async function updateRepoPaths(movedSpikes: readonly string[]): Promise<void> {
     );
 
     if (updated !== source) {
-      // oxlint-disable-next-line no-await-in-loop -- each file is read and written once
       await writeFile(file, updated);
     }
   }

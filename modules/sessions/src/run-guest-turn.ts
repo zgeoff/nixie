@@ -45,7 +45,6 @@ export interface GuestTurn {
 // Runs one turn in the conversation guest: it starts the guest, sends the turn frame and then each
 // live message, and collects the guest's frames until it exits. A guest that exits without ending
 // or failing its turn, or that sends a frame the schema refuses, throws.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a sandbox handle and an async iterable have no readonly form
 export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
   const stream = await spec.sandbox.spawn({
     argv: spec.command.argv,
@@ -74,7 +73,6 @@ export async function runGuestTurn(spec: GuestTurnSpec): Promise<GuestTurn> {
 }
 
 // stops the guest when the signal aborts, until the returned function detaches it
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
 function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
   const stopStream = () => {
     void stream.stop();
@@ -90,7 +88,6 @@ function subscribeToAbort(signal: AbortSignal, stream: ExecStream): () => void {
 type LiveMessages = GuestTurnSpec['messages'];
 
 // a message that comes after the guest stopped reading stays unread in the inbox for the next step
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle and an async iterable have no readonly form
 async function sendMessages(stream: ExecStream, messages: LiveMessages): Promise<void> {
   try {
     for await (const message of messages) {
@@ -117,7 +114,6 @@ type MarkReader = GuestTurnSpec['readRecallMark'];
 // Only the frames up to the last ended frame count, because the next turn resumes at that frame's
 // boundary: a reply or a read after it, from a guest that died before its next result, belongs to a
 // session no turn resumes, so its inbox records stay unread and the next step sends them again.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
 async function collectTurn(stream: ExecStream, readRecallMark: MarkReader): Promise<GuestTurn> {
   const turn: MutableTurn = {
     assistants: [],
@@ -156,7 +152,6 @@ function readFrameMark(frame: GuestFrame, readRecallMark: MarkReader): Promise<n
     : Promise.resolve(undefined);
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the turn this collects
 function updateTurn(turn: MutableTurn, frame: GuestFrame, mark: number | undefined): void {
   if (frame.type === 'assistant') {
     turn.assistants.push(frame);

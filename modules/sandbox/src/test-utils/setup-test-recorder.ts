@@ -53,7 +53,6 @@ export async function setupTestRecorder(): Promise<TestRecorder> {
 function makeEventWriter(recorder: SandboxRecorder): TestRecorder['writeEvents'] {
   return async (events) => {
     for (const event of events) {
-      // oxlint-disable-next-line no-await-in-loop -- each record takes the next sequence
       await recorder.write(event);
     }
   };

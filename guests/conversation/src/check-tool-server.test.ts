@@ -14,7 +14,6 @@ async function setupTest() {
   onTestFinished(() => rm(home, { recursive: true, force: true }));
 
   // a CLI session that never gets a message, so it never calls the model
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the SDK's MCP config has no readonly form
   const startSession = (toolServer: McpServerConfig) => {
     const session = query({
       prompt: new TransformStream<SDKUserMessage, SDKUserMessage>().readable,

@@ -14,7 +14,6 @@ export async function removeTableRows(
   const removed = result.rows.filter((table) => !keptTables.includes(table.name));
 
   for (const table of removed) {
-    // oxlint-disable-next-line no-await-in-loop -- the transaction runs one statement at a time
     await sql`delete from ${sql.id(table.name)}`.execute(tx);
   }
 }

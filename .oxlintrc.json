@@ -21,45 +21,6 @@
     // oxlint 1.86 enables one-var through the style category, which the shared config predates; it
     // forbids the separate const per step that every test body uses
     "one-var": "off",
-    // format-codemod owns blank-line spacing, so the size limits count code, not padding
-    "max-lines": ["error", { "max": 300, "skipBlankLines": true }],
-    "max-lines-per-function": ["error", { "max": 50, "skipBlankLines": true }],
-    // a callback's parameter takes its type from the caller, such as a test.each row; the allowed
-    // types are library and platform handles, which no caller can make readonly, and ReadonlyMap,
-    // which the rule reads as mutable
-    "typescript/prefer-readonly-parameter-types": [
-      "error",
-      {
-        "ignoreInferredTypes": true,
-        "allow": [
-          {
-            "from": "package",
-            "package": "kysely",
-            "name": ["CompiledQuery", "DatabaseConnection", "Kysely", "Transaction"]
-          },
-          { "from": "package", "package": "bun:ffi", "name": ["Pointer"] },
-          { "from": "package", "package": "bun:sqlite", "name": ["Database", "SQLQueryBindings"] },
-          {
-            "from": "lib",
-            "name": ["Date", "Error", "EventTarget", "Promise", "ReadonlyMap", "Uint8Array"]
-          },
-          {
-            "from": "package",
-            "package": "bun-types",
-            "name": [
-              "AbortSignal",
-              "Blob",
-              "CryptoKey",
-              "ErrorEvent",
-              "EventTarget",
-              "MessageEvent",
-              "ReadableStream",
-              "Worker"
-            ]
-          }
-        ]
-      }
-    ],
     "no-restricted-imports": [
       "error",
       {
@@ -117,26 +78,6 @@
       }
     },
     {
-      // a crash test is one journey whose phases depend on the ones before it: start, hold at a
-      // fault point, kill, restart, then the oracle; the poisoned page journey runs a turn, then
-      // the writer batch over the records the turn left
-      "files": ["e2e/crash/*.test.ts", "e2e/poisoned-page.test.ts"],
-      "rules": {
-        "max-statements": "off",
-        "max-lines-per-function": "off"
-      }
-    },
-    {
-      // a contract probe drives the session's earlier turns before the one it checks, each turn
-      // depending on the one before it
-      "files": ["evals/sdk-contract/*.test.ts"],
-      "rules": {
-        "max-statements": "off",
-        "max-lines-per-function": "off",
-        "import/max-dependencies": "off"
-      }
-    },
-    {
       // the SDK contract suite and its helpers drive the Agent SDK itself, to check it
       "files": [
         "evals/sdk-contract/**",
@@ -172,44 +113,6 @@
               {
                 "group": ["@zgeoff/imp-client/*"],
                 "message": "Only adapters/sandbox-imp imports imp's client."
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      // the web client passes browser and React handles, such as an image's File and the events
-      // that carry it, which no caller can make readonly
-      "files": ["apps/web/**"],
-      "rules": {
-        "typescript/prefer-readonly-parameter-types": [
-          "error",
-          {
-            "ignoreInferredTypes": true,
-            "allow": [
-              {
-                "from": "lib",
-                "name": [
-                  "AbortSignal",
-                  "Blob",
-                  "Date",
-                  "Element",
-                  "Error",
-                  "File",
-                  "Headers",
-                  "InputEvent",
-                  "ReadonlySet",
-                  "Request",
-                  "Response",
-                  "Uint8Array"
-                ]
-              },
-              { "from": "package", "package": "bun-types", "name": ["Blob", "File", "WebView"] },
-              {
-                "from": "package",
-                "package": "react",
-                "name": ["ClipboardEvent", "DragEvent", "KeyboardEvent", "ReactNode", "RefObject"]
               }
             ]
           }

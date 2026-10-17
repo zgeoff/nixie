@@ -5,7 +5,6 @@ import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
 // The body after its content coding, so the body limit counts decoded bytes and a small compressed
 // body cannot expand past it. It throws for a coding the fetcher cannot read. pipeline, unlike
 // pipe, passes an abort on the body to the decoder, so the time limit ends a stalled body.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a node stream has no readonly form
 export function decodeContent(body: Readable, contentEncoding: string | undefined): Readable {
   const coding = (contentEncoding ?? 'identity').trim().toLowerCase();
 

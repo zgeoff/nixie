@@ -12,7 +12,6 @@ export async function writeDiffApproval(
   const outcomes: ChangeOutcome[] = [];
 
   for (const answer of answers) {
-    // oxlint-disable-next-line no-await-in-loop -- each change binds to the versions the one before left
     const outcome = await tryApproveChange(parts, answer);
 
     outcomes.push(outcome);

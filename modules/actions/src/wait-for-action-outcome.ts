@@ -50,7 +50,6 @@ async function waitForSettledRow(context: TasksContext, wait: SettledWait): Prom
     // the reset comes before the read, so a commit during the read wakes the wait at once
     wait.wake.reset();
 
-    // oxlint-disable-next-line no-await-in-loop -- each read follows the last wake
     const row = await db
       .selectFrom('actions')
       .select(['action_id', 'status', 'reason', 'outcome_sequence'])
@@ -63,7 +62,6 @@ async function waitForSettledRow(context: TasksContext, wait: SettledWait): Prom
       return row;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- the wait for the next commit or the deadline
     await waitForCommit(wait.wake, { clock: context.clock, timeoutMs: remainingMs });
   }
 }

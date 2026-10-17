@@ -158,7 +158,6 @@ interface RecordingState {
 }
 
 // each sandbox records what reaches it in the stub's state, and runs the script set at the time
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the stub's own state, which the hooks fill in
 function buildHooks(state: RecordingState): StubSandboxHooks {
   return {
     onTurn: (turn, guest) => {
@@ -258,7 +257,6 @@ function startStubGuest(hooks: StubGuestHooks): ExecStream {
     const frames = await runFirstFrame(hooks, first, { waitForMessage: inbox.wait });
 
     for (const frame of frames) {
-      // oxlint-disable-next-line no-await-in-loop -- frames reach the host in order
       await writer.write(encodeTurnFrame(frame));
     }
 

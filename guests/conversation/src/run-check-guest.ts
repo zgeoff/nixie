@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- an async iterable has no readonly form
 import type { CheckReply, CheckRequest } from '@heynixie/wire';
 import {
   checkRequestSchema,

@@ -109,10 +109,7 @@ async function writeGuestFiles(fsRoot: string, files: readonly FileSpec[]): Prom
   for (const file of files) {
     const path = resolveGuestPath(fsRoot, file.path);
 
-    // oxlint-disable-next-line no-await-in-loop -- writes in order, so a later file wins
     await mkdir(dirname(path), { recursive: true });
-
-    // oxlint-disable-next-line no-await-in-loop -- writes in order, so a later file wins
     await writeFile(path, file.content);
   }
 }

@@ -14,7 +14,6 @@ export async function* readPages<Item>(
   let after: number | null = 0;
 
   while (after !== null) {
-    // oxlint-disable-next-line no-await-in-loop -- each page starts after the cursor the last one named
     const page: ItemPage<Item> = await readPage(after);
 
     yield* page.items;

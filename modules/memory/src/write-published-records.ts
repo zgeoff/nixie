@@ -23,7 +23,6 @@ export async function writePublishedRecords(
   published: PublishedRecords,
 ): Promise<void> {
   for (const gated of published.kept) {
-    // oxlint-disable-next-line no-await-in-loop -- each proposal matches against those before it
     await writeProposalRecords(parts, tx, gated);
   }
 

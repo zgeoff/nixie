@@ -27,7 +27,6 @@ const InsideLink = createContext(false);
 // The renderer blanks a URL whose protocol it does not allow, such as javascript:. A link inside
 // the reply, such as a footnote and its way back, keeps the page and the anchor IDs it jumps
 // between.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the renderer passes the element's own props
 function ReplyLink(props: ComponentProps<'a'>): ReactNode {
   if (props.href === undefined || props.href === '') {
     return <span>{props.children}</span>;
@@ -65,7 +64,6 @@ function readDataProp(props: object, name: string): unknown {
 
 // An image would load from wherever the reply points, so it shows as a link to the image. Inside
 // a link it shows as the link's label alone, since an anchor in an anchor breaks the outer one.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the renderer passes the element's own props
 function ReplyImage(props: ComponentProps<'img'>): ReactNode {
   const label = `image: ${props.alt ?? 'untitled'}`;
 

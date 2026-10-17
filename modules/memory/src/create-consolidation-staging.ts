@@ -103,7 +103,6 @@ interface StagedInput {
   readonly summary: string | undefined;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the run this stages into
 function updateStagedRun(run: OpenRun, staged: StagedInput): StageResult {
   if (run.diff !== null) {
     return { status: 'refused', reason: 'this run already proposed its diff' };

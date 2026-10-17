@@ -127,7 +127,6 @@ test('it reports an advance settled once every sleeper it woke sleeps again', as
   // a poll loop that sleeps again each time it wakes
   void (async () => {
     for (;;) {
-      // oxlint-disable-next-line no-await-in-loop -- a poll
       await link.clock.sleep(1000);
     }
   })();

@@ -67,7 +67,6 @@ async function collectVerdicts(
     const isRepeat = write.op === 'remember' && lookups.isShownText(write.text);
 
     if (source !== undefined && !isRepeat) {
-      // oxlint-disable-next-line no-await-in-loop -- the checker takes one write at a time
       const verdict = await collection.gate.check(write, source, lookups.batch);
 
       collection.onGated({ write, verdict });

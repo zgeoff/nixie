@@ -140,7 +140,6 @@ async function runPendingMigrations(
   try {
     for (const [index, migration] of options.schema.migrations.entries()) {
       if (index >= from) {
-        // oxlint-disable-next-line no-await-in-loop -- each migration builds on the one before it
         await runMigration(db, options, { index, migration });
       }
     }

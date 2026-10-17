@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's options hold MCP configs that have no readonly form
 import { mkdir } from 'node:fs/promises';
 import type { Options } from '@anthropic-ai/claude-agent-sdk';
 import { removeStaleSessions } from './remove-stale-sessions';

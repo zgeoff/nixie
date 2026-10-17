@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's message and MCP types, an async iterable and the turn's own state have no readonly form
 import type { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, SessionPoint } from '@heynixie/wire';
@@ -71,7 +70,6 @@ async function drainSession(
   const messages = session[Symbol.asyncIterator]();
 
   for (;;) {
-    // oxlint-disable-next-line no-await-in-loop -- each SDK message follows the one before it
     const next = await Promise.race([messages.next(), state.inputFailed.promise]);
 
     if (next instanceof Error) {
@@ -82,7 +80,6 @@ async function drainSession(
       return;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- the host reads the frames in order
     const outcome = await emitMessageFrames(next.value, deps, state);
 
     if (outcome === 'stop' || (outcome === 'result' && state.pending.size === 0)) {

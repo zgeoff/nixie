@@ -48,7 +48,6 @@ export async function writeKeptSessions(
     // the log writes one record for each input
     invariant(record);
 
-    // oxlint-disable-next-line no-await-in-loop -- the transaction runs one statement at a time
     await db
       .updateTable('identities')
       .set({ paired_sequence: record.sequence })

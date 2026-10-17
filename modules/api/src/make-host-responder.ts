@@ -2,7 +2,6 @@ import { RPCHandler } from '@orpc/server/fetch';
 import { buildHostRouter } from './build-host-router';
 import type { HostRouterOptions } from './types';
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
 type HostResponder = (request: Request) => Promise<Response>;
 
 // Makes the function that answers each request on the control socket: a call of a host procedure

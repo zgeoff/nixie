@@ -71,7 +71,6 @@ export async function startFakeImp(): Promise<FakeImp> {
   });
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own log and cleanup
 function buildFakePort(state: FakeState, sleeps: FakeSleeps, stack: AsyncDisposableStack): ImpPort {
   const updateCallLog = (call: string): Promise<void> => {
     state.calls.push(call);
@@ -153,7 +152,6 @@ function requireBrokerEnv(options: ImpExecOptions): void {
   }
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own exec log and cleanup
 function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
   requireBrokerEnv(exec.options);
 
@@ -210,7 +208,6 @@ function startFakeExec(exec: FakeExec, stack: AsyncDisposableStack): ImpExec {
 
 // Sends the group SIGTERM, then SIGKILL after the grace. The kill must not outlive the fake, or it
 // could signal a later test's process group that reuses the PID.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own cleanup
 function stopProcessGroup(pid: number, graceMs: number, stack: AsyncDisposableStack): void {
   sendGroupSignal(pid, 'SIGTERM');
 
@@ -229,7 +226,6 @@ async function waitForExit<T>(exited: Promise<number>, readExit: () => T): Promi
 
 type ForwardPort = Pick<ImpPort, 'openReverseForward'>;
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own log
 function buildFakeForwardCall(state: FakeState, sleeps: FakeSleeps): ForwardPort {
   return {
     openReverseForward: (name, guestPort, onConnection) => {
@@ -278,7 +274,6 @@ type FakeImageCalls = Pick<ImpPort, 'listImages' | 'addImage'>;
 
 type UpdateCallLog = (call: string) => Promise<void>;
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own image store
 function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeImageCalls {
   return {
     listImages: () =>
@@ -299,7 +294,6 @@ function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): Fa
 
 type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret'>;
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the fake's own secret store
 function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeSecretCalls {
   return {
     readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),

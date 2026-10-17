@@ -20,7 +20,6 @@ export async function removeImageOfferKeys(
 
   for (const row of rows) {
     if (row.key_id !== null) {
-      // oxlint-disable-next-line no-await-in-loop -- each removal checkpoints the key store, one at a time
       await removeRecordKey(log, row.key_id);
     }
   }

@@ -136,7 +136,6 @@ async function runAddedMigrations(
   for (const [index, migration] of added.entries()) {
     recorder.drainStatements();
 
-    // oxlint-disable-next-line no-await-in-loop -- each migration builds on the one before it
     await recorder.db.transaction().execute((tx) => migration.up(tx));
 
     recorded.push({

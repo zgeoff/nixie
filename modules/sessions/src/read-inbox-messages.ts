@@ -29,7 +29,6 @@ export async function readInboxMessages(
   let spent: ImageTally = { bytes: 0, count: 0 };
 
   for (const record of records) {
-    // oxlint-disable-next-line no-await-in-loop -- each record's images read only once the budget has room
     const message = await readInboxMessage(log, record, read.times);
 
     const images = countImages(message);

@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's message types and the stream's own state have no readonly form
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 
 // what a probe may set on a message beside its text, such as its priority or its uuid
@@ -58,7 +57,6 @@ async function* readMessages(state: InputState): AsyncGenerator<SDKUserMessage> 
 
       state.wake = waiting.resolve;
 
-      // oxlint-disable-next-line no-await-in-loop -- each message waits for the one before it
       await waiting.promise;
     }
   }

@@ -98,7 +98,6 @@ interface OpenBatch {
   readonly recalledTexts: Set<string>;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the batch this stages into
 function updateStagedBatch(batch: OpenBatch, request: StagedWriteRequest): StageResult {
   const planned = planStagedWrite(batch, request);
 
@@ -119,7 +118,6 @@ type PlannedWrite = StagedWrite | { readonly reason: string };
 
 // The write a request stages, bound to the version the session was shown, or why it is refused:
 // a source outside the batch, an item the session was never shown, or a second change to an item.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the batch this reads
 function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): PlannedWrite {
   if (!batch.sources.has(request.sourceSequence)) {
     return {
@@ -146,7 +144,6 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
 type TargetedRequest = StagedWriteRequest & { readonly itemID: string };
 
 // a change to an item the session was shown, once per batch
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the batch this reads
 function planTargetedWrite(batch: OpenBatch, request: TargetedRequest): PlannedWrite {
   const version = batch.shown.get(request.itemID);
 

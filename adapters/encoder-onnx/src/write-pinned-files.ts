@@ -21,7 +21,6 @@ export async function writePinnedFiles(
   const written: string[] = [];
 
   for (const file of files) {
-    // oxlint-disable-next-line no-await-in-loop -- one download at a time bounds the build's memory
     const path = await writePinnedFile(file, outDir);
 
     written.push(path);

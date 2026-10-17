@@ -40,7 +40,6 @@ interface FrameBuffer {
 }
 
 // takes the first whole frame off the buffer, or returns null while the frame is still partial
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the decoder's own buffer
 function splitFrame(buffer: FrameBuffer, maxMessageBytes: number): Uint8Array<ArrayBuffer> | null {
   if (buffer.pending.byteLength < frameHeaderBytes) {
     return null;

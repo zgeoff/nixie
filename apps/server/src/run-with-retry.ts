@@ -32,7 +32,6 @@ export async function runWithRetry<T>(
     options.signal.throwIfAborted();
 
     try {
-      // oxlint-disable-next-line no-await-in-loop -- each attempt follows the last one's wait
       return await attempt();
     } catch (error) {
       options.signal.throwIfAborted();
@@ -50,7 +49,6 @@ export async function runWithRetry<T>(
         ...toErrorFields(error),
       });
 
-      // oxlint-disable-next-line no-await-in-loop -- the wait between attempts, which a stop ends
       await options.clock.sleep(delayMs, options.signal);
     }
   }

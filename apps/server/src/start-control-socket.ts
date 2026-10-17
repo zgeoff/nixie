@@ -6,7 +6,6 @@ export interface ControlSocketOptions {
   readonly path: string;
 
   // answers each request on the socket, such as a call of a host procedure
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
   readonly respond: (request: Request) => Promise<Response>;
 }
 

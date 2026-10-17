@@ -29,7 +29,6 @@ export function makeSessionGuard(): SessionGuard {
       // nothing awaits between the last check and the turn's registration, so every cleanup
       // asked for later sees and aborts this turn
       while (gate.pending > 0) {
-        // oxlint-disable-next-line no-await-in-loop -- each wait follows the cleanup asked for during the last
         await gate.current;
       }
 
@@ -72,7 +71,6 @@ async function runAfter(
 
 // Waits for a cleanup, then counts it done. A failed cleanup leaves the forget pending for the store
 // to run again, and lets turns on.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the gate's count changes as each cleanup ends
 async function waitForCleanup(gate: CleanupGate, cleanup: Promise<void>): Promise<void> {
   try {
     await cleanup;

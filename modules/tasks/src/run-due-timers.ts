@@ -18,7 +18,6 @@ export async function runDueTimers(context: TasksContext): Promise<number> {
   const fired = { count: 0 };
 
   for (const timer of due) {
-    // oxlint-disable-next-line no-await-in-loop -- each timer fires in its own transaction
     const didFire = await writeTimerFired(context, timer);
 
     fired.count += didFire ? 1 : 0;

@@ -51,14 +51,12 @@ async function runRenewals(
   const renewal = { held: true };
 
   while (renewal.held) {
-    // oxlint-disable-next-line no-await-in-loop -- one renewal per third of the lease
     await context.clock.sleep(loop.durationMs / 3, loop.stopping);
 
     if (loop.stopping.aborted) {
       return;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- each renewal waits for the one before it
     const held = await runRenewal(context, loop);
 
     renewal.held = held;

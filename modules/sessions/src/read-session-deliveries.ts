@@ -189,7 +189,6 @@ async function* readSessionRecords(
   const page = { after: await readReplayStart(context, taskID), size: pageSize };
 
   while (page.size === pageSize) {
-    // oxlint-disable-next-line no-await-in-loop -- each page reads on from the one before it
     const entries = await readRecords(context.log, {
       afterSequence: page.after,
       thread: taskID,

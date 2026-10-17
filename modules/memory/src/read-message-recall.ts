@@ -91,7 +91,6 @@ async function readDeliverableMessages(
       break;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- the next candidate reads only while the limit has room
     const record = await readMessageRecord(parts, sequence);
 
     if (record !== null) {

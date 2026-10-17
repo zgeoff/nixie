@@ -81,7 +81,6 @@ type PendingRequests = Map<number, PromiseWithResolvers<unknown>>;
 
 type NixieReply = Extract<NixieMessage, { type: 'reply' }>;
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the channel's own requests
 function applyReply(requests: PendingRequests, reply: NixieReply): void {
   const pending = requests.get(reply.requestID);
 

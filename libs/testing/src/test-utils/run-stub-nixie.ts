@@ -23,7 +23,6 @@ link.registerOperation('sleepOnce', (args) => {
 link.registerOperation('startPoll', (args) => {
   void (async () => {
     for (;;) {
-      // oxlint-disable-next-line no-await-in-loop -- a poll
       await link.clock.sleep(Number(args));
     }
   })();

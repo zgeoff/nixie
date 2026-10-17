@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- an async iterable and the turn's own state have no readonly form
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { InboxMessage } from '@heynixie/wire';
 import type { TurnFrame } from './build-query-options';
@@ -43,7 +42,6 @@ async function* readInbox(
   const iterator = readMessages(messages);
 
   for (;;) {
-    // oxlint-disable-next-line no-await-in-loop -- each message waits for the host to send it
     const next = await readNextMessage(iterator, state);
 
     if (next === null || next.done === true) {

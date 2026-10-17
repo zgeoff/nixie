@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- an async iterable or iterator has no readonly form
 import type { McpServerConfig } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, HostFrame, InboxMessage } from '@heynixie/wire';
 import {
@@ -96,7 +95,6 @@ async function* readHostFrames(
 
 async function* readMessages(frames: AsyncIterator<HostFrame>): AsyncGenerator<InboxMessage> {
   for (;;) {
-    // oxlint-disable-next-line no-await-in-loop -- frames arrive one at a time
     const next = await frames.next();
 
     if (next.done === true) {

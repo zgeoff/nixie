@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- a RegExp match and the maps the codemod fills have no readonly form
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { $ } from 'bun';
@@ -56,12 +55,10 @@ async function runMove(): Promise<void> {
   await mkdir(join(toSource, 'test-utils'), { recursive: true });
 
   for (const file of moved) {
-    // oxlint-disable-next-line no-await-in-loop -- git takes one move at a time
     await $`git mv ${join(fromSource, file)} ${join(toSource, file)}`;
   }
 
   for (const file of moved.filter((name) => name.endsWith('.ts'))) {
-    // oxlint-disable-next-line no-await-in-loop -- each file is read and written once
     await updateFile(join(toSource, file), (source) =>
       buildMovedImports(source, file.includes('/')),
     );
@@ -70,7 +67,6 @@ async function runMove(): Promise<void> {
   const tracked = await $`git ls-files '*.ts' '*.tsx'`.text();
 
   for (const file of tracked.split('\n').filter((path) => isConsumer(path))) {
-    // oxlint-disable-next-line no-await-in-loop -- each file is read and written once
     await updateFile(file, (source) => buildSpikePaths(buildConsumerImports(source), moved));
   }
 }

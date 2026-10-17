@@ -42,7 +42,6 @@ async function readRedirectChain(
   const hop = { url, count: 0 };
 
   for (;;) {
-    // oxlint-disable-next-line no-await-in-loop -- each hop needs the last hop's Location
     const step = await readHop(hop.url, { ...options, signal });
 
     if (step.kind !== 'redirect') {

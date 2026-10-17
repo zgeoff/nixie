@@ -24,7 +24,6 @@ export async function writeRecordsInTransaction(
   const records: LogRecord[] = [];
 
   for (const [index, input] of inputs.entries()) {
-    // oxlint-disable-next-line no-await-in-loop -- each record takes the next sequence
     const record = await writeRecord(tx, log, { input, sealed: sealed[index] ?? null });
 
     records.push(record);

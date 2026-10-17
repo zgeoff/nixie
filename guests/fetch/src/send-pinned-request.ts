@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- a URL has no readonly form
 import type { IncomingMessage } from 'node:http';
 import { Agent, request } from 'node:https';
 import type { LookupFunction } from 'node:net';

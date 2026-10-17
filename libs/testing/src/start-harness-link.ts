@@ -109,7 +109,6 @@ function parseArms(text: string | undefined): HeldArm[] {
   return parsed.map((arm) => buildHeldArm(arm));
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the link's own arms
 function runArm(arms: HeldArm[], args: unknown): null {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the harness sent it
   arms.push(buildHeldArm(args as FaultPointArm));
@@ -121,7 +120,6 @@ function buildHeldArm(arm: FaultPointArm): HeldArm {
   return { arm, held: { remaining: arm.times ?? 1 } };
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the arm's own countdown
 function isArmMatch(candidate: HeldArm, point: string, work: FaultPointWork): boolean {
   const arm = candidate.arm;
 
@@ -157,7 +155,6 @@ async function runAdvance(clock: TestClock, args: unknown): Promise<{ readonly s
   const deadline = Date.now() + (advance.settleTimeoutMs ?? defaultSettleTimeoutMs);
 
   while (clock.countSleepers() < before && Date.now() < deadline) {
-    // oxlint-disable-next-line no-await-in-loop -- polls the woken sleepers on the real clock
     await Bun.sleep(5);
   }
 

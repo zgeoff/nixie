@@ -177,7 +177,6 @@ test('it follows the log again at once when the browser comes back online during
 
   // the pauses of 1, 2, 4, 8 and 16 s pass, and the sixth failure starts the 30 s pause
   for (let pauses = 0; pauses < 5; pauses += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- each pause starts after the failure before it
     await ctx.timer.advanceToNext();
   }
 
@@ -217,7 +216,6 @@ test('it follows the log again at once when the page becomes visible during the 
 
   // the pauses of 1, 2, 4, 8 and 16 s pass, and the sixth failure starts the 30 s pause
   for (let pauses = 0; pauses < 5; pauses += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- each pause starts after the failure before it
     await ctx.timer.advanceToNext();
   }
 

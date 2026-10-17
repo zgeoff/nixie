@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- a URL has no readonly form
 import { isIP } from 'node:net';
 import type { AddressCheck } from './make-address-check';
 import { toBareHost } from './to-bare-host';

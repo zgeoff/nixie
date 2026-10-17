@@ -87,9 +87,7 @@ async function runRunner<W>(
 ): Promise<void> {
   try {
     while (!state.stopping.aborted) {
-      // oxlint-disable-next-line no-await-in-loop -- a runner holds one piece of work at a time
       if (!(await runClaim(options, state))) {
-        // oxlint-disable-next-line no-await-in-loop -- an idle runner polls
         await clock.sleep(options.pollMs, AbortSignal.any([state.stopping, state.getWakeSignal()]));
       }
     }

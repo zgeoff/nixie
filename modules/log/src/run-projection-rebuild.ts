@@ -23,7 +23,6 @@ async function resetProjections(
 
   // a later projection may refer to an earlier one, so it empties first
   for (const projection of projections.toReversed()) {
-    // oxlint-disable-next-line no-await-in-loop -- in the order the references need
     await sql`delete from ${sql.table(projection.table)}`.execute(tx);
   }
 }
@@ -35,7 +34,6 @@ async function applyEveryRecord(
   const cursor = { after: 0, done: false };
 
   while (!cursor.done) {
-    // oxlint-disable-next-line no-await-in-loop -- each page folds in sequence order
     const rows = await tx
       .$extendTables<LogTables>()
       .selectFrom('records')
@@ -46,7 +44,6 @@ async function applyEveryRecord(
       .execute();
 
     for (const row of rows) {
-      // oxlint-disable-next-line no-await-in-loop -- a fold builds on the records before it
       await applyProjections(tx, projections, buildEnvelopeRecord(row));
     }
 

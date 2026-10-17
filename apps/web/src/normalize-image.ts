@@ -45,7 +45,6 @@ function pickEncoding(type: string): Encoding {
 }
 
 // a PNG past the byte limit, such as a photo saved as PNG, goes again as JPEG
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a canvas has no readonly form
 async function encodeCanvas(canvas: OffscreenCanvas, encoding: Encoding): Promise<Blob> {
   const encoded = await canvas.convertToBlob(encoding);
 
