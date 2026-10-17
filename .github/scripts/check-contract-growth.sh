@@ -2,9 +2,10 @@
 # Fails when the contract's OpenAPI document breaks a client of the last release, unless the
 # accepted-breaks file names that break:
 #   check-contract-growth.sh <last-openapi.json> <openapi.json> <accepted-breaks.txt>
-# A line accepts an error only when it holds the error's method and path and its whole message, in
-# the same case, so a line accepts that one break and no other. The script matches the lines itself,
-# because oasdiff's --err-ignore ignores case and would let `SELF_NOTE` through on a `self_note` line.
+# A line accepts an error only when it ends with the error's method, its path and its whole message,
+# exactly and in the same case, so a line accepts that one break and no other. The script matches
+# the lines itself, because oasdiff's --err-ignore ignores case and would let `SELF_NOTE`
+# through on a `self_note` line.
 set -euo pipefail
 
 specs=$(mktemp -d)
@@ -22,9 +23,9 @@ jq -r --rawfile accepted "$3" '
   | .[]
   | select(.level == 3)
   | (if .section == "components" then "components" else "\(.operation) \(.path)" end) as $where
-  | .text as $text
-  | "\($where) \($text)" as $break
-  | if any($lines[]; contains($where) and contains($text)) then "accepted\t\($break)"
+  | "\($where) \(.text)" as $break
+  | if any($lines[] | sub("\\s+$"; ""); . == $break or endswith(" \($break)"))
+    then "accepted\t\($break)"
     else "error\t\($break)" end
 ' "$specs/breaks.json" > "$specs/verdicts.tsv"
 
