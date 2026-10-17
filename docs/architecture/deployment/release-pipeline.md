@@ -155,11 +155,12 @@ that marked it stopped calling it.
 
 A planned break passes the contract check when `libs/contract/accepted-breaks.txt` names it. A break
 belongs there only when its Linear issue plans it and says why a client of the last release still
-works against the new contract. A new value in a response enum is the common case. oasdiff reads the
-file as its list of ignored errors, and a line accepts a break only when it holds the break's
-method, its path and the whole message oasdiff prints for it, so one line accepts one break and
-every other break in the same pull request still fails. A line copies the message from the failed
-check and starts with the Linear issue that plans the break:
+works against the new contract. A new value in a response enum is the common case. The check accepts
+an error only when one line holds its method, its path and the whole message oasdiff prints for it,
+in the same case, so one line accepts one break and every other break in the same pull request still
+fails. The check matches the lines itself, because oasdiff's own list of ignored errors ignores
+case, and a line for `self_note` would then accept `SELF_NOTE` too. A line copies the message from
+the failed check and starts with the Linear issue that plans the break:
 
 ```text
 GEO-556: POST /memory/listProposals added the new `self_note` enum value to the `proposals/items/reason` response property for the response status `200`

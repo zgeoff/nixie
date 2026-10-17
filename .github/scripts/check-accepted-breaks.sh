@@ -3,7 +3,8 @@
 # break passes and every other break still fails:
 #   check-accepted-breaks.sh
 # The new document adds two values to a response enum. A file that names one of them passes only
-# when the other is absent, and a line that names the break under the wrong method fails.
+# when the other is absent, even when the other differs from it only in case, and a line that names
+# the break under the wrong method fails.
 set -euo pipefail
 
 work=$(mktemp -d)
@@ -41,6 +42,7 @@ entry() {
 write_document "$work/last.json" no_quote
 write_document "$work/one.json" no_quote self_note
 write_document "$work/two.json" no_quote self_note other_reason
+write_document "$work/cased.json" no_quote self_note SELF_NOTE
 {
   echo '# accepted breaks for the rehearsal'
   entry 'GEO-0: POST' self_note
@@ -62,6 +64,12 @@ if accepts listed "$work/two.json"; then
   exit 1
 fi
 echo "a break beside the accepted one still fails"
+
+if accepts listed "$work/cased.json"; then
+  echo "::error::the check passed an enum value that differs from the accepted one only in case"
+  exit 1
+fi
+echo "a break that differs from the accepted one only in case still fails"
 
 if accepts wrong-method "$work/one.json"; then
   echo "::error::the check passed a break that a line names under another method"
