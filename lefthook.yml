@@ -49,15 +49,17 @@ pre-push:
         git rev-parse --verify --quiet origin/main > /dev/null || { echo "pre-push needs
         origin/main; run git fetch origin main"; exit 1; }
     # the pusher's own home directory and host name, which gitleaks cannot know;
-    # a fixed /home/ pattern would refuse the sandbox paths the code uses
+    # a fixed /home/ pattern would refuse the sandbox paths the code uses. Every
+    # outgoing commit is scanned, because a later commit's removal still pushes
+    # the earlier one, and the host name matches only as a whole word
     - name: local paths
       run: |
         base=$(git merge-base origin/main HEAD) || exit 1
+        added=$(git log -p -U0 --format= "$base..HEAD" | grep '^+' | grep -v '^+++')
         host=$(uname -n)
-        set -- -e "$HOME/"
-        case "$host" in localhost | "") ;; *) set -- "$@" -e "$host" ;; esac
-        if git diff -U0 "$base" HEAD | grep '^+' | grep -v '^+++' | grep -F "$@"; then
-          echo "the branch adds your home directory or host name; remove it before you push"
+        if printf '%s\n' "$added" | grep -F -e "$HOME/" ||
+          { [ -n "$host" ] && [ "$host" != localhost ] && printf '%s\n' "$added" | grep -F -w -e "$host"; }; then
+          echo "a commit on the branch adds your home directory or host name; remove it before you push"
           exit 1
         fi
     - name: format:check

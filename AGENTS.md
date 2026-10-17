@@ -134,8 +134,8 @@ oxlint refuses each of these imports outside its one package:
 The repo is public, and everything pushed to it stays public: commits, PRs, issues and review
 replies. Keep your own environment out of it, so your setup never leaks through your work.
 
-- Leave out home directory paths, host names, private network names, cloud details, and the names
-  of the tools and agents you work with. A private deployment repo holds a deployment's details.
+- Leave out home directory paths, host names, private network names, cloud details, and the names of
+  the tools and agents you work with. A private deployment repo holds a deployment's details.
 - Explain each choice by what nixie needs, so the reason stays true when other products change.
 
 gitleaks scans each commit and each PR for secrets and tailnet host names, and the pre-push hook
