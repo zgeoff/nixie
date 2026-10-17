@@ -24,7 +24,11 @@ test('it renders no time on the server and adds the browser time once the page h
   document.body.append(list);
 
   const root = await act(() =>
-    hydrateRoot(list, <ResetMarker record={record} />, { onRecoverableError: failed }),
+    hydrateRoot(list, <ResetMarker record={record} />, {
+      onRecoverableError: (error) => {
+        failed(error);
+      },
+    }),
   );
 
   onTestFinished(() => {
