@@ -124,9 +124,13 @@ test('it reads the next page from the self-notes when the first page holds only 
   const rendered = render(<MemoryView />);
   const selfNotes = rendered.getByRole('region', { name: 'Self-notes' });
 
-  await user.click(await within(selfNotes).findByRole('button', { name: 'Show more' }));
+  const showMore = await within(selfNotes).findByRole('button', { name: 'Show more' });
 
-  expect(await within(selfNotes).findByRole('listitem', { name: 'p7x2rd' })).toBeInTheDocument();
+  await user.click(showMore);
+
+  const note = await within(selfNotes).findByRole('listitem', { name: 'p7x2rd' });
+
+  expect(note).toBeInTheDocument();
 });
 
 test('it finds self-notes apart from facts', async () => {
