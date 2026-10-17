@@ -27,7 +27,9 @@ export async function parseCLIArgs(
       kind: 'command',
       command,
       flags: ctx.values,
-      args: ctx.positionals.slice(ctx.commandPath.length),
+
+      // a word after `--` may start with a dash, and it is an argument too
+      args: [...ctx.positionals.slice(ctx.commandPath.length), ...ctx.rest],
     };
   };
 

@@ -467,6 +467,15 @@ test('it reads flags written with = and flags before the command', async () => {
   });
 });
 
+test('it keeps the words after -- as arguments, a dash-led one included', async () => {
+  const parsed = await parseCLIArgs(
+    ['session-label', 's1', '--', '-work', 'laptop'],
+    ['session-label'],
+  );
+
+  expect(parsed).toMatchObject({ command: 'session-label', args: ['s1', '-work', 'laptop'] });
+});
+
 test('it returns a command nixie does not have as unknown', async () => {
   const parsed = await parseCLIArgs(['frobnicate', '--yes'], ['serve', 'health']);
 
