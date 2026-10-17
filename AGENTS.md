@@ -32,29 +32,6 @@ The rules a task needs are not repeated here. Load the skill for the work before
 - A PR is ready only when its checks are green: watch CI (`gh pr checks <n> --watch`) after opening
   or updating, and report a failure with what you're doing about it.
 
-## Review bots
-
-CodeRabbit reviews every PR with the shared config in the zgeoff/coderabbit repo, because this repo
-has no `.coderabbit.yaml` of its own. A repo-specific setting goes in a repo-root `.coderabbit.yaml`
-with `inheritance: true`, which layers it on top of the shared config. CodeRabbit reads this file as
-its guidelines. A review bot added later is named here with its config, and these rules cover it
-too.
-
-- A PR is ready only after every bot review is read and every finding is answered: a fixed finding's
-  reply cites the commit that fixed it; a declined finding's reply states the reason — when a
-  finding contradicts this file, this file wins and the reply names the rule. Reviews land within a
-  few minutes of opening; read them with `gh pr view <n> --comments` and
-  `gh api repos/<owner>/<repo>/pulls/<n>/comments`. A finding outside the diff arrives in the review
-  body, not as a thread, so its answer is a PR comment.
-- Resolve a thread once its reply is posted, fixed and declined alike (GraphQL
-  `resolveReviewThread`). A finding the agent cannot confidently judge is escalation, not
-  disposition: reply saying so and leave the thread open for a human.
-- Never teach a bot through chat (`@coderabbitai` learnings and the like) — a correction to bot
-  behaviour is an edit to its config, reviewed in a PR.
-- Bots review a PR once, at open; an agent invokes a re-review only when asked. The exception is a
-  PR that got no review at all, such as one opened before the bot was installed: request it once
-  with that bot's documented trigger, such as `@coderabbitai review` for CodeRabbit.
-
 ## Repo structure
 
 nixie is one Bun workspace. Every package is private, takes the name `@heynixie/<folder>`, and is
@@ -69,24 +46,20 @@ guests/            programs that run inside a sandbox; reach nixie only through 
 libs/              shared code that belongs to no domain
 e2e/               whole-program suites
 evals/             checks committed evaluation reports against the code
-research/<name>/   spikes: a Bun package each, indexed in research/README.md
+research/<name>/   spikes: a Bun package each, indexed in research/README.md; CI typechecks
+                   them and never runs them, and product code never imports them
 deploy/            Compose recipe and reference Kubernetes manifests (outside the workspace)
 preview/           throwaway test build of one pull request
 docs/
   architecture/    what is built
   decisions/       numbered decision records
-  design/          designs for work not yet built
+  design/          designs for work not yet built; only the owner opens one
   guides/          steps a user does
   runbooks/        operator and contributor procedures
   reference/       generated reference
 ```
 
-- A unit test sits beside the file it tests, as `x.test.ts` beside `x.ts`.
-- CI typechecks the spikes and never runs them. Product code never imports from a spike.
-- The owner opens a design; an agent never opens one by default.
-- A plan for work about to be built lives in its Linear issue or its PR, never in `docs/`. Planned
-  work, open choices and later stages live in the nixie project in Linear.
-- The `project-docs-writing` skill gives each docs folder's rules.
+## Packages
 
 Dependencies:
 
@@ -123,6 +96,12 @@ oxlint refuses each of these imports outside its one package:
   or times out. Answer every finding: fix it, or reply with the reason you declined it. CodeRabbit
   never blocks a PR that has a local review; when it is rate-limited or paused, or has not reviewed
   within 10 minutes of the PR opening, the PR goes ahead without it.
+  - A fixed finding's reply cites the commit that fixed it. A declined finding's reply gives the
+    reason, and when the finding contradicts this file, this file wins and the reply names the rule.
+  - Resolve a thread once its reply is posted. Leave the thread open for the owner when you cannot
+    judge the finding.
+  - Never teach a bot through chat. A correction to a bot is an edit to its config, in a PR.
+  - Request a re-review only when asked, or once for a PR that got no review at all.
 - **Merge.** A PR merges only on the owner's word, after CI is green and every finding is answered.
   Squash it, and never use `--admin` or any other ruleset bypass. After a merge, remove its worktree
   and its local and remote branches. Sync PRs that repo-sync opens merge without asking, once CI is
@@ -132,6 +111,8 @@ oxlint refuses each of these imports outside its one package:
 - **Linear.** A PR body names its issue with one relationship: `Fixes GEO-<n>` when merging meets
   the issue's acceptance, `Contributes to GEO-<n>` when work remains, or `Related to GEO-<n>` for
   context only.
+- **Plans.** A plan for work about to be built lives in its Linear issue or its PR, never in `docs/`.
+  Planned work, open choices and later stages live in the nixie project in Linear.
 
 ## Database
 
