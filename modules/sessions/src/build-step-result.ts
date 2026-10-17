@@ -4,6 +4,7 @@ import { buildModelRecord, modelReplyCodec, modelTurnEndedCodec } from '@heynixi
 import type { StepResult } from '@heynixie/tasks';
 import { decodeInboxUUID } from './decode-inbox-uuid';
 import { isContextOverflow } from './is-context-overflow';
+import { ModelAuthError } from './model-auth-error';
 import type { GuestTurn } from './run-guest-turn';
 import type { ImageTally, MemoryRef } from './types';
 
@@ -51,6 +52,11 @@ export function buildStepResult(
 ): StepResult {
   const last = completed.turn.ended.at(-1);
   const failure = completed.turn.failure;
+
+  // a refused credential throws its own error, so the server can tell it apart
+  if (failure?.reason === 'model_auth') {
+    throw new ModelAuthError(failure.detail);
+  }
 
   if (failure !== null || last === undefined) {
     throw new Error(

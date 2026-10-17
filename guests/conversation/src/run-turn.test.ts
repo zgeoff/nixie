@@ -311,6 +311,49 @@ test('it marks the turn end as an error when the model API refuses the request',
   ]);
 });
 
+test('it fails the turn with no assistant frame when the model API refuses the credential', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ authFailure: 'invalid x-api-key' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames).toStrictEqual([
+    { type: 'failed', reason: 'model_auth', detail: 'Invalid API key · Fix external API key' },
+  ]);
+});
+
+test('it fails the turn with no assistant frame when the model API refuses an OAuth credential for its organization', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({
+    authFailure: 'OAuth authentication is currently not allowed for this organization.',
+  });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames).toStrictEqual([
+    {
+      type: 'failed',
+      reason: 'model_auth',
+      detail:
+        'Your organization has disabled Claude subscription access for Claude Code · Use an Anthropic API key instead, or ask your admin to enable access',
+    },
+  ]);
+});
+
 test('it ends the turn with the overflow reason when the model API refuses a prompt past its window', async () => {
   const ctx = await setupTest();
 

@@ -754,6 +754,44 @@ test('it answers readiness per part, with the slice 1 parts and the advisory par
   });
 }, 60_000);
 
+test('it fails a turn the model API refused for its credential with no reply, and reports the turns as not ready', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ authFailure: 'invalid x-api-key' });
+
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'What is on my list today?',
+    thread: 'conversation',
+    timeZone: 'Europe/London',
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => /^task\.step_(?:committed|errored)$/u.test(record.kind));
+  });
+
+  const page = await ctx.client.conversation.read({ thread: 'conversation' });
+  const ready = await fetch(`${ctx.url}/health/ready`);
+  const readyReport: unknown = await ready.json();
+
+  expect(page.records.map((record) => record.kind)).not.toContain('model.reply');
+  expect(page.records.at(-1)?.kind).toBe('task.step_errored');
+  expect(ready.status).toBe(200);
+
+  expect(readyReport).toMatchObject({
+    status: 'ready',
+    advisory: {
+      conversation_turns: {
+        isReady: false,
+        reason: 'the last turn failed, the last because the model API refused the credential',
+      },
+    },
+  });
+}, 60_000);
+
 test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exits 0', async () => {
   const ctx = await setupTest();
 

@@ -216,7 +216,11 @@ frames ([model profiles](./model-profiles.md#records-of-model-output)).
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
 server, throws, so the tasks module records the error and retries the step after a delay that grows
-with each failure in a row. The conversation never fails ([tasks](./tasks.md#steps)).
+with each failure in a row. The conversation never fails ([tasks](./tasks.md#steps)). When the model
+API refuses the profile's credential, the CLI writes its own message about the refusal, and the
+guest fails the turn with a reason of its own instead of reporting that message as a reply. The step
+then throws an error that names the credential, so the server can mark the turns as failing at once
+([server](../deployment/server.md#health)).
 
 ## The events block
 

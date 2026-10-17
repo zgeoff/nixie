@@ -1,12 +1,17 @@
 // One reply the stub model gives: a text block, a tool_use block by the name the model sees, such
-// as mcp__nixie__note_read, or a 400 with the API's refusal message. The usage defaults to 10 input
-// tokens and no cache tokens, and a test sets more to fill the context the CLI counts.
+// as mcp__nixie__note_read, a 400 with the API's refusal message, or a 401 for a refused credential
+// that the CLI does not retry.
 type ScriptedReply =
   | ScriptedMessage
   | {
       readonly refusal: string;
+    }
+  | {
+      readonly authFailure: string;
     };
 
+// The usage defaults to 10 input tokens and no cache tokens, and a test sets more to fill the
+// context the CLI counts.
 type ScriptedMessage = (
   | { readonly text: string }
   | {
@@ -103,6 +108,10 @@ function renderResponse(request: StubModelRequest, script: ScriptedReply[]): Res
     return renderRefusal(reply.refusal);
   }
 
+  if ('authFailure' in reply) {
+    return renderAuthFailure(reply.authFailure);
+  }
+
   const model = request.body.model ?? 'stub';
 
   return request.body.stream === true ? renderStream(reply, model) : renderWhole(reply, model);
@@ -112,6 +121,13 @@ function renderRefusal(message: string): Response {
   return Response.json(
     { type: 'error', error: { type: 'invalid_request_error', message } },
     { status: 400 },
+  );
+}
+
+function renderAuthFailure(message: string): Response {
+  return Response.json(
+    { type: 'error', error: { type: 'authentication_error', message } },
+    { status: 401, headers: { 'x-should-retry': 'false' } },
   );
 }
 

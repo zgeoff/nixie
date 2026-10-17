@@ -130,6 +130,27 @@ test('it answers a scripted refusal with a 400 that carries the API error messag
   });
 });
 
+test('it answers a scripted credential failure with a 401 the CLI does not retry', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({ authFailure: 'invalid x-api-key' });
+
+  const response = await fetch(`${ctx.model.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  const body: unknown = await response.json();
+
+  expect(response.status).toBe(401);
+  expect(response.headers.get('x-should-retry')).toBe('false');
+
+  expect(body).toStrictEqual({
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+  });
+});
+
 test('it records every request with its path, headers and body', async () => {
   const ctx = setupTest();
 
