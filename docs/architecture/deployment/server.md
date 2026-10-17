@@ -145,8 +145,11 @@ the conversation retries.
 nixie logs JSON lines to stdout. Each line holds envelope fields only: an event name, IDs, kinds,
 counts and outcomes. Message text, tool arguments and tool results never reach a log line, because a
 line that copied them would keep them after their key is gone
-([erasable fields](../core/erasable-fields.md)). The logger writes the envelope on both sides of the
-event's fields, so a field can never overwrite the event name or the time.
+([erasable fields](../core/erasable-fields.md)). The logger passes each event to LogTape, and its
+formatter writes the time, the event name and the level ahead of the fields, so a field never
+overwrites any of them. The formatter writes only fields that hold one value, so an object or a list
+never reaches a line. Each line goes to stdout before the logging call returns, so it lands in order
+with what a command prints, and none waits in a buffer when the process exits.
 
 Each event has a level: debug, info, warn or error, and an event logs at info unless its call names
 another level. The server section of the deployment configuration sets the lowest level the log

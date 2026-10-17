@@ -1,129 +1,99 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { makeLogger } from './make-logger';
+import { startLineLog } from './start-line-log';
 
-test('it writes one JSON line with the time and the event first', () => {
+// LogTape configured to write each line into lines
+async function setupTest() {
   const lines: string[] = [];
 
-  const log = makeLogger(
-    (line) => {
-      lines.push(line);
-    },
-    () => Date.UTC(2026, 9, 11, 12, 0, 0),
-  );
+  const lineLog = await startLineLog((line) => {
+    lines.push(line);
+  });
 
-  log('step.committed', { taskID: 'conversation', records: 3, isRetry: false });
+  onTestFinished(lineLog.stop);
 
-  expect(lines).toSatisfyAll(
-    (line: string) =>
-      line.startsWith('{"time":"2026-10-11T12:00:00.000Z","event":"step.committed",') &&
-      line.endsWith('}\n'),
-  );
+  return { lines };
+}
 
-  expect(lines.map((line) => JSON.parse(line) as unknown)).toMatchObject([
-    {
-      time: '2026-10-11T12:00:00.000Z',
-      event: 'step.committed',
-      taskID: 'conversation',
-      records: 3,
-      isRetry: false,
-    },
+test('it writes one JSON line through LogTape with the time and the event first', async () => {
+  const ctx = await setupTest();
+
+  setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
+
+  onTestFinished(() => {
+    setSystemTime();
+  });
+
+  makeLogger()('step.committed', { taskID: 'conversation', records: 3, isRetry: false });
+
+  expect(ctx.lines).toStrictEqual([
+    '{"time":"2026-10-11T12:00:00.000Z","event":"step.committed","taskID":"conversation","records":3,"isRetry":false}\n',
   ]);
 });
 
-test('it never lets a field replace the time or the event', () => {
-  const lines: string[] = [];
+test('it writes a call that names no level as an info line, with no level', async () => {
+  const ctx = await setupTest();
 
-  const log = makeLogger(
-    (line) => {
-      lines.push(line);
-    },
-    () => Date.UTC(2026, 9, 11, 12, 0, 0),
-  );
+  setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
 
-  log('ready', { event: 'other', time: 'never' });
+  onTestFinished(() => {
+    setSystemTime();
+  });
 
-  expect(lines.map((line) => JSON.parse(line) as unknown)).toStrictEqual([
-    { time: '2026-10-11T12:00:00.000Z', event: 'ready' },
+  makeLogger()('writer.started');
+
+  expect(ctx.lines).toStrictEqual([
+    '{"time":"2026-10-11T12:00:00.000Z","event":"writer.started"}\n',
   ]);
 });
 
-test('it writes an info event with no level, as before nixie had levels', () => {
-  const lines: string[] = [];
+test.each(['debug', 'warn', 'error'] as const)(
+  'it writes a %s event with its level',
+  async (level) => {
+    const ctx = await setupTest();
 
-  const log = makeLogger(
-    (line) => {
-      lines.push(line);
-    },
-    () => Date.UTC(2026, 9, 11, 12, 0, 0),
-  );
+    setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
 
-  log('http.listening', { port: 8080 }, 'info');
+    onTestFinished(() => {
+      setSystemTime();
+    });
 
-  expect(lines).toStrictEqual([
-    '{"time":"2026-10-11T12:00:00.000Z","event":"http.listening","port":8080}\n',
+    makeLogger()('start.retry', { attempt: 2 }, level);
+
+    expect(ctx.lines).toStrictEqual([
+      `{"time":"2026-10-11T12:00:00.000Z","event":"start.retry","level":"${level}","attempt":2}\n`,
+    ]);
+  },
+);
+
+test('it never lets a field named level replace the level of the call', async () => {
+  const ctx = await setupTest();
+
+  setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
+
+  onTestFinished(() => {
+    setSystemTime();
+  });
+
+  makeLogger()('runner.failed', { level: 'debug' }, 'error');
+
+  expect(ctx.lines).toStrictEqual([
+    '{"time":"2026-10-11T12:00:00.000Z","event":"runner.failed","level":"error"}\n',
   ]);
 });
 
-test('it names the level of an event at any level but info', () => {
-  const lines: string[] = [];
+test('it writes the event as it came, even with a brace in it', async () => {
+  const ctx = await setupTest();
 
-  const log = makeLogger(
-    (line) => {
-      lines.push(line);
-    },
-    () => Date.UTC(2026, 9, 11, 12, 0, 0),
-  );
+  setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
 
-  log('definitions.probed', { changed: false }, 'debug');
+  onTestFinished(() => {
+    setSystemTime();
+  });
 
-  expect(lines).toStrictEqual([
-    '{"time":"2026-10-11T12:00:00.000Z","event":"definitions.probed","level":"debug","changed":false}\n',
+  makeLogger()('probe.{name}', { name: 'health' });
+
+  expect(ctx.lines).toStrictEqual([
+    '{"time":"2026-10-11T12:00:00.000Z","event":"probe.{name}","name":"health"}\n',
   ]);
-});
-
-test('it never lets a field replace the level', () => {
-  const lines: string[] = [];
-
-  const log = makeLogger(
-    (line) => {
-      lines.push(line);
-    },
-    () => Date.UTC(2026, 9, 11, 12, 0, 0),
-  );
-
-  log('runner.failed', { level: 'debug' }, 'error');
-
-  expect(lines.map((line) => JSON.parse(line) as unknown)).toStrictEqual([
-    { time: '2026-10-11T12:00:00.000Z', event: 'runner.failed', level: 'error' },
-  ]);
-});
-
-test('it drops a field named level from a call that names no level', () => {
-  const lines: string[] = [];
-
-  const log = makeLogger(
-    (line) => {
-      lines.push(line);
-    },
-    () => Date.UTC(2026, 9, 11, 12, 0, 0),
-  );
-
-  log('ready', { level: 'error' });
-
-  expect(lines).toStrictEqual(['{"time":"2026-10-11T12:00:00.000Z","event":"ready"}\n']);
-});
-
-test('it drops a field named level from an info call', () => {
-  const lines: string[] = [];
-
-  const log = makeLogger(
-    (line) => {
-      lines.push(line);
-    },
-    () => Date.UTC(2026, 9, 11, 12, 0, 0),
-  );
-
-  log('ready', { level: 'error' }, 'info');
-
-  expect(lines).toStrictEqual(['{"time":"2026-10-11T12:00:00.000Z","event":"ready"}\n']);
 });

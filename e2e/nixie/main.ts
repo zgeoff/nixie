@@ -1,5 +1,6 @@
 import { startActionRunners, writeUnknownOutcomes } from '@heynixie/actions';
 import { StaleWriterError, subscribeToRecords } from '@heynixie/log';
+import { startLineLog } from '@heynixie/logger';
 import type { RunnerPool, StepInput, StepResult } from '@heynixie/tasks';
 import {
   createConversationTask,
@@ -19,6 +20,12 @@ import { startTestTools } from './start-test-tools';
 // the harness passes: the writer, recovery, the conversation and memory's writer on scripted
 // models, the tool endpoint with test.send, and the runners, on the harness's one clock.
 const env = readNixieEnv(process.env);
+
+// the conversation's events go to stderr, as JSON lines, for a reader of a failed run
+await startLineLog((line) => {
+  process.stderr.write(line);
+});
+
 const link = startHarnessLink();
 
 setFaultPointHandler((id, work) => link.waitAtFaultPoint(id, work));
