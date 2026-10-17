@@ -3,3 +3,18 @@
 
 [extend]
 useDefault = true
+
+# a Google OAuth client secret on its own line, which the default rules catch
+# only beside a key name such as client_secret
+[[rules]]
+id = "google-oauth-client-secret"
+description = "Google OAuth client secret"
+regex = '''GOCSPX-[A-Za-z0-9_-]{28}'''
+keywords = ["gocspx-"]
+
+# a Tailscale MagicDNS name, which gives away a private tailnet
+[[rules]]
+id = "tailnet-host"
+description = "Tailscale MagicDNS host name"
+regex = '''\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.ts\.net\b'''
+keywords = [".ts.net"]

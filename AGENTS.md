@@ -19,11 +19,8 @@ The rules a task needs are not repeated here. Load the skill for the work before
 
 - Perform all work on a branch in a git worktree under `.worktrees/` (e.g.
   `git worktree add .worktrees/<branch> -b <branch>`) — never commit directly on `main`.
-- Run `bun install` in the main checkout before you run `bun run deadcode` or `bun run check` in a
-  worktree. knip's config loader looks for a `tsconfig.json` from the directory above the worktree,
-  so it reads the main checkout's, and without that checkout's `node_modules` knip exits 1 with
-  `File '@tsconfig/strictest/tsconfig.json' not found.`
 - Use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages.
+  commitlint takes a lowercase header of at most 72 characters.
 - A squash merge makes the PR title the commit subject, so a PR title is a Conventional Commit too.
   `feat(#412): add the retry budget` is a title; `add the retry budget` is not.
 - Commit subjects and PR titles use the imperative mood ("add X", never "added X" or a bare noun
@@ -34,80 +31,61 @@ The rules a task needs are not repeated here. Load the skill for the work before
 - After pushing, link the PR URL in your response.
 - A PR is ready only when its checks are green: watch CI (`gh pr checks <n> --watch`) after opening
   or updating, and report a failure with what you're doing about it.
-- Light linting, formatting, and other checks run via lefthook's pre-commit and pre-push hooks.
-  Defer to CI for larger checks, as the environment you're operating in may have conservative memory
-  constraints.
-- `bun run lint` is plain oxlint. `bun run lint:full` adds the type-aware pass, and is CI-only:
-  never run it locally.
 
-## Dependencies
+## Repo structure
 
-- Pin exact versions — no `^`/`~` ranges. (`bun add` saves exact automatically via `exact = true` in
-  bunfig.toml — the rule applies to hand-written edits.)
+nixie is one Bun workspace. Every package is private, takes the name `@heynixie/<folder>`, and is
+consumed as source through an `exports` map that points at `src/index.ts`.
 
-## Review bots
+```text
+apps/              deployables
+  server/          composition root: wires each adapter into the module that owns its interface
+modules/           domain modules, one per design area
+adapters/          one outside system each, named <interface>-<system> (sandbox-imp)
+guests/            programs that run inside a sandbox; reach nixie only through libs/wire
+libs/              shared code that belongs to no domain
+e2e/               whole-program suites
+evals/             checks committed evaluation reports against the code
+research/<name>/   spikes: a Bun package each, indexed in research/README.md; CI typechecks
+                   them and never runs them, and product code never imports them
+deploy/            Compose recipe and reference Kubernetes manifests (outside the workspace)
+preview/           throwaway test build of one pull request
+docs/
+  architecture/    what is built
+  decisions/       numbered decision records
+  design/          designs for work not yet built; only the owner opens one
+  guides/          steps a user does
+  runbooks/        operator and contributor procedures
+  reference/       generated reference
+```
 
-CodeRabbit reviews every PR with the shared config in the zgeoff/coderabbit repo, because this repo
-has no `.coderabbit.yaml` of its own. A repo-specific setting goes in a repo-root `.coderabbit.yaml`
-with `inheritance: true`, which layers it on top of the shared config. CodeRabbit reads this file as
-its guidelines. A review bot added later is named here with its config, and these rules cover it
-too.
+## Packages
 
-- A PR is ready only after every bot review is read and every finding is answered: a fixed finding's
-  reply cites the commit that fixed it; a declined finding's reply states the reason — when a
-  finding contradicts this file, this file wins and the reply names the rule. Reviews land within a
-  few minutes of opening; read them with `gh pr view <n> --comments` and
-  `gh api repos/<owner>/<repo>/pulls/<n>/comments`. A finding outside the diff arrives in the review
-  body, not as a thread, so its answer is a PR comment.
-- Resolve a thread once its reply is posted, fixed and declined alike (GraphQL
-  `resolveReviewThread`). A finding the agent cannot confidently judge is escalation, not
-  disposition: reply saying so and leave the thread open for a human.
-- Never teach a bot through chat (`@coderabbitai` learnings and the like) — a correction to bot
-  behaviour is an edit to its config, reviewed in a PR.
-- Bots review a PR once, at open; an agent invokes a re-review only when asked. The exception is a
-  PR that got no review at all, such as one opened before the bot was installed: request it once
-  with that bot's documented trigger, such as `@coderabbitai review` for CodeRabbit.
+These rules cover every workspace package except the spikes in `research/`. A spike pins the exact
+versions it ran against, and imports product files by path.
 
-## Repo layout
+Dependencies:
 
-- [docs/design/platform/code-layout.md](docs/design/platform/code-layout.md) sets the code layout:
-  the workspace folders, the package boundaries and the conventions every package follows. Workspace
-  packages use the `@heynixie/` npm scope, and the repo and the product keep the name nixie.
-- [docs/README.md](docs/README.md) indexes the docs.
-- Planned work, open choices and later stages live in the nixie project in Linear, which the docs
-  index links.
+- Every external version lives once, in the root `workspaces.catalog`. A package writes `"catalog:"`
+  for an external dependency and `"workspace:*"` for an internal one.
+- The root `package.json` declares only tooling.
+- Pin exact versions, with no `^` or `~` ranges. `bun add` saves exact versions, so the rule covers
+  hand-written edits.
 
-## Docs
+Boundaries:
 
-Each folder under `docs/` has one job:
+- `turbo boundaries` checks each dependency against the tags in the root `turbo.json`.
+- A lib depends only on libs.
+- A module never imports an adapter and never forms a cycle with another module.
+- A lib tagged `server-only`, such as `libs/db`, is closed to guests and clients.
+- An adapter depends only on the module that owns its interface. The tags allow any module, so
+  review enforces this rule.
 
-- `docs/architecture/` explains what is built: the parts, their boundaries and their invariants,
-  grouped in subfolders by area once an area passes about 6 docs.
-- `docs/decisions/` holds permanent, numbered decision records. A record states the choice, the
-  rejected alternatives and why, and never how the system works now. A changed decision is edited in
-  place: the record keeps its number and states the decision as it now stands, its header gains an
-  `Updated` date, and a `## Changes` list at its end gives each change's date and a one-line
-  summary. A new record is only for a new decision.
-- `docs/design/<work>/` holds a design for big, speculative work designed well before its code. A
-  design is temporary. Its spikes live in `research/<name>/`, each a Bun package in the workspace
-  whose README gives the question, how to run it and what it found, and the
-  [spikes index](research/README.md) lists every one. CI typechecks the spikes and never runs them.
-  Product code never imports from a spike. The owner opens a design; an agent never opens one by
-  default.
-- `docs/guides/`, `docs/runbooks/` and `docs/reference/` hold steps a user does, operator and
-  contributor procedures, and generated reference. Each arrives with the code it covers.
+oxlint refuses each of these imports outside its one package:
 
-A plan for work about to be built lives in its Linear issue or its PR, never in `docs/`.
-
-### Docs lifecycle
-
-When work from a design lands, the PR that lands it moves the built part into `docs/architecture/`,
-rewritten to describe the code. The PR deletes the rest of the design's folder once nothing in it is
-still unbuilt. A spike is deleted once its finding sits in the architecture doc that owns it.
-Decision records stay; architecture docs carry the current state.
-
-Load the `docs-writing` and `project-docs-writing` skills before you write any doc. They hold the
-writing rules, the size limits and the README contract.
+- The Agent SDK: `guests/conversation`.
+- imp's client: `adapters/sandbox-imp`.
+- `bun:sqlite` and the Kysely dialect: `libs/db`.
 
 ## Working here
 
@@ -121,6 +99,12 @@ writing rules, the size limits and the README contract.
   or times out. Answer every finding: fix it, or reply with the reason you declined it. CodeRabbit
   never blocks a PR that has a local review; when it is rate-limited or paused, or has not reviewed
   within 10 minutes of the PR opening, the PR goes ahead without it.
+  - A fixed finding's reply cites the commit that fixed it. A declined finding's reply gives the
+    reason, and when the finding contradicts this file, this file wins and the reply names the rule.
+  - Resolve a thread once its reply is posted. Leave the thread open for the owner when you cannot
+    judge the finding.
+  - Never teach a bot through chat. A correction to a bot is an edit to its config, in a PR.
+  - Request a re-review only when asked, or once for a PR that got no review at all.
 - **Merge.** A PR merges only on the owner's word, after CI is green and every finding is answered.
   Squash it, and never use `--admin` or any other ruleset bypass. After a merge, remove its worktree
   and its local and remote branches. Sync PRs that repo-sync opens merge without asking, once CI is
@@ -130,12 +114,13 @@ writing rules, the size limits and the README contract.
 - **Linear.** A PR body names its issue with one relationship: `Fixes GEO-<n>` when merging meets
   the issue's acceptance, `Contributes to GEO-<n>` when work remains, or `Related to GEO-<n>` for
   context only.
+- **Plans.** A plan for work about to be built lives in its Linear issue or its PR, never in
+  `docs/`. Planned work, open choices and later stages live in the nixie project in Linear.
 
 ## Database
 
-- Only `libs/db` imports `bun:sqlite` and the Kysely dialect. Every other package takes its handle
-  from the writer that `startWriter` in `modules/log` returns, and runs each write transaction
-  through `withWriteTransaction`.
+- Every package outside `libs/db` takes its database handle from the writer that `startWriter` in
+  `modules/log` returns, and runs each write transaction through `withWriteTransaction`.
 - Every ID that keys the key store is random, from `crypto.randomUUID()`, and never a row number or
   any other sequence. [The database](docs/architecture/core/database.md#key-store-ids) gives the
   reason.
@@ -146,36 +131,31 @@ writing rules, the size limits and the README contract.
 
 ## Public repo
 
-The repo is public, so every commit, PR, issue and review reply stays free of private detail:
+The repo is public, and everything pushed to it stays public: commits, PRs, issues and review
+replies. Keep your own environment out of it, so your setup never leaks through your work.
 
-- No home directory paths, host names, private network names, or details of the owner's cloud. The
-  deployment repo holds those.
-- No name for the owner's coordinator agent.
-- The docs justify nixie on its own terms, never by comparing it to another system.
+- Leave out home directory paths, host names, private network names, cloud details, and the names of
+  the tools and agents you work with. A private deployment repo holds a deployment's details.
+- Explain each choice by what nixie needs, so the reason stays true when other products change.
 
-Before you push, grep the diff for `sk-ant`, `GOCSPX`, `AGE-SECRET-KEY`, `ops_`, `/home/` and
-`.ts.net`. gitleaks runs in the pre-commit hook and in CI.
+gitleaks scans each commit and each PR for secrets and tailnet host names, and the pre-push hook
+refuses a branch that adds your home directory or host name.
 
 ## Secrets
 
-Secrets live in the `nixie` 1Password vault, and the `op` CLI reads them with a service-account
-token scoped to that vault. Claude Code loads the token from `.claude/settings.local.json`
-(`env.OP_SERVICE_ACCOUNT_TOKEN`), which git ignores; any other agent reads it inline from that file.
-The token expires after about 7 days, and `op-mint nixie` mints a new one.
-
-Read a secret with `op read 'op://nixie/<item>/<field>'` straight into the command that uses it.
-Never print a token or a secret value, and never write one to a file in the repo.
+Secrets live in the `nixie` 1Password vault. Read a secret with
+`op read 'op://nixie/<item>/<field>'` straight into the command that uses it. Never print a token or
+a secret value, and never write one to a file in the repo.
 
 ## Toolchain
 
 - Bun is pinned in `.bun-version`. `bun run format` fixes formatting, and `bun run check` runs every
   check that CI runs.
-- CI runs the shared Bun pull-request workflow from zgeoff/tools. The `BUN_CHECK_SCRIPTS` repo
-  variable holds its script list:
-  `audit deadcode format:check lint:full typecheck boundaries prose test`. A change to that list
-  changes `bun run check` in the same PR.
-- lefthook runs oxlint, oxfmt and gitleaks before a commit, and commitlint on the message. Before a
-  push it runs one job at a time, so a 2 GiB host can push: the format check, boundaries and the
-  prose check over the whole tree, then lint, typecheck and the tests over what the branch changes.
-  The typecheck checks each package the branch affects, one package and one checker at a time.
-  commitlint takes a lowercase Conventional Commit header of at most 72 characters.
+- lefthook runs the light checks before a commit and a push. Leave the heavier checks to CI, because
+  the host may have little memory.
+- `bun run lint` is plain oxlint. `bun run lint:full` adds the type-aware pass, and is CI-only:
+  never run it locally.
+- Run `bun install` in the main checkout before you run `bun run deadcode` or `bun run check` in a
+  worktree. knip's config loader looks for a `tsconfig.json` from the directory above the worktree,
+  so it reads the main checkout's, and without that checkout's `node_modules` knip exits 1 with
+  `File '@tsconfig/strictest/tsconfig.json' not found.`
