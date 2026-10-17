@@ -78,10 +78,13 @@ export interface StepActivity {
   readonly taskID?: string;
 }
 
-export type ActivityItem = { readonly kind: 'message'; readonly record: LiveRecord } | StepActivity;
+export type ActivityItem =
+  | { readonly kind: 'message'; readonly record: LiveRecord }
+  | { readonly kind: 'reset'; readonly record: LiveRecord }
+  | StepActivity;
 
-// Groups a thread's records for the view: each message stands alone, and every other record
-// folds into the step it belongs to. A record before a step, such as the task's creation, folds
+// Groups a thread's records for the view: each message stands alone, a reset stands alone at the
+// start of the log it begins, and every other record folds into the step it belongs to. A record before a step, such as the task's creation, folds
 // into the step that follows it; one after the last step forms a group of its own.
 export function buildActivity(records: readonly LiveRecord[]): readonly ActivityItem[] {
   const state: ActivityState = {
@@ -157,11 +160,13 @@ const stepEnds: Readonly<Record<string, StepStatus>> = {
 // your message and the conversation's reply, which stand alone with or without their text
 const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
 
-// Adds one record to the groups: a message stands alone, a forgotten one too, and any other record
-// joins the open step.
+// Adds one record to the groups: a message stands alone, a forgotten one too, a reset too, and any
+// other record joins the open step.
 function applyRecord(state: ActivityState, record: LiveRecord): void {
   if (record.message !== undefined || messageKinds.has(record.kind)) {
     state.items.push({ kind: 'message', record });
+  } else if (record.kind === 'log_reset') {
+    state.items.push({ kind: 'reset', record });
   } else if (record.kind === 'task.step_started') {
     state.open = buildStep([...state.pending, record], 'running', state.ratings);
     state.pending = [];

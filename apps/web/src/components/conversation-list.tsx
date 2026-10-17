@@ -7,6 +7,7 @@ import type { LiveRecord } from '../use-live-records';
 import type { OutboxEntry } from '../use-outbox';
 import { OutboxItem } from './outbox-item';
 import { RecordItem } from './record-item';
+import { ResetMarker } from './reset-marker';
 import { StepGroup } from './step-group';
 
 export interface ConversationListProps {
@@ -27,13 +28,17 @@ export function ConversationList(props: ConversationListProps): ReactNode {
   return (
     <>
       <ol aria-label="Conversation" className={css(column, messages)}>
-        {activity.map((item) =>
-          item.kind === 'message' ? (
-            <RecordItem key={item.record.sequence} record={item.record} />
-          ) : (
-            <StepGroup key={item.key} step={item} />
-          ),
-        )}
+        {activity.map((item) => {
+          if (item.kind === 'message') {
+            return <RecordItem key={item.record.sequence} record={item.record} />;
+          }
+
+          if (item.kind === 'reset') {
+            return <ResetMarker key={item.record.sequence} record={item.record} />;
+          }
+
+          return <StepGroup key={item.key} step={item} />;
+        })}
         {unshown.map((entry) => (
           <OutboxItem
             entry={entry}

@@ -10,9 +10,10 @@ export function isWorking(activity: readonly ActivityItem[], hasPendingSend: boo
   );
 }
 
-// Reads back from the end past the steps that finished, to the item that settles the wait.
+// Reads back from the end past the steps that finished, to the item that settles the wait. A reset
+// settles it, since the log it begins holds no message yet.
 function hasUnansweredMessage(activity: readonly ActivityItem[]): boolean {
-  const settling = activity.findLast((item) => item.kind === 'message' || item.status !== 'done');
+  const settling = activity.findLast((item) => item.kind !== 'step' || item.status !== 'done');
 
   return settling?.kind === 'message' && settling.record.kind === 'owner_message';
 }

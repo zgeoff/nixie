@@ -127,6 +127,35 @@ test('it shows a spinner while a reply is pending and removes it when the reply 
   expect(rendered.queryByRole('progressbar', { name: 'nixie is working' })).toBeNull();
 });
 
+test('it drops the messages from before a reset that arrives on the live stream and marks the reset', async () => {
+  await setupTest();
+
+  setupBrowserTimeZone('Europe/Lisbon');
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the kettle on?' } });
+  await store.records.create({ kind: 'assistant_message', message: { text: 'It is now.' } });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const list = await rendered.findByRole('list', { name: 'Conversation' });
+
+  await rendered.findByText('It is now.');
+
+  // the server restarts after the reset, so the read again fails and the client keeps its cache
+  server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
+
+  await store.records.create({
+    kind: 'log_reset',
+    recordedAt: new Date('2026-10-12T09:30:00Z'),
+  });
+
+  await rendered.findByRole('note', { name: 'reset' });
+
+  expect([...list.children].map((item) => item.textContent)).toStrictEqual([
+    'Reset at Oct 12, 10:30 AM',
+  ]);
+});
+
 // The client pauses 1 s and then 2 s between the three attempts, on the platform timer.
 test('it says live updates are unavailable while the live stream keeps failing', async () => {
   await setupTest();
