@@ -164,6 +164,13 @@ async function emitInit(message: InitMessage, deps: TurnDependencies): Promise<M
 
 type AssistantMessage = Extract<SDKMessage, { type: 'assistant' }>;
 
+// the CLI's codes for a credential the model API refused: an invalid one, and an OAuth credential
+// that the organization does not allow
+const refusedCredentialErrors: ReadonlySet<string> = new Set([
+  'authentication_failed',
+  'oauth_org_not_allowed',
+]);
+
 // a subagent's message carries its parent's tool use and stays off the main chain
 async function emitAssistant(
   message: AssistantMessage,
@@ -175,7 +182,7 @@ async function emitAssistant(
   }
 
   // the CLI's own message for a credential the model API refused is no reply from the model
-  if (message.error === 'authentication_failed') {
+  if (message.error !== undefined && refusedCredentialErrors.has(message.error)) {
     await deps.emit({
       type: 'failed',
       reason: 'model_auth',
