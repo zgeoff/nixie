@@ -53,8 +53,6 @@ export function startTestConversation(
       recallMessages: () => Promise.resolve({ messages: [] }),
       readShortIDs: () => Promise.resolve(new Map()),
     }),
-    log: makeLogger((line) => {
-      process.stderr.write(line);
-    }),
+    log: makeLogger(),
   });
 }

@@ -1,5 +1,6 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import type { Logger } from '@heynixie/logger';
+import { makeLogger, startLineLog } from '@heynixie/logger';
 import { SandboxHostError } from '@heynixie/sandbox';
 import { buildImpPort } from '@heynixie/sandbox-imp';
 import { startStubImpd } from '@heynixie/sandbox-imp/test-utils';
@@ -73,6 +74,44 @@ test("it records and logs impd's code and message for a turn whose imp wake impd
         hostMessage: 'Not enough RAM budget, even after sleeping idle imps',
       },
     ],
+  ]);
+});
+
+test("it writes no line that quotes a failed turn's message or tool result", async () => {
+  const ctx = await setupTest();
+
+  const lines: string[] = [];
+
+  const lineLog = await startLineLog((line) => {
+    lines.push(line);
+  });
+
+  onTestFinished(lineLog.stop);
+
+  const errored = await sendTestMessage(
+    ctx.context,
+    () => {
+      throw new Error(
+        'the turn failed on "Is the ferry running on Sunday?" after the tool returned "The Sunday ferry leaves at nine."',
+      );
+    },
+    'Is the ferry running on Sunday?',
+  );
+
+  invariant(errored);
+  makeStepErrorLogger(makeLogger())(errored);
+
+  expect(lines.map((line) => JSON.parse(line) as unknown)).toStrictEqual([
+    {
+      time: expect.any(String),
+      event: 'task.step_errored',
+      taskID: 'conversation',
+      stepKey: errored.stepKey,
+      errors: 1,
+      nextState: 'ready',
+      retryAt: errored.retryAt,
+      error: 'Error',
+    },
   ]);
 });
 

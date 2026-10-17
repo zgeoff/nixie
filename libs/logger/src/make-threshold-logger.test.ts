@@ -1,99 +1,43 @@
-import { expect, test } from 'bun:test';
-import { makeLogger } from './make-logger';
+import { expect, mock, test } from 'bun:test';
 import { makeThresholdLogger } from './make-threshold-logger';
+import type { Logger } from './types';
 
 test('it writes an event at the threshold', () => {
-  const lines: string[] = [];
+  const log = mock<Logger>();
 
-  const log = makeThresholdLogger(
-    makeLogger(
-      (line) => {
-        lines.push(line);
-      },
-      () => Date.UTC(2026, 9, 11, 12, 0, 0),
-    ),
-    'warn',
-  );
+  makeThresholdLogger(log, 'warn')('start.retry', { attempt: 2 }, 'warn');
 
-  log('start.retry', { attempt: 2 }, 'warn');
-
-  expect(lines.map((line) => JSON.parse(line) as unknown)).toMatchObject([
-    { time: '2026-10-11T12:00:00.000Z', event: 'start.retry', level: 'warn', attempt: 2 },
-  ]);
+  expect(log.mock.calls).toStrictEqual([['start.retry', { attempt: 2 }, 'warn']]);
 });
 
 test('it writes no event below the threshold', () => {
-  const lines: string[] = [];
+  const log = mock<Logger>();
 
-  const log = makeThresholdLogger(
-    makeLogger(
-      (line) => {
-        lines.push(line);
-      },
-      () => Date.UTC(2026, 9, 11, 12, 0, 0),
-    ),
-    'warn',
-  );
+  makeThresholdLogger(log, 'warn')('start.retry', { attempt: 2 }, 'info');
 
-  log('start.retry', { attempt: 2 }, 'info');
-
-  expect(lines).toStrictEqual([]);
+  expect(log.mock.calls).toStrictEqual([]);
 });
 
 test('it writes an event above the threshold', () => {
-  const lines: string[] = [];
+  const log = mock<Logger>();
 
-  const log = makeThresholdLogger(
-    makeLogger(
-      (line) => {
-        lines.push(line);
-      },
-      () => Date.UTC(2026, 9, 11, 12, 0, 0),
-    ),
-    'info',
-  );
+  makeThresholdLogger(log, 'info')('runner.failed', { error: 'RangeError' }, 'error');
 
-  log('runner.failed', { error: 'RangeError' }, 'error');
-
-  expect(lines.map((line) => JSON.parse(line) as unknown)).toMatchObject([
-    { time: '2026-10-11T12:00:00.000Z', event: 'runner.failed', level: 'error' },
-  ]);
+  expect(log.mock.calls).toStrictEqual([['runner.failed', { error: 'RangeError' }, 'error']]);
 });
 
 test('it writes a call that names no level at the info threshold', () => {
-  const lines: string[] = [];
+  const log = mock<Logger>();
 
-  const log = makeThresholdLogger(
-    makeLogger(
-      (line) => {
-        lines.push(line);
-      },
-      () => Date.UTC(2026, 9, 11, 12, 0, 0),
-    ),
-    'info',
-  );
+  makeThresholdLogger(log, 'info')('writer.started', { epoch: 4 });
 
-  log('writer.started', { epoch: 4 });
-
-  expect(lines).toStrictEqual([
-    '{"time":"2026-10-11T12:00:00.000Z","event":"writer.started","epoch":4}\n',
-  ]);
+  expect(log.mock.calls).toStrictEqual([['writer.started', { epoch: 4 }, 'info']]);
 });
 
 test('it writes no call that names no level above the info threshold', () => {
-  const lines: string[] = [];
+  const log = mock<Logger>();
 
-  const log = makeThresholdLogger(
-    makeLogger(
-      (line) => {
-        lines.push(line);
-      },
-      () => Date.UTC(2026, 9, 11, 12, 0, 0),
-    ),
-    'warn',
-  );
+  makeThresholdLogger(log, 'warn')('writer.started', { epoch: 4 });
 
-  log('writer.started', { epoch: 4 });
-
-  expect(lines).toStrictEqual([]);
+  expect(log.mock.calls).toStrictEqual([]);
 });
