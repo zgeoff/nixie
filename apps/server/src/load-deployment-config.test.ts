@@ -248,12 +248,15 @@ test('it reads the test sandbox with no imp section', async () => {
   expect(config.imp).toBeUndefined();
 });
 
-test("it loads the preview's configuration on the test sandbox, with its invented owner", async () => {
+test("it loads the preview's configuration on the test sandbox, with its invented owner and a bearer credential", async () => {
   const config = await loadDeploymentConfig(join(import.meta.dir, '../../../preview/config.yaml'));
 
   expect(config.sandbox).toStrictEqual({ adapter: 'test' });
   expect(config.owner.name).toBe('Juniper Vale');
   expect(config.models.roles).toStrictEqual({ conversation: 'preview' });
+
+  // the host's credential broker replaces only the authorization header
+  expect(config.models.profiles['preview']?.authHeader).toBe('bearer');
 });
 
 test('it refuses to start the imp adapter with the imp section unset', async () => {
