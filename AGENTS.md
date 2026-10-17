@@ -15,23 +15,6 @@ The rules a task needs are not repeated here. Load the skill for the work before
 | `docs-writing`         | writing or editing any committed prose: `docs/`, READMEs, this file, skills             |
 | `project-docs-writing` | the same, beside `docs-writing` — nixie's own prose rules                               |
 
-## Operations
-
-- Perform all work on a branch in a git worktree under `.worktrees/` (e.g.
-  `git worktree add .worktrees/<branch> -b <branch>`) — never commit directly on `main`.
-- Use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages.
-  commitlint takes a lowercase header of at most 72 characters.
-- A squash merge makes the PR title the commit subject, so a PR title is a Conventional Commit too.
-  `feat(#412): add the retry budget` is a title; `add the retry budget` is not.
-- Commit subjects and PR titles use the imperative mood ("add X", never "added X" or a bare noun
-  phrase).
-- Open PRs against `main` using the PR template (`.github/PULL_REQUEST_TEMPLATE.md`). Descriptions
-  are condensed: lead paragraph ≤2 sentences, one-line bullets, ≤150 words — write the short version
-  first, don't draft long and trim.
-- After pushing, link the PR URL in your response.
-- A PR is ready only when its checks are green: watch CI (`gh pr checks <n> --watch`) after opening
-  or updating, and report a failure with what you're doing about it.
-
 ## Repo structure
 
 nixie is one Bun workspace. Every package is private, takes the name `@heynixie/<folder>`, and is
@@ -94,26 +77,7 @@ oxlint refuses each of these imports outside its one package:
   with its options, a recommendation and the trade-off. A decision record exists only for what the
   owner agreed. Run spikes, close questions that evidence or an existing decision settles, and set
   configurable defaults for tuning values without asking.
-- **Review.** Every PR gets a local review before the owner sees it: Codex first
-  (`codex review --base origin/main < /dev/null`), or an Opus review agent when Codex is unavailable
-  or times out. Answer every finding: fix it, or reply with the reason you declined it. CodeRabbit
-  never blocks a PR that has a local review; when it is rate-limited or paused, or has not reviewed
-  within 10 minutes of the PR opening, the PR goes ahead without it.
-  - A fixed finding's reply cites the commit that fixed it. A declined finding's reply gives the
-    reason, and when the finding contradicts this file, this file wins and the reply names the rule.
-  - Resolve a thread once its reply is posted. Leave the thread open for the owner when you cannot
-    judge the finding.
-  - Never teach a bot through chat. A correction to a bot is an edit to its config, in a PR.
-  - Request a re-review only when asked, or once for a PR that got no review at all.
-- **Merge.** A PR merges only on the owner's word, after CI is green and every finding is answered.
-  Squash it, and never use `--admin` or any other ruleset bypass. After a merge, remove its worktree
-  and its local and remote branches. Sync PRs that repo-sync opens merge without asking, once CI is
-  green.
-- **Attribution.** Commit messages and PR bodies carry no attribution lines: no co-author trailers
-  and no generator notes.
-- **Linear.** A PR body names its issue with one relationship: `Fixes GEO-<n>` when merging meets
-  the issue's acceptance, `Contributes to GEO-<n>` when work remains, or `Related to GEO-<n>` for
-  context only.
+- **Repo-sync PRs.** A sync PR that repo-sync opens merges without asking, once CI is green.
 - **Plans.** A plan for work about to be built lives in its Linear issue or its PR, never in
   `docs/`. Planned work, open choices and later stages live in the nixie project in Linear.
 
