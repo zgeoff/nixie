@@ -183,6 +183,34 @@ test('it drops a message this tab sent before a reset and stops working', async 
   expect(rendered.queryByRole('progressbar', { name: 'nixie is working' })).toBeNull();
 });
 
+// The server's clock runs a minute ahead of the browser's, so the reset carries a time after the
+// message the tab writes once the reset shows.
+test('it keeps a message this tab sends after a reset while its clock runs behind the server', async () => {
+  const ctx = await setupTest();
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const textBox = await rendered.findByRole('textbox', { name: 'Message' });
+
+  await store.records.create({ kind: 'log_reset', recordedAt: new Date(Date.now() + 60_000) });
+  await rendered.findByRole('note', { name: 'reset' });
+  await ctx.user.type(textBox, 'Is the gate locked?{Enter}');
+
+  await waitFor(() => {
+    expect(
+      store.records.findFirst((query) =>
+        query.where((record) => record.message?.text === 'Is the gate locked?'),
+      ),
+    ).toBeDefined();
+  });
+
+  const list = await rendered.findByRole('list', { name: 'Conversation' });
+
+  await waitFor(() => {
+    expect(list).toHaveTextContent('Is the gate locked?');
+  });
+});
+
 // The client pauses 1 s and then 2 s between the three attempts, on the platform timer.
 test('it says live updates are unavailable while the live stream keeps failing', async () => {
   await setupTest();

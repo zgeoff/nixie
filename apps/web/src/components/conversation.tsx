@@ -24,7 +24,7 @@ export function Conversation(props: ConversationProps): ReactNode {
   const conversation = useConversationRecords(props.thread);
 
   const outbox = useOutbox(conversation.forgottenClientMessageIDs, {
-    resetAt: conversation.records.find((record) => record.kind === 'log_reset')?.recordedAt,
+    resetSequence: conversation.liveResetSequence,
   });
 
   const [sends, setSends] = useState(0);

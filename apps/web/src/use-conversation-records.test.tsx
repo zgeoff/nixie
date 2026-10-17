@@ -296,3 +296,25 @@ test('it keeps the conversation ready when the read after a reset fails', async 
 
   expect(hook.result.current.status).toBe('ready');
 });
+
+test('it names a reset the live stream delivers, and not one the page read', async () => {
+  await setupTest();
+
+  await store.records.create({ kind: 'log_reset' });
+
+  const hook = renderHook(() => useConversationRecords('conversation'));
+
+  await waitFor(() => {
+    expect(hook.result.current.status).toBe('ready');
+  });
+
+  const read = hook.result.current.liveResetSequence;
+
+  const reset = await store.records.create({ kind: 'log_reset' });
+
+  await waitFor(() => {
+    expect(hook.result.current.liveResetSequence).toBe(reset.sequence);
+  });
+
+  expect(read).toBeUndefined();
+});

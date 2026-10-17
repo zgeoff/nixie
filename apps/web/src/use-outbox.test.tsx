@@ -30,14 +30,15 @@ async function setupTest() {
   // setForgotten, which the next render reads
   let forgotten: readonly string[] = [];
 
-  // the time of the latest reset the conversation shows, which a test sets through setResetAt
-  let resetAt: Date | undefined;
+  // the sequence of the latest reset the live stream delivered, which a test sets through
+  // setResetSequence
+  let resetSequence: number | undefined;
 
   // the page's clock stands still unless a test moves it, and each retry waits on a stub timer
   const clock = { now: Date.parse('2026-10-17T09:00:00.000Z') };
   const timer = buildStubTimer();
   const options = { now: () => clock.now, startTimer: timer.startTimer };
-  const rendered = renderHook(() => useOutbox(forgotten, { ...options, resetAt }));
+  const rendered = renderHook(() => useOutbox(forgotten, { ...options, resetSequence }));
 
   return {
     clock,
@@ -47,8 +48,8 @@ async function setupTest() {
     setForgotten: (clientMessageIDs: readonly string[]) => {
       forgotten = clientMessageIDs;
     },
-    setResetAt: (date: Date) => {
-      resetAt = date;
+    setResetSequence: (sequence: number) => {
+      resetSequence = sequence;
     },
   };
 }
@@ -149,7 +150,7 @@ test('it drops a forgotten message from memory and device storage', async () => 
   expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
 });
 
-test('it drops a message written before a reset from memory and device storage, and keeps a later one', async () => {
+test('it drops every message it holds when a reset arrives from memory and device storage', async () => {
   const ctx = await setupTest();
 
   server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
@@ -161,44 +162,104 @@ test('it drops a message written before a reset from memory and device storage, 
       text: 'Water the figs.',
       thread: 'conversation',
     });
-  });
 
-  await waitFor(() => {
-    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
-  });
-
-  ctx.clock.now = Date.parse('2026-10-17T09:05:00.000Z');
-
-  act(() => {
     ctx.rendered.result.current.add({
       clientMessageId: '9b1e4f7a-2c6d-4e3b-8a5f-0d7c3e9b1a62',
-      spans: [{ end: 14, source: 'typed', start: 0 }],
+      spans: [{ end: 13, source: 'typed', start: 0 }],
       text: 'Feed the cat.',
       thread: 'conversation',
     });
   });
 
   await waitFor(() => {
-    expect(ctx.rendered.result.current.entries[1]?.status).toBe('sent');
+    expect(ctx.rendered.result.current.entries.map((entry) => entry.status)).toStrictEqual([
+      'failed',
+      'sent',
+    ]);
   });
 
   const stored = globalThis.localStorage.getItem('nixie.outbox');
   const retries = ctx.timer.countPending();
 
+  const reset = await store.records.create({ kind: 'log_reset' });
+
   act(() => {
-    ctx.setResetAt(new Date('2026-10-17T09:02:00.000Z'));
+    ctx.setResetSequence(reset.sequence);
     ctx.rendered.rerender();
   });
 
   expect(stored).toInclude('3a7d9e1c-5b2f-4c8a-9e6d-1f4b7c2a8d50');
   expect(retries).toBe(1);
+  expect(ctx.rendered.result.current.entries).toStrictEqual([]);
+  expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
+  expect(ctx.timer.countPending()).toBe(0);
+});
+
+test('it keeps a message the API wrote after a reset that arrives late', async () => {
+  const ctx = await setupTest();
+  const reset = await store.records.create({ kind: 'log_reset' });
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '5e2a8c1f-7d4b-4f9a-b3e6-2c0d8f5a1b73',
+      spans: [{ end: 16, source: 'typed', start: 0 }],
+      text: 'Bring the chairs.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('sent');
+  });
+
+  act(() => {
+    ctx.setResetSequence(reset.sequence);
+    ctx.rendered.rerender();
+  });
 
   expect(
     ctx.rendered.result.current.entries.map((entry) => entry.message.clientMessageId),
-  ).toStrictEqual(['9b1e4f7a-2c6d-4e3b-8a5f-0d7c3e9b1a62']);
+  ).toStrictEqual(['5e2a8c1f-7d4b-4f9a-b3e6-2c0d8f5a1b73']);
+});
 
-  expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
-  expect(ctx.timer.countPending()).toBe(0);
+// The page's clock stands at 09:00, a minute behind the time the server gave the reset.
+test('it keeps a message written after a reset arrives while the clock runs behind the server', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  const reset = await store.records.create({
+    kind: 'log_reset',
+    recordedAt: new Date('2026-10-17T09:01:00.000Z'),
+  });
+
+  act(() => {
+    ctx.setResetSequence(reset.sequence);
+    ctx.rendered.rerender();
+  });
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '7c3f1a9e-4b2d-4e8c-a6f5-1d9b3e7c2a84',
+      spans: [{ end: 18, source: 'typed', start: 0 }],
+      text: 'Lock the back door.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  await ctx.timer.advanceToNext();
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('sent');
+  });
+
+  expect(
+    ctx.rendered.result.current.entries.map((entry) => entry.message.clientMessageId),
+  ).toStrictEqual(['7c3f1a9e-4b2d-4e8c-a6f5-1d9b3e7c2a84']);
 });
 
 test('it keeps a forgotten message out of device storage when a failed retry lands in the same render', async () => {
