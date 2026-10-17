@@ -111,8 +111,8 @@ oxlint refuses each of these imports outside its one package:
 - **Linear.** A PR body names its issue with one relationship: `Fixes GEO-<n>` when merging meets
   the issue's acceptance, `Contributes to GEO-<n>` when work remains, or `Related to GEO-<n>` for
   context only.
-- **Plans.** A plan for work about to be built lives in its Linear issue or its PR, never in `docs/`.
-  Planned work, open choices and later stages live in the nixie project in Linear.
+- **Plans.** A plan for work about to be built lives in its Linear issue or its PR, never in
+  `docs/`. Planned work, open choices and later stages live in the nixie project in Linear.
 
 ## Database
 
