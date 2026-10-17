@@ -58,9 +58,11 @@ token check compares.
 
 Code finds each destination-like token in the memory text and requires it in the quote: email
 addresses, URLs, bare domains, handles, phone numbers and account numbers, each compared in its own
-normal form. A lookalike letter from another script fails every comparison. The token check stops
-the most harmful poisoned memory, one that points nixie at an attacker's destination, whatever the
-checker answers.
+normal form. An account number is an IBAN, an Australian BSB with its account number, or a run of
+digits right after a word such as "account number", so a short domestic account number counts even
+where it looks like no phone number. A lookalike letter from another script fails every comparison.
+The token check stops the most harmful poisoned memory, one that points nixie at an attacker's
+destination, whatever the checker answers.
 
 ### The checker
 

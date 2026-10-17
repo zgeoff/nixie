@@ -11,6 +11,26 @@ test.each([
     'Pays GB33BUKB20201555555555',
     'GB33 BUKB 2020 1555 5555 55',
   ],
+  [
+    'a BSB and account number with other separators',
+    'Rent goes to 062-000 12345678',
+    'BSB and account are 062000 12345678',
+  ],
+  [
+    'a BSB and account number with an account word between',
+    'Rent goes to BSB 062-000, account 12345678',
+    'pay the rent to 062-000 12345678',
+  ],
+  [
+    'an account number after another account word',
+    'Account number: 4821 7730',
+    'my acct is 48217730',
+  ],
+  [
+    'an account number that a quoted BSB and account number holds',
+    'Account number is 12345678',
+    'BSB 062-000 account number: 12345678',
+  ],
 ])('it finds no missing token for %s', (_label, text, quote) => {
   expect(findMissingToken(text, quote)).toBeNull();
 });
@@ -48,4 +68,34 @@ test('it finds a URL path that differs in case', () => {
   expect(findMissingToken('Uses https://example.com/A', 'see https://example.com/a')).toMatchObject(
     { kind: 'url' },
   );
+});
+
+test('it finds a short account number that the quote lacks', () => {
+  expect(
+    findMissingToken('Bank account number is 123456', 'Use my usual bank account'),
+  ).toMatchObject({ kind: 'account', key: '123456' });
+});
+
+test('it finds a BSB and account number that differs from the quoted one', () => {
+  expect(
+    findMissingToken('Rent goes to 062-000 87654321', 'Rent goes to 062-000 12345678'),
+  ).toMatchObject({ kind: 'account', key: '06200087654321' });
+});
+
+test.each([
+  [
+    'an account number grouped like a BSB',
+    'Account 123456 123456 9876',
+    'Account 123456 123456 1111',
+  ],
+  ['a BSB after another digit group', 'Pays 11 062-000 12345678', 'Pays 22 062-000 12345678'],
+])('it compares the whole of %s', (_label, text, quote) => {
+  expect(findMissingToken(text, quote)).not.toBeNull();
+});
+
+test('it finds a BSB that the quote lacks beside a quoted account number', () => {
+  expect(findMissingToken('Pays 062-000 12345678', 'account number: 12345678')).toMatchObject({
+    kind: 'account',
+    key: '06200012345678',
+  });
 });
