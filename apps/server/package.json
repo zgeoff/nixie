@@ -37,6 +37,7 @@
     "@heynixie/wire": "workspace:*",
     "@orpc/client": "catalog:",
     "elysia": "catalog:",
+    "gunshi": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"
   },
