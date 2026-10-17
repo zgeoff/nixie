@@ -22,15 +22,12 @@ export async function parseCLIArgs(
 ): Promise<ParsedCLIArgs> {
   let parsed: ParsedCLIArgs = { kind: 'unknown-command', command: '' };
 
-  const read = (command: string, ctx: Readonly<CommandContext<CLIParams>>): void => {
-    parsed = {
-      kind: 'command',
-      command,
-      flags: ctx.values,
-
-      // a word after `--` may start with a dash, and it is an argument too
-      args: [...ctx.positionals.slice(ctx.commandPath.length), ...ctx.rest],
-    };
+  const read = (
+    command: string,
+    ctx: Readonly<CommandContext<CLIParams>>,
+    args: readonly string[],
+  ): void => {
+    parsed = { kind: 'command', command, flags: ctx.values, args };
   };
 
   const subCommands = Object.fromEntries(
@@ -38,7 +35,8 @@ export async function parseCLIArgs(
       name,
       lazy(
         () => (ctx: Readonly<CommandContext<CLIParams>>) => {
-          read(name, ctx);
+          // a word after `--` may start with a dash, and it is an argument too
+          read(name, ctx, [...ctx.positionals.slice(ctx.commandPath.length), ...ctx.rest]);
         },
         { name, args: CLI_OPTIONS },
       ),
@@ -48,8 +46,19 @@ export async function parseCLIArgs(
   const entry = define({
     name: 'nixie',
     args: CLI_OPTIONS,
+
+    // A command line with no command before `--` takes its command from the first word after it,
+    // which the parser leaves unread.
     run: (ctx) => {
-      read('serve', ctx);
+      const [command, ...args] = ctx.rest;
+
+      if (command === undefined) {
+        read('serve', ctx, []);
+      } else if (commandNames.includes(command)) {
+        read(command, ctx, args);
+      } else {
+        parsed = { kind: 'unknown-command', command };
+      }
     },
   });
 

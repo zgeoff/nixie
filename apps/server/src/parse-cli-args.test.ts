@@ -467,6 +467,35 @@ test('it reads flags written with = and flags before the command', async () => {
   });
 });
 
+test('it takes the command from the first word after -- when none comes before it', async () => {
+  const parsed = await parseCLIArgs(
+    ['--config', '/srv/nixie.yaml', '--', 'health'],
+    ['serve', 'health'],
+  );
+
+  expect(parsed).toMatchObject({
+    kind: 'command',
+    command: 'health',
+    flags: { config: '/srv/nixie.yaml' },
+    args: [],
+  });
+});
+
+test('it hands the words after a command named after -- to that command', async () => {
+  const parsed = await parseCLIArgs(
+    ['--', 'session-label', 's1', '-work'],
+    ['serve', 'session-label'],
+  );
+
+  expect(parsed).toMatchObject({ command: 'session-label', args: ['s1', '-work'] });
+});
+
+test('it returns a word after -- that names no command as unknown', async () => {
+  const parsed = await parseCLIArgs(['--', 'frobnicate'], ['serve', 'health']);
+
+  expect(parsed).toStrictEqual({ kind: 'unknown-command', command: 'frobnicate' });
+});
+
 test('it keeps the words after -- as arguments, a dash-led one included', async () => {
   const parsed = await parseCLIArgs(
     ['session-label', 's1', '--', '-work', 'laptop'],
