@@ -11,9 +11,10 @@ models:
   profiles:
     preview:
       base_url: https://api.anthropic.com
-      # a placeholder that the host's credential broker replaces on the way out
+      # a placeholder that the host's credential broker replaces in the authorization header on the
+      # way out
       credential: deployment:broker
-      auth_header: x-api-key
+      auth_header: bearer
       model: claude-haiku-5-5
       effort: low
   roles:
