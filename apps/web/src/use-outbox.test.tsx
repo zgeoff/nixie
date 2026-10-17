@@ -30,11 +30,14 @@ async function setupTest() {
   // setForgotten, which the next render reads
   let forgotten: readonly string[] = [];
 
+  // the time of the latest reset the conversation shows, which a test sets through setResetAt
+  let resetAt: Date | undefined;
+
   // the page's clock stands still unless a test moves it, and each retry waits on a stub timer
   const clock = { now: Date.parse('2026-10-17T09:00:00.000Z') };
   const timer = buildStubTimer();
   const options = { now: () => clock.now, startTimer: timer.startTimer };
-  const rendered = renderHook(() => useOutbox(forgotten, options));
+  const rendered = renderHook(() => useOutbox(forgotten, { ...options, resetAt }));
 
   return {
     clock,
@@ -43,6 +46,9 @@ async function setupTest() {
     timer,
     setForgotten: (clientMessageIDs: readonly string[]) => {
       forgotten = clientMessageIDs;
+    },
+    setResetAt: (date: Date) => {
+      resetAt = date;
     },
   };
 }
@@ -141,6 +147,58 @@ test('it drops a forgotten message from memory and device storage', async () => 
   expect(stored).toInclude('8c4e2b7a-1d9f-4a3e-b6c5-0e7d3f1a9b28');
   expect(ctx.rendered.result.current.entries).toStrictEqual([]);
   expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
+});
+
+test('it drops a message written before a reset from memory and device storage, and keeps a later one', async () => {
+  const ctx = await setupTest();
+
+  server.use(http.post('*/rpc/conversation/send', () => Response.error(), { once: true }));
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '3a7d9e1c-5b2f-4c8a-9e6d-1f4b7c2a8d50',
+      spans: [{ end: 15, source: 'typed', start: 0 }],
+      text: 'Water the figs.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[0]?.status).toBe('failed');
+  });
+
+  ctx.clock.now = Date.parse('2026-10-17T09:05:00.000Z');
+
+  act(() => {
+    ctx.rendered.result.current.add({
+      clientMessageId: '9b1e4f7a-2c6d-4e3b-8a5f-0d7c3e9b1a62',
+      spans: [{ end: 14, source: 'typed', start: 0 }],
+      text: 'Feed the cat.',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(ctx.rendered.result.current.entries[1]?.status).toBe('sent');
+  });
+
+  const stored = globalThis.localStorage.getItem('nixie.outbox');
+  const retries = ctx.timer.countPending();
+
+  act(() => {
+    ctx.setResetAt(new Date('2026-10-17T09:02:00.000Z'));
+    ctx.rendered.rerender();
+  });
+
+  expect(stored).toInclude('3a7d9e1c-5b2f-4c8a-9e6d-1f4b7c2a8d50');
+  expect(retries).toBe(1);
+
+  expect(
+    ctx.rendered.result.current.entries.map((entry) => entry.message.clientMessageId),
+  ).toStrictEqual(['9b1e4f7a-2c6d-4e3b-8a5f-0d7c3e9b1a62']);
+
+  expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
+  expect(ctx.timer.countPending()).toBe(0);
 });
 
 test('it keeps a forgotten message out of device storage when a failed retry lands in the same render', async () => {

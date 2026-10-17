@@ -29,11 +29,14 @@ export interface OutboxOptions {
 
   // The time in milliseconds since the epoch. The platform clock by default.
   readonly now?: () => number;
+
+  // when the latest reset the conversation shows ran, which removed every message written before it
+  readonly resetAt?: Date | undefined;
 }
 
-// Keeps the messages this device sent until the conversation shows them. An unconfirmed message
-// stays in device storage and goes again with its first client message ID; a confirmed one stays
-// in memory until its record arrives.
+// Keeps the messages this device sent until the conversation shows them, or a reset removes them.
+// An unconfirmed message stays in device storage and goes again with its first client message ID;
+// a confirmed one stays in memory until its record arrives.
 export function useOutbox(
   forgottenClientMessageIDs: readonly string[],
   options: OutboxOptions = {},
@@ -41,6 +44,7 @@ export function useOutbox(
   const client = useNixieClient().client;
   const startTimer = options.startTimer ?? startPlatformTimer;
   const now = options.now ?? Date.now;
+  const resetAt = options.resetAt;
   const [entries, setEntries] = useState<readonly OutboxEntry[]>([]);
   const [discarded, setDiscarded] = useState<readonly string[]>([]);
   const queue = useRef<Promise<void>>(Promise.resolve());
@@ -232,9 +236,18 @@ export function useOutbox(
     };
   }, []);
 
+  // a reset removed the messages written before it, so they leave as a forgotten message does
   const removed = useMemo(
-    () => [...forgottenClientMessageIDs, ...discarded],
-    [discarded, forgottenClientMessageIDs],
+    () => [
+      ...forgottenClientMessageIDs,
+      ...discarded,
+      ...(resetAt === undefined
+        ? []
+        : entries
+            .filter((entry) => isWrittenBefore(entry.message, resetAt))
+            .map((entry) => entry.message.clientMessageId)),
+    ],
+    [discarded, entries, forgottenClientMessageIDs, resetAt],
   );
 
   useStoredOutbox({
@@ -317,6 +330,13 @@ export function useOutbox(
 
 // The pause before the first retry, doubling with each failure in a row up to a minute.
 const retrySchedule = { firstMs: 2000, maxMs: 60_000 };
+
+// A message stored before the outbox kept when you wrote it predates every reset.
+function isWrittenBefore(message: OutboxMessage, date: Date): boolean {
+  const writtenAt = message.writtenAt === undefined ? Number.NaN : Date.parse(message.writtenAt);
+
+  return Number.isNaN(writtenAt) || writtenAt < date.getTime();
+}
 
 function findEntry(
   entries: readonly OutboxEntry[],

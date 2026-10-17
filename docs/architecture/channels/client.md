@@ -208,6 +208,11 @@ memory before the page paints, so it never shows the text again as a sent messag
 write leaves out the forgotten message, whatever status a render in flight gives it, so a page load
 never sends the message again.
 
+A reset removes every message written before it, so the outbox removes each message whose written
+time comes before the time the reset ran, in the same way as a forgotten one, and stops its retries.
+The written time comes from the device's clock and the reset's time from the server's, so a device
+clock behind the server's also removes a message written in that gap after the reset.
+
 A message's images go to IndexedDB under its client message ID, because local storage holds only
 strings and too few of them for an image. Local storage keeps the text and the count of images, and
 a send reads the images back in their order before it goes. A send that reads back fewer images than

@@ -156,6 +156,33 @@ test('it drops the messages from before a reset that arrives on the live stream 
   ]);
 });
 
+test('it drops a message this tab sent before a reset and stops working', async () => {
+  const ctx = await setupTest();
+
+  // the API never answers the send, so the message stays in the outbox, sending
+  server.use(
+    http.post('*/rpc/conversation/send', async () => {
+      await delay('infinite');
+    }),
+  );
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const textBox = await rendered.findByRole('textbox', { name: 'Message' });
+
+  await ctx.user.type(textBox, 'Is the gate locked?{Enter}');
+  await rendered.findByText('Is the gate locked?');
+  await rendered.findByRole('progressbar', { name: 'nixie is working' });
+  await store.records.create({ kind: 'log_reset', recordedAt: new Date() });
+  await rendered.findByRole('note', { name: 'reset' });
+
+  await waitFor(() => {
+    expect(rendered.queryByText('Is the gate locked?')).toBeNull();
+  });
+
+  expect(rendered.queryByRole('progressbar', { name: 'nixie is working' })).toBeNull();
+});
+
 // The client pauses 1 s and then 2 s between the three attempts, on the platform timer.
 test('it says live updates are unavailable while the live stream keeps failing', async () => {
   await setupTest();
