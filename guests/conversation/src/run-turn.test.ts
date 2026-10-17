@@ -311,6 +311,24 @@ test('it marks the turn end as an error when the model API refuses the request',
   ]);
 });
 
+test('it fails the turn with no assistant frame when the model API refuses the credential', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ authFailure: 'invalid x-api-key' });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames).toStrictEqual([
+    { type: 'failed', reason: 'model_auth', detail: 'Invalid API key · Fix external API key' },
+  ]);
+});
+
 test('it ends the turn with the overflow reason when the model API refuses a prompt past its window', async () => {
   const ctx = await setupTest();
 

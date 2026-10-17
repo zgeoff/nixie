@@ -187,6 +187,27 @@ test('it refuses a request with the scripted refusal and answers the next with i
   expect(answer).toMatchObject({ content: [{ type: 'text', text: 'ok' }] });
 });
 
+test('it refuses a request with the scripted credential failure as a 401 the CLI does not retry', async () => {
+  const ctx = setupTest();
+
+  ctx.stub.addReplies({ authFailure: 'invalid x-api-key' });
+
+  const response = await fetch(`${ctx.stub.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  const body = await response.json();
+
+  expect(response.status).toBe(401);
+  expect(response.headers.get('x-should-retry')).toBe('false');
+
+  expect(body).toStrictEqual({
+    type: 'error',
+    error: { type: 'authentication_error', message: 'invalid x-api-key' },
+  });
+});
+
 test('it records every request with its path, headers and body', async () => {
   const ctx = setupTest();
 

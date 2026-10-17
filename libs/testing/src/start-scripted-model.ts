@@ -1,7 +1,7 @@
 // One reply the stub model gives: a text block that ends the turn, or a tool_use block that asks
 // for a tool by its name as the model sees it, such as mcp__nixie__note_read. A gate holds the
 // reply until it resolves, so a test can keep a turn running.
-export type ScriptedReply = ScriptedMessage | ScriptedRefusal;
+export type ScriptedReply = ScriptedMessage | ScriptedRefusal | ScriptedAuthFailure;
 
 type ScriptedMessage = (
   | { readonly text: string }
@@ -21,6 +21,13 @@ type ScriptedMessage = (
 // a 400 with the API's message, such as the one that refuses a prompt past the model's window
 interface ScriptedRefusal {
   readonly refusal: string;
+  readonly gate?: Promise<void>;
+}
+
+// a 401 with the API's message for a credential it does not accept, and the header that tells the
+// CLI not to retry it
+interface ScriptedAuthFailure {
+  readonly authFailure: string;
   readonly gate?: Promise<void>;
 }
 
@@ -126,6 +133,10 @@ function buildReplyResponse(reply: ScriptedReply, model: string, isStream: boole
     return renderRefusal(reply.refusal);
   }
 
+  if ('authFailure' in reply) {
+    return renderAuthFailure(reply.authFailure);
+  }
+
   return isStream ? renderStream(reply, model) : renderWhole(reply, model);
 }
 
@@ -133,6 +144,13 @@ function renderRefusal(message: string): Response {
   return Response.json(
     { type: 'error', error: { type: 'invalid_request_error', message } },
     { status: 400 },
+  );
+}
+
+function renderAuthFailure(message: string): Response {
+  return Response.json(
+    { type: 'error', error: { type: 'authentication_error', message } },
+    { status: 401, headers: { 'x-should-retry': 'false' } },
   );
 }
 

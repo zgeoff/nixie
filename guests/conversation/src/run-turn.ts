@@ -174,6 +174,17 @@ async function emitAssistant(
     return 'continue';
   }
 
+  // the CLI's own message for a credential the model API refused is no reply from the model
+  if (message.error === 'authentication_failed') {
+    await deps.emit({
+      type: 'failed',
+      reason: 'model_auth',
+      detail: collectText(message.message.content),
+    });
+
+    return 'stop';
+  }
+
   state.boundary = { sessionID: message.session_id, messageID: message.uuid };
 
   // the CLI's own message for an API error carries no usage from the model

@@ -77,11 +77,12 @@ const summarizedFrameSchema = z
 // the guest removed its session state and checked that it is gone
 const purgedFrameSchema = z.object({ type: z.literal('purged') }).readonly();
 
-// the turn stopped without a result the host can commit
+// the turn stopped without a result the host can commit; model_auth means the model API refused
+// the credential, so every retry fails the same way until the credential changes
 const failedFrameSchema = z
   .object({
     type: z.literal('failed'),
-    reason: z.enum(['tools_not_connected', 'session_missing', 'error']),
+    reason: z.enum(['tools_not_connected', 'session_missing', 'model_auth', 'error']),
     detail: z.string(),
   })
   .readonly();

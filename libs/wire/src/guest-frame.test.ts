@@ -150,3 +150,13 @@ test('it refuses a summarized frame with no chain entry', () => {
 
   expect(result.error?.issues).toPartiallyContain({ path: ['boundary'] });
 });
+
+test('it accepts a failed frame for a credential the model API refused', () => {
+  const frame: GuestFrame = {
+    type: 'failed',
+    reason: 'model_auth',
+    detail: 'Invalid API key · Fix external API key',
+  };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});

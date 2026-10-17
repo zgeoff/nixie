@@ -1244,6 +1244,43 @@ test('it fails the step and records no reply when nixie tool server is not conne
   expect(task).toStrictEqual({ state: 'ready', step_errors: 1, read_cursor: 0 });
 });
 
+test('it fails the step with a credential error and records no reply when the model API refuses the credential', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    { type: 'failed', reason: 'model_auth', detail: 'Invalid API key · Fix external API key' },
+  ]);
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  const [replies, errored] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('task.step_errored'),
+  ]);
+
+  expect(replies).toStrictEqual([]);
+
+  expect(errored).toMatchObject([
+    {
+      payload: { errors: 1, nextState: 'ready' },
+      erasable: {
+        fields: {
+          message:
+            'the conversation turn failed: the model API refused the credential: Invalid API key · Fix external API key',
+        },
+      },
+    },
+  ]);
+});
+
 test('it answers your next message after 4 turns failed in a row, past the error limit of 3', async () => {
   const ctx = await setupTest();
 
