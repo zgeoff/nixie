@@ -2296,6 +2296,13 @@
                           "itemID": {
                             "type": "string"
                           },
+                          "kind": {
+                            "enum": [
+                              "fact",
+                              "self"
+                            ],
+                            "type": "string"
+                          },
                           "origin": {
                             "enum": [
                               "owner",
@@ -2349,6 +2356,7 @@
                           "forgottenAt",
                           "isPinned",
                           "itemID",
+                          "kind",
                           "origin",
                           "shortID",
                           "source",
@@ -2624,6 +2632,13 @@
                           "itemID": {
                             "type": "string"
                           },
+                          "kind": {
+                            "enum": [
+                              "fact",
+                              "self"
+                            ],
+                            "type": "string"
+                          },
                           "origin": {
                             "enum": [
                               "owner",
@@ -2683,6 +2698,7 @@
                           "forgottenAt",
                           "isPinned",
                           "itemID",
+                          "kind",
                           "origin",
                           "shortID",
                           "source",
@@ -2881,6 +2897,13 @@
                           "itemID": {
                             "type": "string"
                           },
+                          "kind": {
+                            "enum": [
+                              "fact",
+                              "self"
+                            ],
+                            "type": "string"
+                          },
                           "origin": {
                             "enum": [
                               "owner",
@@ -2934,6 +2957,7 @@
                           "forgottenAt",
                           "isPinned",
                           "itemID",
+                          "kind",
                           "origin",
                           "shortID",
                           "source",
@@ -3138,6 +3162,13 @@
                       "type": "boolean"
                     },
                     "itemID": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "fact",
+                        "self"
+                      ],
                       "type": "string"
                     },
                     "origin": {
@@ -3397,6 +3428,7 @@
                     "forgottenAt",
                     "isPinned",
                     "itemID",
+                    "kind",
                     "origin",
                     "shortID",
                     "source",
@@ -4366,6 +4398,13 @@
                     "itemID": {
                       "type": "string"
                     },
+                    "kind": {
+                      "enum": [
+                        "fact",
+                        "self"
+                      ],
+                      "type": "string"
+                    },
                     "origin": {
                       "enum": [
                         "owner",
@@ -4642,6 +4681,7 @@
                     "forgottenAt",
                     "isPinned",
                     "itemID",
+                    "kind",
                     "origin",
                     "shortID",
                     "source",
@@ -5715,6 +5755,13 @@
                           "itemID": {
                             "type": "string"
                           },
+                          "kind": {
+                            "enum": [
+                              "fact",
+                              "self"
+                            ],
+                            "type": "string"
+                          },
                           "lapseAt": {
                             "type": "string",
                             "format": "date-time",
@@ -5762,7 +5809,8 @@
                               "forgotten_evidence",
                               "ambiguous_target",
                               "pinned",
-                              "other"
+                              "other",
+                              "self_note"
                             ],
                             "type": "string"
                           },
@@ -5834,6 +5882,7 @@
                           "evidence",
                           "isPinned",
                           "itemID",
+                          "kind",
                           "lapseAt",
                           "operation",
                           "origin",

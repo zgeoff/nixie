@@ -71,10 +71,11 @@ items a keyword recall over the batch finds. A rule tells the writer to stage no
 that a pending proposal already holds, even in other words, because the gate merges only a proposal
 of the same text. The session's tools are recall, remember, edit and retire, and they stage writes
 instead of applying them. Remember only creates an item, and edit is the one tool that changes an
-item's text, as in the conversation. Staging refuses a write that cites a record outside the batch,
-a change to an item the session was never shown, and a second change to the same item, and the
-refusal goes back to the model at once. Staging binds each change to the version the session was
-shown, never to a version the model sent.
+item's text, as in the conversation. None of them takes an item's kind, so every item the writer
+creates is a fact, and only the conversation writes a [self-note](./writes.md#self-notes). Staging
+refuses a write that cites a record outside the batch, a change to an item the session was never
+shown, and a second change to the same item, and the refusal goes back to the model at once. Staging
+binds each change to the version the session was shown, never to a version the model sent.
 
 A batch's staging belongs to the step that opened it. A step that lost its lease and stops late
 closes only its own staging, so it never empties the staging of the step that replaced it.

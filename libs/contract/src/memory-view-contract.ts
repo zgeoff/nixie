@@ -24,14 +24,19 @@ const itemTextSchema = z.string().max(2000).regex(/\S/u);
 const originSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
 
-// An item as the view lists it: its current version's text while its key exists, and when it was
-// created, last changed and forgotten. A forgotten item carries no text and its forget's time.
+// a fact about you, or a self-note, which nixie writes about itself
+const kindSchema = z.enum(['fact', 'self']);
+
+// An item as the view lists it: its kind, its current version's text while its key exists, and when
+// it was created, last changed and forgotten. A forgotten item carries no text and its forget's
+// time.
 const memoryItemSchema = z.object({
   changedAt: z.date(),
   createdAt: z.date(),
   forgottenAt: z.date().nullable(),
   isPinned: z.boolean(),
   itemID: z.string(),
+  kind: kindSchema,
   origin: originSchema,
   shortID: z.string(),
   source: sourceSchema,
@@ -96,6 +101,7 @@ const reviewReasonSchema = z.enum([
 
   // a reason that a later release wrote and this one does not know
   'other',
+  'self_note',
 ]);
 
 // one write that proposed a change: the proposal's own, or one that merged into it
@@ -113,6 +119,7 @@ const memoryProposalSchema = z.object({
   evidence: evidenceSchema.nullable(),
   isPinned: z.boolean(),
   itemID: z.string(),
+  kind: kindSchema,
   lapseAt: z.date(),
   operation: z.enum(['remember', 'retire']),
   origin: originSchema,

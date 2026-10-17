@@ -25,6 +25,7 @@ export function toMockMemoryItem(item: StoredMemoryItem): MemoryItem {
     forgottenAt: item.forgottenAt,
     isPinned: item.isPinned,
     itemID: item.itemID,
+    kind: item.kind,
     origin: current.origin,
     shortID: item.shortID,
     source: current.source,

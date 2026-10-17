@@ -22,6 +22,7 @@ test('it lists an item at its current version, with the times of its first and l
     forgottenAt: null,
     isPinned: false,
     itemID: item.itemID,
+    kind: 'fact',
     origin: 'memory_writer',
     shortID: 'k3v9q2',
     source: 'owner',

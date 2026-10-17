@@ -6,12 +6,15 @@ export interface CoreChangeOptions extends MemoryLineOptions {
   readonly unpinnedShortIDs: ReadonlyMap<string, string>;
 }
 
+// a pinned item as the note reads it; a self-note is never pinned, so its kind and model never show
+type PinnedItem = Omit<MemoryItem, 'kind' | 'model'>;
+
 // Renders the body of the note on the turn after the pinned core changed, so the model stops
 // repeating an old value. A pinned or changed item shows whole, with the line that says where it came
 // from; an unpinned one shows by its short ID. It renders nothing with no last turn, or no change.
 export function renderCoreChanges(
   previous: readonly MemoryRef[] | null,
-  current: readonly MemoryItem[],
+  current: readonly PinnedItem[],
   options: CoreChangeOptions,
 ): string | null {
   if (previous === null) {
@@ -49,7 +52,7 @@ export function renderCoreChanges(
 // the item as the pinned memory renders it, under a line that names its change
 function renderChangedItem(
   label: 'Pinned' | 'Changed',
-  item: MemoryItem,
+  item: PinnedItem,
   options: MemoryLineOptions,
 ): readonly string[] {
   return [

@@ -29,6 +29,22 @@ test('it declares read for recall and note for remember, edit and retire', async
   ]);
 });
 
+test('it takes no kind on any write tool, so the writer cannot stage a self-note', async () => {
+  const ctx = await setupTest();
+
+  const inputs = ['memory.remember', 'memory.edit', 'memory.retire'].map((name) => {
+    const input = ctx.registry.findTool(name)?.definition.input;
+
+    return [name, Object.keys(input?.['properties'] ?? {}), input?.['additionalProperties']];
+  });
+
+  expect(inputs).toStrictEqual([
+    ['memory.remember', ['text', 'quote', 'sourceID'], false],
+    ['memory.edit', ['itemID', 'text', 'quote', 'sourceID'], false],
+    ['memory.retire', ['itemID', 'quote', 'sourceID'], false],
+  ]);
+});
+
 test('it stages a new item that cites your message in the batch', async () => {
   const ctx = await setupTest();
 

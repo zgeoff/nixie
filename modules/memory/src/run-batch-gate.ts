@@ -1,11 +1,11 @@
 import { buildGateReview } from './build-gate-review';
+import { findMissingToken } from './find-missing-token';
 import { findSourceEvidence } from './find-source-evidence';
 import type { ContentGateResult } from './gate-types';
 import { memoryWriterTaskID } from './memory-writer-task-id';
-import { readItemText } from './read-item-text';
 import { requireItem } from './require-item';
+import { runBatchRetirementGate } from './run-batch-retirement-gate';
 import { runQuotedGate } from './run-quoted-gate';
-import { runRetirementChecker } from './run-retirement-checker';
 import type { MemoryItemRow, MemoryTables, StoreParts, VersionRef } from './types';
 import type { SourceMessage, StagedWrite } from './writer-types';
 
@@ -25,21 +25,14 @@ export async function runBatchGate(
   source: SourceMessage,
 ): Promise<BatchGateResult> {
   if (write.op === 'retire') {
-    const itemText = await readItemText(parts, write.target);
-
-    return {
-      gate: await runBatchRetirementGate(parts, { itemText, quote: write.quote, source }),
-      text: itemText,
-    };
+    return runBatchRetirementGate(parts, write, source);
   }
 
   const item = write.target === null ? null : await requireEditTarget(parts, write.target);
+  const early = findEarlyReview(item, write.text, source);
 
-  if (invisible.test(write.text)) {
-    return {
-      gate: buildGateReview('invisible_character', { checks: { tokens: 'fail' } }),
-      text: write.text,
-    };
+  if (early !== null) {
+    return { gate: early, text: write.text };
   }
 
   // an edit of a pinned item changes the core that rides every turn, so it waits for review as a
@@ -63,30 +56,30 @@ export async function runBatchGate(
   return { gate, text: write.text };
 }
 
+// The review a write meets before its quote is read: a hidden character, or an edit of a
+// self-note, which waits for your review whoever edits it. The self-note's token check runs
+// against the cited message, so the review shows a destination you never typed.
+function findEarlyReview(
+  item: MemoryItemRow | null,
+  text: string,
+  source: SourceMessage,
+): ContentGateResult | null {
+  if (invisible.test(text)) {
+    return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
+  }
+
+  if (item?.kind === 'self') {
+    const tokens = findMissingToken(text, source.text) === null ? 'pass' : 'fail';
+
+    return buildGateReview('self_note', { checks: { tokens } });
+  }
+
+  return null;
+}
+
 // Unicode format characters: zero-width spaces and joiners, bidirectional controls, the byte order
 // mark and the soft hyphen
 const invisible = /\p{Cf}/u;
-
-interface BatchRetirement {
-  readonly itemText: string;
-  readonly quote: string;
-  readonly source: SourceMessage;
-}
-
-// the writer's staging binds a retirement to a version the session was shown, so the read check
-// passes by construction
-async function runBatchRetirementGate(
-  parts: StoreParts,
-  retirement: BatchRetirement,
-): Promise<ContentGateResult> {
-  const found = await findSourceEvidence(parts.context.log, retirement.source, retirement.quote);
-
-  if (found.status === 'review') {
-    return buildGateReview(found.reason, { checks: { read: 'pass', quote: 'fail' } });
-  }
-
-  return runRetirementChecker(parts.context, retirement.itemText, found);
-}
 
 // an edit of an item that moved on since the session read it could only become a proposal no one
 // can approve, so it fails as stale and the batch runs again

@@ -43,6 +43,7 @@ export async function readPendingProposals(parts: StoreParts): Promise<readonly 
         itemID: row.item_id,
         targetVersion: row.target_version,
         isPinned: row.is_pinned === 1,
+        kind: row.kind,
         reason: toReviewReason(row.review_reason),
         actionHash: row.action_hash,
         origin: row.origin,

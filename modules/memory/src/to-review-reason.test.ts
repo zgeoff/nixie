@@ -6,5 +6,5 @@ test('it keeps a review reason this release knows', () => {
 });
 
 test('it reads a review reason this release does not know as other', () => {
-  expect(toReviewReason('self_note')).toBe('other');
+  expect(toReviewReason('quote_too_old')).toBe('other');
 });

@@ -103,6 +103,33 @@ The token check never runs on a retirement, because a retirement adds no text. T
 version copies the stored text with that text's source and evidence, and records its own intent
 quote and checks beside them.
 
+## Self-notes
+
+A self-note is an item that nixie writes about itself, such as its tastes or how something landed
+with the user, and every one waits for the user's review. An item takes its kind, a fact or a
+self-note, when it is created, and no edit changes it, so an edit of a self-note is a self-note
+write whatever kind the call asks for. `memory.remember` takes the kind, and `memory.edit` takes
+none.
+
+Nothing of the user's backs a self-note, so the quote check and the checker have nothing to judge,
+and the gate skips both. It runs the hidden-character check and the token check, which compares the
+note's destination-like tokens against everything the user typed in the window, as under an allow
+rule. The write then becomes a proposal with the self-note reason whatever the token check found,
+and the proposal's checks keep the token verdict, so the review shows a destination the user never
+typed. An approved self-note takes outside content as its source.
+
+Only the conversation creates a self-note, because only a persona thread speaks as nixie. A
+self-note write from a task or from the memory writer fails before any check runs and writes
+nothing, and the writer's own tools take no kind at all. A self-note that asks for a pin fails the
+same way, because the store never pins one. A proposal merges only with a pending proposal of the
+same kind, and its close match on approval looks only at items of its own kind, so a fact never
+revises a self-note.
+
+The conversation's retire of a self-note skips the intent gate and applies at once, with a notice
+entry whose undo brings the note back. A retirement only narrows what the conversation reads, and
+the note was nixie's own. A task's retire of a self-note runs the intent gate as any retirement
+does.
+
 ## Image offers
 
 Memory never holds an image or a description of one: the writer and the log reader see only a marker

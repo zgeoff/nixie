@@ -61,9 +61,15 @@ const recallOutput = {
           ...recalledVersion.properties,
           itemID: { type: 'string' },
           isPinned: { type: 'boolean' },
+          kind: {
+            type: 'string',
+            enum: ['fact', 'self'],
+            description:
+              'fact for a fact about the owner, self for a self-note you wrote about yourself',
+          },
           history: { type: 'array', items: recalledVersion },
         },
-        required: [...recalledVersion.required, 'itemID', 'isPinned'],
+        required: [...recalledVersion.required, 'itemID', 'isPinned', 'kind'],
       },
     },
     next: { type: ['string', 'null'] },
@@ -160,6 +166,7 @@ function toItemJSON(item: RecalledItem, lines: MemoryLineOptions): JSONObject {
     ...toVersionJSON(item, lines, null),
     itemID: item.shortID,
     isPinned: item.isPinned,
+    kind: item.kind,
     ...(item.history === undefined
       ? {}
       : { history: item.history.map((version) => toPastVersionJSON(item, version, lines)) }),

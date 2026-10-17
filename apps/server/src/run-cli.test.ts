@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { startTestMemory } from '@heynixie/memory/test-utils';
 import { runCLI } from './run-cli';
 import { startControlSocket } from './start-control-socket';
 import { writeBootFiles } from './test-utils/write-boot-files';
@@ -141,4 +142,70 @@ test('it exits 1 from check-encoder when the encoder folder holds no model', asy
     'command.failed',
     expect.objectContaining({ command: 'check-encoder' }),
   );
+});
+
+test('it exits 1 from memory-pin with the refusal of a self-note', async () => {
+  const ctx = await setupTest();
+  const api = await startTestAPI();
+  const memory = await startTestMemory();
+
+  const socket = await startControlSocket({
+    path: ctx.socketPath,
+    respond: makeHostResponder({
+      context: api.context,
+      readMemory: () => memory.store,
+      runReset: () => Promise.reject(new Error('no reset runs in this test')),
+    }),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await memory.store.remember({
+    text: 'Enjoys a slow morning question more than a quick one',
+    itemKind: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const exitCode = await runCLI(['memory-pin', item.itemID, '--config', ctx.configPath], ctx.io);
+
+  expect(exitCode).toBe(1);
+
+  expect(ctx.io.log).toHaveBeenCalledExactlyOnceWith('command.failed', {
+    command: 'memory-pin',
+    error: 'Error',
+    message: `nixie answered the memory pin request with 409: memory item ${item.itemID} is a self-note, and a self-note is never pinned`,
+  });
+});
+
+test('it prints the kind of a self-note from memory-show', async () => {
+  const ctx = await setupTest();
+  const api = await startTestAPI();
+  const memory = await startTestMemory();
+
+  const socket = await startControlSocket({
+    path: ctx.socketPath,
+    respond: makeHostResponder({
+      context: api.context,
+      readMemory: () => memory.store,
+      runReset: () => Promise.reject(new Error('no reset runs in this test')),
+    }),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  const item = await memory.store.remember({
+    text: 'Enjoys a slow morning question more than a quick one',
+    itemKind: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const exitCode = await runCLI(['memory-show', item.itemID, '--config', ctx.configPath], ctx.io);
+
+  expect(exitCode).toBe(0);
+
+  expect(JSON.parse(String(ctx.io.print.mock.calls[0]?.[0]))).toMatchObject({
+    itemID: item.itemID,
+    kind: 'self',
+    state: 'active',
+  });
 });

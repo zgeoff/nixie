@@ -26,6 +26,7 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
           intentEvidence: null,
         }),
       ...pin,
+      ...(request.itemKind === undefined ? {} : { itemKind: request.itemKind }),
     };
   }
 

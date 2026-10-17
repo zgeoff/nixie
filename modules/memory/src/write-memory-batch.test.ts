@@ -72,6 +72,100 @@ test('it publishes an applied write as a version the writer made', async () => {
   ]);
 });
 
+test("it merges the writer's edit of a self-note into the conversation's pending edit of the same text", async () => {
+  const ctx = await setupTest();
+
+  const note = await ctx.memory.store.remember({
+    text: 'I like short answers in the morning',
+    itemKind: 'self',
+    provenance: {
+      origin: 'conversation',
+      source: 'untrusted',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  await ctx.memory.store.writes.remember({
+    text: 'I like short answers all day',
+    target: note,
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'claude-opus-5-5',
+    },
+  });
+
+  const planned = await writePlannedBatch(ctx.memory.log, ['You like short answers all day']);
+
+  const write = {
+    op: 'remember',
+    text: 'I like short answers all day',
+    quote: 'short answers all day',
+    sourceSequence: planned.bounds.end,
+    target: note,
+  } as const;
+
+  const verdict = await ctx.memory.store.writes.batch.check(
+    write,
+    { sequence: planned.bounds.end, text: 'You like short answers all day', spans: [] },
+    { bounds: planned.bounds, model: 'claude-writer-1' },
+  );
+
+  await ctx.memory.store.writeBatch({
+    lease: ctx.lease,
+    clock: ctx.clock,
+    bounds: planned.bounds,
+    writes: [{ write, verdict }],
+    buildRecords: () => [],
+  });
+
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(pending.map((proposal) => proposal.sources.map((source) => source.origin))).toStrictEqual([
+    ['conversation', 'memory_writer'],
+  ]);
+});
+
+test('it publishes every item the writer creates as a fact, never a self-note', async () => {
+  const ctx = await setupTest();
+
+  const planned = await writePlannedBatch(ctx.memory.log, [
+    'I like it when you keep answers short.',
+  ]);
+
+  await ctx.memory.store.writeBatch({
+    lease: ctx.lease,
+    clock: ctx.clock,
+    bounds: planned.bounds,
+    writes: [
+      {
+        write: {
+          op: 'remember',
+          text: 'You like short answers.',
+          quote: 'keep answers short',
+          sourceSequence: planned.bounds.end,
+          target: null,
+        },
+        verdict: {
+          outcome: 'apply',
+          source: 'owner',
+          checks: { quote: 'exact' },
+          evidence: { recordSequence: planned.bounds.end, start: 19, end: 37 },
+        },
+      },
+    ],
+    buildRecords: () => [],
+  });
+
+  const recalled = await ctx.memory.store.recall({});
+
+  expect(recalled.items).toMatchObject([{ text: 'You like short answers.', kind: 'fact' }]);
+});
+
 test('it publishes a proposal records and counts the proposal', async () => {
   const ctx = await setupTest();
   const planned = await writePlannedBatch(ctx.memory.log, ['I live at 4 Elm Row.']);

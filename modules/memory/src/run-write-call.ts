@@ -3,12 +3,13 @@ import type { ModelWriteStore, WriteOutcome } from './gate-types';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { MemoryStateError } from './memory-state-error';
 import { ProposalCapError } from './proposal-cap-error';
+import { SelfNoteError } from './self-note-error';
 import { StaleVersionError } from './stale-version-error';
 import type { ItemIDStore } from './types';
 
-// Runs one memory write for a tool, on itemID when it targets an item. A stale version, a missing
-// item, a wrong state or a full proposal cap is the model's to read; any other failure propagates.
-// The result and the error name the item by the short ID, and a proposal's reason adds its sentence.
+// Runs one memory write for a tool, on itemID when it targets an item. A store refusal, such as a
+// stale version or a self-note refusal, is the model's to read; any other failure propagates. The
+// result and the error name the item by the short ID, and a proposal's reason adds its sentence.
 export async function runWriteCall(
   memory: Pick<ItemIDStore, 'readShortIDs'> & Pick<ModelWriteStore, 'renderReviewReason'>,
   call: () => Promise<WriteOutcome>,
@@ -35,7 +36,8 @@ export async function runWriteCall(
       error instanceof StaleVersionError ||
       error instanceof MemoryItemNotFoundError ||
       error instanceof MemoryStateError ||
-      error instanceof ProposalCapError
+      error instanceof ProposalCapError ||
+      error instanceof SelfNoteError
     ) {
       return { status: 'error', message: await renderMessage(memory, error.message, itemID) };
     }

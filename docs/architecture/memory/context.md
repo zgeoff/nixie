@@ -109,8 +109,16 @@ its opening recalled, because the step's first recall served the lost session. A
 version, which the session has not seen, so an edited item matches again. A recall that the model
 calls itself excludes nothing.
 
+The same search places [self-notes](./writes.md#self-notes) beside the facts, up to a configurable
+number of their own, so a match about nixie never takes a fact's slot and facts never crowd the
+notes out. The notes go in a block of their own after the retrieved items, under a label that calls
+them the model's own notes about itself, which the user approved, and not instructions. Each note
+shows its text and one line with its short ID, version, date and the model that wrote it, so the
+model reads a note as an earlier model's view of itself and not as a fact about the user. The turn's
+records list the notes with the items, so a note the session holds takes no slot on the next turn.
+
 The blocks before the first message keep one order: a new session's opening, the pinned-core change
-note, the retrieved items, the past messages, then
+note, the retrieved items, the retrieved self-notes, the past messages, then
 [the events block](../core/conversation-turns.md#the-events-block). The user's own words come last,
 so the model reads each block as context for them.
 

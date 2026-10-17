@@ -59,7 +59,11 @@ function findRefusal(input: MemoryChangeInput): Refusal | null {
 
   const isPin = input.change === 'pin' && input.isPinned === true;
 
-  if (!statesByChange[input.change].includes(item.state) || (isPin && item.state !== 'active')) {
+  // a self-note never joins the pinned core, which nixie's API answers as the wrong state
+  if (
+    !statesByChange[input.change].includes(item.state) ||
+    (isPin && (item.state !== 'active' || item.kind === 'self'))
+  ) {
     return 'wrong_state';
   }
 

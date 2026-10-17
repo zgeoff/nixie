@@ -6,6 +6,9 @@ import { useNixieClient } from '../use-nixie-client';
 
 export interface MemoryItemListProps {
   readonly state: 'active' | 'retired' | 'forgotten';
+
+  // the one kind of item the list shows, or every kind when unset
+  readonly kind?: MemoryItem['kind'];
   readonly title: string;
 
   // what the list says when it holds no item
@@ -16,7 +19,8 @@ export interface MemoryItemListProps {
 }
 
 // The items of one state a page at a time, in the order they were created, with a control that
-// reads the next page.
+// reads the next page. A list of one kind picks its items from the same pages, so the facts and the
+// self-notes of a state read each page once and show more together.
 export function MemoryItemList(props: MemoryItemListProps): ReactNode {
   const nixie = useNixieClient();
 
@@ -39,7 +43,9 @@ export function MemoryItemList(props: MemoryItemListProps): ReactNode {
         hasNextPage={pages.hasNextPage}
         isError={pages.isError}
         isFetchingNextPage={pages.isFetchingNextPage}
-        items={pages.data?.pages.flatMap((page) => page.items)}
+        items={pages.data?.pages.flatMap((page) =>
+          page.items.filter((item) => props.kind === undefined || item.kind === props.kind),
+        )}
         onShowMore={() => {
           void pages.fetchNextPage();
         }}
@@ -71,13 +77,15 @@ function ItemPages(props: ItemPagesProps): ReactNode {
     return <p>Loading…</p>;
   }
 
-  if (props.items.length === 0) {
+  // a list of one kind can find none of its items on the pages read so far, so it says it is empty
+  // only once no page is left to read
+  if (props.items.length === 0 && !props.hasNextPage) {
     return <p className={css({ color: 'textMuted' })}>{props.empty}</p>;
   }
 
   return (
     <>
-      <ul>{props.items.map((item) => props.renderItem(item))}</ul>
+      {props.items.length > 0 ? <ul>{props.items.map((item) => props.renderItem(item))}</ul> : null}
       {props.hasNextPage ? (
         <button disabled={props.isFetchingNextPage} onClick={props.onShowMore} type="button">
           Show more

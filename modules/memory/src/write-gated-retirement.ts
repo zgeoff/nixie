@@ -10,21 +10,28 @@ import type { StoreParts } from './types';
 import { writeMemoryProposal } from './write-memory-proposal';
 import { writeRetirement } from './write-retirement';
 
-// Runs a memory.retire through the intent gate. A retirement that passes applies at once and keeps
-// the source of the text it copies; every other one becomes a proposal. A missing item, a stale
-// version or a retired item is refused before any check runs.
+// Runs a memory.retire through the intent gate, or applies the conversation's retire of a self-note
+// at once. An applied retirement keeps the source of the text it copies; any other is a proposal. A
+// missing item, a stale version or a retired item is refused before any check runs.
 export async function writeGatedRetirement(
   parts: StoreParts,
   request: GatedRetireRequest,
 ): Promise<WriteOutcome> {
-  const itemText = await readItemText(parts, request.target);
+  const item = await readItemText(parts, request.target);
 
-  const gate = await runIntentGate(parts.context, {
-    target: request.target,
-    intentQuote: request.intentQuote ?? null,
-    thread: request.caller.thread,
-    itemText,
-  });
+  const itemText = item.text;
+
+  // the conversation's retire of its own self-note applies at once with a notice and undo, because
+  // a retirement only narrows what the conversation reads and the undo brings the note back
+  const gate =
+    item.kind === 'self' && request.caller.origin === 'conversation'
+      ? selfNoteRetirement
+      : await runIntentGate(parts.context, {
+          target: request.target,
+          intentQuote: request.intentQuote ?? null,
+          thread: request.caller.thread,
+          itemText,
+        });
 
   const newest = await findNewestMessage(parts.context.log, request.caller.thread);
 
@@ -36,6 +43,14 @@ export async function writeGatedRetirement(
 
   return writeRetirementProposal(parts, request, { review: gate, group, itemText });
 }
+
+// no quote of yours backs it, and the version copies the stored text's own source
+const selfNoteRetirement: ContentGateResult = {
+  status: 'pass',
+  source: 'untrusted',
+  evidence: null,
+  checks: { selfNote: 'retired' },
+};
 
 interface ReviewedRetirement {
   readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
@@ -119,8 +134,11 @@ async function applyRetirement(
         thread: caller.thread,
         model: caller.model,
       },
-      ...(request.intentQuote === undefined ? {} : { intentQuote: request.intentQuote }),
-      ...(evidence === null ? {} : { intentEvidence: evidence }),
+
+      // an intent quote counts only where the gate found it in your typed words
+      ...(evidence === null || request.intentQuote === undefined
+        ? {}
+        : { intentQuote: request.intentQuote, intentEvidence: evidence }),
     },
     {
       noticeKey: passed.group.noticeKey,

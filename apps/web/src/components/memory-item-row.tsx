@@ -5,6 +5,7 @@ import { formatMemoryProvenance } from '../format-memory-provenance';
 import { css } from '../styled-system/css';
 import type { MemoryItem } from '../types';
 import { MemoryItemHistory } from './memory-item-history';
+import { SelfNoteBadge } from './self-note-badge';
 
 export interface MemoryItemRowProps {
   readonly item: MemoryItem;
@@ -14,8 +15,8 @@ export interface MemoryItemRowProps {
 }
 
 // One item as a list shows it: its text, who wrote its current version and from what, when it was
-// created, and its history, which loads when opened. A forgotten item shows as a dated gap, with
-// the controls that can still finish its forget.
+// created, and its history, which loads when opened. A self-note carries its mark in every list. A
+// forgotten item shows as a dated gap, with the controls that can still finish its forget.
 export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
   const item = props.item;
 
@@ -23,6 +24,7 @@ export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
     return (
       <li aria-label={item.shortID} className={row}>
         <p className={meta}>
+          {item.kind === 'self' ? <SelfNoteBadge /> : null}
           Forgotten item · created {formatMemoryDate(item.createdAt)}
           {item.forgottenAt === null
             ? ' · forgetting'
@@ -39,6 +41,7 @@ export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
         {item.status === 'readable' ? item.text : `(${item.status})`}
       </p>
       <p className={meta}>
+        {item.kind === 'self' ? <SelfNoteBadge /> : null}
         {formatMemoryProvenance(item.origin, item.source)} · created{' '}
         {formatMemoryDate(item.createdAt)}
         {item.isPinned ? ' · pinned' : ''}

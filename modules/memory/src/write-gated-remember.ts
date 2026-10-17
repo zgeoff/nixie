@@ -3,41 +3,22 @@ import { buildWriteGroup } from './build-write-group';
 import { findNewestMessage } from './find-newest-message';
 import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { ContentGateResult, GatedRememberRequest, WriteOutcome } from './gate-types';
-import { requireItem } from './require-item';
 import { requireLiveEvidence } from './require-live-evidence';
-import { runContentGate } from './run-content-gate';
-import type { MemoryTables, StoreParts } from './types';
+import { runKindGate } from './run-kind-gate';
+import type { MemoryKind, StoreParts } from './types';
 import { writeMemoryProposal } from './write-memory-proposal';
 import { writeRememberedItem } from './write-remembered-item';
 
-// Runs a memory.remember, or a memory.edit when the write names its target, through the content
-// gate under that tool's allow rule. A passing write applies at once, any other becomes a proposal,
-// and an edit of a missing item or a moved-on version is refused before any check runs.
+// Runs a memory.remember, or a memory.edit when the write names its target, through the gate of its
+// item's kind. A passing write applies at once and any other becomes a proposal; a self-note never
+// passes. An edit of a missing item or a moved-on version is refused before any check runs.
 export async function writeGatedRemember(
   parts: StoreParts,
   request: GatedRememberRequest,
 ): Promise<WriteOutcome> {
-  if (request.target !== undefined) {
-    await requireItem(parts.context.log.writer.db.$extendTables<MemoryTables>(), {
-      target: request.target,
-      operation: 'edit',
-      states: ['active', 'retired'],
-    });
-  }
+  const checked = await runKindGate(parts, request);
 
-  const tool = request.target === undefined ? 'memory.remember' : 'memory.edit';
-
-  const gate = await runContentGate(
-    parts.context,
-    {
-      text: request.text,
-      quote: request.quote ?? null,
-      eventID: request.eventID ?? null,
-      isPinned: request.isPinned === true,
-      thread: request.caller.thread,
-    },
-    tool,
-  );
+  const gate = checked.gate;
 
   const newest = await findNewestMessage(parts.context.log, request.caller.thread);
 
@@ -47,12 +28,13 @@ export async function writeGatedRemember(
     return applyPassedRemember(parts, request, { gate, group });
   }
 
-  return writeRememberProposal(parts, request, { review: gate, group });
+  return writeRememberProposal(parts, request, { review: gate, group, itemKind: checked.itemKind });
 }
 
 interface ReviewedRemember {
   readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
   readonly group: WriteGroup;
+  readonly itemKind: MemoryKind;
 }
 
 async function writeRememberProposal(
@@ -74,6 +56,7 @@ async function writeRememberProposal(
     checkerReason: review.checkerReason,
     caller: request.caller,
     group: reviewed.group,
+    itemKind: reviewed.itemKind,
   });
 
   return { status: 'proposed', ...written, reason: review.reason };
@@ -102,7 +85,12 @@ async function applyPassedRemember(
       checkerReason: null,
     };
 
-    return writeRememberProposal(parts, request, { review, group: passed.group });
+    // only a fact passes the gate, so only a fact turns into a proposal here
+    return writeRememberProposal(parts, request, {
+      review,
+      group: passed.group,
+      itemKind: 'fact',
+    });
   }
 }
 

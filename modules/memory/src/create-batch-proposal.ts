@@ -1,5 +1,5 @@
 import { removeRecordKey } from '@heynixie/log';
-import { buildProposalRecord } from './build-proposal-record';
+import { buildProposalRecords } from './build-proposal-records';
 import { buildWriteGroup } from './build-write-group';
 import { createSealedProposal } from './create-sealed-proposal';
 import type { ContentGateResult, WriteCaller } from './gate-types';
@@ -41,7 +41,7 @@ export async function createBatchProposal(
       verdict: {
         outcome: 'propose',
         reason: plan.reason,
-        records: [buildProposalRecord(parts, { plan, sealed })],
+        records: buildProposalRecords(parts, { plan, sealed }),
         plan,
       },
       newItemID,

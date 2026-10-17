@@ -2,15 +2,20 @@ import { findItemKey } from './find-item-key';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { readVersion } from './read-version';
 import { requireItem } from './require-item';
-import type { MemoryTables, StoreParts, VersionRef } from './types';
+import type { MemoryKind, MemoryTables, StoreParts, VersionRef } from './types';
 
-// Reads the text of an active item at the version a retirement names. A missing item, a stale
-// version or a retired item is refused.
-export async function readItemText(parts: StoreParts, target: VersionRef): Promise<string> {
+// The text of the item a retirement names, with the item's kind.
+export interface RetirableItem {
+  readonly text: string;
+  readonly kind: MemoryKind;
+}
+
+// Reads the text and kind of an active item at the version a retirement names. A missing item, a
+// stale version or a retired item is refused.
+export async function readItemText(parts: StoreParts, target: VersionRef): Promise<RetirableItem> {
   const db = parts.context.log.writer.db.$extendTables<MemoryTables>();
 
-  await requireItem(db, { target, operation: 'retire', states: ['active'] });
-
+  const item = await requireItem(db, { target, operation: 'retire', states: ['active'] });
   const key = await findItemKey(parts.context.log, target.itemID);
 
   if (key === null || key === undefined) {
@@ -19,5 +24,5 @@ export async function readItemText(parts: StoreParts, target: VersionRef): Promi
 
   const version = await readVersion(db, key, target);
 
-  return version.text.text;
+  return { text: version.text.text, kind: item.kind };
 }

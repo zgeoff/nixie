@@ -10,9 +10,9 @@ import type {
   SandboxSpec,
 } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
+import type { RunCheck } from './checker-types';
 import { makeChecker } from './make-checker';
 import { runSandboxCheck } from './run-sandbox-check';
-import type { RunCheck } from './types';
 
 export interface CheckerRunnerOptions {
   // the checker role's profile, read once at start

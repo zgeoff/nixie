@@ -1,11 +1,13 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { memoryRecalledCodec } from '@heynixie/sessions';
 import { waitAtFaultPoint } from '@heynixie/tasks';
+import type { RankQuery, RankedMatches } from './find-ranked-matches';
 import { findRankedMatches } from './find-ranked-matches';
 import type { MatchScores } from './merge-rankings';
 import { parseItemCursor } from './parse-item-cursor';
 import { readDeliverableItems } from './read-deliverable-items';
 import type {
+  MemoryKind,
   MemoryState,
   MemoryTables,
   RecallRequest,
@@ -128,20 +130,81 @@ async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): P
     readCurrentItemIDs(parts, request.excludedVersions ?? []),
   ]);
 
-  const ranked = await findRankedMatches(parts, {
-    query: request.query,
-    limit: query.limit,
-    excludedIDs: [...pinned, ...held],
-    ...(request.excludedWords === undefined ? {} : { excludedWords: request.excludedWords }),
-    ...(request.minScore === undefined ? {} : { minScore: request.minScore }),
-    ...(request.minSimilarity === undefined ? {} : { minSimilarity: request.minSimilarity }),
-  });
+  const excludedIDs = [...pinned, ...held];
+  const selfLimit = request.selfNoteLimit;
+
+  const ranked =
+    selfLimit === undefined
+      ? await findRankedMatches(parts, buildRankQuery(request, query.limit, excludedIDs))
+      : await findKindRankedMatches(parts, {
+          request,
+          limits: { fact: query.limit, self: Math.min(selfLimit, MAX_LIMIT) },
+          excludedIDs,
+        });
 
   return {
     itemIDs: ranked.matches.map((match) => match.itemID),
     next: null,
     scores: new Map(ranked.matches.map((match) => [match.itemID, match])),
     searchMode: ranked.searchMode,
+  };
+}
+
+function buildRankQuery(
+  request: QueryCandidates['request'],
+  limit: number,
+  excludedIDs: readonly string[],
+): RankQuery {
+  return {
+    query: request.query,
+    limit,
+    excludedIDs,
+    ...(request.excludedWords === undefined ? {} : { excludedWords: request.excludedWords }),
+    ...(request.minScore === undefined ? {} : { minScore: request.minScore }),
+    ...(request.minSimilarity === undefined ? {} : { minSimilarity: request.minSimilarity }),
+  };
+}
+
+interface KindRanking {
+  readonly request: QueryCandidates['request'];
+  readonly limits: Readonly<Record<MemoryKind, number>>;
+  readonly excludedIDs: readonly string[];
+}
+
+// Ranks facts and self-notes apart, each up to its own limit, so a run of matches of one kind
+// never pushes the other kind past the cut. Each ranking leaves out the other kind's items.
+async function findKindRankedMatches(
+  parts: StoreParts,
+  ranking: KindRanking,
+): Promise<RankedMatches> {
+  const rows = await parts.context.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['item_id', 'kind'])
+    .where('state', '=', 'active')
+    .execute();
+
+  const selfIDs = rows.filter((row) => row.kind === 'self').map((row) => row.item_id);
+  const factIDs = rows.filter((row) => row.kind === 'fact').map((row) => row.item_id);
+
+  const factQuery = buildRankQuery(ranking.request, ranking.limits.fact, [
+    ...ranking.excludedIDs,
+    ...selfIDs,
+  ]);
+
+  const selfQuery = buildRankQuery(ranking.request, ranking.limits.self, [
+    ...ranking.excludedIDs,
+    ...factIDs,
+  ]);
+
+  const [facts, notes] = await Promise.all([
+    findRankedMatches(parts, factQuery),
+    selfQuery.limit === 0 ? null : findRankedMatches(parts, selfQuery),
+  ]);
+
+  return {
+    matches: [...facts.matches, ...(notes?.matches ?? [])],
+    searchMode: facts.searchMode,
   };
 }
 

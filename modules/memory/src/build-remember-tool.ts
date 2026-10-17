@@ -7,7 +7,8 @@ import { memoryWriteOutput } from './memory-write-output';
 import { runWriteCall } from './run-write-call';
 import type { ItemIDStore } from './types';
 
-// Builds memory.remember, which declares note and runs each new fact through the content gate.
+// Builds memory.remember, which declares note and runs each new fact through the content gate, and
+// sends each new self-note to your review.
 export function buildRememberTool(
   memory: ModelWriteStore & Pick<ItemIDStore, 'readShortIDs'>,
 ): ToolDefinition {
@@ -47,7 +48,10 @@ const rememberDescription =
   'write applies at once only when those typed words back it; otherwise it waits for the ' +
   "owner's review as a proposal, and the result says why. When a pending proposal already " +
   'holds the same text, the result says merged: the owner reviews one proposal with both ' +
-  'sources. Set pin to ask for the item in the pinned core, which always waits for review.';
+  'sources. Set pin to ask for the item in the pinned core, which always waits for review. Set ' +
+  'kind to self for a self-note: a note about yourself, such as your tastes or how something ' +
+  "landed with you. A self-note needs no quote, always waits for the owner's review and is never " +
+  'pinned.';
 
 const rememberInput = {
   type: 'object',
@@ -61,6 +65,11 @@ const rememberInput = {
         'the eventID of the message the quote comes from, as its stamp or log.read shows it',
     },
     pin: { type: 'boolean' },
+    kind: {
+      type: 'string',
+      enum: ['fact', 'self'],
+      description: 'fact, the default, for a fact about the owner; self for a note about yourself',
+    },
   },
   required: ['text'],
   additionalProperties: false,
@@ -75,6 +84,7 @@ function buildRememberRequest(call: ToolCall, context: ToolContext): GatedRememb
     ...(input.quote === undefined ? {} : { quote: input.quote }),
     ...(input.eventID === undefined ? {} : { eventID: Number(input.eventID.replace(/^#/u, '')) }),
     ...(input.pin === undefined ? {} : { isPinned: input.pin }),
+    ...(input.kind === undefined ? {} : { itemKind: input.kind }),
   };
 }
 
@@ -83,4 +93,5 @@ const rememberArguments = z.object({
   quote: z.string().optional(),
   eventID: z.string().optional(),
   pin: z.boolean().optional(),
+  kind: z.enum(['fact', 'self']).optional(),
 });

@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { makeGatedCall } from '@heynixie/testing';
+import { buildMockProvenance } from './test-utils/build-mock-provenance';
 import { buildStubEncoder } from './test-utils/build-stub-encoder';
 import { createMemoryItem } from './test-utils/create-memory-item';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
@@ -10,6 +11,92 @@ import { startTestMemory } from './test-utils/start-test-memory';
 async function setupTest() {
   return { memory: await startTestMemory() };
 }
+
+test('it returns up to the limit of facts and up to the self-note limit of self-notes from one ranking, in one recall record', async () => {
+  const ctx = await setupTest();
+
+  const facts = [
+    'The garden hose leaks at the tap',
+    'The garden gate sticks after rain',
+    'The garden fence needs paint',
+    'The library closes at six on Sundays',
+    'The dentist is on the high street',
+    'The bins go out on Tuesday',
+  ];
+
+  const notes = ['I enjoy hearing about the garden', 'My garden tips landed well last spring'];
+
+  await Promise.all([
+    ...facts.map((text) => ctx.memory.store.remember({ text, provenance: buildMockProvenance() })),
+    ...notes.map((text) =>
+      ctx.memory.store.remember({ text, itemKind: 'self', provenance: buildMockProvenance() }),
+    ),
+  ]);
+
+  const result = await ctx.memory.store.recall({ query: 'garden', limit: 2, selfNoteLimit: 1 });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(result.items.map((item) => item.kind).toSorted()).toStrictEqual(['fact', 'fact', 'self']);
+
+  expect(result.items.map((item) => item.text)).toSatisfyAll((text: string) =>
+    text.includes('garden'),
+  );
+
+  expect(records.map((entry) => entry.record.payload['items'])).toMatchObject([
+    [
+      { itemID: expect.toBeString() },
+      { itemID: expect.toBeString() },
+      { itemID: expect.toBeString() },
+    ],
+  ]);
+});
+
+test('it returns a matching self-note when more facts match than the largest recall holds', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ...Array.from({ length: 101 }, (_, index) =>
+      ctx.memory.store.remember({
+        text: `The garden bed ${index} needs water`,
+        provenance: buildMockProvenance(),
+      }),
+    ),
+    ctx.memory.store.remember({
+      text: 'I enjoy hearing about the garden',
+      itemKind: 'self',
+      provenance: buildMockProvenance(),
+    }),
+  ]);
+
+  const result = await ctx.memory.store.recall({ query: 'garden', limit: 100, selfNoteLimit: 1 });
+
+  expect(result.items.filter((item) => item.kind === 'self')).toMatchObject([
+    { text: 'I enjoy hearing about the garden' },
+  ]);
+});
+
+test('it returns up to the limit across both kinds when the recall sets no self-note limit', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ...[
+      'The garden hose leaks at the tap',
+      'The garden gate sticks after rain',
+      'The library closes at six on Sundays',
+    ].map((text) => ctx.memory.store.remember({ text, provenance: buildMockProvenance() })),
+    ...['I enjoy hearing about the garden', 'I like suggesting garden jobs'].map((text) =>
+      ctx.memory.store.remember({ text, itemKind: 'self', provenance: buildMockProvenance() }),
+    ),
+  ]);
+
+  const result = await ctx.memory.store.recall({ query: 'garden', limit: 3 });
+
+  expect(result.items).toHaveLength(3);
+});
 
 test('it returns the items that match a query word for word, with their provenance', async () => {
   const ctx = await setupTest();
@@ -35,6 +122,7 @@ test('it returns the items that match a query word for word, with their provenan
         change: 'created',
         state: 'active',
         isPinned: false,
+        kind: 'fact',
         origin: 'owner',
         source: 'owner',
         recordedAt: expect.toBeNumber(),

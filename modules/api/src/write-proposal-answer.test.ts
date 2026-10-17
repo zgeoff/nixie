@@ -247,6 +247,7 @@ test.each([
   ['PINNED_CORE_FULL', { status: 'refused', code: 'PINNED_CORE_FULL' }],
   ['RETIREMENT_EDIT', { status: 'refused', code: 'RETIREMENT_EDIT' }],
   ['REVISION_TARGET', { status: 'refused', code: 'REVISION_TARGET' }],
+  ['SELF_NOTE_REFUSED', { status: 'refused', code: 'REVISION_TARGET' }],
   ['WRONG_STATE', { status: 'refused', code: 'WRONG_STATE' }],
 ] as const)('it answers a refusal coded %s as its outcome', async (code, expected) => {
   const ctx = await setupTest();

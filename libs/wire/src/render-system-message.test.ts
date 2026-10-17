@@ -6,6 +6,7 @@ import { renderSystemMessage } from './render-system-message';
 test.each<[SystemMessageType, string]>([
   ['events', '- Tue 14 Oct, 09:40, Sydney · The post arrived.'],
   ['retrieved-memory', '- Prefers tea to coffee'],
+  ['retrieved-self-notes', '- I enjoy a well-made pun'],
   ['retrieved-messages', '- 13 Oct · thread garden · event 4812\n  The tomatoes need staking'],
   ['pinned-memory-changes', '- Changed [w8d2n5rt1c]: Goes by Kit'],
   ['timer', '[#48213] A timer fired: {"timerID":"t-1"}'],
