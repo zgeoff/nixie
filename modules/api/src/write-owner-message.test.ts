@@ -358,3 +358,48 @@ test('it writes a message with a time zone the server does not know, and leaves 
   expect(entry?.record.kind).toBe('owner_message');
   expect(entry?.record.payload).not.toContainKey('timeZone');
 });
+
+test('it keeps when the device says you wrote the message in the message payload', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const result = await writeOwnerMessage(ctx.context, laptop.caller, {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'Pick up the parcel.',
+    spans: [{ start: 0, end: 19, source: 'typed' }],
+    writtenAt: '2026-10-13T21:12:00Z',
+  });
+
+  invariant(result.status === 'written');
+
+  const [entry] = await readRecords(ctx.context.log, {
+    afterSequence: result.sequence - 1,
+    limit: 1,
+  });
+
+  expect(entry?.record.payload['writtenAt']).toBe('2026-10-13T21:12:00.000Z');
+});
+
+test('it writes a message whose written time does not parse, and leaves the time out', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const result = await writeOwnerMessage(ctx.context, laptop.caller, {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'Pick up the parcel.',
+    spans: [{ start: 0, end: 19, source: 'typed' }],
+    writtenAt: 'yesterday',
+  });
+
+  invariant(result.status === 'written');
+
+  const [entry] = await readRecords(ctx.context.log, {
+    afterSequence: result.sequence - 1,
+    limit: 1,
+  });
+
+  expect(entry?.record.kind).toBe('owner_message');
+  expect(entry?.record.payload).not.toContainKey('writtenAt');
+});

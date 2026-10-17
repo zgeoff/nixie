@@ -5,9 +5,9 @@ import { z } from 'zod';
 // an image's type, which a reader needs without the record's key
 const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
 
-// Your message's plain fields: the client's ID for it, who sent it, how its spans were labelled, the
-// time zone it was sent from, and each image's type in the order sent, whose bytes the record seals.
-// A message from before nixie recorded a field lacks it, and one with no images names none.
+// Your message's plain fields: its client ID, sender, span labels, time zone, when the device says
+// you wrote it, and each image's type in the order sent, whose bytes the record seals. A message
+// from before nixie recorded a field lacks it, and one with no images names none.
 export const ownerMessageCodec = defineRecordCodec(
   'owner_message',
   z.object({
@@ -15,6 +15,7 @@ export const ownerMessageCodec = defineRecordCodec(
     identityID: z.string(),
     spans: z.enum(['as_sent', 'unknown']),
     timeZone: z.string().exactOptional(),
+    writtenAt: z.string().exactOptional(),
     images: imageSchema.array().exactOptional(),
   }),
 );

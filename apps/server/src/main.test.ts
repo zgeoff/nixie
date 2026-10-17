@@ -350,6 +350,55 @@ test('it shows the model when each message was sent, in its own zone or the defa
   );
 }, 60_000);
 
+test('it shows the model when you typed a message that reached nixie over 2 minutes late', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'Noted.' }, { text: 'On it.' });
+
+  // the first message went out as you wrote it, and the second waited hours on the device
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Back home.',
+    thread: 'conversation',
+    timeZone: 'Asia/Tokyo',
+    writtenAt: new Date().toISOString(),
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'Noted.');
+  });
+
+  await ctx.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'Book the dentist.',
+    thread: 'conversation',
+    timeZone: 'Asia/Tokyo',
+    writtenAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
+  });
+
+  await waitForCondition(async () => {
+    const page = await ctx.client.conversation.read({ thread: 'conversation' });
+
+    return page.records.some((record) => record.message?.text === 'On it.');
+  });
+
+  const sent = JSON.stringify(
+    ctx.model.requests.findLast((request) => request.path === '/v1/messages')?.body?.messages,
+  );
+
+  expect(sent).toMatch(
+    /\[#\d+ · \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo · laptop\] Back home\./u,
+  );
+
+  expect(sent).toMatch(
+    /\[#\d+ · typed (?:\w{3} \d{1,2} \w{3}(?: \d{4})?, )?\d{2}:\d{2}, sent \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo · laptop\] Book the dentist\./u,
+  );
+}, 60_000);
+
 test('it shows the model the label you set on a session through the session commands', async () => {
   const ctx = await setupTest();
   const listed = await runHostCommand(ctx.configPath, ['sessions']);
