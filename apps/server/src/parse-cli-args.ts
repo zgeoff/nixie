@@ -1,5 +1,5 @@
 import { cli } from 'gunshi/bone';
-import type { CommandContext } from 'gunshi/bone';
+import type { CommandContext, ExtendContext } from 'gunshi/bone';
 import { define, lazy } from 'gunshi/definition';
 import { isArgsValidationError, isCommandNotFoundError } from 'gunshi/plugin';
 import type { CLIFlags } from './types';
@@ -81,7 +81,7 @@ const CLI_OPTIONS = {
 
 interface CLIParams {
   readonly args: typeof CLI_OPTIONS;
-  readonly extensions: Record<never, never>;
+  readonly extensions: ExtendContext;
 }
 
 // The parser records a flag missing its value without stopping the command, so the flags are
