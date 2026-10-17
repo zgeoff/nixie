@@ -48,6 +48,18 @@ pre-push:
       run:
         git rev-parse --verify --quiet origin/main > /dev/null || { echo "pre-push needs
         origin/main; run git fetch origin main"; exit 1; }
+    # the pusher's own home directory and host name, which gitleaks cannot know;
+    # a fixed /home/ pattern would refuse the sandbox paths the code uses
+    - name: local paths
+      run: |
+        base=$(git merge-base origin/main HEAD) || exit 1
+        host=$(uname -n)
+        set -- -e "$HOME/"
+        case "$host" in localhost | "") ;; *) set -- "$@" -e "$host" ;; esac
+        if git diff -U0 "$base" HEAD | grep '^+' | grep -v '^+++' | grep -F "$@"; then
+          echo "the branch adds your home directory or host name; remove it before you push"
+          exit 1
+        fi
     - name: format:check
       run: bun run format:check
     # the job lists the branch's files itself, so it runs on every push; a

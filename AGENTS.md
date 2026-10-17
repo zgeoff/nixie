@@ -131,15 +131,15 @@ oxlint refuses each of these imports outside its one package:
 
 ## Public repo
 
-The repo is public, so every commit, PR, issue and review reply stays free of private detail:
+The repo is public, and everything pushed to it stays public: commits, PRs, issues and review
+replies. Keep your own environment out of it, so your setup never leaks through your work.
 
-- No home directory paths, host names, private network names, or details of the owner's cloud. The
-  deployment repo holds those.
-- No name for the owner's coordinator agent.
-- The docs justify nixie on its own terms, never by comparing it to another system.
+- Leave out home directory paths, host names, private network names, cloud details, and the names
+  of the tools and agents you work with. A private deployment repo holds a deployment's details.
+- Explain each choice by what nixie needs, so the reason stays true when other products change.
 
-Before you push, grep the diff for `sk-ant`, `GOCSPX`, `AGE-SECRET-KEY`, `ops_`, `/home/` and
-`.ts.net`. gitleaks runs in the pre-commit hook and in CI.
+gitleaks scans each commit and each PR for secrets and tailnet host names, and the pre-push hook
+refuses a branch that adds your home directory or host name.
 
 ## Secrets
 
