@@ -1,10 +1,12 @@
 // oxlint-disable typescript/prefer-readonly-parameter-types -- the scan's own list of taken ranges, and a RegExp, which has no readonly form
 
-// A destination-like token in a text, with the form it compares in.
+// A destination-like token in a text, with the form it compares in. A BSB and account number also
+// carries the account number alone as its part.
 export interface DestinationToken {
   readonly kind: 'account' | 'domain' | 'email' | 'handle' | 'phone' | 'url';
   readonly key: string;
   readonly raw: string;
+  readonly part?: string;
 }
 
 // Finds the destination-like tokens in a text. A URL is found before an email inside it, and an
@@ -31,7 +33,7 @@ interface TokenPattern {
 }
 
 // a match that overlaps a token an earlier pattern took is part of that token, a phone number needs
-// at least 7 digits, and a BSB and account number is a second token for the account number alone
+// at least 7 digits, and a BSB and account number keeps the account number alone as its part
 function collectPatternTokens(
   text: string,
   entry: TokenPattern,
@@ -56,7 +58,7 @@ function collectPatternTokens(
 
     const part = match.groups?.['account'];
 
-    return part === undefined ? [token] : [token, { kind: entry.kind, key: part, raw: part }];
+    return part === undefined ? [token] : [{ ...token, part }];
   });
 }
 

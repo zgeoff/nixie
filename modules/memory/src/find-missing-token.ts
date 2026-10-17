@@ -2,13 +2,19 @@ import type { DestinationToken } from './find-destination-tokens';
 import { findDestinationTokens } from './find-destination-tokens';
 
 // Finds the first destination-like token in the memory text that the quote lacks, or null. Each
-// number compares with each number in the quote alone, so digits from 2 numbers never join, and a
-// bare domain compares with each host in the quote.
+// number compares with each quoted number alone or the account part of a quoted BSB, so digits from
+// 2 numbers never join, and a bare domain compares with each host in the quote.
 export function findMissingToken(text: string, quote: string): DestinationToken | null {
   const quoted = findDestinationTokens(quote);
 
   const keys = new Set(quoted.map((token) => `${token.kind}:${token.key}`));
-  const numbers = new Set(quoted.filter((token) => isNumberKind(token)).map((token) => token.key));
+
+  const numbers = new Set(
+    quoted
+      .filter((token) => isNumberKind(token))
+      .flatMap((token) => (token.part === undefined ? [token.key] : [token.key, token.part])),
+  );
+
   const hosts = new Set(quoted.map((token) => getHost(token)));
 
   return (

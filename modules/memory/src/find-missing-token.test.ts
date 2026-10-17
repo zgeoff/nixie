@@ -27,6 +27,16 @@ test.each([
     'my acct is 48217730',
   ],
   [
+    'a BSB and account number whose account digits the quote groups otherwise',
+    'Pay 062-000 12345678',
+    'Pay 062-000 1234 5678',
+  ],
+  [
+    'a BSB and account number whose account digits the memory groups otherwise',
+    'Pay 062-000 1234 5678',
+    'Pay 062-000 12345678',
+  ],
+  [
     'an account number that a quoted BSB and account number holds',
     'Account number is 12345678',
     'BSB 062-000 account number: 12345678',
