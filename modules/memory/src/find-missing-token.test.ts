@@ -109,3 +109,10 @@ test('it finds a BSB that the quote lacks beside a quoted account number', () =>
     key: '06200012345678',
   });
 });
+
+test('it finds a BSB that the quote lacks beside a grouped account number after an account word', () => {
+  expect(findMissingToken('Pay 062-000 account 1234 5678', 'Pay account 12345678')).toMatchObject({
+    kind: 'account',
+    key: '06200012345678',
+  });
+});

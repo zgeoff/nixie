@@ -56,7 +56,7 @@ function collectPatternTokens(
       raw: match[0].replace(trailing, ''),
     };
 
-    const part = match.groups?.['account'];
+    const part = match.groups?.['account']?.replaceAll(/\D/gu, '');
 
     return part === undefined ? [token] : [{ ...token, part }];
   });
@@ -73,12 +73,13 @@ const patterns: readonly TokenPattern[] = [
     pattern: /\b[A-Z]{2}\d{2}(?:\s?[A-Z\d]{4}){2,7}(?:\s?[A-Z\d]{1,4})?\b/gu,
   },
 
-  // an Australian BSB and its account number, with an optional account word between them; neither
-  // pattern takes part of a longer run of digit groups, which the phone pattern takes whole
+  // an Australian BSB and its account number, whose digits may sit in groups, with an optional
+  // account word between them; neither pattern takes part of a longer run of digit groups, which
+  // the phone pattern takes whole
   {
     kind: 'account',
     pattern:
-      /(?<!\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+(?<account>\d{5,9})\b(?![\p{Zs}\t-]?\d)/giu,
+      /(?<!\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+(?<account>\d(?:[\p{Zs}\t]?\d){4,8})\b(?![\p{Zs}\t-]?\d)/giu,
   },
 
   // a run of 6 to 17 digits right after an account word, such as "account number is"

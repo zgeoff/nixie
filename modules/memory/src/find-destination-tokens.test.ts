@@ -24,3 +24,9 @@ test('it finds a BSB and account number as one token whose part is the account n
     },
   ]);
 });
+
+test('it finds a BSB and grouped account number as one token whose part joins the groups', () => {
+  expect(findDestinationTokens('Pay 062-000 account 1234 5678')).toStrictEqual([
+    { kind: 'account', key: '06200012345678', raw: '062-000 account 1234 5678', part: '12345678' },
+  ]);
+});
