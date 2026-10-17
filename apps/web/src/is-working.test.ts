@@ -68,6 +68,21 @@ test.each(['done', 'failed', 'interrupted'] as const)(
   },
 );
 
+test('it is not working once a reset follows your unanswered message', () => {
+  const question = buildMockLogRecord({ kind: 'owner_message', message: { text: '?' } });
+  const reset = buildMockLogRecord({ kind: 'log_reset' });
+
+  expect(
+    isWorking(
+      [
+        { kind: 'message', record: question },
+        { kind: 'reset', record: reset },
+      ],
+      false,
+    ),
+  ).toBe(false);
+});
+
 test('it is not working in an empty conversation with nothing to send', () => {
   expect(isWorking([], false)).toBe(false);
 });

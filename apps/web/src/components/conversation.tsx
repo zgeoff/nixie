@@ -22,7 +22,11 @@ export interface ConversationProps {
 // and every other record folds into the step it belongs to.
 export function Conversation(props: ConversationProps): ReactNode {
   const conversation = useConversationRecords(props.thread);
-  const outbox = useOutbox(conversation.forgottenClientMessageIDs);
+
+  const outbox = useOutbox(conversation.forgottenClientMessageIDs, {
+    resetSequence: conversation.liveResetSequence,
+  });
+
   const [sends, setSends] = useState(0);
 
   if (conversation.status === 'pending') {

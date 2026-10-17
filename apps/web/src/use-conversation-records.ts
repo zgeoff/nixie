@@ -17,6 +17,9 @@ export interface ConversationRecords {
   // the client message IDs of the messages a forget dropped the text of, so the outbox can drop
   // its own copy of their text
   readonly forgottenClientMessageIDs: readonly string[];
+
+  // the sequence of the latest reset the live stream delivered, which a page read never sets
+  readonly liveResetSequence: number | undefined;
 }
 
 // The records of a thread: the page the API returned and the records the live stream adds after it.
@@ -32,6 +35,7 @@ export function useConversationRecords(thread: string): ConversationRecords {
       lastStepEnd: null,
       unavailable: live.unavailable,
       forgottenClientMessageIDs: [],
+      liveResetSequence: undefined,
     };
   }
 
@@ -41,6 +45,7 @@ export function useConversationRecords(thread: string): ConversationRecords {
     lastStepEnd: page.data.lastStepEnd,
     unavailable: live.unavailable,
     forgottenClientMessageIDs: merged.forgottenClientMessageIDs,
+    liveResetSequence: live.records.findLast((record) => record.kind === 'log_reset')?.sequence,
   };
 }
 

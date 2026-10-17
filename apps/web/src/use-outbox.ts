@@ -21,6 +21,9 @@ export interface OutboxEntry {
 
   // when the next try goes on its own, for a failed send that retries by itself
   readonly retryAt?: number | undefined;
+
+  // the log sequence the API wrote the message at, once it confirmed the send
+  readonly sequence?: number | undefined;
 }
 
 export interface OutboxOptions {
@@ -29,11 +32,14 @@ export interface OutboxOptions {
 
   // The time in milliseconds since the epoch. The platform clock by default.
   readonly now?: () => number;
+
+  // the sequence of the latest reset the live stream delivered
+  readonly resetSequence?: number | undefined;
 }
 
-// Keeps the messages this device sent until the conversation shows them. An unconfirmed message
-// stays in device storage and goes again with its first client message ID; a confirmed one stays
-// in memory until its record arrives.
+// Keeps the messages this device sent until the conversation shows them, or a reset removes them.
+// An unconfirmed message stays in device storage and goes again with its first client message ID;
+// a confirmed one stays in memory until its record arrives.
 export function useOutbox(
   forgottenClientMessageIDs: readonly string[],
   options: OutboxOptions = {},
@@ -41,8 +47,10 @@ export function useOutbox(
   const client = useNixieClient().client;
   const startTimer = options.startTimer ?? startPlatformTimer;
   const now = options.now ?? Date.now;
+  const resetSequence = options.resetSequence;
   const [entries, setEntries] = useState<readonly OutboxEntry[]>([]);
   const [discarded, setDiscarded] = useState<readonly string[]>([]);
+  const [resetIDs, setResetIDs] = useState<readonly string[]>([]);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const retries = useRef(new Map<string, () => void>());
 
@@ -130,11 +138,12 @@ export function useOutbox(
 
         const outcome = await trySendMessage(client, loaded);
 
-        if (outcome !== 'unanswered') {
+        if (outcome.status !== 'unanswered') {
           setEntries((current) =>
             updateEntry(current, clientMessageID, {
               failures: undefined,
-              status: outcome === 'sent' ? 'sent' : 'failed',
+              sequence: outcome.sequence,
+              status: outcome.status === 'sent' ? 'sent' : 'failed',
             }),
           );
 
@@ -232,9 +241,29 @@ export function useOutbox(
     };
   }, []);
 
+  // A reset removed every message before it, so each message the outbox holds when the reset
+  // arrives leaves as a forgotten one does, unless the API wrote it after the reset. The log's own
+  // sequence orders the two, so the device's clock decides nothing.
+  useLayoutEffect(() => {
+    if (resetSequence === undefined) {
+      return;
+    }
+
+    const before = latest.current.filter(
+      (entry) => entry.sequence === undefined || entry.sequence < resetSequence,
+    );
+
+    if (before.length > 0) {
+      setResetIDs((current) => [
+        ...current,
+        ...before.map((entry) => entry.message.clientMessageId),
+      ]);
+    }
+  }, [resetSequence]);
+
   const removed = useMemo(
-    () => [...forgottenClientMessageIDs, ...discarded],
-    [discarded, forgottenClientMessageIDs],
+    () => [...forgottenClientMessageIDs, ...discarded, ...resetIDs],
+    [discarded, forgottenClientMessageIDs, resetIDs],
   );
 
   useStoredOutbox({
@@ -335,19 +364,24 @@ function updateEntry(
   );
 }
 
+// the result of one send, with the log sequence of the message once the API wrote it
+type SendOutcome =
+  | { readonly sequence: number; readonly status: 'sent' }
+  | { readonly sequence?: undefined; readonly status: 'refused' | 'unanswered' };
+
 // A send the API refused, such as one for a thread that ended, fails until you retry it; a send the
 // API did not answer, because the network or the server is down, retries on its own.
 async function trySendMessage(
   client: ContractClient,
   message: OutboxMessage,
-): Promise<'refused' | 'sent' | 'unanswered'> {
+): Promise<SendOutcome> {
   // a send without the images would write the message without them under its ID for good
   if (message.unreadImages !== undefined) {
-    return 'refused';
+    return { status: 'refused' };
   }
 
   try {
-    await client.conversation.send({
+    const sent = await client.conversation.send({
       clientMessageId: message.clientMessageId,
       spans: Array.from(message.spans, (span) => ({
         end: span.end,
@@ -361,10 +395,13 @@ async function trySendMessage(
       ...(message.images === undefined ? {} : { images: [...message.images] }),
     });
 
-    return 'sent';
+    return { sequence: sent.sequence, status: 'sent' };
   } catch (error) {
-    return error instanceof ORPCError && error.status >= 400 && error.status < 500
-      ? 'refused'
-      : 'unanswered';
+    return {
+      status:
+        error instanceof ORPCError && error.status >= 400 && error.status < 500
+          ? 'refused'
+          : 'unanswered',
+    };
   }
 }

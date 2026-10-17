@@ -31,8 +31,9 @@ change state; and the live stream of log records.
   at. The client follows the log from that sequence, and each streamed event's ID is its record's
   sequence, so a reconnect resumes with no gap and no repeat. A `log_reset` record on the stream
   means the [reset](../core/event-log.md#the-reset) removed every record before it, so the client
-  drops what it read before that record and reads its queries again. The server restarts after a
-  reset, so the client reads them once more when the stream next connects.
+  drops what it read before that record and reads its queries again. The conversation shows the
+  record as a rule across the feed with the time of the reset in the user's own time zone. The
+  server restarts after a reset, so the client reads them once more when the stream next connects.
 
 A client renders a record by its kind, and shows a kind it does not know by its name. Beside its
 kind, a record carries what a client shows of it: a message's text, the task and step of a task
@@ -116,28 +117,28 @@ row, because turns go on while it fails and the conversation stops only once the
 ([compaction](../core/compaction.md#failure-and-overflow)). The notice goes once a summary commits,
 a forget invalidates the session or a new session opens.
 
-Each message stands on its own line, and every other record folds into the step it belongs to, from
-the step's start to its end. A record before a step, such as the task's creation, folds into the
-step that follows it. A page holds only the thread's newest records, so it can start partway through
-a step: a step's end with no start before it closes the records before it as one step, with the
-status its end records. A step shows as one collapsed line of short facts: its task, how many
-memories its recalls delivered with how many of them the model rated as noise, each tool it called
-with its targets, such as the host of each page a web fetch read, how full the context stood at its
-last model call against the window nixie compacts within, and how long it ran. A fact shows only
-once its record exists. Each compaction in the step adds a marker under that line with the context's
-tokens before and after, so the user can compare the turns on each side of it. A summary that closed
-the session shows as a rule across the feed with the context's size before it and the summary's own
-size, and opens to the summary's text while a forget has not erased it. Opening the step shows one
-collapsible section per source: the step with its records, the memories with each one's match score,
-the first line of its text and the model's rating with its note, the context with each compaction,
-each call with its input and its result, and a failed step's error. Each section opens on its own. A
-recall record holds no text and a rating record holds its note sealed, so the memories section reads
-the texts and the notes each time it opens, and a memory forgotten since then shows as forgotten. A
-rating can arrive in a later step than the recall it rates, and the view shows it beside the memory
-in the step that recalled it. A long value shows its start and opens in full on demand, because a
-fetched page's text runs to many kilobytes. Its toggle sits above the text and sticks to the top of
-the view while the text scrolls past, so the user closes an open value without scrolling back to
-find the control.
+Each message stands on its own line, a reset stands on its own line too, and every other record
+folds into the step it belongs to, from the step's start to its end. A record before a step, such as
+the task's creation, folds into the step that follows it. A page holds only the thread's newest
+records, so it can start partway through a step: a step's end with no start before it closes the
+records before it as one step, with the status its end records. A step shows as one collapsed line
+of short facts: its task, how many memories its recalls delivered with how many of them the model
+rated as noise, each tool it called with its targets, such as the host of each page a web fetch
+read, how full the context stood at its last model call against the window nixie compacts within,
+and how long it ran. A fact shows only once its record exists. Each compaction in the step adds a
+marker under that line with the context's tokens before and after, so the user can compare the turns
+on each side of it. A summary that closed the session shows as a rule across the feed with the
+context's size before it and the summary's own size, and opens to the summary's text while a forget
+has not erased it. Opening the step shows one collapsible section per source: the step with its
+records, the memories with each one's match score, the first line of its text and the model's rating
+with its note, the context with each compaction, each call with its input and its result, and a
+failed step's error. Each section opens on its own. A recall record holds no text and a rating
+record holds its note sealed, so the memories section reads the texts and the notes each time it
+opens, and a memory forgotten since then shows as forgotten. A rating can arrive in a later step
+than the recall it rates, and the view shows it beside the memory in the step that recalled it. A
+long value shows its start and opens in full on demand, because a fetched page's text runs to many
+kilobytes. Its toggle sits above the text and sticks to the top of the view while the text scrolls
+past, so the user closes an open value without scrolling back to find the control.
 
 Each message carries a forget control, which first asks and forgets only on the confirm. A
 confirmation keeps one client action ID, so a confirm that fails and goes again forgets once. A
@@ -206,6 +207,12 @@ When a forget drops the text of a message this device sent, the outbox removes t
 memory before the page paints, so it never shows the text again as a sent message. Every storage
 write leaves out the forgotten message, whatever status a render in flight gives it, so a page load
 never sends the message again.
+
+A reset removes every message before it, so when a reset arrives on the live stream, the outbox
+removes each message it holds in the same way as a forgotten one, and stops its retries. A message
+the API confirmed at a sequence after the reset's stays. The log's sequence orders the two, because
+the device's clock and the server's can disagree. A reset that a page read returns removes nothing,
+so a reload never drops a message written after it.
 
 A message's images go to IndexedDB under its client message ID, because local storage holds only
 strings and too few of them for an image. Local storage keeps the text and the count of images, and

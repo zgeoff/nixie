@@ -72,6 +72,18 @@ test('it keeps a forgotten message on its own in place of folding it into a step
   });
 });
 
+test('it keeps a reset on its own in place of folding it into a step', () => {
+  const reset = buildMockLogRecord({ kind: 'log_reset', sequence: 1 });
+
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 2,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  expect(buildActivity([reset, started]).at(0)).toStrictEqual({ kind: 'reset', record: reset });
+});
+
 test('it folds a record before a step into the step that follows it', () => {
   const created = buildMockLogRecord({
     kind: 'task.created',
