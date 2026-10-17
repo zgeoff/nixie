@@ -188,10 +188,12 @@ miss the moment the API came back.
 
 A message older than the stale limit never goes on its own, because what it says may no longer hold.
 A page load sends each stored message under the limit, and holds an older one as not sent, with how
-long ago the user wrote it and a choice to send or discard it. An automatic retry holds a message
-that passed the limit while it waited, and a message the user chose to send keeps retrying whatever
-its age. A stored message from before the outbox kept the written time counts as stale. Discarding a
-message removes it from memory, local storage and IndexedDB, as a forget does.
+long ago the user wrote it and a choice to send or discard it. Each send checks the message's age
+again when its turn in the queue comes, and holds a message that passed the limit while it waited. A
+message the user chose to send keeps retrying whatever its age. A stored message from before the
+outbox kept the written time counts as stale. Discarding a message removes it from memory, local
+storage and IndexedDB, as a forget does. Tabs share the list of discarded messages, so a send that
+waits in any tab's queue never sends a discarded message.
 
 The outbox sends one message at a time, in the order the user sent them, because the API writes
 records in arrival order and two sends at once could land out of order. Every tab shares the

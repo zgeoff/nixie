@@ -52,6 +52,9 @@ export function useOutbox(
   // the messages you chose to send, which keep retrying on their own whatever their age
   const chosen = useRef(new Set<string>());
 
+  // the messages this tab forgot or discarded, which a send still waiting its turn never sends
+  const removedIDs = useRef(new Set<string>());
+
   // the entries as the last render saw them, which a retry reads when its pause ends
   const latest = useRef(entries);
 
@@ -107,6 +110,24 @@ export function useOutbox(
         await previous;
 
         const loaded = await loadOutboxImages(message);
+
+        // the turn can come late, so the send checks again that no tab discarded the message, and
+        // that it is still fresh or one you chose to send
+        if (
+          removedIDs.current.has(clientMessageID) ||
+          updateDiscardedOutboxIDs(now()).includes(clientMessageID)
+        ) {
+          return;
+        }
+
+        if (!chosen.current.has(clientMessageID) && isOutboxMessageStale(loaded, now())) {
+          setEntries((current) =>
+            updateEntry(current, clientMessageID, { retryAt: undefined, status: 'held' }),
+          );
+
+          return;
+        }
+
         const outcome = await trySendMessage(client, loaded);
 
         if (outcome !== 'unanswered') {
@@ -184,6 +205,9 @@ export function useOutbox(
   const discard = useCallback(
     (clientMessageID: string) => {
       stopRetry(clientMessageID);
+
+      removedIDs.current.add(clientMessageID);
+
       setDiscarded(updateDiscardedOutboxIDs(now(), clientMessageID));
     },
     [now, stopRetry],
@@ -231,6 +255,8 @@ export function useOutbox(
     const gone = new Set(removed);
 
     for (const clientMessageID of gone) {
+      removedIDs.current.add(clientMessageID);
+
       stopRetry(clientMessageID);
     }
 
