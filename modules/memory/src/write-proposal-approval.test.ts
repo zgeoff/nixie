@@ -511,6 +511,54 @@ test('it holds an approval whose text an active item closely matches, and report
   expect(history).toBeNull();
 });
 
+test('it holds a self-note whose text a self-note closely matches when more facts rank above that self-note than the match reads', async () => {
+  const memory = await startTestMemory();
+
+  const owner = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  await Promise.all(
+    ['one', 'two', 'three', 'four', 'five'].map((word) =>
+      memory.store.remember({
+        text: `Dry jokes land better than puns, dry jokes and puns, ${word}`,
+        provenance: owner,
+      }),
+    ),
+  );
+
+  const note = await memory.store.remember({
+    text: 'I find dry jokes land better than puns.',
+    itemKind: 'self',
+    provenance: { ...owner, origin: 'conversation', source: 'untrusted' },
+  });
+
+  await memory.store.writes.remember({
+    text: 'Dry jokes land better than puns',
+    itemKind: 'self',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const result = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  expect(result).toStrictEqual({
+    status: 'close_match',
+    item: { itemID: note.itemID, version: 1, text: 'I find dry jokes land better than puns.' },
+  });
+});
+
 test('it applies a held proposal as a revision of the close match, and drops the key its new item would have used', async () => {
   const memory = await startTestMemory();
 

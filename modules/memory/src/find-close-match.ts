@@ -22,13 +22,18 @@ export async function findCloseMatch(
   parts: StoreParts,
   query: CloseMatchQuery,
 ): Promise<CloseMatch | null> {
-  const itemIDs = await parts.index.findItemIDs(query.text, { limit: candidateLimit });
+  const kind = query.kind ?? 'fact';
+
+  // the other kind's items leave the ranking before its limit applies, so a run of them never
+  // pushes a match of the proposal's own kind past the cut
+  const itemIDs = await parts.index.findItemIDs(query.text, {
+    limit: candidateLimit,
+    excludedIDs: await readOtherKindIDs(parts, kind, query.db),
+  });
 
   if (itemIDs.length === 0) {
     return null;
   }
-
-  const kind = query.kind ?? 'fact';
 
   const candidates = await readCandidates(parts, itemIDs, query.db);
 
@@ -48,6 +53,21 @@ export async function findCloseMatch(
 }
 
 const candidateLimit = 5;
+
+async function readOtherKindIDs(
+  parts: StoreParts,
+  kind: MemoryKind,
+  db: Kysely<MemoryTables> | undefined,
+): Promise<readonly string[]> {
+  const rows = await (db ?? parts.context.log.writer.db.$extendTables<MemoryTables>())
+    .selectFrom('memory_items')
+    .select('item_id')
+    .where('kind', '!=', kind)
+    .where('state', '=', 'active')
+    .execute();
+
+  return rows.map((row) => row.item_id);
+}
 
 async function readCandidates(
   parts: StoreParts,
