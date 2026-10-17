@@ -58,6 +58,31 @@ change what a tool does without changing its listing, so the effect declaration 
 for an external tool. The [MCP proxy spike](../../../../research/mcp-proxy-pin/README.md) ran these
 rules.
 
+### A changed tool in a running task
+
+When a trusted server changes a tool's hash, or you allow a changed tool, every task run whose tool
+list holds the tool takes the new form at its next step. In the transaction that moves the pin, the
+proxy writes a tool-changed record to the inbox of each of those task runs. The next turn renders
+the record as a change note that names the tool with its old and new hash, and the turn's tool list
+holds the new form. **Why:** nixie keeps every skill version and can serve the one a task pinned,
+but it holds no copy of a server's code, so every call after the change runs the new tool. A run
+that kept the old form would show the model a description that the server no longer follows.
+
+A step that is running keeps the form it loaded, because the tool list is fixed when its turn
+starts. Each call it makes still reaches the server only under the latest listing. The proxy checks
+the call's input against the current pinned input schema, so a call shaped for the old form returns
+a schema error, and it checks each result against the current pinned output schema.
+
+A worker run keeps the form it started with for its whole life, because its turns run in one model
+loop inside its caller's step. Its calls pass the same checks, and its caller takes the new form at
+the caller's next step.
+
+The conversation follows the same rule and keeps its session. Tools sit outside the system prompt,
+so a changed tool costs one prompt-cache miss, where a persona change opens a
+[new session](../../../architecture/core/conversation-turns.md#opening-a-new-session). One cache
+miss per change matches the cost of a [skill reload](../skills.md#versions). A pending proposal for
+the tool goes stale, as [the proposal](../policy/approvals.md#the-proposal) states.
+
 ### A failed listing
 
 A listing fails when the server refuses the connection, returns an error, sends a listing the proxy

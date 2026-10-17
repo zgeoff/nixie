@@ -53,6 +53,12 @@ keys, no whitespace, NFC strings. The hash covers the kind, the tool, every argu
 item and version, the execution profile, the validated deadline and every destination, so one
 changed word in an email body makes a different operation, and the model posts a new proposal.
 
+For a tool from an external server, the hash also covers the tool's pinned hash from the
+[MCP proxy](../connectors/mcp-proxy.md#pinning). When the pin moves, nixie computes the hash again
+for each pending proposal of that tool in the same transaction, so the card shows the form that will
+run, and an answer from a card that showed the old form fails the hash check. **Why:** an approval
+made under the old form would otherwise run a tool you never saw.
+
 For code, the execution profile names the placement class, the runtime image, and the egress and
 grant profile. A worker profile binds its sandbox generation and credential references, and a fresh
 no-grant profile names its isolation. The executor checks that the sandbox it created matches the
