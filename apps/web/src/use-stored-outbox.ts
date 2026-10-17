@@ -37,7 +37,7 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
   const writtenImages = useRef(new Set<string>());
 
   useEffect(() => {
-    const discarded = new Set(updateDiscardedOutboxIDs(now()));
+    const discarded = new Set(updateDiscardedOutboxIDs());
 
     const stored = readStoredMessages()
       .filter((message) => !discarded.has(message.clientMessageId))
@@ -62,7 +62,7 @@ export function useStoredOutbox(options: StoredOutboxOptions): void {
       // a message another tab discarded stays out of storage even before this tab hears of it
       const forgotten = new Set([
         ...options.forgottenClientMessageIDs,
-        ...updateDiscardedOutboxIDs(now()),
+        ...updateDiscardedOutboxIDs(),
       ]);
 
       const merged = mergeStoredMessages(readStoredMessages(), options.entries).filter(

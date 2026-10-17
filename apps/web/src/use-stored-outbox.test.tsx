@@ -499,3 +499,54 @@ test('it never sends a message that another tab discarded while its send waited 
       .map((record) => record.message?.text),
   ).toStrictEqual(['And a mat?']);
 });
+
+test('it keeps a discarded message out of storage when a tab that slept for days writes again', async () => {
+  await createDeviceSession();
+
+  const clock = { now: Date.parse('2026-10-17T09:10:00.000Z') };
+  const options = { now: () => clock.now };
+
+  globalThis.localStorage.setItem(
+    'nixie.outbox',
+    JSON.stringify([
+      {
+        clientMessageId: '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+        spans: [{ end: 9, source: 'typed', start: 0 }],
+        text: 'A doormat',
+        thread: 'conversation',
+        writtenAt: '2026-10-17T09:00:00.000Z',
+      },
+    ]),
+  );
+
+  // two tabs hold the same stale message, and the second sleeps through the discard
+  const first = renderHook(() => useOutbox([], options));
+  const second = renderHook(() => useOutbox([], options));
+
+  await waitFor(() => {
+    expect(second.result.current.entries[0]?.status).toBe('held');
+  });
+
+  act(() => {
+    first.result.current.discard('7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20');
+  });
+
+  clock.now = Date.parse('2026-10-20T09:10:00.000Z');
+
+  act(() => {
+    second.result.current.add({
+      clientMessageId: '2d6f8a1c-3e5b-4c7d-9f0a-b1c2d3e4f5a6',
+      spans: [{ end: 11, source: 'typed', start: 0 }],
+      text: 'And a mat?',
+      thread: 'conversation',
+    });
+  });
+
+  await waitFor(() => {
+    expect(store.records.count()).toBe(1);
+  });
+
+  expect(globalThis.localStorage.getItem('nixie.outbox') ?? '').not.toInclude(
+    '7e3a9c1d-5b2f-4e8a-a6d4-1c9f3b7e5a20',
+  );
+});

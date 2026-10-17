@@ -115,7 +115,7 @@ export function useOutbox(
         // that it is still fresh or one you chose to send
         if (
           removedIDs.current.has(clientMessageID) ||
-          updateDiscardedOutboxIDs(now()).includes(clientMessageID)
+          updateDiscardedOutboxIDs().includes(clientMessageID)
         ) {
           return;
         }
@@ -208,15 +208,15 @@ export function useOutbox(
 
       removedIDs.current.add(clientMessageID);
 
-      setDiscarded(updateDiscardedOutboxIDs(now(), clientMessageID));
+      setDiscarded(updateDiscardedOutboxIDs(clientMessageID));
     },
-    [now, stopRetry],
+    [stopRetry],
   );
 
   // a message that another tab discarded leaves this tab too
   useEffect(() => {
     const readDiscards = (): void => {
-      const listed = updateDiscardedOutboxIDs(now());
+      const listed = updateDiscardedOutboxIDs();
 
       setDiscarded((current) =>
         listed.every((clientMessageID) => current.includes(clientMessageID))
@@ -230,7 +230,7 @@ export function useOutbox(
     return () => {
       globalThis.removeEventListener('storage', readDiscards);
     };
-  }, [now]);
+  }, []);
 
   const removed = useMemo(
     () => [...forgottenClientMessageIDs, ...discarded],
