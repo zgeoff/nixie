@@ -13,6 +13,7 @@ test.each([
   ['forgotten_evidence', 'The message it quotes was forgotten.'],
   ['ambiguous_target', 'It is unclear which item it changes.'],
   ['pinned', 'It changes a pinned item.'],
+  ['other', 'A newer release of nixie sent it to review.'],
 ] as const)('it describes the review reason %s', (reason, expected) => {
   expect(formatReviewReason(reason)).toBe(expected);
 });

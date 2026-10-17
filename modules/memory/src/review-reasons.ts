@@ -11,4 +11,7 @@ export const reviewReasons = [
   'forgotten_evidence',
   'ambiguous_target',
   'pinned',
+
+  // a reason that a later release writes and this one does not know, as every reader shows it
+  'other',
 ] as const;

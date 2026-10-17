@@ -169,7 +169,9 @@ quote and the target version for a remember, or the intent quote and the target 
 retirement. The proposal's text, quote and checker reason are sealed under the item's own key, and a
 proposal for a new item creates that item's key. A forget of the item therefore makes its proposals
 unreadable too. The plain columns hold the review reason, the checks and the provenance, so a count
-of proposals by review reason decrypts nothing.
+of proposals by review reason decrypts nothing. The proposal record and its column keep the reason
+word for word, and every reader shows a reason the release does not know as `other`, because a
+rollback leaves a later release's proposals in the log and the table.
 
 The user approves, edits or rejects each proposal against the hash of the operation they saw, and a
 hash that no longer matches refuses the answer. An approval applies the bound operation and records

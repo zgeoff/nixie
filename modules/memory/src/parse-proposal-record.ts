@@ -1,7 +1,5 @@
 import type { ContentSource, EnvelopeRecord, JSONObject } from '@heynixie/log';
 import { z } from 'zod';
-import type { ReviewReason } from './gate-types';
-import { reviewReasons } from './review-reasons';
 import type { MemoryOrigin, QuoteEvidence } from './types';
 
 const proposed = z.strictObject({
@@ -11,7 +9,10 @@ const proposed = z.strictObject({
   operation: z.enum(['remember', 'retire']),
   targetVersion: z.int().min(1).nullable(),
   isPinned: z.boolean(),
-  reviewReason: z.enum(reviewReasons),
+
+  // a later release can add a reason, so the record keeps any reason word for word, and a reader
+  // shows one this release does not know as other
+  reviewReason: z.string(),
   actionHash: z.string(),
   sealed: z.base64(),
   evidence: z.strictObject({ recordSequence: z.int(), start: z.int(), end: z.int() }).nullable(),
@@ -54,7 +55,9 @@ interface ProposedRecord {
   readonly operation: 'remember' | 'retire';
   readonly targetVersion: number | null;
   readonly isPinned: boolean;
-  readonly reviewReason: ReviewReason;
+
+  // the reason as the record stores it, which a later release's reason can be
+  readonly reviewReason: string;
   readonly actionHash: string;
   readonly sealed: string;
   readonly evidence: QuoteEvidence | null;
