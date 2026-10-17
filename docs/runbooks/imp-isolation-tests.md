@@ -61,11 +61,10 @@ because a drop shows nothing about whether a listener exists. A machine with no 
 address cannot reach an IPv6 target, so the test prints each such target as unprovable instead of
 failing on it. Run the tests from a machine with IPv6 to prove the IPv6 targets too.
 
-1. Build the fetch image into impd, with the repo root as the build folder:
-
-   ```bash
-   impz image build . --file=guests/fetch/Dockerfile --name=<fetch_image_name>
-   ```
+1. Build the fetch image into impd from `guests/fetch/Dockerfile`, with the repo root as the build
+   folder, as impz's
+   [images guide](https://github.com/zgeoff/impz/blob/main/docs/guides/images.md#build-an-image)
+   describes. The image name you choose is `<fetch_image_name>` in the next step.
 
    impd refuses a `FROM` line that names its image with a variable, so the Dockerfile writes out the
    Bun version from `.bun-version`. When `.bun-version` changes, change both `FROM` lines to match.
