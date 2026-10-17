@@ -8,10 +8,16 @@ exact = true
 # supply-chain guard: only install versions published >= 7 days ago
 minimumReleaseAge = 604800
 
-# imp's client and the shared lint config ship from the same owner as nixie, and
-# nixie tracks their releases closely; each pinned version's provenance is
-# checked before the pin
-minimumReleaseAgeExcludes = ["@zgeoff/imp-client", "@zgeoff/oxlint-config"]
+# first-party packages skip the gate; their own dependencies stay behind it.
+# Renovate bumps @zgeoff packages as soon as they publish, so each one nixie
+# uses needs an entry here, or bun install refuses the bump.
+minimumReleaseAgeExcludes = [
+  "@zgeoff/bun-test-extended",
+  "@zgeoff/bun-test-react",
+  "@zgeoff/format-codemod",
+  "@zgeoff/imp-client",
+  "@zgeoff/oxlint-config",
+]
 
 [test]
 # spikes run by hand, and CI only typechecks them
