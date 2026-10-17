@@ -59,14 +59,12 @@ async function runPoll(options: DefinitionsPollOptions, signal: AbortSignal): Pr
   };
 
   while (!signal.aborted) {
-    // oxlint-disable-next-line no-await-in-loop -- the poll waits between probes
     await options.clock.sleep(planWait(options, state.failures), signal);
 
     if (signal.aborted) {
       return;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- one probe and seed at a time
     const probed = await runProbe(options, state.token);
 
     state.token = probed.token;

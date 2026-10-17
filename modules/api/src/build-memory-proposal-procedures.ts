@@ -118,7 +118,6 @@ async function runAnswers(
   const outcomes: ProposalOutcome[] = [];
 
   for (const action of actions) {
-    // oxlint-disable-next-line no-await-in-loop -- each answer runs after the one before it
     const outcome = await writeProposalAnswer(context, caller, action);
 
     if (outcome === null) {

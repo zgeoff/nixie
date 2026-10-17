@@ -127,7 +127,6 @@ async function runParts<Values>(
     for (const declaration of order) {
       options.signal?.throwIfAborted();
 
-      // oxlint-disable-next-line no-await-in-loop -- each part starts after the parts it needs
       await startPart(declaration, state);
     }
   } catch (error) {

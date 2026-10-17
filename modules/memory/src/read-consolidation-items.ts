@@ -24,7 +24,6 @@ export async function readConsolidationItems(
   const page: { after: string | null; budget: number } = { after: null, budget: query.listTokens };
 
   do {
-    // oxlint-disable-next-line no-await-in-loop -- each page starts after the one before
     const result = await store.recall(buildPageRequest(query.thread, page.after));
 
     const fits = collectFittingItems(result.items, page.budget);

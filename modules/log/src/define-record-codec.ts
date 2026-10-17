@@ -7,7 +7,6 @@ import type { JSONObject, RecordCodec, RecordKind } from './types';
 export function defineRecordCodec<Kind extends RecordKind, Shape extends z.core.$ZodShape>(
   kind: Kind,
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a zod schema has no readonly form
   schema: z.ZodObject<Shape> & z.ZodType<JSONObject>,
 ): RecordCodec<
   Kind,

@@ -26,7 +26,6 @@ async function setupTest() {
     clock,
     errors,
 
-    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the stub session holds bun mocks
     runStep: async (session: StubConsolidatorSession, config: ConsolidationConfigInput = {}) => {
       const consolidator = await startMemoryConsolidator({
         context,

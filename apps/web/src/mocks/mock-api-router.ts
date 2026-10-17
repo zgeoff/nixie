@@ -212,7 +212,6 @@ async function* toRecordEvents(stream: RecordStream) {
       yield withEventMeta({ record: toLogRecord(record) }, { id: String(record.sequence) });
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- the stream sleeps until the next record
     await waitForRecord(stream.signal);
   }
 }
@@ -275,7 +274,6 @@ async function claimEnrolmentCode(input: EnrolInput): Promise<StoredSession> {
 // Resolves when the store gains a record or the caller goes away. A collection runs its create
 // hooks before it adds the record, so the wait ends a macrotask later, once the record is in.
 async function waitForRecord(signal: AbortSignal | undefined): Promise<void> {
-  // oxlint-disable-next-line promise/avoid-new -- the store's hook emitter has no promise form
   await new Promise<void>((resolve) => {
     const waiting = new AbortController();
 

@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- the reading state collects into arrays, and an HTMLRewriter element has no readonly form
 // the elements that start and end a block of text, besides the regions and the furniture
 const blockSelector = [
   'address, blockquote, dd, details, dialog, div, dl, dt, fieldset, figcaption, figure, form',

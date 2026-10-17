@@ -59,7 +59,6 @@ export async function startONNXEncoder(modelDir: string): Promise<ONNXEncoder> {
       for (const text of texts) {
         const input = kind === 'query' ? `${queryPrefix}${text}` : text;
 
-        // oxlint-disable-next-line no-await-in-loop -- one run at a time keeps each text's vector its own
         const vector = await encodeText(input);
 
         vectors.push(vector);
@@ -96,7 +95,6 @@ async function readJSONObject(path: string): Promise<object> {
   return value;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Float32Array has no readonly form
 function normalizeVector(vector: Float32Array): Float32Array {
   const norm = Math.hypot(...vector);
 

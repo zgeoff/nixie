@@ -7,7 +7,6 @@ export async function collectEvents<T>(
   const events: T[] = [];
 
   while (events.length < count) {
-    // oxlint-disable-next-line no-await-in-loop -- a stream yields one event at a time
     const next = await stream.next();
 
     if (next.done === true) {

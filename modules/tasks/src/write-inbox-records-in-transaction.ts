@@ -13,7 +13,6 @@ export async function writeInboxRecordsInTransaction(
   inputs: readonly RecordInput[],
 ): Promise<readonly LogRecord[]> {
   for (const input of inputs) {
-    // oxlint-disable-next-line no-await-in-loop -- a few records at most, each checked alone
     await requireInboxTarget(tx.$extendTables<TasksTables>(), input);
   }
 

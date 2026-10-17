@@ -1,5 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- the scan's own list of taken ranges, and a RegExp, which has no readonly form
-
 // A destination-like token in a text, with the form it compares in. A BSB and account number also
 // carries the account number alone as its part.
 export interface DestinationToken {

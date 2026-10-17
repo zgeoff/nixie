@@ -211,10 +211,8 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
   });
 
   for (const grant of sandbox.spec.grants) {
-    // oxlint-disable-next-line no-await-in-loop -- one grant and its record at a time, in order
     await options.port.addGrant(sandbox.id, grant.secret);
 
-    // oxlint-disable-next-line no-await-in-loop -- one grant and its record at a time, in order
     await options.recorder.write({
       event: 'granted',
       sandboxID: sandbox.id,

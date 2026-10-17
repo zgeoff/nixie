@@ -117,7 +117,6 @@ async function collectPageEntries(
     scan.scanned < scanLimit &&
     scan.after < bounds.through
   ) {
-    // oxlint-disable-next-line no-await-in-loop -- each batch starts after the one before
     const batch = await readRecords(log, {
       afterSequence: scan.after,
       beforeSequence: bounds.through + 1,

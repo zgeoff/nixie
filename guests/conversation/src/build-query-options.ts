@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's MCP config has no readonly form
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import type { HostFrame } from '@heynixie/wire';
 import { getConfigDir } from './get-config-dir';

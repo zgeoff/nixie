@@ -17,7 +17,6 @@ export async function writeInboxRecords(
 
   if (NIXIE_TEST_BUILD) {
     for (const record of records) {
-      // oxlint-disable-next-line no-await-in-loop -- the harness holds each arrival in turn
       await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: record.thread });
     }
   }

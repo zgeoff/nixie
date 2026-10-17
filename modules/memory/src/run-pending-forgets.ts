@@ -12,7 +12,6 @@ export async function runPendingForgets(parts: StoreParts): Promise<void> {
     .execute();
 
   for (const item of pending) {
-    // oxlint-disable-next-line no-await-in-loop -- each forget checkpoints the key store on its own
     await runForgetCleanup(parts, item.item_id);
   }
 }

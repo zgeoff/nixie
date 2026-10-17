@@ -8,7 +8,6 @@ import type { SealedCodec } from './sealed-types';
 export function defineSealedCodec<Value extends JSONValue>(
   prefix: string,
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a zod schema has no readonly form
   schema: z.ZodType<Value>,
 ): SealedCodec<Value> {
   return {

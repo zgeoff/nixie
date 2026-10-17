@@ -70,7 +70,6 @@ async function runPlannedCalls(
 
   const runWorker = async (): Promise<void> => {
     for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-      // oxlint-disable-next-line no-await-in-loop -- each worker runs its calls one at a time
       const call = await runCall(next, guestHome);
 
       done.push(call);

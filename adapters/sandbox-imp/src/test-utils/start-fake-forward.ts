@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- the fake's own listener, sockets and ending have no readonly form
 import { onTestFinished } from 'bun:test';
 import { once } from 'node:events';
 import type { Server, Socket } from 'node:net';

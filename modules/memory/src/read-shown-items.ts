@@ -46,7 +46,6 @@ async function readItemList(
   const page: { after: string | null; tokens: number } = { after: null, tokens: 0 };
 
   do {
-    // oxlint-disable-next-line no-await-in-loop -- each page starts after the one before
     const result = await store.recall({
       limit: pageSize,
       thread: query.thread,

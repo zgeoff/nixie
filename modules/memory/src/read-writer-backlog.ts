@@ -57,7 +57,6 @@ async function readConversationRecords(
   const page = { after: range.after, isDone: false };
 
   while (!page.isDone) {
-    // oxlint-disable-next-line no-await-in-loop -- each page starts after the one before
     const entries = await readRecords(log, {
       afterSequence: page.after,
       thread: conversationTaskID,
@@ -153,7 +152,6 @@ function toBacklogEntry(
 }
 
 // a record's erasable fields in their shape, or null once they are forgotten or unreadable
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a zod schema is a class
 function parseFields<Fields>(record: LogRecord, schema: z.ZodType<Fields>): Fields | null {
   if (record.erasable.status !== 'readable') {
     return null;

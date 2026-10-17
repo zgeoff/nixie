@@ -16,6 +16,5 @@ console.log(`writer epoch ${writer.epoch}`);
 
 // a pending sleep keeps the process alive until the test kills it
 for (;;) {
-  // oxlint-disable-next-line no-await-in-loop -- the stand-in runs until killed
   await systemClock.sleep(1 << 30);
 }

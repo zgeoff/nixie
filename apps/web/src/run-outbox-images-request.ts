@@ -1,5 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- IndexedDB's objects have no readonly form
-
 // Runs one request on the device's outbox database, whose one store keeps the images of each unsent
 // message under its client message ID, and closes the database after it. A write resolves only once
 // its transaction commits, so a reload right after it finds the images.

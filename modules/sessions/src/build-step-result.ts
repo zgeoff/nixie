@@ -46,7 +46,6 @@ export interface StepTurn extends CompletedTurn {
 export function buildStepResult(
   source: ModelRecordSource,
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the rule reads a ReadonlySet's methods as mutable
   completed: StepTurn,
   before: readonly RecordInput[],
 ): StepResult {
@@ -76,7 +75,6 @@ export function buildStepResult(
 }
 
 // a record per reply with text, and one for the turn's end with the memory it placed
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the rule reads a ReadonlySet's methods as mutable
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
   return [
     ...completed.turn.assistants

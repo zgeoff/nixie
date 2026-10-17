@@ -26,7 +26,6 @@ export async function runPendingRecordForgets(context: APIContext): Promise<void
   );
 
   for (const sequence of pending) {
-    // oxlint-disable-next-line no-await-in-loop -- each forget's session cleanup waits for the last
     await runRecordForgetCleanup(context, sequence);
   }
 }

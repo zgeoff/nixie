@@ -38,7 +38,6 @@ export function findTypedQuote(message: OwnerMessage, quote: string): QuoteMatch
 const invisible = /\p{Cf}/u;
 
 // each occurrence that starts and ends on grapheme boundaries, as a range of the original text
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the rule reads a ReadonlySet's methods as mutable
 function collectOccurrences(text: MatchText, needle: string): readonly TextRange[] {
   const ranges: TextRange[] = [];
 

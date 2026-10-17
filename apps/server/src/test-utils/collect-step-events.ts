@@ -22,12 +22,10 @@ const stepEnds: ReadonlySet<string> = new Set([
 
 // Reads a live stream through the end of the next step, and notes when each record arrived. The
 // stream stays open for the caller to end.
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- an iterator has no readonly form
 export async function collectStepEvents(stream: EventStream, now: () => number): Promise<Events> {
   const received: ReceivedEvent[] = [];
 
   for (;;) {
-    // oxlint-disable-next-line no-await-in-loop -- each event follows the last
     const next = await stream.next();
 
     if (next.done === true) {

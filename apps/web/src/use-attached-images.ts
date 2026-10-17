@@ -92,7 +92,6 @@ async function readScaledImages(
 
     scaled.tried += 1;
 
-    // oxlint-disable-next-line no-await-in-loop -- the next image scales only while a slot is free
     const read = await options.normalizeImage(file).catch(() => null);
 
     updateScaledTally(scaled, read);
@@ -112,7 +111,6 @@ interface ScaledTally {
   over: number;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the scan's own tally, which this fills in
 function updateScaledTally(scaled: ScaledTally, read: File | null) {
   if (read === null) {
     scaled.unread += 1;

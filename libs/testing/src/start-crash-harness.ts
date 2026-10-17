@@ -94,7 +94,6 @@ interface TrackedProcesses {
   readonly running: Set<NixieProcess>;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the harness's own sets
 async function updateTracked(processes: TrackedProcesses, nixie: NixieProcess): Promise<void> {
   processes.started.add(nixie);
 

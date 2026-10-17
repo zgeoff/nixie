@@ -92,7 +92,6 @@ async function sendAnswers(
   const outcomes: ProposalOutcome[] = [];
 
   for (let start = 0; start < call.answers.length; start += answersPerCall) {
-    // oxlint-disable-next-line no-await-in-loop -- each call runs after the one before it
     const sent = await (call.kind === 'approve'
       ? client.memory.approveProposals({
           answers: call.answers.slice(start, start + answersPerCall),

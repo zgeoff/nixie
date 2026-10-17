@@ -34,7 +34,6 @@ export async function writeChangeApproval(
       const versions: WrittenVersion[] = [];
 
       for (const plan of plans) {
-        // oxlint-disable-next-line no-await-in-loop -- each version reads the rows the one before wrote
         const version = await writeVersionInTransaction(parts, tx, plan);
 
         versions.push(version);
@@ -46,7 +45,6 @@ export async function writeChangeApproval(
     });
 
     for (const version of written) {
-      // oxlint-disable-next-line no-await-in-loop -- the index takes one entry at a time
       await updateVersionIndex(parts, version.ref.itemID, version.next);
     }
 

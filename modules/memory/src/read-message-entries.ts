@@ -21,7 +21,6 @@ export async function readMessageEntries(
   const page = { after: afterSequence, size: pageSize };
 
   while (page.size === pageSize) {
-    // oxlint-disable-next-line no-await-in-loop -- each page reads on from the one before it
     const read = await readRecords(context.log, {
       afterSequence: page.after,
       kinds: ['owner_message'],
@@ -30,7 +29,6 @@ export async function readMessageEntries(
 
     const records = read.map((entry) => entry.record);
 
-    // oxlint-disable-next-line no-await-in-loop -- the page's forgotten messages, before the next page
     entries.push(...(await collectReadableEntries(context, records)));
 
     page.size = records.length;

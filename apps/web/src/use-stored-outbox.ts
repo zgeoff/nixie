@@ -69,7 +69,6 @@ interface StoredSend {
 function sendStoredMessages(
   stored: readonly OutboxMessage[],
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- it records each sent message in the written set
   send: StoredSend,
 ): void {
   for (const message of stored) {
@@ -99,7 +98,6 @@ async function loadStoredImages(
 async function writeStoredImages(
   messages: readonly OutboxMessage[],
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- it records each message whose images it writes
   written: Set<string>,
 ): Promise<void> {
   const unwritten = messages.filter(

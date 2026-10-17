@@ -18,7 +18,6 @@ export async function* readThreadNewestFirst(
   const page = { before: Number.MAX_SAFE_INTEGER, size: pageSize };
 
   while (page.size === pageSize) {
-    // oxlint-disable-next-line no-await-in-loop -- each page reads on from the one before it
     const entries = await readRecords(context.log, {
       afterSequence: 0,
       beforeSequence: page.before,

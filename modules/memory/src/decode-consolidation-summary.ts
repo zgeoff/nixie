@@ -34,7 +34,6 @@ async function decodeSummaryKey(
 
     invariant(itemKey !== undefined, 'the reader opens a summary only with every share key');
 
-    // oxlint-disable-next-line no-await-in-loop -- each share folds into the one key in turn
     const value = await summaryShare.decode(itemKey, `${diffID}/${share.itemID}`, share.sealed);
 
     for (const [index, byte] of Buffer.from(value, 'base64').entries()) {

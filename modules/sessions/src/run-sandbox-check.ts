@@ -70,7 +70,6 @@ async function runGuestCheck(check: SandboxCheck, marks: CheckMarks): Promise<un
 async function readGuestReply(
   check: SandboxCheck,
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream has no readonly form
   stream: ExecStream,
   marks: CheckMarks,
 ): Promise<CheckReply> {
@@ -98,7 +97,6 @@ async function readGuestReply(
   }
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream has no readonly form
 async function readCheckReply(messages: AsyncIterable<Uint8Array>): Promise<CheckReply> {
   for await (const message of messages) {
     return decodeTurnFrame(checkReplySchema, message);

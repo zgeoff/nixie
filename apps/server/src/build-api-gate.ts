@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/prefer-readonly-parameter-types -- a Request has no readonly form */
 export interface APIGate {
   // runs one request through next while the gate is open, and answers an API call with 503 once it
   // closes; the health endpoints always pass, and a close never waits for them
@@ -10,8 +9,6 @@ export interface APIGate {
   // refuses every later API call, then waits for the API calls in flight to answer
   readonly close: () => Promise<void>;
 }
-
-/* oxlint-enable typescript/prefer-readonly-parameter-types */
 
 // Builds the gate in front of the HTTP server and the control socket that a reset closes before it
 // removes anything, so a device's call or a host command during the reset is refused instead of
@@ -52,7 +49,6 @@ interface APICalls {
   readonly waiters: (() => void)[];
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the gate's own counter
 async function runCounted(calls: APICalls, call: () => Promise<Response>): Promise<Response> {
   calls.inFlight += 1;
 

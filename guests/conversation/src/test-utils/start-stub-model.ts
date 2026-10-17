@@ -76,7 +76,6 @@ export function startStubModel(): StubModel {
   };
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Request has no readonly form
 async function readRequest(request: Request): Promise<StubModelRequest> {
   const text = request.method === 'POST' ? await request.text() : '';
 
@@ -89,7 +88,6 @@ async function readRequest(request: Request): Promise<StubModelRequest> {
   };
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the stub's own script
 function renderResponse(request: StubModelRequest, script: ScriptedReply[]): Response {
   if (request.path === '/v1/messages/count_tokens') {
     return Response.json({ input_tokens: 10 });

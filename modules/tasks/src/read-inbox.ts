@@ -20,7 +20,6 @@ export async function readInbox(
   const cursor = { after: task.read_cursor, done: false };
 
   while (!cursor.done) {
-    // oxlint-disable-next-line no-await-in-loop -- each page starts after the one before it
     const page = await readRecords(context.log, { afterSequence: cursor.after, thread: taskID });
 
     inbox.push(...page.map((entry) => entry.record).filter((record) => isInboxRecord(record)));

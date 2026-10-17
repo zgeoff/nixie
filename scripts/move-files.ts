@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- a RegExp match and the maps the codemod fills have no readonly form
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { $ } from 'bun';
@@ -10,10 +9,7 @@ async function runMoves(pairs: readonly string[]): Promise<void> {
   const moves = await collectMoves(pairs);
 
   for (const [from, to] of moves) {
-    // oxlint-disable-next-line no-await-in-loop -- git takes one move at a time
     await mkdir(dirname(to), { recursive: true });
-
-    // oxlint-disable-next-line no-await-in-loop -- git takes one move at a time
     await $`git mv ${from} ${to}`;
   }
 
@@ -21,7 +17,6 @@ async function runMoves(pairs: readonly string[]): Promise<void> {
   const tracked = await $`git ls-files '*.ts' '*.tsx'`.text();
 
   for (const file of tracked.split('\n').filter((path) => path !== '')) {
-    // oxlint-disable-next-line no-await-in-loop -- each file is read and written once
     await updateImports(file, findOldPath(moves, file), { moves, homes });
   }
 }
@@ -36,7 +31,6 @@ async function collectMoves(pairs: readonly string[]): Promise<Map<string, strin
 
     moves.set(from, to);
 
-    // oxlint-disable-next-line no-await-in-loop -- one check per pair
     const hasTest = await Bun.file(fromTest).exists();
 
     if (hasTest) {
@@ -63,7 +57,6 @@ async function collectNameHomes(moves: ReadonlyMap<string, string>): Promise<Map
   const homes = new Map<string, string>();
 
   for (const to of moves.values()) {
-    // oxlint-disable-next-line no-await-in-loop -- each file is read once
     const source = await readFile(to, 'utf8');
 
     for (const match of source.matchAll(exportPattern)) {

@@ -94,7 +94,6 @@ interface TestNixieFiles {
   readonly stack: AsyncDisposableStack;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a disposable stack has no readonly form
 function startNixieRun(start: TestNixieFiles): TestNixie {
   const child = Bun.spawn([...buildCommand(start.entry), ...buildServeArgs(start.files)], {
     stdin: 'ignore',
@@ -142,7 +141,6 @@ interface TestNixieParts {
   readonly startAgain: () => TestNixie;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a subprocess handle has no readonly form
 function buildTestNixie(parts: TestNixieParts): TestNixie {
   const output = buildOutput();
   const waitForLogEvent = makeLogEventWaiter(() => parts.child.exitCode, output);

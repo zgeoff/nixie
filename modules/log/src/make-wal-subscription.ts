@@ -45,7 +45,6 @@ interface Poll {
 // calls onPoll every pollMs on the clock until the signal aborts
 async function startPoll(clock: Writer['clock'], poll: Poll, onPoll: () => void): Promise<void> {
   while (!poll.signal.aborted) {
-    // oxlint-disable-next-line no-await-in-loop -- each poll waits out the last one's interval
     await clock.sleep(poll.pollMs, poll.signal);
 
     if (!poll.signal.aborted) {

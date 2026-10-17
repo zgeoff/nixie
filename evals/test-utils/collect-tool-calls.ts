@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- the SDK's message types have no readonly form
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 
 export interface ToolCall {

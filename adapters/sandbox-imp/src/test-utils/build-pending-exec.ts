@@ -1,4 +1,3 @@
-// oxlint-disable typescript/prefer-readonly-parameter-types -- a stream and a pending exec have no readonly form
 import type { ImpExec } from '../types';
 
 // An exec handle that exists before its exec starts once wait resolves, as imp's client returns one

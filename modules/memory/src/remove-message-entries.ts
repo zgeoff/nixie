@@ -10,7 +10,6 @@ export async function removeMessageEntries(
   for (const sequence of sequences) {
     parts.messages.cursor.addRemoved(sequence);
 
-    // oxlint-disable-next-line no-await-in-loop -- one connection runs one statement at a time
     await parts.messages.index.remove(String(sequence));
 
     parts.messages.vectors?.remove(String(sequence));

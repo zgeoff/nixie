@@ -10,13 +10,11 @@ export async function applyProjections(
   record: EnvelopeRecord,
 ): Promise<void> {
   for (const projection of projections) {
-    // oxlint-disable-next-line no-await-in-loop -- one projection may read what another folded
     const folded = await projection.fold(tx, record);
 
     const keys = [...new Set(folded)];
 
     if (keys.length > 0) {
-      // oxlint-disable-next-line no-await-in-loop -- the rows as this projection left them
       await writeChanges(tx, projection, { sequence: record.sequence, keys });
     }
   }

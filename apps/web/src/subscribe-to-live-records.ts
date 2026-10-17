@@ -32,7 +32,6 @@ export async function subscribeToLiveRecords(options: SubscribeOptions): Promise
   while (!options.signal.aborted) {
     const wake = startWakeWatch(options.signal);
 
-    // oxlint-disable-next-line no-await-in-loop -- each connection starts after the last record
     const attempt = await readRecordStream(options, state.after, wake.signal);
 
     state.after = attempt.after;
@@ -43,7 +42,6 @@ export async function subscribeToLiveRecords(options: SubscribeOptions): Promise
     }
 
     // A page that wakes during the pause ends it, so the client follows again at once.
-    // oxlint-disable-next-line no-await-in-loop -- the client pauses before it reconnects
     await waitForDelay(pickReconnectDelay(state.failures), options.startTimer, wake.signal);
 
     wake.stop();
@@ -140,7 +138,6 @@ async function tryStartRecordStream(
 async function drainRecordStream(
   options: SubscribeOptions,
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- an async iterator has no readonly form
   events: RecordEvents,
   afterSequence: number,
 ): Promise<Attempt> {
@@ -170,7 +167,6 @@ async function waitForDelay(
     return;
   }
 
-  // oxlint-disable-next-line promise/avoid-new -- the timer calls back and has no promise form
   await new Promise<void>((resolve) => {
     const stop = startTimer(resolve, milliseconds);
 

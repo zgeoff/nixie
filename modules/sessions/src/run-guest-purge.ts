@@ -36,7 +36,6 @@ export async function runGuestPurge(spec: GuestPurgeSpec): Promise<void> {
   }
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a stream handle has no readonly form
 async function collectPurgeFrames(stream: ExecStream): Promise<readonly GuestFrame[]> {
   const frames: GuestFrame[] = [];
 

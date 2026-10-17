@@ -95,7 +95,6 @@ interface RouteState {
   readonly sockets: Set<Socket>;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a socket and the route's own state have no readonly form
 function startRelay(client: Socket, port: number, state: RouteState): void {
   if (state.isDropping) {
     state.resets += 1;
@@ -123,7 +122,6 @@ function startRelay(client: Socket, port: number, state: RouteState): void {
   client.pipe(upstream).pipe(client);
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a node:net server has no readonly form
 function getPort(route: NetServer): number {
   const address = route.address();
 

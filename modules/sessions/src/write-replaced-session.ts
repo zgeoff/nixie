@@ -26,7 +26,6 @@ export async function writeReplacedSession(spec: ReplacedSessionSpec): Promise<v
   const failures: string[] = [];
 
   for (const from of spec.replaced) {
-    // oxlint-disable-next-line no-await-in-loop -- one copy at a time, and the first that lands ends the search
     const failure = await tryWriteKeptSession(spec, from);
 
     if (failure === null) {
