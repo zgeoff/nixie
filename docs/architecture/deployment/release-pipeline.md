@@ -153,6 +153,26 @@ fails on a removed procedure, a removed or retyped output field, a new required 
 narrowed input type. A procedure that the last release marks deprecated may go, because the release
 that marked it stopped calling it.
 
+A planned break passes the contract check when `libs/contract/accepted-breaks.txt` names it. A break
+belongs there only when its Linear issue plans it and says why a client of the last release still
+works against the new contract. A new value in a response enum is the common case. The check accepts
+an error only when one line ends with its method, its path and the whole message oasdiff prints for
+it, exactly and in the same case, so one line accepts one break and every other break in the same
+pull request still fails. The check matches the lines itself, because oasdiff's own list of ignored
+errors ignores case, and a line for `self_note` would then accept `SELF_NOTE` too. A line copies the
+message from the failed check and starts with the Linear issue that plans the break:
+
+```text
+GEO-556: POST /memory/listProposals added the new `self_note` enum value to the `proposals/items/reason` response property for the response status `200`
+```
+
+The pull request that makes the break adds its line, so the review sees both. A line stops matching
+once a release ships the break, because the check then compares against that release, and the first
+pull request after that release deletes it. An extensible enum would accept every later value too,
+so the contract keeps each enum closed and lists each planned value. The compatibility workflow runs
+a rehearsal on two small documents, which proves that a listed break passes and that an unlisted
+break beside it fails.
+
 The migration check installs the last release's own tree and has it report its migration names and
 the schema they build. It then runs the released migrations of the pull request's build on a scratch
 database, and fails when they build any table, index or trigger differently, or when the build
