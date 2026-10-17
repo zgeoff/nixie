@@ -111,9 +111,9 @@ you answer when you choose, singly or through the approval digest from
 - 2026-10-11: an allow rule of yours that names `memory.remember` lets a write apply at once, with
   the token check kept as a floor.
 - 2026-10-11: dictated text never counts as evidence, so a write that quotes it is a proposal.
-- 2026-10-14: an allow rule covers only the tool it names, so a rule on `memory.remember` never
-  covers an edit through `memory.edit`.
-- 2026-10-15: record 0042, Dictated text and memory, merged into this record.
 - 2026-10-12: a self-note, which nixie writes about itself, is a new kind of item. It is always a
   proposal, never pinned, and labelled with its model and date. An allow rule that skips review for
   it must name the kind.
+- 2026-10-14: an allow rule covers only the tool it names, so a rule on `memory.remember` never
+  covers an edit through `memory.edit`.
+- 2026-10-15: record 0042, Dictated text and memory, merged into this record.

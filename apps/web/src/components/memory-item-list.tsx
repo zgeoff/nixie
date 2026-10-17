@@ -77,13 +77,15 @@ function ItemPages(props: ItemPagesProps): ReactNode {
     return <p>Loading…</p>;
   }
 
-  if (props.items.length === 0) {
+  // a list of one kind can find none of its items on the pages read so far, so it says it is empty
+  // only once no page is left to read
+  if (props.items.length === 0 && !props.hasNextPage) {
     return <p className={css({ color: 'textMuted' })}>{props.empty}</p>;
   }
 
   return (
     <>
-      <ul>{props.items.map((item) => props.renderItem(item))}</ul>
+      {props.items.length > 0 ? <ul>{props.items.map((item) => props.renderItem(item))}</ul> : null}
       {props.hasNextPage ? (
         <button disabled={props.isFetchingNextPage} onClick={props.onShowMore} type="button">
           Show more

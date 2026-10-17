@@ -104,6 +104,31 @@ test('it lists self-notes apart from facts', async () => {
   expect(within(active).getAllByRole('listitem')).toHaveLength(1);
 });
 
+test('it reads the next page from the self-notes when the first page holds only facts', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  await Promise.all(
+    Array.from({ length: 50 }, (_, index) =>
+      store.memoryItems.create({ versions: [{ text: `Owns bicycle number ${index}` }] }),
+    ),
+  );
+
+  await store.memoryItems.create({
+    kind: 'self',
+    shortID: 'p7x2rd',
+    versions: [{ origin: 'conversation', text: 'Enjoys hearing about bicycles' }],
+  });
+
+  const rendered = render(<MemoryView />);
+  const selfNotes = rendered.getByRole('region', { name: 'Self-notes' });
+
+  await user.click(await within(selfNotes).findByRole('button', { name: 'Show more' }));
+
+  expect(await within(selfNotes).findByRole('listitem', { name: 'p7x2rd' })).toBeInTheDocument();
+});
+
 test('it finds self-notes apart from facts', async () => {
   const user = userEvent.setup();
 
