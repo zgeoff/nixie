@@ -297,6 +297,52 @@ test('it keeps the conversation ready when the read after a reset fails', async 
   expect(hook.result.current.status).toBe('ready');
 });
 
+test('it drops the step end a page read before a reset once the reset arrives', async () => {
+  await setupTest();
+
+  await store.records.create({
+    kind: 'task.step_errored',
+    task: { stepKey: 'conversation:1', taskID: 'conversation' },
+  });
+
+  const hook = renderHook(() => useConversationRecords('conversation'));
+
+  await waitFor(() => {
+    expect(hook.result.current.lastStepEnd?.kind).toBe('task.step_errored');
+  });
+
+  // the reset removes the log, and the restarting server answers no read, so the page stays cached
+  server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
+  store.records.clear();
+
+  const reset = await store.records.create({ kind: 'log_reset' });
+
+  await waitFor(() => {
+    expect(hook.result.current.liveResetSequence).toBe(reset.sequence);
+  });
+
+  expect(hook.result.current.lastStepEnd).toBeNull();
+});
+
+test('it keeps a step end that follows the reset the page read', async () => {
+  await setupTest();
+
+  await store.records.create({ kind: 'log_reset' });
+
+  const step = await store.records.create({
+    kind: 'task.step_errored',
+    task: { stepKey: 'conversation:1', taskID: 'conversation' },
+  });
+
+  const hook = renderHook(() => useConversationRecords('conversation'));
+
+  await waitFor(() => {
+    expect(hook.result.current.status).toBe('ready');
+  });
+
+  expect(hook.result.current.lastStepEnd?.sequence).toBe(step.sequence);
+});
+
 test('it names a reset the live stream delivers, and not one the page read', async () => {
   await setupTest();
 

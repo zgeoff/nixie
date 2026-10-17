@@ -255,6 +255,67 @@ test('it clears the failure notice once a turn succeeds', async () => {
   });
 });
 
+test('it drops the failure notice of a step a reset removed while the read after the reset fails', async () => {
+  await setupTest();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the gate shut?' } });
+
+  await store.records.create({
+    kind: 'task.step_errored',
+    task: {
+      errorLimit: 3,
+      errors: 3,
+      retryAt: new Date('2026-10-15T11:20:00Z'),
+      stepKey: 'conversation:1',
+      taskID: 'conversation',
+    },
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await rendered.findByRole('alert');
+
+  // the server restarts after the reset, so the read again fails and the client keeps its cache
+  server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
+  store.records.clear();
+
+  await store.records.create({ kind: 'log_reset' });
+  await rendered.findByRole('note', { name: 'reset' });
+
+  expect(rendered.queryByRole('alert')).toBeNull();
+});
+
+test('it shows the failure notice of a step that fails after a reset', async () => {
+  await setupTest();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the gate shut?' } });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  await rendered.findByText('Is the gate shut?');
+
+  server.use(http.post('*/rpc/conversation/read', () => new HttpResponse(null, { status: 503 })));
+  store.records.clear();
+
+  await store.records.create({ kind: 'log_reset' });
+  await rendered.findByRole('note', { name: 'reset' });
+
+  await store.records.create({
+    kind: 'task.step_errored',
+    task: {
+      errorLimit: 3,
+      errors: 3,
+      retryAt: new Date('2026-10-15T11:20:00Z'),
+      stepKey: 'conversation:2',
+      taskID: 'conversation',
+    },
+  });
+
+  const alert = await rendered.findByRole('alert');
+
+  expect(alert).toHaveTextContent(/^nixie failed to answer 3 times in a row\./u);
+});
+
 test('it keeps a failed forget and its retry once the forget start drops the text', async () => {
   const ctx = await setupTest();
 
