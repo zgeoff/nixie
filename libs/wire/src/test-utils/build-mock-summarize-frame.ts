@@ -21,6 +21,7 @@ export function buildMockSummarizeFrame(overrides: SummarizeFrameOverrides = {})
       effort: 'medium',
       authHeader: 'x-api-key',
       contextTokens: null,
+      cacheTTL: '5m',
       ...overrides.profile,
     },
     resume: overrides.resume ?? { sessionID: faker.string.uuid(), messageID: faker.string.uuid() },

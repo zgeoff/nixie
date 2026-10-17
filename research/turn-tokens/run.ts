@@ -332,6 +332,7 @@ async function runGuestSession(
           effort: effort as Effort,
           authHeader: 'x-api-key',
           contextTokens: null,
+          cacheTTL: '5m',
         },
         tools: { url: server.config.url, token: 'unused' },
         resume: session.resume,

@@ -16,6 +16,7 @@ test('it builds a default models config', () => {
         effort: 'medium',
         providerPin: null,
         contextTokens: null,
+        cacheTTL: '5m',
         prices: null,
       },
     },
@@ -51,6 +52,7 @@ test('it builds each profile it is given from the full profile defaults', () => 
       effort: 'medium',
       providerPin: null,
       contextTokens: null,
+      cacheTTL: '5m',
       prices: null,
     },
   });

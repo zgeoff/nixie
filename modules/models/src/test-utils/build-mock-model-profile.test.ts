@@ -11,6 +11,7 @@ test('it builds a default model profile', () => {
     effort: 'medium',
     providerPin: null,
     contextTokens: null,
+    cacheTTL: '5m',
     prices: null,
   });
 });
@@ -25,6 +26,7 @@ test('it applies overrides on top of the defaults', () => {
     effort: 'medium',
     providerPin: null,
     contextTokens: null,
+    cacheTTL: '5m',
     prices: null,
   });
 });

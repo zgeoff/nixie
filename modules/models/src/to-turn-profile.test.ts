@@ -9,6 +9,7 @@ test('it gives the guest the profile with no credential reference and no prices'
     effort: 'high',
     authHeader: 'bearer',
     contextTokens: 400_000,
+    cacheTTL: '1h',
   });
 
   expect(toTurnProfile(profile)).toStrictEqual({
@@ -17,5 +18,6 @@ test('it gives the guest the profile with no credential reference and no prices'
     effort: 'high',
     authHeader: 'bearer',
     contextTokens: 400_000,
+    cacheTTL: '1h',
   });
 });

@@ -136,6 +136,13 @@
                 "minimum": 100000,
                 "maximum": 1000000
               },
+              "cache_ttl": {
+                "type": "string",
+                "enum": [
+                  "5m",
+                  "1h"
+                ]
+              },
               "prices": {
                 "type": "object",
                 "properties": {

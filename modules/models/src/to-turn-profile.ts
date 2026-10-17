@@ -9,5 +9,6 @@ export function toTurnProfile(profile: ModelProfile): TurnProfile {
     effort: profile.effort,
     authHeader: profile.authHeader,
     contextTokens: profile.contextTokens,
+    cacheTTL: profile.cacheTTL,
   };
 }

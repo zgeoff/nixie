@@ -2,9 +2,9 @@
 
 nixie reaches every model through a model profile: a named route to one model on one
 Anthropic-compatible endpoint, with a reference to its credential, the header that credential goes
-in, the model ID, the reasoning effort, an optional context cap, an optional provider pin and an
-optional price table. Each model role names the profile it uses, so moving a role to another model
-is a change to the deployment configuration and never to code.
+in, the model ID, the reasoning effort, an optional context cap, a prompt cache lifetime, an
+optional provider pin and an optional price table. Each model role names the profile it uses, so
+moving a role to another model is a change to the deployment configuration and never to code.
 [Conversation turns](./conversation-turns.md) covers how the conversation runs its turns on its
 role's profile, and decision [0033](../../decisions/0033-model-profiles.md) records why profiles
 exist.
@@ -37,6 +37,21 @@ model its bundled catalog marks as native to that window, and a smaller one for 
 The models module keeps a copy of both steps, read from the CLI that the pinned Agent SDK ships. A
 model the copy misses gets the smaller window, so the check refuses such a profile rather than
 passing it.
+
+## The cache lifetime
+
+A profile's cache lifetime is one of the two prompt cache lifetimes the CLI takes, the short one or
+the long one, and it sets how long the cache entries that the conversation writes on the profile
+last. The guest passes the lifetime to the CLI as its prompt cache setting, because the CLI
+otherwise writes short entries on an API-key or bearer credential, and a turn that comes after a gap
+longer than the short lifetime then writes its whole context to the cache again. A profile that sets
+no lifetime gets the short one, and a deployment sets the long one on the conversation's profile
+when enough of its gaps between bursts of turns fall inside it. Decision
+[0033](../../decisions/0033-model-profiles.md) records the default and the reason for it.
+
+The summary that compacts a conversation session runs on the profile's lifetime, because it reads
+that session's cache. The memory writer and the memory consolidator start a fresh session for each
+run, so their sessions write short entries on any profile. The checker passes no lifetime setting.
 
 ## Credentials
 

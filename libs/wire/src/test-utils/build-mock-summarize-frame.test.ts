@@ -13,6 +13,7 @@ test('it builds a default summarize frame', () => {
       effort: 'medium',
       authHeader: 'x-api-key',
       contextTokens: null,
+      cacheTTL: '5m',
     },
     resume: { sessionID: expect.toBeString(), messageID: expect.toBeString() },
     systemPrompt: expect.toBeString(),
@@ -40,6 +41,7 @@ test('it applies overrides on top of the defaults', () => {
       effort: 'medium',
       authHeader: 'bearer',
       contextTokens: null,
+      cacheTTL: '5m',
     },
     resume: {
       sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',

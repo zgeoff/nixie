@@ -9,6 +9,9 @@ export type ModelRole =
 
 export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
+// The two prompt cache lifetimes the Claude CLI's promptCacheTtl setting takes.
+type CacheTTL = '5m' | '1h';
+
 // Prices per million tokens, in the deployment's currency.
 export interface ModelPrices {
   readonly input: number;
@@ -39,6 +42,10 @@ export interface ModelProfile {
   // the context window, in tokens, that the conversation's CLI compacts within instead of the
   // model's own window
   readonly contextTokens: number | null;
+
+  // the lifetime of the prompt cache entries the conversation's CLI writes on the profile; a
+  // session that starts fresh for each run, such as the memory writer's, keeps 5-minute entries
+  readonly cacheTTL: CacheTTL;
 
   // the counting proxy prices each response with them through buildCallCost, and nothing else
   // reads them

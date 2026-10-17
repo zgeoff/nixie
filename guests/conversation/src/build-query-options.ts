@@ -44,6 +44,9 @@ export function buildQueryOptions(
       autoCompactEnabled: false,
       precomputeCompactionEnabled: false,
       idleCompaction: false,
+
+      // the CLI writes 5-minute entries on an API-key or bearer profile unless this sets the lifetime
+      promptCacheTtl: turn.profile.cacheTTL,
     },
     mcpServers: context.toolServer === null ? {} : { [toolServerName]: context.toolServer },
     systemPrompt: { type: 'custom', prompt: turn.systemPrompt, snapshot: false },

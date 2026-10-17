@@ -185,6 +185,7 @@ test('it reads a model profile, with the default of each setting it leaves out',
       effort: 'medium',
       providerPin: null,
       contextTokens: null,
+      cacheTTL: '5m',
       prices: null,
     },
   });

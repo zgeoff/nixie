@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { modelsConfigSchema } from './models-config-schema';
 
-test('it reads a direct profile with its context tokens and prices into its typed shape', () => {
+test('it reads a direct profile with its context tokens, cache lifetime and prices into its typed shape', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
@@ -11,6 +11,7 @@ test('it reads a direct profile with its context tokens and prices into its type
         model: 'claude-sonnet-5-5',
         effort: 'medium',
         context_tokens: 400_000,
+        cache_ttl: '1h',
         prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
       },
     },
@@ -28,6 +29,7 @@ test('it reads a direct profile with its context tokens and prices into its type
         effort: 'medium',
         providerPin: null,
         contextTokens: 400_000,
+        cacheTTL: '1h',
         prices: { input: 3, cacheWrite: 3.75, cacheWrite1h: 6, cachedInput: 0.3, output: 15 },
       },
     },
@@ -61,6 +63,7 @@ test('it reads an aggregator profile with its provider pin and the role map into
         effort: 'low',
         providerPin: 'z-ai',
         contextTokens: null,
+        cacheTTL: '5m',
         prices: null,
       },
     },
@@ -138,6 +141,26 @@ test('it refuses a context cap larger than the window the CLI assumes for the mo
     path: ['profiles', 'chat-direct', 'context_tokens'],
     message:
       'the context cap of 200001 tokens is larger than the 200000-token window the Claude CLI assumes for claude-haiku-5-5',
+  });
+});
+
+test('it refuses a cache lifetime the CLI does not take', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-sonnet-5-5',
+        effort: 'medium',
+        cache_ttl: '30m',
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({
+    path: ['profiles', 'chat-direct', 'cache_ttl'],
   });
 });
 

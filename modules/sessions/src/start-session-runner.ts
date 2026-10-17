@@ -102,6 +102,9 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
         effort: profile.effort,
         authHeader: profile.authHeader,
         contextTokens: profile.contextTokens,
+
+        // each run starts a fresh session, so a 1-hour entry would only cost more to write
+        cacheTTL: '5m',
       },
       tools: { url: route.url, token: run.token },
       resume: null,

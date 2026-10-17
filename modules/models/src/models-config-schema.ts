@@ -35,6 +35,7 @@ const profileSchema = z
     effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
     provider_pin: z.string().min(1).optional(),
     context_tokens: contextTokensSchema.optional(),
+    cache_ttl: z.enum(['5m', '1h']).optional(),
     prices: pricesSchema.optional(),
   })
 
@@ -107,6 +108,9 @@ function toProfile(id: string, input: z.infer<typeof profileSchema>): ModelProfi
     effort: input.effort,
     providerPin: input.provider_pin ?? null,
     contextTokens: input.context_tokens ?? null,
+
+    // the CLI's own lifetime on an API-key or bearer profile, which the deployment raises to 1 hour
+    cacheTTL: input.cache_ttl ?? '5m',
     prices:
       input.prices === undefined
         ? null
