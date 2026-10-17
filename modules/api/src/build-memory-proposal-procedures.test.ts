@@ -47,6 +47,28 @@ async function setupTest() {
   return { ...api, memory, laptop, client: buildTestClient(api.url, laptop.token) };
 }
 
+test('#memory.listProposals lists a proposal whose review reason a later release wrote with the reason other', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.writes.remember({
+    text: 'Keeps a rowing boat at the lake',
+    caller: buildMockWriteCaller(),
+  });
+
+  // a later release's reason, in the row it left behind before a rollback
+  await ctx.context.log.writer.db
+    .$extendTables<{ memory_proposals: { review_reason: string } }>()
+    .updateTable('memory_proposals')
+    .set({ review_reason: 'self_note' })
+    .execute();
+
+  const listed = await ctx.client.memory.listProposals();
+
+  expect(listed.proposals).toMatchObject([
+    { reason: 'other', text: 'Keeps a rowing boat at the lake' },
+  ]);
+});
+
 test('#memory.listProposals lists each pending proposal with its review reason, its quote inside its message and its lapse time', async () => {
   const ctx = await setupTest();
 

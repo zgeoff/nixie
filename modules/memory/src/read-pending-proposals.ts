@@ -2,6 +2,7 @@ import { findRecordKeys } from '@heynixie/log';
 import { decodeProposalText } from './decode-proposal-text';
 import type { MemoryProposal, MemoryProposalRow, ProposalSource } from './gate-types';
 import { parseEvidence } from './parse-evidence';
+import { toReviewReason } from './to-review-reason';
 import type { MemoryTables, StoreParts } from './types';
 
 // Reads the proposals that wait for your answer, oldest first, with their text opened and every
@@ -42,7 +43,7 @@ export async function readPendingProposals(parts: StoreParts): Promise<readonly 
         itemID: row.item_id,
         targetVersion: row.target_version,
         isPinned: row.is_pinned === 1,
-        reason: row.review_reason,
+        reason: toReviewReason(row.review_reason),
         actionHash: row.action_hash,
         origin: row.origin,
         source: row.source,

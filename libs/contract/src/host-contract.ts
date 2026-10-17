@@ -29,6 +29,9 @@ const reviewReasonSchema = z.enum([
   'forgotten_evidence',
   'ambiguous_target',
   'pinned',
+
+  // a reason that a later release wrote and this one does not know
+  'other',
 ]);
 
 // one write that proposed a change: the proposal's own, or one that merged into it

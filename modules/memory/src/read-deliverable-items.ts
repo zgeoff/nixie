@@ -3,8 +3,8 @@ import type { Kysely } from 'kysely';
 import type { ApprovedProposal } from './build-version-approval';
 import { buildVersionApproval } from './build-version-approval';
 import { decodeVersionText } from './decode-version-text';
-import type { ReviewReason } from './gate-types';
 import { getItemShortID } from './get-item-short-id';
+import { toReviewReason } from './to-review-reason';
 import type {
   MemoryItemRow,
   MemoryState,
@@ -113,7 +113,7 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
 // are null for a version that applied at once and for one from an approved consolidation change
 interface ApprovableVersionRow extends MemoryVersionRow {
   readonly proposal_operation: 'remember' | 'retire' | null;
-  readonly review_reason: ReviewReason | null;
+  readonly review_reason: string | null;
 }
 
 async function readVersion(key: CryptoKey, row: ApprovableVersionRow): Promise<RecalledVersion> {
@@ -140,5 +140,5 @@ async function readVersion(key: CryptoKey, row: ApprovableVersionRow): Promise<R
 function toApprovedProposal(row: ApprovableVersionRow): ApprovedProposal | null {
   return row.proposal_operation === null || row.review_reason === null
     ? null
-    : { operation: row.proposal_operation, reason: row.review_reason };
+    : { operation: row.proposal_operation, reason: toReviewReason(row.review_reason) };
 }

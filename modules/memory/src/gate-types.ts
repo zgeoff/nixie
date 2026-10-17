@@ -289,7 +289,9 @@ export interface MemoryProposalTable {
   readonly operation: 'remember' | 'retire';
   readonly target_version: number | null;
   readonly is_pinned: number;
-  readonly review_reason: ReviewReason;
+
+  // the reason as the proposal record stores it, which a later release's reason can be
+  readonly review_reason: string;
   readonly status: 'pending' | 'consumed' | 'rejected' | 'lapsed';
   readonly action_hash: string;
   readonly sealed: string;
