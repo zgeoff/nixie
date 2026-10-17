@@ -2,15 +2,9 @@ import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { makeLogger } from './make-logger';
 import { startLineLog } from './start-line-log';
 
-// LogTape configured to write each line into lines, on a clock held at noon
+// LogTape configured to write each line into lines
 async function setupTest() {
   const lines: string[] = [];
-
-  setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
-
-  onTestFinished(() => {
-    setSystemTime();
-  });
 
   const lineLog = await startLineLog((line) => {
     lines.push(line);
@@ -24,6 +18,12 @@ async function setupTest() {
 test('it writes one JSON line through LogTape with the time and the event first', async () => {
   const ctx = await setupTest();
 
+  setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
+
+  onTestFinished(() => {
+    setSystemTime();
+  });
+
   makeLogger()('step.committed', { taskID: 'conversation', records: 3, isRetry: false });
 
   expect(ctx.lines).toStrictEqual([
@@ -33,6 +33,12 @@ test('it writes one JSON line through LogTape with the time and the event first'
 
 test('it writes a call that names no level as an info line, with no level', async () => {
   const ctx = await setupTest();
+
+  setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
+
+  onTestFinished(() => {
+    setSystemTime();
+  });
 
   makeLogger()('writer.started');
 
@@ -46,6 +52,12 @@ test.each(['debug', 'warn', 'error'] as const)(
   async (level) => {
     const ctx = await setupTest();
 
+    setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
+
+    onTestFinished(() => {
+      setSystemTime();
+    });
+
     makeLogger()('start.retry', { attempt: 2 }, level);
 
     expect(ctx.lines).toStrictEqual([
@@ -57,6 +69,12 @@ test.each(['debug', 'warn', 'error'] as const)(
 test('it never lets a field named level replace the level of the call', async () => {
   const ctx = await setupTest();
 
+  setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
+
+  onTestFinished(() => {
+    setSystemTime();
+  });
+
   makeLogger()('runner.failed', { level: 'debug' }, 'error');
 
   expect(ctx.lines).toStrictEqual([
@@ -66,6 +84,12 @@ test('it never lets a field named level replace the level of the call', async ()
 
 test('it writes the event as it came, even with a brace in it', async () => {
   const ctx = await setupTest();
+
+  setSystemTime(Date.UTC(2026, 9, 11, 12, 0, 0));
+
+  onTestFinished(() => {
+    setSystemTime();
+  });
 
   makeLogger()('probe.{name}', { name: 'health' });
 
