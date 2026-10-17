@@ -37,6 +37,16 @@ test.each([
     'Pay 062-000 12345678',
   ],
   [
+    'an international phone number that the quote groups like a BSB',
+    'Call +420777123456',
+    'Call +420 777 123 456',
+  ],
+  [
+    'an international phone number that the memory groups like a BSB',
+    'Call +420 777 123 456',
+    'Call +420777123456',
+  ],
+  [
     'an account number that a quoted BSB and account number holds',
     'Account number is 12345678',
     'BSB 062-000 account number: 12345678',

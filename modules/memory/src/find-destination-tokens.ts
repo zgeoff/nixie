@@ -74,12 +74,12 @@ const patterns: readonly TokenPattern[] = [
   },
 
   // an Australian BSB and its account number, whose digits may sit in groups, with an optional
-  // account word between them; neither pattern takes part of a longer run of digit groups, which
-  // the phone pattern takes whole
+  // account word between them; neither pattern takes part of a longer run of digit groups or of an
+  // international number, which the phone pattern takes whole
   {
     kind: 'account',
     pattern:
-      /(?<!\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+(?<account>\d(?:[\p{Zs}\t]?\d){4,8})\b(?![\p{Zs}\t-]?\d)/giu,
+      /(?<!\+[\p{Zs}\t]?|\d[\p{Zs}\t-]?)\b\d{3}[\p{Zs}\t-]?\d{3},?(?:[\p{Zs}\t]+(?:account|acct|a\/c)(?:[\p{Zs}\t]+(?:number|no\.?))?:?)?[\p{Zs}\t]+(?<account>\d(?:[\p{Zs}\t]?\d){4,8})\b(?![\p{Zs}\t-]?\d)/giu,
   },
 
   // a run of 6 to 17 digits right after an account word, such as "account number is"
