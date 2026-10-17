@@ -131,6 +131,25 @@ test('it exits 1 when the server fails the reset', async () => {
   });
 });
 
+test('it exits 2 on a command nixie does not have, and names the commands it takes', async () => {
+  const ctx = await setupTest();
+  const exitCode = await runCLI(['frobnicate', '--config', ctx.configPath], ctx.io);
+
+  expect(exitCode).toBe(2);
+
+  expect(ctx.io.print).toHaveBeenCalledExactlyOnceWith(
+    expect.stringMatching(/^nixie has no command frobnicate; it takes serve, check-encoder, /u),
+  );
+});
+
+test('it exits 1 on a flag nixie does not take, before the command runs', async () => {
+  const ctx = await setupTest();
+  const exitCode = await runCLI(['reset', '--frobnicate', '--config', ctx.configPath], ctx.io);
+
+  expect(exitCode).toBe(1);
+  expect(ctx.io.print).toHaveBeenCalledExactlyOnceWith('nixie: Unknown option: --frobnicate');
+});
+
 test('it exits 1 from check-encoder when the encoder folder holds no model', async () => {
   const ctx = await setupTest();
   const exitCode = await runCLI(['check-encoder', '--encoder', ctx.dataDir], ctx.io);

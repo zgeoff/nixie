@@ -1,4 +1,3 @@
-import { parseArgs } from 'node:util';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import { buildConsolidationCommands } from './build-consolidation-commands';
@@ -7,47 +6,43 @@ import { buildMemoryCommands } from './build-memory-commands';
 import { buildResetCommands } from './build-reset-commands';
 import { buildSessionCommands } from './build-session-commands';
 import { checkEncoder } from './check-encoder';
+import { parseCLIArgs } from './parse-cli-args';
+import type { ParsedCLIArgs } from './parse-cli-args';
 import { startServer } from './start-server';
 import type { CLIFlags, CLIIO, Command } from './types';
 
 // Runs one of nixie's commands, serve by default, and returns its exit code. --config names the
-// deployment configuration; --manifest, --sops and --encoder name what the nixie image fixes.
+// deployment configuration; --manifest, --sops and --encoder name what the nixie image fixes. An
+// unknown command exits 2, and a flag the command line cannot give exits 1.
 export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number> {
-  const parsed = parseArgs({ args: [...argv], allowPositionals: true, options: cliOptions });
-  const command = parsed.positionals[0] ?? 'serve';
-  const run = commands.get(command);
+  const parsed = await parseCLIArgs(argv, [...commands.keys()]);
 
-  if (run === undefined) {
-    io.print(`nixie has no command ${command}; it takes ${[...commands.keys()].join(', ')}`);
+  const run = parsed.kind === 'command' ? commands.get(parsed.command) : undefined;
 
-    return 2;
+  if (parsed.kind !== 'command' || run === undefined) {
+    return printRefusal(parsed, io);
   }
 
   try {
-    return await run(parsed.values, io, parsed.positionals.slice(1));
+    return await run(parsed.flags, io, parsed.args);
   } catch (error) {
-    io.log('command.failed', { command, ...toErrorFields(error) });
+    io.log('command.failed', { command: parsed.command, ...toErrorFields(error) });
 
     return 1;
   }
 }
 
-const cliOptions = {
-  config: { type: 'string', default: '/etc/nixie/config.yaml' },
-  manifest: { type: 'string', default: '/app/sandbox-manifest.json' },
+function printRefusal(parsed: ParsedCLIArgs, io: CLIIO): number {
+  if (parsed.kind === 'invalid-flags') {
+    io.print(`nixie: ${parsed.message}`);
 
-  // an empty value serves with keyword memory search alone, as the tests that run nixie do
-  encoder: { type: 'string', default: '/app/encoder' },
-  sops: { type: 'string', default: '/usr/local/bin/sops' },
-  live: { type: 'boolean', default: false },
-  hash: { type: 'string' },
-  revise: { type: 'string' },
-  'as-new': { type: 'boolean', default: false },
-  text: { type: 'string' },
-  reason: { type: 'string' },
-  'keep-sessions': { type: 'boolean', default: false },
-  yes: { type: 'boolean', default: false },
-} as const;
+    return 1;
+  }
+
+  io.print(`nixie has no command ${parsed.command}; it takes ${[...commands.keys()].join(', ')}`);
+
+  return 2;
+}
 
 // serve runs the server until SIGTERM; check-encoder exits 0 once the encoder loads from --encoder
 // and encodes a text.

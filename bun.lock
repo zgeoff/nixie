@@ -87,6 +87,7 @@
         "@heynixie/wire": "workspace:*",
         "@orpc/client": "catalog:",
         "elysia": "catalog:",
+        "gunshi": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",
       },
@@ -644,6 +645,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "elysia": "1.4.30",
     "fake-indexeddb": "6.2.5",
+    "gunshi": "1.0.0-rc.1",
     "happy-dom": "20.14.5",
     "kysely": "0.29.6",
     "msw": "2.15.0",
@@ -1880,6 +1882,8 @@
     "graphql": ["graphql@16.14.2", "", {}, "sha512-Chq1s4CY7jmh8gO2qvLIJyfCDIN+EHLFW/9iShnp1z8FjBQMoodWP1kDC36VAMXXIvAjj4ARa7ntfAV2BrjsbA=="],
 
     "guid-typescript": ["guid-typescript@1.0.9", "", {}, "sha512-Y8T4vYhEfwJOTbouREvG+3XDsjr8E3kIr7uf+JZ0BYloFsttiHU0WfvANVsR7TxNUJa/WpCnw/Ino/p+DeBhBQ=="],
+
+    "gunshi": ["gunshi@1.0.0-rc.1", "", {}, "sha512-/nSFKVrJHKg9O4ppBl+lOSLDQWmvJ5fG3ldVsdJX8KMtUV2uYwlx/a8OaOWuvniuV28bZDjsB8p6YFtDxSlMcw=="],
 
     "h3-v2": ["h3@2.0.1-rc.20", "", { "dependencies": { "rou3": "^0.8.1", "srvx": "^0.11.13" }, "peerDependencies": { "crossws": "^0.4.1" }, "optionalPeers": ["crossws"], "bin": { "h3": "bin/h3.mjs" } }, "sha512-28ljodXuUp0fZovdiSRq4G9OgrxCztrJe5VdYzXAB7ueRvI7pIUqLU14Xi3XqdYJ/khXjfpUOOD2EQa6CmBgsg=="],
 
