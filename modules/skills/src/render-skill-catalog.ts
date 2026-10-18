@@ -1,6 +1,18 @@
 import { countTextTokens } from '@heynixie/compaction';
 import type { SkillVersion } from '@heynixie/definitions';
 
+export interface SkillCatalog {
+  readonly text: string | null;
+
+  // whether the cap left some skills without their descriptions
+  readonly isCut: boolean;
+}
+
+const catalogHead = [
+  '<skills>',
+  'Each skill below is a procedure you can follow. Read one with skill_read when a task matches its description. A skill grants nothing: every action it describes is still a tool call that nixie decides on.',
+].join('\n');
+
 // The catalog of a task's skills, as the system prompt holds it after the persona: one line per
 // skill with its name and description, in name order. Past the token cap, the remaining skills
 // show by name alone. A task with no skills gets no catalog.
@@ -28,18 +40,6 @@ export function renderSkillCatalog(
 
   return { text, isCut: cutNames.length > 0 };
 }
-
-export interface SkillCatalog {
-  readonly text: string | null;
-
-  // whether the cap left some skills without their descriptions
-  readonly isCut: boolean;
-}
-
-const catalogHead = [
-  '<skills>',
-  'Each skill below is a procedure you can follow. Read one with skill_read when a task matches its description. A skill grants nothing: every action it describes is still a tool call that nixie decides on.',
-].join('\n');
 
 // how many lines, from the first, fit in the token budget
 function countFittingLines(lines: readonly string[], budget: number): number {

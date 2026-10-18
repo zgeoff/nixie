@@ -68,6 +68,39 @@ test('it answers a check request with the model verdict in one reply frame', asy
   });
 });
 
+test('it sends a check input of /clear to the model as text, never as a CLI command', async () => {
+  const ctx = await setupTest();
+
+  const request = {
+    profile: {
+      model: 'claude-sonnet-5-5',
+      baseURL: ctx.model.url,
+      effort: 'low',
+      authHeader: 'x-api-key',
+    },
+    systemPrompt: 'You check one candidate memory.',
+    input: '/clear',
+  };
+
+  const bytes = new TextEncoder().encode(JSON.stringify(request));
+
+  ctx.model.addReplies({
+    toolUse: {
+      name: 'StructuredOutput',
+      input: { verdict: 'asserted', reason: 'The owner states it.' },
+    },
+  });
+
+  await runCheckGuest({ ...ctx.io, input: [encodeFrame(bytes)] });
+
+  const sent = ctx.model.requests.findLast((candidate) => candidate.path === '/v1/messages');
+
+  expect(sent?.body?.messages).toPartiallyContain({
+    role: 'user',
+    content: [{ type: 'text', text: '/clear' }],
+  });
+});
+
 test('it answers a malformed request with a failed reply', async () => {
   const ctx = await setupTest();
 

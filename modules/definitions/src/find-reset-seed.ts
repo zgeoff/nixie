@@ -2,7 +2,7 @@ import type { JSONObject } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
 import { findDefinitionsInForce } from './find-definitions-in-force';
-import { findSnapshotSkills } from './find-snapshot-skills';
+import { loadSnapshotSkills } from './load-snapshot-skills';
 import type { DefinitionsInForce, DefinitionsTables, ParsedSkill } from './types';
 
 // What a reset carries into the new log of the definitions in force: the seed, the snapshot row
@@ -54,7 +54,7 @@ export async function findResetSeed(db: Kysely<unknown>): Promise<ResetSeed | nu
 
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the log wrote a JSON object
     payload: JSON.parse(record.payload) as JSONObject,
-    skills: await findSnapshotSkills(db, inForce.snapshotHash),
+    skills: await loadSnapshotSkills(db, inForce.snapshotHash),
   };
 }
 

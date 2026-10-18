@@ -460,10 +460,9 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/tools": "workspace:*",
-        "zod": "catalog:",
-      },
-      "devDependencies": {
+        "kysely": "catalog:",
         "tiny-invariant": "catalog:",
+        "zod": "catalog:",
       },
     },
     "modules/tasks": {

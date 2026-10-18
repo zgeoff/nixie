@@ -19,6 +19,11 @@ const hiddenRanges: readonly (readonly [number, number])[] = [
   [0xe_01_00, 0xe_01_ef],
 ];
 
+export interface HiddenCharacter {
+  readonly line: number;
+  readonly codePoint: string;
+}
+
 // The first hidden or bidirectional control character in a text, with its line from 1 and its code
 // point, such as U+202E for a right-to-left override, or null when the text holds none.
 export function findHiddenCharacter(text: string): HiddenCharacter | null {
@@ -37,11 +42,6 @@ export function findHiddenCharacter(text: string): HiddenCharacter | null {
   }
 
   return null;
-}
-
-export interface HiddenCharacter {
-  readonly line: number;
-  readonly codePoint: string;
 }
 
 function isHidden(codePoint: number): boolean {
