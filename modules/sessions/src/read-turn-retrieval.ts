@@ -4,9 +4,10 @@ import { readSessionDeliveries } from './read-session-deliveries';
 import type { TurnContextQuery } from './read-turn-context';
 import type { ConversationRun, MemoryItem, MemoryLineOptions, PastMessage } from './types';
 
-// What one turn's retrieval placed: the memory items and your past messages, best first.
+// What one turn's retrieval placed: the facts, the self-notes and your past messages, best first.
 export interface TurnRetrieval {
   readonly items: readonly MemoryItem[];
+  readonly selfNotes: readonly MemoryItem[];
   readonly messages: readonly PastMessage[];
 }
 
@@ -27,7 +28,7 @@ export async function readTurnRetrieval(
     .join('\n');
 
   if (text.trim() === '') {
-    return { items: [], messages: [] };
+    return { items: [], selfNotes: [], messages: [] };
   }
 
   const settings = run.memorySettings;
@@ -43,7 +44,10 @@ export async function readTurnRetrieval(
 
   const result = await run.memory().recall({
     query: text,
+
+    // one ranking of every match, which caps the facts and the self-notes each on its own
     limit: settings.retrievalItems,
+    selfNoteLimit: settings.retrievalSelfNotes,
     minScore: settings.retrievalMinScore,
     minSimilarity: settings.retrievalMinSimilarity,
     excludePinned: true,
@@ -59,7 +63,11 @@ export async function readTurnRetrieval(
     times,
   });
 
-  return { items: result.items, messages };
+  return {
+    items: result.items.filter((item) => item.kind === 'fact'),
+    selfNotes: result.items.filter((item) => item.kind === 'self'),
+    messages,
+  };
 }
 
 // your readable words in a message record; a forgotten one gives retrieval nothing to search

@@ -1,7 +1,7 @@
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
+import type { CheckerRequest, RunCheck } from './checker-types';
 import { parseCheckerAnswer } from './parse-checker-answer';
-import type { CheckerRequest, RunCheck } from './types';
 
 export interface CheckerOptions {
   // runs one checker query and returns its structured output; it stops when the signal aborts

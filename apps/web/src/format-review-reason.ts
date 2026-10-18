@@ -18,4 +18,5 @@ const reviewReasons: Readonly<Record<MemoryProposal['reason'], string>> = {
   ambiguous_target: 'It is unclear which item it changes.',
   pinned: 'It changes a pinned item.',
   other: 'A newer release of nixie sent it to review.',
+  self_note: 'nixie wrote it about itself, and every self-note waits for your review.',
 };

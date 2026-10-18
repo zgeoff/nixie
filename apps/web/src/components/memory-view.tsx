@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
+import type { MemoryItem } from '../types';
 import { makeMemoryItemRenderer } from './make-memory-item-renderer';
 import { MemoryExportButton } from './memory-export-button';
 import { MemoryItemList } from './memory-item-list';
@@ -15,8 +16,8 @@ export interface MemoryViewProps {
 }
 
 // Every memory item, to see, search, review and export: the writer's progress, the pinned core,
-// the export, the active items or the matches of a search, then the retired items and the
-// forgotten ones apart from them.
+// the export, the active facts and self-notes apart, or the matches of a search split the same
+// way, then the retired items and the forgotten ones apart from them.
 export function MemoryView(props: MemoryViewProps): ReactNode {
   const [query, setQuery] = useState<string | null>(null);
 
@@ -37,12 +38,7 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
       <MemoryExportButton />
       <MemorySearchForm onSearch={setQuery} query={query} />
       {query === null ? (
-        <MemoryItemList
-          empty="No active item."
-          renderItem={renderItem}
-          state="active"
-          title="Active"
-        />
+        <ActiveItems renderItem={renderItem} />
       ) : (
         <MemorySearchResults query={query} renderItem={renderItem} />
       )}
@@ -59,6 +55,32 @@ export function MemoryView(props: MemoryViewProps): ReactNode {
         title="Forgotten"
       />
     </main>
+  );
+}
+
+interface ActiveItemsProps {
+  readonly renderItem: (item: MemoryItem) => ReactNode;
+}
+
+// the active facts, then the active self-notes apart from them
+function ActiveItems(props: ActiveItemsProps): ReactNode {
+  return (
+    <>
+      <MemoryItemList
+        empty="No active item."
+        kind="fact"
+        renderItem={props.renderItem}
+        state="active"
+        title="Active"
+      />
+      <MemoryItemList
+        empty="No self-note."
+        kind="self"
+        renderItem={props.renderItem}
+        state="active"
+        title="Self-notes"
+      />
+    </>
   );
 }
 

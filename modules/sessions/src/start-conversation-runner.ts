@@ -62,11 +62,12 @@ export interface ConversationRunner {
   readonly stop: () => Promise<void>;
 }
 
-// How memory reaches the conversation when the deployment sets nothing: 5 retrieved items and 3
-// past messages above a keyword score of 0.25 or a similarity of 0.38, a rebuilt session that
+// How memory reaches the conversation when the deployment sets nothing: 5 retrieved items, 2
+// self-notes and 3 past messages above a keyword score of 0.25 or a similarity of 0.38, a rebuilt session that
 // starts with up to 30,000 tokens of recent turns, and no owner's or agent's name.
 const defaultMemorySettings: ConversationMemorySettings = {
   retrievalItems: 5,
+  retrievalSelfNotes: 2,
   retrievalMessages: 3,
   retrievalMinScore: 0.25,
   retrievalMinSimilarity: 0.38,

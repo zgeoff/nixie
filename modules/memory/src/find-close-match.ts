@@ -2,10 +2,13 @@ import type { Kysely } from 'kysely';
 import type { CloseMatch } from './gate-types';
 import { readDeliverableItems } from './read-deliverable-items';
 import { readRecall } from './read-recall';
-import type { MemoryTables, RecalledItem, StoreParts } from './types';
+import type { MemoryKind, MemoryTables, RecalledItem, StoreParts } from './types';
 
 export interface CloseMatchQuery {
   readonly text: string;
+
+  // the kind of the proposal's item, because a fact never matches a self-note; a fact when unset
+  readonly kind?: MemoryKind;
 
   // a write transaction that holds the delivery lock, which reads the candidates with no recall
   // record; through a recall, which records what it delivered, when unset
@@ -19,14 +22,22 @@ export async function findCloseMatch(
   parts: StoreParts,
   query: CloseMatchQuery,
 ): Promise<CloseMatch | null> {
-  const itemIDs = await parts.index.findItemIDs(query.text, { limit: candidateLimit });
+  const kind = query.kind ?? 'fact';
+
+  // the other kind's items leave the ranking before its limit applies, so a run of them never
+  // pushes a match of the proposal's own kind past the cut
+  const itemIDs = await parts.index.findItemIDs(query.text, {
+    limit: candidateLimit,
+    excludedIDs: await readOtherKindIDs(parts, kind, query.db),
+  });
 
   if (itemIDs.length === 0) {
     return null;
   }
 
-  const items = await readCandidates(parts, itemIDs, query.db);
+  const candidates = await readCandidates(parts, itemIDs, query.db);
 
+  const items = candidates.filter((item) => item.kind === kind);
   const words = collectContentWords(query.text);
 
   const scored = items
@@ -42,6 +53,21 @@ export async function findCloseMatch(
 }
 
 const candidateLimit = 5;
+
+async function readOtherKindIDs(
+  parts: StoreParts,
+  kind: MemoryKind,
+  db: Kysely<MemoryTables> | undefined,
+): Promise<readonly string[]> {
+  const rows = await (db ?? parts.context.log.writer.db.$extendTables<MemoryTables>())
+    .selectFrom('memory_items')
+    .select('item_id')
+    .where('kind', '!=', kind)
+    .where('state', '=', 'active')
+    .execute();
+
+  return rows.map((row) => row.item_id);
+}
 
 async function readCandidates(
   parts: StoreParts,

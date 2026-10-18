@@ -3,7 +3,7 @@ import type { Kysely } from 'kysely';
 import { decodeProposalText } from './decode-proposal-text';
 import type { MemoryProposalRow } from './gate-types';
 import { normalizeFactText } from './normalize-fact-text';
-import type { MemoryTables, StoreParts, VersionRef } from './types';
+import type { MemoryKind, MemoryTables, StoreParts, VersionRef } from './types';
 
 // A change a write proposes, as a pending proposal must match it to take the write in.
 export interface ProposedChange {
@@ -13,11 +13,14 @@ export interface ProposedChange {
   readonly target: VersionRef | null;
   readonly isPinned: boolean;
   readonly text: string;
+
+  // the kind of the item, a fact when unset
+  readonly itemKind?: MemoryKind;
 }
 
 // Finds the oldest pending remember proposal that makes the same change: the same target, or a new
-// item for both, the same pin, and the same text once normalized. Each proposal's text is sealed
-// under its own item's key, so the search opens each candidate's text. A retirement never matches.
+// item of the same kind for both, the same pin, and the same text once normalized. Each text is
+// sealed under its own item's key, so the search opens each one. A retirement never matches.
 export async function findMatchingProposal(
   db: Kysely<MemoryTables>,
   parts: Pick<StoreParts, 'context'>,
@@ -38,9 +41,11 @@ export async function findMatchingProposal(
     .where('operation', '=', 'remember')
     .where('is_pinned', '=', isPinned);
 
+  // a proposal for an edit takes its item's kind whoever proposed it, so the target alone decides,
+  // and only a new item's proposal is matched by the kind the write asks for
   const sameTarget =
     target === null
-      ? pending.where('is_new_item', '=', 1)
+      ? pending.where('is_new_item', '=', 1).where('kind', '=', change.itemKind ?? 'fact')
       : pending.where('item_id', '=', target.itemID).where('target_version', '=', target.version);
 
   const rows = await sameTarget.orderBy('created_sequence').execute();

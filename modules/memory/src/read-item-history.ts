@@ -14,7 +14,7 @@ export async function readItemHistory(
 
   const item = await db
     .selectFrom('memory_items')
-    .select('state')
+    .select(['state', 'kind'])
     .where('item_id', '=', itemID)
     .executeTakeFirst();
 
@@ -32,7 +32,7 @@ export async function readItemHistory(
   const key = await findItemKey(parts.context.log, itemID);
   const versions = await Promise.all(rows.map((row) => readHistoryVersion(row, key)));
 
-  return { itemID, state: item.state, versions };
+  return { itemID, state: item.state, kind: item.kind, versions };
 }
 
 async function readHistoryVersion(

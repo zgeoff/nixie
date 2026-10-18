@@ -7,6 +7,7 @@ export function toContractMemoryItem(item: ViewItem) {
     shortID: item.shortID,
     state: item.state,
     isPinned: item.isPinned,
+    kind: item.kind,
     version: item.version,
     origin: item.origin,
     source: item.source,

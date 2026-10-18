@@ -32,6 +32,7 @@ const reviewReasonSchema = z.enum([
 
   // a reason that a later release wrote and this one does not know
   'other',
+  'self_note',
 ]);
 
 // one write that proposed a change: the proposal's own, or one that merged into it
@@ -49,6 +50,7 @@ const pendingProposalSchema = z.object({
   itemID: z.string(),
   targetVersion: z.int().nullable(),
   isPinned: z.boolean(),
+  kind: z.enum(['fact', 'self']),
   reason: reviewReasonSchema,
   actionHash: z.string(),
   origin: memoryOriginSchema,
@@ -80,9 +82,11 @@ const historyVersionSchema = z.object({
   text: z.string().nullable(),
 });
 
-// What a host command shows of an item: its state, and each version oldest first.
+// What a host command shows of an item: its kind, a fact or a self-note, its state, and each
+// version oldest first.
 const itemHistorySchema = z.object({
   itemID: z.string(),
+  kind: z.enum(['fact', 'self']),
   state: z.enum(['active', 'retired', 'forgetting', 'forgotten']),
   versions: z.array(historyVersionSchema),
 });
@@ -162,6 +166,7 @@ const memory = oc.errors({
   PINNED_CORE_FULL: { message: 'the pinned core is full', status: 409 },
   REVISION_TARGET: { message: 'that item cannot take the revision', status: 400 },
   RETIREMENT_EDIT: { message: 'a retirement takes no edited text', status: 400 },
+  SELF_NOTE_REFUSED: { message: 'a self-note never takes that change', status: 409 },
 });
 
 export const hostContract = {

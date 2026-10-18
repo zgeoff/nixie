@@ -7,7 +7,13 @@ import { memoryExportSchemaVersion } from './memory-export-schema-version';
 import { parseChecks } from './parse-checks';
 import { readPages } from './read-pages';
 import { readViewText } from './read-view-text';
-import type { MemoryContext, MemoryState, MemoryTables, MemoryVersionRow } from './types';
+import type {
+  MemoryContext,
+  MemoryKind,
+  MemoryState,
+  MemoryTables,
+  MemoryVersionRow,
+} from './types';
 
 export interface MemoryExportRequest {
   // when the export started, which the header names
@@ -63,6 +69,7 @@ interface ItemRow {
   readonly short_id: string | null;
   readonly state: MemoryState;
   readonly is_pinned: number;
+  readonly kind: MemoryKind;
   readonly created_sequence: number;
   readonly forgotten_at: number | null;
 }
@@ -82,6 +89,7 @@ function readItemRows(log: ExportLog, after: number): Promise<readonly ItemRow[]
       'item.short_id',
       'item.state',
       'item.is_pinned',
+      'item.kind',
       'item.created_sequence',
       'forgotten.recorded_at as forgotten_at',
     ])
@@ -156,6 +164,7 @@ async function buildReadableItem(row: ReadableRow, parts: ItemParts): Promise<Me
     shortID: getItemShortID(row),
     state: row.state,
     isPinned: row.is_pinned === 1,
+    kind: row.kind,
     versions: await Promise.all(parts.versions.map((version) => buildVersion(version, parts.key))),
   };
 }

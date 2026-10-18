@@ -46,6 +46,8 @@ const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => str
   pinned: (words) => `Pinned items always wait for ${words.their} review.`,
   other: () =>
     'A newer release of nixie sent it to review, for a reason this release does not name.',
+  self_note: (words) =>
+    `It's a self-note, which you write about yourself, and every self-note waits for ${words.their} review.`,
 };
 
 function formatWindow(window: number): string {

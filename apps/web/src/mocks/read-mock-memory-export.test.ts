@@ -19,8 +19,7 @@ test('it reads a readable item with every version and a forgotten item as only i
     versions: [{ text: 'Keeps a spare key under the blue pot' }],
   });
 
-  const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
-  const file: unknown = JSON.parse(chunks.join(''));
+  const file: unknown = JSON.parse(readMockMemoryExport(new Date('2026-10-14T08:00:00Z')).join(''));
 
   expect(file).toStrictEqual({
     header: expect.toBeObject(),
@@ -30,6 +29,7 @@ test('it reads a readable item with every version and a forgotten item as only i
         shortID: active.shortID,
         state: 'active',
         isPinned: false,
+        kind: 'fact',
         versions: [
           {
             version: 1,
@@ -56,12 +56,12 @@ test('it reads a readable item with every version and a forgotten item as only i
   });
 });
 
-test('it heads the file with schema version 1, the export time and the mock snapshot hash', () => {
+test('it heads the file with schema version 2, the export time and the mock snapshot hash', () => {
   const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
 
   expect(JSON.parse(chunks.join(''))).toStrictEqual({
     header: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:mock',
     },

@@ -648,7 +648,7 @@ test('it lists the proposal the model made when the model calls the pending tool
   const page = await ctx.client.conversation.read({ thread: 'conversation' });
 
   expect(sent).toInclude(
-    String.raw`\"change\":\"new\",\"text\":\"Keeps two cats\",\"notedBy\":[\"you noted it\"],\"reason\":\"no_quote\",\"age\":\"under a minute\"`,
+    String.raw`\"change\":\"new\",\"text\":\"Keeps two cats\",\"notedBy\":[\"you noted it\"],\"kind\":\"fact\",\"reason\":\"no_quote\",\"age\":\"under a minute\"`,
   );
 
   expect(page.records.findLast((record) => record.kind === 'tool_result')?.toolCall).toMatchObject({

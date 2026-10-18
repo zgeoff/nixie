@@ -50,6 +50,7 @@ one person a nixie deployment works for, and the architecture docs call that per
 | Term               | Meaning                                                                                     |
 | ------------------ | ------------------------------------------------------------------------------------------- |
 | memory item        | One stored fact, with its provenance and its evidence                                       |
+| self-note          | A memory item nixie writes about itself, which you always review and never pin              |
 | evidence           | Your quote that backs a memory item                                                         |
 | retire             | Stop using a memory item in recall, with undo                                               |
 | forget             | Destroy a memory item's key, so the item is unreadable everywhere                           |

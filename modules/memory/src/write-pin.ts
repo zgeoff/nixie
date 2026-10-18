@@ -5,8 +5,9 @@ import { MemoryStateError } from './memory-state-error';
 import { readDeliverableItems } from './read-deliverable-items';
 import { readPinnedItems } from './read-pinned-items';
 import { requirePinnedCoreRoom } from './require-pinned-core-room';
+import { SelfNoteError } from './self-note-error';
 import { StaleVersionError } from './stale-version-error';
-import type { MemoryTables, PinRequest, StoreParts } from './types';
+import type { MemoryKind, MemoryState, MemoryTables, PinRequest, StoreParts } from './types';
 
 // Puts an active item in the pinned core or takes an item out of it. A pin adds no version, because
 // it changes where the item shows and not what it says. A pin that would take the core past its
@@ -33,7 +34,7 @@ export function writePin(parts: StoreParts, request: PinRequest): Promise<void> 
 }
 
 // Throws unless the pin may apply: the item exists and no forget began, it is still at the version
-// the caller read, and a pin finds it active with room for it in the core.
+// the caller read, and a pin finds it an active fact with room for it in the core.
 async function requirePinnableItem(
   parts: StoreParts,
   tx: Transaction<unknown>,
@@ -43,7 +44,7 @@ async function requirePinnableItem(
 
   const item = await db
     .selectFrom('memory_items')
-    .select(['state', 'version'])
+    .select(['state', 'version', 'kind'])
     .where('item_id', '=', request.itemID)
     .executeTakeFirst();
 
@@ -55,13 +56,36 @@ async function requirePinnableItem(
     throw new StaleVersionError({ itemID: request.itemID, version: request.version }, item.version);
   }
 
-  if (request.isPinned && item.state !== 'active') {
-    throw new MemoryStateError(request.itemID, 'pin', item.state);
+  // an unpin always applies
+  if (request.isPinned) {
+    await requireItemJoinsCore(parts, db, { itemID: request.itemID, ...item });
+  }
+}
+
+interface PinnedItem {
+  readonly itemID: string;
+  readonly state: MemoryState;
+  readonly kind: MemoryKind;
+}
+
+// a self-note never joins the pinned core, whoever asks, and a fact joins it while active and while
+// the core has room
+async function requireItemJoinsCore(
+  parts: StoreParts,
+  db: Kysely<MemoryTables>,
+  item: PinnedItem,
+): Promise<void> {
+  if (item.kind === 'self') {
+    throw new SelfNoteError(
+      `memory item ${item.itemID} is a self-note, and a self-note is never pinned`,
+    );
   }
 
-  if (request.isPinned) {
-    await requireItemCoreRoom(parts, db, request.itemID);
+  if (item.state !== 'active') {
+    throw new MemoryStateError(item.itemID, 'pin', item.state);
   }
+
+  await requireItemCoreRoom(parts, db, item.itemID);
 }
 
 // an item whose text fails to open takes no room in the core, as the opening leaves it out

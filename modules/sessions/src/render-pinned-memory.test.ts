@@ -8,6 +8,8 @@ test('it renders each pinned item with the line that says where it came from, in
         {
           itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',
           shortID: 'b7kq2m9xza',
+          kind: 'fact',
+          model: null,
           version: 1,
           origin: 'conversation',
           source: 'owner',
@@ -19,6 +21,8 @@ test('it renders each pinned item with the line that says where it came from, in
         {
           itemID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
           shortID: 'h4ns8w1cpe',
+          kind: 'fact',
+          model: null,
           version: 2,
           origin: 'memory_writer',
           source: 'untrusted',

@@ -49,6 +49,25 @@ test('it lists a pending proposal with why it waits for review, its quote inside
   );
 });
 
+test('it marks a self-note proposal with a self-note badge and why it waits for review', async () => {
+  await setupTest();
+
+  await store.memoryProposals.create({
+    kind: 'self',
+    origin: 'conversation',
+    reason: 'self_note',
+    text: 'Enjoys a slow morning question',
+  });
+
+  const rendered = render(<MemoryProposals />);
+
+  const card = await rendered.findByRole('listitem', { name: 'Enjoys a slow morning question' });
+
+  expect(card).toHaveTextContent(
+    'self-notenixie wrote it about itself, and every self-note waits for your review.',
+  );
+});
+
 test('it approves 3 selected proposals in one action, each with its own approval record', async () => {
   const ctx = await setupTest();
 

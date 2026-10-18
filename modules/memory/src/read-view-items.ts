@@ -37,6 +37,7 @@ export async function readViewItems(
       'item.short_id',
       'item.state',
       'item.is_pinned',
+      'item.kind',
       'item.version',
       'current.origin',
       'current.source',
@@ -66,6 +67,7 @@ interface ViewItemRow {
   readonly short_id: string | null;
   readonly state: Selectable<MemoryTables['memory_items']>['state'];
   readonly is_pinned: number;
+  readonly kind: ViewItem['kind'];
   readonly version: number;
   readonly origin: ViewItem['origin'];
   readonly source: ViewItem['source'];
@@ -90,6 +92,7 @@ async function buildViewItem(
     shortID: getItemShortID(row),
     state: row.state,
     isPinned: row.is_pinned === 1,
+    kind: row.kind,
     version: row.version,
     origin: row.origin,
     source: row.source,

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createProposal, startTestMemory } from '@heynixie/memory/test-utils';
+import { buildMockWriteCaller, createProposal, startTestMemory } from '@heynixie/memory/test-utils';
 import { createRouterClient } from '@orpc/server';
 import { buildHostProposalProcedures } from './build-host-proposal-procedures';
 
@@ -21,6 +21,7 @@ test('#list lists each pending proposal with its text and the hash an answer bin
       itemID: proposal.itemID,
       targetVersion: null,
       isPinned: false,
+      kind: 'fact',
       reason: 'no_quote',
       actionHash: proposal.actionHash,
       origin: 'conversation',
@@ -37,6 +38,22 @@ test('#list lists each pending proposal with its text and the hash an answer bin
       text: 'Likes jazz',
       quote: null,
     },
+  ]);
+});
+
+test('#list lists a self-note with its kind and the self-note review reason', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.writes.remember({
+    text: 'Likes a question that takes a while to answer',
+    itemKind: 'self',
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await ctx.client.list();
+
+  expect(pending).toMatchObject([
+    { kind: 'self', reason: 'self_note', text: 'Likes a question that takes a while to answer' },
   ]);
 });
 

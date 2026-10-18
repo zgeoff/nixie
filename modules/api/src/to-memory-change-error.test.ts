@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { MemoryItemNotFoundError, StaleVersionError } from '@heynixie/memory';
+import { MemoryItemNotFoundError, SelfNoteError, StaleVersionError } from '@heynixie/memory';
 import { toMemoryChangeError } from './to-memory-change-error';
 
 test('it turns a stale version into the declared STALE_VERSION', () => {
@@ -20,6 +20,16 @@ test("it turns the store's missing item into the declared MEMORY_ITEM_NOT_FOUND"
   });
 
   expect(error).toStrictEqual(new Error('missing'));
+});
+
+test("it turns a self-note's refusal into the declared WRONG_STATE", () => {
+  const error = toMemoryChangeError(new SelfNoteError('a self-note is never pinned'), {
+    MEMORY_ITEM_NOT_FOUND: () => new Error('missing'),
+    STALE_VERSION: () => new Error('stale'),
+    WRONG_STATE: () => new Error('wrong state'),
+  });
+
+  expect(error).toStrictEqual(new Error('wrong state'));
 });
 
 test('it leaves an error with a code the procedure does not declare as it is', () => {

@@ -28,6 +28,7 @@ export const mockProposalProcedures = {
         evidence: proposal.evidence === null ? null : structuredClone(proposal.evidence),
         isPinned: proposal.isPinned,
         itemID: proposal.itemID,
+        kind: proposal.kind,
         lapseAt: proposal.lapseAt,
         operation: proposal.operation,
         origin: proposal.origin,

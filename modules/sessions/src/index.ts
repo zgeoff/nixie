@@ -46,11 +46,9 @@ export { startSessionRunner } from './start-session-runner';
 export { startConversationRunner } from './start-conversation-runner';
 export type { CheckerRunnerOptions } from './start-checker-runner';
 export { startCheckerRunner } from './start-checker-runner';
+export type { CheckerAnswer, CheckerRequest, CheckerVerdict, RunCheck } from './checker-types';
 
 export type {
-  CheckerAnswer,
-  CheckerRequest,
-  CheckerVerdict,
   EventKind,
   EventRegistry,
   EventSettings,
@@ -59,7 +57,6 @@ export type {
   MemoryApproval,
   MemoryLineOptions,
   NotedEvent,
-  RunCheck,
   SessionCleanupCause,
   SessionDefinitions,
   TurnNote,

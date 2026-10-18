@@ -20,6 +20,7 @@ export function buildHostItemProcedures(readMemory: ReadHostMemory) {
 
       return {
         itemID: history.itemID,
+        kind: history.kind,
         state: history.state,
         versions: history.versions.map((version) => ({
           version: version.version,

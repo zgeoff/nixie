@@ -62,6 +62,7 @@ export { readRatingNotes } from './read-rating-notes';
 export type { WriterStatus } from './read-writer-status';
 export { readWriterStatus } from './read-writer-status';
 export { PinnedCoreFullError } from './pinned-core-full-error';
+export { SelfNoteError } from './self-note-error';
 export { StaleVersionError } from './stale-version-error';
 export type { StartedMemoryStore } from './start-memory-store';
 export { startMemoryStore } from './start-memory-store';
@@ -116,6 +117,7 @@ export type {
   Encoder,
   ForgetRequest,
   MemoryChange,
+  MemoryKind,
   MemoryContext,
   MemoryOrigin,
   MemoryState,

@@ -5,6 +5,7 @@ import type { Selectable } from 'kysely';
 import type { reviewReasons } from './review-reasons';
 import type {
   MemoryChange,
+  MemoryKind,
   MemoryOrigin,
   QuoteEvidence,
   VersionRef,
@@ -107,6 +108,9 @@ export interface GatedRememberRequest {
   readonly eventID?: number;
   readonly target?: VersionRef;
   readonly isPinned?: boolean;
+
+  // a new item's kind, a fact when unset; an edit keeps the item's own kind
+  readonly itemKind?: MemoryKind;
   readonly caller: WriteCaller;
 }
 
@@ -181,6 +185,9 @@ export interface MemoryProposal {
   readonly itemID: string;
   readonly targetVersion: number | null;
   readonly isPinned: boolean;
+
+  // the kind of the item the proposal creates or changes
+  readonly kind: MemoryKind;
   readonly reason: ReviewReason;
   readonly actionHash: string;
   readonly origin: MemoryOrigin;
@@ -308,6 +315,9 @@ export interface MemoryProposalTable {
   readonly created_at: number;
   readonly lapse_at: number;
   readonly resolved_sequence: number | null;
+
+  // the kind of the item the proposal creates or changes
+  readonly kind: MemoryKind;
 }
 
 export interface MemoryNoticeEntryTable {

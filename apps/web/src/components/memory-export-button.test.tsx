@@ -75,7 +75,7 @@ test('it saves every item to the file the user picks, with a forgotten item as o
   ]);
 
   expect(JSON.parse(files[0]?.text ?? 'null')).toMatchObject({
-    header: { schemaVersion: 1, snapshotHash: 'sha256:mock' },
+    header: { schemaVersion: 2, snapshotHash: 'sha256:mock' },
     items: [
       { itemID: active.itemID, versions: [{ text: 'Rents allotment plot 14' }] },
       { itemID: forgotten.itemID, forgottenAt: '2026-10-13T18:31:00.000Z' },
@@ -152,7 +152,7 @@ test('it aborts the file and tells the user when the stream ends before the expo
 
   // the header's chunk, then a clean end of the stream with no completion event
   const header =
-    '{"header":{"schemaVersion":1,"exportedAt":"2026-10-14T08:00:00.000Z","snapshotHash":"sha256:mock"},"items":[';
+    '{"header":{"schemaVersion":2,"exportedAt":"2026-10-14T08:00:00.000Z","snapshotHash":"sha256:mock"},"items":[';
 
   server.use(
     http.post(

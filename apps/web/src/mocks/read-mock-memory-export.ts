@@ -2,11 +2,11 @@ import { store } from './store';
 import type { StoredMemoryItem } from './to-mock-memory-item';
 
 // Reads the mock store into the chunks of an export file as nixie's memory store streams it, in
-// schema version 1: the header, then each item in the order the store created it, one chunk per
+// schema version 2: the header, then each item in the order the store created it, one chunk per
 // item. A forgotten item, and a forgetting one, is only its ID and the time its forget completed.
 export function readMockMemoryExport(exportedAt: Date): readonly string[] {
   const header = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: exportedAt.toISOString(),
     snapshotHash: 'sha256:mock',
   };
@@ -28,6 +28,7 @@ function toExportItem(item: StoredMemoryItem) {
     shortID: item.shortID,
     state: item.state,
     isPinned: item.isPinned,
+    kind: item.kind,
     versions: item.versions.map((version, index) => ({
       version: index + 1,
       change: version.change,
