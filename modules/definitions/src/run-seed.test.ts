@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { Projection } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import { sql } from 'kysely';
+import { z } from 'zod';
 import { buildContentHash } from './build-content-hash';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { createPathSource } from './create-path-source';
@@ -395,7 +396,7 @@ test('it seeds each skill under format 2 and names the added skills in its recor
     { name: 'tide-tables', skillHash, origin: 'definitions' },
   ]);
 
-  expect(records.rows.map((row) => JSON.parse(row.payload))).toMatchObject([
+  expect(records.rows.map((row): unknown => JSON.parse(row.payload))).toMatchObject([
     {
       skills: [{ name: 'tide-tables', skillHash, origin: 'definitions' }],
       skillChanges: { added: ['tide-tables'], changed: [], removed: [] },
@@ -437,7 +438,11 @@ test('it names the skills a later seed changes and removes in its record', async
   const records = await sql<{ payload: string }>`select payload from records
     order by sequence`.execute(ctx.writer.db);
 
-  expect(records.rows.map((row) => JSON.parse(row.payload).skillChanges)).toStrictEqual([
+  const payloads = records.rows.map((row) =>
+    z.looseObject({ skillChanges: z.unknown() }).parse(JSON.parse(row.payload)),
+  );
+
+  expect(payloads.map((payload) => payload.skillChanges)).toStrictEqual([
     { added: ['bird-log', 'tide-tables'], changed: [], removed: [] },
     { added: [], changed: ['tide-tables'], removed: ['bird-log'] },
   ]);

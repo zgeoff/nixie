@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { parseSkillFrontmatter } from './parse-skill-frontmatter';
 
 test('it reads every field nixie keeps, and the body after the frontmatter', () => {
@@ -40,11 +41,11 @@ test.each([
   ['65 characters', 'a'.repeat(65)],
 ])('it refuses a name with %s', (_label, name) => {
   const text = `---\nname: ${name}\ndescription: Fills PDF forms.\n---\n`;
+  const reasons = parseSkillFrontmatter(text);
 
-  expect(parseSkillFrontmatter(text)).toSatisfy(
-    (reasons: unknown) =>
-      Array.isArray(reasons) && reasons.some((reason) => reason.startsWith('name: ')),
-  );
+  invariant(Array.isArray(reasons));
+
+  expect(reasons).toContainEqual(expect.stringMatching(/^name: /u));
 });
 
 test('it refuses a description longer than 1,024 characters', () => {
