@@ -13,6 +13,8 @@
     "@heynixie/compaction": "workspace:*",
     "@heynixie/definitions": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
     "zod": "catalog:"
   }
 }
