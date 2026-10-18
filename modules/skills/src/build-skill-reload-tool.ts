@@ -1,6 +1,7 @@
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
-import { reloadOutput, runSkillReload } from './run-skill-reload';
+import { runSkillReload } from './run-skill-reload';
+import { skillReloadOutput } from './skill-reload-output';
 import type { SkillToolsContext } from './types';
 
 // the input as the input schema accepted it
@@ -21,7 +22,7 @@ export function buildSkillReloadTool(context: SkillToolsContext): ToolDefinition
       required: ['name'],
       additionalProperties: false,
     },
-    output: reloadOutput,
+    output: skillReloadOutput,
     declaration: {
       effects: ['note'],
       destinations: [],
