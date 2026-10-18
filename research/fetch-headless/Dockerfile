@@ -3,7 +3,7 @@
 #   docker build -f research/fetch-headless/Dockerfile -t fetch-headless:full .
 #   docker build -f research/fetch-headless/Dockerfile -t fetch-headless:shell \
 #     --build-arg ENGINE=chromium-headless-shell .
-FROM oven/bun:1.4.2-slim
+FROM oven/bun:1.4.3-slim
 # chromium for the full browser, or chromium-headless-shell for the headless-only build
 ARG ENGINE=chromium
 RUN apt-get update \
