@@ -37,7 +37,11 @@ interface StubModelBody {
   readonly model?: string;
   readonly stream?: boolean;
   readonly messages?: readonly { readonly role: string; readonly content: unknown }[];
-  readonly tools?: readonly { readonly name: string }[];
+  readonly tools?: readonly {
+    readonly name: string;
+    readonly description?: string;
+    readonly input_schema?: unknown;
+  }[];
   readonly system?: unknown;
 }
 

@@ -7,6 +7,7 @@ import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import { runTurn } from './run-turn';
 import { buildQueryRecorder } from './test-utils/build-query-recorder';
 import { buildStubToolServer } from './test-utils/build-stub-tool-server';
+import { startStubChangingToolServer } from './test-utils/start-stub-changing-tool-server';
 import { startStubModel } from './test-utils/start-stub-model';
 
 async function setupTest() {
@@ -600,6 +601,132 @@ test('it sends the system prompt of each turn on a resumed session, not the one 
   const system = JSON.stringify(ctx.model.requests.at(-1)?.body?.system);
 
   expect(system).toInclude('Pinned: the spare key sits under the blue flowerpot.');
+});
+
+test('it offers the model the changed form of a tool on the next turn of a resumed session', async () => {
+  const ctx = await setupTest();
+
+  const tools = startStubChangingToolServer({
+    description: 'Reads a note by its name.',
+    inputSchema: { properties: { name: { type: 'string' } } },
+  });
+
+  onTestFinished(() => tools.stop());
+
+  ctx.model.addReplies({ text: 'APPLE' }, { text: 'BANANA' });
+
+  await runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+    ...ctx.deps,
+    toolServer: tools.config,
+  });
+
+  const first = ctx.frames.at(-1);
+
+  if (first?.type !== 'ended') {
+    throw new Error('the first turn did not end');
+  }
+
+  tools.changeTool({
+    description: 'Reads a note by its short ID.',
+    inputSchema: { properties: { noteID: { type: 'string' } }, required: ['noteID'] },
+  });
+
+  await runTurn(
+    buildMockTurnFrame({ profile: { baseURL: ctx.model.url }, resume: first.boundary }),
+    { ...ctx.deps, toolServer: tools.config },
+  );
+
+  expect(ctx.model.requests.at(-1)?.body?.tools).toContainEqual({
+    name: 'mcp__nixie__note_read',
+    description: 'Reads a note by its short ID.',
+    input_schema: {
+      type: 'object',
+      properties: { noteID: { type: 'string' } },
+      required: ['noteID'],
+    },
+  });
+});
+
+test('it offers the model the listed form of a tool at the next step of a turn when the server sends no notice', async () => {
+  const ctx = await setupTest();
+
+  const tools = startStubChangingToolServer({
+    description: 'Reads a note by its name.',
+    inputSchema: { properties: { name: { type: 'string' } } },
+  });
+
+  onTestFinished(() => tools.stop());
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_wait', input: {} } },
+    { text: 'Noted.' },
+  );
+
+  const turn = runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+    ...ctx.deps,
+    toolServer: tools.config,
+  });
+
+  await tools.waitForHeldCall();
+
+  tools.changeTool({
+    description: 'Reads a note by its short ID.',
+    inputSchema: { properties: { noteID: { type: 'string' } }, required: ['noteID'] },
+  });
+
+  tools.release();
+
+  await turn;
+
+  expect(ctx.model.requests.at(-1)?.body?.tools).toContainEqual({
+    name: 'mcp__nixie__note_read',
+    description: 'Reads a note by its name.',
+    input_schema: { type: 'object', properties: { name: { type: 'string' } } },
+  });
+});
+
+test('it offers the model the changed form of a tool at the next step of a turn once the CLI lists the tools after a notice', async () => {
+  const ctx = await setupTest();
+
+  const tools = startStubChangingToolServer({
+    description: 'Reads a note by its name.',
+    inputSchema: { properties: { name: { type: 'string' } } },
+  });
+
+  onTestFinished(() => tools.stop());
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_wait', input: {} } },
+    { text: 'Noted.' },
+  );
+
+  const turn = runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+    ...ctx.deps,
+    toolServer: tools.config,
+  });
+
+  await tools.waitForHeldCall();
+
+  tools.changeTool({
+    description: 'Reads a note by its short ID.',
+    inputSchema: { properties: { noteID: { type: 'string' } }, required: ['noteID'] },
+  });
+
+  await tools.notifyToolsChanged();
+
+  tools.release();
+
+  await turn;
+
+  expect(ctx.model.requests.at(-1)?.body?.tools).toContainEqual({
+    name: 'mcp__nixie__note_read',
+    description: 'Reads a note by its short ID.',
+    input_schema: {
+      type: 'object',
+      properties: { noteID: { type: 'string' } },
+      required: ['noteID'],
+    },
+  });
 });
 
 test('it never compacts the session itself when a call reads past the profile window', async () => {

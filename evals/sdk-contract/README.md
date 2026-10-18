@@ -24,6 +24,12 @@ model's prose wherever the SDK exposes the answer.
   the default snapshot keeps the recorded one, so
   [the pinned core](../../docs/design/platform/memory/context.md#the-pinned-core) sets the snapshot
   off on every query.
+- `tool-list`: a resumed session with `snapshot: false` lists the tools again and sends the model a
+  changed tool's new description and input schema. A session that snapshots its system prompt
+  records the tool list beside it and keeps the recorded form on a resume. Inside a turn, the CLI
+  keeps the tools it listed until a `notifications/tools/list_changed` makes it list them again.
+  [A changed tool in a running task](../../docs/design/platform/connectors/mcp-proxy.md#a-changed-tool-in-a-running-task)
+  relies on the resume, and on the snapshot staying off.
 - `owner-input`: a `next` message sent during a tool call reaches the model after that call, in the
   same turn, on an assistant message stamped with the message's `uuid`. An interrupt keeps a queued
   message, which starts the next turn.
