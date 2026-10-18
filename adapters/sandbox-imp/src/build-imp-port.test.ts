@@ -282,7 +282,7 @@ test('it passes on a failed wake that is no impd error, such as impd not answeri
 
   expect(port.wakeImp('nixie-a')).rejects.toMatchObject({
     name: 'TypeError',
-    code: 'ConnectionRefused',
+    code: 'ECONNREFUSED',
   });
 });
 

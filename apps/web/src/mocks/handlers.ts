@@ -7,7 +7,9 @@ import { webOrigin } from './web-origin';
 // jar's cookies with each call and keeps what the response sets, as a browser would.
 export const handlers = [
   http.all(`${webOrigin}/rpc/*`, async (info) => {
-    const headers = new Headers(info.request.headers);
+    // Bun's Headers drops the multipart content type of msw's request when it copies its headers
+    // whole, so the handler copies them one entry at a time
+    const headers = new Headers([...info.request.headers]);
 
     const cookie = [...browserCookies].map(([name, value]) => `${name}=${value}`).join('; ');
 
