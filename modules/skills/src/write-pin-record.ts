@@ -10,6 +10,7 @@ type PinState = 'none' | 'pinned';
 // pins once, and only a reload moves a pinned task on.
 const pinTransitions = {
   'skills.pinned': ['none'],
+  'skills.reloaded': ['pinned'],
 } satisfies Partial<Record<SkillsRecordKind, readonly PinState[]>>;
 
 type PinRecordKind = keyof typeof pinTransitions;
@@ -37,7 +38,7 @@ export function writePinRecord(
 }
 
 // every kind that leaves a task pinned
-const pinKinds: readonly SkillsRecordKind[] = ['skills.pinned'];
+const pinKinds: readonly SkillsRecordKind[] = ['skills.pinned', 'skills.reloaded'];
 
 async function readPinState(tx: Transaction<unknown>, thread: string): Promise<PinState> {
   const row = await tx

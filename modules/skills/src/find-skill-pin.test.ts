@@ -55,26 +55,38 @@ test('it reads the skills of the newest reload over an earlier pin', async () =>
   expect(pin).toStrictEqual([{ name: 'tide-tables', skillHash: 'hash-b', origin: 'definitions' }]);
 });
 
-test('it reads the skills of the newest pin over an earlier reload', async () => {
+test('it reads the skills of the newest of 2 reloads', async () => {
   const ctx = await setupTest();
-
-  await recordSkillReload(ctx.log, {
-    thread: 'task-a',
-    inForce: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
-    plan: {
-      skills: [{ name: 'tide-tables', skillHash: 'hash-a', origin: 'definitions' }],
-      changes: [{ name: 'tide-tables', oldHash: null, newHash: 'hash-a' }],
-    },
-  });
 
   await recordSkillPin(ctx.log, {
     thread: 'task-a',
     inForce: {
-      snapshotHash: 'snapshot-b',
+      snapshotHash: 'snapshot-a',
       personaVersion: 'persona-a',
-      skills: [{ name: 'bird-log', skillHash: 'hash-c', origin: 'vendored' }],
+      skills: [{ name: 'tide-tables', skillHash: 'hash-a', origin: 'definitions' }],
     },
-    list: ['bird-log'],
+    list: ['tide-tables'],
+  });
+
+  await recordSkillReload(ctx.log, {
+    thread: 'task-a',
+    inForce: { snapshotHash: 'snapshot-b', personaVersion: 'persona-a' },
+    plan: {
+      skills: [{ name: 'tide-tables', skillHash: 'hash-b', origin: 'definitions' }],
+      changes: [{ name: 'tide-tables', oldHash: 'hash-a', newHash: 'hash-b' }],
+    },
+  });
+
+  await recordSkillReload(ctx.log, {
+    thread: 'task-a',
+    inForce: { snapshotHash: 'snapshot-c', personaVersion: 'persona-a' },
+    plan: {
+      skills: [{ name: 'bird-log', skillHash: 'hash-c', origin: 'vendored' }],
+      changes: [
+        { name: 'bird-log', oldHash: null, newHash: 'hash-c' },
+        { name: 'tide-tables', oldHash: 'hash-b', newHash: null },
+      ],
+    },
   });
 
   const pin = await findSkillPin(ctx.log, 'task-a');
