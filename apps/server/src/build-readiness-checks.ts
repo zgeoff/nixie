@@ -1,18 +1,19 @@
-import type { HealthChecks } from '@heynixie/ops';
-import { checkDisk } from '@heynixie/ops';
-import type { SandboxAdapter } from '@heynixie/sandbox';
+import type { HealthChecks, PartRefresh, PartReport } from '@heynixie/ops';
 import type { StartState } from './build-start-state';
+
+// The readiness parts that call out of the process: impd's answer and the data volume's use. A
+// refresh checks them on an interval, so a readiness request never waits on impd.
+export type RefreshedPart = 'imp_runtime' | 'disk';
 
 // The readiness checks of the slice 1 parts, and the advisory part that shows failing turns without
 // taking nixie out of routing. The conversation imp stays unready until the runners start, so a
 // start step that fails and retries after it keeps nixie unready.
 export function buildReadinessChecks(
   state: StartState,
-  adapter: Pick<SandboxAdapter, 'checkRuntime'>,
-  dataDir: string,
+  refresh: Pick<PartRefresh<RefreshedPart>, 'read'>,
 ): Pick<HealthChecks, 'readiness' | 'advisory'> {
   return {
-    readiness: buildReadinessParts(state, adapter, dataDir),
+    readiness: buildReadinessParts(state, refresh),
     advisory: {
       conversation_turns: () => Promise.resolve(state.read().turns),
     },
@@ -21,23 +22,13 @@ export function buildReadinessChecks(
 
 function buildReadinessParts(
   state: StartState,
-  adapter: Pick<SandboxAdapter, 'checkRuntime'>,
-  dataDir: string,
+  refresh: Pick<PartRefresh<RefreshedPart>, 'read'>,
 ): HealthChecks['readiness'] {
   return {
     database: () => Promise.resolve(state.read().database),
     definitions: () => Promise.resolve(state.read().definitions),
-    imp_host: async () => {
-      const runtime = await adapter.checkRuntime();
-
-      if (!runtime.isReady) {
-        return runtime;
-      }
-
-      return state.read().areImagesAdded
-        ? { isReady: true, reason: null }
-        : { isReady: false, reason: 'the images in the sandbox manifest are not all added' };
-    },
+    imp_host: () =>
+      Promise.resolve(buildImpHostReport(refresh.read('imp_runtime'), state.read().areImagesAdded)),
     conversation_imp: () => {
       const reports = state.read();
 
@@ -48,6 +39,16 @@ function buildReadinessParts(
 
       return Promise.resolve(report);
     },
-    disk: () => checkDisk(dataDir),
+    disk: () => Promise.resolve(refresh.read('disk')),
   };
+}
+
+function buildImpHostReport(runtime: PartReport, areImagesAdded: boolean): PartReport {
+  if (!runtime.isReady) {
+    return runtime;
+  }
+
+  return areImagesAdded
+    ? { isReady: true, reason: null }
+    : { isReady: false, reason: 'the images in the sandbox manifest are not all added' };
 }

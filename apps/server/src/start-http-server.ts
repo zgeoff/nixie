@@ -1,12 +1,11 @@
 import type { APIContext, ReadViewMemory } from '@heynixie/api';
 import { buildAPIApp } from '@heynixie/api';
 import type { Writer } from '@heynixie/log';
-import { buildHealthApp, checkDatabase } from '@heynixie/ops';
 import { Elysia } from 'elysia';
 import type { APIGate } from './build-api-gate';
-import { buildReadinessChecks } from './build-readiness-checks';
 import type { StartState } from './build-start-state';
 import type { DeploymentConfig } from './deployment-config-schema';
+import { startServerHealth } from './start-server-health';
 import type { Tools } from './tools';
 import type { Cleanup } from './types';
 
@@ -25,25 +24,18 @@ export interface HTTPServerOptions {
   readonly gate: APIGate;
 }
 
-// Serves the health endpoint and the API on the configured address. Liveness holds while the
-// process answers and the database opens; readiness lists the slice 1 parts and the advisory ones.
-// The memory view reads the memory store once the start sequence fills its slot.
+// Serves the health endpoint and the API on the configured address. The memory view reads the memory store once the start sequence fills its slot.
 export async function startHTTPServer(options: HTTPServerOptions): Promise<number> {
-  const app = new Elysia()
-    .use(
-      buildHealthApp({
-        liveness: {
-          process: () => Promise.resolve({ isReady: true, reason: null }),
-          database: () => checkDatabase(options.writer.db),
-        },
-        ...buildReadinessChecks(
-          options.state,
-          options.tools.adapter,
-          options.config.server.dataDir,
-        ),
-      }),
-    )
-    .use(buildAPIApp(options.apiContext, options.readMemory));
+  const health = await startServerHealth({
+    writer: options.writer,
+    state: options.state,
+    adapter: options.tools.adapter,
+    dataDir: options.config.server.dataDir,
+    clock: options.apiContext.clock,
+    cleanup: options.cleanup,
+  });
+
+  const app = new Elysia().use(health).use(buildAPIApp(options.apiContext, options.readMemory));
 
   const http = Bun.serve({
     hostname: options.config.server.hostname,

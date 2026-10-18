@@ -1,28 +1,78 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { expect, test } from 'bun:test';
 import { buildReadinessChecks } from './build-readiness-checks';
 import { buildStartState } from './build-start-state';
 
-async function setupTest() {
-  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-readiness-'));
-
-  onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
-
+function setupTest() {
   const state = buildStartState({ isReady: true, reason: null });
-
-  const checks = buildReadinessChecks(
-    state,
-    { checkRuntime: () => Promise.resolve({ isReady: true, reason: null }) },
-    dataDir,
-  );
+  const checks = buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) });
 
   return { state, checks };
 }
 
+test('it reports the imp host with the refresh report while impd does not answer', async () => {
+  const state = buildStartState({ isReady: true, reason: null });
+
+  state.update({ areImagesAdded: true });
+
+  const checks = buildReadinessChecks(state, {
+    read: (part) =>
+      ({
+        imp_runtime: { isReady: false, reason: 'impd does not answer' },
+        disk: { isReady: true, reason: null },
+      })[part],
+  });
+
+  const report = await checks.readiness.imp_host();
+
+  expect(report).toStrictEqual({
+    isReady: false,
+    reason: 'impd does not answer',
+  });
+});
+
+test('it reports the imp host unready while impd answers and the images are not all added', async () => {
+  const ctx = setupTest();
+
+  const report = await ctx.checks.readiness.imp_host();
+
+  expect(report).toStrictEqual({
+    isReady: false,
+    reason: 'the images in the sandbox manifest are not all added',
+  });
+});
+
+test('it reports the imp host ready once impd answers and the images are added', async () => {
+  const ctx = setupTest();
+
+  ctx.state.update({ areImagesAdded: true });
+
+  const report = await ctx.checks.readiness.imp_host();
+
+  expect(report).toStrictEqual({ isReady: true, reason: null });
+});
+
+test('it reports the disk with the refresh report', async () => {
+  const state = buildStartState({ isReady: true, reason: null });
+
+  const checks = buildReadinessChecks(state, {
+    read: (part) =>
+      ({
+        imp_runtime: { isReady: true, reason: null },
+        disk: { isReady: false, reason: 'the data volume is 93% full' },
+      })[part],
+  });
+
+  const report = await checks.readiness.disk();
+
+  expect(report).toStrictEqual({
+    isReady: false,
+    reason: 'the data volume is 93% full',
+  });
+});
+
 test('it reports the conversation imp unready before it starts', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
   const report = await ctx.checks.readiness.conversation_imp();
 
   expect(report).toStrictEqual({
@@ -32,7 +82,7 @@ test('it reports the conversation imp unready before it starts', async () => {
 });
 
 test('it keeps a started conversation imp unready until the runners start', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.state.update({ conversation: { isReady: true, reason: null } });
 
@@ -45,7 +95,7 @@ test('it keeps a started conversation imp unready until the runners start', asyn
 });
 
 test('it reports the conversation imp ready once the runners start', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.state.update({ conversation: { isReady: true, reason: null }, areRunnersStarted: true });
 
@@ -55,14 +105,15 @@ test('it reports the conversation imp ready once the runners start', async () =>
 });
 
 test('it reports the conversation turns as passing before any turn fails', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
+
   const report = await ctx.checks.advisory.conversation_turns();
 
   expect(report).toStrictEqual({ isReady: true, reason: null });
 });
 
 test('it reports failing turns in the advisory part and leaves the conversation imp ready', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   ctx.state.update({
     conversation: { isReady: true, reason: null },
