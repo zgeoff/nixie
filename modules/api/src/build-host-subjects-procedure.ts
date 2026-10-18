@@ -1,4 +1,3 @@
-// oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { hostImplementer } from './host-implementer';
 import { requireHostMemory } from './require-host-memory';
 import type { ReadHostMemory } from './types';
