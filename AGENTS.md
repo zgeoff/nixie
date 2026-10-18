@@ -64,8 +64,7 @@ Boundaries:
 - An adapter depends only on the module that owns its interface. The tags allow any module, so
   review enforces this rule.
 
-The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package, and
-[`e2e/import-zones.test.ts`](e2e/import-zones.test.ts) checks that each one still fails:
+The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package:
 
 - The Agent SDK: `guests/conversation`.
 - imp's client: `adapters/sandbox-imp`.

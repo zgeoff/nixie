@@ -22,8 +22,7 @@
     // forbids the separate const per step that every test body uses
     "one-var": "off",
     // the import boundaries: each outside system has one package that may import it, and every
-    // import names its module where the zones can see it; e2e/import-zones.test.ts checks that each
-    // boundary fails a real import
+    // import names its module where the zones can see it
     "zgeoff/import-zones": [
       "error",
       {
