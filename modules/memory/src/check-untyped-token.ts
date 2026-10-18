@@ -16,10 +16,10 @@ export interface UntypedTokenQuery {
   readonly ownText: string;
 }
 
-// Finds the first destination-like token in the text that appears neither in what you typed in
-// your latest messages on the thread nor in your own text, or null. It is the token check that
-// memory writes under an allow rule run, for a write that no quote backs.
-export async function findUntypedToken(
+// Reads your latest messages on the thread from the log, and returns the first destination-like
+// token in the text that appears neither in what you typed there nor in your own text, or null. It
+// is the token check that memory writes under an allow rule run, for a write that no quote backs.
+export async function checkUntypedToken(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: UntypedTokenQuery,
 ): Promise<DestinationToken | null> {

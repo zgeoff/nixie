@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { findUntypedToken } from './find-untyped-token';
+import { checkUntypedToken } from './check-untyped-token';
 import { startTestMemory } from './test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from './test-utils/write-owner-message-record';
 
@@ -16,7 +16,7 @@ test('it passes a token you typed on the thread', async () => {
     spans: [{ start: 0, end: 39, source: 'typed' }],
   });
 
-  const token = await findUntypedToken(ctx.memory.log, {
+  const token = await checkUntypedToken(ctx.memory.log, {
     thread: 'conversation',
     limit: 20,
     text: 'Email the report to sam@example.com.',
@@ -29,7 +29,7 @@ test('it passes a token you typed on the thread', async () => {
 test('it passes a token that your own text holds', async () => {
   const ctx = await setupTest();
 
-  const token = await findUntypedToken(ctx.memory.log, {
+  const token = await checkUntypedToken(ctx.memory.log, {
     thread: 'conversation',
     limit: 20,
     text: 'Read the tables at https://tides.example.org/ports.',
@@ -51,7 +51,7 @@ test('it finds a token you only pasted', async () => {
     ],
   });
 
-  const token = await findUntypedToken(ctx.memory.log, {
+  const token = await checkUntypedToken(ctx.memory.log, {
     thread: 'conversation',
     limit: 20,
     text: 'Email the report to sam@example.com.',
@@ -70,7 +70,7 @@ test('it finds a token you typed only on another thread', async () => {
     spans: [{ start: 0, end: 39, source: 'typed' }],
   });
 
-  const token = await findUntypedToken(ctx.memory.log, {
+  const token = await checkUntypedToken(ctx.memory.log, {
     thread: 'conversation',
     limit: 20,
     text: 'Email the report to sam@example.com.',

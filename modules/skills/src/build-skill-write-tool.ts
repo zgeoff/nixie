@@ -2,7 +2,7 @@ import { createShortID } from '@heynixie/db';
 import type { DefinitionsInForce, ParseProblem, ParsedSkill } from '@heynixie/definitions';
 import { checkSkillFiles, findSkillVersions } from '@heynixie/definitions';
 import { writeRecords } from '@heynixie/log';
-import { defaultGateLimits, findUntypedToken } from '@heynixie/memory';
+import { checkUntypedToken, defaultGateLimits } from '@heynixie/memory';
 import type { ToolCall, ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
 import { z } from 'zod';
 import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
@@ -102,7 +102,7 @@ async function runSkillWrite(
 
   const ownText = await readOwnText(context, inForce);
 
-  const token = await findUntypedToken(context.log, {
+  const token = await checkUntypedToken(context.log, {
     thread: run.thread,
     limit: defaultGateLimits.evidenceWindow,
     text: [...skill.files.values()].join('\n'),
