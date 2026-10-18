@@ -39,6 +39,7 @@
     "elysia": "catalog:",
     "gunshi": "catalog:",
     "tiny-invariant": "catalog:",
+    "xstate": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
