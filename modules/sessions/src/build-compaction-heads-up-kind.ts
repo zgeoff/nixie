@@ -124,7 +124,6 @@ function toContext(record: LogRecord): ContextSize | null {
     : { size: ended.contextSize, window: ended.contextWindow };
 }
 
-// a count of at least a thousand rounds to thousands, as "40k"
 function formatTokens(tokens: number): string {
   return tokens >= 1000 ? `${String(Math.round(tokens / 1000))}k` : String(tokens);
 }
