@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.2](https://github.com/zgeoff/nixie/compare/v0.33.1...v0.33.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* **geo-1359:** abort an impd readiness call that outlasts its timeout ([#404](https://github.com/zgeoff/nixie/issues/404)) ([89b1c83](https://github.com/zgeoff/nixie/commit/89b1c83f54700c9ddc49f24e220d48c6289da135))
+
 ## [0.33.1](https://github.com/zgeoff/nixie/compare/v0.33.0...v0.33.1) (2026-10-18)
 
 
