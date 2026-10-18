@@ -14,7 +14,12 @@ export async function writeResetSeed(
   seed: ResetSeed,
 ): Promise<DefinitionsInForce> {
   await writeSnapshotRows(tx, seed);
-  await writeSkillRows(tx, seed.inForce.snapshotHash, seed.skills);
+
+  await writeSkillRows(tx, {
+    snapshotHash: seed.inForce.snapshotHash,
+    skills: seed.skills,
+    conversationSkills: seed.inForce.conversationSkills,
+  });
 
   const [record] = await writeRecordsInTransaction(tx, log, [
     {

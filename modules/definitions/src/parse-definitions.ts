@@ -1,5 +1,6 @@
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
+import { parseConversationSkills } from './parse-conversation-skills';
 import { parseSkills } from './parse-skills';
 import type { ParsedDefinitions, Snapshot } from './types';
 
@@ -16,6 +17,10 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
   const hasSkills = formatVersion >= skillsFormat;
   const skills = hasSkills ? parseSkills(snapshot, texts) : [];
 
+  const conversationSkills = hasSkills
+    ? parseConversationSkills(texts.get(manifestPath) ?? '', skills)
+    : [];
+
   const unapplied = [...texts.keys()]
     .filter((path) => path !== manifestPath && path !== personaPath)
     .filter((path) => !hasSkills || !path.startsWith('skills/'))
@@ -23,7 +28,7 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
 
   requireParsable(unapplied.map((path) => [path, texts.get(path) ?? '']));
 
-  return { formatVersion, persona, skills, unapplied };
+  return { formatVersion, persona, skills, conversationSkills, unapplied };
 }
 
 // the first format whose seed applies the skills; format 1 lists their files as unapplied

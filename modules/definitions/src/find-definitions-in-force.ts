@@ -39,7 +39,7 @@ export async function findDefinitionsInForce(
   const skills = await db
     .$extendTables<DefinitionsTables>()
     .selectFrom('snapshot_skills')
-    .select(['name', 'skill_hash', 'origin'])
+    .select(['name', 'skill_hash', 'origin', 'in_conversation'])
     .where('snapshot_hash', '=', row.snapshot_hash)
     .orderBy('name')
     .execute();
@@ -61,5 +61,8 @@ export async function findDefinitionsInForce(
       skillHash: skill.skill_hash,
       origin: skill.origin,
     })),
+    conversationSkills: skills
+      .filter((skill) => skill.in_conversation === 1)
+      .map((skill) => skill.name),
   };
 }

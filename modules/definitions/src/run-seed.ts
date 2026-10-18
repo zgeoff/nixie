@@ -57,6 +57,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     persona: read.parsed.persona,
     policy: options.policy,
     skills: read.parsed.skills,
+    conversationSkills: read.parsed.conversationSkills,
   });
 
   return withWriteTransaction(options.log.writer, async (tx) => {
@@ -114,7 +115,12 @@ async function applySeed(
   const seededAt = options.log.writer.clock.now();
 
   await writeSnapshotRows(tx, plan, seededAt);
-  await writeSkillRows(tx, plan.built.snapshotHash, plan.parsed.skills);
+
+  await writeSkillRows(tx, {
+    snapshotHash: plan.built.snapshotHash,
+    skills: plan.parsed.skills,
+    conversationSkills: plan.parsed.conversationSkills,
+  });
 
   const record = await writeSeedRecord(tx, options, plan);
 
@@ -131,6 +137,7 @@ async function applySeed(
     policyHash: plan.built.policyHash,
     recordSequence: record.sequence,
     skills: plan.parsed.skills.map((skill) => toSkillRef(skill)),
+    conversationSkills: plan.parsed.conversationSkills,
   };
 
   await writeSeedRow(tx, inForce);

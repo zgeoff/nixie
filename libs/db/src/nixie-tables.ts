@@ -261,6 +261,7 @@ export interface NixieTables {
     readonly name: string;
     readonly skill_hash: string;
     readonly origin: string;
+    readonly in_conversation: number;
   };
   readonly tasks: {
     readonly task_id: string;

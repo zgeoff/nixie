@@ -8,6 +8,9 @@ export interface DefinitionsSnapshotInput {
   readonly persona: string;
   readonly policy: SnapshotPolicy;
   readonly skills: readonly SkillRef[];
+
+  // the names on the conversation's skill list, which enter the form in name order
+  readonly conversationSkills: readonly string[];
 }
 
 // The definitions in force in canonical form, with the snapshot hash that every record carries.
@@ -24,7 +27,15 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
 
   const skills = sortUniqueBy(input.skills.map(buildSkillForm), 'name', (skill) => skill.name);
   const policyHash = buildSHA256(toCanonicalJSON(policy));
-  const form = toCanonicalJSON({ jobs: [], persona: personaVersion, policy, skills });
+  const conversation = { skills: [...new Set(input.conversationSkills)].toSorted() };
+
+  const form = toCanonicalJSON({
+    conversation,
+    jobs: [],
+    persona: personaVersion,
+    policy,
+    skills,
+  });
 
   return { snapshotHash: buildSHA256(form), personaVersion, policyHash, persona, form };
 }

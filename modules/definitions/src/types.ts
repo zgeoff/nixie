@@ -71,6 +71,9 @@ export interface ParsedDefinitions {
 
   // every skill that passed the seed checks, in name order; none before format 2
   readonly skills: readonly ParsedSkill[];
+
+  // the skills field of nixie.yaml in name order, every skill when it is unset
+  readonly conversationSkills: readonly string[];
   readonly unapplied: readonly string[];
 }
 
@@ -125,6 +128,9 @@ export interface DefinitionsInForce {
 
   // the skills the snapshot holds, in name order
   readonly skills: readonly SkillRef[];
+
+  // the names on the conversation's skill list, in name order
+  readonly conversationSkills: readonly string[];
 }
 
 // The rows of the definitions tables, as SQLite returns them.
@@ -167,6 +173,9 @@ interface SnapshotSkillRow {
   readonly name: string;
   readonly skill_hash: string;
   readonly origin: SkillOrigin;
+
+  // 1 when the skill is on the conversation's skill list
+  readonly in_conversation: number;
 }
 
 // mapped types, because Kysely's table map needs the index signature an interface lacks
