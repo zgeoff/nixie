@@ -56,9 +56,21 @@ async function findHeadsUp(
     return null;
   }
 
-  const isRepeat = await hasEarlierHeadsUp(log, settings.headsUp, record);
+  const [opened] = await readRecords(log, {
+    afterSequence: 0,
+    beforeSequence: record.sequence,
+    thread: conversationTaskID,
+    kinds: ['model.session_opened'],
+    order: 'newest',
+    limit: 1,
+  });
 
-  if (isRepeat) {
+  const earlier = await readEarlierHeadsUp(log, settings.headsUp, {
+    after: opened?.record.sequence ?? 0,
+    before: record.sequence,
+  });
+
+  if (earlier !== null) {
     return null;
   }
 
@@ -69,31 +81,39 @@ async function findHeadsUp(
   };
 }
 
-// whether an earlier turn of the same session, after the newest opening before this turn, already
-// ended past the heads-up
-async function hasEarlierHeadsUp(
+interface TurnSpan {
+  readonly after: number;
+  readonly before: number;
+}
+
+// The newest earlier turn of the session that ended past the heads-up, read a page at a time back
+// to the session's opening, or null when none did.
+async function readEarlierHeadsUp(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   headsUp: number,
-  record: LogRecord,
-): Promise<boolean> {
-  const [opened] = await readRecords(log, {
-    afterSequence: 0,
-    beforeSequence: record.sequence,
-    thread: conversationTaskID,
-    kinds: ['model.session_opened'],
-    order: 'newest',
-    limit: 1,
-  });
-
-  const earlier = await readRecords(log, {
-    afterSequence: opened?.record.sequence ?? 0,
-    beforeSequence: record.sequence,
+  span: TurnSpan,
+): Promise<LogRecord | null> {
+  const page = await readRecords(log, {
+    afterSequence: span.after,
+    beforeSequence: span.before,
     thread: conversationTaskID,
     kinds: ['model.turn_ended'],
+    order: 'newest',
+    limit: pageSize,
   });
 
-  return earlier.some((entry) => isCompactionDue(toContext(entry.record), headsUp));
+  const found = page.find((entry) => isCompactionDue(toContext(entry.record), headsUp));
+  const oldest = page.at(-1);
+
+  if (found !== undefined || oldest === undefined || page.length < pageSize) {
+    return found?.record ?? null;
+  }
+
+  return readEarlierHeadsUp(log, headsUp, { after: span.after, before: oldest.record.sequence });
 }
+
+// the turn ends one read of a session's earlier turns takes
+const pageSize = 100;
 
 // a turn whose model calls reported no usage gives no context
 function toContext(record: LogRecord): ContextSize | null {

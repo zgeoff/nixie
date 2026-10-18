@@ -84,6 +84,48 @@ test('it gives exactly one heads-up for a session whose turns cross the heads-up
   ]);
 });
 
+test('it gives exactly one heads-up for a session that crosses the heads-up after more than a page of turns under it', async () => {
+  const ctx = await setupTest();
+
+  const records = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_opened',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+    },
+    ...Array.from({ length: 150 }, () => ({
+      kind: 'model.turn_ended' as const,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { contextSize: 100_000, contextWindow: 200_000 },
+    })),
+    ...[142_000, 151_000].map((contextSize) => ({
+      kind: 'model.turn_ended' as const,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { contextSize, contextWindow: 200_000 },
+    })),
+  ]);
+
+  const crossed = records.at(-2);
+  const later = records.at(-1);
+
+  invariant(crossed && later);
+
+  const events = await buildCompactionHeadsUpKind(ctx.tasks.context.log, {
+    threshold: 0.8,
+    headsUp: 0.7,
+  }).read({ after: 0, through: later.sequence });
+
+  expect(events).toStrictEqual([
+    {
+      sequence: crossed.sequence,
+      at: crossed.recordedAt.getTime(),
+      detail: { tokensLeft: 18_000, threshold: 0.8 },
+    },
+  ]);
+});
+
 test('it gives no heads-up for a session whose turns stay under the heads-up', async () => {
   const ctx = await setupTest();
 
