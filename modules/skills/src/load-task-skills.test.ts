@@ -123,6 +123,56 @@ test('it pins a task on its first load to the skills on its list, and records th
   ]);
 });
 
+test("it pins a task that first loads after a seed to the new version, apart from another task's pin", async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  const policy = { rules: [], tools: [] };
+
+  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  await loadTaskSkills(ctx.log, {
+    thread: 'task-a',
+    inForce: first.inForce,
+    list: ['tide-tables'],
+  });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table by port.\n---\n# Tides by port\n',
+  );
+
+  const second = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const taskA = await loadTaskSkills(ctx.log, {
+    thread: 'task-a',
+    inForce: second.inForce,
+    list: ['tide-tables'],
+  });
+
+  const taskB = await loadTaskSkills(ctx.log, {
+    thread: 'task-b',
+    inForce: second.inForce,
+    list: ['tide-tables'],
+  });
+
+  expect(taskA.map((skill) => skill.files.get('SKILL.md'))).toStrictEqual([
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  ]);
+
+  expect(taskB.map((skill) => skill.files.get('SKILL.md'))).toStrictEqual([
+    '---\nname: tide-tables\ndescription: Reads a tide table by port.\n---\n# Tides by port\n',
+  ]);
+});
+
 test('it gives a task no skills and records no pin before the first seed', async () => {
   const ctx = await setupTest();
   const skills = await loadTaskSkills(ctx.log, { thread: 'conversation', inForce: null, list: [] });

@@ -7,6 +7,7 @@ import { buildServerContext } from './build-server-context';
 import { buildStartState } from './build-start-state';
 import type { SeedParts } from './run-definitions-seed';
 import { runDefinitionsSeed } from './run-definitions-seed';
+import { buildStubFailingLogger } from './test-utils/build-stub-failing-logger';
 import { buildStubHeldSource } from './test-utils/build-stub-held-source';
 import { startTestLog } from './test-utils/start-test-log';
 
@@ -58,4 +59,28 @@ test('it starts a second seed over the same parts only after the first returns',
 
   expect(stub.events).toStrictEqual(['start', 'end', 'start', 'end']);
   expect(results.map((result) => result.status)).toStrictEqual(['seeded', 'unchanged']);
+});
+
+test('it runs the next seed over the same parts after one fails, and gives the failure to its caller', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const logger = buildStubFailingLogger();
+
+  const parts: SeedParts = {
+    context: ctx.context.apiContext,
+    source: createPathSource({ dir: ctx.root }),
+    policy: { rules: [], tools: [] },
+    inForce: ctx.context.inForce,
+    state: buildStartState({ isReady: true, reason: null }),
+    log: logger.log,
+  };
+
+  const failed = runDefinitionsSeed(parts);
+  const next = runDefinitionsSeed(parts);
+
+  expect(failed).rejects.toThrow('the logger refused');
+  expect(next).resolves.toMatchObject({ status: 'unchanged' });
 });

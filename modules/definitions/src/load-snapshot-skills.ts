@@ -1,9 +1,9 @@
 import type { Kysely } from 'kysely';
 import type { DefinitionsTables, ParsedSkill, SkillFrontmatter } from './types';
 
-// Every skill a snapshot holds, with its files, in name order; none for a snapshot without
+// Loads every skill a snapshot holds, with its files, in name order; none for a snapshot without
 // skills.
-export async function findSnapshotSkills(
+export async function loadSnapshotSkills(
   db: Kysely<unknown>,
   snapshotHash: string,
 ): Promise<readonly ParsedSkill[]> {

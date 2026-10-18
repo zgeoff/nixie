@@ -205,6 +205,66 @@ test('it moves every skill, joins one the list gained and drops one the definiti
   expect(skills.map((skill) => skill.name)).toStrictEqual(['tide-tables']);
 });
 
+test("it drops a pinned skill that left the caller's list when a reload names it", async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  const policy = { rules: [], tools: [] };
+
+  const seeded = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  await loadTaskSkills(ctx.log, {
+    thread: 'task-a',
+    inForce: seeded.inForce,
+    list: ['tide-tables'],
+  });
+
+  const outcome = await runSkillReload(
+    {
+      log: ctx.log,
+      readInForce: () => seeded.inForce,
+      refreshDefinitions: () => Promise.resolve(seeded.inForce),
+      readSkillList: () => [],
+    },
+    {
+      runID: 'run-1',
+      thread: 'task-a',
+      tools: [],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    'tide-tables',
+  );
+
+  const skills = await loadTaskSkills(ctx.log, {
+    thread: 'task-a',
+    inForce: seeded.inForce,
+    list: [],
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      skills: [
+        {
+          name: 'tide-tables',
+          oldVersion: seeded.inForce?.skills[0]?.skillHash ?? null,
+          newVersion: null,
+        },
+      ],
+    },
+  });
+
+  expect(skills).toStrictEqual([]);
+});
+
 test("it refuses a skill that is neither pinned nor on the caller's list, and records no reload", async () => {
   const ctx = await setupTest();
 

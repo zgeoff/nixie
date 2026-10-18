@@ -1,4 +1,5 @@
 import type { ToolOutcome, ToolRun } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
 import { loadTaskSkills } from './load-task-skills';
 import { planSkillReload } from './plan-skill-reload';
 import { recordSkillReload } from './record-skill-reload';
@@ -37,7 +38,10 @@ export async function runSkillReload(
     name,
   });
 
-  await recordSkillReload(context.log, { thread: run.thread, inForce, plan });
+  const isRecorded = await recordSkillReload(context.log, { thread: run.thread, inForce, plan });
+
+  // the load above pins a task with definitions in force, so the task holds a pin to move on
+  invariant(isRecorded);
 
   return {
     status: 'ok',
@@ -50,25 +54,3 @@ export async function runSkillReload(
     },
   };
 }
-
-// the result of both reload tools: each skill's version before and after, null for none
-export const reloadOutput = {
-  type: 'object',
-  properties: {
-    skills: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          oldVersion: { type: ['string', 'null'] },
-          newVersion: { type: ['string', 'null'] },
-        },
-        required: ['name', 'oldVersion', 'newVersion'],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ['skills'],
-  additionalProperties: false,
-};

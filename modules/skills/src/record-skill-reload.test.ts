@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter } from '@heynixie/log';
+import { recordSkillPin } from './record-skill-pin';
 import { recordSkillReload } from './record-skill-reload';
 
 async function setupTest() {
@@ -29,7 +30,13 @@ async function setupTest() {
 test('it records the pin and each change on the task thread under the definitions it moved to', async () => {
   const ctx = await setupTest();
 
-  await recordSkillReload(ctx.log, {
+  await recordSkillPin(ctx.log, {
+    thread: 'task-a',
+    inForce: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a', skills: [] },
+    list: [],
+  });
+
+  const isRecorded = await recordSkillReload(ctx.log, {
     thread: 'task-a',
     inForce: { snapshotHash: 'snapshot-b', personaVersion: 'persona-a' },
     plan: {
@@ -42,6 +49,8 @@ test('it records the pin and each change on the task thread under the definition
   });
 
   const reloads = await readRecords(ctx.log, { afterSequence: 0, kinds: ['skills.reloaded'] });
+
+  expect(isRecorded).toBeTrue();
 
   expect(reloads.map((entry) => entry.record)).toMatchObject([
     {
@@ -57,4 +66,22 @@ test('it records the pin and each change on the task thread under the definition
       },
     },
   ]);
+});
+
+test('it refuses a reload of a task with no pin, and writes nothing', async () => {
+  const ctx = await setupTest();
+
+  const isRecorded = await recordSkillReload(ctx.log, {
+    thread: 'task-a',
+    inForce: { snapshotHash: 'snapshot-b', personaVersion: 'persona-a' },
+    plan: {
+      skills: [{ name: 'tide-tables', skillHash: 'hash-b', origin: 'definitions' }],
+      changes: [{ name: 'tide-tables', oldHash: null, newHash: 'hash-b' }],
+    },
+  });
+
+  const reloads = await readRecords(ctx.log, { afterSequence: 0, kinds: ['skills.reloaded'] });
+
+  expect(isRecorded).toBeFalse();
+  expect(reloads).toStrictEqual([]);
 });

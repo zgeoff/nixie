@@ -4,10 +4,9 @@ import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
-import { buildSkillTools } from '@heynixie/skills';
-import { conversationTaskID } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { buildConversationSkillTools } from './build-conversation-skill-tools';
 import { buildConversationTools } from './build-conversation-tools';
 import type { ServerParts } from './types';
 
@@ -44,13 +43,10 @@ export async function startConversationEndpoint(
 
   const logRead = buildLogReadTool(options.context.log);
 
-  // the conversation's skill list holds the conversation's skills, and any other run's holds none
-  const skills = buildSkillTools({
+  const skills = buildConversationSkillTools({
     log: options.context.log,
     readInForce: tools.readInForce,
     refreshDefinitions: tools.refreshDefinitions,
-    readSkillList: (run, inForce) =>
-      run.thread === conversationTaskID ? (inForce?.conversationSkills ?? []) : [],
   });
 
   const definitions = buildConversationTools(

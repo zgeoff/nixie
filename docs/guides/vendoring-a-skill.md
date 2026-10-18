@@ -25,14 +25,15 @@ skill.
    cp -R <upstream_checkout>/skills/<name> skills/<name>
    ```
 
-2. Compute the folder's content hash from inside the folder:
+2. Compute the folder's content hash from the definitions root. The parentheses run the hash in a
+   subshell inside the folder, so your shell stays at the root:
 
    ```bash
-   cd skills/<name>
-   { printf 'nixie-definitions-v1\n'
-     find . -type f ! -path '*/.*' | sed 's|^\./||' | LC_ALL=C sort | while IFS= read -r f; do
-       printf '%s\t%s\t%s\n' "$f" "$(wc -c < "$f" | tr -d ' ')" "$(sha256sum "$f" | cut -d' ' -f1)"
-     done; } | sha256sum | cut -d' ' -f1
+   ( cd skills/<name>
+     { printf 'nixie-definitions-v1\n'
+       find . -type f ! -path '*/.*' | sed 's|^\./||' | LC_ALL=C sort | while IFS= read -r f; do
+         printf '%s\t%s\t%s\n' "$f" "$(wc -c < "$f" | tr -d ' ')" "$(sha256sum "$f" | cut -d' ' -f1)"
+       done; } | sha256sum | cut -d' ' -f1 )
    ```
 
    Expect: one line of 64 hex characters.
@@ -65,6 +66,16 @@ nixie requires no publisher signature. The pin and your review of the pull reque
 
 ## Updating a vendored skill
 
-Repeat the steps at the new commit, and replace the skill's lock entry. A changed file with the old
-entry makes the seed refuse the snapshot, so an edit to a vendored skill always goes through a new
-pin. To make the skill your own instead, remove its lock entry: a skill with no entry is yours.
+Remove the old folder before you copy the new commit's folder, so a file that upstream deleted
+leaves too and the copy lands at `skills/<name>/` instead of inside the old folder:
+
+```bash
+git -C <upstream_checkout> checkout <full_commit_sha>
+rm -rf skills/<name>
+cp -R <upstream_checkout>/skills/<name> skills/<name>
+```
+
+Then follow steps 2 to 5, and replace the skill's lock entry with the new one. A changed file with
+the old entry makes the seed refuse the snapshot, so an edit to a vendored skill always goes through
+a new pin. To make the skill your own instead, remove its lock entry: a skill with no entry is
+yours.

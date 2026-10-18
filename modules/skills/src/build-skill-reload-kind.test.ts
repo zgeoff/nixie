@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
 import { buildSkillReloadKind } from './build-skill-reload-kind';
+import { recordSkillPin } from './record-skill-pin';
 import { recordSkillReload } from './record-skill-reload';
 
 async function setupTest() {
@@ -33,6 +34,12 @@ test('it names each skill a reload on the thread changed, and leaves out one it 
 
   setSystemTime(new Date(Date.UTC(2025, 9, 13, 22, 12)));
   onTestFinished(() => setSystemTime());
+
+  await recordSkillPin(ctx.log, {
+    thread: 'conversation',
+    inForce: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a', skills: [] },
+    list: [],
+  });
 
   await recordSkillReload(ctx.log, {
     thread: 'conversation',
@@ -68,6 +75,18 @@ test('it names each skill a reload on the thread changed, and leaves out one it 
 
 test('it lists no reload that changed no skill, and none on another thread', async () => {
   const ctx = await setupTest();
+
+  await recordSkillPin(ctx.log, {
+    thread: 'conversation',
+    inForce: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a', skills: [] },
+    list: [],
+  });
+
+  await recordSkillPin(ctx.log, {
+    thread: 'task-a',
+    inForce: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a', skills: [] },
+    list: [],
+  });
 
   await recordSkillReload(ctx.log, {
     thread: 'conversation',
