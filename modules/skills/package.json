@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@heynixie/compaction": "workspace:*",
+    "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "@heynixie/memory": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "zod": "catalog:"

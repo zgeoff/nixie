@@ -156,6 +156,8 @@ export type {
 } from './writer-types';
 
 export { findTypedQuote } from './find-typed-quote';
+export type { UntypedTokenQuery } from './find-untyped-token';
+export { findUntypedToken } from './find-untyped-token';
 export { removeImageOfferKeys } from './remove-image-offer-keys';
 export { renderCheckerInput } from './render-checker-input';
 export { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';

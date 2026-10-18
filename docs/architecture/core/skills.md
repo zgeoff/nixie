@@ -39,15 +39,16 @@ skills by name alone, so the model still knows each one exists.
 
 ## The skill tools
 
-The conversation's tool endpoint serves three skill tools, and each one acts only on a skill that
-the caller's list or the task's pin holds. A run other than the conversation has an empty skill list
-on that endpoint, so it reads no skill.
+The conversation's tool endpoint serves four skill tools. Each of the three that read or reload acts
+only on a skill that the caller's list or the task's pin holds. A run other than the conversation
+has an empty skill list on that endpoint, so it reads no skill.
 
 | Tool               | Effect | Returns                                                      |
 | ------------------ | ------ | ------------------------------------------------------------ |
 | `skill_read`       | `read` | The pinned version's instructions and file list, or one file |
 | `skill_reload`     | `note` | The named skill's old and new version                        |
 | `skill_reload_all` | `note` | The old and new version of each skill on the list or the pin |
+| `skill_write`      | `note` | The proposal's short ID, pending approval                    |
 
 `skill_read` serves the pinned version. Without a path, it returns the instructions without their
 frontmatter and the paths of the skill's other files. With a path, it returns that one file, and it
@@ -64,3 +65,18 @@ joins it.
 The next turn's catalog renders the new pin. The turn's events note names each skill the reload
 changed and tells the model to read the skill again, because a body it read before the reload stays
 in its context.
+
+## Skills that nixie writes
+
+`skill_write` takes a skill's name and its complete set of files, for a new skill or a new version
+of one. It runs [the checks the seed runs](./definitions.md#skills) on the folder, plus each path
+inside the folder and the size limits a snapshot keeps to, and a skill that fails a check returns
+every problem as an error. A skill that passes becomes a proposal record on the caller's thread,
+which holds the files, the version in force it would replace, the run and the call that wrote it,
+and the outcome of the token check. The model reads the proposal by its short ID.
+
+The token check is the one that memory writes run under an allow rule, in
+[the content gate](../memory/writes.md#the-content-gate): every destination-like token in the files
+appears in what the user typed in their latest messages on the thread, or in the persona or a skill
+in force. The proposal records the first token that fails, so the review shows a destination the
+user never named.

@@ -1,5 +1,6 @@
 export { buildContentHash } from './build-content-hash';
 export type { DefinitionsSnapshotInput } from './build-definitions-snapshot';
+export { checkSkillFiles } from './check-skill-files';
 export { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 export type { PathSourceOptions } from './create-path-source';
 export { createPathSource } from './create-path-source';
