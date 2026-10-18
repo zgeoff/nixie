@@ -68,7 +68,43 @@ export interface DefinitionsSnapshot {
 export interface ParsedDefinitions {
   readonly formatVersion: number;
   readonly persona: string;
+
+  // every skill that passed the seed checks, in name order; none before format 2
+  readonly skills: readonly ParsedSkill[];
   readonly unapplied: readonly string[];
+}
+
+// Where a skill came from: your own definitions, or a vendored copy that skills.lock.json pins.
+export type SkillOrigin = 'definitions' | 'vendored';
+
+// The SKILL.md fields nixie reads. allowedTools is shown and never granted.
+export interface SkillFrontmatter {
+  readonly name: string;
+  readonly description: string;
+  readonly license: string | null;
+  readonly compatibility: string | null;
+  readonly allowedTools: string | null;
+  readonly metadata: Readonly<Record<string, string>>;
+}
+
+// One version of a skill, which its content hash keys. files holds every file by its path inside
+// the skill's folder, SKILL.md included, as text.
+export interface SkillVersion {
+  readonly name: string;
+  readonly skillHash: string;
+  readonly frontmatter: SkillFrontmatter;
+  readonly files: ReadonlyMap<string, string>;
+}
+
+export interface ParsedSkill extends SkillVersion {
+  readonly origin: SkillOrigin;
+}
+
+// A skill in force: its name, the version it is at, and where it came from.
+export interface SkillRef {
+  readonly name: string;
+  readonly skillHash: string;
+  readonly origin: SkillOrigin;
 }
 
 // The newest seed: where its files came from, and the definitions it put in force.
@@ -86,6 +122,9 @@ export interface DefinitionsInForce {
   // the hash of the policy the snapshot holds, which a conversation session records at its opening
   readonly policyHash: string;
   readonly recordSequence: number;
+
+  // the skills the snapshot holds, in name order
+  readonly skills: readonly SkillRef[];
 }
 
 // The rows of the definitions tables, as SQLite returns them.
@@ -115,11 +154,28 @@ interface SeedRow {
   readonly record_sequence: number;
 }
 
+// frontmatter holds the SkillFrontmatter and files the files by path, each as JSON
+interface SkillVersionRow {
+  readonly skill_hash: string;
+  readonly name: string;
+  readonly frontmatter: string;
+  readonly files: string;
+}
+
+interface SnapshotSkillRow {
+  readonly snapshot_hash: string;
+  readonly name: string;
+  readonly skill_hash: string;
+  readonly origin: SkillOrigin;
+}
+
 // mapped types, because Kysely's table map needs the index signature an interface lacks
 export type DefinitionsTables = CheckedTables<
   Readonly<{
     personas: PersonaRow;
     definition_snapshots: SnapshotRow;
     definition_seeds: SeedRow;
+    skill_versions: SkillVersionRow;
+    snapshot_skills: SnapshotSkillRow;
   }>
 >;

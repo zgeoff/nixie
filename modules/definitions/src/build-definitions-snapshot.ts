@@ -1,16 +1,18 @@
+import type { JSONObject } from '@heynixie/log';
 import { buildSHA256 } from './build-sha256';
 import { normalizeInstructions } from './normalize-instructions';
 import { toCanonicalJSON } from './to-canonical-json';
-import type { DefinitionsSnapshot, SnapshotPolicy, ToolDeclaration } from './types';
+import type { DefinitionsSnapshot, SkillRef, SnapshotPolicy, ToolDeclaration } from './types';
 
 export interface DefinitionsSnapshotInput {
   readonly persona: string;
   readonly policy: SnapshotPolicy;
+  readonly skills: readonly SkillRef[];
 }
 
 // The definitions in force in canonical form, with the snapshot hash that every record carries.
-// It covers what is in force, never where it came from, so it is not the content hash. Slice 1
-// seeds no jobs, so the job list stays empty.
+// It covers what is in force, never where it came from, so it is not the content hash. The seed
+// reads no jobs, so the job list stays empty.
 export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): DefinitionsSnapshot {
   const persona = normalizeInstructions(input.persona);
   const personaVersion = buildSHA256(persona);
@@ -20,8 +22,9 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     tools: sortUniqueBy(input.policy.tools.map(buildToolForm), 'name', (tool) => tool.name),
   };
 
+  const skills = sortUniqueBy(input.skills.map(buildSkillForm), 'name', (skill) => skill.name);
   const policyHash = buildSHA256(toCanonicalJSON(policy));
-  const form = toCanonicalJSON({ jobs: [], persona: personaVersion, policy });
+  const form = toCanonicalJSON({ jobs: [], persona: personaVersion, policy, skills });
 
   return { snapshotHash: buildSHA256(form), personaVersion, policyHash, persona, form };
 }
@@ -30,7 +33,11 @@ function buildToolForm(tool: ToolDeclaration): ToolDeclaration {
   return { ...tool, effects: [...new Set(tool.effects)].toSorted() };
 }
 
-// IDs and tool names are unique, so a duplicate is a bug in the caller and never a tie to break
+function buildSkillForm(skill: SkillRef): JSONObject & { readonly name: string } {
+  return { name: skill.name, skillHash: skill.skillHash, origin: skill.origin };
+}
+
+// IDs and names are unique, so a duplicate is a bug in the caller and never a tie to break
 function sortUniqueBy<T>(
   items: readonly T[],
   field: string,

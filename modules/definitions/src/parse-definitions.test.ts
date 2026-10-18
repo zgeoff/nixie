@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildContentHash } from './build-content-hash';
 import { parseDefinitions } from './parse-definitions';
 
 test('it reads the format version and the persona, and lists every other file unapplied', () => {
@@ -13,6 +14,7 @@ test('it reads the format version and the persona, and lists every other file un
   expect(parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] })).toStrictEqual({
     formatVersion: 1,
     persona: '# Persona\n',
+    skills: [],
     unapplied: ['jobs/morning.json', 'notes.md', 'rules/mail.yaml'],
   });
 });
@@ -26,7 +28,7 @@ test('it refuses definitions without a manifest', () => {
 });
 
 test.each([
-  ['format 2, which a newer release writes', 'format: 2\n'],
+  ['format 3, which a newer release writes', 'format: 3\n'],
   ['format 0', 'format: 0\n'],
 ])('it refuses a manifest with %s', (_label, manifest) => {
   const files = new Map([
@@ -38,7 +40,7 @@ test.each([
     parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
   ).toThrowWithMessage(
     Error,
-    /^nixie\.yaml: format \d is not one this release reads, which is 1$/u,
+    /^nixie\.yaml: format \d is not one this release reads, which is 1 or 2$/u,
   );
 });
 
@@ -111,7 +113,7 @@ test('it refuses an unapplied JSON file that fails to parse', () => {
   ).toThrowWithMessage(Error, /^jobs\/morning\.json: JSON Parse error/u);
 });
 
-test('it lists a skill script as unapplied', () => {
+test('it lists a skill script as unapplied under format 1', () => {
   const files = new Map([
     ['nixie.yaml', new TextEncoder().encode('format: 1\n')],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
@@ -121,6 +123,7 @@ test('it lists a skill script as unapplied', () => {
   expect(parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] })).toStrictEqual({
     formatVersion: 1,
     persona: '# Persona\n',
+    skills: [],
     unapplied: ['skills/pdf-forms/scripts/fill.py'],
   });
 });
@@ -135,4 +138,61 @@ test('it refuses a skill file that is not UTF-8 text', () => {
   expect(() =>
     parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
   ).toThrowWithMessage(Error, 'skills/pdf-forms/form.pdf: the file is not UTF-8 text');
+});
+
+test('it reads each skill under format 2, and lists none of its files as unapplied', () => {
+  const skill = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+  const script = 'print("high water")\n';
+
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['skills/tide-tables/SKILL.md', new TextEncoder().encode(skill)],
+    ['skills/tide-tables/scripts/read.py', new TextEncoder().encode(script)],
+  ]);
+
+  const folder = new Map([
+    ['SKILL.md', new TextEncoder().encode(skill)],
+    ['scripts/read.py', new TextEncoder().encode(script)],
+  ]);
+
+  expect(parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] })).toStrictEqual({
+    formatVersion: 2,
+    persona: '# Persona\n',
+    skills: [
+      {
+        name: 'tide-tables',
+        skillHash: buildContentHash(folder),
+        origin: 'definitions',
+        frontmatter: {
+          name: 'tide-tables',
+          description: 'Reads a tide table.',
+          license: null,
+          compatibility: null,
+          allowedTools: null,
+          metadata: {},
+        },
+        files: new Map([
+          ['SKILL.md', skill],
+          ['scripts/read.py', script],
+        ]),
+      },
+    ],
+    unapplied: [],
+  });
+});
+
+test('it refuses a skill under format 2 whose SKILL.md fails a seed check', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['skills/tide-tables/SKILL.md', new TextEncoder().encode('# Tides\n')],
+  ]);
+
+  expect(() =>
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+  ).toThrowWithMessage(
+    Error,
+    'skills/tide-tables/SKILL.md: the file does not open with YAML frontmatter between --- lines',
+  );
 });
