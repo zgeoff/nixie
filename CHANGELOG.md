@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.33.0](https://github.com/zgeoff/nixie/compare/v0.32.0...v0.33.0) (2026-10-18)
+
+
+### Features
+
+* **geo-556:** keep self-notes as their own kind of memory item ([#340](https://github.com/zgeoff/nixie/issues/340)) ([95ab010](https://github.com/zgeoff/nixie/commit/95ab0104a8876943a83945b1c712242f2cf12a50))
+
+
+### Bug Fixes
+
+* **deps:** pass the web and imp tests on bun 1.4.3 ([#385](https://github.com/zgeoff/nixie/issues/385)) ([f93db14](https://github.com/zgeoff/nixie/commit/f93db145f3250aa941b6cc7ea109dc47cb5e2192))
+* **deps:** update patch updates ([#382](https://github.com/zgeoff/nixie/issues/382)) ([bdb3c50](https://github.com/zgeoff/nixie/commit/bdb3c509f93fe2e1a1806042baaf587b8c6903ed))
+
 ## [0.32.0](https://github.com/zgeoff/nixie/compare/v0.31.0...v0.32.0) (2026-10-17)
 
 
