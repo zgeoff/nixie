@@ -110,6 +110,40 @@ test("it caps the catalog at its share of the profile's context window", async (
   expect(catalog).toInclude('- More skills, without descriptions: tide-tables');
 });
 
+test('it keeps a description that a larger configured share leaves room for', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'));
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  const inForce: DefinitionsInForce | null = seeded.inForce;
+
+  const read = makeSkillCatalogReader({
+    log: ctx.log,
+    readInForce: () => inForce,
+
+    // 10% of a 2,000-token window leaves 200 tokens, room for the head and the skill's line
+    profile: { model: 'claude-test-1', contextTokens: 2000 },
+    skills: { catalogShare: 0.1 },
+  });
+
+  const catalog = await read('conversation');
+
+  expect(catalog).toInclude('- tide-tables: Reads a tide table.');
+});
+
 test('it renders no catalog before the first seed', async () => {
   const ctx = await setupTest();
 
