@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import invariant from 'tiny-invariant';
 
 // Lints a temp tree with the import rules from the repo's own .oxlintrc.json, so each boundary the
 // config declares fails a real import.
@@ -15,10 +16,19 @@ async function setupTest() {
   const dir = await realpath(created);
   const configText = await Bun.file(join(root, '.oxlintrc.json')).text();
 
-  // a config without one of the rules lints nothing for it, so its failing cases catch that
-  const repoConfig = Bun.JSONC.parse(configText) as {
-    readonly rules: Readonly<Record<string, unknown>>;
-  };
+  const repoConfig: unknown = Bun.JSONC.parse(configText);
+
+  invariant(
+    typeof repoConfig === 'object' &&
+      repoConfig !== null &&
+      'rules' in repoConfig &&
+      typeof repoConfig.rules === 'object' &&
+      repoConfig.rules !== null &&
+      'zgeoff/import-zones' in repoConfig.rules &&
+      'no-restricted-globals' in repoConfig.rules &&
+      'nixie/no-hidden-import' in repoConfig.rules,
+    '.oxlintrc.json configures each import rule',
+  );
 
   const lintConfig = {
     jsPlugins: [
