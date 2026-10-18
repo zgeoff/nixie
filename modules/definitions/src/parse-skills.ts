@@ -90,7 +90,7 @@ function checkSkill(name: string, folder: SkillFolder, lock: SkillsLock): SkillC
   const text = folder.texts.get('SKILL.md');
   const document = text === undefined ? ['the skill has no SKILL.md'] : parseSkillFrontmatter(text);
   const skillHash = buildContentHash(folder.bytes);
-  const entry = lock[name];
+  const entry = Object.hasOwn(lock, name) ? lock[name] : undefined;
 
   const problems = [
     ...findFrontmatterProblems(name, document).map((reason) => ({ path: skillPath, reason })),
