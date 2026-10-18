@@ -23,8 +23,8 @@ export interface PartRefresh<Part extends string> {
 }
 
 // Runs the checks at once and then every interval, and keeps each part's last report, so a health
-// request reads the report and never waits on a slow check. Each round ends before the next starts,
-// so a slow part never stacks up calls.
+// request reads the report and never waits on a slow check. A round skips a part whose check from an
+// earlier round outlasted its timeout and still runs, so a slow part never stacks up calls.
 export function startPartRefresh<Part extends string>(
   options: PartRefreshOptions<Part>,
 ): PartRefresh<Part> {
@@ -50,8 +50,14 @@ async function runRefresh<Part extends string>(
   reports: Map<string, PartReport>,
   signal: AbortSignal,
 ): Promise<void> {
+  const running = new Set<string>();
+
   while (!signal.aborted) {
-    const report = await checkParts(options.checks, options.timeoutMs, options.clock);
+    const idle = Object.entries<PartCheck>(options.checks)
+      .filter(([part]) => !running.has(part))
+      .map(([part, check]) => [part, makeTrackedCheck(part, check, running)] as const);
+
+    const report = await checkParts(Object.fromEntries(idle), options.timeoutMs, options.clock);
 
     for (const [part, partReport] of Object.entries(report.parts)) {
       reports.set(part, partReport);
@@ -59,4 +65,17 @@ async function runRefresh<Part extends string>(
 
     await options.clock.sleep(options.intervalMs, signal);
   }
+}
+
+// a check that marks its part running until the check settles, which can be after its timeout
+function makeTrackedCheck(part: string, check: PartCheck, running: Set<string>): PartCheck {
+  return async () => {
+    running.add(part);
+
+    try {
+      return await check();
+    } finally {
+      running.delete(part);
+    }
+  };
 }

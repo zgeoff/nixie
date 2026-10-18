@@ -82,6 +82,41 @@ test('it reports a part whose check outlasts the timeout as unready', async () =
   });
 });
 
+test('it skips a part whose check still runs past its timeout in later rounds', async () => {
+  const ctx = setupTest();
+  const stuck = mock(() => Promise.withResolvers<never>().promise);
+  const disk = mock(() => Promise.resolve({ isReady: true, reason: null }));
+
+  const refresh = startPartRefresh({
+    checks: { imp_runtime: stuck, disk },
+    clock: ctx.clock,
+    intervalMs: 5000,
+    timeoutMs: 2000,
+  });
+
+  onTestFinished(() => refresh.stop());
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
+  ctx.clock.advance(2000);
+
+  // the first round's report lands just before the interval's sleep starts
+  await waitForCondition(
+    () => !refresh.read('imp_runtime').isReady && refresh.read('disk').isReady,
+  );
+
+  ctx.clock.advance(5000);
+
+  await waitForCondition(() => disk.mock.calls.length === 2);
+
+  expect(stuck).toHaveBeenCalledOnce();
+
+  expect(refresh.read('imp_runtime')).toStrictEqual({
+    isReady: false,
+    reason: 'the check took longer than 2000 ms',
+  });
+});
+
 test('it checks each part again once the interval passes', async () => {
   const ctx = setupTest();
   const disk: { report: PartReport } = { report: { isReady: true, reason: null } };

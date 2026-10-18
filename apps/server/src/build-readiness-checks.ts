@@ -43,7 +43,6 @@ function buildReadinessParts(
   };
 }
 
-// ready while impd answers and every image in the sandbox manifest is added
 function buildImpHostReport(runtime: PartReport, areImagesAdded: boolean): PartReport {
   if (!runtime.isReady) {
     return runtime;
