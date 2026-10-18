@@ -4,6 +4,7 @@ import { checkSkillFiles, findSkillVersions } from '@heynixie/definitions';
 import { writeRecords } from '@heynixie/log';
 import { defaultGateLimits, findUntypedToken } from '@heynixie/memory';
 import type { ToolCall, ToolDefinition, ToolOutcome, ToolRun } from '@heynixie/tools';
+import { z } from 'zod';
 import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 import type { SkillToolsContext } from './types';
 
@@ -64,18 +65,20 @@ export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition 
   };
 }
 
-interface SkillFileInput {
-  readonly path: string;
-  readonly text: string;
-}
+// the input as the input schema accepted it
+const writeArguments = z.object({
+  name: z.string(),
+  files: z.object({ path: z.string(), text: z.string() }).array(),
+});
 
 async function runSkillWrite(
   context: SkillToolsContext,
   call: ToolCall,
   run: ToolRun,
 ): Promise<ToolOutcome> {
-  const name = String(call.input['name']);
-  const files = call.input['files'] as unknown as readonly SkillFileInput[];
+  const input = writeArguments.parse(call.input);
+  const name = input.name;
+  const files = input.files;
   const inForce = context.readInForce();
 
   if (inForce === null) {

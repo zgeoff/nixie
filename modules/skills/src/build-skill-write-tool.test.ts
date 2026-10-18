@@ -97,10 +97,12 @@ test('it proposes a new skill for review and records its files and the run that 
 
   const proposalID = outcome.result['proposalID'];
 
+  invariant(typeof proposalID === 'string');
+
   expect(outcome.result).toStrictEqual({
     status: 'pending',
-    proposalID: expect.toBeString(),
-    message: `pending approval as ${String(proposalID)}`,
+    proposalID,
+    message: `pending approval as ${proposalID}`,
   });
 
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
@@ -112,7 +114,7 @@ test('it proposes a new skill for review and records its files and the run that 
       payload: {
         proposalID,
         name: 'tide-tables',
-        skillHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
+        skillHash: expect.toSatisfy((hash: string) => /^[0-9a-f]{64}$/u.test(hash)),
         baseHash: null,
         files: [
           {

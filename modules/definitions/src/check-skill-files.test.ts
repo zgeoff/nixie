@@ -12,7 +12,7 @@ test('it returns the checked skill for a folder that passes every check', () => 
     ),
   ).toStrictEqual({
     name: 'tide-tables',
-    skillHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
+    skillHash: expect.toSatisfy((hash: string) => /^[0-9a-f]{64}$/u.test(hash)),
     origin: 'definitions',
     frontmatter: {
       name: 'tide-tables',
