@@ -15,20 +15,10 @@ async function setupTest() {
   const dir = await realpath(created);
   const configText = await Bun.file(join(root, '.oxlintrc.json')).text();
 
-  const parsed: unknown = Bun.JSONC.parse(configText);
-
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    !('rules' in parsed) ||
-    typeof parsed.rules !== 'object' ||
-    parsed.rules === null ||
-    !('zgeoff/import-zones' in parsed.rules) ||
-    !('no-restricted-globals' in parsed.rules) ||
-    !('nixie/no-hidden-import' in parsed.rules)
-  ) {
-    throw new Error('.oxlintrc.json lacks one of the import rules');
-  }
+  // a config without one of the rules lints nothing for it, so its failing cases catch that
+  const repoConfig = Bun.JSONC.parse(configText) as {
+    readonly rules: Readonly<Record<string, unknown>>;
+  };
 
   const lintConfig = {
     jsPlugins: [
@@ -36,9 +26,9 @@ async function setupTest() {
       join(root, 'oxlint-plugin.js'),
     ],
     rules: {
-      'zgeoff/import-zones': parsed.rules['zgeoff/import-zones'],
-      'no-restricted-globals': parsed.rules['no-restricted-globals'],
-      'nixie/no-hidden-import': parsed.rules['nixie/no-hidden-import'],
+      'zgeoff/import-zones': repoConfig.rules['zgeoff/import-zones'],
+      'no-restricted-globals': repoConfig.rules['no-restricted-globals'],
+      'nixie/no-hidden-import': repoConfig.rules['nixie/no-hidden-import'],
     },
   };
 
