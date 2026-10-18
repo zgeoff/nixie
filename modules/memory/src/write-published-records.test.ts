@@ -28,6 +28,7 @@ async function setupTest() {
     config: writerConfigSchema.parse({}),
     getPersona: () => '',
     ownerName: null,
+    assistantName: null,
   };
 
   const input = {
@@ -51,6 +52,7 @@ test('it merges a conversation write into the pending proposal the writer made o
       ...ctx.parts,
       ...buildStubWriterSession({
         op: 'remember',
+        subject: 'owner',
         text: 'The owner keeps bees.',
         quote: 'I keep bees',
         sourceSequence: planned.bounds.end,
@@ -105,6 +107,7 @@ test('it merges a writer proposal into the pending proposal the conversation mad
       ...ctx.parts,
       ...buildStubWriterSession({
         op: 'remember',
+        subject: 'owner',
         text: 'The owner keeps bees.',
         quote: 'I keep bees',
         sourceSequence: planned.bounds.end,
@@ -134,6 +137,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
 
   const session = buildStubWriterSession({
     op: 'remember',
+    subject: 'owner',
     text: 'The owner keeps bees.',
     quote: 'I keep bees',
     sourceSequence: planned.bounds.end,
@@ -143,6 +147,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
   session.model.runSession.mockImplementationOnce(() => {
     session.staging.stage({
       op: 'remember',
+      subject: 'owner',
       text: 'The owner keeps bees',
       quote: 'I keep bees',
       sourceSequence: planned.sequences[0] ?? 0,
@@ -151,6 +156,7 @@ test('it makes one proposal of 2 writes of the same text in one batch', async ()
 
     session.staging.stage({
       op: 'remember',
+      subject: 'owner',
       text: 'The owner keeps bees.',
       quote: 'I keep bees',
       sourceSequence: planned.bounds.end,

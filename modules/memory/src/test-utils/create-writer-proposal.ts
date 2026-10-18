@@ -41,8 +41,10 @@ export async function createWriterProposal(
       config: writerConfigSchema.parse({}),
       getPersona: () => '',
       ownerName: null,
+      assistantName: null,
       ...buildStubWriterSession({
         op: 'remember',
+        subject: 'owner',
         text: request.text,
         quote: request.quote,
         sourceSequence: planned.bounds.end,

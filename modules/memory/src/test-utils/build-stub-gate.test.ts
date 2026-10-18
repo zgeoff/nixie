@@ -7,6 +7,7 @@ test('it applies a write whose quote is in its source, with the quote as the evi
   const verdict = await gate.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'You live at 4 Elm Row.',
       quote: '4 Elm Row',
       sourceSequence: 12,
@@ -31,6 +32,7 @@ test('it holds a write whose quote is not in its source as a proposal', async ()
   const verdict = await gate.check(
     {
       op: 'remember',
+      subject: 'owner',
       text: 'You live at 4 Elm Row.',
       quote: '9 Oak Lane',
       sourceSequence: 12,

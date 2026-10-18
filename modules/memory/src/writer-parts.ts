@@ -25,6 +25,9 @@ export interface WriterParts {
 
   // your configured name, which the memories the writer stages use, or null for "the owner"
   readonly ownerName: string | null;
+
+  // the assistant's configured name, which labels its messages, or null for "the assistant"
+  readonly assistantName: string | null;
 }
 
 // One writer step as its parts see it: the step's input, the writer's row as the step began, and

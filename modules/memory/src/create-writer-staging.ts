@@ -1,11 +1,17 @@
 import invariant from 'tiny-invariant';
-import type { SourceMessage, StagedWrite } from './writer-types';
+import type { MemorySubject } from './types';
+import type { SourceMessage, StagedFlag, StagedWrite, WriterSubject } from './writer-types';
 
 // The batch a writer session stages into: your messages it may cite, by sequence, and the version
-// of each item the session was shown, by item ID.
+// and subject of each item the session was shown, by item ID.
 interface StagingBatch {
   readonly sources: ReadonlyMap<number, SourceMessage>;
-  readonly shown: ReadonlyMap<string, number>;
+  readonly shown: ReadonlyMap<string, ShownVersion>;
+}
+
+export interface ShownVersion {
+  readonly version: number;
+  readonly subject: MemorySubject;
 }
 
 type StageResult =
@@ -18,8 +24,11 @@ export interface WriterStaging {
   readonly open: (batch: StagingBatch) => StagingHandle;
 
   // records an item a recall showed the session, at the version and with the text it showed
-  readonly show: (itemID: string, version: number, text: string) => void;
+  readonly show: (itemID: string, shown: ShownVersion, text: string) => void;
   readonly stage: (write: StagedWriteRequest) => StageResult;
+
+  // flags a possible self-note for the assistant, which must cite one of your messages in the batch
+  readonly flag: (flag: StagedFlag) => StageResult;
 }
 
 export interface StagingHandle {
@@ -29,12 +38,16 @@ export interface StagingHandle {
 
   // the text of every item a recall showed this batch's session
   readonly readRecalledTexts: () => ReadonlySet<string>;
+
+  // the possible self-notes this batch's session flagged, in the order it flagged them
+  readonly readFlags: () => readonly StagedFlag[];
 }
 
 // A write as the session asks for it: a change names its item, and the host binds the version.
 type StagedWriteRequest =
   | {
       readonly op: 'remember';
+      readonly subject: WriterSubject;
       readonly text: string;
       readonly quote: string;
       readonly sourceSequence: number;
@@ -47,9 +60,9 @@ type StagedWriteRequest =
       readonly itemID: string;
     };
 
-// Creates the staging area. A write must cite one of your messages in the batch, and a change must
-// name an item the session was shown, at most once a batch, so the batch holds at most one revision
-// of each item and the publish checks each against the version the session read.
+// Creates the staging area. A write cites one of your messages in the batch, and a change names an
+// item the session was shown, once a batch and with its subject, so the publish checks each
+// revision against the version the session read.
 export function createWriterStaging(): WriterStaging {
   const state: { batch: OpenBatch | null } = { batch: null };
 
@@ -59,6 +72,7 @@ export function createWriterStaging(): WriterStaging {
         sources: batch.sources,
         shown: new Map(batch.shown),
         writes: [],
+        flags: [],
         touched: new Set(),
         recalledTexts: new Set(),
       };
@@ -74,10 +88,11 @@ export function createWriterStaging(): WriterStaging {
           return opened.writes;
         },
         readRecalledTexts: () => opened.recalledTexts,
+        readFlags: () => opened.flags,
       };
     },
-    show: (itemID, version, text) => {
-      state.batch?.shown.set(itemID, version);
+    show: (itemID, shown, text) => {
+      state.batch?.shown.set(itemID, shown);
       state.batch?.recalledTexts.add(text);
     },
     stage: (request) => {
@@ -87,13 +102,27 @@ export function createWriterStaging(): WriterStaging {
 
       return updateStagedBatch(state.batch, request);
     },
+    flag: (flag) => {
+      if (state.batch === null) {
+        return { status: 'refused', reason: 'no batch is open' };
+      }
+
+      if (!state.batch.sources.has(flag.sourceSequence)) {
+        return { status: 'refused', reason: buildSourceReason(flag.sourceSequence) };
+      }
+
+      state.batch.flags.push(flag);
+
+      return { status: 'staged' };
+    },
   };
 }
 
 interface OpenBatch {
   readonly sources: ReadonlyMap<number, SourceMessage>;
-  readonly shown: Map<string, number>;
+  readonly shown: Map<string, ShownVersion>;
   readonly writes: StagedWrite[];
+  readonly flags: StagedFlag[];
   readonly touched: Set<string>;
   readonly recalledTexts: Set<string>;
 }
@@ -120,9 +149,7 @@ type PlannedWrite = StagedWrite | { readonly reason: string };
 // a source outside the batch, an item the session was never shown, or a second change to an item.
 function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): PlannedWrite {
   if (!batch.sources.has(request.sourceSequence)) {
-    return {
-      reason: `sourceID ${String(request.sourceSequence)} is not one of the owner's messages in this batch`,
-    };
+    return { reason: buildSourceReason(request.sourceSequence) };
   }
 
   if (request.itemID === null) {
@@ -131,6 +158,7 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
 
     return {
       op: 'remember',
+      subject: request.subject,
       text: request.text,
       quote: request.quote,
       sourceSequence: request.sourceSequence,
@@ -143,11 +171,11 @@ function planStagedWrite(batch: OpenBatch, request: StagedWriteRequest): Planned
 
 type TargetedRequest = StagedWriteRequest & { readonly itemID: string };
 
-// a change to an item the session was shown, once per batch
+// a change to an item the session was shown, once per batch, that keeps the item's subject
 function planTargetedWrite(batch: OpenBatch, request: TargetedRequest): PlannedWrite {
-  const version = batch.shown.get(request.itemID);
+  const shown = batch.shown.get(request.itemID);
 
-  if (version === undefined) {
+  if (shown === undefined) {
     return {
       reason: `item ${request.itemID} is not one you were shown; find it with memory.recall first`,
     };
@@ -159,7 +187,16 @@ function planTargetedWrite(batch: OpenBatch, request: TargetedRequest): PlannedW
     };
   }
 
-  return { ...buildWriteFields(request), target: { itemID: request.itemID, version } };
+  if (request.op === 'remember' && request.subject !== shown.subject) {
+    return {
+      reason: `item ${request.itemID} has the subject ${shown.subject}; an edit keeps its item's subject`,
+    };
+  }
+
+  return {
+    ...buildWriteFields(request),
+    target: { itemID: request.itemID, version: shown.version },
+  };
 }
 
 function buildWriteFields(
@@ -171,8 +208,13 @@ function buildWriteFields(
     ? { op: 'retire', quote: request.quote, sourceSequence: request.sourceSequence }
     : {
         op: 'remember',
+        subject: request.subject,
         text: request.text,
         quote: request.quote,
         sourceSequence: request.sourceSequence,
       };
+}
+
+function buildSourceReason(sequence: number): string {
+  return `sourceID ${String(sequence)} is not one of the owner's messages in this batch`;
 }

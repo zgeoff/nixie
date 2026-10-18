@@ -73,6 +73,63 @@ test('it carries each item of a live batch as an events line on the next convers
   );
 }, 60_000);
 
+test('it carries a flagged self-note as an events line on the next turn, and files no item', async () => {
+  const ctx = await setupTest();
+
+  const conversation = await startTestConversation(ctx.server, {
+    context: ctx.memory.context,
+    readTurnNote: makeTurnNoteReader(
+      {
+        log: ctx.memory.context.log,
+        clock: ctx.memory.context.clock,
+        ownerName: null,
+        defaultZone: 'UTC',
+      },
+      () => ctx.memory.store,
+    ),
+  });
+
+  await ctx.memory.start();
+
+  const [sequence] = await writeOwnerMessages(ctx.memory.context.log, [
+    'You always pick the jazz station, you love it.',
+  ]);
+
+  ctx.memory.model.addReplies(
+    {
+      toolUse: {
+        name: 'mcp__nixie__memory_flag-self-note',
+        input: { text: 'The assistant loves the jazz station.', sourceID: sequence },
+      },
+    },
+    { text: 'Flagged.' },
+    { text: 'Nothing to remember.' },
+  );
+
+  conversation.model.addReplies({ text: 'Hello.' });
+
+  await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
+
+  await writeInboxRecords(ctx.memory.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Hi.' },
+    },
+  ]);
+
+  await ctx.memory.run({ steps: { conversation: conversation.runner.runStep } });
+
+  const items = await ctx.memory.listItems();
+
+  expect(JSON.stringify(conversation.model.requests.at(-1)?.body?.messages)).toInclude(
+    `Your note-taker's nudge, not a note: possible self-note: \\"The assistant loves the jazz station.\\", event #${String(sequence)}. If it rings true, write the self-note yourself, in your own voice. If not, let it go.`,
+  );
+
+  expect(items).toStrictEqual([]);
+}, 60_000);
+
 test('it ends a catch-up over a changed address with one active item that holds the new address', async () => {
   const ctx = await setupTest();
 
@@ -108,6 +165,7 @@ test('it ends a catch-up over a changed address with one active item that holds 
         name: 'mcp__nixie__memory_edit',
         input: {
           itemID: first?.itemID ?? 'no-item',
+          subject: 'owner',
           text: 'You live at 9 Oak Lane.',
           quote: 'I live at 9 Oak Lane',
           sourceID: sequences[1],

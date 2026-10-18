@@ -7,6 +7,7 @@ import {
   buildMemoryChangeKind,
   buildProposalAnswerKind,
   buildProposalMergeKind,
+  buildSelfNoteFlagKind,
 } from '@heynixie/memory';
 import type { TurnNote, TurnNoteRequest } from '@heynixie/sessions';
 import {
@@ -50,6 +51,7 @@ export function makeTurnNoteReader(
     buildCatchUpKind(options.log),
     buildProposalMergeKind(options.log),
     buildProposalAnswerKind(options.log, store),
+    buildSelfNoteFlagKind(options.log),
     buildRestartKind(options.log),
     buildRetriedTurnKind(options.log),
     buildCompactionHeadsUpKind(options.log, options.compaction),
