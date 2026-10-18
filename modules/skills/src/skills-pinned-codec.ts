@@ -2,7 +2,7 @@ import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
 
 // a skill on a task's list at the version the task runs with
-const pinnedSkillSchema = z.object({
+export const pinnedSkillSchema = z.object({
   name: z.string(),
   skillHash: z.string(),
   origin: z.enum(['definitions', 'vendored']),

@@ -18,7 +18,7 @@ export interface SkillReloadPlan {
   readonly changes: readonly SkillChange[];
 }
 
-export interface SkillChange {
+interface SkillChange {
   readonly name: string;
   readonly oldHash: string | null;
   readonly newHash: string | null;

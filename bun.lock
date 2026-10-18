@@ -462,6 +462,9 @@
         "@heynixie/tools": "workspace:*",
         "zod": "catalog:",
       },
+      "devDependencies": {
+        "tiny-invariant": "catalog:",
+      },
     },
     "modules/tasks": {
       "name": "@heynixie/tasks",
