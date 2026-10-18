@@ -176,9 +176,9 @@ test('it keeps the report of the round that ends after a stop', async () => {
 
   await waitForCondition(() => refresh.getSnapshot().value === 'stopped');
 
-  expect(refresh.getSnapshot().context.reports).toStrictEqual({
-    disk: { isReady: false, reason: 'the data volume is 95% full' },
-  });
+  expect(refresh.getSnapshot().context.reports).toStrictEqual(
+    new Map([['disk', { isReady: false, reason: 'the data volume is 95% full' }]]),
+  );
 });
 
 test('it marks a part running while its check outlasts the timeout', async () => {

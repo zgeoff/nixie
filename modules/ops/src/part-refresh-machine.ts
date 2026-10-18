@@ -19,8 +19,9 @@ export interface PartRefreshOptions<Part extends string> {
 interface PartRefreshContext {
   readonly options: PartRefreshOptions<string>;
 
-  // each part's last report, with no entry until the part's first check ends
-  readonly reports: Readonly<Record<string, PartReport>>;
+  // each part's last report, with no entry until the part's first check ends. A map, so a part
+  // named for an Object property, such as constructor, never reads that property as its report.
+  readonly reports: ReadonlyMap<string, PartReport>;
 
   // the parts whose check still runs, a check from an earlier round that outlasted its timeout
   // included
@@ -66,7 +67,7 @@ export const partRefreshMachine = setup({
   id: 'partRefresh',
   context: (start) => ({
     options: start.input,
-    reports: {},
+    reports: new Map(),
     running: new Set(),
     round: [],
     isStopping: false,
@@ -107,13 +108,19 @@ export const partRefreshMachine = setup({
             guard: (checked) => checked.context.isStopping,
             target: 'stopped',
             actions: assign((checked) => ({
-              reports: { ...checked.context.reports, ...checked.event.output.parts },
+              reports: new Map([
+                ...checked.context.reports,
+                ...Object.entries(checked.event.output.parts),
+              ]),
             })),
           },
           {
             target: 'waiting',
             actions: assign((checked) => ({
-              reports: { ...checked.context.reports, ...checked.event.output.parts },
+              reports: new Map([
+                ...checked.context.reports,
+                ...Object.entries(checked.event.output.parts),
+              ]),
             })),
           },
         ],

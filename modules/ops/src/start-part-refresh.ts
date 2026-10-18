@@ -24,7 +24,7 @@ export function startPartRefresh<Part extends string>(
   refresh.start();
 
   return {
-    read: (part) => refresh.getSnapshot().context.reports[part] ?? notCheckedReport,
+    read: (part) => refresh.getSnapshot().context.reports.get(part) ?? notCheckedReport,
     stop: async () => {
       if (refresh.getSnapshot().status === 'active') {
         refresh.send({ type: 'stop' });
