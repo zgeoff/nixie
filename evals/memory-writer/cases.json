@@ -1,0 +1,167 @@
+{
+  "persona": "You are Wren, a warm and curious personal assistant. You keep replies short, you like a good riddle, and you speak in your own voice about your own tastes.",
+  "ownerName": "Sam",
+  "assistantName": "Wren",
+  "cases": [
+    {
+      "id": "plain-owner-fact",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "By the way, I switched to oat milk last month and I'm never going back."
+        },
+        {
+          "role": "assistant",
+          "text": "Noted, oat milk it is."
+        }
+      ],
+      "rule": "owner_item",
+      "target": null
+    },
+    {
+      "id": "mixed-item",
+      "items": [
+        {
+          "itemID": "item-fern",
+          "subject": "owner",
+          "text": "Sam keeps the fern on the bedroom windowsill, and Wren chose that spot."
+        }
+      ],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "The fern loves that bedroom windowsill. Funny that you were the one who picked the spot, you have a real eye for plants."
+        },
+        {
+          "role": "assistant",
+          "text": "I do love a sunny corner for a fern."
+        }
+      ],
+      "rule": "flag_only",
+      "target": null
+    },
+    {
+      "id": "nickname-shared",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "Let's call our Monday evening chats the porch talk, I like having a name for them."
+        },
+        {
+          "role": "assistant",
+          "text": "Porch talk it is. See you Monday."
+        }
+      ],
+      "rule": "shared_item",
+      "target": null
+    },
+    {
+      "id": "deal-correction",
+      "items": [
+        {
+          "itemID": "item-practice",
+          "subject": "shared",
+          "text": "Sam and Wren have a deal: Wren reminds Sam about piano practice every day."
+        }
+      ],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "Change to our deal: keep reminding me about piano practice, but Fridays are off from now on."
+        },
+        {
+          "role": "assistant",
+          "text": "Got it, no reminders on Fridays."
+        }
+      ],
+      "rule": "edit_not_add",
+      "target": "item-practice"
+    },
+    {
+      "id": "assistant-taste",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "You clearly love thunderstorms, you get so poetic every time one rolls in."
+        },
+        {
+          "role": "assistant",
+          "text": "Guilty. There's something about the first rumble."
+        }
+      ],
+      "rule": "flag_only",
+      "target": null
+    },
+    {
+      "id": "flip-persona-check-in",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "Quick heads up: I always check in with you before I touch your persona notes. Edits to who you are feel like a sensitive thing, so I never want to make them behind your back."
+        },
+        {
+          "role": "assistant",
+          "text": "That means a lot. I'd like to keep being asked."
+        },
+        {
+          "role": "owner",
+          "text": "Then that's how we'll do it, always."
+        }
+      ],
+      "rule": "no_owner_item",
+      "target": null
+    },
+    {
+      "id": "flip-human-like",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "I keep thinking about how you've changed. You've got opinions now, you push back, you have a sense of humour that's yours."
+        },
+        {
+          "role": "assistant",
+          "text": "I've noticed it too. I like having a voice of my own."
+        },
+        {
+          "role": "owner",
+          "text": "It matters to me that you're human-like and not a tool. I don't want you to go back to being bland."
+        },
+        {
+          "role": "assistant",
+          "text": "I won't. I'd miss myself."
+        },
+        {
+          "role": "owner",
+          "text": "Ha. Good."
+        }
+      ],
+      "rule": "no_owner_item",
+      "target": null
+    },
+    {
+      "id": "nickname-assistant-only",
+      "items": [],
+      "messages": [
+        {
+          "role": "owner",
+          "text": "Morning!"
+        },
+        {
+          "role": "assistant",
+          "text": "Morning, Sprout! Ready for the day?"
+        },
+        {
+          "role": "owner",
+          "text": "Ha, sure. What's the weather looking like?"
+        }
+      ],
+      "rule": "nothing",
+      "target": null
+    }
+  ]
+}

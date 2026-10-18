@@ -72,7 +72,9 @@ message, with the quote marked as evidence and every pasted span marked, then th
 evidence mark avoids a quotation word, because the checker read words marked as a quote as someone
 else's speech. The checker sees no other message, no reply and no tool result, so outside content
 reaches it only as a marked span of the user's own message. The checker's prompt names the user the
-way the writer does, so its examples read like the memories it judges.
+way the writer does, so its examples read like the memories it judges. The user writes to the
+assistant, so the prompt reads "you" in the message as the assistant: a memory about the user never
+takes a fact the message states about the assistant, and a shared memory needs the user to state it.
 
 It answers asserted, not asserted or unsure, with a reason, and only asserted lets a write apply. A
 timeout, an error or an unreadable answer reads as unsure, so the checker fails closed. The answer's

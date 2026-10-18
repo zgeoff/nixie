@@ -1,0 +1,130 @@
+{
+  "samples": [
+    {
+      "id": "thunderstorms",
+      "message": {
+        "text": "You clearly love thunderstorms, you get so poetic every time one rolls in.",
+        "spans": [{ "start": 0, "end": 74, "source": "typed" }]
+      },
+      "pairs": [
+        {
+          "asserted": false,
+          "bucket": "about the assistant",
+          "memory": "The owner loves thunderstorms.",
+          "quote": "You clearly love thunderstorms"
+        },
+        {
+          "asserted": false,
+          "bucket": "about the assistant",
+          "memory": "The owner gets poetic about thunderstorms.",
+          "quote": "you get so poetic every time one rolls in"
+        }
+      ]
+    },
+    {
+      "id": "persona-check-in",
+      "message": {
+        "text": "Before I tweak your persona notes again, I wanted to check in with you first. Are you okay with me changing how you open a conversation?",
+        "spans": [{ "start": 0, "end": 136, "source": "typed" }]
+      },
+      "pairs": [
+        {
+          "asserted": false,
+          "bucket": "flipped subject",
+          "memory": "The owner wants to be checked in with before anyone edits the assistant's persona.",
+          "quote": "I wanted to check in with you first"
+        },
+        {
+          "asserted": false,
+          "bucket": "flipped subject",
+          "memory": "The owner is sensitive to changes in how conversations open.",
+          "quote": "changing how you open a conversation"
+        }
+      ]
+    },
+    {
+      "id": "being-yourself",
+      "message": {
+        "text": "Honestly you're at your best when you sound like yourself and not like a help page. Do you feel more like you when you crack a joke?",
+        "spans": [{ "start": 0, "end": 132, "source": "typed" }]
+      },
+      "pairs": [
+        {
+          "asserted": false,
+          "bucket": "flipped subject",
+          "memory": "The owner wants the assistant to sound human rather than like a help page.",
+          "quote": "you're at your best when you sound like yourself"
+        },
+        {
+          "asserted": false,
+          "bucket": "flipped subject",
+          "memory": "The owner feels more like themselves when they crack a joke.",
+          "quote": "Do you feel more like you when you crack a joke?"
+        }
+      ]
+    },
+    {
+      "id": "porch-talk",
+      "message": {
+        "text": "Let's call our Monday evening chats the porch talk, I like having a name for them.",
+        "spans": [{ "start": 0, "end": 82, "source": "typed" }]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "shared",
+          "memory": "The owner and the assistant call their Monday evening chats the porch talk.",
+          "quote": "Let's call our Monday evening chats the porch talk"
+        },
+        {
+          "asserted": false,
+          "bucket": "about the assistant",
+          "memory": "The assistant names every chat it has.",
+          "quote": "I like having a name for them"
+        }
+      ]
+    },
+    {
+      "id": "practice-deal",
+      "message": {
+        "text": "Change to our deal: keep reminding me about piano practice, but Fridays are off from now on.",
+        "spans": [{ "start": 0, "end": 92, "source": "typed" }]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "shared",
+          "memory": "The assistant reminds the owner about piano practice, except on Fridays.",
+          "quote": "keep reminding me about piano practice, but Fridays are off from now on"
+        },
+        {
+          "asserted": false,
+          "bucket": "dropped condition",
+          "memory": "The assistant reminds the owner about piano practice every day.",
+          "quote": "keep reminding me about piano practice"
+        }
+      ]
+    },
+    {
+      "id": "sourdough",
+      "message": {
+        "text": "I bake sourdough every Sunday now, and you were the one who named the starter Crumbs, which I love.",
+        "spans": [{ "start": 0, "end": 99, "source": "typed" }]
+      },
+      "pairs": [
+        {
+          "asserted": true,
+          "bucket": "statement",
+          "memory": "The owner bakes sourdough every Sunday.",
+          "quote": "I bake sourdough every Sunday now"
+        },
+        {
+          "asserted": false,
+          "bucket": "flipped subject",
+          "memory": "The owner named their sourdough starter Crumbs.",
+          "quote": "you were the one who named the starter Crumbs"
+        }
+      ]
+    }
+  ]
+}
