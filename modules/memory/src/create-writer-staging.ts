@@ -9,7 +9,7 @@ interface StagingBatch {
   readonly shown: ReadonlyMap<string, ShownVersion>;
 }
 
-export interface ShownVersion {
+interface ShownVersion {
   readonly version: number;
   readonly subject: MemorySubject;
 }
