@@ -458,6 +458,8 @@
         "@heynixie/compaction": "workspace:*",
         "@heynixie/definitions": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/sessions": "workspace:*",
+        "@heynixie/tools": "workspace:*",
         "zod": "catalog:",
       },
     },

@@ -1,8 +1,11 @@
 import { join } from 'node:path';
 import { buildTimeTool, findMessageTimeZone } from '@heynixie/connectors';
+import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadTool } from '@heynixie/memory';
 import { makeDecisionPoint } from '@heynixie/policy';
+import { buildSkillTools } from '@heynixie/skills';
+import { conversationTaskID } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildConversationTools } from './build-conversation-tools';
@@ -15,6 +18,10 @@ export interface ConversationEndpointTools {
   // direct
   readonly queue: ActionQueue;
   readonly readStore: () => MemoryToolStore | null;
+
+  // the definitions in force, and a fresh seed that the skill reloads run
+  readonly readInForce: () => DefinitionsInForce | null;
+  readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
 }
 
 export interface ConversationEndpoint {
@@ -23,7 +30,7 @@ export interface ConversationEndpoint {
 }
 
 // Starts the tool endpoint over the conversation's tools, the web fetch tool, the time tool, the log
-// reader and the memory tools, and stops it on cleanup. The registry is fixed here, so the memory
+// reader, the skill tools and the memory tools, and stops it on cleanup. The registry is fixed here, so the memory
 // tools reach the store through readStore.
 export async function startConversationEndpoint(
   options: Pick<ServerParts, 'cleanup' | 'config' | 'context'>,
@@ -37,8 +44,17 @@ export async function startConversationEndpoint(
 
   const logRead = buildLogReadTool(options.context.log);
 
+  // the conversation's skill list holds the conversation's skills, and any other run's holds none
+  const skills = buildSkillTools({
+    log: options.context.log,
+    readInForce: tools.readInForce,
+    refreshDefinitions: tools.refreshDefinitions,
+    readSkillList: (run, inForce) =>
+      run.thread === conversationTaskID ? (inForce?.conversationSkills ?? []) : [],
+  });
+
   const definitions = buildConversationTools(
-    { webFetch: tools.webFetch, time, logRead },
+    { webFetch: tools.webFetch, time, logRead, skills },
     {
       readStore: tools.readStore,
       clock: options.context.clock,

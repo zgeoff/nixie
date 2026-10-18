@@ -9,6 +9,8 @@ import {
 } from '@heynixie/memory';
 import type { TurnNote, TurnNoteRange } from '@heynixie/sessions';
 import { buildEventRegistry, buildRetriedTurnKind } from '@heynixie/sessions';
+import { buildSkillReloadKind } from '@heynixie/skills';
+import { conversationTaskID } from '@heynixie/tasks';
 import { buildRestartKind } from './build-restart-kind';
 import { readTurnNotes } from './read-turn-notes';
 
@@ -44,6 +46,7 @@ export function makeTurnNoteReader(
     buildProposalAnswerKind(options.log, store),
     buildRestartKind(options.log),
     buildRetriedTurnKind(options.log),
+    buildSkillReloadKind(options.log, conversationTaskID),
   ]);
 
   return (span) => readTurnNotes({ ...options, events }, span);

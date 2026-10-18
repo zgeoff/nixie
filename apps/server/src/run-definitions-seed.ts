@@ -4,8 +4,38 @@ import { buildSeedLogFields } from './build-seed-log-fields';
 import type { ServerParts } from './types';
 
 // Runs one seed. The definitions part turns unready while a refused snapshot is pending, and the
-// last good seed stays in force.
-export async function runDefinitionsSeed(parts: ServerParts): Promise<SeedResult> {
+// last good seed stays in force. Seeds over one set of parts run one at a time, as the seed needs,
+// so the poll and a skill reload never commit an older revision after a newer one.
+export function runDefinitionsSeed(parts: ServerParts): Promise<SeedResult> {
+  const seed = waitThenSeed(pendingSeeds.get(parts), parts);
+
+  pendingSeeds.set(parts, waitForSettled(seed));
+
+  return seed;
+}
+
+// the newest seed each set of parts started, which the next one waits for
+const pendingSeeds = new WeakMap<ServerParts, Promise<void>>();
+
+async function waitThenSeed(
+  previous: Promise<void> | undefined,
+  parts: ServerParts,
+): Promise<SeedResult> {
+  await previous;
+
+  return runOneSeed(parts);
+}
+
+// the seed's own caller receives its failure, so the next seed waits only for it to settle
+async function waitForSettled(seed: Promise<SeedResult>): Promise<void> {
+  try {
+    await seed;
+  } catch {
+    // the next seed runs whatever this one's outcome
+  }
+}
+
+async function runOneSeed(parts: ServerParts): Promise<SeedResult> {
   const result = await runSeed({
     log: parts.context.log,
     source: parts.source,

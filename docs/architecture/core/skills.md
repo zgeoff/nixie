@@ -4,7 +4,7 @@ A skill is a procedure from the user's definitions in the Agent Skills format: a
 `SKILL.md` and the files it refers to. A task keeps the skill versions it started with, the
 conversation sees a catalog of its skills in the system prompt, and a skill grants nothing, so every
 action it describes still passes the decision point as an ordinary tool call. `modules/skills` owns
-the pins and the catalog, under [0038](../../decisions/0038-skills.md).
+the pins, the catalog and the skill tools, under [0038](../../decisions/0038-skills.md).
 [The definitions](./definitions.md#skills) covers the checks the seed runs on each skill and how
 each version is kept.
 
@@ -36,3 +36,31 @@ task with no skills gets no catalog.
 The catalog has a cap: a share of the context window that the conversation's CLI works in, which the
 deployment configuration's `skills` section sets. Past the cap, the catalog lists the remaining
 skills by name alone, so the model still knows each one exists.
+
+## The skill tools
+
+The conversation's tool endpoint serves three skill tools, and each one acts only on a skill that
+the caller's list or the task's pin holds. A run other than the conversation has an empty skill list
+on that endpoint, so it reads no skill.
+
+| Tool               | Effect | Returns                                                      |
+| ------------------ | ------ | ------------------------------------------------------------ |
+| `skill_read`       | `read` | The pinned version's instructions and file list, or one file |
+| `skill_reload`     | `note` | The named skill's old and new version                        |
+| `skill_reload_all` | `note` | The old and new version of each skill on the list or the pin |
+
+`skill_read` serves the pinned version. Without a path, it returns the instructions without their
+frontmatter and the paths of the skill's other files. With a path, it returns that one file, and it
+refuses a path that leaves the skill's folder. Every field it returns from a skill's text is
+untrusted, because a vendored skill is someone else's text.
+
+A reload takes a fresh snapshot from the definitions source and seeds it when its revision is new.
+The reload then moves the task to the versions in force and writes a reload record on the task's
+thread, which holds the new pin and each skill's old and new version. The server runs one seed at a
+time, so a reload and the definitions poll never commit an older revision after a newer one. A skill
+that left the caller's list or the definitions leaves the pin, and a skill that joined the list
+joins it.
+
+The next turn's catalog renders the new pin. The turn's events note names each skill the reload
+changed and tells the model to read the skill again, because a body it read before the reload stays
+in its context.
