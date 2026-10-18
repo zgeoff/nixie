@@ -69,7 +69,7 @@ test('it logs the revision, the content hash and the snapshot hash a seed put in
     ]),
   );
 
-  const built = buildDefinitionsSnapshot({ persona: '# Persona\n', policy });
+  const built = buildDefinitionsSnapshot({ skills: [], persona: '# Persona\n', policy });
 
   const fields = await ctx.seed();
 

@@ -6,9 +6,9 @@ them as a snapshot of files, parses what it applies, and seeds them into the dat
 snapshot hash. Every record in the [event log](./event-log.md) carries the snapshot hash of the
 definitions in force when it was written, so a replay of any decision can read exactly the persona
 and policy it ran under, as [0013](../../decisions/0013-definition-versioning.md) requires.
-`modules/definitions` owns sources, the seed and the snapshot hash. The seed applies only the
-persona, and the [skills design](../../design/platform/skills.md) and the
-[rules design](../../design/platform/policy/rules.md) cover the files it reads but does not apply.
+`modules/definitions` owns sources, the seed and the snapshot hash. The seed applies the persona and
+the skills, and the [rules design](../../design/platform/policy/rules.md) covers the rule files it
+reads but does not apply.
 
 ```mermaid
 flowchart LR
@@ -65,20 +65,50 @@ would give the commit a second hash.
 
 The manifest holds the definitions format version. A release reads its own format and the one before
 it, and refuses any other, because an image upgrade and a definitions change land in separate repos,
-in either order. The persona must be UTF-8 text and not blank. The seed applies no other file, and
-lists each one in its record as unapplied. Each unapplied YAML or JSON file must still parse, so a
-broken rule file fails the snapshot before rules ever apply, and the error lists each file with its
-fault.
+in either order. The persona must be UTF-8 text and not blank. From format 2, the seed applies each
+skill under `skills/`, and format 1 leaves those files unapplied, because a format 1 repo was
+written before the seed checked a skill. The seed applies no other file, and lists each one in its
+record as unapplied. Each unapplied YAML or JSON file must still parse, so a broken rule file fails
+the snapshot before rules ever apply, and the error lists each file with its fault.
+
+## Skills
+
+A skill is a folder under `skills/` in the
+[Agent Skills format](https://agentskills.io/specification), whose `SKILL.md` opens with YAML
+frontmatter. The seed refuses the whole snapshot when any skill fails one of its checks, and the
+error lists each file with its fault:
+
+1. The `SKILL.md` frontmatter follows the format's rules for its name, description, compatibility
+   and metadata fields, and its name matches the folder's name. The seed ignores the fields the
+   format leaves to each product, and keeps `allowed-tools` only to show it, because a skill grants
+   nothing.
+2. Every file is UTF-8 text within the size limits, which the filter checks for every source.
+3. No file holds an invisible or bidirectional control character, such as a tag character, a
+   zero-width space or a right-to-left override, because such a character hides text from the person
+   who reviews the skill. Tab, line feed and carriage return stay, and so do the emoji variation
+   selectors.
+4. A vendored skill's files hash to the content hash in its entry in `skills/skills.lock.json`, and
+   every entry matches a skill folder.
+
+A skill's content hash is the content hash over its own folder, with each path relative to that
+folder, so the user computes it by hand from a checkout with the snippet in
+[vendoring a skill](../../guides/vendoring-a-skill.md). A skill with a lock entry is vendored, and
+any other skill is the user's own. Each skill version lives under its content hash with its
+frontmatter and its files, and the version stays after a later seed changes the skill, so a task
+pinned to it keeps reading it. A new or changed skill applies with the seed, with no confirmation,
+because a skill widens nothing. The seed's record lists the skills it added, changed and removed
+against the definitions it replaced, as the skill notice.
 
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters
 that form by its own hash, its persona version, after nixie normalises it to Unicode NFC with LF
 line endings, no byte order mark and exactly one final newline. Trailing spaces stay, because two of
-them end a markdown line with a break. The policy enters as the rules sorted by ID and the tool
-declarations sorted by name, each tool's effects sorted and without duplicates. Every object
-serialises as canonical JSON, with sorted keys and no whitespace, so the same definitions always
-give the same bytes.
+them end a markdown line with a break. Each skill enters by its name, its content hash and whether
+it is vendored, sorted by name, so a change to any skill gives a new snapshot hash. The policy
+enters as the rules sorted by ID and the tool declarations sorted by name, each tool's effects
+sorted and without duplicates. Every object serialises as canonical JSON, with sorted keys and no
+whitespace, so the same definitions always give the same bytes.
 
 The policy holds the fixed rule and every tool declaration in the build's registry. The fixed rule
 decides by a tool's declared effects ([the decision point](../policy/decision-point.md)), so a
@@ -89,17 +119,17 @@ the revision.
 
 ## Seeding
 
-A seed reads and parses a snapshot, builds its snapshot hash, and writes four things in one write
-transaction: the persona under its persona version, the snapshot under its snapshot hash, a seed
-record, and a seed row that ties the source and its revision to both hashes. A persona or a snapshot
-seen before keeps its first row. The definitions in force are the newest seed, and every record
-takes its snapshot hash from it.
+A seed reads and parses a snapshot, builds its snapshot hash, and writes in one write transaction:
+the persona under its persona version, the snapshot under its snapshot hash with its list of skills,
+each skill version under its content hash, a seed record, and a seed row that ties the source and
+its revision to both hashes. A persona, a snapshot or a skill version seen before keeps its first
+row. The definitions in force are the newest seed, and every record takes its snapshot hash from it.
 
-| Result    | When                                                                      | Writes  |
-| --------- | ------------------------------------------------------------------------- | ------- |
-| Seeded    | The source, revision, content hash or snapshot hash differs from the last | 4 rows  |
-| Unchanged | The newest seed holds the same source, revision and both hashes           | Nothing |
-| Refused   | The snapshot failed to read, parse or validate                            | Nothing |
+| Result    | When                                                                      | Writes   |
+| --------- | ------------------------------------------------------------------------- | -------- |
+| Seeded    | The source, revision, content hash or snapshot hash differs from the last | The rows |
+| Unchanged | The newest seed holds the same source, revision and both hashes           | Nothing  |
+| Refused   | The snapshot failed to read, parse or validate                            | Nothing  |
 
 A refused seed comes back as a value with its error and the definitions still in force, never as a
 throw, so the caller reports the refusal while the last good seed keeps serving. A half-applied seed

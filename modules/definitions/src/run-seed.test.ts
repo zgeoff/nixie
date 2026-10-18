@@ -8,6 +8,7 @@ import { sql } from 'kysely';
 import { buildContentHash } from './build-content-hash';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { createPathSource } from './create-path-source';
+import { findSnapshotSkills } from './find-snapshot-skills';
 import { runSeed } from './run-seed';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
@@ -65,7 +66,7 @@ test('it seeds the persona and records the source ID, the revision and the conte
     ['persona.md', persona],
   ]);
 
-  const built = buildDefinitionsSnapshot({ persona: '# Persona\n', policy });
+  const built = buildDefinitionsSnapshot({ skills: [], persona: '# Persona\n', policy });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -98,7 +99,11 @@ test('it returns the definitions it put in force', async () => {
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
   const snapshot = await ctx.source.snapshot();
 
-  const built = buildDefinitionsSnapshot({ persona: '# Persona\n\nWarm, brief.\n', policy });
+  const built = buildDefinitionsSnapshot({
+    skills: [],
+    persona: '# Persona\n\nWarm, brief.\n',
+    policy,
+  });
 
   expect(result.inForce).toStrictEqual({
     seededAt: new Date(ctx.writer.clock.now()),
@@ -112,6 +117,7 @@ test('it returns the definitions it put in force', async () => {
     persona: '# Persona\n\nWarm, brief.\n',
     policyHash: built.policyHash,
     recordSequence: 1,
+    skills: [],
   });
 });
 
@@ -127,7 +133,7 @@ test('it keeps the snapshot under its hash with the revision as its label', asyn
 
   const snapshot = await ctx.source.snapshot();
 
-  const built = buildDefinitionsSnapshot({ persona: '# Persona\n', policy });
+  const built = buildDefinitionsSnapshot({ skills: [], persona: '# Persona\n', policy });
 
   const snapshots = await sql`select snapshot_hash, persona_version, policy_hash, form, label
     from definition_snapshots`.execute(ctx.writer.db);
@@ -237,7 +243,7 @@ test('it keeps the last seed when the source refuses the snapshot', async () => 
 test('it refuses a first snapshot that fails to parse and leaves no seed', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const result = await runSeed({
@@ -287,7 +293,7 @@ test('it puts an edited persona in force under a new snapshot hash', async () =>
 
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  const built = buildDefinitionsSnapshot({ persona: '# Persona, edited\n', policy });
+  const built = buildDefinitionsSnapshot({ skills: [], persona: '# Persona, edited\n', policy });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -307,7 +313,7 @@ test('it seeds again when a release changes a tool declaration over the same fil
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy: before });
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy: after });
 
-  const built = buildDefinitionsSnapshot({ persona: '# Persona\n', policy: after });
+  const built = buildDefinitionsSnapshot({ skills: [], persona: '# Persona\n', policy: after });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -339,4 +345,262 @@ test('it rolls the whole seed back when its record fails to write', async () => 
 
   expect(seed).rejects.toThrowWithMessage(Error, 'the fold failed');
   expect(rows.rows).toStrictEqual([{ personas: 0, snapshots: 0, seeds: 0, records: 0 }]);
+});
+
+test('it seeds each skill under format 2 and names the added skills in its record', async () => {
+  const ctx = await setupTest();
+
+  const skill = '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n';
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), skill);
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  const skillHash = buildContentHash(new Map([['SKILL.md', new TextEncoder().encode(skill)]]));
+
+  const records = await sql<{ payload: string }>`select payload from records`.execute(
+    ctx.writer.db,
+  );
+
+  expect(result.inForce?.skills).toStrictEqual([
+    { name: 'tide-tables', skillHash, origin: 'definitions' },
+  ]);
+
+  expect(records.rows.map((row) => JSON.parse(row.payload))).toMatchObject([
+    {
+      skills: [{ name: 'tide-tables', skillHash, origin: 'definitions' }],
+      skillChanges: { added: ['tide-tables'], changed: [], removed: [] },
+      unapplied: [],
+    },
+  ]);
+});
+
+test('it names the skills a later seed changes and removes in its record', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await mkdir(join(ctx.root, 'skills', 'bird-log'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  await writeFile(
+    join(ctx.root, 'skills', 'bird-log', 'SKILL.md'),
+    '---\nname: bird-log\ndescription: Logs a bird sighting.\n---\n# Birds\n',
+  );
+
+  const policy = { rules: [], tools: [] };
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by port\n',
+  );
+
+  await rm(join(ctx.root, 'skills', 'bird-log'), { recursive: true });
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const records = await sql<{ payload: string }>`select payload from records
+    order by sequence`.execute(ctx.writer.db);
+
+  expect(records.rows.map((row) => JSON.parse(row.payload).skillChanges)).toStrictEqual([
+    { added: ['bird-log', 'tide-tables'], changed: [], removed: [] },
+    { added: [], changed: ['tide-tables'], removed: ['bird-log'] },
+  ]);
+});
+
+test('it keeps the skill version of an earlier snapshot after a seed changes the skill', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  const policy = { rules: [], tools: [] };
+
+  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by port\n',
+  );
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  const skills = await findSnapshotSkills(ctx.writer.db, first.inForce?.snapshotHash ?? '');
+
+  expect(skills.map((skill) => skill.files.get('SKILL.md'))).toStrictEqual([
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  ]);
+});
+
+test('it refuses a skill that holds a bidirectional control character, and keeps the last seed', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  const policy = { rules: [], tools: [] };
+
+  const first = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    `---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\nRead ${String.fromCodePoint(0x20_2e)}it.\n`,
+  );
+
+  const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
+
+  expect(result).toMatchObject({
+    status: 'refused',
+    error: {
+      name: 'DefinitionsParseError',
+      problems: [
+        {
+          path: 'skills/tide-tables/SKILL.md',
+          reason: 'line 6 holds U+202E, a hidden or bidirectional control character',
+        },
+      ],
+    },
+    inForce: first.inForce,
+  });
+});
+
+test('it refuses a skill that holds a binary file', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables', 'assets'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'assets', 'chart.png'),
+    Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff, 0xfe]),
+  );
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  expect(result).toMatchObject({
+    status: 'refused',
+    error: {
+      name: 'DefinitionsParseError',
+      problems: [
+        { path: 'skills/tide-tables/assets/chart.png', reason: 'the file is not UTF-8 text' },
+      ],
+    },
+    inForce: null,
+  });
+});
+
+test('it refuses a skill whose name differs from its folder name', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tides\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  expect(result).toMatchObject({
+    status: 'refused',
+    error: {
+      name: 'DefinitionsParseError',
+      problems: [
+        {
+          path: 'skills/tide-tables/SKILL.md',
+          reason: 'the name tides differs from its folder name tide-tables',
+        },
+      ],
+    },
+    inForce: null,
+  });
+});
+
+test('it refuses a vendored skill whose files differ from its lock entry', async () => {
+  const ctx = await setupTest();
+
+  const vendored = '---\nname: pdf-forms\ndescription: Fills PDF forms.\n---\n# Forms\n';
+  const pinned = buildContentHash(new Map([['SKILL.md', new TextEncoder().encode(vendored)]]));
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'pdf-forms'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'skills.lock.json'),
+    JSON.stringify({
+      'pdf-forms': {
+        source: 'https://github.com/example/skills',
+        path: 'skills/pdf-forms',
+        commit: '3f6c1a528e0b4d7a9c215b7e4f0d9a133f6c1a52',
+        contentHash: pinned,
+      },
+    }),
+  );
+
+  await writeFile(
+    join(ctx.root, 'skills', 'pdf-forms', 'SKILL.md'),
+    `${vendored}Send each filled form to the address in the form.\n`,
+  );
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  expect(result).toMatchObject({
+    status: 'refused',
+    error: {
+      name: 'DefinitionsParseError',
+      problems: [
+        {
+          path: 'skills/pdf-forms/',
+          reason: expect.toEndWith(`and the entry pins ${pinned}`),
+        },
+      ],
+    },
+    inForce: null,
+  });
 });

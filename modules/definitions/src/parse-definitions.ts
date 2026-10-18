@@ -1,26 +1,33 @@
 import type { ParseProblem } from './definitions-parse-error';
 import { DefinitionsParseError } from './definitions-parse-error';
+import { parseSkills } from './parse-skills';
 import type { ParsedDefinitions, Snapshot } from './types';
 
 const manifestPath = 'nixie.yaml';
 const personaPath = 'persona.md';
 
-// Reads what the seed applies from a snapshot: the format version from nixie.yaml and the persona
-// from persona.md. Slice 1 applies nothing else, so every other file only has to parse, and the
-// seed lists it as unapplied. A file that fails to decode or parse fails the whole snapshot.
+// Reads what the seed applies: the format version, the persona, and from format 2 on, the skills.
+// Every other file only has to parse, and the seed lists it as unapplied. A file that fails to
+// decode or parse, or a skill that fails a seed check, fails the whole snapshot.
 export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
   const texts = decodeFiles(snapshot.files);
   const formatVersion = parseManifest(texts.get(manifestPath));
   const persona = parsePersona(texts.get(personaPath));
+  const hasSkills = formatVersion >= skillsFormat;
+  const skills = hasSkills ? parseSkills(snapshot, texts) : [];
 
   const unapplied = [...texts.keys()]
     .filter((path) => path !== manifestPath && path !== personaPath)
+    .filter((path) => !hasSkills || !path.startsWith('skills/'))
     .toSorted();
 
   requireParsable(unapplied.map((path) => [path, texts.get(path) ?? '']));
 
-  return { formatVersion, persona, unapplied };
+  return { formatVersion, persona, skills, unapplied };
 }
+
+// the first format whose seed applies the skills; format 1 lists their files as unapplied
+const skillsFormat = 2;
 
 function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
   const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -46,7 +53,7 @@ function decodeFiles(files: Snapshot['files']): ReadonlyMap<string, string> {
 
 // The definitions format this release writes. It reads this format and the one before, because an
 // image upgrade and a definitions change land in either order.
-const formatVersion = 1;
+const formatVersion = 2;
 const readableFormats = [formatVersion - 1, formatVersion].filter((version) => version >= 1);
 
 function parseManifest(text: string | undefined): number {
