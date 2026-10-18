@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildCheckOptions } from './build-check-options';
 
-test('it gives a checker query no tools, no MCP server, no settings, no CLI compaction and no saved session', () => {
+test('it gives a checker query no tools, no MCP server, no settings, no prompt dispatch, no CLI compaction and no saved session', () => {
   const options = buildCheckOptions(
     {
       profile: {
@@ -25,6 +25,7 @@ test('it gives a checker query no tools, no MCP server, no settings, no CLI comp
     strictMcpConfig: true,
     mcpServers: {},
     skills: [],
+    verbatimPrompts: true,
     persistSession: false,
     settings: {
       disableBundledSkills: true,

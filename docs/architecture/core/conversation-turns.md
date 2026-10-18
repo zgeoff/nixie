@@ -52,9 +52,11 @@ turn as an error rather than as a record.
 Every query the guest makes holds nixie's tools and nothing else. The options turn off the SDK's
 built-in tools, every settings source, the bundled skills and the SDK's own memory, and they allow
 only nixie's MCP server, so the loop cannot read a file, run a command or remember anything outside
-the event log. The strict MCP option keeps every other MCP server out of the loop. The turn frame
-holds the system prompt, and the guest sets it as a custom prompt with the SDK's snapshot off, so a
-resumed session runs on the prompt the host rendered for this turn.
+the event log. The strict MCP option keeps every other MCP server out of the loop. The options turn
+off the CLI's prompt dispatch too, so a message that starts with `/`, such as `/clear`, reaches the
+model as text and never runs a built-in command or a bundled skill. The checker's query sets the
+same switches. The turn frame holds the system prompt, and the guest sets it as a custom prompt with
+the SDK's snapshot off, so a resumed session runs on the prompt the host rendered for this turn.
 
 The turn frame holds the profile's base URL, model, effort, auth header and context cap, and the
 guest sets them in the query's environment. The guest holds a placeholder in place of the
