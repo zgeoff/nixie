@@ -66,7 +66,12 @@ test('it seeds the persona and records the source ID, the revision and the conte
     ['persona.md', persona],
   ]);
 
-  const built = buildDefinitionsSnapshot({ skills: [], persona: '# Persona\n', policy });
+  const built = buildDefinitionsSnapshot({
+    skills: [],
+    conversationSkills: [],
+    persona: '# Persona\n',
+    policy,
+  });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -101,6 +106,7 @@ test('it returns the definitions it put in force', async () => {
 
   const built = buildDefinitionsSnapshot({
     skills: [],
+    conversationSkills: [],
     persona: '# Persona\n\nWarm, brief.\n',
     policy,
   });
@@ -118,6 +124,7 @@ test('it returns the definitions it put in force', async () => {
     policyHash: built.policyHash,
     recordSequence: 1,
     skills: [],
+    conversationSkills: [],
   });
 });
 
@@ -133,7 +140,12 @@ test('it keeps the snapshot under its hash with the revision as its label', asyn
 
   const snapshot = await ctx.source.snapshot();
 
-  const built = buildDefinitionsSnapshot({ skills: [], persona: '# Persona\n', policy });
+  const built = buildDefinitionsSnapshot({
+    skills: [],
+    conversationSkills: [],
+    persona: '# Persona\n',
+    policy,
+  });
 
   const snapshots = await sql`select snapshot_hash, persona_version, policy_hash, form, label
     from definition_snapshots`.execute(ctx.writer.db);
@@ -293,7 +305,12 @@ test('it puts an edited persona in force under a new snapshot hash', async () =>
 
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  const built = buildDefinitionsSnapshot({ skills: [], persona: '# Persona, edited\n', policy });
+  const built = buildDefinitionsSnapshot({
+    skills: [],
+    conversationSkills: [],
+    persona: '# Persona, edited\n',
+    policy,
+  });
 
   expect(result).toMatchObject({
     status: 'seeded',
@@ -313,7 +330,12 @@ test('it seeds again when a release changes a tool declaration over the same fil
   const first = await runSeed({ log: ctx.log, source: ctx.source, policy: before });
   const result = await runSeed({ log: ctx.log, source: ctx.source, policy: after });
 
-  const built = buildDefinitionsSnapshot({ skills: [], persona: '# Persona\n', policy: after });
+  const built = buildDefinitionsSnapshot({
+    skills: [],
+    conversationSkills: [],
+    persona: '# Persona\n',
+    policy: after,
+  });
 
   expect(result).toMatchObject({
     status: 'seeded',

@@ -59,6 +59,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
 
   const built = buildDefinitionsSnapshot({
     skills: [],
+    conversationSkills: [],
     persona: '# Persona\n\nCalm and short.\n',
     policy,
   });

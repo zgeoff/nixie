@@ -54,8 +54,8 @@ test('it keeps a skill version and the snapshot that holds it when it runs again
   await sql`insert into skill_versions (skill_hash, name, frontmatter, files)
     values ('skill-a', 'tide-tables', '{}', '{"SKILL.md":"# Tides"}')`.execute(ctx.db);
 
-  await sql`insert into snapshot_skills (snapshot_hash, name, skill_hash, origin)
-    values ('snapshot-a', 'tide-tables', 'skill-a', 'definitions')`.execute(ctx.db);
+  await sql`insert into snapshot_skills (snapshot_hash, name, skill_hash, origin, in_conversation)
+    values ('snapshot-a', 'tide-tables', 'skill-a', 'definitions', 1)`.execute(ctx.db);
 
   await ctx.db.transaction().execute((tx) => skillsMigration.up(tx));
 
@@ -84,8 +84,10 @@ test('it refuses a snapshot skill of an origin other than the definitions or a v
   await sql`insert into skill_versions (skill_hash, name, frontmatter, files)
     values ('skill-a', 'tide-tables', '{}', '{}')`.execute(ctx.db);
 
-  const insert = sql`insert into snapshot_skills (snapshot_hash, name, skill_hash, origin)
-    values ('snapshot-a', 'tide-tables', 'skill-a', 'registry')`.execute(ctx.db);
+  const insert = sql`insert into snapshot_skills (snapshot_hash, name, skill_hash, origin,
+    in_conversation) values ('snapshot-a', 'tide-tables', 'skill-a', 'registry', 1)`.execute(
+    ctx.db,
+  );
 
   await Promise.allSettled([insert]);
 

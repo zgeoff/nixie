@@ -15,6 +15,7 @@ test('it reads the format version and the persona, and lists every other file un
     formatVersion: 1,
     persona: '# Persona\n',
     skills: [],
+    conversationSkills: [],
     unapplied: ['jobs/morning.json', 'notes.md', 'rules/mail.yaml'],
   });
 });
@@ -124,6 +125,7 @@ test('it lists a skill script as unapplied under format 1', () => {
     formatVersion: 1,
     persona: '# Persona\n',
     skills: [],
+    conversationSkills: [],
     unapplied: ['skills/pdf-forms/scripts/fill.py'],
   });
 });
@@ -178,8 +180,54 @@ test('it reads each skill under format 2, and lists none of its files as unappli
         ]),
       },
     ],
+    conversationSkills: ['tide-tables'],
     unapplied: [],
   });
+});
+
+test('it gives the conversation only the skills that the manifest lists', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 2\nskills: [tide-tables]\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'skills/tide-tables/SKILL.md',
+      new TextEncoder().encode('---\nname: tide-tables\ndescription: Reads a tide table.\n---\n'),
+    ],
+    [
+      'skills/bird-log/SKILL.md',
+      new TextEncoder().encode('---\nname: bird-log\ndescription: Logs a bird sighting.\n---\n'),
+    ],
+  ]);
+
+  const parsed = parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] });
+
+  expect(parsed.conversationSkills).toStrictEqual(['tide-tables']);
+});
+
+test('it refuses a manifest skill list that names no skill', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 2\nskills: [tide-table]\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'skills/tide-tables/SKILL.md',
+      new TextEncoder().encode('---\nname: tide-tables\ndescription: Reads a tide table.\n---\n'),
+    ],
+  ]);
+
+  expect(() =>
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+  ).toThrowWithMessage(Error, 'nixie.yaml: skills: no skill is named tide-table');
+});
+
+test('it refuses a manifest skill list that is not a list of names', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 2\nskills: tide-tables\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+  ]);
+
+  expect(() =>
+    parseDefinitions({ contentHash: 'c', files, revision: 'r', skipped: [] }),
+  ).toThrowWithMessage(Error, 'nixie.yaml: skills must be a list of skill names');
 });
 
 test('it refuses a skill under format 2 whose SKILL.md fails a seed check', () => {
