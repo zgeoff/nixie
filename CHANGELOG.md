@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.1](https://github.com/zgeoff/nixie/compare/v0.33.0...v0.33.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **geo-1244:** answer readiness without calling impd per request ([#392](https://github.com/zgeoff/nixie/issues/392)) ([01508f9](https://github.com/zgeoff/nixie/commit/01508f90a935750ebba28cc0911aae54cddfee5d))
+
 ## [0.33.0](https://github.com/zgeoff/nixie/compare/v0.32.0...v0.33.0) (2026-10-18)
 
 
