@@ -98,7 +98,7 @@ test('it lists only the flags inside the range', async () => {
     { ownerName: 'Avery', timeZone: 'UTC' },
   );
 
-  invariant(note);
+  invariant(note !== null);
 
   expect(note).toInclude('possible self-note: "The assistant prefers short replies.", event #4.');
   expect(note).not.toInclude('hums');
