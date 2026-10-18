@@ -327,9 +327,10 @@ interface MemoryItemTable {
   // made after the backfill, whose short ID its UUID gives
   readonly short_id: string | null;
 
-  // the kind the release before reads, fact or self, which the subject replaces
+  // the kind the release before reads, fact or self, and the subject that replaces it, null on a
+  // row the release before wrote, whose subject its kind gives
   readonly kind: 'fact' | 'self';
-  readonly subject: MemorySubject;
+  readonly subject: MemorySubject | null;
 }
 
 interface MemoryVersionTable {

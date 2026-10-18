@@ -25,14 +25,15 @@ so no later version changes the subject. The mark is a record of its own, as is 
 item's proposal, because the release before reads a version or a proposal record as a strict shape
 and skips a record of a kind it does not know. A self-note's mark keeps the record kind that the
 release before reads as a self-note, and the row keeps the kind column that release reads, so a
-rollback by one release still tells a self-note from a fact. The model reads and names an item by
-its short ID, and the store keys everything else, the item's key included, by the item's UUID. The
-versions table holds one row per version: what changed, the state that version gave the item, the
-sealed text, and the provenance. A version's provenance is its origin (the user, the conversation, a
-task or the memory writer), its source of content, the task and proposal behind it, the verdicts of
-the write checks, and the evidence offsets inside the message the quote came from. nixie sets every
-provenance field from the turn or the client action that wrote the version, and a tool's arguments
-never reach them.
+rollback by one release still tells a self-note from a fact. A row that the release before writes
+holds no subject, and the store reads its subject from its kind. The model reads and names an item
+by its short ID, and the store keys everything else, the item's key included, by the item's UUID.
+The versions table holds one row per version: what changed, the state that version gave the item,
+the sealed text, and the provenance. A version's provenance is its origin (the user, the
+conversation, a task or the memory writer), its source of content, the task and proposal behind it,
+the verdicts of the write checks, and the evidence offsets inside the message the quote came from.
+nixie sets every provenance field from the turn or the client action that wrote the version, and a
+tool's arguments never reach them.
 
 The provenance sits in plain columns, so the memory view and a review of poisoned memory filter on
 it without decrypting anything. The text, the evidence quote and the user's request to retire the

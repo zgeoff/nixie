@@ -117,7 +117,7 @@ export interface NixieTables {
     readonly forgotten_sequence: number | null;
     readonly short_id: string | null;
     readonly kind: string;
-    readonly subject: string;
+    readonly subject: string | null;
   };
   readonly memory_notice_entries: {
     readonly entry_key: string;
@@ -165,7 +165,7 @@ export interface NixieTables {
     readonly lapse_at: number;
     readonly resolved_sequence: number | null;
     readonly kind: string;
-    readonly subject: string;
+    readonly subject: string | null;
   };
   readonly memory_versions: {
     readonly version_key: string;

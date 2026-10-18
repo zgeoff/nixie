@@ -3,6 +3,7 @@ import type { Kysely } from 'kysely';
 import { CloseMatchError } from './close-match-error';
 import { findCloseMatch } from './find-close-match';
 import type { ApprovalResult, ProposalAnswer } from './gate-types';
+import { getRowSubject } from './get-row-subject';
 import type { OpenedProposal } from './read-open-proposal';
 import { SelfNoteError } from './self-note-error';
 import { toAppliedResult } from './to-applied-result';
@@ -24,7 +25,8 @@ export async function writeApprovedNewItem(
       opened,
       answer,
       target: revisionOf,
-      requireInTransaction: (db) => requireSameSubject(db, revisionOf.itemID, opened.row.subject),
+      requireInTransaction: (db) =>
+        requireSameSubject(db, revisionOf.itemID, getRowSubject(opened.row)),
     });
 
     // the closed-proposal sweep removes a key that a crash here leaves
@@ -50,7 +52,7 @@ async function writeUnmatchedNewItem(
   opened: OpenedProposal,
   answer: ProposalAnswer,
 ): Promise<ApprovalResult> {
-  const query = { text: answer.editedText ?? opened.text.text, subject: opened.row.subject };
+  const query = { text: answer.editedText ?? opened.text.text, subject: getRowSubject(opened.row) };
 
   const match = await findCloseMatch(parts, query);
 
@@ -88,11 +90,11 @@ async function requireSameSubject(
 ): Promise<void> {
   const item = await db
     .selectFrom('memory_items')
-    .select('subject')
+    .select(['kind', 'subject'])
     .where('item_id', '=', itemID)
     .executeTakeFirst();
 
-  if (item !== undefined && item.subject !== subject) {
+  if (item !== undefined && getRowSubject(item) !== subject) {
     throw new SelfNoteError(
       `memory item ${itemID} is not ${subjectNames[subject]}, so it cannot take this text`,
     );

@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely';
 import type { CloseMatch } from './gate-types';
 import { readDeliverableItems } from './read-deliverable-items';
 import { readRecall } from './read-recall';
+import { subjectColumn } from './subject-column';
 import type { MemorySubject, MemoryTables, RecalledItem, StoreParts } from './types';
 
 export interface CloseMatchQuery {
@@ -63,7 +64,7 @@ async function readOtherSubjectIDs(
   const rows = await (db ?? parts.context.log.writer.db.$extendTables<MemoryTables>())
     .selectFrom('memory_items')
     .select('item_id')
-    .where('subject', '!=', subject)
+    .where(subjectColumn, '!=', subject)
     .where('state', '=', 'active')
     .execute();
 

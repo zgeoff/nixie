@@ -1,4 +1,5 @@
 import type { ContentGateResult, GatedRememberRequest } from './gate-types';
+import { getRowSubject } from './get-row-subject';
 import { requireItem } from './require-item';
 import { runContentGate } from './run-content-gate';
 import { runSelfNoteGate } from './run-self-note-gate';
@@ -27,7 +28,7 @@ export async function runSubjectGate(
           states: ['active', 'retired'],
         });
 
-  const subject = item?.subject ?? request.subject ?? 'owner';
+  const subject = item === null ? (request.subject ?? 'owner') : getRowSubject(item);
 
   if (subject === 'self') {
     requireSelfNoteWrite(request);

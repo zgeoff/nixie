@@ -6,7 +6,9 @@ import type {
   PendingFilter,
   ProposalSource,
 } from './gate-types';
+import { getRowSubject } from './get-row-subject';
 import { parseEvidence } from './parse-evidence';
+import { subjectColumn } from './subject-column';
 import { toReviewReason } from './to-review-reason';
 import type { MemoryTables, StoreParts } from './types';
 
@@ -26,7 +28,7 @@ export async function readPendingProposals(
     .selectAll()
     .where('status', '=', 'pending')
     .where('lapse_at', '>', parts.context.gate.clock.now())
-    .$if(subjects !== undefined, (query) => query.where('subject', 'in', subjects ?? []))
+    .$if(subjects !== undefined, (query) => query.where(subjectColumn, 'in', subjects ?? []))
     .orderBy('created_sequence')
     .execute();
 
@@ -53,7 +55,7 @@ export async function readPendingProposals(
         itemID: row.item_id,
         targetVersion: row.target_version,
         isPinned: row.is_pinned === 1,
-        subject: row.subject,
+        subject: getRowSubject(row),
         reason: toReviewReason(row.review_reason),
         actionHash: row.action_hash,
         origin: row.origin,

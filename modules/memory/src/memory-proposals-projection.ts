@@ -1,5 +1,6 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Kysely } from 'kysely';
+import { getRowSubject } from './get-row-subject';
 import type { ProposalRecord } from './parse-proposal-record';
 import { parseProposalRecord } from './parse-proposal-record';
 import { parseSubjectRecord } from './parse-subject-record';
@@ -120,7 +121,9 @@ async function readProposalSubject(
     .where('item_id', '=', parsed.itemID)
     .executeTakeFirst();
 
-  return item ?? { kind: 'fact', subject: 'owner' };
+  return item === undefined
+    ? { kind: 'fact', subject: 'owner' }
+    : { kind: item.kind, subject: getRowSubject(item) };
 }
 
 const statusAfter = {

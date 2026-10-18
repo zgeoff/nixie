@@ -321,11 +321,10 @@ export interface MemoryProposalTable {
   readonly lapse_at: number;
   readonly resolved_sequence: number | null;
 
-  // the kind the release before reads, fact or self, which the subject replaces
+  // the kind the release before reads, fact or self, and the subject of the item the proposal
+  // creates or changes, null on a row the release before wrote, whose subject its kind gives
   readonly kind: 'fact' | 'self';
-
-  // the subject of the item the proposal creates or changes
-  readonly subject: MemorySubject;
+  readonly subject: MemorySubject | null;
 }
 
 export interface MemoryNoticeEntryTable {

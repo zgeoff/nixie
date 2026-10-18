@@ -1,4 +1,5 @@
 import { findItemKey } from './find-item-key';
+import { getRowSubject } from './get-row-subject';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { readVersion } from './read-version';
 import { requireItem } from './require-item';
@@ -24,5 +25,5 @@ export async function readItemText(parts: StoreParts, target: VersionRef): Promi
 
   const version = await readVersion(db, key, target);
 
-  return { text: version.text.text, subject: item.subject };
+  return { text: version.text.text, subject: getRowSubject(item) };
 }

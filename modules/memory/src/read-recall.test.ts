@@ -7,6 +7,7 @@ import { createMemoryItem } from './test-utils/create-memory-item';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
 import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
+import type { MemoryTables } from './types';
 
 async function setupTest() {
   return { memory: await startTestMemory() };
@@ -86,6 +87,28 @@ test('it returns only the items of the subjects the recall names', async () => {
 
   expect(queried.items.map((item) => item.subject).toSorted()).toStrictEqual(['self', 'shared']);
   expect(listed.items.map((item) => item.text)).toStrictEqual(['The garden hose leaks at the tap']);
+});
+
+test('it reads a self-note that the release before wrote with no subject as a self-note', async () => {
+  const ctx = await setupTest();
+
+  const note = await ctx.memory.store.remember({
+    text: 'I enjoy hearing about the garden',
+    subject: 'self',
+    provenance: buildMockProvenance(),
+  });
+
+  // the row the release before leaves, which holds the kind and no subject
+  await ctx.memory.log.writer.db
+    .$extendTables<MemoryTables>()
+    .updateTable('memory_items')
+    .set({ subject: null })
+    .where('item_id', '=', note.itemID)
+    .execute();
+
+  const result = await ctx.memory.store.recall({ query: 'garden', subjects: ['self'] });
+
+  expect(result.items).toMatchObject([{ itemID: note.itemID, subject: 'self' }]);
 });
 
 test('it returns a matching self-note when more facts match than the largest recall holds', async () => {

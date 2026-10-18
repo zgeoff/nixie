@@ -108,13 +108,19 @@ test('it runs again without a change', async () => {
   expect(rows.rows).toStrictEqual([{ kind: 'self', subject: 'self' }]);
 });
 
-test('it gives memory proposals a subject that defaults to owner', async () => {
+test('it leaves a row that the release before inserts afterwards with no subject', async () => {
   const ctx = await setupTest();
 
   await ctx.db.transaction().execute((tx) => memorySubjectsMigration.up(tx));
 
-  const columns = await sql`select name, dflt_value from pragma_table_info('memory_proposals')
-    where name = 'subject'`.execute(ctx.db);
+  // the insert the release before runs, which names no subject
+  await sql`insert into memory_items (item_id, version, state, is_pinned, created_sequence,
+    updated_sequence, short_id, kind) values
+    ('8d2e4b71-0c5f-4e9a-b3d6-1f7a9c2e5b80', 1, 'active', 0, 1, 1, 'q4wz8n3vtc', 'self')`.execute(
+    ctx.db,
+  );
 
-  expect(columns.rows).toStrictEqual([{ name: 'subject', dflt_value: "'owner'" }]);
+  const rows = await sql`select kind, subject from memory_items`.execute(ctx.db);
+
+  expect(rows.rows).toStrictEqual([{ kind: 'self', subject: null }]);
 });

@@ -3,6 +3,7 @@ import type { Kysely } from 'kysely';
 import { decodeProposalText } from './decode-proposal-text';
 import type { MemoryProposalRow } from './gate-types';
 import { normalizeFactText } from './normalize-fact-text';
+import { subjectColumn } from './subject-column';
 import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from './types';
 
 // A change a write proposes, as a pending proposal must match it to take the write in.
@@ -45,7 +46,7 @@ export async function findMatchingProposal(
   // decides, and only a new item's proposal is matched by the subject the write asks for
   const sameTarget =
     target === null
-      ? pending.where('is_new_item', '=', 1).where('subject', '=', change.subject ?? 'owner')
+      ? pending.where('is_new_item', '=', 1).where(subjectColumn, '=', change.subject ?? 'owner')
       : pending.where('item_id', '=', target.itemID).where('target_version', '=', target.version);
 
   const rows = await sameTarget.orderBy('created_sequence').execute();

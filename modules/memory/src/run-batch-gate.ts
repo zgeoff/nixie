@@ -2,6 +2,7 @@ import { buildGateReview } from './build-gate-review';
 import { findMissingToken } from './find-missing-token';
 import { findSourceEvidence } from './find-source-evidence';
 import type { ContentGateResult } from './gate-types';
+import { getRowSubject } from './get-row-subject';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import { requireItem } from './require-item';
 import { runBatchRetirementGate } from './run-batch-retirement-gate';
@@ -68,7 +69,7 @@ function findEarlyReview(
     return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
   }
 
-  if (item?.subject === 'self') {
+  if (item !== null && getRowSubject(item) === 'self') {
     const tokens = findMissingToken(text, source.text) === null ? 'pass' : 'fail';
 
     return buildGateReview('self_note', { checks: { tokens } });

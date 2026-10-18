@@ -3,9 +3,11 @@ import { memoryRecalledCodec } from '@heynixie/sessions';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { RankQuery, RankedMatches } from './find-ranked-matches';
 import { findRankedMatches } from './find-ranked-matches';
+import { getRowSubject } from './get-row-subject';
 import type { MatchScores } from './merge-rankings';
 import { parseItemCursor } from './parse-item-cursor';
 import { readDeliverableItems } from './read-deliverable-items';
+import { subjectColumn } from './subject-column';
 import type {
   MemoryState,
   MemorySubject,
@@ -104,7 +106,7 @@ async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise
     .where('state', 'in', query.states)
     .where('created_sequence', '>', parseItemCursor(request.after))
     .$if(request.subjects !== undefined, (listed) =>
-      listed.where('subject', 'in', request.subjects ?? []),
+      listed.where(subjectColumn, 'in', request.subjects ?? []),
     )
     .orderBy('created_sequence')
     .limit(query.limit + 1)
@@ -187,12 +189,12 @@ async function findSubjectRankedMatches(
   const rows = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
-    .select(['item_id', 'subject'])
+    .select(['item_id', 'kind', 'subject'])
     .where('state', '=', 'active')
     .execute();
 
-  const selfIDs = rows.filter((row) => row.subject === 'self').map((row) => row.item_id);
-  const otherIDs = rows.filter((row) => row.subject !== 'self').map((row) => row.item_id);
+  const selfIDs = rows.filter((row) => getRowSubject(row) === 'self').map((row) => row.item_id);
+  const otherIDs = rows.filter((row) => getRowSubject(row) !== 'self').map((row) => row.item_id);
 
   const othersQuery = buildRankQuery(ranking.request, ranking.limits.others, [
     ...ranking.excludedIDs,
@@ -225,7 +227,7 @@ async function readOtherSubjectIDs(
     .selectFrom('memory_items')
     .select('item_id')
     .where('state', '=', 'active')
-    .$if(subjects.length > 0, (query) => query.where('subject', 'not in', subjects))
+    .$if(subjects.length > 0, (query) => query.where(subjectColumn, 'not in', subjects))
     .execute();
 
   return rows.map((row) => row.item_id);
