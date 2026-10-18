@@ -1,10 +1,10 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import type { RuntimeReport } from '@heynixie/sandbox';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { buildStubCheck, buildTestClock, waitForCondition } from '@heynixie/testing';
 import { buildCleanup } from './build-cleanup';
 import { buildStartState } from './build-start-state';
 import { startServerHealth } from './start-server-health';
@@ -43,13 +43,14 @@ test('it answers readiness from the last impd report while a later impd check ha
     areRunnersStarted: true,
   });
 
-  const runtime = { next: Promise.resolve<RuntimeReport>({ isReady: true, reason: null }) };
-  const checkRuntime = mock(() => runtime.next);
+  const stub = buildStubCheck<RuntimeReport>(() =>
+    Promise.resolve({ isReady: true, reason: null }),
+  );
 
   const app = await startServerHealth({
     writer: ctx.writer,
     state,
-    adapter: { checkRuntime },
+    adapter: { checkRuntime: stub.check },
     dataDir: ctx.dataDir,
     clock: ctx.clock,
     cleanup: ctx.cleanup,
@@ -62,16 +63,15 @@ test('it answers readiness from the last impd report while a later impd check ha
     return response.status === 200;
   });
 
-  runtime.next = Promise.withResolvers<RuntimeReport>().promise;
-
+  stub.answerWith(() => Promise.withResolvers<RuntimeReport>().promise);
   ctx.clock.advance(5000);
 
-  await waitForCondition(() => checkRuntime.mock.calls.length === 2);
+  await waitForCondition(() => stub.check.mock.calls.length === 2);
 
   const responses = await Promise.all(
     Array.from({ length: 3 }, () => app.handle(new Request('http://nixie.test/health/ready'))),
   );
 
   expect(responses.map((response) => response.status)).toStrictEqual([200, 200, 200]);
-  expect(checkRuntime).toHaveBeenCalledTimes(2);
+  expect(stub.check).toHaveBeenCalledTimes(2);
 });

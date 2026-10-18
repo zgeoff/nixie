@@ -1,5 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { buildStubCheck, buildTestClock, waitForCondition } from '@heynixie/testing';
 import { startPartRefresh } from './start-part-refresh';
 import type { PartReport } from './types';
 
@@ -120,11 +120,10 @@ test('it skips a part whose check still runs past its timeout in later rounds', 
 test('it checks a part again once its check that outlasted the timeout settles', async () => {
   const ctx = setupTest();
   const slow = Promise.withResolvers<PartReport>();
-  const runtime = { next: slow.promise };
-  const check = mock(() => runtime.next);
+  const stub = buildStubCheck(() => slow.promise);
 
   const refresh = startPartRefresh({
-    checks: { imp_runtime: check },
+    checks: { imp_runtime: stub.check },
     clock: ctx.clock,
     intervalMs: 5000,
     timeoutMs: 2000,
@@ -140,8 +139,7 @@ test('it checks a part again once its check that outlasted the timeout settles',
     () => refresh.read('imp_runtime').reason === 'the check took longer than 2000 ms',
   );
 
-  runtime.next = Promise.resolve({ isReady: true, reason: null });
-
+  stub.answerWith(() => Promise.resolve({ isReady: true, reason: null }));
   slow.resolve({ isReady: false, reason: 'impd does not answer' });
 
   // the refresh's own reaction to the late answer runs before this await returns
@@ -151,20 +149,18 @@ test('it checks a part again once its check that outlasted the timeout settles',
 
   await waitForCondition(() => refresh.read('imp_runtime').isReady);
 
-  expect(check).toHaveBeenCalledTimes(2);
+  expect(stub.check).toHaveBeenCalledTimes(2);
 });
 
 test('it reports a check that rejects as unready, and checks the part again once the interval passes', async () => {
   const ctx = setupTest();
 
-  const runtime: { next: () => Promise<PartReport> } = {
-    next: () => Promise.reject(new TypeError('impd refused the call')),
-  };
-
-  const check = mock(() => runtime.next());
+  const stub = buildStubCheck<PartReport>(() =>
+    Promise.reject(new TypeError('impd refused the call')),
+  );
 
   const refresh = startPartRefresh({
-    checks: { imp_runtime: check },
+    checks: { imp_runtime: stub.check },
     clock: ctx.clock,
     intervalMs: 5000,
     timeoutMs: 2000,
@@ -179,8 +175,7 @@ test('it reports a check that rejects as unready, and checks the part again once
 
   const failed = refresh.read('imp_runtime');
 
-  runtime.next = () => Promise.resolve({ isReady: true, reason: null });
-
+  stub.answerWith(() => Promise.resolve({ isReady: true, reason: null }));
   ctx.clock.advance(5000);
 
   await waitForCondition(() => refresh.read('imp_runtime').isReady);
@@ -191,10 +186,10 @@ test('it reports a check that rejects as unready, and checks the part again once
 
 test('it checks each part again once the interval passes', async () => {
   const ctx = setupTest();
-  const disk: { report: PartReport } = { report: { isReady: true, reason: null } };
+  const stub = buildStubCheck<PartReport>(() => Promise.resolve({ isReady: true, reason: null }));
 
   const refresh = startPartRefresh({
-    checks: { disk: () => Promise.resolve(disk.report) },
+    checks: { disk: stub.check },
     clock: ctx.clock,
     intervalMs: 5000,
     timeoutMs: 2000,
@@ -204,7 +199,7 @@ test('it checks each part again once the interval passes', async () => {
 
   await waitForCondition(() => refresh.read('disk').isReady);
 
-  disk.report = { isReady: false, reason: 'the data volume is 95% full' };
+  stub.answerWith(() => Promise.resolve({ isReady: false, reason: 'the data volume is 95% full' }));
 
   await waitForCondition(() => ctx.clock.countSleepers() === 1);
 
@@ -242,11 +237,10 @@ test('it never checks again before the interval passes', async () => {
 
 test('it answers with the last report while a later check runs', async () => {
   const ctx = setupTest();
-  const runtime = { next: Promise.resolve<PartReport>({ isReady: true, reason: null }) };
-  const check = mock(() => runtime.next);
+  const stub = buildStubCheck<PartReport>(() => Promise.resolve({ isReady: true, reason: null }));
 
   const refresh = startPartRefresh({
-    checks: { imp_runtime: check },
+    checks: { imp_runtime: stub.check },
     clock: ctx.clock,
     intervalMs: 5000,
     timeoutMs: 2000,
@@ -261,11 +255,10 @@ test('it answers with the last report while a later check runs', async () => {
   // the first round's report lands just before the interval's sleep starts
   await waitForCondition(() => refresh.read('imp_runtime').isReady);
 
-  runtime.next = Promise.withResolvers<PartReport>().promise;
-
+  stub.answerWith(() => Promise.withResolvers<PartReport>().promise);
   ctx.clock.advance(5000);
 
-  await waitForCondition(() => check.mock.calls.length === 2);
+  await waitForCondition(() => stub.check.mock.calls.length === 2);
 
   expect(refresh.read('imp_runtime')).toStrictEqual({ isReady: true, reason: null });
 });
