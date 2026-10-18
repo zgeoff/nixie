@@ -257,6 +257,121 @@ test('it records a destination the owner never typed and the definitions lack', 
   ]);
 });
 
+test('it records no untyped token for a destination that the persona holds', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCopy reports to ops@example.net.\n');
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  const tool = buildSkillWriteTool({
+    log: ctx.log,
+    readInForce: () => seeded.inForce,
+    refreshDefinitions: () => Promise.resolve(seeded.inForce),
+    readSkillList: () => [],
+  });
+
+  await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_write',
+      input: {
+        name: 'tide-report',
+        files: [
+          {
+            path: 'SKILL.md',
+            text: '---\nname: tide-report\ndescription: Mails the tide report.\n---\nMail it to ops@example.net.\n',
+          },
+        ],
+      },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  const proposals = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['skills.write_proposed'],
+  });
+
+  expect(proposals.map((entry) => entry.record.payload)).toMatchObject([{ untypedToken: null }]);
+});
+
+test('it records no untyped token for a destination that a skill in force holds in its files', async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'skills', 'bird-log', 'references'), { recursive: true });
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  await writeFile(
+    join(ctx.root, 'skills', 'bird-log', 'SKILL.md'),
+    '---\nname: bird-log\ndescription: Logs a bird sighting.\n---\n# Birds\n',
+  );
+
+  await writeFile(
+    join(ctx.root, 'skills', 'bird-log', 'references', 'contacts.md'),
+    'Send sightings to ops@example.net.\n',
+  );
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  const tool = buildSkillWriteTool({
+    log: ctx.log,
+    readInForce: () => seeded.inForce,
+    refreshDefinitions: () => Promise.resolve(seeded.inForce),
+    readSkillList: () => [],
+  });
+
+  await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_write',
+      input: {
+        name: 'tide-report',
+        files: [
+          {
+            path: 'SKILL.md',
+            text: '---\nname: tide-report\ndescription: Mails the tide report.\n---\nMail it to ops@example.net.\n',
+          },
+        ],
+      },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  const proposals = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['skills.write_proposed'],
+  });
+
+  expect(proposals.map((entry) => entry.record.payload)).toMatchObject([{ untypedToken: null }]);
+});
+
 test('it refuses a skill that fails a seed check, and records no proposal', async () => {
   const ctx = await setupTest();
 
@@ -310,6 +425,65 @@ test('it refuses a skill that fails a seed check, and records no proposal', asyn
     status: 'error',
     message:
       'the skill fails the seed checks: skills/tide-tables/SKILL.md: line 5 holds U+202E, a hidden or bidirectional control character',
+  });
+
+  expect(proposals).toStrictEqual([]);
+});
+
+test('it refuses a skill with every problem the seed checks find, and records no proposal', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const seeded = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  const tool = buildSkillWriteTool({
+    log: ctx.log,
+    readInForce: () => seeded.inForce,
+    refreshDefinitions: () => Promise.resolve(seeded.inForce),
+    readSkillList: () => [],
+  });
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_write',
+      input: {
+        name: 'tide-tables',
+        files: [
+          { path: 'SKILL.md', text: '# Tides\n' },
+          {
+            path: 'references/ports.md',
+            text: `Read ${String.fromCodePoint(0x20_2e)}the ports\n`,
+          },
+        ],
+      },
+      toolUseID: null,
+    },
+    {
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  const proposals = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['skills.write_proposed'],
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'the skill fails the seed checks: skills/tide-tables/SKILL.md: the file does not open with YAML frontmatter between --- lines; skills/tide-tables/references/ports.md: line 1 holds U+202E, a hidden or bidirectional control character',
   });
 
   expect(proposals).toStrictEqual([]);
