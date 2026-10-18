@@ -28,10 +28,12 @@ test('it reads back the records that nixie writes', async () => {
   expect(record).toMatchObject({ thread: taskID, stepKey: `${taskID}:1` });
 }, 60_000);
 
+// The first nixie claims the new task before the kill, so the second start's recovery always finds
+// a lease to free, whenever the kill lands.
 test('it keeps the leases and the tasks that each start recovered', async () => {
   const nixie = await startTestNixie();
 
-  const first = nixie.harness.start();
+  const first = nixie.harness.start([{ point: 'claim.after', kind: 'task' }]);
 
   await first.ready;
 
@@ -39,6 +41,7 @@ test('it keeps the leases and the tasks that each start recovered', async () => 
 
   const taskID = String(created);
 
+  await first.waitForArrival('claim.after');
   await first.kill();
 
   const second = nixie.harness.start();
@@ -47,7 +50,10 @@ test('it keeps the leases and the tasks that each start recovered', async () => 
 
   expect(nixie.readRecoveredStates()).toMatchObject([
     { leases: [], tasks: [{ task_id: 'conversation' }] },
-    { leases: [], tasks: [{ task_id: 'conversation' }, { task_id: taskID, state: 'ready' }] },
+    {
+      leases: [{ kind: 'task', work_id: taskID, holder: null, generation: 1 }],
+      tasks: [{ task_id: 'conversation' }, { task_id: taskID, state: 'ready' }],
+    },
   ]);
 }, 60_000);
 
