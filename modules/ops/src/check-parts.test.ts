@@ -1,6 +1,7 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { checkParts } from './check-parts';
+import type { PartCheck } from './types';
 
 test('it reports ready when every part is ready', async () => {
   const report = await checkParts(
@@ -69,6 +70,20 @@ test('it reports a check that never settles as unready once the timeout passes',
     isReady: false,
     reason: 'the check took longer than 2000 ms',
   });
+});
+
+test('it aborts the signal of a check that outlasts the timeout, so the check ends its calls', async () => {
+  const clock = buildTestClock(0);
+  const check = mock<PartCheck>(() => Promise.withResolvers<never>().promise);
+  const pending = checkParts({ imp_host: check }, 2000, clock);
+
+  await waitForCondition(() => clock.countSleepers() === 1);
+
+  clock.advance(2000);
+
+  await pending;
+
+  expect(check.mock.calls[0]?.[0]?.aborted).toBe(true);
 });
 
 test('it waits on a check that never settles until the timeout passes', async () => {

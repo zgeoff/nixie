@@ -87,7 +87,8 @@ interface ImpSecretInput {
 // The impd calls the adapter makes. buildImpPort implements it on imp's client; a test stands in
 // for impd with its own.
 export interface ImpPort {
-  readonly readFeatures: () => Promise<ImpFeatures>;
+  // the signal ends the calls to impd, such as one that hangs on a half-open connection
+  readonly readFeatures: (signal?: AbortSignal) => Promise<ImpFeatures>;
   readonly createImp: (input: ImpCreateInput) => Promise<void>;
 
   // whether impd backs the imp up, or null when no imp has the name

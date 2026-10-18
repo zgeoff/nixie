@@ -27,11 +27,14 @@ async function runCheck(check: PartCheck, timeoutMs: number, clock: Clock): Prom
   const stopped = new AbortController();
 
   try {
-    return await Promise.race([check(), waitForTimeout(clock, timeoutMs, stopped.signal)]);
+    return await Promise.race([
+      check(stopped.signal),
+      waitForTimeout(clock, timeoutMs, stopped.signal),
+    ]);
   } catch (error) {
     return { isReady: false, reason: `the check failed: ${toErrorName(error)}` };
   } finally {
-    // ends the sleep of a check that settled in time
+    // ends the sleep of a check that settled in time, and the calls of one that outlasted it
     stopped.abort();
   }
 }

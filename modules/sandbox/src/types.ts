@@ -71,8 +71,8 @@ export interface SandboxAdapter {
   // unless the runtime already holds that name at the same digest
   readonly addImage: (image: SandboxImage) => Promise<void>;
 
-  // whether the runtime answers now, for the imp host's readiness
-  readonly checkRuntime: () => Promise<RuntimeReport>;
+  // whether the runtime answers now, for the imp host's readiness; the signal ends a call that hangs
+  readonly checkRuntime: (signal?: AbortSignal) => Promise<RuntimeReport>;
 }
 
 // An image for one kind of work, pinned by digest, such as

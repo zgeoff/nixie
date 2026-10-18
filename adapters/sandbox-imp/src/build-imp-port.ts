@@ -1,6 +1,6 @@
 import { SandboxHostError } from '@heynixie/sandbox';
 import type { ImpClient } from '@zgeoff/imp-client';
-import { ORPCError, createImpClient, openReverseForward } from '@zgeoff/imp-client';
+import { CLIENT_VERSION, ORPCError, createImpClient, openReverseForward } from '@zgeoff/imp-client';
 import type { ImpPort } from './types';
 
 export interface ImpConnection {
@@ -63,7 +63,7 @@ type LifecycleCalls = Pick<
 
 function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
   return {
-    readFeatures: () => readFeatures(client),
+    readFeatures: (signal) => readFeatures(client, signal),
     createImp: async (input) => {
       await withHostError('create', () =>
         client.imps.create({
@@ -100,11 +100,18 @@ function buildLifecycleCalls(client: ImpClient): LifecycleCalls {
   };
 }
 
-async function readFeatures(client: ImpClient): ReturnType<ImpPort['readFeatures']> {
-  const [check, info] = await Promise.all([client.checkServer(), client.system.info()]);
+// One system.info call, which the signal ends, such as on a half-open connection. The client's
+// checkServer makes the same call with no signal, so the version check runs here on its answer.
+async function readFeatures(
+  client: ImpClient,
+  signal: AbortSignal | undefined,
+): ReturnType<ImpPort['readFeatures']> {
+  const options = signal === undefined ? {} : { signal };
 
-  if (!check.compatible && !isRenamedImpd(check.serverVersion)) {
-    throw new Error(`impd ${check.serverVersion} does not speak imp client ${check.clientVersion}`);
+  const info = await client.system.info(undefined, options);
+
+  if (!isSpokenImpd(info.version) && !isRenamedImpd(info.version)) {
+    throw new Error(`impd ${info.version} does not speak imp client ${CLIENT_VERSION}`);
   }
 
   return {
@@ -112,6 +119,19 @@ async function readFeatures(client: ImpClient): ReturnType<ImpPort['readFeatures
     isEgressEnforced: info.egress?.isEnforced === true,
     hasBackupOptOut: info.features?.backupOptOut === true,
   };
+}
+
+// the client's own checkServer rule for a client past 1.0.0: impd speaks it when they share a major
+function isSpokenImpd(serverVersion: string): boolean {
+  const major = findMajor(serverVersion);
+
+  return major !== null && major === findMajor(CLIENT_VERSION);
+}
+
+const MAJOR = /^(?<major>\d+)\.\d+\.\d+/u;
+
+function findMajor(version: string): string | null {
+  return MAJOR.exec(version)?.groups?.['major'] ?? null;
 }
 
 // impd 2 renamed imp to impz and kept the wire API of impd 1.6, which this 1.x client speaks; the

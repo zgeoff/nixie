@@ -23,9 +23,9 @@ export interface PartRefresh<Part extends string> {
   readonly stop: () => Promise<void>;
 }
 
-// Runs the checks at once and then every interval, and keeps each part's last report, so a health
-// request reads the report and never waits on a slow check. A round skips a part whose check from an
-// earlier round outlasted its timeout and still runs, so a slow part never stacks up calls.
+// Runs the checks at once and then every interval, keeping each part's last report for health
+// requests. A check past its timeout sees its signal abort, ends its calls and runs again next round;
+// a round skips a part whose check ignores the signal and still runs, so calls never stack up.
 export function startPartRefresh<Part extends string>(
   options: PartRefreshOptions<Part>,
 ): PartRefresh<Part> {
@@ -70,11 +70,11 @@ async function runRefresh<Part extends string>(
 
 // a check that marks its part running until the check resolves or rejects, after its timeout too
 function makeTrackedCheck(part: string, check: PartCheck, running: Set<string>): PartCheck {
-  return async () => {
+  return async (signal) => {
     running.add(part);
 
     try {
-      return await check();
+      return await check(signal);
     } finally {
       running.delete(part);
     }

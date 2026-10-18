@@ -228,9 +228,9 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
 
 // the runtime is ready while impd answers
 function makeRuntimeChecker(port: ImpPort): SandboxAdapter['checkRuntime'] {
-  return async () => {
+  return async (signal) => {
     try {
-      await port.readFeatures();
+      await port.readFeatures(signal);
 
       return { isReady: true, reason: null };
     } catch {
