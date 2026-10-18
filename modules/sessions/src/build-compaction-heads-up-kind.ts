@@ -13,6 +13,9 @@ export interface CompactionHeadsUp {
   readonly threshold: number;
 }
 
+// the most turn ends one note reads, past which the block's count of more stops growing
+const readLimit = 1000;
+
 // The event kind that warns the model that compaction is near, from the first turn of a session to
 // end past the heads-up, so the warning comes again only after a new session opens, as one does
 // after each compaction.
@@ -41,9 +44,6 @@ export function buildCompactionHeadsUpKind(
       `Compaction in about ${formatTokens(detail.tokensLeft)} tokens (at ${String(Math.round(detail.threshold * 100))}% of the window). Save anything worth keeping now.`,
   };
 }
-
-// the most turn ends one note reads, past which the block's count of more stops growing
-const readLimit = 1000;
 
 async function readHeadsUp(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
@@ -86,6 +86,9 @@ interface TurnSpan {
   readonly before: number;
 }
 
+// the turn ends one read of a session's earlier turns takes
+const pageSize = 100;
+
 // The newest earlier turn of the session that ended past the heads-up, read a page at a time back
 // to the session's opening, or null when none did.
 async function readEarlierHeadsUp(
@@ -111,9 +114,6 @@ async function readEarlierHeadsUp(
 
   return readEarlierHeadsUp(log, headsUp, { after: span.after, before: oldest.record.sequence });
 }
-
-// the turn ends one read of a session's earlier turns takes
-const pageSize = 100;
 
 // a turn whose model calls reported no usage gives no context
 function toContext(record: LogRecord): ContextSize | null {
