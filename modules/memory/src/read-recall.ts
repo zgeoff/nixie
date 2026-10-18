@@ -7,8 +7,8 @@ import type { MatchScores } from './merge-rankings';
 import { parseItemCursor } from './parse-item-cursor';
 import { readDeliverableItems } from './read-deliverable-items';
 import type {
-  MemoryKind,
   MemoryState,
+  MemorySubject,
   MemoryTables,
   RecallRequest,
   RecallResult,
@@ -46,7 +46,8 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
       (item) =>
         !(request.excludePinned === true && item.isPinned) &&
         !excluded.has(buildVersionKey(item)) &&
-        isAtNamedVersion(item, request),
+        isAtNamedVersion(item, request) &&
+        (request.subjects === undefined || request.subjects.includes(item.subject)),
     );
 
     if (NIXIE_TEST_BUILD) {
@@ -102,6 +103,9 @@ async function findCandidates(parts: StoreParts, query: CandidateQuery): Promise
     .select(['item_id', 'created_sequence'])
     .where('state', 'in', query.states)
     .where('created_sequence', '>', parseItemCursor(request.after))
+    .$if(request.subjects !== undefined, (listed) =>
+      listed.where('subject', 'in', request.subjects ?? []),
+    )
     .orderBy('created_sequence')
     .limit(query.limit + 1)
     .execute();
@@ -125,20 +129,21 @@ interface QueryCandidates extends CandidateQuery {
 async function findQueryCandidates(parts: StoreParts, query: QueryCandidates): Promise<Candidates> {
   const request = query.request;
 
-  const [pinned, held] = await Promise.all([
+  const [pinned, held, others] = await Promise.all([
     request.excludePinned === true ? readPinnedItemIDs(parts) : [],
     readCurrentItemIDs(parts, request.excludedVersions ?? []),
+    request.subjects === undefined ? [] : readOtherSubjectIDs(parts, request.subjects),
   ]);
 
-  const excludedIDs = [...pinned, ...held];
+  const excludedIDs = [...pinned, ...held, ...others];
   const selfLimit = request.selfNoteLimit;
 
   const ranked =
     selfLimit === undefined
       ? await findRankedMatches(parts, buildRankQuery(request, query.limit, excludedIDs))
-      : await findKindRankedMatches(parts, {
+      : await findSubjectRankedMatches(parts, {
           request,
-          limits: { fact: query.limit, self: Math.min(selfLimit, MAX_LIMIT) },
+          limits: { others: query.limit, self: Math.min(selfLimit, MAX_LIMIT) },
           excludedIDs,
         });
 
@@ -165,40 +170,42 @@ function buildRankQuery(
   };
 }
 
-interface KindRanking {
+interface SubjectRanking {
   readonly request: QueryCandidates['request'];
-  readonly limits: Readonly<Record<MemoryKind, number>>;
+
+  // the limit of self-notes, and of the owner's and the shared items together
+  readonly limits: { readonly others: number; readonly self: number };
   readonly excludedIDs: readonly string[];
 }
 
-// Ranks facts and self-notes apart, each up to its own limit, so a run of matches of one kind
-// never pushes the other kind past the cut. Each ranking leaves out the other kind's items.
-async function findKindRankedMatches(
+// Ranks self-notes apart from the owner's and the shared items, each up to its own limit, so a run
+// of matches of one never pushes the other past the cut. Each ranking leaves out the other's items.
+async function findSubjectRankedMatches(
   parts: StoreParts,
-  ranking: KindRanking,
+  ranking: SubjectRanking,
 ): Promise<RankedMatches> {
   const rows = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
-    .select(['item_id', 'kind'])
+    .select(['item_id', 'subject'])
     .where('state', '=', 'active')
     .execute();
 
-  const selfIDs = rows.filter((row) => row.kind === 'self').map((row) => row.item_id);
-  const factIDs = rows.filter((row) => row.kind === 'fact').map((row) => row.item_id);
+  const selfIDs = rows.filter((row) => row.subject === 'self').map((row) => row.item_id);
+  const otherIDs = rows.filter((row) => row.subject !== 'self').map((row) => row.item_id);
 
-  const factQuery = buildRankQuery(ranking.request, ranking.limits.fact, [
+  const othersQuery = buildRankQuery(ranking.request, ranking.limits.others, [
     ...ranking.excludedIDs,
     ...selfIDs,
   ]);
 
   const selfQuery = buildRankQuery(ranking.request, ranking.limits.self, [
     ...ranking.excludedIDs,
-    ...factIDs,
+    ...otherIDs,
   ]);
 
   const [facts, notes] = await Promise.all([
-    findRankedMatches(parts, factQuery),
+    findRankedMatches(parts, othersQuery),
     selfQuery.limit === 0 ? null : findRankedMatches(parts, selfQuery),
   ]);
 
@@ -206,6 +213,22 @@ async function findKindRankedMatches(
     matches: [...facts.matches, ...(notes?.matches ?? [])],
     searchMode: facts.searchMode,
   };
+}
+
+// the active items of every subject but these, which leave the ranking before its limit applies
+async function readOtherSubjectIDs(
+  parts: StoreParts,
+  subjects: readonly MemorySubject[],
+): Promise<readonly string[]> {
+  const rows = await parts.context.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select('item_id')
+    .where('state', '=', 'active')
+    .$if(subjects.length > 0, (query) => query.where('subject', 'not in', subjects))
+    .execute();
+
+  return rows.map((row) => row.item_id);
 }
 
 async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> {

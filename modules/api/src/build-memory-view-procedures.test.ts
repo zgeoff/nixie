@@ -60,6 +60,7 @@ test('#memory.listItems lists each active item with its text, origin, source and
         state: 'active',
         isPinned: false,
         kind: 'fact',
+        subject: 'owner',
         version: 1,
         origin: 'owner',
         source: 'owner',
@@ -104,28 +105,28 @@ test('#memory.listItems lists a forgotten item as a dated gap with no text', asy
   expect(page.items[0]).not.toContainKey('text');
 });
 
-test('#memory.listItems lists a self-note with its kind', async () => {
+test('#memory.listItems lists a self-note with its subject', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const item = await ctx.memory.remember({
     text: 'Finds a well-made timetable oddly satisfying',
-    itemKind: 'self',
+    subject: 'self',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
   const page = await buildTestClient(ctx.url, laptop.token).memory.listItems({ state: 'active' });
 
-  expect(page.items).toMatchObject([{ itemID: item.itemID, kind: 'self' }]);
+  expect(page.items).toMatchObject([{ itemID: item.itemID, subject: 'self' }]);
 });
 
-test('#memory.findItems finds a self-note with its kind', async () => {
+test('#memory.findItems finds a self-note with its subject', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
 
   const item = await ctx.memory.remember({
     text: 'Finds a well-made timetable oddly satisfying',
-    itemKind: 'self',
+    subject: 'self',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
@@ -133,7 +134,7 @@ test('#memory.findItems finds a self-note with its kind', async () => {
     query: 'timetable',
   });
 
-  expect(found.items).toMatchObject([{ itemID: item.itemID, kind: 'self' }]);
+  expect(found.items).toMatchObject([{ itemID: item.itemID, subject: 'self' }]);
 });
 
 test('#memory.listItems refuses a cursor that no page returned', async () => {

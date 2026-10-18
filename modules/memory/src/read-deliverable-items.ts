@@ -101,7 +101,7 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
       itemID: item.row.item_id,
       shortID: getItemShortID(item.row),
       isPinned: item.row.is_pinned === 1,
-      kind: item.row.kind,
+      subject: item.row.subject,
       ...current,
       ...(item.includeHistory ? { history: readable } : {}),
     };

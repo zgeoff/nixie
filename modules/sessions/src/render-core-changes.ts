@@ -6,8 +6,8 @@ export interface CoreChangeOptions extends MemoryLineOptions {
   readonly unpinnedShortIDs: ReadonlyMap<string, string>;
 }
 
-// a pinned item as the note reads it; a self-note is never pinned, so its kind and model never show
-type PinnedItem = Omit<MemoryItem, 'kind' | 'model'>;
+// a pinned item as the note reads it, which names neither its subject nor its model
+type PinnedItem = Omit<MemoryItem, 'subject' | 'model'>;
 
 // Renders the body of the note on the turn after the pinned core changed, so the model stops
 // repeating an old value. A pinned or changed item shows whole, with the line that says where it came

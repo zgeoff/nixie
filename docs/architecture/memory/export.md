@@ -2,11 +2,11 @@
 
 The memory export writes every memory item, with its whole history, into one JSON file that the user
 saves where they pick. The file holds a header and then each item in the order it was created. An
-active or retired item carries its kind, a fact or a [self-note](./writes.md#self-notes), and every
-version, oldest first, with its text, the quote it was saved from and its provenance. A forgotten
-item carries only its ID and the time its forget completed, so the file never holds a forgotten
-item's words. Only the user exports: the model's export tool is denied, and nixie never sends the
-file anywhere but the device that asked.
+active or retired item carries its subject, owner, shared or [self](./writes.md#self-notes), and
+every version, oldest first, with its text, the quote it was saved from and its provenance. A
+forgotten item carries only its ID and the time its forget completed, so the file never holds a
+forgotten item's words. Only the user exports: the model's export tool is denied, and nixie never
+sends the file anywhere but the device that asked.
 
 [The memory store](./store.md) covers the items, versions and states the export reads, and
 [the memory view](./view.md) covers the page the export button sits on.

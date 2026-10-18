@@ -30,13 +30,13 @@ const versionSchema = z.strictObject({
   provenance: provenanceSchema,
 });
 
-// An item that is still yours to read, a fact or a self-note, with every version, oldest first.
+// An item that is still yours to read, of any subject, with every version, oldest first.
 const readableItemSchema = z.strictObject({
   itemID: z.string(),
   shortID: z.string(),
   state: z.enum(['active', 'retired']),
   isPinned: z.boolean(),
-  kind: z.enum(['fact', 'self']),
+  subject: z.enum(['owner', 'self', 'shared']),
   versions: z.array(versionSchema).min(1),
 });
 

@@ -22,7 +22,7 @@ export function readMockPendingProposals() {
     evidence: proposal.evidence === null ? null : structuredClone(proposal.evidence),
     isPinned: proposal.isPinned,
     itemID: proposal.itemID,
-    kind: proposal.kind,
+    kind: proposal.subject === 'self' ? ('self' as const) : ('fact' as const),
     lapseAt: proposal.lapseAt,
     operation: proposal.operation,
     origin: proposal.origin,
@@ -31,6 +31,7 @@ export function readMockPendingProposals() {
     reason: proposal.reason,
     source: proposal.source,
     sources: [{ origin: proposal.origin, proposedAt: proposal.createdAt, thread: proposal.thread }],
+    subject: proposal.subject,
     targetVersion: proposal.targetVersion,
     text: proposal.text,
   }));

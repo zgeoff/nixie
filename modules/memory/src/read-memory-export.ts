@@ -10,8 +10,8 @@ import { readPages } from './read-pages';
 import { readViewText } from './read-view-text';
 import type {
   MemoryContext,
-  MemoryKind,
   MemoryState,
+  MemorySubject,
   MemoryTables,
   MemoryVersionRow,
 } from './types';
@@ -70,7 +70,7 @@ interface ItemRow {
   readonly short_id: string | null;
   readonly state: MemoryState;
   readonly is_pinned: number;
-  readonly kind: MemoryKind;
+  readonly subject: MemorySubject;
   readonly created_sequence: number;
   readonly forgotten_at: number | null;
 }
@@ -90,7 +90,7 @@ function readItemRows(log: ExportLog, after: number): Promise<readonly ItemRow[]
       'item.short_id',
       'item.state',
       'item.is_pinned',
-      'item.kind',
+      'item.subject',
       'item.created_sequence',
       'forgotten.recorded_at as forgotten_at',
     ])
@@ -166,7 +166,7 @@ async function loadReadableItem(row: ReadableRow, parts: ItemParts): Promise<Mem
     shortID: getItemShortID(row),
     state: row.state,
     isPinned: row.is_pinned === 1,
-    kind: row.kind,
+    subject: row.subject,
     versions: await Promise.all(parts.versions.map((version) => loadExportVersion(version, parts))),
   };
 }

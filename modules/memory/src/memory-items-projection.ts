@@ -1,9 +1,9 @@
 import { buildShortIDFromUUID } from '@heynixie/db';
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import { parseKindRecord } from './parse-kind-record';
 import type { MemoryRecord } from './parse-memory-record';
 import { parseMemoryRecord } from './parse-memory-record';
+import { parseSubjectRecord } from './parse-subject-record';
 import type { MemoryTables } from './types';
 
 // One row per memory item: its current version, its state and its pin. The row is a projection of
@@ -12,14 +12,15 @@ export const memoryItemsProjection: Projection = {
   table: 'memory_items',
   keyColumn: 'item_id',
   fold: async (tx, record) => {
-    const marked = parseKindRecord(record);
+    const marked = parseSubjectRecord(record);
 
-    // a self-note's mark follows its created version, and changes only the item's kind
-    if (marked?.kind === 'memory.self_noted') {
+    // a subject's mark follows its created version, and changes only the item's subject, with the
+    // kind the release before reads
+    if (marked?.target === 'item') {
       await tx
         .$extendTables<MemoryTables>()
         .updateTable('memory_items')
-        .set({ kind: 'self' })
+        .set({ subject: marked.subject, kind: marked.subject === 'self' ? 'self' : 'fact' })
         .where('item_id', '=', marked.itemID)
         .execute();
 
@@ -59,6 +60,7 @@ async function applyMemoryRecord(
         // an item from before short IDs takes the one its UUID gives, as the backfill gave it
         short_id: parsed.shortID ?? buildShortIDFromUUID(parsed.itemID),
         kind: 'fact',
+        subject: 'owner',
       })
       .execute();
 

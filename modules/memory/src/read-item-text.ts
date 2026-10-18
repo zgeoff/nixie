@@ -2,12 +2,12 @@ import { findItemKey } from './find-item-key';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { readVersion } from './read-version';
 import { requireItem } from './require-item';
-import type { MemoryKind, MemoryTables, StoreParts, VersionRef } from './types';
+import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from './types';
 
-// The text of the item a retirement names, with the item's kind.
+// The text of the item a retirement names, with the item's subject.
 export interface RetirableItem {
   readonly text: string;
-  readonly kind: MemoryKind;
+  readonly subject: MemorySubject;
 }
 
 // Reads the text and kind of an active item at the version a retirement names. A missing item, a
@@ -24,5 +24,5 @@ export async function readItemText(parts: StoreParts, target: VersionRef): Promi
 
   const version = await readVersion(db, key, target);
 
-  return { text: version.text.text, kind: item.kind };
+  return { text: version.text.text, subject: item.subject };
 }

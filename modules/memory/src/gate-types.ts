@@ -5,8 +5,8 @@ import type { Selectable } from 'kysely';
 import type { reviewReasons } from './review-reasons';
 import type {
   MemoryChange,
-  MemoryKind,
   MemoryOrigin,
+  MemorySubject,
   QuoteEvidence,
   VersionRef,
   WriteInTransaction,
@@ -109,8 +109,8 @@ export interface GatedRememberRequest {
   readonly target?: VersionRef;
   readonly isPinned?: boolean;
 
-  // a new item's kind, a fact when unset; an edit keeps the item's own kind
-  readonly itemKind?: MemoryKind;
+  // a new item's subject, owner when unset; an edit keeps the item's own subject
+  readonly subject?: MemorySubject;
   readonly caller: WriteCaller;
 }
 
@@ -186,8 +186,8 @@ export interface MemoryProposal {
   readonly targetVersion: number | null;
   readonly isPinned: boolean;
 
-  // the kind of the item the proposal creates or changes
-  readonly kind: MemoryKind;
+  // the subject of the item the proposal creates or changes
+  readonly subject: MemorySubject;
   readonly reason: ReviewReason;
   readonly actionHash: string;
   readonly origin: MemoryOrigin;
@@ -255,9 +255,14 @@ export interface CloseMatch {
   readonly text: string;
 }
 
+export interface PendingFilter {
+  readonly subjects?: readonly MemorySubject[];
+}
+
 // The proposals in the memory view, and your answers to them.
 export interface MemoryProposals {
-  readonly listPending: () => Promise<readonly MemoryProposal[]>;
+  // the pending proposals of the given subjects, or of every subject when unset
+  readonly listPending: (filter?: PendingFilter) => Promise<readonly MemoryProposal[]>;
   readonly approve: (answer: ProposalAnswer) => Promise<ApprovalResult>;
   readonly reject: (rejection: ProposalRejection) => Promise<void>;
 
@@ -316,8 +321,11 @@ export interface MemoryProposalTable {
   readonly lapse_at: number;
   readonly resolved_sequence: number | null;
 
-  // the kind of the item the proposal creates or changes
-  readonly kind: MemoryKind;
+  // the kind the release before reads, fact or self, which the subject replaces
+  readonly kind: 'fact' | 'self';
+
+  // the subject of the item the proposal creates or changes
+  readonly subject: MemorySubject;
 }
 
 export interface MemoryNoticeEntryTable {

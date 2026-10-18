@@ -24,7 +24,7 @@ export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
     return (
       <li aria-label={item.shortID} className={row}>
         <p className={meta}>
-          {item.kind === 'self' ? <SelfNoteBadge /> : null}
+          {item.subject === 'self' ? <SelfNoteBadge /> : null}
           Forgotten item · created {formatMemoryDate(item.createdAt)}
           {item.forgottenAt === null
             ? ' · forgetting'
@@ -41,7 +41,7 @@ export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
         {item.status === 'readable' ? item.text : `(${item.status})`}
       </p>
       <p className={meta}>
-        {item.kind === 'self' ? <SelfNoteBadge /> : null}
+        {item.subject === 'self' ? <SelfNoteBadge /> : null}
         {formatMemoryProvenance(item.origin, item.source)} · created{' '}
         {formatMemoryDate(item.createdAt)}
         {item.isPinned ? ' · pinned' : ''}

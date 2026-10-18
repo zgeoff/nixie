@@ -51,7 +51,7 @@ export function writeApprovedRemember(
         ? {}
         : { evidence, evidenceQuote: opened.text.quote }),
       ...(row.is_pinned === 1 ? { isPinned: true } : {}),
-      itemKind: row.kind,
+      subject: row.subject,
     },
     extras,
   );

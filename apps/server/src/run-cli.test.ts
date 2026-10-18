@@ -163,7 +163,7 @@ test('it exits 1 from check-encoder when the encoder folder holds no model', asy
   );
 });
 
-test('it exits 1 from memory-pin with the refusal of a self-note', async () => {
+test('it pins a self-note from memory-pin', async () => {
   const ctx = await setupTest();
   const api = await startTestAPI();
   const memory = await startTestMemory();
@@ -181,22 +181,18 @@ test('it exits 1 from memory-pin with the refusal of a self-note', async () => {
 
   const item = await memory.store.remember({
     text: 'Enjoys a slow morning question more than a quick one',
-    itemKind: 'self',
+    subject: 'self',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
   const exitCode = await runCLI(['memory-pin', item.itemID, '--config', ctx.configPath], ctx.io);
+  const core = await memory.store.readPinnedCore();
 
-  expect(exitCode).toBe(1);
-
-  expect(ctx.io.log).toHaveBeenCalledExactlyOnceWith('command.failed', {
-    command: 'memory-pin',
-    error: 'Error',
-    message: `nixie answered the memory pin request with 409: memory item ${item.itemID} is a self-note, and a self-note is never pinned`,
-  });
+  expect(exitCode).toBe(0);
+  expect(core).toMatchObject([{ itemID: item.itemID, subject: 'self' }]);
 });
 
-test('it prints the kind of a self-note from memory-show', async () => {
+test('it prints the subject of a self-note from memory-show', async () => {
   const ctx = await setupTest();
   const api = await startTestAPI();
   const memory = await startTestMemory();
@@ -214,7 +210,7 @@ test('it prints the kind of a self-note from memory-show', async () => {
 
   const item = await memory.store.remember({
     text: 'Enjoys a slow morning question more than a quick one',
-    itemKind: 'self',
+    subject: 'self',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
@@ -224,7 +220,7 @@ test('it prints the kind of a self-note from memory-show', async () => {
 
   expect(JSON.parse(String(ctx.io.print.mock.calls[0]?.[0]))).toMatchObject({
     itemID: item.itemID,
-    kind: 'self',
+    subject: 'self',
     state: 'active',
   });
 });

@@ -13,9 +13,10 @@ search of a task's brief on its first turn, and a tool that searches past messag
 ## The pinned core
 
 The pinned core is the set of active items the user pinned, such as their name. A new session
-renders it in its first message, each item with the line that says where it came from and how it
-came up, in pin order. That message stays in the session's transcript, so a pin never changes the
-system prompt or the cached prefix of the history after it.
+renders it in its first message under a heading for each subject, the user's items first, then the
+shared items, then self-notes, each item with the line that says where it came from and how it came
+up, in pin order within its subject. That message stays in the session's transcript, so a pin never
+changes the system prompt or the cached prefix of the history after it.
 
 A resumed session holds the core as it stood when the session opened, and the model's own earlier
 turns, which can repeat a value the user since changed. Each turn reads the core again, and the turn
@@ -109,13 +110,18 @@ its opening recalled, because the step's first recall served the lost session. A
 version, which the session has not seen, so an edited item matches again. A recall that the model
 calls itself excludes nothing.
 
-The same search places [self-notes](./writes.md#self-notes) beside the facts, up to a configurable
-number of their own, so a match about nixie never takes a fact's slot and facts never crowd the
-notes out. The notes go in a block of their own after the retrieved items, under a label that calls
-them the model's own notes about itself, which the user approved, and not instructions. Each note
-shows its text and one line with its short ID, version, date and the model that wrote it, so the
-model reads a note as an earlier model's view of itself and not as a fact about the user. The turn's
-records list the notes with the items, so a note the session holds takes no slot on the next turn.
+The retrieved block puts the user's items and the shared items each under a heading of its own, so
+the model reads a deal or a nickname as something between it and the user and never as a fact about
+the user alone.
+
+The same search places [self-notes](./writes.md#self-notes) beside the other items, up to a
+configurable number of their own, so a match about nixie never takes a fact's slot and facts never
+crowd the notes out. The notes go in a block of their own after the retrieved items, under a label
+that calls them the model's own notes about itself, which the user approved, and not instructions.
+Each note shows its text and one line with its short ID, version, date and the model that wrote it,
+so the model reads a note as an earlier model's view of itself and not as a fact about the user. The
+turn's records list the notes with the items, so a note the session holds takes no slot on the next
+turn.
 
 The blocks before the first message keep one order: a new session's opening, the pinned-core change
 note, the retrieved items, the retrieved self-notes, the past messages, then

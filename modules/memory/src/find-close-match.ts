@@ -2,13 +2,14 @@ import type { Kysely } from 'kysely';
 import type { CloseMatch } from './gate-types';
 import { readDeliverableItems } from './read-deliverable-items';
 import { readRecall } from './read-recall';
-import type { MemoryKind, MemoryTables, RecalledItem, StoreParts } from './types';
+import type { MemorySubject, MemoryTables, RecalledItem, StoreParts } from './types';
 
 export interface CloseMatchQuery {
   readonly text: string;
 
-  // the kind of the proposal's item, because a fact never matches a self-note; a fact when unset
-  readonly kind?: MemoryKind;
+  // the subject of the proposal's item, because an item matches only one of its own subject; owner
+  // when unset
+  readonly subject?: MemorySubject;
 
   // a write transaction that holds the delivery lock, which reads the candidates with no recall
   // record; through a recall, which records what it delivered, when unset
@@ -22,13 +23,13 @@ export async function findCloseMatch(
   parts: StoreParts,
   query: CloseMatchQuery,
 ): Promise<CloseMatch | null> {
-  const kind = query.kind ?? 'fact';
+  const subject = query.subject ?? 'owner';
 
-  // the other kind's items leave the ranking before its limit applies, so a run of them never
-  // pushes a match of the proposal's own kind past the cut
+  // the other subjects' items leave the ranking before its limit applies, so a run of them never
+  // pushes a match of the proposal's own subject past the cut
   const itemIDs = await parts.index.findItemIDs(query.text, {
     limit: candidateLimit,
-    excludedIDs: await readOtherKindIDs(parts, kind, query.db),
+    excludedIDs: await readOtherSubjectIDs(parts, subject, query.db),
   });
 
   if (itemIDs.length === 0) {
@@ -37,7 +38,7 @@ export async function findCloseMatch(
 
   const candidates = await readCandidates(parts, itemIDs, query.db);
 
-  const items = candidates.filter((item) => item.kind === kind);
+  const items = candidates.filter((item) => item.subject === subject);
   const words = collectContentWords(query.text);
 
   const scored = items
@@ -54,15 +55,15 @@ export async function findCloseMatch(
 
 const candidateLimit = 5;
 
-async function readOtherKindIDs(
+async function readOtherSubjectIDs(
   parts: StoreParts,
-  kind: MemoryKind,
+  subject: MemorySubject,
   db: Kysely<MemoryTables> | undefined,
 ): Promise<readonly string[]> {
   const rows = await (db ?? parts.context.log.writer.db.$extendTables<MemoryTables>())
     .selectFrom('memory_items')
     .select('item_id')
-    .where('kind', '!=', kind)
+    .where('subject', '!=', subject)
     .where('state', '=', 'active')
     .execute();
 

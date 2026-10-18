@@ -4,19 +4,19 @@ import { findNewestMessage } from './find-newest-message';
 import { ForgottenEvidenceError } from './forgotten-evidence-error';
 import type { ContentGateResult, GatedRememberRequest, WriteOutcome } from './gate-types';
 import { requireLiveEvidence } from './require-live-evidence';
-import { runKindGate } from './run-kind-gate';
-import type { MemoryKind, StoreParts } from './types';
+import { runSubjectGate } from './run-subject-gate';
+import type { MemorySubject, StoreParts } from './types';
 import { writeMemoryProposal } from './write-memory-proposal';
 import { writeRememberedItem } from './write-remembered-item';
 
 // Runs a memory.remember, or a memory.edit when the write names its target, through the gate of its
-// item's kind. A passing write applies at once and any other becomes a proposal; a self-note never
+// item's subject. A passing write applies at once and any other becomes a proposal; a self-note never
 // passes. An edit of a missing item or a moved-on version is refused before any check runs.
 export async function writeGatedRemember(
   parts: StoreParts,
   request: GatedRememberRequest,
 ): Promise<WriteOutcome> {
-  const checked = await runKindGate(parts, request);
+  const checked = await runSubjectGate(parts, request);
 
   const gate = checked.gate;
 
@@ -25,16 +25,16 @@ export async function writeGatedRemember(
   const group = buildWriteGroup(request.caller, newest);
 
   if (gate.status === 'pass') {
-    return applyPassedRemember(parts, request, { gate, group });
+    return applyPassedRemember(parts, request, { gate, group, subject: checked.subject });
   }
 
-  return writeRememberProposal(parts, request, { review: gate, group, itemKind: checked.itemKind });
+  return writeRememberProposal(parts, request, { review: gate, group, subject: checked.subject });
 }
 
 interface ReviewedRemember {
   readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
   readonly group: WriteGroup;
-  readonly itemKind: MemoryKind;
+  readonly subject: MemorySubject;
 }
 
 async function writeRememberProposal(
@@ -56,7 +56,7 @@ async function writeRememberProposal(
     checkerReason: review.checkerReason,
     caller: request.caller,
     group: reviewed.group,
-    itemKind: reviewed.itemKind,
+    subject: reviewed.subject,
   });
 
   return { status: 'proposed', ...written, reason: review.reason };
@@ -85,11 +85,12 @@ async function applyPassedRemember(
       checkerReason: null,
     };
 
-    // only a fact passes the gate, so only a fact turns into a proposal here
+    // a self-note never passes the gate, so only the owner's or a shared item turns into a
+    // proposal here
     return writeRememberProposal(parts, request, {
       review,
       group: passed.group,
-      itemKind: 'fact',
+      subject: passed.subject,
     });
   }
 }
@@ -97,6 +98,7 @@ async function applyPassedRemember(
 interface PassedRemember {
   readonly gate: Extract<ContentGateResult, { readonly status: 'pass' }>;
   readonly group: WriteGroup;
+  readonly subject: MemorySubject;
 }
 
 // the version takes the source and checks the gate gave it, and the model of the call that wrote it
@@ -121,7 +123,7 @@ async function applyRemember(
         thread: caller.thread,
         model: caller.model,
       },
-      ...(request.target === undefined ? {} : { target: request.target }),
+      ...(request.target === undefined ? { subject: passed.subject } : { target: request.target }),
       ...(evidence === null || request.quote === undefined
         ? {}
         : { evidence, evidenceQuote: request.quote }),

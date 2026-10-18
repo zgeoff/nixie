@@ -63,7 +63,7 @@ test('it proposes a staged edit of a self-note with the self-note reason, though
 
   const note = await memory.store.remember({
     text: 'I like short answers in the morning',
-    itemKind: 'self',
+    subject: 'self',
     provenance: {
       origin: 'conversation',
       source: 'untrusted',

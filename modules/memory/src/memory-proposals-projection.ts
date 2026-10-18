@@ -1,9 +1,9 @@
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Kysely } from 'kysely';
-import { parseKindRecord } from './parse-kind-record';
 import type { ProposalRecord } from './parse-proposal-record';
 import { parseProposalRecord } from './parse-proposal-record';
-import type { MemoryKind, MemoryTables } from './types';
+import { parseSubjectRecord } from './parse-subject-record';
+import type { MemoryTables } from './types';
 
 // One row per memory proposal, with its review reason and its status. A proposal waits as pending
 // until your approval consumes it, your rejection closes it, or it lapses. Its text stays sealed
@@ -12,14 +12,15 @@ export const memoryProposalsProjection: Projection = {
   table: 'memory_proposals',
   keyColumn: 'proposal_id',
   fold: async (tx, record) => {
-    const marked = parseKindRecord(record);
+    const marked = parseSubjectRecord(record);
 
-    // a new self-note's mark follows its proposal, and changes only the proposal's kind
-    if (marked?.kind === 'memory.proposal_self_noted') {
+    // a new item's subject mark follows its proposal, and changes only the proposal's subject, with
+    // the kind the release before reads
+    if (marked?.target === 'proposal') {
       await tx
         .$extendTables<MemoryTables>()
         .updateTable('memory_proposals')
-        .set({ kind: 'self' })
+        .set({ subject: marked.subject, kind: marked.subject === 'self' ? 'self' : 'fact' })
         .where('proposal_id', '=', marked.proposalID)
         .execute();
 
@@ -98,28 +99,28 @@ async function writeProposalRow(
       created_at: record.recordedAt.getTime(),
       lapse_at: parsed.lapseAt,
       resolved_sequence: null,
-      kind: await readProposalKind(db, parsed),
+      ...(await readProposalSubject(db, parsed)),
     })
     .execute();
 }
 
-// a proposal for a change to an item takes that item's kind, whoever proposed it; a new item's
-// proposal starts as a fact, and a self-note's mark that follows it changes that
-async function readProposalKind(
+// a proposal for a change to an item takes that item's subject, whoever proposed it; a new item's
+// proposal starts as owner, and a subject's mark that follows it changes that
+async function readProposalSubject(
   db: Kysely<MemoryTables>,
   parsed: Extract<ProposalRecord, { readonly kind: 'memory.proposed' }>,
-): Promise<MemoryKind> {
+): Promise<Pick<MemoryTables['memory_proposals'], 'kind' | 'subject'>> {
   if (parsed.isNewItem) {
-    return 'fact';
+    return { kind: 'fact', subject: 'owner' };
   }
 
   const item = await db
     .selectFrom('memory_items')
-    .select('kind')
+    .select(['kind', 'subject'])
     .where('item_id', '=', parsed.itemID)
     .executeTakeFirst();
 
-  return item?.kind ?? 'fact';
+  return item ?? { kind: 'fact', subject: 'owner' };
 }
 
 const statusAfter = {

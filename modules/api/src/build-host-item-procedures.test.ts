@@ -21,7 +21,7 @@ test('#read shows an item with its state and every version, oldest first', async
 
   expect(shown).toStrictEqual({
     itemID: item.itemID,
-    kind: 'fact',
+    subject: 'owner',
     state: 'active',
     versions: [
       {
@@ -43,13 +43,13 @@ test('#read shows a self-note with its kind', async () => {
 
   const item = await ctx.memory.store.remember({
     text: 'Enjoys a slow morning question more than a quick one',
-    itemKind: 'self',
+    subject: 'self',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
   const shown = await ctx.client.read({ itemID: item.itemID });
 
-  expect(shown).toMatchObject({ itemID: item.itemID, kind: 'self' });
+  expect(shown).toMatchObject({ itemID: item.itemID, subject: 'self' });
 });
 
 test('#read refuses an item that does not exist with NOT_FOUND', async () => {
@@ -161,21 +161,18 @@ test('#pin refuses an item that does not exist with NOT_FOUND', async () => {
   expect(pinned).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
 });
 
-test('#pin refuses to pin a self-note with SELF_NOTE_REFUSED, and leaves the pinned core as it was', async () => {
+test('#pin pins a shared item', async () => {
   const ctx = await setupTest();
 
   const item = await ctx.memory.store.remember({
-    text: 'Enjoys a slow morning question more than a quick one',
-    itemKind: 'self',
+    text: "The owner and the assistant call the spare room the Crow's Nest",
+    subject: 'shared',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  const pinned = ctx.client.pin({ itemID: item.itemID, isPinned: true });
-
-  await pinned.catch(() => {});
+  await ctx.client.pin({ itemID: item.itemID, isPinned: true });
 
   const core = await ctx.memory.store.readPinnedCore();
 
-  expect(pinned).rejects.toMatchObject({ code: 'SELF_NOTE_REFUSED', status: 409 });
-  expect(core).toStrictEqual([]);
+  expect(core).toMatchObject([{ itemID: item.itemID, subject: 'shared' }]);
 });

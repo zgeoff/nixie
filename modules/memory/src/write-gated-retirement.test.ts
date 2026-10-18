@@ -62,7 +62,7 @@ test("it retires the conversation's self-note at once, with a notice entry an un
 
   const note = await memory.store.remember({
     text: 'I like opening with a question',
-    itemKind: 'self',
+    subject: 'self',
     provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
   });
 
@@ -100,7 +100,7 @@ test("it brings back a self-note when you undo the conversation's retirement of 
 
   const note = await memory.store.remember({
     text: 'I like opening with a question',
-    itemKind: 'self',
+    subject: 'self',
     provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
   });
 
@@ -125,7 +125,7 @@ test("it brings back a self-note when you undo the conversation's retirement of 
   const recalled = await memory.store.recall({ itemIDs: [note.itemID] });
 
   expect(undone).toStrictEqual({ itemID: note.itemID, version: 3 });
-  expect(recalled.items).toMatchObject([{ state: 'active', kind: 'self', change: 'undone' }]);
+  expect(recalled.items).toMatchObject([{ state: 'active', subject: 'self', change: 'undone' }]);
 });
 
 test("it runs a task's retire of a self-note through the intent gate", async () => {
@@ -133,7 +133,7 @@ test("it runs a task's retire of a self-note through the intent gate", async () 
 
   const note = await memory.store.remember({
     text: 'I like opening with a question',
-    itemKind: 'self',
+    subject: 'self',
     provenance: buildMockProvenance({ origin: 'conversation', source: 'untrusted' }),
   });
 
@@ -145,7 +145,7 @@ test("it runs a task's retire of a self-note through the intent gate", async () 
   const pending = await memory.store.proposals.listPending();
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'ambiguous_target' });
-  expect(pending).toMatchObject([{ operation: 'retire', kind: 'self' }]);
+  expect(pending).toMatchObject([{ operation: 'retire', subject: 'self' }]);
 });
 
 test('it proposes a retirement of an item the thread never read', async () => {

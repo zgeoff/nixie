@@ -47,20 +47,22 @@ one person a nixie deployment works for, and the architecture docs call that per
 
 ## Memory and definitions
 
-| Term               | Meaning                                                                                     |
-| ------------------ | ------------------------------------------------------------------------------------------- |
-| memory item        | One stored fact, with its provenance and its evidence                                       |
-| self-note          | A memory item nixie writes about itself, which you always review and never pin              |
-| evidence           | Your quote that backs a memory item                                                         |
-| retire             | Stop using a memory item in recall, with undo                                               |
-| forget             | Destroy a memory item's key, so the item is unreadable everywhere                           |
-| moment             | A range of records in one thread that nixie keeps whole, with a title, note and reflections |
-| reflection         | A model's reading of a moment, labelled with its model ID and date                          |
-| definitions        | Your persona, jobs, skills and policy seed                                                  |
-| definitions source | Where nixie reads the definitions from, such as a git repo, a local path or bucket storage  |
-| skill              | A procedure in your definitions: instructions, references and scripts, which grants nothing |
-| skill catalog      | The name and description of each skill a caller may load, in its system prompt              |
-| vendored skill     | A third-party skill copied into your definitions at a pinned upstream commit                |
+| Term               | Meaning                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| memory item        | One stored fact, with its provenance and its evidence                                        |
+| subject            | Whose a memory item is: owner for a fact about you, shared, or self for a self-note          |
+| shared item        | A memory item that lives between you and nixie, such as a deal, a nickname or a running joke |
+| self-note          | A memory item nixie writes about itself in its own voice, which you always review            |
+| evidence           | Your quote that backs a memory item                                                          |
+| retire             | Stop using a memory item in recall, with undo                                                |
+| forget             | Destroy a memory item's key, so the item is unreadable everywhere                            |
+| moment             | A range of records in one thread that nixie keeps whole, with a title, note and reflections  |
+| reflection         | A model's reading of a moment, labelled with its model ID and date                           |
+| definitions        | Your persona, jobs, skills and policy seed                                                   |
+| definitions source | Where nixie reads the definitions from, such as a git repo, a local path or bucket storage   |
+| skill              | A procedure in your definitions: instructions, references and scripts, which grants nothing  |
+| skill catalog      | The name and description of each skill a caller may load, in its system prompt               |
+| vendored skill     | A third-party skill copied into your definitions at a pinned upstream commit                 |
 
 ## Connectors and sandboxes
 

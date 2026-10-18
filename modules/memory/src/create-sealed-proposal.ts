@@ -65,7 +65,7 @@ async function buildSealedProposal(
     text: plan.text,
     quote: plan.quote,
     salt,
-    ...(plan.itemKind === undefined ? {} : { itemKind: plan.itemKind }),
+    ...(plan.subject === undefined ? {} : { subject: plan.subject }),
   });
 
   return { proposalID, itemID, sealed, actionHash };

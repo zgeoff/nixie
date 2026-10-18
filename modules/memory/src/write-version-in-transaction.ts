@@ -11,7 +11,7 @@ import { requireItem } from './require-item';
 import { requireVersionCoreRoom } from './require-version-core-room';
 import type {
   MemoryChange,
-  MemoryKind,
+  MemorySubject,
   MemoryTables,
   Provenance,
   QuoteEvidence,
@@ -48,8 +48,8 @@ export interface VersionPlan {
   // pins a new item in the same transaction
   readonly isPinned?: boolean;
 
-  // a new item's kind, a fact when unset; a later version keeps the item's own
-  readonly itemKind?: MemoryKind;
+  // a new item's subject, owner when unset; a later version keeps the item's own
+  readonly subject?: MemorySubject;
 
   // the ID of a new item whose key already exists, as for an approved proposal that created it
   readonly newItemID?: string;
@@ -222,15 +222,22 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
         ]
       : [];
 
-  // a created self-note's mark follows its version as a record of its own, which the release
+  // a created item's subject mark follows its version as a record of its own, which the release
   // before skips
-  const selfNoted: readonly RecordInput[] =
-    written.next.change === 'created' && written.plan.itemKind === 'self'
-      ? [{ ...base, kind: 'memory.self_noted', payload: { itemID: written.ref.itemID } }]
+  const subject = written.plan.subject ?? 'owner';
+
+  const marked: readonly RecordInput[] =
+    written.next.change === 'created' && subject !== 'owner'
+      ? [{ ...base, kind: itemMarkKinds[subject], payload: { itemID: written.ref.itemID } }]
       : [];
 
-  return [...(approval === undefined ? [] : [approval.record]), version, ...selfNoted, ...pinned];
+  return [...(approval === undefined ? [] : [approval.record]), version, ...marked, ...pinned];
 }
+
+const itemMarkKinds = {
+  self: 'memory.self_noted',
+  shared: 'memory.shared_noted',
+} as const;
 
 function toJSONEvidence(evidence: QuoteEvidence | null): JSONObject | null {
   return evidence === null

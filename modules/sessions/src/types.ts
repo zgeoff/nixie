@@ -24,8 +24,9 @@ export interface MemoryItem extends MemoryRef {
   // the ID the model reads the item by, in place of itemID
   readonly shortID: string;
 
-  // a fact about the owner, or a self-note, which you wrote about yourself
-  readonly kind: 'fact' | 'self';
+  // whose the item is: a fact about the owner, something shared between the owner and you, or a
+  // self-note, which you wrote about yourself
+  readonly subject: 'owner' | 'self' | 'shared';
   readonly text: string;
   readonly origin: MemoryOrigin;
   readonly source: ContentSource;

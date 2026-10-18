@@ -3,21 +3,21 @@ import { requireItem } from './require-item';
 import { runContentGate } from './run-content-gate';
 import { runSelfNoteGate } from './run-self-note-gate';
 import { SelfNoteError } from './self-note-error';
-import type { MemoryKind, MemoryTables, StoreParts } from './types';
+import type { MemorySubject, MemoryTables, StoreParts } from './types';
 
-// The gate a remember or an edit ran, with the kind of its item.
-export interface KindGateResult {
+// The gate a remember or an edit ran, with the subject of its item.
+export interface SubjectGateResult {
   readonly gate: ContentGateResult;
-  readonly itemKind: MemoryKind;
+  readonly subject: MemorySubject;
 }
 
-// Runs the gate of the write's kind: a self-note's own gate, which always sends it to review, or
-// the content gate under the allow rule of the write's tool. An edit takes its item's kind,
-// whatever the write asks for, and is refused for a missing item or a moved-on version.
-export async function runKindGate(
+// Runs a self-note's own gate, which always sends it to review, or for any other subject the content
+// gate under the allow rule of the write's tool. An edit takes its item's subject, whatever the
+// write asks for, and is refused for a missing item or a moved-on version.
+export async function runSubjectGate(
   parts: StoreParts,
   request: GatedRememberRequest,
-): Promise<KindGateResult> {
+): Promise<SubjectGateResult> {
   const item =
     request.target === undefined
       ? null
@@ -27,9 +27,9 @@ export async function runKindGate(
           states: ['active', 'retired'],
         });
 
-  const itemKind = item?.kind ?? request.itemKind ?? 'fact';
+  const subject = item?.subject ?? request.subject ?? 'owner';
 
-  if (itemKind === 'self') {
+  if (subject === 'self') {
     requireSelfNoteWrite(request);
 
     const gate = await runSelfNoteGate(parts.context, {
@@ -37,7 +37,7 @@ export async function runKindGate(
       thread: request.caller.thread,
     });
 
-    return { gate, itemKind };
+    return { gate, subject };
   }
 
   const tool = request.target === undefined ? 'memory.remember' : 'memory.edit';
@@ -54,11 +54,11 @@ export async function runKindGate(
     tool,
   );
 
-  return { gate, itemKind };
+  return { gate, subject };
 }
 
-// only the conversation creates a self-note, and a self-note is never pinned, so neither write
-// reaches your review
+// only the conversation creates a self-note, and the note-taker never changes one, because a
+// self-note is nixie's own voice about itself, so neither write reaches your review
 function requireSelfNoteWrite(request: GatedRememberRequest): void {
   if (request.target === undefined && request.caller.origin !== 'conversation') {
     throw new SelfNoteError(
@@ -66,7 +66,7 @@ function requireSelfNoteWrite(request: GatedRememberRequest): void {
     );
   }
 
-  if (request.isPinned === true) {
-    throw new SelfNoteError('a self-note is never pinned');
+  if (request.caller.origin === 'memory_writer') {
+    throw new SelfNoteError('the note-taker never edits a self-note');
   }
 }

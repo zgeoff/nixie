@@ -38,7 +38,7 @@ test('it creates a self-note when you approve its proposal, and recall reads it 
 
   await memory.store.writes.remember({
     text: 'Dry jokes land better with the owner than puns',
-    itemKind: 'self',
+    subject: 'self',
     caller: buildMockWriteCaller({ model: 'claude-opus-5-5' }),
   });
 
@@ -59,7 +59,7 @@ test('it creates a self-note when you approve its proposal, and recall reads it 
   expect(recalled.items).toMatchObject([
     {
       text: 'Dry jokes land better with the owner than puns',
-      kind: 'self',
+      subject: 'self',
       origin: 'conversation',
       source: 'untrusted',
       model: 'claude-opus-5-5',
@@ -72,7 +72,7 @@ test('it marks a self-note in records of their own, so its proposal and version 
 
   await memory.store.writes.remember({
     text: 'Dry jokes land better with the owner than puns',
-    itemKind: 'self',
+    subject: 'self',
     caller: buildMockWriteCaller({ model: 'claude-opus-5-5' }),
   });
 
@@ -106,7 +106,7 @@ test('it marks a self-note in records of their own, so its proposal and version 
   ]);
 
   expect(records.map((entry) => entry.record.payload)).toSatisfyAll(
-    (payload: object) => !('itemKind' in payload),
+    (payload: object) => !('subject' in payload),
   );
 
   expect(records.map((entry) => entry.record.payload).slice(1, 4)).toMatchObject([
@@ -116,12 +116,56 @@ test('it marks a self-note in records of their own, so its proposal and version 
   ]);
 });
 
+test('it creates a shared item when you approve its proposal, marked in records of their own', async () => {
+  const memory = await startTestMemory();
+
+  await memory.store.writes.remember({
+    text: 'The owner and the assistant call the kettle Captain Steam',
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const [pending] = await memory.store.proposals.listPending();
+
+  invariant(pending);
+
+  const approved = await memory.store.proposals.approve({
+    proposalID: pending.proposalID,
+    actionHash: pending.actionHash,
+    identityID: 'identity-1',
+  });
+
+  invariant(approved.status === 'applied');
+
+  const [records, item] = await Promise.all([
+    readRecords(memory.log, {
+      afterSequence: 0,
+      kinds: ['memory.proposal_shared_noted', 'memory.shared_noted'],
+    }),
+    memory.writer.db
+      .$extendTables<MemoryTables>()
+      .selectFrom('memory_items')
+      .select(['subject', 'kind'])
+      .where('item_id', '=', approved.itemID)
+      .executeTakeFirstOrThrow(),
+  ]);
+
+  expect(pending.subject).toBe('shared');
+
+  expect(records.map((entry) => entry.record.payload)).toStrictEqual([
+    { proposalID: pending.proposalID },
+    { itemID: approved.itemID },
+  ]);
+
+  expect(item).toStrictEqual({ subject: 'shared', kind: 'fact' });
+});
+
 test('it keeps an item a self-note when you approve an edit of it', async () => {
   const memory = await startTestMemory();
 
   const note = await memory.store.remember({
     text: 'I like short answers in the morning',
-    itemKind: 'self',
+    subject: 'self',
     provenance: {
       origin: 'conversation',
       source: 'untrusted',
@@ -145,11 +189,11 @@ test('it keeps an item a self-note when you approve an edit of it', async () => 
   const item = await memory.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
-    .select(['kind', 'version'])
+    .select(['subject', 'version'])
     .where('item_id', '=', note.itemID)
     .executeTakeFirstOrThrow();
 
-  expect(item).toStrictEqual({ kind: 'self', version: 2 });
+  expect(item).toStrictEqual({ subject: 'self', version: 2 });
 });
 
 test('it recalls an approved proposal with your approval and its stored source unchanged', async () => {
@@ -533,13 +577,13 @@ test('it holds a self-note whose text a self-note closely matches when more fact
 
   const note = await memory.store.remember({
     text: 'I find dry jokes land better than puns.',
-    itemKind: 'self',
+    subject: 'self',
     provenance: { ...owner, origin: 'conversation', source: 'untrusted' },
   });
 
   await memory.store.writes.remember({
     text: 'Dry jokes land better than puns',
-    itemKind: 'self',
+    subject: 'self',
     caller: buildMockWriteCaller(),
   });
 

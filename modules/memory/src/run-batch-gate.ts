@@ -68,7 +68,7 @@ function findEarlyReview(
     return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
   }
 
-  if (item?.kind === 'self') {
+  if (item?.subject === 'self') {
     const tokens = findMissingToken(text, source.text) === null ? 'pass' : 'fail';
 
     return buildGateReview('self_note', { checks: { tokens } });

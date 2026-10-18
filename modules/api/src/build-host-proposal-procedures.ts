@@ -55,7 +55,7 @@ function buildPendingEntry(proposal: MemoryProposal) {
     itemID: proposal.itemID,
     targetVersion: proposal.targetVersion,
     isPinned: proposal.isPinned,
-    kind: proposal.kind,
+    subject: proposal.subject,
     reason: proposal.reason,
     actionHash: proposal.actionHash,
     origin: proposal.origin,

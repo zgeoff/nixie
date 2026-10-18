@@ -83,7 +83,7 @@ test("it merges the writer's edit of a self-note into the conversation's pending
 
   const note = await ctx.memory.store.remember({
     text: 'I like short answers in the morning',
-    itemKind: 'self',
+    subject: 'self',
     provenance: {
       origin: 'conversation',
       source: 'untrusted',
@@ -170,7 +170,7 @@ test('it publishes every item the writer creates as a fact, never a self-note', 
 
   const recalled = await ctx.memory.store.recall({});
 
-  expect(recalled.items).toMatchObject([{ text: 'You like short answers.', kind: 'fact' }]);
+  expect(recalled.items).toMatchObject([{ text: 'You like short answers.', subject: 'owner' }]);
 });
 
 test('it publishes a proposal records and counts the proposal', async () => {

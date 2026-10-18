@@ -166,7 +166,7 @@ async function writeApproval(
 }
 
 // what stops an approval before it writes, as nixie's store checks it: a retirement takes no edit,
-// and only a new item's proposal takes a revision target, of an item of its own kind
+// and only a new item's proposal takes a revision target, of an item of its own subject
 function findApprovalRefusal(
   proposal: StoredProposal,
   input: ApprovalInput,
@@ -185,8 +185,8 @@ function findApprovalRefusal(
 }
 
 // a revision binds to the version of the close match the view showed, which must still be active
-// or retired, and of the proposal's kind, which nixie's API answers as a revision target it refuses;
-// a pinned proposal's revision must also leave the item active
+// or retired, and of the proposal's subject, which nixie's API answers as a revision target it
+// refuses; a pinned proposal's revision must also leave the item active
 function findRevisionTargetRefusal(
   proposal: StoredProposal,
   target: NonNullable<ApprovalInput['revisionOf']>,
@@ -202,7 +202,7 @@ function findRevisionTargetRefusal(
     return { cause: 'moved', proposalID, status: 'stale' };
   }
 
-  if (item.kind !== proposal.kind) {
+  if (item.subject !== proposal.subject) {
     return { code: 'REVISION_TARGET', proposalID, status: 'refused' };
   }
 
@@ -212,7 +212,7 @@ function findRevisionTargetRefusal(
     : null;
 }
 
-// the active item of the proposal's kind a new item's text matches, case aside, unless the answer
+// the active item of the proposal's subject a new item's text matches, case aside, unless the answer
 // already chose
 function findCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: string) {
   if (
@@ -227,7 +227,7 @@ function findCloseMatch(proposal: StoredProposal, input: ApprovalInput, text: st
     query.where(
       (stored) =>
         stored.state === 'active' &&
-        stored.kind === proposal.kind &&
+        stored.subject === proposal.subject &&
         stored.versions.at(-1)?.text.toLowerCase() === text.toLowerCase(),
     ),
   );
@@ -296,7 +296,7 @@ async function applyApproval(
     await store.memoryItems.create({
       isPinned: proposal.isPinned,
       itemID,
-      kind: proposal.kind,
+      subject: proposal.subject,
       versions: [version],
     });
 

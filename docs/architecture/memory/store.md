@@ -16,19 +16,23 @@ and [memory in context](./context.md) covers how memory reaches the conversation
 ## Items and versions
 
 Memory lives in 2 projections of the event log. The items table holds one row per item: its current
-version, its state, whether it is pinned, its [short ID](../core/database.md#short-ids), its kind,
-and the sequences that created it and last changed it. The kind is a fact about the user or a
-[self-note](./writes.md#self-notes) that nixie writes about itself. An item is a fact unless a
-self-note mark follows the record that creates it, so no later version changes the kind. The mark is
-a record of its own, as is the mark on a new self-note's proposal, because the release before reads
-a version or a proposal record as a strict shape and skips a record of a kind it does not know. The
-model reads and names an item by its short ID, and the store keys everything else, the item's key
-included, by the item's UUID. The versions table holds one row per version: what changed, the state
-that version gave the item, the sealed text, and the provenance. A version's provenance is its
-origin (the user, the conversation, a task or the memory writer), its source of content, the task
-and proposal behind it, the verdicts of the write checks, and the evidence offsets inside the
-message the quote came from. nixie sets every provenance field from the turn or the client action
-that wrote the version, and a tool's arguments never reach them.
+version, its state, whether it is pinned, its [short ID](../core/database.md#short-ids), its
+subject, and the sequences that created it and last changed it. The subject says whose the item is:
+owner for a fact about the user, shared for something between the user and nixie, such as a deal, a
+nickname or a running joke, and self for a [self-note](./writes.md#self-notes) that nixie writes
+about itself. An item's subject is owner unless a subject mark follows the record that creates it,
+so no later version changes the subject. The mark is a record of its own, as is the mark on a new
+item's proposal, because the release before reads a version or a proposal record as a strict shape
+and skips a record of a kind it does not know. A self-note's mark keeps the record kind that the
+release before reads as a self-note, and the row keeps the kind column that release reads, so a
+rollback by one release still tells a self-note from a fact. The model reads and names an item by
+its short ID, and the store keys everything else, the item's key included, by the item's UUID. The
+versions table holds one row per version: what changed, the state that version gave the item, the
+sealed text, and the provenance. A version's provenance is its origin (the user, the conversation, a
+task or the memory writer), its source of content, the task and proposal behind it, the verdicts of
+the write checks, and the evidence offsets inside the message the quote came from. nixie sets every
+provenance field from the turn or the client action that wrote the version, and a tool's arguments
+never reach them.
 
 The provenance sits in plain columns, so the memory view and a review of poisoned memory filter on
 it without decrypting anything. The text, the evidence quote and the user's request to retire the
@@ -73,9 +77,8 @@ transaction makes.
   that edit. An undo of a first version retires the item, because no earlier text exists.
 - **Pin** changes where the item shows and not its text, so it appends a record and adds no version.
   A pin that names the version its caller read fails as stale once the item moved past it. Only an
-  active fact can be pinned: the store refuses a pin of a self-note whoever asks, because nixie
-  wrote it and the pinned core rides in every session. An unpin always applies. A pin, or an edit of
-  a pinned item, fails when it would take the pinned core past its budget
+  active item can be pinned, whatever its subject. An unpin always applies. A pin, or an edit of a
+  pinned item, fails when it would take the pinned core past its budget
   ([the pinned core](./context.md#the-pinned-core)).
 
 ## Keys
@@ -116,10 +119,11 @@ reads a delivered version's text through the API while its key exists.
 
 A query searches both indexes, each above its own floor, and reciprocal rank fusion merges the two
 rankings, because a BM25 score and a similarity share no scale. A query can also cap self-notes on
-their own: it then ranks facts and self-notes apart, takes the best facts up to its limit and the
-best self-notes up to their cap, and its one recall record lists both, so facts never crowd
-self-notes out. The record's search mode is hybrid, keyword with no encoder, or keyword fallback
-while the vector index rebuilds.
+their own: it then ranks self-notes apart from the other subjects, takes the best of the others up
+to its limit and the best self-notes up to their cap, and its one recall record lists both, so the
+user's and the shared items never crowd self-notes out. A recall may name the subjects it keeps, and
+the items of every other subject leave the ranking before its limit applies. The record's search
+mode is hybrid, keyword with no encoder, or keyword fallback while the vector index rebuilds.
 
 ### The indexes
 
