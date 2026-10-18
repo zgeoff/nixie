@@ -4,10 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
 import { buildServerContext } from './build-server-context';
+import { buildStartState } from './build-start-state';
+import type { SeedParts } from './run-definitions-seed';
 import { runDefinitionsSeed } from './run-definitions-seed';
 import { buildStubHeldSource } from './test-utils/build-stub-held-source';
 import { startTestLog } from './test-utils/start-test-log';
-import type { ServerParts } from './types';
 
 // a fresh log, the definitions in force over it, and a definitions folder beside it
 async function setupTest() {
@@ -40,15 +41,14 @@ test('it starts a second seed over the same parts only after the first returns',
 
   const stub = buildStubHeldSource(createPathSource({ dir: ctx.root }));
 
-  // a seed reads only these parts
-  const parts = {
+  const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: stub.source,
     policy: { rules: [], tools: [] },
     inForce: ctx.context.inForce,
-    state: { update: mock() },
+    state: buildStartState({ isReady: true, reason: null }),
     log: mock(),
-  } as unknown as ServerParts;
+  };
 
   const seeds = [runDefinitionsSeed(parts), runDefinitionsSeed(parts)];
 

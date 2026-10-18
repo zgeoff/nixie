@@ -4,9 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
 import { buildServerContext } from './build-server-context';
+import { buildStartState } from './build-start-state';
 import { refreshDefinitions } from './refresh-definitions';
+import type { SeedParts } from './run-definitions-seed';
 import { startTestLog } from './test-utils/start-test-log';
-import type { ServerParts } from './types';
 
 // a fresh log, the definitions in force over it, and a definitions folder beside it
 async function setupTest() {
@@ -37,15 +38,14 @@ test('it seeds a new revision and returns the definitions it put in force', asyn
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  // a seed reads only these parts
-  const parts = {
+  const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ dir: ctx.root }),
     policy: { rules: [], tools: [] },
     inForce: ctx.context.inForce,
-    state: { update: mock() },
+    state: buildStartState({ isReady: true, reason: null }),
     log: mock(),
-  } as unknown as ServerParts;
+  };
 
   const inForce = await refreshDefinitions(parts, ctx.context.inForce);
 

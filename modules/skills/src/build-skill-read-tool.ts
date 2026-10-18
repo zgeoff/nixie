@@ -1,8 +1,12 @@
 import { normalize } from 'node:path/posix';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import { z } from 'zod';
 import type { TaskSkill } from './load-task-skills';
 import { loadTaskSkills } from './load-task-skills';
 import type { SkillToolsContext } from './types';
+
+// the input as the input schema accepted it
+const readArguments = z.object({ name: z.string(), path: z.string().optional() });
 
 const readInput = {
   type: 'object',
@@ -63,8 +67,8 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
     },
     execution: 'direct',
     run: async (call, tool) => {
-      const name = String(call.input['name']);
-      const path = call.input['path'];
+      const input = readArguments.parse(call.input);
+      const name = input.name;
       const inForce = context.readInForce();
 
       const skills = await loadTaskSkills(context.log, {
@@ -79,7 +83,7 @@ export function buildSkillReadTool(context: SkillToolsContext): ToolDefinition {
         return { status: 'error', message: `the skill ${name} is not on your skill list` };
       }
 
-      return typeof path === 'string' ? readSkillFile(skill, path) : readSkillBody(skill);
+      return input.path === undefined ? readSkillBody(skill) : readSkillFile(skill, input.path);
     },
   };
 }

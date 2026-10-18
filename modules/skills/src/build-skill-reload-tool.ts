@@ -1,6 +1,10 @@
 import type { ToolDefinition } from '@heynixie/tools';
+import { z } from 'zod';
 import { reloadOutput, runSkillReload } from './run-skill-reload';
 import type { SkillToolsContext } from './types';
+
+// the input as the input schema accepted it
+const reloadArguments = z.object({ name: z.string() });
 
 // Builds skill_reload, which declares note and moves one skill of the running task to its version
 // in the definitions in force, after a fresh seed. The record holds the old and new hash.
@@ -26,6 +30,6 @@ export function buildSkillReloadTool(context: SkillToolsContext): ToolDefinition
       results: { skills: 'owner_data' },
     },
     execution: 'direct',
-    run: (call, tool) => runSkillReload(context, tool.run, String(call.input['name'])),
+    run: (call, tool) => runSkillReload(context, tool.run, reloadArguments.parse(call.input).name),
   };
 }

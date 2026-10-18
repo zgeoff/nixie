@@ -1,10 +1,37 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { startWriter } from '@heynixie/log';
 import { buildToolRegistry } from '@heynixie/tools';
 import { buildSkillTools } from './build-skill-tools';
 
-test('it builds skill_read, skill_reload and skill_reload_all, which the registry accepts', () => {
+async function setupTest() {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
+  const dir = await mkdtemp(join(tmpdir(), 'nixie-skill-tools-'));
+
+  stack.defer(() => rm(dir, { recursive: true, force: true }));
+
+  const writer = await startWriter({ dataDir: dir });
+
+  stack.defer(() => writer.stop());
+
+  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
+    'wrapKey',
+    'unwrapKey',
+  ]);
+
+  return { log: { writer, deploymentKey, projections: [] } };
+}
+
+test('it builds skill_read, skill_reload and skill_reload_all, which the registry accepts', async () => {
+  const ctx = await setupTest();
+
   const tools = buildSkillTools({
-    log: { writer: null as never, deploymentKey: null as never, projections: [] },
+    log: ctx.log,
     readInForce: () => null,
     refreshDefinitions: () => Promise.resolve(null),
     readSkillList: () => [],
