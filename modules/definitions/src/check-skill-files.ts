@@ -27,6 +27,14 @@ export function checkSkillFiles(
   const problems = [
     ...entries.flatMap((entry) => findPathProblems(name, entry.path)),
     ...entries
+      .filter((entry, index) =>
+        entries.slice(0, index).some((other) => normalize(other.path) === normalize(entry.path)),
+      )
+      .map((entry) => ({
+        path: `skills/${name}/${entry.path}`,
+        reason: 'the path names a file that an earlier path names',
+      })),
+    ...entries
       .filter((entry) => entry.bytes.byteLength > limits.maxFileBytes)
       .map((entry) => ({
         path: `skills/${name}/${entry.path}`,

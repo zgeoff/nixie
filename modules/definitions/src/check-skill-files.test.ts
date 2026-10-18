@@ -61,6 +61,23 @@ test.each([
   ]);
 });
 
+test('it refuses a second path that names the same file as an earlier one', () => {
+  expect(
+    checkSkillFiles(
+      'tide-tables',
+      new Map([
+        ['SKILL.md', '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n'],
+        ['./SKILL.md', '---\nname: tide-tables\ndescription: Reads a tide chart.\n---\n'],
+      ]),
+    ),
+  ).toStrictEqual([
+    {
+      path: 'skills/tide-tables/./SKILL.md',
+      reason: 'the path names a file that an earlier path names',
+    },
+  ]);
+});
+
 test('it refuses a file past the per-file size limit', () => {
   const ports = 'x'.repeat(65);
 
