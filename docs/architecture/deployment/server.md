@@ -15,13 +15,9 @@ checks, and `libs/logger` holds the logger, so a module that logs needs none of 
 
 ## Configuration and secrets
 
-nixie reads one YAML file, `/etc/nixie/config.yaml` by default, and parses it with a zod schema that
-the server composes from one section schema per module or adapter. Each section belongs to the
-package that reads it, so a module adds a key by changing its own schema. Every object in the schema
-is strict, so nixie refuses to start on an unknown key as it does on an invalid value, and the error
-it logs holds the path of the key. A typo therefore stops the start instead of leaving a default in
-force. Each release publishes the schema as JSON Schema, which
-[the release contract](release-pipeline.md#the-release-contract) covers.
+nixie reads one YAML file, `/etc/nixie/config.yaml` by default, and refuses to start on a file that
+fails its schema. [Deployment configuration](configuration.md) covers what the file holds, its
+schema and how it is mounted.
 
 Secrets never appear in the configuration. The configuration holds the path of the secrets file, a
 sops file that nixie decrypts at start by running sops in a child process and reading its JSON from
@@ -29,12 +25,6 @@ stdout. The plaintext stays in the process's memory: it never touches a tmpfs, a
 variable or a Compose secret, so neither the container's configuration nor its disk holds it. The
 deployment key becomes a non-extractable AES-KW key at once. A restart decrypts again, so the
 restart policy alone brings nixie back after a reboot.
-
-The user's name and pronouns are private without being credentials. A deployment whose configuration
-lives in a public repo therefore puts each of them in the secrets file's settings, and the
-configuration names it with a `deployment:<name>` reference in place of the value. The server
-resolves each reference once the secrets load, and refuses to start when the settings lack the
-entry, so nixie never shows the model a reference in place of a name or a pronoun.
 
 The sandbox manifest fixes the image of each kind of sandbox by digest. The release workflow writes
 it into the nixie image, so the images a release runs are the images it was tested with. The server

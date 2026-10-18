@@ -22,11 +22,11 @@ flowchart LR
 ## The test build
 
 The child process runs a test build of nixie: the same modules a release composes, with the test
-pieces behind the test-build flag switched on
-([code layout](../../design/platform/code-layout.md#test-builds)). It writes the real event log,
-runs the real recovery, task runners, action runners and tool endpoint, and runs each conversation
-turn through the real Agent SDK. The SDK runs in a guest that the process sandbox adapter starts as
-a local child, so CI needs no `/dev/kvm` and no imp. The test-only parts are four:
+pieces behind the test-build flag switched on ([code layout](../code-layout.md#test-builds)). It
+writes the real event log, runs the real recovery, task runners, action runners and tool endpoint,
+and runs each conversation turn through the real Agent SDK. The SDK runs in a guest that the process
+sandbox adapter starts as a local child, so CI needs no `/dev/kvm` and no imp. The test-only parts
+are four:
 
 - The test connector declares one queued action, `test.send`, which the test rule allows. The
   production rule set stays read-only, so no release build can queue it.

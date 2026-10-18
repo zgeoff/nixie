@@ -1,17 +1,18 @@
 # 0034: The code layout
 
 - Date: 2026-10-10
+- Updated: 2026-10-18
 - Status: decided
-- Design: [code layout](../design/platform/code-layout.md)
+- Architecture: [code layout](../architecture/code-layout.md)
 
 nixie's code is one Bun workspace in 5 folders: `apps/` for deployables, `modules/` for domain
 modules, `guests/` for programs that run inside a sandbox, `adapters/` for implementations of
 nixie's own interfaces that reach an outside system, and `libs/` for shared code. Every package
 takes the `@heynixie/` npm scope, and the repo and the product keep the name nixie.
 
-A package exposes only its entry point through its `exports` map, and `turbo boundaries` checks each
-dependency against a rule per tag: libs depend only on libs, guests and clients never reach a module
-or a server-only lib, and modules never depend on apps, guests or adapters.
+A package exposes only its entry points through its `exports` map, and `turbo boundaries` checks
+each dependency against a rule per tag: libs depend only on libs, guests and clients never reach a
+module or a server-only lib, and modules never depend on apps, guests or adapters.
 
 ## Why
 
@@ -37,3 +38,8 @@ or a server-only lib, and modules never depend on apps, guests or adapters.
 - An adapter's dependency on only the module that owns its interface is a review rule, because tags
   allow any module.
 - Each slice creates the packages it first builds.
+
+## Changes
+
+- 2026-10-18: a package may export its test helpers as a second entry point, and the record links
+  the code layout in the architecture docs, which describe it as built.
