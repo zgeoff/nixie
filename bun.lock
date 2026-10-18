@@ -89,6 +89,7 @@
         "elysia": "catalog:",
         "gunshi": "catalog:",
         "tiny-invariant": "catalog:",
+        "xstate": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -398,6 +399,7 @@
         "@heynixie/clock": "workspace:*",
         "elysia": "catalog:",
         "kysely": "catalog:",
+        "xstate": "catalog:",
       },
       "devDependencies": {
         "@heynixie/log": "workspace:*",
@@ -662,6 +664,7 @@
     "remark-gfm": "4.0.1",
     "tiny-invariant": "1.3.3",
     "vite": "8.3.4",
+    "xstate": "5.33.2",
     "zod": "4.6.5",
   },
   "packages": {
@@ -2590,6 +2593,8 @@
     "xmlbuilder2": ["xmlbuilder2@4.0.3", "", { "dependencies": { "@oozcitak/dom": "^2.0.2", "@oozcitak/infra": "^2.0.2", "@oozcitak/util": "^10.0.0", "js-yaml": "^4.1.1" } }, "sha512-bx8Q1STctnNaaDymWnkfQLKofs0mGNN7rLLapJlGuV3VlvegD7Ls4ggMjE3aUSWItCCzU0PEv45lI87iSigiCA=="],
 
     "xpath": ["xpath@0.0.34", "", {}, "sha512-FxF6+rkr1rNSQrhUNYrAFJpRXNzlDoMxeXN5qI84939ylEv3qqPFKa85Oxr6tDaJKqwW6KKyo2v26TSv3k6LeA=="],
+
+    "xstate": ["xstate@5.33.2", "", {}, "sha512-8tC7yXgeCvpT8gKEeEje6ikJJG1wpnoLiXe+HfECW8m10ubMd3QxKOwWA8KxPJVBcLwfdRoMKYxIBGYKmo37/A=="],
 
     "y18n": ["y18n@5.0.8", "", {}, "sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA=="],
 

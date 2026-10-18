@@ -31,6 +31,32 @@ test('it reports a part unready before its first check ends', () => {
   });
 });
 
+test.each([['constructor'], ['__proto__'], ['toString']])(
+  'it reports a part named %s unready before its first check ends',
+  (part) => {
+    const ctx = setupTest();
+
+    const refresh = startPartRefresh({
+      // fromEntries makes the part an own key, where a literal __proto__ key sets the prototype
+      checks: Object.fromEntries([[part, () => Promise.withResolvers<never>().promise]]),
+      clock: ctx.clock,
+      intervalMs: 5000,
+      timeoutMs: 2000,
+    });
+
+    onTestFinished(async () => {
+      ctx.clock.advance(2000);
+
+      await refresh.stop();
+    });
+
+    expect(refresh.read(part)).toStrictEqual({
+      isReady: false,
+      reason: 'the part is not checked yet',
+    });
+  },
+);
+
 test('it reports each part with its last check once the first round ends', async () => {
   const ctx = setupTest();
 

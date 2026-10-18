@@ -1,19 +1,9 @@
-import type { Clock } from '@heynixie/clock';
-import { checkParts } from './check-parts';
-import type { PartCheck, PartReport } from './types';
+import { createActor, toPromise } from 'xstate';
+import type { PartRefreshOptions } from './part-refresh-machine';
+import { partRefreshMachine } from './part-refresh-machine';
+import type { PartReport } from './types';
 
-export interface PartRefreshOptions<Part extends string> {
-  // the checks too slow to run on each health request, such as a call to another service
-  readonly checks: Readonly<Record<Part, PartCheck>>;
-  readonly clock: Clock;
-
-  // the wait between the end of one round of checks and the start of the next. A part that fails
-  // shows up to this wait plus two timeouts later: the round in flight ends, then the next one runs.
-  readonly intervalMs: number;
-
-  // the longest one part's check runs before the part reports unready
-  readonly timeoutMs: number;
-}
+export type { PartRefreshOptions } from './part-refresh-machine';
 
 export interface PartRefresh<Part extends string> {
   // the part's last report, unready until its first check ends
@@ -29,54 +19,20 @@ export interface PartRefresh<Part extends string> {
 export function startPartRefresh<Part extends string>(
   options: PartRefreshOptions<Part>,
 ): PartRefresh<Part> {
-  const stopping = new AbortController();
-  const reports = new Map<string, PartReport>();
+  const refresh = createActor(partRefreshMachine, { input: options });
 
-  const loop = runRefresh(options, reports, stopping.signal);
+  refresh.start();
 
   return {
-    read: (part) => reports.get(part) ?? notCheckedReport,
+    read: (part) => refresh.getSnapshot().context.reports.get(part) ?? notCheckedReport,
     stop: async () => {
-      stopping.abort();
+      if (refresh.getSnapshot().status === 'active') {
+        refresh.send({ type: 'stop' });
+      }
 
-      await loop;
+      await toPromise(refresh);
     },
   };
 }
 
 const notCheckedReport: PartReport = { isReady: false, reason: 'the part is not checked yet' };
-
-async function runRefresh<Part extends string>(
-  options: PartRefreshOptions<Part>,
-  reports: Map<string, PartReport>,
-  signal: AbortSignal,
-): Promise<void> {
-  const running = new Set<string>();
-
-  while (!signal.aborted) {
-    const idle = Object.entries<PartCheck>(options.checks)
-      .filter(([part]) => !running.has(part))
-      .map(([part, check]) => [part, makeTrackedCheck(part, check, running)] as const);
-
-    const report = await checkParts(Object.fromEntries(idle), options.timeoutMs, options.clock);
-
-    for (const [part, partReport] of Object.entries(report.parts)) {
-      reports.set(part, partReport);
-    }
-
-    await options.clock.sleep(options.intervalMs, signal);
-  }
-}
-
-// a check that marks its part running until the check resolves or rejects, after its timeout too
-function makeTrackedCheck(part: string, check: PartCheck, running: Set<string>): PartCheck {
-  return async (signal) => {
-    running.add(part);
-
-    try {
-      return await check(signal);
-    } finally {
-      running.delete(part);
-    }
-  };
-}
