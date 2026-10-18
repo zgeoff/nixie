@@ -1,5 +1,6 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import { createImpClient } from '@zgeoff/imp-client';
 import invariant from 'tiny-invariant';
 import { buildImpPort } from './build-imp-port';
@@ -129,6 +130,27 @@ test('it reads the backup opt-out among the features of an impd that has it', ()
   const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
 
   expect(port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: true });
+});
+
+test('it ends a feature read that impd never answers at the abort, after one call', async () => {
+  // a half-open connection: impd takes the call and never answers it
+  const answer = mock(() => Promise.withResolvers<Response>().promise);
+  const impd = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: answer });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  const stopped = new AbortController();
+
+  const read = port.readFeatures(stopped.signal);
+
+  await waitForCondition(() => answer.mock.calls.length === 1);
+
+  stopped.abort();
+
+  expect(read).rejects.toMatchObject({ name: 'AbortError' });
+  expect(answer).toHaveBeenCalledOnce();
 });
 
 test('it reads an imp that impd shows with no backup flag as backed up', () => {

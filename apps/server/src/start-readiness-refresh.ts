@@ -14,7 +14,7 @@ export function startReadinessRefresh(
 ): PartRefresh<RefreshedPart> {
   return startPartRefresh({
     checks: {
-      imp_runtime: () => adapter.checkRuntime(),
+      imp_runtime: (signal) => adapter.checkRuntime(signal),
       disk: () => checkDisk(dataDir),
     },
     clock,
