@@ -38,7 +38,7 @@ test('it matches the hash that the vendoring guide computes over a skill folder'
     'script'
   ];
 
-  invariant(snippet, 'the vendoring guide holds no hash snippet');
+  invariant(snippet !== undefined, 'the vendoring guide holds no hash snippet');
 
   await mkdir(join(ctx.dir, 'skills', 'pdf-forms', 'scripts'), { recursive: true });
   await mkdir(join(ctx.dir, 'skills', 'pdf-forms', '.git'));
