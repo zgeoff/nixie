@@ -73,6 +73,12 @@ starts. Each call it makes still reaches the server only under the latest listin
 the call's input against the current pinned input schema, so a call shaped for the old form returns
 a schema error, and it checks each result against the current pinned output schema.
 
+The next turn takes the new form with no list change notice from the proxy, because each turn starts
+a CLI process that lists the tools again. The session records no tool list while every query turns
+the system prompt's snapshot off. With the snapshot on, a resumed session sends the tool list it
+recorded at its first request. The `tool-list` probe in the
+[SDK contract suite](../../../../evals/sdk-contract/README.md) checks both cases.
+
 A worker run keeps the form it started with for its whole life, because its turns run in one model
 loop inside its caller's step. Its calls pass the same checks, and its caller takes the new form at
 the caller's next step.
