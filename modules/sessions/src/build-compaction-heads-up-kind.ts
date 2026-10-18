@@ -32,7 +32,7 @@ export function buildCompactionHeadsUpKind(
       });
 
       const events = await Promise.all(
-        records.map((entry) => findHeadsUp(log, settings, entry.record)),
+        records.map((entry) => readHeadsUp(log, settings, entry.record)),
       );
 
       return events.filter((event) => event !== null);
@@ -45,7 +45,7 @@ export function buildCompactionHeadsUpKind(
 // the most turn ends one note reads, past which the block's count of more stops growing
 const readLimit = 1000;
 
-async function findHeadsUp(
+async function readHeadsUp(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   settings: Pick<CompactionSettings, 'threshold' | 'headsUp'>,
   record: LogRecord,
