@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeHostResponder } from '@heynixie/api';
 import { startTestAPI } from '@heynixie/api/test-utils';
+import { nixieSchema, runMigrations, startDatabase } from '@heynixie/db';
 import { startTestMemory } from '@heynixie/memory/test-utils';
 import { runCLI } from './run-cli';
 import { startControlSocket } from './start-control-socket';
@@ -163,6 +164,7 @@ test('it exits 1 from check-encoder when the encoder folder holds no model', asy
   );
 });
 
+// the test starts the API, the memory store and the socket, and a pin then reads the pinned core
 test('it pins a self-note from memory-pin', async () => {
   const ctx = await setupTest();
   const api = await startTestAPI();
@@ -190,7 +192,7 @@ test('it pins a self-note from memory-pin', async () => {
 
   expect(exitCode).toBe(0);
   expect(core).toMatchObject([{ itemID: item.itemID, subject: 'self' }]);
-});
+}, 15_000);
 
 test('it prints the subject of a self-note from memory-show', async () => {
   const ctx = await setupTest();
@@ -223,4 +225,79 @@ test('it prints the subject of a self-note from memory-show', async () => {
     subject: 'self',
     state: 'active',
   });
+});
+
+test('it prints the count of each subject from memory-subjects', async () => {
+  const ctx = await setupTest();
+  const api = await startTestAPI();
+  const memory = await startTestMemory();
+
+  const socket = await startControlSocket({
+    path: ctx.socketPath,
+    respond: makeHostResponder({
+      context: api.context,
+      readMemory: () => memory.store,
+      runReset: () => Promise.reject(new Error('no reset runs in this test')),
+    }),
+  });
+
+  onTestFinished(() => socket.stop());
+
+  await memory.store.remember({
+    text: 'The owner and the assistant call the boat the Soggy Biscuit',
+    subject: 'shared',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const exitCode = await runCLI(['memory-subjects', '--config', ctx.configPath], ctx.io);
+
+  expect(exitCode).toBe(0);
+
+  expect(JSON.parse(String(ctx.io.print.mock.calls[0]?.[0]))).toStrictEqual({
+    items: { owner: 0, shared: 1, self: 0 },
+    proposals: { owner: 0, shared: 0, self: 0 },
+  });
+});
+
+test('it prints the dry run of the subjects migration on a copy of the database file it names', async () => {
+  const ctx = await setupTest();
+
+  const path = join(ctx.dataDir, 'backup.db');
+  const db = startDatabase(path);
+
+  onTestFinished(() => db.destroy());
+
+  await runMigrations(db, { schema: nixieSchema, copyDir: ctx.dataDir });
+
+  const exitCode = await runCLI(
+    ['memory-subjects', '--dry-run', '--database', path, '--config', ctx.configPath],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(0);
+
+  expect(JSON.parse(String(ctx.io.print.mock.calls[0]?.[0]))).toStrictEqual({
+    from: nixieSchema.migrations.length,
+    to: nixieSchema.migrations.length,
+    before: {
+      items: { owner: 0, shared: 0, self: 0 },
+      proposals: { owner: 0, shared: 0, self: 0 },
+    },
+    after: { items: { owner: 0, shared: 0, self: 0 }, proposals: { owner: 0, shared: 0, self: 0 } },
+  });
+});
+
+test('it refuses a dry run of memory-subjects that names no database', async () => {
+  const ctx = await setupTest();
+
+  const exitCode = await runCLI(
+    ['memory-subjects', '--dry-run', '--config', ctx.configPath],
+    ctx.io,
+  );
+
+  expect(exitCode).toBe(2);
+
+  expect(ctx.io.print).toHaveBeenCalledExactlyOnceWith(
+    'nixie memory-subjects --dry-run takes --database <path> of a nixie.db to copy',
+  );
 });

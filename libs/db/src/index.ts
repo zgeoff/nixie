@@ -13,3 +13,7 @@ export { sqliteWorkerEntry } from './sqlite-worker-entry';
 export type { BuildSchema, DatabaseOptions, Migration } from './types';
 export { withTriggersDropped } from './with-triggers-dropped';
 export type { CheckedTables } from './checked-tables';
+export type { MemorySubjectCounts, SubjectCount } from './count-memory-subjects';
+export { countMemorySubjects } from './count-memory-subjects';
+export type { SubjectMigrationReport } from './run-subject-migration-dry-run';
+export { runSubjectMigrationDryRun } from './run-subject-migration-dry-run';

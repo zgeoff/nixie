@@ -1,3 +1,4 @@
+import { countMemorySubjects } from '@heynixie/db';
 import { buildForgetStore } from './build-forget-store';
 import { buildRecallStore } from './build-recall-store';
 import { readItemHistory } from './read-item-history';
@@ -21,5 +22,6 @@ export function buildMemoryStore(parts: StoreParts): MemoryStore {
     pin: (request) => writePin(parts, request),
     readPinnedCore: () => readPinnedCore(parts),
     readHistory: (itemID) => readItemHistory(parts, itemID),
+    countSubjects: () => countMemorySubjects(parts.context.log.writer.db),
   };
 }

@@ -1,4 +1,4 @@
-import type { CheckedTables } from '@heynixie/db';
+import type { CheckedTables, MemorySubjectCounts } from '@heynixie/db';
 import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
 import type { MemoryApproval } from '@heynixie/sessions';
 import type { Selectable, Transaction } from 'kysely';
@@ -251,6 +251,9 @@ export interface MemoryStore {
   // for an item no forget began and for a completed forget
   readonly finishForget: (itemID: string) => Promise<void>;
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
+
+  // how many items and proposals each subject holds, as the subjects migration's dry run counts them
+  readonly countSubjects: () => Promise<MemorySubjectCounts>;
 
   // keeps the model's ratings of what the thread's latest recall delivered; changes no item
   readonly rate: (request: RateRequest) => Promise<void>;

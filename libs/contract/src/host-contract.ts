@@ -160,6 +160,12 @@ const hostSessionSchema = z.object({
   lastUsedAt: z.date(),
 });
 
+const subjectCountSchema = z.object({
+  owner: z.int().nonnegative(),
+  shared: z.int().nonnegative(),
+  self: z.int().nonnegative(),
+});
+
 // Every memory procedure waits for the memory store to start, and keeps the code of each error
 // the memory store refuses a request with.
 const memory = oc.errors({
@@ -223,6 +229,9 @@ export const hostContract = {
         .input(proposalAnswerSchema.extend({ reason: z.string().max(500).regex(/\S/u).optional() }))
         .output(z.object({ proposalID: z.string() })),
     },
+
+    // How many items and proposals each subject holds.
+    subjects: memory.output(z.object({ items: subjectCountSchema, proposals: subjectCountSchema })),
     items: {
       read: memory.input(z.strictObject({ itemID: z.string().min(1) })).output(itemHistorySchema),
 
