@@ -5,6 +5,10 @@ export interface CompactionSettings {
   // the share of the profile's window at or past which a turn's end compacts the session
   readonly threshold: number;
 
+  // the share of the window at or past which a turn's end warns the model that compaction is near,
+  // once a session, so it can keep what matters before the summary
+  readonly headsUp: number;
+
   // the token cap of the summary the model writes, which its word target derives from
   readonly summaryTokens: number;
 }

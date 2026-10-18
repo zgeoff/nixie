@@ -42,6 +42,7 @@ async function setupTest() {
           clock: server.context.clock,
           ownerName: null,
           defaultZone: 'UTC',
+          compaction: { threshold: 0.8, headsUp: 0.7 },
         },
         () => memory,
       ),

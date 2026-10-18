@@ -29,6 +29,7 @@ test('it carries each item of a live batch as an events line on the next convers
         clock: ctx.memory.context.clock,
         ownerName: null,
         defaultZone: 'UTC',
+        compaction: { threshold: 0.8, headsUp: 0.7 },
       },
       () => ctx.memory.store,
     ),

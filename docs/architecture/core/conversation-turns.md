@@ -226,11 +226,11 @@ then throws an error that names the credential, so the server can mark the turns
 
 The conversation hears of what happened outside it through the events block, which goes before the
 user's message on the next turn. The block lists memory that changed outside the conversation, the
-user's answers to memory proposals, nixie's restarts and the conversation's own turns that failed
-and were retried, each after its time, oldest first, up to a cap and then a count of the rest. A
-turn after which nothing happened gets no block. The block reads a range of the log, from the
-sequence the last turn's note covered to the log's head, so the next turn's note starts where this
-one ends and no event appears twice.
+user's answers to memory proposals, nixie's restarts, the conversation's own turns that failed and
+were retried, and the warning that compaction is near, each after its time, oldest first, up to a
+cap and then a count of the rest. A turn after which nothing happened gets no block. The block reads
+a range of the log, from the sequence the last turn's note covered to the log's head, so the next
+turn's note starts where this one ends and no event appears twice.
 
 Each kind of event is one entry in a registry: its name, how it reads its events in a range of the
 log, and how one event's line renders. The block merges every entry's events by sequence, so a new
@@ -263,6 +263,8 @@ reads.
 - **A retried turn** reads each failure of a conversation step that the task retries, and quotes the
   error when the log still holds its text. A failure that ended the task is not a retry, so the
   block leaves it out.
+- **A compaction heads-up** reads the first turn of a session that ended near the compaction
+  threshold, and gives the tokens left, as [compaction](./compaction.md#the-heads-up) describes.
 
 Each line shows its time in the zone that [the time tool](../connectors/time.md) answers in, which
 is the zone of the user's newest message. Each line names the user by the name in the owner section

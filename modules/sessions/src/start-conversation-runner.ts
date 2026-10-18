@@ -76,7 +76,7 @@ const defaultMemorySettings: ConversationMemorySettings = {
   agentNames: [],
 };
 
-const defaultCompaction: CompactionSettings = { threshold: 0.8, summaryTokens: 2000 };
+const defaultCompaction: CompactionSettings = { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 };
 
 // Starts the conversation's runner on its role's profile: it stores the profile's credential with
 // the sandbox backend, keeps the conversation's long-lived sandbox when its spec still matches and
