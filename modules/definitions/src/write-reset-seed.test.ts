@@ -5,8 +5,9 @@ import { join } from 'node:path';
 import { readRecords, runLogReset, startWriter } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { createPathSource } from './create-path-source';
+import { findDefinitionsInForce } from './find-definitions-in-force';
 import { findResetSeed } from './find-reset-seed';
-import { findSnapshotSkills } from './find-snapshot-skills';
+import { loadSnapshotSkills } from './load-snapshot-skills';
 import { runSeed } from './run-seed';
 import { writeResetSeed } from './write-reset-seed';
 
@@ -138,11 +139,51 @@ test('it seeds the skills in force again with their files', async () => {
     },
   });
 
-  const skills = await findSnapshotSkills(ctx.writer.db, seeded.inForce?.snapshotHash ?? '');
+  const skills = await loadSnapshotSkills(ctx.writer.db, seeded.inForce?.snapshotHash ?? '');
 
   expect(skills).toMatchObject([
     { name: 'tide-tables', origin: 'definitions', files: new Map([['SKILL.md', skill]]) },
   ]);
+});
+
+test("it keeps the conversation's skill list through storage and a reset", async () => {
+  const ctx = await setupTest();
+
+  await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
+  await mkdir(join(ctx.root, 'skills', 'bird-log'), { recursive: true });
+
+  await Promise.all([
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\nskills:\n  - tide-tables\n'),
+    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
+    writeFile(
+      join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+      '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+    ),
+    writeFile(
+      join(ctx.root, 'skills', 'bird-log', 'SKILL.md'),
+      '---\nname: bird-log\ndescription: Logs a bird sighting.\n---\n# Birds\n',
+    ),
+  ]);
+
+  await runSeed({ log: ctx.log, source: ctx.source, policy: { rules: [], tools: [] } });
+
+  const before = await findDefinitionsInForce(ctx.writer.db);
+
+  await runLogReset(ctx.log, {
+    keptTables: [],
+    readKept: (tx) => findResetSeed(tx),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  const after = await findDefinitionsInForce(ctx.writer.db);
+
+  expect(before?.conversationSkills).toStrictEqual(['tide-tables']);
+  expect(after?.conversationSkills).toStrictEqual(['tide-tables']);
+  expect(after?.skills.map((skill) => skill.name)).toStrictEqual(['bird-log', 'tide-tables']);
 });
 
 test('it leaves the next seed of the same definitions unchanged', async () => {

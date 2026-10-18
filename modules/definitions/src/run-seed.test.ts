@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { buildContentHash } from './build-content-hash';
 import { buildDefinitionsSnapshot } from './build-definitions-snapshot';
 import { createPathSource } from './create-path-source';
-import { findSnapshotSkills } from './find-snapshot-skills';
+import { loadSnapshotSkills } from './load-snapshot-skills';
 import { runSeed } from './run-seed';
 
 // the writer's data directory holds the definitions root too, so one removal cleans up both
@@ -471,7 +471,7 @@ test('it keeps the skill version of an earlier snapshot after a seed changes the
 
   await runSeed({ log: ctx.log, source: ctx.source, policy });
 
-  const skills = await findSnapshotSkills(ctx.writer.db, first.inForce?.snapshotHash ?? '');
+  const skills = await loadSnapshotSkills(ctx.writer.db, first.inForce?.snapshotHash ?? '');
 
   expect(skills.map((skill) => skill.files.get('SKILL.md'))).toStrictEqual([
     '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
@@ -513,6 +513,44 @@ test('it refuses a skill that holds a bidirectional control character, and keeps
       ],
     },
     inForce: first.inForce,
+  });
+});
+
+test('it refuses a skill whose script holds a bidirectional control character, naming the script', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'skills', 'tide-tables', 'scripts'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'),
+    '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
+  );
+
+  await writeFile(
+    join(ctx.root, 'skills', 'tide-tables', 'scripts', 'read.py'),
+    `import sys\nprint("${String.fromCodePoint(0x20_2e)}high")\n`,
+  );
+
+  const result = await runSeed({
+    log: ctx.log,
+    source: ctx.source,
+    policy: { rules: [], tools: [] },
+  });
+
+  expect(result).toMatchObject({
+    status: 'refused',
+    error: {
+      name: 'DefinitionsParseError',
+      problems: [
+        {
+          path: 'skills/tide-tables/scripts/read.py',
+          reason: 'line 2 holds U+202E, a hidden or bidirectional control character',
+        },
+      ],
+    },
+    inForce: null,
   });
 });
 
