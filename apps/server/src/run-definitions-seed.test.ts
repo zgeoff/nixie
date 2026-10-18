@@ -1,4 +1,4 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -47,7 +47,7 @@ test('it starts a second seed over the same parts only after the first returns',
     policy: { rules: [], tools: [] },
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
-    log: mock(),
+    log: () => {},
   };
 
   const seeds = [runDefinitionsSeed(parts), runDefinitionsSeed(parts)];

@@ -1,4 +1,4 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -44,7 +44,7 @@ test('it seeds a new revision and returns the definitions it put in force', asyn
     policy: { rules: [], tools: [] },
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
-    log: mock(),
+    log: () => {},
   };
 
   const inForce = await refreshDefinitions(parts, ctx.context.inForce);
