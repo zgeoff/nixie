@@ -61,11 +61,7 @@ test('it reports the conversation turns as failing after a restart with the stor
   const restarted = await ctx.restart();
   const state = await loadStartState(restarted);
 
-  const checks = buildReadinessChecks(
-    state,
-    { checkRuntime: () => Promise.resolve({ isReady: true, reason: null }) },
-    ctx.dataDir,
-  );
+  const checks = buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) });
 
   const report = await checks.advisory.conversation_turns();
 
@@ -86,11 +82,7 @@ test('it reports the conversation turns as passing after a restart with the stor
   const restarted = await ctx.restart();
   const state = await loadStartState(restarted);
 
-  const checks = buildReadinessChecks(
-    state,
-    { checkRuntime: () => Promise.resolve({ isReady: true, reason: null }) },
-    ctx.dataDir,
-  );
+  const checks = buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) });
 
   const report = await checks.advisory.conversation_turns();
 

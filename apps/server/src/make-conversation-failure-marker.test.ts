@@ -1,7 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { expect, test } from 'bun:test';
 import { buildHealthApp } from '@heynixie/ops';
 import { SandboxHostError } from '@heynixie/sandbox';
 import { ModelAuthError } from '@heynixie/sessions';
@@ -11,11 +8,7 @@ import { makeConversationFailureMarker } from './make-conversation-failure-marke
 
 // The health endpoint on a start state and its readiness checks, for the test that reads
 // readiness through the endpoint Kubernetes routes on.
-async function setupTest() {
-  const dataDir = await mkdtemp(join(tmpdir(), 'nixie-failure-'));
-
-  onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
-
+function setupTest() {
   const state = buildStartState({ isReady: true, reason: null });
 
   // boot data: every readiness part ready, as nixie stands once its start finishes
@@ -31,11 +24,7 @@ async function setupTest() {
       process: () => Promise.resolve({ isReady: true, reason: null }),
       database: () => Promise.resolve({ isReady: true, reason: null }),
     },
-    ...buildReadinessChecks(
-      state,
-      { checkRuntime: () => Promise.resolve({ isReady: true, reason: null }) },
-      dataDir,
-    ),
+    ...buildReadinessChecks(state, { read: () => ({ isReady: true, reason: null }) }),
   });
 
   return { state, app };
@@ -135,7 +124,7 @@ test("it leaves the conversation turns passing when another task's errors reach 
 });
 
 test('it keeps readiness at 200 and shows the failing turns in its advisory parts after the error limit', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   makeConversationFailureMarker(ctx.state)({
     taskID: 'conversation',
@@ -175,7 +164,7 @@ test('it keeps readiness at 200 and shows the failing turns in its advisory part
 });
 
 test('it reports the conversation turns as not ready on readiness after one turn the model API refused for its credential', async () => {
-  const ctx = await setupTest();
+  const ctx = setupTest();
 
   makeConversationFailureMarker(ctx.state)({
     taskID: 'conversation',

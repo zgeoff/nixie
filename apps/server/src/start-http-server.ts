@@ -7,6 +7,7 @@ import type { APIGate } from './build-api-gate';
 import { buildReadinessChecks } from './build-readiness-checks';
 import type { StartState } from './build-start-state';
 import type { DeploymentConfig } from './deployment-config-schema';
+import { startReadinessRefresh } from './start-readiness-refresh';
 import type { Tools } from './tools';
 import type { Cleanup } from './types';
 
@@ -29,6 +30,14 @@ export interface HTTPServerOptions {
 // process answers and the database opens; readiness lists the slice 1 parts and the advisory ones.
 // The memory view reads the memory store once the start sequence fills its slot.
 export async function startHTTPServer(options: HTTPServerOptions): Promise<number> {
+  const refresh = startReadinessRefresh(
+    options.tools.adapter,
+    options.config.server.dataDir,
+    options.apiContext.clock,
+  );
+
+  await options.cleanup.defer(refresh.stop);
+
   const app = new Elysia()
     .use(
       buildHealthApp({
@@ -36,11 +45,7 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
           process: () => Promise.resolve({ isReady: true, reason: null }),
           database: () => checkDatabase(options.writer.db),
         },
-        ...buildReadinessChecks(
-          options.state,
-          options.tools.adapter,
-          options.config.server.dataDir,
-        ),
+        ...buildReadinessChecks(options.state, refresh),
       }),
     )
     .use(buildAPIApp(options.apiContext, options.readMemory));
