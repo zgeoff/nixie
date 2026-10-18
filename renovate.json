@@ -1,4 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>zgeoff/tools"]
+  "extends": ["github>zgeoff/tools"],
+  "packageRules": [
+    {
+      "description": "happy-dom stays at the version @zgeoff/bun-test-react pins, so the test preload loads one copy of it. Lift this rule once a bun-test-react release ships happy-dom 20.14.6 (zgeoff/tools#178).",
+      "matchPackageNames": ["happy-dom"],
+      "allowedVersions": "<=20.14.5"
+    }
+  ]
 }
