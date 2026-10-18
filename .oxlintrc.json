@@ -21,41 +21,55 @@
     // oxlint 1.86 enables one-var through the style category, which the shared config predates; it
     // forbids the separate const per step that every test body uses
     "one-var": "off",
-    "no-restricted-imports": [
+    // the import boundaries: each outside system has one package that may import it, and every
+    // import names its module where the zones can see it
+    "zgeoff/import-zones": [
       "error",
       {
-        "paths": [
+        "zones": {
+          // the SDK contract suite and its helpers drive the Agent SDK itself, to check it, and the
+          // memory checker eval swaps the brokered key for the local login
+          "agent-sdk": [
+            "guests/conversation/**",
+            "evals/sdk-contract/**",
+            "evals/memory-checker/run-memory-checker-eval.ts",
+            "evals/test-utils/collect-tool-calls*.ts",
+            "evals/test-utils/run-contract-query*.ts",
+            "evals/test-utils/start-input-stream*.ts"
+          ],
+          "imp-client": ["adapters/sandbox-imp/**"],
+          "db": ["libs/db/**"]
+        },
+        "modules": [
           {
-            "name": "@anthropic-ai/claude-agent-sdk",
-            "message": "Only guests/conversation imports the Agent SDK."
+            "name": "agent-sdk",
+            "modules": ["@anthropic-ai/claude-agent-sdk"],
+            "allow": ["agent-sdk"],
+            "reason": "only guests/conversation imports the Agent SDK"
           },
           {
-            "name": "@zgeoff/imp-client",
-            "message": "Only adapters/sandbox-imp imports imp's client."
+            "name": "imp-client",
+            "modules": ["@zgeoff/imp-client"],
+            "allow": ["imp-client"],
+            "reason": "only adapters/sandbox-imp imports imp's client"
           },
           {
-            "name": "bun:sqlite",
-            "message": "Only libs/db opens SQLite; use @heynixie/db."
+            "name": "sqlite",
+            "modules": ["bun:sqlite"],
+            "allow": ["db"],
+            "reason": "only libs/db opens SQLite; use @heynixie/db"
           },
           {
-            "name": "node:module",
-            "importNames": ["createRequire"],
-            "message": "A require function escapes no-restricted-imports; use import."
-          },
-          {
-            "name": "module",
-            "importNames": ["createRequire"],
-            "message": "A require function escapes no-restricted-imports; use import."
+            "name": "create-require",
+            "modules": ["node:module"],
+            "allow": [],
+            "reason": "its require function loads modules the zones cannot see; use import"
           }
         ],
-        "patterns": [
+        "unresolved": [
           {
-            "group": ["@anthropic-ai/claude-agent-sdk/*"],
-            "message": "Only guests/conversation imports the Agent SDK."
-          },
-          {
-            "group": ["@zgeoff/imp-client/*"],
-            "message": "Only adapters/sandbox-imp imports imp's client."
+            "name": "unresolved",
+            "reason": "the zones cannot judge an import whose module they cannot see"
           }
         ]
       }
@@ -64,171 +78,16 @@
       "error",
       {
         "name": "require",
-        "message": "A require function escapes no-restricted-imports; use import."
+        "message": "A require function loads modules the import zones cannot see; use import."
       }
     ],
-    "import/no-commonjs": "error",
-    "nixie/no-hidden-import": "error"
+    "import/no-commonjs": "error"
   },
   "overrides": [
     {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         "nixie/test-shape": "error"
-      }
-    },
-    {
-      // the SDK contract suite and its helpers drive the Agent SDK itself, to check it
-      "files": [
-        "evals/sdk-contract/**",
-        "evals/test-utils/collect-tool-calls*.ts",
-        "evals/test-utils/run-contract-query*.ts",
-        "evals/test-utils/start-input-stream*.ts"
-      ],
-      "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "paths": [
-              {
-                "name": "@zgeoff/imp-client",
-                "message": "Only adapters/sandbox-imp imports imp's client."
-              },
-              {
-                "name": "bun:sqlite",
-                "message": "Only libs/db opens SQLite; use @heynixie/db."
-              },
-              {
-                "name": "node:module",
-                "importNames": ["createRequire"],
-                "message": "A require function escapes no-restricted-imports; use import."
-              },
-              {
-                "name": "module",
-                "importNames": ["createRequire"],
-                "message": "A require function escapes no-restricted-imports; use import."
-              }
-            ],
-            "patterns": [
-              {
-                "group": ["@zgeoff/imp-client/*"],
-                "message": "Only adapters/sandbox-imp imports imp's client."
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "files": ["guests/conversation/**"],
-      "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "paths": [
-              {
-                "name": "@zgeoff/imp-client",
-                "message": "Only adapters/sandbox-imp imports imp's client."
-              },
-              {
-                "name": "bun:sqlite",
-                "message": "Only libs/db opens SQLite; use @heynixie/db."
-              },
-              {
-                "name": "node:module",
-                "importNames": ["createRequire"],
-                "message": "A require function escapes no-restricted-imports; use import."
-              },
-              {
-                "name": "module",
-                "importNames": ["createRequire"],
-                "message": "A require function escapes no-restricted-imports; use import."
-              }
-            ],
-            "patterns": [
-              {
-                "group": ["@zgeoff/imp-client/*"],
-                "message": "Only adapters/sandbox-imp imports imp's client."
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "files": ["adapters/sandbox-imp/**"],
-      "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "paths": [
-              {
-                "name": "@anthropic-ai/claude-agent-sdk",
-                "message": "Only guests/conversation imports the Agent SDK."
-              },
-              {
-                "name": "bun:sqlite",
-                "message": "Only libs/db opens SQLite; use @heynixie/db."
-              },
-              {
-                "name": "node:module",
-                "importNames": ["createRequire"],
-                "message": "A require function escapes no-restricted-imports; use import."
-              },
-              {
-                "name": "module",
-                "importNames": ["createRequire"],
-                "message": "A require function escapes no-restricted-imports; use import."
-              }
-            ],
-            "patterns": [
-              {
-                "group": ["@anthropic-ai/claude-agent-sdk/*"],
-                "message": "Only guests/conversation imports the Agent SDK."
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "files": ["libs/db/**"],
-      "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "paths": [
-              {
-                "name": "@anthropic-ai/claude-agent-sdk",
-                "message": "Only guests/conversation imports the Agent SDK."
-              },
-              {
-                "name": "@zgeoff/imp-client",
-                "message": "Only adapters/sandbox-imp imports imp's client."
-              },
-              {
-                "name": "node:module",
-                "importNames": ["createRequire"],
-                "message": "A require function escapes no-restricted-imports; use import."
-              },
-              {
-                "name": "module",
-                "importNames": ["createRequire"],
-                "message": "A require function escapes no-restricted-imports; use import."
-              }
-            ],
-            "patterns": [
-              {
-                "group": ["@anthropic-ai/claude-agent-sdk/*"],
-                "message": "Only guests/conversation imports the Agent SDK."
-              },
-              {
-                "group": ["@zgeoff/imp-client/*"],
-                "message": "Only adapters/sandbox-imp imports imp's client."
-              }
-            ]
-          }
-        ]
       }
     }
   ]

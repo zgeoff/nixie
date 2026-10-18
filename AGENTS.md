@@ -64,7 +64,7 @@ Boundaries:
 - An adapter depends only on the module that owns its interface. The tags allow any module, so
   review enforces this rule.
 
-oxlint refuses each of these imports outside its one package:
+The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package:
 
 - The Agent SDK: `guests/conversation`.
 - imp's client: `adapters/sandbox-imp`.
