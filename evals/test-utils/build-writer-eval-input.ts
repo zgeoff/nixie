@@ -2,8 +2,8 @@ import type { SourceMessage } from '@heynixie/memory';
 import { renderWriterPrompt, renderWriterSystemPrompt } from '@heynixie/memory';
 import type { WriterCase, WriterCases } from './load-writer-cases';
 
-// One tool as the Messages API takes it, named as the guest's tool server names it.
-export interface EvalTool {
+// One tool as the model sees it, named as the guest's tool server names it.
+interface EvalTool {
   readonly name: string;
   readonly description: string;
   readonly input_schema: Readonly<Record<string, unknown>>;

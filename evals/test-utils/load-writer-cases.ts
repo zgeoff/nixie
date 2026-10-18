@@ -48,8 +48,6 @@ export type WriterCases = z.infer<typeof casesSchema>;
 
 export type WriterCase = WriterCases['cases'][number];
 
-export type WriterRule = z.infer<typeof ruleSchema>;
-
 // Loads the memory writer's eval cases: invented batches, each with the rule every run of it must
 // meet, written before any model saw a case.
 export async function loadWriterCases(path: string): Promise<WriterCases> {
