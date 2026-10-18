@@ -154,6 +154,41 @@ test('it checks a part again once its check that outlasted the timeout settles',
   expect(check).toHaveBeenCalledTimes(2);
 });
 
+test('it reports a check that rejects as unready, and checks the part again once the interval passes', async () => {
+  const ctx = setupTest();
+
+  const runtime: { next: () => Promise<PartReport> } = {
+    next: () => Promise.reject(new TypeError('impd refused the call')),
+  };
+
+  const check = mock(() => runtime.next());
+
+  const refresh = startPartRefresh({
+    checks: { imp_runtime: check },
+    clock: ctx.clock,
+    intervalMs: 5000,
+    timeoutMs: 2000,
+  });
+
+  onTestFinished(() => refresh.stop());
+
+  // the first round's report lands just before the interval's sleep starts
+  await waitForCondition(
+    () => refresh.read('imp_runtime').reason === 'the check failed: TypeError',
+  );
+
+  const failed = refresh.read('imp_runtime');
+
+  runtime.next = () => Promise.resolve({ isReady: true, reason: null });
+
+  ctx.clock.advance(5000);
+
+  await waitForCondition(() => refresh.read('imp_runtime').isReady);
+
+  expect(failed).toStrictEqual({ isReady: false, reason: 'the check failed: TypeError' });
+  expect(refresh.read('imp_runtime')).toStrictEqual({ isReady: true, reason: null });
+});
+
 test('it checks each part again once the interval passes', async () => {
   const ctx = setupTest();
   const disk: { report: PartReport } = { report: { isReady: true, reason: null } };

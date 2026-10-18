@@ -68,7 +68,7 @@ async function runRefresh<Part extends string>(
   }
 }
 
-// a check that marks its part running until the check settles, which can be after its timeout
+// a check that marks its part running until the check resolves or rejects, after its timeout too
 function makeTrackedCheck(part: string, check: PartCheck, running: Set<string>): PartCheck {
   return async () => {
     running.add(part);
