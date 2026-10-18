@@ -60,6 +60,8 @@ below, and planned work lives in Linear.
   the status registry, the replay over the recent turns and the opening record
 - [Compaction](architecture/core/compaction.md) — the compaction step, the summary instruction,
   failure and overflow, the summary record and forgetting
+- [Skills](architecture/core/skills.md) — skill lists, the pin a task keeps, and the catalog in the
+  system prompt with its cap
 - [Crash tests](architecture/core/crash-tests.md) — the test build, the harness link and its clock,
   the scripted model, the provider double and the oracle
 

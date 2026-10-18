@@ -82,6 +82,7 @@
         "@heynixie/sandbox-imp": "workspace:*",
         "@heynixie/sandbox-process": "workspace:*",
         "@heynixie/sessions": "workspace:*",
+        "@heynixie/skills": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
@@ -448,6 +449,19 @@
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
         "kysely": "catalog:",
+      },
+    },
+    "modules/skills": {
+      "name": "@heynixie/skills",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/compaction": "workspace:*",
+        "@heynixie/definitions": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "tiny-invariant": "catalog:",
       },
     },
     "modules/tasks": {
@@ -849,6 +863,8 @@
     "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
 
     "@heynixie/sessions": ["@heynixie/sessions@workspace:modules/sessions"],
+
+    "@heynixie/skills": ["@heynixie/skills@workspace:modules/skills"],
 
     "@heynixie/spike-cache-lifetime": ["@heynixie/spike-cache-lifetime@workspace:research/cache-lifetime"],
 

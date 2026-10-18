@@ -32,6 +32,9 @@ export interface ConversationOptions {
   // the note of memory changes made outside the conversation, read before each turn
   readonly readTurnNote?: ConversationRunnerOptions['readTurnNote'];
 
+  // the catalog of the skills the conversation is pinned to, read as each step begins
+  readonly readSkillCatalog?: ConversationRunnerOptions['readSkillCatalog'];
+
   // the lines of a new session's status, in order
   readonly status?: ConversationRunnerOptions['status'];
 
@@ -70,6 +73,9 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     command: buildGuestCommand(options.sandboxes),
     getDefinitions: options.getDefinitions,
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),
+    ...(options.readSkillCatalog === undefined
+      ? {}
+      : { readSkillCatalog: options.readSkillCatalog }),
     ...(options.status === undefined ? {} : { status: options.status }),
     memory: options.memory,
     ...(options.memorySettings === undefined ? {} : { memorySettings: options.memorySettings }),

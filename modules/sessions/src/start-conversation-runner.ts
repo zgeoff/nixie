@@ -35,6 +35,7 @@ export interface ConversationRunnerOptions {
   // the definitions in force, read as each step begins so a new seed reaches the next step
   readonly getDefinitions: ConversationRun['getDefinitions'];
   readonly readTurnNote?: NonNullable<ConversationRun['readTurnNote']>;
+  readonly readSkillCatalog?: NonNullable<ConversationRun['readSkillCatalog']>;
 
   // the lines of a new session's status, in order; the kind of start, the start time and the model
   // when the server passes none

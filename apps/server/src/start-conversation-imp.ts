@@ -1,4 +1,5 @@
 import type { StartedMemoryStore } from '@heynixie/memory';
+import { resolveRoleProfile } from '@heynixie/models';
 import {
   buildModelStatus,
   buildStartStatus,
@@ -9,6 +10,7 @@ import type { SessionCleanupCause } from '@heynixie/sessions';
 import type { RunStep } from '@heynixie/tasks';
 import { buildVersionStatus } from './build-version-status';
 import { makeConversationReadinessStep } from './make-conversation-readiness-step';
+import { makeSkillCatalogReader } from './make-skill-catalog-reader';
 import { makeTurnNoteReader } from './make-turn-note-reader';
 import { startConversation } from './start-conversation';
 import { toSessionDefinitions } from './to-session-definitions';
@@ -47,6 +49,12 @@ export async function startConversationImp(
       },
       memory,
     ),
+    readSkillCatalog: makeSkillCatalogReader({
+      log: parts.context.log,
+      readInForce: () => parts.inForce.read(),
+      profile: resolveRoleProfile(parts.config.models, 'conversation'),
+      skills: parts.config.skills,
+    }),
     status: buildStatusRegistry([
       buildStartStatus(),
       buildStartTimeStatus(),

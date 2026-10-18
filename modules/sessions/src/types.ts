@@ -188,6 +188,10 @@ export interface ConversationRun {
   // the definitions in force, read as each step begins so a new seed reaches the next step
   readonly getDefinitions: () => SessionDefinitions;
 
+  // the catalog of the skills the conversation is pinned to, read as each step begins, or null
+  // when it has none; a conversation with no skill reader gets no catalog
+  readonly readSkillCatalog?: (taskID: string) => Promise<string | null>;
+
   // the note of what happened outside the conversation since its last turn, such as memory changes
   // and events, which goes before the turn's first message, and the sequence it covers; given a
   // span, the note a new session's recent turns carry again over that span
@@ -255,6 +259,9 @@ export interface SessionStep {
   readonly run: ConversationRun;
   readonly input: StepInput;
   readonly definitions: SessionDefinitions;
+
+  // the catalog of the skills the conversation is pinned to, or null when it has none
+  readonly skillCatalog: string | null;
   readonly signal: AbortSignal;
   readonly marks: SessionMarks;
   readonly position: SessionPosition;

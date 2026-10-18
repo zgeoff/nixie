@@ -65,6 +65,7 @@ test('it reads every section, with the default of each setting the file leaves o
     time: { default_zone: 'Australia/Sydney' },
     tasks: { runners: 3 },
     actions: { runners: 4 },
+    skills: { catalogShare: 0.02 },
   });
 });
 
