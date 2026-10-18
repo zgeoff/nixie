@@ -27,6 +27,18 @@ test('it reads a vendored skill whose files match its lock entry as vendored', (
   ]);
 });
 
+test('it reads a skill whose name an object inherits, such as constructor, as your own with no lock', () => {
+  const texts = new Map([
+    ['skills/constructor/SKILL.md', '---\nname: constructor\ndescription: Builds a frame.\n---\n'],
+  ]);
+
+  const files = new Map([...texts].map(([path, text]) => [path, new TextEncoder().encode(text)]));
+
+  expect(parseSkills({ files }, texts)).toMatchObject([
+    { name: 'constructor', origin: 'definitions' },
+  ]);
+});
+
 test('it refuses a skill folder with no SKILL.md', () => {
   const texts = new Map([['skills/pdf-forms/scripts/fill.py', 'print("fill")\n']]);
   const files = new Map([...texts].map(([path, text]) => [path, new TextEncoder().encode(text)]));
