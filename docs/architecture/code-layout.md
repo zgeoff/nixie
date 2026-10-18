@@ -33,9 +33,10 @@ libs/       shared code that belongs to no domain
 
 The workspace globs cover those 5 folders, the root `e2e/` and `evals/` packages, and the spikes in
 `research/`. The spikes join the workspace so that CI typechecks them, and they stand outside the
-package rules here: a spike pins the exact versions it ran against, imports product files by path,
-and has no tests that CI runs. A spike whose pins conflict with the workspace stays out of it and
-installs on its own, as do the Agent SDK spikes under `docs/design/`.
+package rules here: a spike pins the exact versions it ran against, imports product files by path
+with a `@boundaries-ignore` comment, and has no tests that CI runs. A spike whose pins conflict with
+the workspace stays out of it and installs on its own, as do the Agent SDK spikes under
+`docs/design/`.
 
 `deploy/` sits outside the workspace and holds the deployment artifacts nixie ships: the Compose
 recipe in `deploy/compose/` and the [reference Kubernetes manifests](deployment/kubernetes.md) in
