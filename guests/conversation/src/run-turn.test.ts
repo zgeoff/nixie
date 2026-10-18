@@ -636,7 +636,11 @@ test('it offers the model the changed form of a tool on the next turn of a resum
     { ...ctx.deps, toolServer: tools.config },
   );
 
-  expect(ctx.model.requests.at(-1)?.body?.tools).toContainEqual({
+  const modelCalls = ctx.model.requests.filter((request) => request.path === '/v1/messages');
+
+  expect(modelCalls).toHaveLength(2);
+
+  expect(modelCalls[1]?.body?.tools).toContainEqual({
     name: 'mcp__nixie__note_read',
     description: 'Reads a note by its short ID.',
     input_schema: {
@@ -678,7 +682,11 @@ test('it offers the model the listed form of a tool at the next step of a turn w
 
   await turn;
 
-  expect(ctx.model.requests.at(-1)?.body?.tools).toContainEqual({
+  const modelCalls = ctx.model.requests.filter((request) => request.path === '/v1/messages');
+
+  expect(modelCalls).toHaveLength(2);
+
+  expect(modelCalls[1]?.body?.tools).toContainEqual({
     name: 'mcp__nixie__note_read',
     description: 'Reads a note by its name.',
     input_schema: { type: 'object', properties: { name: { type: 'string' } } },
@@ -718,7 +726,11 @@ test('it offers the model the changed form of a tool at the next step of a turn 
 
   await turn;
 
-  expect(ctx.model.requests.at(-1)?.body?.tools).toContainEqual({
+  const modelCalls = ctx.model.requests.filter((request) => request.path === '/v1/messages');
+
+  expect(modelCalls).toHaveLength(2);
+
+  expect(modelCalls[1]?.body?.tools).toContainEqual({
     name: 'mcp__nixie__note_read',
     description: 'Reads a note by its short ID.',
     input_schema: {

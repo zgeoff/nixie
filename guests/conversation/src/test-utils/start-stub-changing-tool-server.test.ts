@@ -105,6 +105,15 @@ test('it holds a note_wait call until the test releases it', async () => {
 
   await tools.waitForHeldCall();
 
+  // a call that skipped the hold would finish before a later request's whole answer arrives
+  const later = await fetch(tools.config.url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }),
+  });
+
+  await later.text();
+
   const wasAnswered = state.isAnswered;
 
   tools.release();

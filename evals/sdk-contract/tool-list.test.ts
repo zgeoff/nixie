@@ -12,20 +12,12 @@ import { runContractQuery } from '../test-utils/run-contract-query';
 // skipIf takes a boolean and has no in-body skip.
 const isContractRun = process.env['NIXIE_SDK_CONTRACT'] === '1';
 
-// a config directory of the run's own, a tool server whose note_read takes a note's name until a
-// probe changes it, and the options of a turn as the conversation guest sets them, the system
-// prompt's snapshot off included
+// a config directory of the run's own, and the options of a turn as the conversation guest sets
+// them, the system prompt's snapshot off included, with no tool server yet
 async function setupTest() {
   const dir = await mkdtemp(join(tmpdir(), 'nixie-contract-tool-list-'));
 
   onTestFinished(() => rm(dir, { recursive: true, force: true }));
-
-  const tools = startStubChangingToolServer({
-    description: 'Reads a note by its name.',
-    inputSchema: { properties: { name: { type: 'string' } }, required: ['name'] },
-  });
-
-  onTestFinished(() => tools.stop());
 
   const options: Options = {
     cwd: dir,
@@ -35,7 +27,6 @@ async function setupTest() {
     allowedTools: ['mcp__nixie'],
     permissionMode: 'dontAsk',
     strictMcpConfig: true,
-    mcpServers: { nixie: tools.config },
     maxTurns: 6,
     systemPrompt: {
       type: 'custom',
@@ -45,7 +36,7 @@ async function setupTest() {
     env: buildContractEnv(process.env, dir),
   };
 
-  return { tools, options };
+  return { options };
 }
 
 test.skipIf(!isContractRun)(
@@ -53,47 +44,14 @@ test.skipIf(!isContractRun)(
   async () => {
     const ctx = await setupTest();
 
-    const first = await runContractQuery({
-      prompt: 'Call note_read once for the note called groceries, then reply DONE.',
-      options: ctx.options,
+    const tools = startStubChangingToolServer({
+      description: 'Reads a note by its name.',
+      inputSchema: { properties: { name: { type: 'string' } }, required: ['name'] },
     });
 
-    const boundary = first.messages.findLast((message) => message.type === 'assistant');
+    onTestFinished(() => tools.stop());
 
-    invariant(boundary);
-
-    ctx.tools.changeTool({
-      description: 'Reads a note by its short ID. The note called groceries has the short ID n7k2.',
-      inputSchema: { properties: { noteID: { type: 'string' } }, required: ['noteID'] },
-    });
-
-    await runContractQuery({
-      prompt: 'Call note_read once more for the note called groceries, then reply DONE.',
-      options: {
-        ...ctx.options,
-        resume: boundary.session_id,
-        resumeSessionAt: boundary.uuid,
-        forkSession: true,
-      },
-    });
-
-    expect(ctx.tools.calls).toStrictEqual([
-      { name: 'note_read', arguments: { name: 'groceries' } },
-      { name: 'note_read', arguments: { noteID: 'n7k2' } },
-    ]);
-  },
-  300_000,
-);
-
-test.skipIf(!isContractRun)(
-  'it keeps the recorded form of a tool on a resumed session that snapshots its system prompt',
-  async () => {
-    const ctx = await setupTest();
-
-    const options: Options = {
-      ...ctx.options,
-      systemPrompt: 'You are a terse assistant in a test. Follow the instructions exactly.',
-    };
+    const options: Options = { ...ctx.options, mcpServers: { nixie: tools.config } };
 
     const first = await runContractQuery({
       prompt: 'Call note_read once for the note called groceries, then reply DONE.',
@@ -104,7 +62,7 @@ test.skipIf(!isContractRun)(
 
     invariant(boundary);
 
-    ctx.tools.changeTool({
+    tools.changeTool({
       description: 'Reads a note by its short ID. The note called groceries has the short ID n7k2.',
       inputSchema: { properties: { noteID: { type: 'string' } }, required: ['noteID'] },
     });
@@ -119,7 +77,57 @@ test.skipIf(!isContractRun)(
       },
     });
 
-    expect(ctx.tools.calls).toStrictEqual([
+    expect(tools.calls).toStrictEqual([
+      { name: 'note_read', arguments: { name: 'groceries' } },
+      { name: 'note_read', arguments: { noteID: 'n7k2' } },
+    ]);
+  },
+  300_000,
+);
+
+test.skipIf(!isContractRun)(
+  'it keeps the recorded form of a tool on a resumed session that snapshots its system prompt',
+  async () => {
+    const ctx = await setupTest();
+
+    const tools = startStubChangingToolServer({
+      description: 'Reads a note by its name.',
+      inputSchema: { properties: { name: { type: 'string' } }, required: ['name'] },
+    });
+
+    onTestFinished(() => tools.stop());
+
+    const options: Options = {
+      ...ctx.options,
+      mcpServers: { nixie: tools.config },
+      systemPrompt: 'You are a terse assistant in a test. Follow the instructions exactly.',
+    };
+
+    const first = await runContractQuery({
+      prompt: 'Call note_read once for the note called groceries, then reply DONE.',
+      options,
+    });
+
+    const boundary = first.messages.findLast((message) => message.type === 'assistant');
+
+    invariant(boundary);
+
+    tools.changeTool({
+      description: 'Reads a note by its short ID. The note called groceries has the short ID n7k2.',
+      inputSchema: { properties: { noteID: { type: 'string' } }, required: ['noteID'] },
+    });
+
+    await runContractQuery({
+      prompt: 'Call note_read once more for the note called groceries, then reply DONE.',
+      options: {
+        ...options,
+        resume: boundary.session_id,
+        resumeSessionAt: boundary.uuid,
+        forkSession: true,
+      },
+    });
+
+    expect(tools.calls).toStrictEqual([
       { name: 'note_read', arguments: { name: 'groceries' } },
       { name: 'note_read', arguments: { name: 'groceries' } },
     ]);
@@ -132,25 +140,34 @@ test.skipIf(!isContractRun)(
   async () => {
     const ctx = await setupTest();
 
+    const tools = startStubChangingToolServer({
+      description: 'Reads a note by its name.',
+      inputSchema: { properties: { name: { type: 'string' } }, required: ['name'] },
+    });
+
+    onTestFinished(() => tools.stop());
+
+    const options: Options = { ...ctx.options, mcpServers: { nixie: tools.config } };
+
     const run = runContractQuery({
       prompt:
         'Call note_wait once. When it returns, call note_read once for the note called ' +
         'groceries, then reply DONE.',
-      options: ctx.options,
+      options,
     });
 
-    await ctx.tools.waitForHeldCall();
+    await tools.waitForHeldCall();
 
-    ctx.tools.changeTool({
+    tools.changeTool({
       description: 'Reads a note by its short ID. The note called groceries has the short ID n7k2.',
       inputSchema: { properties: { noteID: { type: 'string' } }, required: ['noteID'] },
     });
 
-    ctx.tools.release();
+    tools.release();
 
     await run;
 
-    expect(ctx.tools.calls).toStrictEqual([
+    expect(tools.calls).toStrictEqual([
       { name: 'note_wait', arguments: {} },
       { name: 'note_read', arguments: { name: 'groceries' } },
     ]);
@@ -163,27 +180,36 @@ test.skipIf(!isContractRun)(
   async () => {
     const ctx = await setupTest();
 
+    const tools = startStubChangingToolServer({
+      description: 'Reads a note by its name.',
+      inputSchema: { properties: { name: { type: 'string' } }, required: ['name'] },
+    });
+
+    onTestFinished(() => tools.stop());
+
+    const options: Options = { ...ctx.options, mcpServers: { nixie: tools.config } };
+
     const run = runContractQuery({
       prompt:
         'Call note_wait once. When it returns, call note_read once for the note called ' +
         'groceries, then reply DONE.',
-      options: ctx.options,
+      options,
     });
 
-    await ctx.tools.waitForHeldCall();
+    await tools.waitForHeldCall();
 
-    ctx.tools.changeTool({
+    tools.changeTool({
       description: 'Reads a note by its short ID. The note called groceries has the short ID n7k2.',
       inputSchema: { properties: { noteID: { type: 'string' } }, required: ['noteID'] },
     });
 
-    await ctx.tools.notifyToolsChanged();
+    await tools.notifyToolsChanged();
 
-    ctx.tools.release();
+    tools.release();
 
     await run;
 
-    expect(ctx.tools.calls).toStrictEqual([
+    expect(tools.calls).toStrictEqual([
       { name: 'note_wait', arguments: {} },
       { name: 'note_read', arguments: { noteID: 'n7k2' } },
     ]);

@@ -1,5 +1,5 @@
 import type { McpHttpServerConfig } from '@anthropic-ai/claude-agent-sdk';
-import { Server, createMcpHandler } from '@modelcontextprotocol/server';
+import { Server, createMcpHandler, isJSONRPCRequest } from '@modelcontextprotocol/server';
 
 // The form of a tool that the model sees: its description and its input schema.
 export interface StubToolForm {
@@ -174,7 +174,7 @@ function buildChangingServer(readForm: () => StubToolForm, hooks: CallHooks): Se
   return server;
 }
 
-// the method of each JSON-RPC message in a POST body, which may hold one message or a batch
+// the method of each JSON-RPC request in a POST body, which may hold one message or a batch
 async function readMethods(request: Request): Promise<string[]> {
   if (request.method !== 'POST') {
     return [];
@@ -187,12 +187,5 @@ async function readMethods(request: Request): Promise<string[]> {
 
   const messages: unknown[] = Array.isArray(body) ? body : [body];
 
-  return messages.flatMap((message) =>
-    typeof message === 'object' &&
-    message !== null &&
-    'method' in message &&
-    typeof message.method === 'string'
-      ? [message.method]
-      : [],
-  );
+  return messages.flatMap((message) => (isJSONRPCRequest(message) ? [message.method] : []));
 }
