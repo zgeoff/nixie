@@ -8,38 +8,6 @@ import { z } from 'zod';
 import { skillsWriteProposedCodec } from './skills-write-proposed-codec';
 import type { SkillToolsContext } from './types';
 
-const writeInput = {
-  type: 'object',
-  properties: {
-    name: { type: 'string', description: "the skill's name, which its folder takes" },
-    files: {
-      type: 'array',
-      minItems: 1,
-      description:
-        "every file of the skill, SKILL.md included, by its path inside the skill's folder",
-      items: {
-        type: 'object',
-        properties: { path: { type: 'string' }, text: { type: 'string' } },
-        required: ['path', 'text'],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ['name', 'files'],
-  additionalProperties: false,
-};
-
-const writeOutput = {
-  type: 'object',
-  properties: {
-    status: { type: 'string', enum: ['pending'] },
-    proposalID: { type: 'string' },
-    message: { type: 'string' },
-  },
-  required: ['status', 'proposalID', 'message'],
-  additionalProperties: false,
-};
-
 // Builds skill_write, which declares note and proposes a new skill, or a new version of one, for
 // your review. The seed checks run first, and a skill that fails one returns its problems. The
 // proposal holds the files, the replaced version, the token check and the run that wrote it.
@@ -51,8 +19,36 @@ export function buildSkillWriteTool(context: SkillToolsContext): ToolDefinition 
       'complete set of files. SKILL.md opens with YAML frontmatter that holds the name and a ' +
       'description of when to use the skill. The owner approves each proposal before the skill ' +
       'runs anywhere.',
-    input: writeInput,
-    output: writeOutput,
+    input: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: "the skill's name, which its folder takes" },
+        files: {
+          type: 'array',
+          minItems: 1,
+          description:
+            "every file of the skill, SKILL.md included, by its path inside the skill's folder",
+          items: {
+            type: 'object',
+            properties: { path: { type: 'string' }, text: { type: 'string' } },
+            required: ['path', 'text'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['name', 'files'],
+      additionalProperties: false,
+    },
+    output: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['pending'] },
+        proposalID: { type: 'string' },
+        message: { type: 'string' },
+      },
+      required: ['status', 'proposalID', 'message'],
+      additionalProperties: false,
+    },
     declaration: {
       effects: ['note'],
       destinations: [],
