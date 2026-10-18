@@ -81,8 +81,7 @@
         "message": "A require function loads modules the import zones cannot see; use import."
       }
     ],
-    "import/no-commonjs": "error",
-    "nixie/no-hidden-import": "error"
+    "import/no-commonjs": "error"
   },
   "overrides": [
     {

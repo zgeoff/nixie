@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { buildThemeScript } from '../build-theme-script';
 import { NixieClientContext } from '../nixie-client-context';
 import { css } from '../styled-system/css';
-// oxlint-disable-next-line zgeoff/import-zones -- GEO-1284 resolves a bundler query in the zones
 import styles from '../styles.css?url';
 import { themePalette } from '../theme-palette';
 import type { RouterContext } from '../types';

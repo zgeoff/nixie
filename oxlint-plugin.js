@@ -1,10 +1,5 @@
 // nixie's own lint rules, loaded through oxlint's jsPlugins (ESLint v9 rule API)
 
-// Bun's import.meta.require loads a module that zgeoff/import-zones cannot see
-const message = 'Load a module through an import, so zgeoff/import-zones judges its specifier.';
-
-const selectors = ["MemberExpression[object.type='MetaProperty'][property.name='require']"];
-
 // The testing skill's structure rules for a bun:test file. oxlint's jest and vitest rules see only
 // their own runners' imports, so they miss every one of these in a bun:test file.
 const testMessages = {
@@ -65,14 +60,6 @@ function checkCall(context, node) {
 const plugin = {
   meta: { name: 'nixie' },
   rules: {
-    'no-hidden-import': {
-      meta: { type: 'problem', messages: { hidden: message }, schema: [] },
-      create(context) {
-        const emitHiddenImport = (node) => context.report({ node, messageId: 'hidden' });
-
-        return Object.fromEntries(selectors.map((selector) => [selector, emitHiddenImport]));
-      },
-    },
     'test-shape': {
       meta: { type: 'problem', messages: testMessages, schema: [] },
       create(context) {
