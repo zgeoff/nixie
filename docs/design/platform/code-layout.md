@@ -98,10 +98,10 @@ A few imports belong to one package each:
 | imp's client                        | `adapters/sandbox-imp`              |
 | `bun:sqlite` and the Kysely dialect | `libs/db`                           |
 
-An oxlint `no-restricted-imports` rule refuses each of these imports everywhere, with an override
-for its one package. The rule covers `bun:sqlite`, which Bun provides with no declared dependency.
-Lint also refuses `require` and any `import()` whose specifier is not a string literal, so no import
-escapes the restricted-imports rule. **Why:** the Agent SDK runs only inside a sandbox
+The `zgeoff/import-zones` lint rule refuses each of these imports outside its one package. The rule
+covers `bun:sqlite`, which Bun provides with no declared dependency. Lint also refuses `require`,
+`import.meta.require`, `node:module` and any `import()` whose specifier the rule cannot read, so no
+import escapes the zones. **Why:** the Agent SDK runs only inside a sandbox
 ([0003](../../decisions/0003-sdk-placement.md)), and one package owns each outside system.
 
 ## Modules

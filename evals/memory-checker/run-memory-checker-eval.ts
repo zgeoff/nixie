@@ -1,5 +1,3 @@
-// oxlint-disable no-restricted-imports -- the eval swaps the brokered key for the local login
-
 // Runs each corpus pair through the production checker, prompt and gate input, named as a
 // deployment with the owner name given would be, and writes the report the eval suite checks. It
 // calls the model with the local Claude Code login, so CI never runs it (see the README).

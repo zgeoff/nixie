@@ -1,13 +1,9 @@
 // nixie's own lint rules, loaded through oxlint's jsPlugins (ESLint v9 rule API)
 
-const message =
-  'Load a module through a static import or an import() of a string literal, so no-restricted-imports sees its specifier.';
+// Bun's import.meta.require loads a module that zgeoff/import-zones cannot see
+const message = 'Load a module through an import, so zgeoff/import-zones judges its specifier.';
 
-const selectors = [
-  // a template literal, even one with no substitutions, hides the specifier from no-restricted-imports
-  "ImportExpression:not([source.type='Literal'])",
-  "MemberExpression[object.type='MetaProperty'][property.name='require']",
-];
+const selectors = ["MemberExpression[object.type='MetaProperty'][property.name='require']"];
 
 // The testing skill's structure rules for a bun:test file. oxlint's jest and vitest rules see only
 // their own runners' imports, so they miss every one of these in a bun:test file.
