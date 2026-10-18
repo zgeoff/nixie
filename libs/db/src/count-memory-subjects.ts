@@ -51,10 +51,11 @@ async function countTableSubjects(
   };
 }
 
-// the subject column, or the subject a kind column maps to, as the subjects migration maps it
+// the subject column, or where a row holds none the subject its kind maps to, as the subjects
+// migration maps it
 function pickSubjectExpression(names: ReadonlySet<string>) {
   if (names.has('subject')) {
-    return sql.ref('subject');
+    return sql`coalesce(subject, case kind when 'self' then 'self' else 'owner' end)`;
   }
 
   return names.has('kind')
