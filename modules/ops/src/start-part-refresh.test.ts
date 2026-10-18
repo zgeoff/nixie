@@ -117,6 +117,43 @@ test('it skips a part whose check still runs past its timeout in later rounds', 
   });
 });
 
+test('it checks a part again once its check that outlasted the timeout settles', async () => {
+  const ctx = setupTest();
+  const slow = Promise.withResolvers<PartReport>();
+  const runtime = { next: slow.promise };
+  const check = mock(() => runtime.next);
+
+  const refresh = startPartRefresh({
+    checks: { imp_runtime: check },
+    clock: ctx.clock,
+    intervalMs: 5000,
+    timeoutMs: 2000,
+  });
+
+  onTestFinished(() => refresh.stop());
+
+  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+
+  ctx.clock.advance(2000);
+
+  await waitForCondition(
+    () => refresh.read('imp_runtime').reason === 'the check took longer than 2000 ms',
+  );
+
+  runtime.next = Promise.resolve({ isReady: true, reason: null });
+
+  slow.resolve({ isReady: false, reason: 'impd does not answer' });
+
+  // the refresh's own reaction to the late answer runs before this await returns
+  await slow.promise;
+
+  ctx.clock.advance(5000);
+
+  await waitForCondition(() => refresh.read('imp_runtime').isReady);
+
+  expect(check).toHaveBeenCalledTimes(2);
+});
+
 test('it checks each part again once the interval passes', async () => {
   const ctx = setupTest();
   const disk: { report: PartReport } = { report: { isReady: true, reason: null } };

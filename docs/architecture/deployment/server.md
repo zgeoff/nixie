@@ -125,12 +125,13 @@ this build holds:
 Every readiness check reads state that nixie holds in memory, so a readiness request never waits on
 another service. A refresh loop checks impd and the data volume on an interval and keeps each
 answer, because impd measures the memory of every awake imp to answer and can take longer than a
-probe waits. The other parts read state that the start sequence and the runners keep. The
-conversation imp stays unready until the runners start, so a start step that keeps failing after the
-conversation imp starts, such as writing the start record, leaves nixie unready instead of ready
-with no runner claiming work. Each check runs under a timeout, so a part that hangs reports unready
-instead of holding the endpoint. The image's health check calls the same endpoint from inside the
-container.
+probe waits. When impd stops answering, readiness shows it up to one interval and two check timeouts
+later, because the round in flight ends before the next one checks impd again. The other parts read
+state that the start sequence and the runners keep. The conversation imp stays unready until the
+runners start, so a start step that keeps failing after the conversation imp starts, such as writing
+the start record, leaves nixie unready instead of ready with no runner claiming work. Each check
+runs under a timeout, so a part that hangs reports unready instead of holding the endpoint. The
+image's health check calls the same endpoint from inside the container.
 
 Readiness gates routing, so it holds only the parts without which nixie cannot answer a request. The
 readiness report adds advisory parts, which show in its body and never change its status. The

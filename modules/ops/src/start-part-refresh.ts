@@ -7,7 +7,8 @@ export interface PartRefreshOptions<Part extends string> {
   readonly checks: Readonly<Record<Part, PartCheck>>;
   readonly clock: Clock;
 
-  // the wait between the end of one round of checks and the start of the next
+  // the wait between the end of one round of checks and the start of the next. A part that fails
+  // shows up to this wait plus two timeouts later: the round in flight ends, then the next one runs.
   readonly intervalMs: number;
 
   // the longest one part's check runs before the part reports unready
