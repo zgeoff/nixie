@@ -550,6 +550,27 @@ test('it lists no file deeper than the depth bound through the guest', async () 
   expect(listed).toIncludeSameMembers(['a.txt', 'one/b.txt']);
 });
 
+test('it refuses a listing that passes the output cap, rather than return part of it', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
+
+  // 6000 names of about 200 bytes each list past the 1 MiB cap
+  await sandbox.exec({
+    argv: [
+      'sh',
+      '-c',
+      'mkdir -p "$1" && cd "$1" && for i in $(seq 6000); do : > "$2$i"; done',
+      'sh',
+      join(ctx.dir, 'work'),
+      'x'.repeat(200),
+    ],
+  });
+
+  expect(sandbox.collectFiles(join(ctx.dir, 'work'))).rejects.toThrow(
+    `listing ${join(ctx.dir, 'work')} failed: the list passes 1048576 bytes`,
+  );
+});
+
 test('it lists no file under a missing directory', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec());
