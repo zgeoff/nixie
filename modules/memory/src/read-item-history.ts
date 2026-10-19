@@ -1,5 +1,6 @@
 import { decodeVersionText } from './decode-version-text';
 import { findItemKey } from './find-item-key';
+import { getRowSubject } from './get-row-subject';
 import type { MemoryTables, MemoryVersionRow, StoreParts } from './types';
 import type { HistoryVersion, ItemHistory } from './view-types';
 
@@ -14,7 +15,7 @@ export async function readItemHistory(
 
   const item = await db
     .selectFrom('memory_items')
-    .select(['state', 'kind'])
+    .select(['state', 'kind', 'subject'])
     .where('item_id', '=', itemID)
     .executeTakeFirst();
 
@@ -32,7 +33,7 @@ export async function readItemHistory(
   const key = await findItemKey(parts.context.log, itemID);
   const versions = await Promise.all(rows.map((row) => readHistoryVersion(row, key)));
 
-  return { itemID, state: item.state, kind: item.kind, versions };
+  return { itemID, state: item.state, subject: getRowSubject(item), versions };
 }
 
 async function readHistoryVersion(

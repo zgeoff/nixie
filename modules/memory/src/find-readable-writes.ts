@@ -3,21 +3,36 @@ import type { Transaction } from 'kysely';
 import { readForgottenSequences } from './read-forgotten-sequences';
 import type { StoreParts } from './types';
 import type { GatedWrite } from './write-memory-batch';
+import type { StagedFlag } from './writer-types';
 
-// The writes of a batch whose cited source is still readable and backed no item forgotten since
-// the gate ran, so a forget that completes while the checker answers still stops the write.
+export interface ReadableWrites {
+  readonly writes: readonly GatedWrite[];
+  readonly flags: readonly StagedFlag[];
+}
+
+// The writes and flags of a batch whose cited source is still readable and backed no item
+// forgotten since the gate ran, so a forget that completes while the checker answers still stops
+// the write, and a flag never quotes a forgotten message.
 export async function findReadableWrites(
   parts: StoreParts,
   tx: Transaction<unknown>,
-  writes: readonly GatedWrite[],
-): Promise<readonly GatedWrite[]> {
-  const readable = await readReadableSources(parts, tx, writes);
+  batch: ReadableWrites,
+): Promise<ReadableWrites> {
+  const sequences = [
+    ...batch.writes.map((gated) => gated.write.sourceSequence),
+    ...batch.flags.map((flag) => flag.sourceSequence),
+  ];
+
+  const readable = await readReadableSources(parts, tx, sequences);
   const forgotten = await readForgottenSequences(tx, [...readable]);
 
-  return writes.filter(
-    (gated) =>
-      readable.has(gated.write.sourceSequence) && !forgotten.has(gated.write.sourceSequence),
-  );
+  const isReadable = (sequence: number): boolean =>
+    readable.has(sequence) && !forgotten.has(sequence);
+
+  return {
+    writes: batch.writes.filter((gated) => isReadable(gated.write.sourceSequence)),
+    flags: batch.flags.filter((flag) => isReadable(flag.sourceSequence)),
+  };
 }
 
 interface SourceRow {
@@ -31,9 +46,9 @@ interface SourceRow {
 async function readReadableSources(
   parts: StoreParts,
   tx: Transaction<unknown>,
-  writes: readonly GatedWrite[],
+  cited: readonly number[],
 ): Promise<ReadonlySet<number>> {
-  const sequences = [...new Set(writes.map((gated) => gated.write.sourceSequence))];
+  const sequences = [...new Set(cited)];
 
   if (sequences.length === 0) {
     return new Set();

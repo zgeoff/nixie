@@ -1,7 +1,7 @@
 import { buildGateReview } from './build-gate-review';
-import { findMissingToken } from './find-missing-token';
 import { findSourceEvidence } from './find-source-evidence';
 import type { ContentGateResult } from './gate-types';
+import { getRowSubject } from './get-row-subject';
 import { memoryWriterTaskID } from './memory-writer-task-id';
 import { requireItem } from './require-item';
 import { runBatchRetirementGate } from './run-batch-retirement-gate';
@@ -16,20 +16,25 @@ export interface BatchGateResult {
   readonly text: string;
 }
 
-// Runs a batch's staged write through the content gate outside any transaction, with the message
-// it cites as its only evidence. A write whose item is missing or moved on is refused before any
-// check runs, and so is a retirement of a retired item.
+// Runs a batch's staged write through the content gate, with the message it cites as its only
+// evidence. A missing or moved-on item, or a retired item's retirement, is refused before any check
+// runs, and an edit of a self-note returns null: the note-taker never edits a self-note.
 export async function runBatchGate(
   parts: StoreParts,
   write: StagedWrite,
   source: SourceMessage,
-): Promise<BatchGateResult> {
+): Promise<BatchGateResult | null> {
   if (write.op === 'retire') {
     return runBatchRetirementGate(parts, write, source);
   }
 
   const item = write.target === null ? null : await requireEditTarget(parts, write.target);
-  const early = findEarlyReview(item, write.text, source);
+
+  if (item !== null && getRowSubject(item) === 'self') {
+    return null;
+  }
+
+  const early = findEarlyReview(write.text);
 
   if (early !== null) {
     return { gate: early, text: write.text };
@@ -56,22 +61,10 @@ export async function runBatchGate(
   return { gate, text: write.text };
 }
 
-// The review a write meets before its quote is read: a hidden character, or an edit of a
-// self-note, which waits for your review whoever edits it. The self-note's token check runs
-// against the cited message, so the review shows a destination you never typed.
-function findEarlyReview(
-  item: MemoryItemRow | null,
-  text: string,
-  source: SourceMessage,
-): ContentGateResult | null {
+// the review a write meets before its quote is read: a hidden character
+function findEarlyReview(text: string): ContentGateResult | null {
   if (invisible.test(text)) {
     return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
-  }
-
-  if (item?.kind === 'self') {
-    const tokens = findMissingToken(text, source.text) === null ? 'pass' : 'fail';
-
-    return buildGateReview('self_note', { checks: { tokens } });
   }
 
   return null;

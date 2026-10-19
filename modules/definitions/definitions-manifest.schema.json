@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "number",
+          "const": 1
+        }
+      },
+      "required": [
+        "format"
+      ],
+      "additionalProperties": {}
+    },
+    {
+      "type": "object",
+      "properties": {
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "format": {
+          "type": "number",
+          "const": 2
+        }
+      },
+      "required": [
+        "format"
+      ],
+      "additionalProperties": {}
+    }
+  ],
+  "title": "nixie definitions manifest",
+  "description": "The nixie.yaml at the root of the definitions, which holds their format and the conversation's skill list"
+}

@@ -1,6 +1,7 @@
 import { countBatchTokens } from './count-batch-tokens';
 import type { ShownItem } from './render-writer-prompt';
 import type { MemoryStore, RecalledItem } from './types';
+import { writerSubjects } from './writer-subjects';
 
 export interface ShownItemsQuery {
   // the text of your messages in the batch, which picks the items when the full list is too long
@@ -17,7 +18,7 @@ export interface ShownItems {
 
 // Reads the items the writer sees: every active item while they fit in the list budget, else the
 // top items by keyword over your messages, so the writer revises an earlier item instead of adding
-// a duplicate. Every read goes through recall, which records what it delivered.
+// a duplicate. Every read goes through recall, which records what it delivered and hides self-notes.
 export async function readShownItems(
   store: Pick<MemoryStore, 'recall'>,
   query: ShownItemsQuery,
@@ -32,6 +33,7 @@ export async function readShownItems(
     query: query.text.slice(0, maxQueryCharacters),
     limit: query.topItems,
     thread: query.thread,
+    subjects: writerSubjects,
   });
 
   return { items: matched.items.map((item) => toShownItem(item)), isComplete: false };
@@ -49,6 +51,7 @@ async function readItemList(
     const result = await store.recall({
       limit: pageSize,
       thread: query.thread,
+      subjects: writerSubjects,
       ...(page.after === null ? {} : { after: page.after }),
     });
 
@@ -66,7 +69,7 @@ async function readItemList(
 }
 
 function toShownItem(item: RecalledItem): ShownItem {
-  return { itemID: item.itemID, version: item.version, text: item.text };
+  return { itemID: item.itemID, version: item.version, subject: item.subject, text: item.text };
 }
 
 const pageSize = 100;

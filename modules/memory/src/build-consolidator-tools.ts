@@ -79,6 +79,7 @@ function buildRecallTool(
           text: item.text,
           source: item.source,
           isPinned: item.isPinned,
+          subject: item.subject,
         });
       }
 

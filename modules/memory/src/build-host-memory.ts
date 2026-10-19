@@ -1,3 +1,4 @@
+import type { MemorySubjectCounts } from '@heynixie/db';
 import type { ChangeOutcome, ConsolidationDiff, MemoryConsolidations } from './consolidation-types';
 import type { ApprovalResult, MemoryProposal, MemoryProposals } from './gate-types';
 import type { MemoryStore, Provenance, VersionRef } from './types';
@@ -7,7 +8,7 @@ import type { ItemHistory } from './view-types';
 // diff, and your own changes to an item, its forget included.
 export type HostMemoryStore = Pick<
   MemoryStore,
-  'remember' | 'retire' | 'restore' | 'pin' | 'forget' | 'readHistory'
+  'remember' | 'retire' | 'restore' | 'pin' | 'forget' | 'readHistory' | 'readSubjectCounts'
 > & { readonly proposals: MemoryProposals; readonly consolidations: MemoryConsolidations };
 
 // An answer to a proposal or a change, bound to the action hash the host command showed.
@@ -55,6 +56,7 @@ export interface HostMemory {
     answers: readonly HostChangeAnswer[],
   ) => Promise<readonly ChangeOutcome[]>;
   readonly rejectChange: (answer: HostChangeAnswer) => Promise<void>;
+  readonly readSubjectCounts: () => Promise<MemorySubjectCounts>;
 }
 
 // The memory store as the host commands reach it. An answer comes from a shell in nixie's
@@ -80,6 +82,7 @@ export function buildHostMemory(store: HostMemoryStore): HostMemory {
       ),
     rejectChange: (answer) =>
       store.consolidations.reject({ ...answer, identityID: hostIdentityID }),
+    readSubjectCounts: () => store.readSubjectCounts(),
   };
 }
 

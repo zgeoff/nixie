@@ -2,6 +2,7 @@ import type { Log } from '@heynixie/log';
 import { findRecordKeys } from '@heynixie/log';
 import type { Selectable } from 'kysely';
 import { getItemShortID } from './get-item-short-id';
+import { getRowSubject } from './get-row-subject';
 import { readViewText } from './read-view-text';
 import type { MemoryTables } from './types';
 import type { ViewItem } from './view-types';
@@ -38,6 +39,7 @@ export async function readViewItems(
       'item.state',
       'item.is_pinned',
       'item.kind',
+      'item.subject',
       'item.version',
       'current.origin',
       'current.source',
@@ -67,7 +69,8 @@ interface ViewItemRow {
   readonly short_id: string | null;
   readonly state: Selectable<MemoryTables['memory_items']>['state'];
   readonly is_pinned: number;
-  readonly kind: ViewItem['kind'];
+  readonly kind: 'fact' | 'self';
+  readonly subject: ViewItem['subject'] | null;
   readonly version: number;
   readonly origin: ViewItem['origin'];
   readonly source: ViewItem['source'];
@@ -92,7 +95,7 @@ async function buildViewItem(
     shortID: getItemShortID(row),
     state: row.state,
     isPinned: row.is_pinned === 1,
-    kind: row.kind,
+    subject: getRowSubject(row),
     version: row.version,
     origin: row.origin,
     source: row.source,

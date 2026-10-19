@@ -32,5 +32,11 @@ export async function runWriterBatch(
     return { next: 'continue', timers: [] };
   }
 
-  return writeGatedBatch(parts, { ...state, batch, gated, usage: extracted.usage });
+  return writeGatedBatch(parts, {
+    ...state,
+    batch,
+    gated,
+    flags: extracted.flags,
+    usage: extracted.usage,
+  });
 }

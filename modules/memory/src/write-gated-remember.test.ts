@@ -790,6 +790,46 @@ test("it merges a write past the turn's proposal cap, because a merge adds no pr
   expect(again).toMatchObject({ status: 'proposed', merged: true });
 });
 
+test('it keeps the same text under another subject as a proposal of its own, and merges a write only into the proposal of its subject', async () => {
+  const memory = await startTestMemory();
+
+  const owner = await memory.store.writes.remember({
+    text: 'Calls the garden shed the cabin',
+    caller: buildMockWriteCaller(),
+  });
+
+  const shared = await memory.store.writes.remember({
+    text: 'Calls the garden shed the cabin',
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const again = await memory.store.writes.remember({
+    text: 'Calls the garden shed the cabin',
+    subject: 'shared',
+    caller: buildMockWriteCaller(),
+  });
+
+  const pending = await memory.store.proposals.listPending();
+
+  invariant(owner.status === 'proposed');
+  invariant(shared.status === 'proposed');
+
+  expect(shared.proposalID).not.toBe(owner.proposalID);
+
+  expect(again).toStrictEqual({
+    status: 'proposed',
+    proposalID: shared.proposalID,
+    reason: 'no_quote',
+    merged: true,
+  });
+
+  expect(pending.map((proposal) => [proposal.proposalID, proposal.subject])).toStrictEqual([
+    [owner.proposalID, 'owner'],
+    [shared.proposalID, 'shared'],
+  ]);
+});
+
 test('it keeps a reworded write, and a write that pins, as proposals of their own', async () => {
   const memory = await startTestMemory();
 

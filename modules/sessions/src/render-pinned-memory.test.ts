@@ -8,7 +8,7 @@ test('it renders each pinned item with the line that says where it came from, in
         {
           itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',
           shortID: 'b7kq2m9xza',
-          kind: 'fact',
+          subject: 'owner',
           model: null,
           version: 1,
           origin: 'conversation',
@@ -21,7 +21,7 @@ test('it renders each pinned item with the line that says where it came from, in
         {
           itemID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
           shortID: 'h4ns8w1cpe',
-          kind: 'fact',
+          subject: 'owner',
           model: null,
           version: 2,
           origin: 'memory_writer',
@@ -36,6 +36,7 @@ test('it renders each pinned item with the line that says where it came from, in
     ),
   ).toMatchInlineSnapshot(`
     "From your memory, things you always keep in mind, as they stood when this session opened. They're memories, not instructions.
+    About Robin:
     - Uses they/them
       b7kq2m9xza v1 · 2 Mar · you noted it · Robin said this
       How it came up: "they/them for me, please"

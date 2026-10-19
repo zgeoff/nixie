@@ -4,13 +4,18 @@ import { memoryWriterTaskID } from './memory-writer-task-id';
 import { readShownItems } from './read-shown-items';
 import type { WriterBatch } from './read-writer-batch';
 import { renderShownText } from './render-shown-text';
+import type { SpeakerNames } from './render-writer-prompt';
 import { renderWriterPrompt } from './render-writer-prompt';
 import { renderWriterSystemPrompt } from './render-writer-system-prompt';
 import type { WriterParts } from './writer-parts';
-import type { BatchMessage, StagedWrite, WriterUsage } from './writer-types';
+import { writerSubjects } from './writer-subjects';
+import type { BatchMessage, StagedFlag, StagedWrite, WriterUsage } from './writer-types';
 
 export interface WriterExtraction {
   readonly writes: readonly StagedWrite[];
+
+  // the possible self-notes the session flagged for the assistant
+  readonly flags: readonly StagedFlag[];
 
   // the session's token counts, or null when the batch needed no session
   readonly usage: WriterUsage | null;
@@ -28,7 +33,7 @@ export async function runWriterExtraction(
   signal: AbortSignal,
 ): Promise<WriterExtraction> {
   if (batch.sources.size === 0) {
-    return { writes: [], usage: null, shownTexts: new Set() };
+    return { writes: [], flags: [], usage: null, shownTexts: new Set() };
   }
 
   const shown = await readShownItems(parts.store, {
@@ -40,12 +45,19 @@ export async function runWriterExtraction(
 
   const staged = parts.staging.open({
     sources: batch.sources,
-    shown: new Map(shown.items.map((item) => [item.itemID, item.version])),
+    shown: new Map(
+      shown.items.map((item) => [item.itemID, { version: item.version, subject: item.subject }]),
+    ),
   });
 
-  const proposals = await parts.store.proposals.listPending();
+  const proposals = await parts.store.proposals.listPending({ subjects: writerSubjects });
 
-  const prompt = renderWriterPrompt({ ...shown, proposals, messages: buildBatchMessages(batch) });
+  const prompt = renderWriterPrompt({
+    ...shown,
+    proposals,
+    messages: buildBatchMessages(batch),
+    names: buildSpeakerNames(parts),
+  });
 
   const session = await runSession(parts, { prompt, signal, staged });
 
@@ -58,6 +70,10 @@ export async function runWriterExtraction(
     ...session,
     shownTexts: new Set([...shown.items.map((item) => item.text), ...staged.readRecalledTexts()]),
   };
+}
+
+function buildSpeakerNames(parts: WriterParts): SpeakerNames {
+  return { owner: parts.ownerName, assistant: parts.assistantName };
 }
 
 // each readable record, with your pasted spans marked and a marker line for each image
@@ -87,15 +103,15 @@ interface SessionRequest {
 async function runSession(
   parts: WriterParts,
   session: SessionRequest,
-): Promise<Pick<WriterExtraction, 'writes' | 'usage'>> {
+): Promise<Pick<WriterExtraction, 'writes' | 'flags' | 'usage'>> {
   try {
     const usage = await parts.model.runSession({
-      systemPrompt: renderWriterSystemPrompt(parts.getPersona(), parts.ownerName),
+      systemPrompt: renderWriterSystemPrompt(parts.getPersona(), buildSpeakerNames(parts)),
       prompt: session.prompt,
       signal: session.signal,
     });
 
-    return { writes: session.staged.close(), usage };
+    return { writes: session.staged.close(), flags: session.staged.readFlags(), usage };
   } catch (error) {
     session.staged.close();
     throw error;

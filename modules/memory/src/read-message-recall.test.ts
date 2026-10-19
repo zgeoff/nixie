@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { makeGatedCall } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockCheckerAnswer, buildMockWriteCaller, startTestMemory } from './test-utils';
@@ -346,4 +347,237 @@ test('it cuts a long message before it renders, so a paste it cuts still closes'
   expect(result.messages[0]?.text).toMatch(
     /^Tomatoes, from the seed packet: <pasted id="(?<id>[\da-f]{12})">(?:water daily ){80}water da<\/pasted id="\k<id>">$/u,
   );
+});
+
+test('it never returns a message that is all paste', async () => {
+  const memory = await startTestMemory();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'garden',
+    text: 'The tomatoes need staking before the wind picks up',
+    spans: [{ start: 0, end: 50, source: 'pasted' }],
+  });
+
+  const result = await memory.store.recallMessages({
+    query: 'tomatoes',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages).toStrictEqual([]);
+});
+
+test('it never returns a message that is all paste after a restart rebuilds the index', async () => {
+  const memory = await startTestMemory();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'garden',
+    text: 'The tomatoes need staking before the wind picks up',
+    spans: [{ start: 0, end: 50, source: 'pasted' }],
+  });
+
+  const restarted = await startNextTestMemory(memory);
+
+  const result = await restarted.store.recallMessages({
+    query: 'tomatoes',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages).toStrictEqual([]);
+});
+
+test('it returns a message that matches on its typed words with its paste in a block', async () => {
+  const memory = await startTestMemory();
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'garden',
+    text: 'Check the beds tonight: The tomatoes need staking',
+    spans: [
+      { start: 0, end: 24, source: 'typed' },
+      { start: 24, end: 49, source: 'pasted' },
+    ],
+  });
+
+  const result = await memory.store.recallMessages({
+    query: 'beds',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages.map((message) => message.sequence)).toStrictEqual([sequence]);
+
+  expect(result.messages[0]?.text).toMatch(
+    /^Check the beds tonight: <pasted id="(?<id>[\da-f]{12})">The tomatoes need staking<\/pasted id="\k<id>">$/u,
+  );
+});
+
+test('it never returns a message for a query that matches only its pasted words', async () => {
+  const memory = await startTestMemory();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'garden',
+    text: 'Check the beds tonight: The tomatoes need staking',
+    spans: [
+      { start: 0, end: 24, source: 'typed' },
+      { start: 24, end: 49, source: 'pasted' },
+    ],
+  });
+
+  const result = await memory.store.recallMessages({
+    query: 'tomatoes',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages).toStrictEqual([]);
+});
+
+test('it returns a message that matches on words typed after its paste', async () => {
+  const memory = await startTestMemory();
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'garden',
+    text: 'Check the greenhttps://example.test/seedshouse tonight',
+    spans: [
+      { start: 0, end: 15, source: 'typed' },
+      { start: 15, end: 41, source: 'pasted' },
+      { start: 41, end: 54, source: 'typed' },
+    ],
+  });
+
+  const result = await memory.store.recallMessages({
+    query: 'tonight',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages.map((message) => message.sequence)).toStrictEqual([sequence]);
+});
+
+test('it never joins the typed words on either side of a paste into one word', async () => {
+  const memory = await startTestMemory();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'garden',
+    text: 'Check the greenhttps://example.test/seedshouse tonight',
+    spans: [
+      { start: 0, end: 15, source: 'typed' },
+      { start: 15, end: 41, source: 'pasted' },
+      { start: 41, end: 54, source: 'typed' },
+    ],
+  });
+
+  const result = await memory.store.recallMessages({
+    query: 'greenhouse',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages).toStrictEqual([]);
+});
+
+test('it never places a message by the meaning of its pasted words', async () => {
+  const memory = await startTestMemory({
+    semanticSearch: {
+      encoder: buildStubEncoder([['invoice', 'billing'], ['beds']]),
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  await memory.store.waitForSemanticIndex();
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'home',
+    text: 'Check the beds tonight: Your invoice is overdue',
+    spans: [
+      { start: 0, end: 24, source: 'typed' },
+      { start: 24, end: 47, source: 'pasted' },
+    ],
+  });
+
+  const typed = await writeOwnerMessageRecord(memory.log, {
+    thread: 'home',
+    text: 'The invoice came today',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const result = await memory.store.recallMessages({
+    query: 'billing',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages.map((message) => message.sequence)).toStrictEqual([typed]);
+  expect(result.searchMode).toBe('hybrid');
+});
+
+test('it matches the whole text of a message recorded without spans', async () => {
+  const memory = await startTestMemory();
+
+  const [record] = await writeRecords(memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'garden',
+      contentSource: 'owner',
+      payload: {},
+      erasable: { text: 'The tomatoes need staking' },
+    },
+  ]);
+
+  invariant(record);
+
+  const result = await memory.store.recallMessages({
+    query: 'tomatoes',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages.map((message) => message.sequence)).toStrictEqual([record.sequence]);
+});
+
+test('it matches the whole text of a message whose client labelled no span', async () => {
+  const memory = await startTestMemory();
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'garden',
+    text: 'The tomatoes need staking',
+    spans: [{ start: 0, end: 25, source: 'unknown' }],
+  });
+
+  const result = await memory.store.recallMessages({
+    query: 'tomatoes',
+    limit: 3,
+    minScore: 0,
+    minSimilarity: 0.38,
+    excludedSequences: [],
+    excludedWords: [],
+  });
+
+  expect(result.messages.map((message) => message.sequence)).toStrictEqual([sequence]);
 });

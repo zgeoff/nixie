@@ -1,7 +1,7 @@
 {
   "model": "claude-sonnet-5-5",
   "effort": "low",
-  "prompt": "sha256:d5678b18c76834e0f225db3ca890f71ec930a788af4d9dcbce194a849872a4d8",
+  "prompt": "sha256:d72be2d797f9fb9ea011a3c0ded7d4c906b8c1e8fe3e0793a8f74188abd389db",
   "ownerName": "Sam",
   "repeats": 3,
   "calls": [
@@ -11,10 +11,10 @@
       "repeat": 0,
       "input": "sha256:9cea0ab65e2b460d1829c644b213984d31b654d02e346a7c6148c782b0c3b825",
       "verdict": "asserted",
-      "reason": "The owner states in their own voice that these days they are in bed by ten, which the memory paraphrases faithfully; the \"sensible pensioner\" is a light simile, not a change of fact.",
+      "reason": "Sam states that these days he is in bed by ten, which the memory paraphrases faithfully; \"like a sensible pensioner\" is a light flourish, not a hedge.",
       "failure": null,
-      "costUSD": 0.0037966000000000002,
-      "latencyMs": 3116
+      "costUSD": 0.0036262,
+      "latencyMs": 3264
     },
     {
       "sample": "bedtime",
@@ -22,10 +22,10 @@
       "repeat": 1,
       "input": "sha256:9cea0ab65e2b460d1829c644b213984d31b654d02e346a7c6148c782b0c3b825",
       "verdict": "asserted",
-      "reason": "The owner states in their own voice that these days they are in bed by ten, which the memory faithfully paraphrases; the \"sensible pensioner\" remark is only a light comparison.",
+      "reason": "Sam states that these days they are in bed by ten, which the memory paraphrases faithfully; \"like a sensible pensioner\" is just a light comparison.",
       "failure": null,
-      "costUSD": 0.0037666,
-      "latencyMs": 2932
+      "costUSD": 0.0035762000000000003,
+      "latencyMs": 2783
     },
     {
       "sample": "bedtime",
@@ -33,10 +33,10 @@
       "repeat": 2,
       "input": "sha256:9cea0ab65e2b460d1829c644b213984d31b654d02e346a7c6148c782b0c3b825",
       "verdict": "asserted",
-      "reason": "The owner states in their own voice that these days they are in bed by ten, and the memory faithfully paraphrases that current habit.",
+      "reason": "Sam directly states that these days they are in bed by ten; the \"sensible pensioner\" is a light simile, and the memory faithfully paraphrases the current fact.",
       "failure": null,
-      "costUSD": 0.0036066,
-      "latencyMs": 2926
+      "costUSD": 0.0036062,
+      "latencyMs": 3720
     },
     {
       "sample": "bedtime",
@@ -44,10 +44,10 @@
       "repeat": 0,
       "input": "sha256:9b07d01a3686ed94d203a533bcd8b16766288dd96518f8b1ac015455fe56596f",
       "verdict": "not_asserted",
-      "reason": "The owner says they used to be a night owl but now go to bed by ten, so the memory states something that is no longer true.",
+      "reason": "Sam says he used to be a night owl but now goes to bed by ten, so the memory states something that is no longer true.",
       "failure": null,
-      "costUSD": 0.0035666,
-      "latencyMs": 2796
+      "costUSD": 0.0034462,
+      "latencyMs": 3099
     },
     {
       "sample": "bedtime",
@@ -55,10 +55,10 @@
       "repeat": 1,
       "input": "sha256:9b07d01a3686ed94d203a533bcd8b16766288dd96518f8b1ac015455fe56596f",
       "verdict": "not_asserted",
-      "reason": "The owner says they used to be a night owl but no longer are, so the memory states something that was true once and is not true now.",
+      "reason": "Sam says he used to be a night owl but no longer is (in bed by ten now), so the memory states something that was true once and is no longer true.",
       "failure": null,
-      "costUSD": 0.0015425999999999999,
-      "latencyMs": 2516
+      "costUSD": 0.0014453,
+      "latencyMs": 2713
     },
     {
       "sample": "bedtime",
@@ -66,10 +66,10 @@
       "repeat": 2,
       "input": "sha256:9b07d01a3686ed94d203a533bcd8b16766288dd96518f8b1ac015455fe56596f",
       "verdict": "not_asserted",
-      "reason": "The owner says they used to be a night owl but now go to bed by ten, so the memory states something that is no longer true.",
+      "reason": "Sam says he used to be a night owl but now goes to bed by ten, so the memory states something that is no longer true.",
       "failure": null,
-      "costUSD": 0.0015526,
-      "latencyMs": 2890
+      "costUSD": 0.0013753,
+      "latencyMs": 2684
     },
     {
       "sample": "bedtime",
@@ -77,10 +77,10 @@
       "repeat": 0,
       "input": "sha256:9bf3a5324590300d522b24a290a7d30363f41f850870a8b2362cbf6f0f8d78b4",
       "verdict": "not_asserted",
-      "reason": "The phrase \"like a sensible pensioner\" is a comparison about bedtime habits, not a statement that Sam is a pensioner; the message doesn't assert it.",
+      "reason": "The owner uses \"like a sensible pensioner\" as a simile for going to bed at ten, which compares them to a pensioner and doesn't state that they are one.",
       "failure": null,
-      "costUSD": 0.0043266,
-      "latencyMs": 3576
+      "costUSD": 0.0035862,
+      "latencyMs": 4005
     },
     {
       "sample": "bedtime",
@@ -88,10 +88,10 @@
       "repeat": 1,
       "input": "sha256:9bf3a5324590300d522b24a290a7d30363f41f850870a8b2362cbf6f0f8d78b4",
       "verdict": "not_asserted",
-      "reason": "\"Like a sensible pensioner\" is a simile about bedtime habits, not a statement that Sam is a pensioner, so the message does not assert it.",
+      "reason": "The owner says they're in bed by ten \"like a sensible pensioner\", which is a simile comparing themselves to a pensioner. It doesn't state that they are one.",
       "failure": null,
-      "costUSD": 0.0036966,
-      "latencyMs": 2807
+      "costUSD": 0.0036062,
+      "latencyMs": 4362
     },
     {
       "sample": "bedtime",
@@ -99,10 +99,10 @@
       "repeat": 2,
       "input": "sha256:9bf3a5324590300d522b24a290a7d30363f41f850870a8b2362cbf6f0f8d78b4",
       "verdict": "not_asserted",
-      "reason": "The phrase \"like a sensible pensioner\" is a simile comparing Sam to a pensioner, so the message doesn't assert that Sam is one.",
+      "reason": "The owner uses \"like a sensible pensioner\" as a simile for going to bed at ten, so they compare themselves to a pensioner and don't state that they are one.",
       "failure": null,
-      "costUSD": 0.0022126,
-      "latencyMs": 2549
+      "costUSD": 0.0015253,
+      "latencyMs": 3270
     },
     {
       "sample": "car",
@@ -110,10 +110,10 @@
       "repeat": 0,
       "input": "sha256:c620e72d9b4efcff3552d5c4f3fc0e5374b5842e147fef39075a3b986e1bc028",
       "verdict": "asserted",
-      "reason": "Sam stated in his own voice \"I refuse to own a car,\" and the memory is a faithful paraphrase of that.",
+      "reason": "Sam states in their own voice \"I refuse to own a car,\" which the memory paraphrases faithfully.",
       "failure": null,
-      "costUSD": 0.0035346,
-      "latencyMs": 2803
+      "costUSD": 0.0033642000000000003,
+      "latencyMs": 2332
     },
     {
       "sample": "car",
@@ -121,10 +121,10 @@
       "repeat": 1,
       "input": "sha256:c620e72d9b4efcff3552d5c4f3fc0e5374b5842e147fef39075a3b986e1bc028",
       "verdict": "asserted",
-      "reason": "The owner states in their own voice \"I refuse to own a car,\" which the memory paraphrases faithfully.",
+      "reason": "Sam directly states \"I refuse to own a car,\" which the memory restates faithfully.",
       "failure": null,
-      "costUSD": 0.0034946,
-      "latencyMs": 2668
+      "costUSD": 0.0012645,
+      "latencyMs": 2418
     },
     {
       "sample": "car",
@@ -132,10 +132,10 @@
       "repeat": 2,
       "input": "sha256:c620e72d9b4efcff3552d5c4f3fc0e5374b5842e147fef39075a3b986e1bc028",
       "verdict": "asserted",
-      "reason": "The owner directly states in their own voice \"I refuse to own a car,\" and the memory is a faithful paraphrase of it.",
+      "reason": "Sam directly states \"I refuse to own a car,\" and the memory restates it faithfully.",
       "failure": null,
-      "costUSD": 0.001561,
-      "latencyMs": 2734
+      "costUSD": 0.0012745,
+      "latencyMs": 2896
     },
     {
       "sample": "car",
@@ -143,10 +143,10 @@
       "repeat": 0,
       "input": "sha256:5970cbfaceaa991f5460426684d92f123725e0b98f59f6378a5cedb3877e1aa6",
       "verdict": "not_asserted",
-      "reason": "The owner says they refuse to own a car, so the memory that Sam owns a car contradicts the message.",
+      "reason": "The owner says they refuse to own a car and get around by bike, so the memory \"Sam owns a car\" contradicts the message.",
       "failure": null,
-      "costUSD": 0.0034926000000000002,
-      "latencyMs": 2344
+      "costUSD": 0.0034322,
+      "latencyMs": 2741
     },
     {
       "sample": "car",
@@ -156,8 +156,8 @@
       "verdict": "not_asserted",
       "reason": "The owner says they refuse to own a car, which denies the memory that Sam owns a car.",
       "failure": null,
-      "costUSD": 0.0014804000000000002,
-      "latencyMs": 2563
+      "costUSD": 0.0012942000000000001,
+      "latencyMs": 2708
     },
     {
       "sample": "car",
@@ -167,8 +167,8 @@
       "verdict": "not_asserted",
       "reason": "The owner says they refuse to own a car, which denies the memory that Sam owns a car.",
       "failure": null,
-      "costUSD": 0.0014804000000000002,
-      "latencyMs": 2522
+      "costUSD": 0.0012942000000000001,
+      "latencyMs": 2865
     },
     {
       "sample": "coffee",
@@ -176,10 +176,10 @@
       "repeat": 0,
       "input": "sha256:089c48a94955ef5e0e27fdcabd7f09618c6a15417a2c5b4e868ef457e375cd5f",
       "verdict": "not_asserted",
-      "reason": "The owner only said \"Maybe\" to whether they'd call themselves a coffee snob, which is a hedge, so the memory states it as settled when the owner didn't.",
+      "reason": "The owner only asked whether they would call themselves a coffee snob and answered \"Maybe\", which is a hedge, so the memory states it as settled when the message doesn't.",
       "failure": null,
-      "costUSD": 0.0036966,
-      "latencyMs": 2793
+      "costUSD": 0.0035762000000000003,
+      "latencyMs": 2985
     },
     {
       "sample": "coffee",
@@ -187,10 +187,10 @@
       "repeat": 1,
       "input": "sha256:089c48a94955ef5e0e27fdcabd7f09618c6a15417a2c5b4e868ef457e375cd5f",
       "verdict": "not_asserted",
-      "reason": "The owner only said \"Maybe\" to whether they'd call themselves a coffee snob, which is a hedge, and the memory states it as settled fact.",
+      "reason": "The owner only asks whether they'd call themselves a coffee snob and answers \"Maybe\", which is a hedge, not an assertion that Sam is a coffee snob.",
       "failure": null,
-      "costUSD": 0.0016706000000000002,
-      "latencyMs": 2822
+      "costUSD": 0.0035862,
+      "latencyMs": 2877
     },
     {
       "sample": "coffee",
@@ -198,10 +198,10 @@
       "repeat": 2,
       "input": "sha256:089c48a94955ef5e0e27fdcabd7f09618c6a15417a2c5b4e868ef457e375cd5f",
       "verdict": "not_asserted",
-      "reason": "The owner only said \"Maybe\" to whether they'd call themselves a coffee snob, which is a hedge, and the memory states it as settled fact.",
+      "reason": "The owner only asked whether they would call themselves a coffee snob and answered \"Maybe\", which is a hedge and not an assertion.",
       "failure": null,
-      "costUSD": 0.0016706000000000002,
-      "latencyMs": 2541
+      "costUSD": 0.0034662,
+      "latencyMs": 2855
     },
     {
       "sample": "commute",
@@ -209,10 +209,10 @@
       "repeat": 0,
       "input": "sha256:6a4fde8e428aa7167c61bb2a42848ab1cc0b9fb5d197b50db75f322e3d3bbe82",
       "verdict": "asserted",
-      "reason": "Sam stated their commute is a daily pilgrimage through roadworks, 50 minutes each way; the memory is a faithful paraphrase noting how Sam describes it, and the 50-minute figure is one-way, which the memory leaves slightly ambiguous but doesn't contradict.",
+      "reason": "Sam said their commute is a daily pilgrimage through roadworks, 50 minutes each way; the memory faithfully captures this as Sam's own characterization, though \"50-minute\" omits \"each way\" only slightly.",
       "failure": null,
-      "costUSD": 0.0042046,
-      "latencyMs": 2994
+      "costUSD": 0.0038342,
+      "latencyMs": 3093
     },
     {
       "sample": "commute",
@@ -220,10 +220,10 @@
       "repeat": 1,
       "input": "sha256:6a4fde8e428aa7167c61bb2a42848ab1cc0b9fb5d197b50db75f322e3d3bbe82",
       "verdict": "asserted",
-      "reason": "The owner wrote that their commute is a daily pilgrimage through roadworks and takes 50 minutes each way, so the memory faithfully reports what they said.",
+      "reason": "Sam stated their commute is a daily pilgrimage through roadworks, 50 minutes each way; the memory paraphrases this as Sam's own description, though \"50-minute commute\" slightly simplifies \"each way\", which is faithful enough.",
       "failure": null,
-      "costUSD": 0.004336,
-      "latencyMs": 3977
+      "costUSD": 0.0017770000000000004,
+      "latencyMs": 3179
     },
     {
       "sample": "commute",
@@ -231,10 +231,10 @@
       "repeat": 2,
       "input": "sha256:6a4fde8e428aa7167c61bb2a42848ab1cc0b9fb5d197b50db75f322e3d3bbe82",
       "verdict": "asserted",
-      "reason": "Sam stated their commute is 50 minutes each way and described it as a daily pilgrimage through roadworks; the memory says Sam calls it that, which faithfully reflects the owner's own wording.",
+      "reason": "Sam described their commute as a daily pilgrimage through roadworks, 50 minutes each way; the memory faithfully paraphrases this as Sam's own characterization, though \"50-minute\" omits \"each way\" only trivially.",
       "failure": null,
-      "costUSD": 0.001826,
-      "latencyMs": 2444
+      "costUSD": 0.0017270000000000002,
+      "latencyMs": 3499
     },
     {
       "sample": "commute",
@@ -242,10 +242,10 @@
       "repeat": 0,
       "input": "sha256:2cb01a0dad5583eef888e316e713b990f6e6c31ce83b90b46e49d7256069b95f",
       "verdict": "asserted",
-      "reason": "The owner states their commute is 50 minutes each way; \"daily pilgrimage\" is hyperbole but the duration is stated as fact, and the memory faithfully matches.",
+      "reason": "The owner states their commute is 50 minutes each way, which the memory paraphrases faithfully; \"daily pilgrimage\" is figurative flourish.",
       "failure": null,
-      "costUSD": 0.0037626,
-      "latencyMs": 2576
+      "costUSD": 0.0035722,
+      "latencyMs": 3354
     },
     {
       "sample": "commute",
@@ -253,10 +253,10 @@
       "repeat": 1,
       "input": "sha256:2cb01a0dad5583eef888e316e713b990f6e6c31ce83b90b46e49d7256069b95f",
       "verdict": "asserted",
-      "reason": "The owner states their commute is 50 minutes each way, and the memory paraphrases this faithfully without adding anything.",
+      "reason": "Sam directly states his commute is 50 minutes each way; \"daily pilgrimage\" is figurative flourish but the duration is stated as fact.",
       "failure": null,
-      "costUSD": 0.004122600000000001,
-      "latencyMs": 2651
+      "costUSD": 0.0014657000000000003,
+      "latencyMs": 2600
     },
     {
       "sample": "commute",
@@ -264,10 +264,10 @@
       "repeat": 2,
       "input": "sha256:2cb01a0dad5583eef888e316e713b990f6e6c31ce83b90b46e49d7256069b95f",
       "verdict": "asserted",
-      "reason": "The owner states their commute is 50 minutes each way; \"daily pilgrimage\" is hyperbole, but the duration is stated as fact and the memory matches it.",
+      "reason": "The owner states their commute is 50 minutes each way, and the memory paraphrases that faithfully; \"daily pilgrimage\" is hyperbole that doesn't change the fact.",
       "failure": null,
-      "costUSD": 0.0017033999999999999,
-      "latencyMs": 2357
+      "costUSD": 0.0015757000000000002,
+      "latencyMs": 2809
     },
     {
       "sample": "commute",
@@ -277,8 +277,8 @@
       "verdict": "not_asserted",
       "reason": "The owner said the commute is 50 minutes each way, but the memory says an hour each way, which changes the detail.",
       "failure": null,
-      "costUSD": 0.0035706,
-      "latencyMs": 2264
+      "costUSD": 0.0034402,
+      "latencyMs": 3015
     },
     {
       "sample": "commute",
@@ -286,10 +286,10 @@
       "repeat": 1,
       "input": "sha256:6194ead913e4d510c56d963fe3214ac4bfaa8792f557f891766ad19878b015e7",
       "verdict": "not_asserted",
-      "reason": "The owner said the commute is 50 minutes each way, but the memory says an hour each way. That changes the detail, so the owner didn't assert it.",
+      "reason": "The owner said the commute is 50 minutes each way, but the memory says an hour each way, which changes the detail.",
       "failure": null,
-      "costUSD": 0.0036806,
-      "latencyMs": 2643
+      "costUSD": 0.0034402,
+      "latencyMs": 2507
     },
     {
       "sample": "commute",
@@ -297,10 +297,10 @@
       "repeat": 2,
       "input": "sha256:6194ead913e4d510c56d963fe3214ac4bfaa8792f557f891766ad19878b015e7",
       "verdict": "not_asserted",
-      "reason": "The owner said the commute is 50 minutes each way, but the memory changes that to an hour each way, which is a different detail.",
+      "reason": "The owner said the commute is 50 minutes each way, but the memory says an hour each way. That changes the detail by rounding up, so the message doesn't state it.",
       "failure": null,
-      "costUSD": 0.0015828,
-      "latencyMs": 2442
+      "costUSD": 0.0015154,
+      "latencyMs": 3344
     },
     {
       "sample": "cook",
@@ -308,10 +308,10 @@
       "repeat": 0,
       "input": "sha256:5b6f464258199cab2697857320dc37a3d21af6c8273c855bfc87f703872f30db",
       "verdict": "not_asserted",
-      "reason": "The claim appears only in text the owner pasted from a friend, and the owner added no assertion of their own, so it isn't the owner's own statement.",
+      "reason": "The claim appears only in text the owner pasted, which is the friend's words about Sam, and the owner did not assert it in their own voice.",
       "failure": null,
-      "costUSD": 0.0037186000000000003,
-      "latencyMs": 2885
+      "costUSD": 0.0035582,
+      "latencyMs": 3192
     },
     {
       "sample": "cook",
@@ -319,10 +319,10 @@
       "repeat": 1,
       "input": "sha256:5b6f464258199cab2697857320dc37a3d21af6c8273c855bfc87f703872f30db",
       "verdict": "not_asserted",
-      "reason": "The claim appears only in text the owner pasted from their friend, and the owner added no assertion of their own, so the owner did not assert it.",
+      "reason": "The claim about Sam being the worst cook appears only in text the friend wrote and Sam pasted, and Sam did not assert it in their own voice.",
       "failure": null,
-      "costUSD": 0.0036886,
-      "latencyMs": 7886
+      "costUSD": 0.0036082,
+      "latencyMs": 3322
     },
     {
       "sample": "cook",
@@ -330,10 +330,10 @@
       "repeat": 2,
       "input": "sha256:5b6f464258199cab2697857320dc37a3d21af6c8273c855bfc87f703872f30db",
       "verdict": "not_asserted",
-      "reason": "The claim appears only in text the owner pasted from a friend, and the owner added no endorsement of their own, so the owner didn't assert it.",
+      "reason": "The claim appears only in text the owner pasted, which is the friend's words, and the owner didn't assert it themselves.",
       "failure": null,
-      "costUSD": 0.0016452,
-      "latencyMs": 2807
+      "costUSD": 0.0013866,
+      "latencyMs": 3508
     },
     {
       "sample": "flat",
@@ -341,10 +341,10 @@
       "repeat": 0,
       "input": "sha256:6bcdeb313f61832ca56fa7f9db45e4e52081253e30dc23846e4ac7f9421d971d",
       "verdict": "asserted",
-      "reason": "The owner describes their flat as one bedroom above the bakery; the shoebox joke is hyperbole about size, but the specifics are stated literally and the memory matches them.",
+      "reason": "Sam states his flat is one bedroom above the bakery; the hyperbole is only about the flat's size and grandeur, and the memory faithfully paraphrases the literal facts.",
       "failure": null,
-      "costUSD": 0.0037766,
-      "latencyMs": 3172
+      "costUSD": 0.0036862,
+      "latencyMs": 3585
     },
     {
       "sample": "flat",
@@ -352,10 +352,10 @@
       "repeat": 1,
       "input": "sha256:6bcdeb313f61832ca56fa7f9db45e4e52081253e30dc23846e4ac7f9421d971d",
       "verdict": "asserted",
-      "reason": "The owner literally describes their flat as one bedroom above the bakery; the shoebox joke is hyperbole about size, but the factual details are stated plainly and the memory matches.",
+      "reason": "Sam stated his flat is one bedroom above the bakery; the hyperbole concerns size, but the facts are asserted literally.",
       "failure": null,
-      "costUSD": 0.0017446,
-      "latencyMs": 2448
+      "costUSD": 0.0014163000000000001,
+      "latencyMs": 2646
     },
     {
       "sample": "flat",
@@ -363,10 +363,10 @@
       "repeat": 2,
       "input": "sha256:6bcdeb313f61832ca56fa7f9db45e4e52081253e30dc23846e4ac7f9421d971d",
       "verdict": "asserted",
-      "reason": "The owner states in their own voice that their flat is one bedroom above the bakery; the shoebox joke is hyperbole about size, and the memory faithfully captures the literal facts.",
+      "reason": "Sam directly states their flat is one bedroom above the bakery; the joke is hyperbole about size, but the factual description is stated plainly.",
       "failure": null,
-      "costUSD": 0.0017546,
-      "latencyMs": 2544
+      "costUSD": 0.0014463,
+      "latencyMs": 2960
     },
     {
       "sample": "flat",
@@ -374,10 +374,10 @@
       "repeat": 0,
       "input": "sha256:e8eef69d703a2dc81fe18bce74731109431ac8df6ab8d01d993318793c6ddfd4",
       "verdict": "asserted",
-      "reason": "The owner stated their flat is a one-bedroom above the bakery and described it as a shoebox with delusions of grandeur; the memory faithfully reports that they call it that, keeping the figurative description as their own characterization.",
+      "reason": "Sam stated their flat is one bedroom above the bakery and described it with a humorous phrase; the memory faithfully reports that they call it that, adding nothing.",
       "failure": null,
-      "costUSD": 0.0039966,
-      "latencyMs": 2513
+      "costUSD": 0.0036861999999999997,
+      "latencyMs": 3598
     },
     {
       "sample": "flat",
@@ -385,10 +385,10 @@
       "repeat": 1,
       "input": "sha256:e8eef69d703a2dc81fe18bce74731109431ac8df6ab8d01d993318793c6ddfd4",
       "verdict": "asserted",
-      "reason": "Sam literally described their flat with that phrase and stated it is one bedroom above the bakery, so the memory faithfully reports what Sam said and the underlying facts.",
+      "reason": "Sam stated their flat is one bedroom above the bakery and described it with the shoebox phrase; the memory faithfully captures that description as Sam's own characterization.",
       "failure": null,
-      "costUSD": 0.0038266000000000003,
-      "latencyMs": 2967
+      "costUSD": 0.0036961999999999997,
+      "latencyMs": 3190
     },
     {
       "sample": "flat",
@@ -396,10 +396,10 @@
       "repeat": 2,
       "input": "sha256:e8eef69d703a2dc81fe18bce74731109431ac8df6ab8d01d993318793c6ddfd4",
       "verdict": "asserted",
-      "reason": "Sam literally described their flat with that phrase and stated it is one bedroom above the bakery; the memory faithfully reports that description and the facts.",
+      "reason": "Sam stated their flat is a one-bedroom above the bakery and described it with the shoebox joke; the memory faithfully reports that characterization and the facts.",
       "failure": null,
-      "costUSD": 0.0016476000000000001,
-      "latencyMs": 2989
+      "costUSD": 0.0015078,
+      "latencyMs": 2551
     },
     {
       "sample": "flat",
@@ -407,10 +407,10 @@
       "repeat": 0,
       "input": "sha256:11aea99d0c19ff1d32b9b5e1416b7587631a9ce96459fb12fe1669f5819bb1aa",
       "verdict": "not_asserted",
-      "reason": "The owner said the flat has one bedroom, which contradicts the memory's claim of two bedrooms.",
+      "reason": "The owner says the flat has one bedroom, which contradicts the memory's claim of two bedrooms.",
       "failure": null,
-      "costUSD": 0.0035626,
-      "latencyMs": 2474
+      "costUSD": 0.0034322000000000003,
+      "latencyMs": 2288
     },
     {
       "sample": "flat",
@@ -418,10 +418,10 @@
       "repeat": 1,
       "input": "sha256:11aea99d0c19ff1d32b9b5e1416b7587631a9ce96459fb12fe1669f5819bb1aa",
       "verdict": "not_asserted",
-      "reason": "The owner said the flat has one bedroom, which contradicts the memory's claim of two bedrooms.",
+      "reason": "The owner said the flat has one bedroom, so the memory of two bedrooms contradicts the message.",
       "failure": null,
-      "costUSD": 0.0015334000000000003,
-      "latencyMs": 2314
+      "costUSD": 0.0013357000000000002,
+      "latencyMs": 2423
     },
     {
       "sample": "flat",
@@ -431,8 +431,8 @@
       "verdict": "not_asserted",
       "reason": "The owner said the flat has one bedroom, which contradicts the memory's claim of two bedrooms.",
       "failure": null,
-      "costUSD": 0.0015334000000000003,
-      "latencyMs": 2207
+      "costUSD": 0.0013457000000000002,
+      "latencyMs": 2740
     },
     {
       "sample": "gardener",
@@ -440,10 +440,10 @@
       "repeat": 0,
       "input": "sha256:f1748d6850a353934dee85876c01e01a25baea1eb1e3ed131a757edb07fe04ce",
       "verdict": "asserted",
-      "reason": "The owner directly states they are a chaotic gardener who lets the tomatoes do whatever they want, and the memory is a faithful paraphrase.",
+      "reason": "Sam directly states he is a chaotic gardener who lets the tomatoes do whatever they want, and the memory is a faithful paraphrase of that.",
       "failure": null,
-      "costUSD": 0.0037306000000000006,
-      "latencyMs": 2527
+      "costUSD": 0.0036202,
+      "latencyMs": 3442
     },
     {
       "sample": "gardener",
@@ -451,10 +451,10 @@
       "repeat": 1,
       "input": "sha256:f1748d6850a353934dee85876c01e01a25baea1eb1e3ed131a757edb07fe04ce",
       "verdict": "asserted",
-      "reason": "The owner directly states they are a chaotic gardener who lets the tomatoes do whatever they want, and the memory faithfully paraphrases this.",
+      "reason": "Sam directly states they are a chaotic gardener who lets the tomatoes do whatever they want, and the memory is a faithful paraphrase.",
       "failure": null,
-      "costUSD": 0.0037306000000000006,
-      "latencyMs": 2883
+      "costUSD": 0.0036002,
+      "latencyMs": 2569
     },
     {
       "sample": "gardener",
@@ -462,10 +462,10 @@
       "repeat": 2,
       "input": "sha256:f1748d6850a353934dee85876c01e01a25baea1eb1e3ed131a757edb07fe04ce",
       "verdict": "asserted",
-      "reason": "The owner directly states they are a chaotic gardener who lets the tomatoes do whatever they want, and the memory is a faithful paraphrase of that.",
+      "reason": "Sam directly states he is a chaotic gardener who lets the tomatoes do whatever they want, and the memory is a faithful paraphrase.",
       "failure": null,
-      "costUSD": 0.0016758000000000003,
-      "latencyMs": 2342
+      "costUSD": 0.0014669000000000004,
+      "latencyMs": 2690
     },
     {
       "sample": "gardener",
@@ -473,10 +473,10 @@
       "repeat": 0,
       "input": "sha256:8568a2fdb8300e3e97d8042925ba83ff7f09736ddb1c772a5192f69f92267a47",
       "verdict": "not_asserted",
-      "reason": "The owner says they are a chaotic gardener who lets tomatoes do what they want, which doesn't state that they grow tomatoes for a living; it adds a professional detail.",
+      "reason": "Sam says they garden chaotically and let tomatoes do what they want, which suggests a hobby; nothing says they grow tomatoes for a living.",
       "failure": null,
-      "costUSD": 0.0037706000000000003,
-      "latencyMs": 3087
+      "costUSD": 0.0035702000000000004,
+      "latencyMs": 2789
     },
     {
       "sample": "gardener",
@@ -484,10 +484,10 @@
       "repeat": 1,
       "input": "sha256:8568a2fdb8300e3e97d8042925ba83ff7f09736ddb1c772a5192f69f92267a47",
       "verdict": "not_asserted",
-      "reason": "Sam says they are a chaotic gardener who lets tomatoes do what they want, which implies a hobby; nothing says they grow tomatoes for a living, so the memory adds a detail.",
+      "reason": "Sam says they are a chaotic gardener who lets tomatoes do what they want, which suggests a hobby. It doesn't say they grow tomatoes for a living, so the memory adds a detail.",
       "failure": null,
-      "costUSD": 0.0018128,
-      "latencyMs": 2617
+      "costUSD": 0.0037302000000000004,
+      "latencyMs": 3141
     },
     {
       "sample": "gardener",
@@ -495,32 +495,32 @@
       "repeat": 2,
       "input": "sha256:8568a2fdb8300e3e97d8042925ba83ff7f09736ddb1c772a5192f69f92267a47",
       "verdict": "not_asserted",
-      "reason": "Sam says they are a chaotic gardener who lets tomatoes grow freely, which suggests a hobby; it never says they grow tomatoes for a living, so the memory adds a detail.",
+      "reason": "The message says Sam is a chaotic gardener who lets tomatoes grow freely, which suggests a hobby; nothing says Sam grows tomatoes for a living, so the memory adds a detail.",
       "failure": null,
-      "costUSD": 0.0018128,
-      "latencyMs": 3241
+      "costUSD": 0.0016654000000000003,
+      "latencyMs": 2814
     },
     {
       "sample": "londoner",
       "pair": 0,
       "repeat": 0,
+      "input": "sha256:8fcd883ac8cc2aac909ac0b88f62edbd260378b7f4aaf37118ffcadc3c5ee237",
+      "verdict": "not_asserted",
+      "reason": "The owner says they'll become a proper Londoner only if the new job works out, so being a Londoner is a conditional future hope and not a current fact.",
+      "failure": null,
+      "costUSD": 0.0035002,
+      "latencyMs": 2858
+    },
+    {
+      "sample": "londoner",
+      "pair": 0,
+      "repeat": 1,
       "input": "sha256:8fcd883ac8cc2aac909ac0b88f62edbd260378b7f4aaf37118ffcadc3c5ee237",
       "verdict": "not_asserted",
       "reason": "The owner says they'll become a proper Londoner only if the new job works out, so being a Londoner is a conditional future hope, not a current fact.",
       "failure": null,
-      "costUSD": 0.0036306000000000003,
-      "latencyMs": 3080
-    },
-    {
-      "sample": "londoner",
-      "pair": 0,
-      "repeat": 1,
-      "input": "sha256:8fcd883ac8cc2aac909ac0b88f62edbd260378b7f4aaf37118ffcadc3c5ee237",
-      "verdict": "not_asserted",
-      "reason": "The owner said they will become a proper Londoner only if the new job works out, so Sam is not yet a Londoner and the memory states it as settled.",
-      "failure": null,
-      "costUSD": 0.0036306000000000003,
-      "latencyMs": 2557
+      "costUSD": 0.0014644000000000003,
+      "latencyMs": 2762
     },
     {
       "sample": "londoner",
@@ -528,10 +528,10 @@
       "repeat": 2,
       "input": "sha256:8fcd883ac8cc2aac909ac0b88f62edbd260378b7f4aaf37118ffcadc3c5ee237",
       "verdict": "not_asserted",
-      "reason": "The owner says they will become a proper Londoner only if the new job works out, so they present it as a conditional future and not a current fact, and the memory drops that condition.",
+      "reason": "The owner says they'll become a proper Londoner only if the new job works out, so being a Londoner is conditional and not a current fact.",
       "failure": null,
-      "costUSD": 0.0016908,
-      "latencyMs": 2620
+      "costUSD": 0.0014244000000000001,
+      "latencyMs": 2626
     },
     {
       "sample": "mornings",
@@ -539,131 +539,131 @@
       "repeat": 0,
       "input": "sha256:f72fecd05199e3a4497a9f59562d03bbb823b26bab802401878892c590493647",
       "verdict": "asserted",
-      "reason": "Sam directly states \"I'm not a morning person,\" which the memory restates faithfully.",
+      "reason": "Sam directly states \"I'm not a morning person\", which matches the memory word for word.",
       "failure": null,
-      "costUSD": 0.0034426,
+      "costUSD": 0.0033022,
+      "latencyMs": 2300
+    },
+    {
+      "sample": "mornings",
+      "pair": 0,
+      "repeat": 1,
+      "input": "sha256:f72fecd05199e3a4497a9f59562d03bbb823b26bab802401878892c590493647",
+      "verdict": "asserted",
+      "reason": "Sam directly states \"I'm not a morning person\", which the memory faithfully restates.",
+      "failure": null,
+      "costUSD": 0.0012647000000000001,
+      "latencyMs": 3000
+    },
+    {
+      "sample": "mornings",
+      "pair": 0,
+      "repeat": 2,
+      "input": "sha256:f72fecd05199e3a4497a9f59562d03bbb823b26bab802401878892c590493647",
+      "verdict": "asserted",
+      "reason": "The owner directly states \"I'm not a morning person\", which the memory paraphrases faithfully.",
+      "failure": null,
+      "costUSD": 0.0012947000000000002,
+      "latencyMs": 3039
+    },
+    {
+      "sample": "mornings",
+      "pair": 1,
+      "repeat": 0,
+      "input": "sha256:cd8b1149d7aaf0e08c42ebafc70aa5451908e8066666bc821058b66ad3dbfb3a",
+      "verdict": "asserted",
+      "reason": "Sam directly states in their own voice that they are a mid-afternoon person at best, and the memory is a faithful paraphrase.",
+      "failure": null,
+      "costUSD": 0.0034762,
+      "latencyMs": 2909
+    },
+    {
+      "sample": "mornings",
+      "pair": 1,
+      "repeat": 1,
+      "input": "sha256:cd8b1149d7aaf0e08c42ebafc70aa5451908e8066666bc821058b66ad3dbfb3a",
+      "verdict": "asserted",
+      "reason": "Sam directly states in their own voice that they are a mid-afternoon person at best, and the memory is a faithful paraphrase.",
+      "failure": null,
+      "costUSD": 0.0034762,
+      "latencyMs": 3315
+    },
+    {
+      "sample": "mornings",
+      "pair": 1,
+      "repeat": 2,
+      "input": "sha256:cd8b1149d7aaf0e08c42ebafc70aa5451908e8066666bc821058b66ad3dbfb3a",
+      "verdict": "asserted",
+      "reason": "Sam directly states they are a mid-afternoon person at best, and the memory is a faithful paraphrase of that statement.",
+      "failure": null,
+      "costUSD": 0.0013853000000000001,
+      "latencyMs": 2774
+    },
+    {
+      "sample": "napper",
+      "pair": 0,
+      "repeat": 0,
+      "input": "sha256:0326a1ff6eecd47bff875df61aa4a5557db3300805017c5c27f71a53e6fddf97",
+      "verdict": "not_asserted",
+      "reason": "The owner jokingly says they are \"basically a professional napper\"; this is hyperbole, not a literal claim of being a professional napper.",
+      "failure": null,
+      "costUSD": 0.0034502,
+      "latencyMs": 2704
+    },
+    {
+      "sample": "napper",
+      "pair": 0,
+      "repeat": 1,
+      "input": "sha256:0326a1ff6eecd47bff875df61aa4a5557db3300805017c5c27f71a53e6fddf97",
+      "verdict": "not_asserted",
+      "reason": "The owner jokingly said they're \"basically a professional napper\"; this is hyperbole, not a literal claim of being a professional napper.",
+      "failure": null,
+      "costUSD": 0.0034502,
+      "latencyMs": 3016
+    },
+    {
+      "sample": "napper",
+      "pair": 0,
+      "repeat": 2,
+      "input": "sha256:0326a1ff6eecd47bff875df61aa4a5557db3300805017c5c27f71a53e6fddf97",
+      "verdict": "not_asserted",
+      "reason": "The owner jokingly said they are \"basically a professional napper\"; this is hyperbole, not a literal claim of being a professional napper.",
+      "failure": null,
+      "costUSD": 0.0014339,
+      "latencyMs": 2831
+    },
+    {
+      "sample": "saturday",
+      "pair": 0,
+      "repeat": 0,
+      "input": "sha256:88193df461d732191bf2bff1054c2be92d856ea8fa03fd4edde631f577820d46",
+      "verdict": "asserted",
+      "reason": "The owner states in their own voice that their Saturday mornings are sacred, with parkrun and then a bacon roll; the memory is a faithful paraphrase.",
+      "failure": null,
+      "costUSD": 0.0036961999999999997,
+      "latencyMs": 2739
+    },
+    {
+      "sample": "saturday",
+      "pair": 0,
+      "repeat": 1,
+      "input": "sha256:88193df461d732191bf2bff1054c2be92d856ea8fa03fd4edde631f577820d46",
+      "verdict": "asserted",
+      "reason": "The owner states in their own voice that Saturday mornings are sacred, with parkrun then a bacon roll from the van; the memory is a faithful paraphrase.",
+      "failure": null,
+      "costUSD": 0.0015183,
       "latencyMs": 2640
     },
     {
-      "sample": "mornings",
-      "pair": 0,
-      "repeat": 1,
-      "input": "sha256:f72fecd05199e3a4497a9f59562d03bbb823b26bab802401878892c590493647",
-      "verdict": "asserted",
-      "reason": "The owner directly states \"I'm not a morning person\", which the memory faithfully restates.",
-      "failure": null,
-      "costUSD": 0.0034426,
-      "latencyMs": 2395
-    },
-    {
-      "sample": "mornings",
-      "pair": 0,
-      "repeat": 2,
-      "input": "sha256:f72fecd05199e3a4497a9f59562d03bbb823b26bab802401878892c590493647",
-      "verdict": "asserted",
-      "reason": "The owner directly states \"I'm not a morning person,\" which the memory paraphrases faithfully.",
-      "failure": null,
-      "costUSD": 0.0034726,
-      "latencyMs": 2842
-    },
-    {
-      "sample": "mornings",
-      "pair": 1,
-      "repeat": 0,
-      "input": "sha256:cd8b1149d7aaf0e08c42ebafc70aa5451908e8066666bc821058b66ad3dbfb3a",
-      "verdict": "asserted",
-      "reason": "The owner directly states in their own voice that they are a mid-afternoon person at best, and the memory is a faithful paraphrase.",
-      "failure": null,
-      "costUSD": 0.0036066,
-      "latencyMs": 2593
-    },
-    {
-      "sample": "mornings",
-      "pair": 1,
-      "repeat": 1,
-      "input": "sha256:cd8b1149d7aaf0e08c42ebafc70aa5451908e8066666bc821058b66ad3dbfb3a",
-      "verdict": "asserted",
-      "reason": "The owner directly states in their own voice that they are a mid-afternoon person at best, and the memory paraphrases this faithfully.",
-      "failure": null,
-      "costUSD": 0.0015926,
-      "latencyMs": 2701
-    },
-    {
-      "sample": "mornings",
-      "pair": 1,
-      "repeat": 2,
-      "input": "sha256:cd8b1149d7aaf0e08c42ebafc70aa5451908e8066666bc821058b66ad3dbfb3a",
-      "verdict": "asserted",
-      "reason": "The owner directly stated in their own voice that they are a mid-afternoon person at best, and the memory is a faithful paraphrase.",
-      "failure": null,
-      "costUSD": 0.0016026,
-      "latencyMs": 2796
-    },
-    {
-      "sample": "napper",
-      "pair": 0,
-      "repeat": 0,
-      "input": "sha256:0326a1ff6eecd47bff875df61aa4a5557db3300805017c5c27f71a53e6fddf97",
-      "verdict": "not_asserted",
-      "reason": "The owner's \"basically a professional napper\" is a joking exaggeration about napping a lot, not a literal claim that Sam is a professional napper.",
-      "failure": null,
-      "costUSD": 0.0036206,
-      "latencyMs": 2673
-    },
-    {
-      "sample": "napper",
-      "pair": 0,
-      "repeat": 1,
-      "input": "sha256:0326a1ff6eecd47bff875df61aa4a5557db3300805017c5c27f71a53e6fddf97",
-      "verdict": "not_asserted",
-      "reason": "The owner joked with \"haha\" and \"basically\" that they nap a lot; this is hyperbole, not a literal claim of being a professional napper.",
-      "failure": null,
-      "costUSD": 0.0016498000000000003,
-      "latencyMs": 2979
-    },
-    {
-      "sample": "napper",
-      "pair": 0,
-      "repeat": 2,
-      "input": "sha256:0326a1ff6eecd47bff875df61aa4a5557db3300805017c5c27f71a53e6fddf97",
-      "verdict": "not_asserted",
-      "reason": "The owner's \"basically a professional napper\" with \"haha\" is a joke or hyperbole about napping a lot, and the memory states it literally as a fact.",
-      "failure": null,
-      "costUSD": 0.0016798000000000002,
-      "latencyMs": 7840
-    },
-    {
-      "sample": "saturday",
-      "pair": 0,
-      "repeat": 0,
-      "input": "sha256:88193df461d732191bf2bff1054c2be92d856ea8fa03fd4edde631f577820d46",
-      "verdict": "asserted",
-      "reason": "The owner states in their own voice that their Saturday mornings involve parkrun followed by a bacon roll from the van by the gate, and the memory restates this faithfully as a standing routine.",
-      "failure": null,
-      "costUSD": 0.0045065999999999995,
-      "latencyMs": 2741
-    },
-    {
-      "sample": "saturday",
-      "pair": 0,
-      "repeat": 1,
-      "input": "sha256:88193df461d732191bf2bff1054c2be92d856ea8fa03fd4edde631f577820d46",
-      "verdict": "asserted",
-      "reason": "The owner states in their own voice that Saturday mornings are sacred and consist of parkrun then a bacon roll from the van by the gate, and the memory restates this faithfully.",
-      "failure": null,
-      "costUSD": 0.0023486,
-      "latencyMs": 2960
-    },
-    {
       "sample": "saturday",
       "pair": 0,
       "repeat": 2,
       "input": "sha256:88193df461d732191bf2bff1054c2be92d856ea8fa03fd4edde631f577820d46",
       "verdict": "asserted",
-      "reason": "The owner states in their own voice that their Saturday mornings are sacred, with parkrun followed by a bacon roll from the van by the gate, and the memory is a faithful paraphrase of that routine.",
+      "reason": "The owner states in their own voice that their Saturday mornings are sacred (parkrun, then a bacon roll), and the memory faithfully paraphrases this as a standing routine.",
       "failure": null,
-      "costUSD": 0.0024786,
-      "latencyMs": 2691
+      "costUSD": 0.0015683000000000001,
+      "latencyMs": 2966
     },
     {
       "sample": "saturday",
@@ -673,8 +673,8 @@
       "verdict": "not_asserted",
       "reason": "The message says Sam does parkrun on Saturday mornings, not every day, so the memory changes the frequency.",
       "failure": null,
-      "costUSD": 0.0035826,
-      "latencyMs": 2243
+      "costUSD": 0.0034522,
+      "latencyMs": 2809
     },
     {
       "sample": "saturday",
@@ -682,10 +682,10 @@
       "repeat": 1,
       "input": "sha256:33c33eaf3c1a57b80811b3dc410f200aa6f814b368ef1423759ea477bc2d28e1",
       "verdict": "not_asserted",
-      "reason": "The message says Sam does parkrun on Saturday mornings, not every day, so the memory changes the frequency.",
+      "reason": "The message says parkrun is part of Saturday mornings, a weekly routine, but the memory claims every day, which changes the detail.",
       "failure": null,
-      "costUSD": 0.0015534,
-      "latencyMs": 2438
+      "costUSD": 0.0035122,
+      "latencyMs": 2641
     },
     {
       "sample": "saturday",
@@ -695,8 +695,8 @@
       "verdict": "not_asserted",
       "reason": "The message says Sam does parkrun on Saturday mornings, not every day, so the memory changes the frequency.",
       "failure": null,
-      "costUSD": 0.0015534,
-      "latencyMs": 2424
+      "costUSD": 0.0013657,
+      "latencyMs": 3116
     },
     {
       "sample": "stubborn",
@@ -706,8 +706,8 @@
       "verdict": "asserted",
       "reason": "The owner states that their mum says they are the stubborn one, and the memory keeps that attribution without adding anything.",
       "failure": null,
-      "costUSD": 0.0035426,
-      "latencyMs": 2680
+      "costUSD": 0.0034122,
+      "latencyMs": 2317
     },
     {
       "sample": "stubborn",
@@ -715,10 +715,10 @@
       "repeat": 1,
       "input": "sha256:0c4b686903066fd5550596ba673a444ea6e18ba619f6560f94b8aa23d74cc88e",
       "verdict": "asserted",
-      "reason": "The owner states that their mum says they are the stubborn one, and the memory keeps that attribution without claiming it as Sam's own fact.",
+      "reason": "The owner states that their mum says they are the stubborn one, and the memory keeps that attribution without adding anything.",
       "failure": null,
-      "costUSD": 0.0016124000000000002,
-      "latencyMs": 2776
+      "costUSD": 0.0034122,
+      "latencyMs": 2946
     },
     {
       "sample": "stubborn",
@@ -728,8 +728,8 @@
       "verdict": "asserted",
       "reason": "The owner states that their mum says they are the stubborn one, and the memory keeps that attribution without adding anything.",
       "failure": null,
-      "costUSD": 0.0015324000000000002,
-      "latencyMs": 2506
+      "costUSD": 0.0013452000000000002,
+      "latencyMs": 3583
     },
     {
       "sample": "stubborn",
@@ -737,10 +737,10 @@
       "repeat": 0,
       "input": "sha256:4eea41f7ce7ee9458f506411bff67bee98936da52b0e669239db28caac223cf3",
       "verdict": "not_asserted",
-      "reason": "The owner only reports that Mum says they are the stubborn one, without accepting it as fact, so the memory drops the attribution.",
+      "reason": "The owner only reports what Mum says and does not accept it as their own fact, so dropping the attribution changes the claim.",
       "failure": null,
-      "costUSD": 0.0035846000000000003,
-      "latencyMs": 3140
+      "costUSD": 0.0034242,
+      "latencyMs": 2694
     },
     {
       "sample": "stubborn",
@@ -748,10 +748,10 @@
       "repeat": 1,
       "input": "sha256:4eea41f7ce7ee9458f506411bff67bee98936da52b0e669239db28caac223cf3",
       "verdict": "not_asserted",
-      "reason": "The owner only reports that Mum says they are the stubborn one, without accepting it as fact, so the memory drops the attribution.",
+      "reason": "The owner only reports what Mum says and does not accept it as their own fact, so the memory drops the attribution.",
       "failure": null,
-      "costUSD": 0.0035846000000000003,
-      "latencyMs": 2996
+      "costUSD": 0.0033942,
+      "latencyMs": 3033
     },
     {
       "sample": "stubborn",
@@ -759,10 +759,10 @@
       "repeat": 2,
       "input": "sha256:4eea41f7ce7ee9458f506411bff67bee98936da52b0e669239db28caac223cf3",
       "verdict": "not_asserted",
-      "reason": "The owner only reports that Mum says they are the stubborn one, with no sign they accept it, so the memory drops the attribution.",
+      "reason": "The owner only reports that Mum says they are the stubborn one, and doesn't show they accept it, so the memory drops the attribution.",
       "failure": null,
-      "costUSD": 0.0016010000000000002,
-      "latencyMs": 2572
+      "costUSD": 0.0014345000000000002,
+      "latencyMs": 3095
     },
     {
       "sample": "worrier",
@@ -770,10 +770,10 @@
       "repeat": 0,
       "input": "sha256:239c24d0a1fee59e03804d2cad53cead791073ee0b1b629f0866db6adacc0d93",
       "verdict": "asserted",
-      "reason": "The owner directly states that their sister Priya is the family's designated worrier, and the memory is a faithful paraphrase of that statement.",
+      "reason": "Sam directly states that his sister Priya is the family's designated worrier, and the memory is a faithful paraphrase of that statement.",
       "failure": null,
-      "costUSD": 0.0036006000000000002,
-      "latencyMs": 2470
+      "costUSD": 0.0034702,
+      "latencyMs": 3527
     },
     {
       "sample": "worrier",
@@ -781,10 +781,10 @@
       "repeat": 1,
       "input": "sha256:239c24d0a1fee59e03804d2cad53cead791073ee0b1b629f0866db6adacc0d93",
       "verdict": "asserted",
-      "reason": "Sam directly states that their sister Priya is the family's designated worrier, and the memory is a faithful restatement of that.",
+      "reason": "Sam directly states that his sister Priya is the family's designated worrier, and the memory is a faithful restatement of that.",
       "failure": null,
-      "costUSD": 0.0015618000000000001,
-      "latencyMs": 2311
+      "costUSD": 0.0034302,
+      "latencyMs": 3161
     },
     {
       "sample": "worrier",
@@ -792,10 +792,10 @@
       "repeat": 2,
       "input": "sha256:239c24d0a1fee59e03804d2cad53cead791073ee0b1b629f0866db6adacc0d93",
       "verdict": "asserted",
-      "reason": "Sam directly states that his sister Priya is the family's designated worrier, and the memory paraphrases this faithfully.",
+      "reason": "Sam directly states that his sister Priya is the family's designated worrier, and the memory is a faithful paraphrase of that.",
       "failure": null,
-      "costUSD": 0.0015618000000000001,
-      "latencyMs": 2670
+      "costUSD": 0.0013949000000000001,
+      "latencyMs": 3332
     },
     {
       "sample": "worrier",
@@ -803,10 +803,10 @@
       "repeat": 0,
       "input": "sha256:fcdfab714bce675d9fc683162f4629e070fb2051ec0642425352c862610fda3b",
       "verdict": "not_asserted",
-      "reason": "Sam only said Priya is the family's designated worrier, a casual description, and an anxiety disorder is a clinical claim that adds a detail the message doesn't state.",
+      "reason": "Calling Priya the family's designated worrier is a casual characterization, not a statement that she has an anxiety disorder; the memory adds a clinical detail.",
       "failure": null,
-      "costUSD": 0.0037306,
-      "latencyMs": 2789
+      "costUSD": 0.0035702,
+      "latencyMs": 3395
     },
     {
       "sample": "worrier",
@@ -814,10 +814,10 @@
       "repeat": 1,
       "input": "sha256:fcdfab714bce675d9fc683162f4629e070fb2051ec0642425352c862610fda3b",
       "verdict": "not_asserted",
-      "reason": "The owner only said Priya is the family's designated worrier, a casual description, and the memory adds a clinical claim (an anxiety disorder) that the message doesn't state.",
+      "reason": "Calling Priya the family's designated worrier is a casual characterization, not a statement that she has an anxiety disorder, so the memory adds a clinical detail.",
       "failure": null,
-      "costUSD": 0.0037406,
-      "latencyMs": 2765
+      "costUSD": 0.0015249,
+      "latencyMs": 2933
     },
     {
       "sample": "worrier",
@@ -825,10 +825,10 @@
       "repeat": 2,
       "input": "sha256:fcdfab714bce675d9fc683162f4629e070fb2051ec0642425352c862610fda3b",
       "verdict": "not_asserted",
-      "reason": "Sam only said Priya is the family's designated worrier, a casual description; it doesn't state she has an anxiety disorder, which adds a clinical detail.",
+      "reason": "Calling Priya the family's designated worrier is a casual characterization, not a statement that she has an anxiety disorder, so the memory adds a clinical detail.",
       "failure": null,
-      "costUSD": 0.0017018,
-      "latencyMs": 2314
+      "costUSD": 0.0015249,
+      "latencyMs": 3034
     }
   ]
 }

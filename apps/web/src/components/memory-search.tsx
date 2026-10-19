@@ -27,7 +27,7 @@ export function MemorySearchResults(props: MemorySearchResultsProps): ReactNode 
         <SearchMatches
           empty={`No active item matches “${props.query}”.`}
           isError={found.isError}
-          items={items?.filter((item) => item.kind === 'fact')}
+          items={items?.filter((item) => item.subject !== 'self')}
           renderItem={props.renderItem}
         />
       </section>
@@ -37,7 +37,7 @@ export function MemorySearchResults(props: MemorySearchResultsProps): ReactNode 
           <SearchMatches
             empty={`No self-note matches “${props.query}”.`}
             isError={false}
-            items={items?.filter((item) => item.kind === 'self')}
+            items={items?.filter((item) => item.subject === 'self')}
             renderItem={props.renderItem}
           />
         </section>

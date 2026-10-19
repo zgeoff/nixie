@@ -7,6 +7,7 @@ import { createMemoryItem } from './test-utils/create-memory-item';
 import { startFaultPointHold } from './test-utils/start-fault-point-hold';
 import { startNextTestMemory } from './test-utils/start-next-test-memory';
 import { startTestMemory } from './test-utils/start-test-memory';
+import type { MemoryTables } from './types';
 
 async function setupTest() {
   return { memory: await startTestMemory() };
@@ -29,7 +30,7 @@ test('it returns up to the limit of facts and up to the self-note limit of self-
   await Promise.all([
     ...facts.map((text) => ctx.memory.store.remember({ text, provenance: buildMockProvenance() })),
     ...notes.map((text) =>
-      ctx.memory.store.remember({ text, itemKind: 'self', provenance: buildMockProvenance() }),
+      ctx.memory.store.remember({ text, subject: 'self', provenance: buildMockProvenance() }),
     ),
   ]);
 
@@ -40,7 +41,11 @@ test('it returns up to the limit of facts and up to the self-note limit of self-
     kinds: ['memory.recalled'],
   });
 
-  expect(result.items.map((item) => item.kind).toSorted()).toStrictEqual(['fact', 'fact', 'self']);
+  expect(result.items.map((item) => item.subject).toSorted()).toStrictEqual([
+    'owner',
+    'owner',
+    'self',
+  ]);
 
   expect(result.items.map((item) => item.text)).toSatisfyAll((text: string) =>
     text.includes('garden'),
@@ -55,6 +60,108 @@ test('it returns up to the limit of facts and up to the self-note limit of self-
   ]);
 });
 
+test('it returns only the items of the subjects the recall names', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.memory.store.remember({
+      text: 'The garden hose leaks at the tap',
+      provenance: buildMockProvenance(),
+    }),
+    ctx.memory.store.remember({
+      text: 'The garden gnome is called Sir Pebble between the owner and the assistant',
+      subject: 'shared',
+      provenance: buildMockProvenance(),
+    }),
+    ctx.memory.store.remember({
+      text: 'I enjoy hearing about the garden',
+      subject: 'self',
+      provenance: buildMockProvenance(),
+    }),
+  ]);
+
+  const [queried, listed] = await Promise.all([
+    ctx.memory.store.recall({ query: 'garden', subjects: ['shared', 'self'] }),
+    ctx.memory.store.recall({ subjects: ['owner'] }),
+  ]);
+
+  expect(queried.items.map((item) => item.subject).toSorted()).toStrictEqual(['self', 'shared']);
+  expect(listed.items.map((item) => item.text)).toStrictEqual(['The garden hose leaks at the tap']);
+});
+
+test('it fills a limited recall with the subjects it names when better matches of other subjects fill every place', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.memory.store.remember({
+      text: 'The garden hose leaks at the garden tap',
+      provenance: buildMockProvenance(),
+    }),
+    ctx.memory.store.remember({
+      text: 'The garden gate sticks in the garden after rain',
+      provenance: buildMockProvenance(),
+    }),
+    ctx.memory.store.remember({
+      text: 'The gnome is called Sir Pebble in the garden between the owner and the assistant',
+      subject: 'shared',
+      provenance: buildMockProvenance(),
+    }),
+  ]);
+
+  const result = await ctx.memory.store.recall({
+    query: 'garden',
+    limit: 1,
+    subjects: ['shared'],
+  });
+
+  expect(result.items.map((item) => item.subject)).toStrictEqual(['shared']);
+});
+
+test('it reads a self-note that the release before wrote with no subject as a self-note', async () => {
+  const ctx = await setupTest();
+
+  const note = await ctx.memory.store.remember({
+    text: 'I enjoy hearing about the garden',
+    subject: 'self',
+    provenance: buildMockProvenance(),
+  });
+
+  // the row the release before leaves, which holds the kind and no subject
+  await ctx.memory.log.writer.db
+    .$extendTables<MemoryTables>()
+    .updateTable('memory_items')
+    .set({ subject: null })
+    .where('item_id', '=', note.itemID)
+    .execute();
+
+  const result = await ctx.memory.store.recall({ query: 'garden', subjects: ['self'] });
+
+  expect(result.items).toMatchObject([{ itemID: note.itemID, subject: 'self' }]);
+});
+
+test('it fills a limited recall of named items with the subjects it names when an item of another subject comes first', async () => {
+  const ctx = await setupTest();
+
+  const owner = await ctx.memory.store.remember({
+    text: 'The garden hose leaks at the tap',
+    provenance: buildMockProvenance(),
+  });
+
+  const shared = await ctx.memory.store.remember({
+    text: 'The gnome is called Sir Pebble between the owner and the assistant',
+    subject: 'shared',
+    provenance: buildMockProvenance(),
+  });
+
+  const result = await ctx.memory.store.recall({
+    itemIDs: [owner.itemID, shared.itemID],
+    subjects: ['shared'],
+    limit: 1,
+  });
+
+  expect(result.items.map((item) => item.itemID)).toStrictEqual([shared.itemID]);
+});
+
 test('it returns a matching self-note when more facts match than the largest recall holds', async () => {
   const ctx = await setupTest();
 
@@ -67,19 +174,19 @@ test('it returns a matching self-note when more facts match than the largest rec
     ),
     ctx.memory.store.remember({
       text: 'I enjoy hearing about the garden',
-      itemKind: 'self',
+      subject: 'self',
       provenance: buildMockProvenance(),
     }),
   ]);
 
   const result = await ctx.memory.store.recall({ query: 'garden', limit: 100, selfNoteLimit: 1 });
 
-  expect(result.items.filter((item) => item.kind === 'self')).toMatchObject([
+  expect(result.items.filter((item) => item.subject === 'self')).toMatchObject([
     { text: 'I enjoy hearing about the garden' },
   ]);
 });
 
-test('it returns up to the limit across both kinds when the recall sets no self-note limit', async () => {
+test('it returns up to the limit across every subject when the recall sets no self-note limit', async () => {
   const ctx = await setupTest();
 
   await Promise.all([
@@ -89,7 +196,7 @@ test('it returns up to the limit across both kinds when the recall sets no self-
       'The library closes at six on Sundays',
     ].map((text) => ctx.memory.store.remember({ text, provenance: buildMockProvenance() })),
     ...['I enjoy hearing about the garden', 'I like suggesting garden jobs'].map((text) =>
-      ctx.memory.store.remember({ text, itemKind: 'self', provenance: buildMockProvenance() }),
+      ctx.memory.store.remember({ text, subject: 'self', provenance: buildMockProvenance() }),
     ),
   ]);
 
@@ -122,7 +229,7 @@ test('it returns the items that match a query word for word, with their provenan
         change: 'created',
         state: 'active',
         isPinned: false,
-        kind: 'fact',
+        subject: 'owner',
         origin: 'owner',
         source: 'owner',
         recordedAt: expect.toBeNumber(),
@@ -207,7 +314,9 @@ test('it leaves the excluded words of a query out of the match when asked', asyn
 test('it finds an unpinned match when more pinned matches rank first than recall ranks at most', async () => {
   const ctx = await setupTest();
 
-  // 101 short pinned items, each ranking above the longer unpinned one
+  // 101 short pinned items, each ranking above the longer unpinned one. The count passes the
+  // ranking's cap of 100, and each pinned write reads every pinned item to check the core's budget,
+  // so the writes take seconds on a small host and the test sets a longer limit
   await Promise.all(
     Array.from({ length: 101 }, (_, index) =>
       ctx.memory.store.remember({
@@ -236,7 +345,7 @@ test('it finds an unpinned match when more pinned matches rank first than recall
   });
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([unpinned.itemID]);
-});
+}, 30_000);
 
 test('it leaves out a match below the score floor', async () => {
   const ctx = await setupTest();

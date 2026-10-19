@@ -3,10 +3,11 @@ import type { Kysely } from 'kysely';
 import { CloseMatchError } from './close-match-error';
 import { findCloseMatch } from './find-close-match';
 import type { ApprovalResult, ProposalAnswer } from './gate-types';
+import { getRowSubject } from './get-row-subject';
 import type { OpenedProposal } from './read-open-proposal';
 import { SelfNoteError } from './self-note-error';
 import { toAppliedResult } from './to-applied-result';
-import type { MemoryKind, MemoryTables, StoreParts } from './types';
+import type { MemorySubject, MemoryTables, StoreParts } from './types';
 import { writeApprovedRemember } from './write-approved-remember';
 
 // Applies an approved proposal for a new item. An active item that closely matches its text holds
@@ -24,7 +25,8 @@ export async function writeApprovedNewItem(
       opened,
       answer,
       target: revisionOf,
-      requireInTransaction: (db) => requireSameKind(db, revisionOf.itemID, opened.row.kind),
+      requireInTransaction: (db) =>
+        requireSameSubject(db, revisionOf.itemID, getRowSubject(opened.row)),
     });
 
     // the closed-proposal sweep removes a key that a crash here leaves
@@ -50,7 +52,7 @@ async function writeUnmatchedNewItem(
   opened: OpenedProposal,
   answer: ProposalAnswer,
 ): Promise<ApprovalResult> {
-  const query = { text: answer.editedText ?? opened.text.text, kind: opened.row.kind };
+  const query = { text: answer.editedText ?? opened.text.text, subject: getRowSubject(opened.row) };
 
   const match = await findCloseMatch(parts, query);
 
@@ -80,23 +82,27 @@ async function writeUnmatchedNewItem(
   }
 }
 
-// a fact never revises a self-note, nor a self-note a fact, because an item keeps its kind
-async function requireSameKind(
+// a proposal revises only an item of its own subject, because an item keeps its subject
+async function requireSameSubject(
   db: Kysely<MemoryTables>,
   itemID: string,
-  kind: MemoryKind,
+  subject: MemorySubject,
 ): Promise<void> {
   const item = await db
     .selectFrom('memory_items')
-    .select('kind')
+    .select(['kind', 'subject'])
     .where('item_id', '=', itemID)
     .executeTakeFirst();
 
-  if (item !== undefined && item.kind !== kind) {
+  if (item !== undefined && getRowSubject(item) !== subject) {
     throw new SelfNoteError(
-      `memory item ${itemID} is not a ${kindNames[kind]}, so it cannot take this text`,
+      `memory item ${itemID} is not ${subjectNames[subject]}, so it cannot take this text`,
     );
   }
 }
 
-const kindNames: Readonly<Record<MemoryKind, string>> = { fact: 'fact', self: 'self-note' };
+const subjectNames: Readonly<Record<MemorySubject, string>> = {
+  owner: 'a fact about the owner',
+  self: 'a self-note',
+  shared: 'a shared item',
+};

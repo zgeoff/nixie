@@ -35,8 +35,8 @@ step, and no release pull request opens.
    ```
 
    Expect every job to pass, ending with `assets`. Expect the GitHub release to list the migrations,
-   the config schema result and the 4 image digests, and to hold the assets `release.json` and
-   `config.schema.json`.
+   the config schema result and the 4 image digests, and to hold the assets `release.json`,
+   `config.schema.json` and `definitions-manifest.schema.json`.
 
 ## Make a new sandbox image public
 

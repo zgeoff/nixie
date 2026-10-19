@@ -49,6 +49,8 @@ export { memoryWriterTaskID } from './memory-writer-task-id';
 export type { AnswerQuoteSource, ProposalAnswerEvent } from './build-proposal-answer-kind';
 export { buildProposalAnswerKind } from './build-proposal-answer-kind';
 export { buildCatchUpKind } from './build-catch-up-kind';
+export type { SelfNoteFlagEvent } from './build-self-note-flag-kind';
+export { buildSelfNoteFlagKind } from './build-self-note-flag-kind';
 export { buildMemoryChangeKind } from './build-memory-change-kind';
 export type { HostMemory, HostMemoryStore } from './build-host-memory';
 export { buildHostMemory } from './build-host-memory';
@@ -117,7 +119,7 @@ export type {
   Encoder,
   ForgetRequest,
   MemoryChange,
-  MemoryKind,
+  MemorySubject,
   MemoryContext,
   MemoryOrigin,
   MemoryState,
@@ -156,9 +158,14 @@ export type {
 } from './writer-types';
 
 export { findTypedQuote } from './find-typed-quote';
+export type { UntypedTokenQuery } from './check-untyped-token';
+export { checkUntypedToken } from './check-untyped-token';
 export { removeImageOfferKeys } from './remove-image-offer-keys';
 export { renderCheckerInput } from './render-checker-input';
 export { renderMemoryCheckerPrompt } from './render-memory-checker-prompt';
+export type { ShownItem, SpeakerNames, WriterPromptInput } from './render-writer-prompt';
+export { renderWriterPrompt } from './render-writer-prompt';
+export { renderWriterSystemPrompt } from './render-writer-system-prompt';
 export type { MemoryRecordKind } from './memory-record-kind';
 export { memoryRatedCodec } from './memory-rated-codec';
 export { recordForgetStartedCodec } from './record-forget-started-codec';
