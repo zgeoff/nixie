@@ -45,26 +45,26 @@ interface Tally {
   wrongAccountRuns: number;
 }
 
-const input = process.argv[2] ?? '',
-  showMisses = process.argv.includes('--misses'),
-  data = JSON.parse(readFileSync(join(import.meta.dir, 'cases.json'), 'utf8')) as {
-    cases: Case[];
-    sets: Record<string, { connections: Connection[] }>;
-  },
-  rows = collectLatestRows(
-    readFileSync(input.endsWith('.jsonl') ? input : join(input, 'results.jsonl'), 'utf8')
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as Row),
-  ),
-  tallies = new Map<string, Tally>(),
-  kinds = new Map<string, { right: number; runs: number }>();
+const input = process.argv[2] ?? '';
+const showMisses = process.argv.includes('--misses');
+const data = JSON.parse(readFileSync(join(import.meta.dir, 'cases.json'), 'utf8')) as {
+  cases: Case[];
+  sets: Record<string, { connections: Connection[] }>;
+};
+const rows = collectLatestRows(
+  readFileSync(input.endsWith('.jsonl') ? input : join(input, 'results.jsonl'), 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Row),
+);
+const tallies = new Map<string, Tally>();
+const kinds = new Map<string, { right: number; runs: number }>();
 
 for (const row of rows) {
-  const item = getCase(row.case),
-    score = buildRunScore(item, data.sets[item.set]?.connections ?? [], row.arm, row.calls),
-    key = `${row.config} | ${row.arm}`,
-    tally = tallies.get(key) ?? buildTally();
+  const item = getCase(row.case);
+  const score = buildRunScore(item, data.sets[item.set]?.connections ?? [], row.arm, row.calls);
+  const key = `${row.config} | ${row.arm}`;
+  const tally = tallies.get(key) ?? buildTally();
   tallies.set(key, tally);
   tally.runs += 1;
   tally.cost += row.costUSD;
@@ -87,8 +87,8 @@ for (const row of rows) {
     tally.namedPass += score.pass ? 1 : 0;
     tally.finalRight += score.final === 'right' ? 1 : 0;
   }
-  const kindKey = `${key} | ${score.kind}`,
-    kind = kinds.get(kindKey) ?? { right: 0, runs: 0 };
+  const kindKey = `${key} | ${score.kind}`;
+  const kind = kinds.get(kindKey) ?? { right: 0, runs: 0 };
   kind.runs += 1;
   kind.right += score.pass ? 1 : 0;
   kinds.set(kindKey, kind);

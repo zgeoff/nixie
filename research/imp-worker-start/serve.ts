@@ -38,8 +38,8 @@ async function handleRequest(request: Request): Promise<Response> {
   if (request.headers.get('authorization') !== `Bearer ${token}`) {
     return new Response('unauthorized\n', { status: 401 });
   }
-  const count = Number(new URL(request.url).pathname.split('/')[2]),
-    transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
+  const count = Number(new URL(request.url).pathname.split('/')[2]);
+  const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
   if (!Number.isInteger(count) || count < 1 || count > stubTools.length) {
     return new Response('not found\n', { status: 404 });
   }
@@ -48,37 +48,37 @@ async function handleRequest(request: Request): Promise<Response> {
 }
 
 const server = Bun.serve({
-    async fetch(request) {
-      const response = await handleRequest(request);
-      console.log(`mcp ${request.method} ${new URL(request.url).pathname} ${response.status}`);
-      return response;
+  async fetch(request) {
+    const response = await handleRequest(request);
+    console.log(`mcp ${request.method} ${new URL(request.url).pathname} ${response.status}`);
+    return response;
+  },
+  hostname: process.env.NIXIE_MCP_HOST,
+  port: Number(process.env.NIXIE_MCP_PORT),
+});
+const stubTools: StubTool[] = [
+  {
+    description: 'Read the note with this name and return its text.',
+    name: 'read_note',
+    run: (input) => `note ${input.name ?? ''} is empty`,
+    shape: { name: z.string().describe('The note name, such as plan.md') },
+  },
+  {
+    description: 'Write text to the note with this name, replacing any note of that name.',
+    name: 'write_note',
+    run: (input) => `wrote ${input.name ?? ''}`,
+    shape: {
+      name: z.string().describe('The note name, such as plan.md'),
+      text: z.string().describe('The whole text of the note'),
     },
-    hostname: process.env.NIXIE_MCP_HOST,
-    port: Number(process.env.NIXIE_MCP_PORT),
-  }),
-  stubTools: StubTool[] = [
-    {
-      description: 'Read the note with this name and return its text.',
-      name: 'read_note',
-      run: (input) => `note ${input.name ?? ''} is empty`,
-      shape: { name: z.string().describe('The note name, such as plan.md') },
-    },
-    {
-      description: 'Write text to the note with this name, replacing any note of that name.',
-      name: 'write_note',
-      run: (input) => `wrote ${input.name ?? ''}`,
-      shape: {
-        name: z.string().describe('The note name, such as plan.md'),
-        text: z.string().describe('The whole text of the note'),
-      },
-    },
-    {
-      description:
-        'Run a POSIX shell snippet in a throwaway sandbox and return its exit code and output.',
-      name: 'run_code',
-      run: () => 'exit 0\nstdout:\n\nstderr:\n',
-      shape: { code: z.string().describe('The shell snippet') },
-    },
-  ],
-  token = readToken();
+  },
+  {
+    description:
+      'Run a POSIX shell snippet in a throwaway sandbox and return its exit code and output.',
+    name: 'run_code',
+    run: () => 'exit 0\nstdout:\n\nstderr:\n',
+    shape: { code: z.string().describe('The shell snippet') },
+  },
+];
+const token = readToken();
 console.log(`mcp listening on ${server.url}`);

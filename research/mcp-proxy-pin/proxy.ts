@@ -1,4 +1,4 @@
-// oxlint-disable one-var, max-statements -- spike code, each step kept in one readable sequence
+// oxlint-disable max-statements -- spike code, each step kept in one readable sequence
 // A minimal nixie proxy for one outside MCP server: it pins each tool by hash, requires an owner
 // effect declaration, prefixes exposed names, and validates results against the pinned schema.
 import { createHash } from 'node:crypto';

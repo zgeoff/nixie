@@ -30,8 +30,9 @@ export async function runMigrations(
   db: Kysely<unknown>,
   options: RunMigrationsOptions,
 ): Promise<MigrationReport> {
-  const stored = await createSchemaVersion(db, options),
-    writes = options.schema.migrations.length;
+  const stored = await createSchemaVersion(db, options);
+
+  const writes = options.schema.migrations.length;
 
   if (stored.version >= writes) {
     await requireReadableSchema(stored, writes, options.copyDir);
@@ -64,8 +65,9 @@ function createSchemaVersion(
       on conflict do nothing`.execute(tx);
 
     const result = await sql<{ version: number; oldest_reader: number }>`
-      select version, oldest_reader from schema_version where id = 1`.execute(tx),
-      [row] = result.rows;
+      select version, oldest_reader from schema_version where id = 1`.execute(tx);
+
+    const [row] = result.rows;
 
     // the insert above leaves the one row in place
     invariant(row);
@@ -89,11 +91,12 @@ async function requireReadableSchema(
 }
 
 async function findRestore(copyDir: string, writes: number): Promise<string> {
-  const names = await readdir(copyDir),
-    [newest] = names
-      .map((name) => ({ name, version: parseCopyVersion(name) ?? Infinity }))
-      .filter((copy) => copy.version <= writes)
-      .toSorted((left, right) => right.version - left.version);
+  const names = await readdir(copyDir);
+
+  const [newest] = names
+    .map((name) => ({ name, version: parseCopyVersion(name) ?? Infinity }))
+    .filter((copy) => copy.version <= writes)
+    .toSorted((left, right) => right.version - left.version);
 
   if (newest === undefined) {
     return `no copy of schema ${writes} or older sits in ${copyDir}, so restore a backup`;

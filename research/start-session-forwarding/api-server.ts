@@ -2,11 +2,11 @@
 import { createSession, startApi } from './api.ts';
 
 const api = startApi({
-    port: Number(process.env.PORT ?? 3200),
-    webOrigin: process.env.WEB_ORIGIN ?? 'http://127.0.0.1:3100',
-  }),
-  devices = (process.env.DEVICES ?? 'laptop').split(','),
-  tokens = Object.fromEntries(devices.map((device) => [device, createSession(device)]));
+  port: Number(process.env.PORT ?? 3200),
+  webOrigin: process.env.WEB_ORIGIN ?? 'http://127.0.0.1:3100',
+});
+const devices = (process.env.DEVICES ?? 'laptop').split(',');
+const tokens = Object.fromEntries(devices.map((device) => [device, createSession(device)]));
 console.log(JSON.stringify(tokens));
 
 process.on('SIGTERM', () => {

@@ -32,14 +32,14 @@ export interface TextToSpeech {
 export type SpeechToTextName = 'moonshine' | 'whisper' | 'zipformer';
 export type TextToSpeechName = 'kokoro' | 'kokoro-int8' | 'piper';
 
-export const sampleRate = 16_000,
-  threads = Number(process.env.SPEECH_THREADS ?? 2),
-  modelsDir = join(import.meta.dir, 'models');
+export const sampleRate = 16_000;
+export const threads = Number(process.env.SPEECH_THREADS ?? 2);
+export const modelsDir = join(import.meta.dir, 'models');
 
-const zipformerDir = join(modelsDir, 'sherpa-onnx-streaming-zipformer-en-2023-06-26'),
-  zipformerSuffix = 'epoch-99-avg-1-chunk-16-left-128.int8.onnx',
-  moonshineDir = join(modelsDir, 'sherpa-onnx-moonshine-base-en-int8'),
-  whisperDir = join(modelsDir, 'sherpa-onnx-whisper-base.en');
+const zipformerDir = join(modelsDir, 'sherpa-onnx-streaming-zipformer-en-2023-06-26');
+const zipformerSuffix = 'epoch-99-avg-1-chunk-16-left-128.int8.onnx';
+const moonshineDir = join(modelsDir, 'sherpa-onnx-moonshine-base-en-int8');
+const whisperDir = join(modelsDir, 'sherpa-onnx-whisper-base.en');
 
 export function createSpeechToText(name: SpeechToTextName): SpeechToText {
   return name === 'zipformer' ? createZipformer() : createBatchRecognizer(name);
@@ -189,8 +189,8 @@ function buildVoice(name: TextToSpeechName | 'caller'): Record<string, unknown> 
       },
     };
   }
-  const voice = name === 'caller' ? 'en_US-ryan-medium' : 'en_US-lessac-medium',
-    dir = join(modelsDir, `vits-piper-${voice}`);
+  const voice = name === 'caller' ? 'en_US-ryan-medium' : 'en_US-lessac-medium';
+  const dir = join(modelsDir, `vits-piper-${voice}`);
   return {
     vits: {
       dataDir: join(dir, 'espeak-ng-data'),
@@ -245,12 +245,12 @@ export function toSampleRate(samples: Float32Array, from: number): Float32Array 
   if (from === sampleRate) {
     return samples;
   }
-  const out = new Float32Array(Math.floor((samples.length * sampleRate) / from)),
-    step = from / sampleRate;
+  const out = new Float32Array(Math.floor((samples.length * sampleRate) / from));
+  const step = from / sampleRate;
   for (let i = 0; i < out.length; i++) {
-    const at = i * step,
-      low = Math.floor(at),
-      frac = at - low;
+    const at = i * step;
+    const low = Math.floor(at);
+    const frac = at - low;
     out[i] = (samples[low] ?? 0) * (1 - frac) + (samples[low + 1] ?? 0) * frac;
   }
   return out;

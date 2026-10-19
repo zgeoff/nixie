@@ -11,16 +11,16 @@ import { createSpeechToText, createTextToSpeech, createVad, threads } from './sp
 
 // Sentences in the shape of nixie's spoken replies: an acknowledgement, then short answer lines.
 const replies = [
-    'Sure, let me think.',
-    'Good question.',
-    'Pack a warm layer, a rain jacket, and a torch with spare batteries.',
-    'The light travels through more air at sunset, so the blue scatters away and the reds remain.',
-    'Try a quick vegetable stir fry with rice and a splash of soy sauce.',
-    'Water it about once every two weeks in summer, and much less in winter.',
-  ],
-  out = readFlag('--out') ?? 'results/stages.jsonl',
-  rounds = Number(readFlag('--rounds') ?? 3),
-  silenceMs = Number(readFlag('--silence-ms') ?? 500);
+  'Sure, let me think.',
+  'Good question.',
+  'Pack a warm layer, a rain jacket, and a torch with spare batteries.',
+  'The light travels through more air at sunset, so the blue scatters away and the reds remain.',
+  'Try a quick vegetable stir fry with rice and a splash of soy sauce.',
+  'Water it about once every two weeks in summer, and much less in winter.',
+];
+const out = readFlag('--out') ?? 'results/stages.jsonl';
+const rounds = Number(readFlag('--rounds') ?? 3);
+const silenceMs = Number(readFlag('--silence-ms') ?? 500);
 
 function readFlag(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -28,8 +28,8 @@ function readFlag(name: string): string | undefined {
 }
 
 mkdirSync(dirname(out), { recursive: true });
-const sttName = readFlag('--stt') as SpeechToTextName | undefined,
-  ttsName = readFlag('--tts') as TextToSpeechName | undefined;
+const sttName = readFlag('--stt') as SpeechToTextName | undefined;
+const ttsName = readFlag('--tts') as TextToSpeechName | undefined;
 if (sttName) {
   await runSpeechToText(sttName);
 } else if (ttsName) {
@@ -39,12 +39,12 @@ if (sttName) {
 }
 
 async function runSpeechToText(name: SpeechToTextName): Promise<void> {
-  const stt = createSpeechToText(name),
-    vad = createVad(silenceMs);
+  const stt = createSpeechToText(name);
+  const vad = createVad(silenceMs);
   for (let round = 0; round < rounds; round++) {
     for (const [index, text] of lines.entries()) {
-      const line = await loadCallerLine(index),
-        heard = await listenToCaller(line.audio, line.speechEndSample, stt.start(), vad);
+      const line = await loadCallerLine(index);
+      const heard = await listenToCaller(line.audio, line.speechEndSample, stt.start(), vad);
       appendFileSync(
         out,
         `${JSON.stringify({
@@ -71,8 +71,8 @@ async function runTextToSpeech(name: TextToSpeechName): Promise<void> {
   await tts.speak('Hello.');
   for (let round = 0; round < rounds; round++) {
     for (const [index, text] of replies.entries()) {
-      const spoken = await tts.speak(text),
-        audioMs = (spoken.samples.length / spoken.sampleRate) * 1000;
+      const spoken = await tts.speak(text);
+      const audioMs = (spoken.samples.length / spoken.sampleRate) * 1000;
       appendFileSync(
         out,
         `${JSON.stringify({
@@ -102,8 +102,8 @@ function splitWords(text: string): string[] {
 
 // Word-level edit distance between the line and the transcript.
 export function countWordErrors(reference: string, heard: string): number {
-  const ref = splitWords(reference),
-    hyp = splitWords(heard);
+  const ref = splitWords(reference);
+  const hyp = splitWords(heard);
   let previous = Array.from({ length: hyp.length + 1 }, (_, j) => j);
   for (const [i, word] of ref.entries()) {
     const current = [i + 1];

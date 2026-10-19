@@ -1,4 +1,3 @@
-/* oxlint-disable one-var -- schemas read better one per statement */
 // The contract the web client shares with nixie's API. It imports only @orpc/contract and zod, so
 // the browser bundle carries no server code.
 import { eventIterator, oc } from '@orpc/contract';

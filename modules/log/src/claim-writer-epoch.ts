@@ -14,8 +14,9 @@ export function claimWriterEpoch(db: Kysely<unknown>): Promise<number> {
 
     const result = await sql<{ epoch: number }>`insert into writer_epoch (id, epoch) values (1, 1)
       on conflict (id) do update set epoch = epoch + 1
-      returning epoch`.execute(tx),
-      [row] = result.rows;
+      returning epoch`.execute(tx);
+
+    const [row] = result.rows;
 
     // the upsert writes the one row and returns it
     invariant(row);

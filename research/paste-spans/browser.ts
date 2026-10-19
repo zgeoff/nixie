@@ -1,4 +1,4 @@
-/* oxlint-disable no-await-in-loop, one-var, max-statements, no-continue -- a script: each browser and each step runs in order */
+/* oxlint-disable no-await-in-loop, max-statements, no-continue -- a script: each browser and each step runs in order */
 // Drives a textarea in Chromium, Firefox and WebKit with real key presses and a real clipboard,
 // and prints the spans the page recorded after each step.
 // Usage: bun browser.ts
