@@ -30,7 +30,7 @@ export interface ProcessSandboxOptions {
 // The test sandbox, a test-build double that runs each guest as a local process. It is NOT a
 // security boundary: a guest reads whatever nixie's user can and reaches any network the host does.
 // It records and refuses as imp does, but passes each grant's placeholders instead of injecting it.
-export function buildProcessSandboxAdapter(input: ProcessSandboxOptions): SandboxAdapter {
+export function createProcessSandboxAdapter(input: ProcessSandboxOptions): SandboxAdapter {
   // the root through its symlinks, resolved once, so a guest's home is the path its processes see
   const options = { ...input, rootDir: createRealRootDir(input.rootDir) };
 

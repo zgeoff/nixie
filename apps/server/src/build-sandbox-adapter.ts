@@ -1,6 +1,6 @@
 import type { SandboxAdapter, SandboxRecorder, ToolTargetResolver } from '@heynixie/sandbox';
 import { buildImpPort, buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
-import { buildProcessSandboxAdapter } from '@heynixie/sandbox-process';
+import { createProcessSandboxAdapter } from '@heynixie/sandbox-process';
 import type { SandboxSettings } from './resolve-sandbox-settings';
 
 export interface SandboxAdapterOptions {
@@ -24,7 +24,7 @@ export interface SandboxAdapterOptions {
 export function buildSandboxAdapter(options: SandboxAdapterOptions): SandboxAdapter {
   if (options.sandbox.adapter === 'test') {
     if (NIXIE_TEST_BUILD) {
-      return buildProcessSandboxAdapter({
+      return createProcessSandboxAdapter({
         recorder: options.recorder,
         rootDir: options.testRootDir,
         toolTarget: options.toolTarget,

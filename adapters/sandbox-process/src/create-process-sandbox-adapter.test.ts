@@ -12,7 +12,7 @@ import {
 } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import { buildProcessSandboxAdapter } from './build-process-sandbox-adapter';
+import { createProcessSandboxAdapter } from './create-process-sandbox-adapter';
 
 interface SetupConfig {
   // the stop's kill deadline, when a test needs one shorter than the default
@@ -36,7 +36,7 @@ async function setupTest(config: SetupConfig = {}) {
 
   // a test that needs the host's environment passes it here, as the server passes its own
   const buildAdapter = (hostEnv: Readonly<Record<string, string>> = {}) =>
-    buildProcessSandboxAdapter({
+    createProcessSandboxAdapter({
       recorder: recorder.recorder,
       rootDir,
       toolTarget: () => ({ path: join(rootDir, 'tools.sock') }),
@@ -426,7 +426,7 @@ test('it gives the home under the real path of a root reached through a symlink'
 
   await symlink(ctx.rootDir, join(linkDir, 'root'));
 
-  const linked = buildProcessSandboxAdapter({
+  const linked = createProcessSandboxAdapter({
     recorder: ctx.recorder,
     rootDir: join(linkDir, 'root'),
     toolTarget: () => ({ path: join(ctx.rootDir, 'tools.sock') }),
