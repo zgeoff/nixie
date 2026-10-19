@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import type { ParseProblem } from './definitions-parse-error';
-
-export const skillsLockPath = 'skills/skills.lock.json';
+import { skillsLockPath } from './skills-lock-path';
 
 // each vendored skill's lock entry by its name
 export type SkillsLock = z.infer<typeof lockSchema>;
