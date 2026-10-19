@@ -3,14 +3,14 @@ import { readRecords } from '@heynixie/log';
 import type { EventKind } from '@heynixie/sessions';
 import { skillsReloadedCodec } from './skills-reloaded-codec';
 
-// The skills one reload changed, each with how it changed.
-export interface SkillReloadEvent {
-  readonly changes: readonly SkillReloadChange[];
-}
-
 export interface SkillReloadChange {
   readonly name: string;
   readonly change: 'joined' | 'updated' | 'left';
+}
+
+// The skills one reload changed, each with how it changed.
+export interface SkillReloadEvent {
+  readonly changes: readonly SkillReloadChange[];
 }
 
 // The event kind for a reload on the thread, read from each reload's record. It lists only a

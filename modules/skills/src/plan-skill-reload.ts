@@ -12,16 +12,16 @@ export interface SkillReloadInput {
   readonly name: string | null;
 }
 
-// A reload's outcome: the task's pin after it, and each skill's old and new version.
-export interface SkillReloadPlan {
-  readonly skills: readonly SkillRef[];
-  readonly changes: readonly SkillChange[];
-}
-
 interface SkillChange {
   readonly name: string;
   readonly oldHash: string | null;
   readonly newHash: string | null;
+}
+
+// A reload's outcome: the task's pin after it, and each skill's old and new version.
+export interface SkillReloadPlan {
+  readonly skills: readonly SkillRef[];
+  readonly changes: readonly SkillChange[];
 }
 
 // Plans a reload: each skill it moves takes the version the definitions in force hold for a skill
