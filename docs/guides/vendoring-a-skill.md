@@ -39,7 +39,7 @@ on a skill.
        find . -type f ! -path '*/.*' | sed 's|^\./||' \
          | perl -CS -MEncode -e 'print sort { encode("UTF-16BE", $a) cmp encode("UTF-16BE", $b) } <STDIN>' \
          | while IFS= read -r f; do
-         printf '%s\t%s\t%s\n' "$f" "$(wc -c < "$f" | tr -d ' ')" "$(sha256sum "$f" | cut -d' ' -f1)"
+         printf '%s\t%s\t%s\n' "$f" "$(wc -c < "$f" | tr -d ' ')" "$(sha256sum < "$f" | cut -d' ' -f1)"
        done; } | sha256sum | cut -d' ' -f1 )
    ```
 
